@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.ristretto.compile;
 import static com.oracle.svm.core.FrameAccess.returnAddressSize;
 import static com.oracle.svm.core.deopt.Deoptimizer.createRelockObjectData;
 import static com.oracle.svm.interpreter.ristretto.compile.InterpreterDeoptEntryPoints.logger;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -46,26 +47,18 @@ import com.oracle.svm.core.deopt.DeoptState;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.interpreter.CallSiteLink;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.InterpreterFrameUtil;
 import com.oracle.svm.interpreter.InterpreterToVM;
 import com.oracle.svm.interpreter.InterpreterUtil;
-import com.oracle.svm.interpreter.ResolvedInvokeDynamicConstant;
-import com.oracle.svm.interpreter.SuccessfulCallSiteLink;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
-import com.oracle.svm.interpreter.metadata.Bytecodes;
-import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
-import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
-import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod.InvokeLayout;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -394,46 +387,44 @@ public class RistrettoDeoptimizationSupport {
         if (topCompiledFrame.getStackState() != StackState.AfterPop) {
             return JavaKind.Illegal;
         }
-        int currentBci = topCompiledFrame.getBci();
-        return computeDeoptInvokeSiteLayout(topFrameMethod, currentBci).getReturnKind();
+        return computeDeoptInvokeSiteLayout(topFrameMethod, topCompiledFrame.getBci()).getReturnKind();
     }
 
     /**
-     * Computes the invoke-site layout needed to resume a deoptimized invoke.
+     * Returns the symbolic return kind of the invoke at {@code callsiteBci}. This is the pending
+     * machine result's kind, independent of whether the compiler linked, intrinsified, or replaced
+     * the invoke.
+     *
+     * <p>
+     * Lazy deoptimization calls this before frame construction to choose whether the GP return
+     * register must become a managed GC root. At this point an object result still exists only as a
+     * raw machine word, so any allocation or safepoint could move the object without updating that
+     * word. The method therefore performs only an uninterruptible lookup in metadata constructed
+     * with the {@link RistrettoMethod}; initiating linkage or parsing a descriptor here would be a
+     * correctness bug, not merely a performance issue.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static JavaKind computeDeoptInvokeReturnKind(RistrettoMethod method, int callsiteBci) {
+        InvokeLayout invokeLayout = method.lookupDeoptInvokeLayout(callsiteBci);
+        VMError.guarantee(invokeLayout != null, "Deopt resume expects structural invoke metadata");
+        return invokeLayout.getReturnKind();
+    }
+
+    /**
+     * Returns the symbolic bytecode layout used to reconstruct an invoke boundary.
+     *
+     * <p>
+     * Deoptimization reconstructs the original bytecode frame, whose operand stack contains the
+     * receiver and arguments described by the call-site descriptor. A linked MethodHandle adapter
+     * or {@code invokedynamic} invoker can have extra appendix parameters, but those are
+     * implementation details and must not shift result placement in the reconstructed bytecode
+     * frame. The construction-time table is complete even when a compiler plugin consumes the
+     * invoke without exposing a linked target, so no runtime-linkage fallback is necessary or safe.
      */
     static CallSiteLayout computeDeoptInvokeSiteLayout(RistrettoMethod method, int callsiteBci) {
-        InterpreterResolvedJavaMethod interpreterMethod = method.getInterpreterMethod();
-        byte[] compilerCode = interpreterMethod.getCode();
-        int opcode = BytecodeStream.opcode(compilerCode, callsiteBci);
-        VMError.guarantee(Bytecodes.isInvoke(opcode), "Deopt resume expects an invoke bytecode");
-
-        if (opcode == Bytecodes.INVOKEDYNAMIC) {
-            int fullCpi = BytecodeStream.readCPI4(compilerCode, callsiteBci);
-            int indyCpi = fullCpi >>> 16;
-            VMError.guarantee(indyCpi != 0, "Deopt resume expects a compiler-visible invokedynamic CPI");
-            Object indyEntry = interpreterMethod.getConstantPool().peekCachedEntry(indyCpi);
-            if (!(indyEntry instanceof ResolvedInvokeDynamicConstant)) {
-                throw VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC constant: " + indyEntry);
-            }
-            CallSiteLink link = ((ResolvedInvokeDynamicConstant) indyEntry).getCallSiteLink(interpreterMethod, callsiteBci);
-            VMError.guarantee(link instanceof SuccessfulCallSiteLink,
-                            "Deopt resume expects an already-published runtime invokedynamic link");
-            InterpreterResolvedJavaMethod linkedMethod = ((SuccessfulCallSiteLink) link).getInvoker();
-            boolean hasReceiver = !linkedMethod.isStatic();
-            return new CallSiteLayout(linkedMethod.getSignature().getReturnKind(), linkedMethod.getSignature().slotsForParameters(hasReceiver));
-        }
-
-        if (!(opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL || opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKEINTERFACE)) {
-            throw VMError.shouldNotReachHere("Deopt resume expected a concrete invoke bytecode, got opcode " + opcode + " at BCI " + callsiteBci);
-        }
-        char cpi = BytecodeStream.readCPI2(compilerCode, callsiteBci);
-        InterpreterConstantPool constantPool = interpreterMethod.getConstantPool();
-        LinkedInvoke linkedInvoke = constantPool.peekLinkedInvoke(cpi, opcode);
-        if (linkedInvoke != null) {
-            return new CallSiteLayout(linkedInvoke.returnKind, linkedInvoke.parameterSlots);
-        }
-        InterpreterUnresolvedSignature signature = CremaMethodAccess.toJVMCI(constantPool.methodSignature(cpi), SymbolsSupport.getTypes());
-        return new CallSiteLayout(signature.getReturnKind(), signature.slotsForParameters(opcode != Bytecodes.INVOKESTATIC));
+        InvokeLayout invokeLayout = method.lookupDeoptInvokeLayout(callsiteBci);
+        VMError.guarantee(invokeLayout != null, "Deopt resume expects structural invoke metadata");
+        return new CallSiteLayout(invokeLayout.getReturnKind(), invokeLayout.getArgumentSlotCount());
     }
 
     /**

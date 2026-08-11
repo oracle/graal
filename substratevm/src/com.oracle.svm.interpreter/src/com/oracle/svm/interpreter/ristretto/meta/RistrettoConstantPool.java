@@ -40,6 +40,7 @@ import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedInvokeGenericJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -143,6 +144,16 @@ public final class RistrettoConstantPool implements ConstantPool {
         }
         LinkedInvoke linkedInvoke = interpreterConstantPool.peekLinkedInvoke(cpi, opcode);
         if (linkedInvoke != null) {
+            /*
+             * Interpreter.linkInvoke normalizes signature-polymorphic methods before publishing
+             * LinkedInvoke: it extracts the appendix, replaces the temporary invoke-generic
+             * wrapper with its adapter invoker, and makes the call direct. Compilation must reuse
+             * that exact published seed rather than resolving the symbolic entry a second time.
+             * Keep the producer/consumer contract executable so a future linker change cannot
+             * silently give Graal the wrapper signature and lose appendix-aware adapter semantics.
+             */
+            GraalError.guarantee(!(linkedInvoke.seedMethod instanceof InterpreterResolvedInvokeGenericJavaMethod),
+                            "Linked invoke at cpi %d (%s) must contain its normalized adapter invoker, not %s", cpi, Bytecodes.nameOf(opcode), linkedInvoke.seedMethod);
             return RistrettoMethod.getOrCreate(linkedInvoke.seedMethod);
         }
         Object cachedEntry = interpreterConstantPool.peekCachedEntry(cpi);
@@ -150,10 +161,14 @@ public final class RistrettoConstantPool implements ConstantPool {
             return unresolvedJavaMethod;
         }
         /*
-         * Ristretto compilation must not perform symbolic method resolution or call-site linking.
-         * If the interpreter has not already published a linked invoke for this opcode, keep the
-         * compiler on the unresolved-deopt path so the interpreter remains the owner of first
-         * resolution.
+         * Ristretto compilation must not perform symbolic method resolution or call-site
+         * linking. If the interpreter has not already published a linked invoke for this opcode,
+         * keep the compiler on the unresolved-deopt path so the interpreter remains the owner of
+         * first resolution. This can cause one bounded deoptimization when execution first reaches
+         * a cold call site; after the interpreter publishes LinkedInvoke, the normal Ristretto
+         * recompilation path consumes the stable seed above. Avoiding compiler-side linkage is
+         * required because linkage may load classes, initialize state, allocate appendices, or
+         * select VM intrinsics, none of which may be made an incidental compiler parse side effect.
          */
         return createUnresolvedMethod(cpi);
     }

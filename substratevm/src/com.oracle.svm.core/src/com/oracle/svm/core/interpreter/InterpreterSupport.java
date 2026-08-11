@@ -438,6 +438,20 @@ public abstract class InterpreterSupport {
                     FrameInfoQueryResult frameInfo, CodeInfoQueryResult physicalFrame, boolean eager);
 
     /**
+     * Returns whether the ABI return register at this interpreter-target deoptimization point holds
+     * a pending object result. This is a property of the decoded source state at the current BCI,
+     * not of the enclosing compiled method's return type.
+     *
+     * The result selects the lazy-deoptimization stub ABI. Returning {@code true} causes the raw
+     * register value to be materialized as a managed reference before interruptible frame
+     * construction can trigger GC; returning {@code false} leaves it as an untracked primitive
+     * word. Implementations must therefore derive the return-value kind from already-published metadata and
+     * must not initiate class loading or invoke linkage while deoptimization is in progress.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public abstract boolean isInterpreterDeoptReturnValueObject(FrameInfoQueryResult frameInfo);
+
+    /**
      * Continues execution from an interpreter-target deoptimized frame.
      *
      * @param gpReturnValueObject optional materialized object for {@code gpReturnValue}. It is

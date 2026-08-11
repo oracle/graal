@@ -34,11 +34,17 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.DeoptTargetTier;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
+import com.oracle.svm.interpreter.metadata.BytecodeStream;
+import com.oracle.svm.interpreter.metadata.Bytecodes;
+import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
@@ -57,6 +63,7 @@ import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
@@ -123,6 +130,41 @@ public final class RistrettoMethod extends SubstrateMethod {
     /** Serializes invocation-entry code publication with invalidation of the published code. */
     private final Object invocationPublicationLock = new Object();
 
+    private static final InvokeLayoutTable NO_INVOKE_LAYOUTS = new InvokeLayoutTable(new int[0], new InvokeLayout[0]);
+
+    /**
+     * Immutable call-site layouts indexed by bytecode BCI.
+     *
+     * <p>
+     * Lazy-deoptimization stub selection reads this table while the callee's raw return register is
+     * not yet represented by a managed object reference. Consequently, the lookup cannot parse a
+     * descriptor, allocate, resolve a method, link an {@code invokedynamic} site, or reach a
+     * safepoint. Constructing the complete table together with this method reduces that critical
+     * operation to a bounds check and array load.
+     *
+     * <p>
+     * The table is derived from symbolic call-site descriptors rather than linked target methods.
+     * This distinction is essential: a compiler plugin can replace an invoke without performing a
+     * constant-pool method lookup, and signature-polymorphic or {@code invokedynamic} linkage can
+     * introduce adapter/appendix parameters that are not operands of the original bytecode. A
+     * deoptimization frame describes the original bytecode operand stack, so its return kind and
+     * consumed argument slots must come from the symbolic descriptor at that BCI.
+     *
+     * <p>
+     * A shared empty table avoids per-method storage for methods without invokes. Methods with
+     * invokes retain sorted parallel arrays whose size is proportional to the number of invokes,
+     * not the bytecode length. This matters for runtime-loaded input: retaining a code-length
+     * reference array for a large method with one invoke would allow a small amount of executable
+     * metadata to pin disproportionate heap space. Lookup uses an allocation-free binary search,
+     * which preserves the pre-root safety contract without that sparse-memory exposure.
+     * No table is built when Ristretto deoptimization is disabled; the hosted option is folded, so
+     * configurations that cannot consume this metadata pay neither the descriptor-conversion cost
+     * nor the retained-memory cost.
+     * Final-field publication makes the arrays and their immutable elements visible before any
+     * runtime-compiled code associated with this method can execute.
+     */
+    private final InvokeLayoutTable deoptInvokeLayouts;
+
     private static final AtomicIntegerFieldUpdater<RistrettoMethod> COMPILATION_ATTEMPTS_UPDATER = AtomicIntegerFieldUpdater.newUpdater(RistrettoMethod.class, "compilationAttempts");
 
     private static final AtomicReferenceFieldUpdater<RistrettoMethod, SubstrateInstalledCodeImpl> INSTALLED_CODE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RistrettoMethod.class,
@@ -159,6 +201,7 @@ public final class RistrettoMethod extends SubstrateMethod {
     private RistrettoMethod(InterpreterResolvedJavaMethod interpreterMethod) {
         super(0, null, 0, null, 0, null);
         this.interpreterMethod = interpreterMethod;
+        this.deoptInvokeLayouts = RistrettoOptions.useDeoptimization() ? createDeoptInvokeLayouts(interpreterMethod) : NO_INVOKE_LAYOUTS;
         this.declaringClass = RistrettoType.getOrCreate(interpreterMethod.getDeclaringClass());
         this.signature = new RistrettoUnresolvedSignature(interpreterMethod.getSignature());
         /*
@@ -253,6 +296,153 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     public int getCompilationAttempts() {
         return compilationAttempts;
+    }
+
+    /**
+     * Builds the deoptimization layout for every invoke directly from the compiler-visible
+     * bytecodes and their symbolic constant-pool descriptors.
+     *
+     * <p>
+     * This is deliberately independent of compilation. Graph parsing is not an exhaustive source
+     * of invoke metadata: an intrinsic or invocation plugin can consume a call before the Ristretto
+     * constant-pool wrapper exposes a linked target, while an unresolved call can leave a valid
+     * deoptimization state without ever linking. Scanning bytecodes during construction makes the
+     * table complete for all of those paths and also keeps repeated compilation attempts from
+     * mutating metadata. The first pass counts invokes so the retained arrays can be allocated at
+     * their exact compact size; the second pass fills their symbolic layouts.
+     * The method object itself is created once before its first runtime compilation, and this
+     * helper is folded out entirely when deoptimization support is disabled.
+     *
+     * <p>
+     * Ordinary invoke descriptors use their two-byte CPI. The stable compiler view of a
+     * runtime-loaded {@code invokedynamic} stores the real CPI in the upper half of its four-byte
+     * operand and an encoded call-site BCI in the lower half; only the real CPI identifies the
+     * symbolic descriptor. Receiver slots are properties of the bytecode opcode, not of a linked
+     * adapter: virtual, special, and interface calls consume a receiver, whereas static and dynamic
+     * calls do not.
+     */
+    private static InvokeLayoutTable createDeoptInvokeLayouts(InterpreterResolvedJavaMethod method) {
+        byte[] code = method.getCode();
+        if (code == null || code.length == 0) {
+            return NO_INVOKE_LAYOUTS;
+        }
+
+        int invokeCount = 0;
+        for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
+            if (Bytecodes.isInvoke(BytecodeStream.opcode(code, bci))) {
+                invokeCount++;
+            }
+        }
+        if (invokeCount == 0) {
+            return NO_INVOKE_LAYOUTS;
+        }
+
+        InterpreterConstantPool constantPool = method.getConstantPool();
+        int[] invokeBCIs = new int[invokeCount];
+        InvokeLayout[] layouts = new InvokeLayout[invokeCount];
+        int invokeIndex = 0;
+        for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
+            int opcode = BytecodeStream.opcode(code, bci);
+            int cpi;
+            boolean hasReceiver;
+            switch (opcode) {
+                case Bytecodes.INVOKEVIRTUAL, Bytecodes.INVOKESPECIAL, Bytecodes.INVOKEINTERFACE -> {
+                    cpi = BytecodeStream.readCPI2(code, bci);
+                    hasReceiver = true;
+                }
+                case Bytecodes.INVOKESTATIC -> {
+                    cpi = BytecodeStream.readCPI2(code, bci);
+                    hasReceiver = false;
+                }
+                case Bytecodes.INVOKEDYNAMIC -> {
+                    cpi = BytecodeStream.readCPI4(code, bci) >>> 16;
+                    hasReceiver = false;
+                }
+                default -> {
+                    continue;
+                }
+            }
+
+            VMError.guarantee(cpi != 0, "Ristretto invoke bytecode must have a symbolic CPI");
+            InterpreterUnresolvedSignature signature = CremaMethodAccess.toJVMCI(
+                            opcode == Bytecodes.INVOKEDYNAMIC ? constantPool.invokeDynamicSignature(cpi) : constantPool.methodSignature(cpi), SymbolsSupport.getTypes());
+            invokeBCIs[invokeIndex] = bci;
+            layouts[invokeIndex] = new InvokeLayout(signature.getReturnKind(), signature.slotsForParameters(hasReceiver));
+            invokeIndex++;
+        }
+        VMError.guarantee(invokeIndex == invokeCount, "Ristretto invoke metadata count must remain stable while scanning bytecodes");
+        return new InvokeLayoutTable(invokeBCIs, layouts);
+    }
+
+    /**
+     * Looks up the immutable layout for one deoptimization BCI without parsing bytecodes,
+     * allocating, or consulting the interpreter linkage cache. The table is sorted because it is
+     * populated in bytecode order, so a manual binary search keeps the uninterruptible call graph
+     * self-contained and avoids depending on library search helpers.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public InvokeLayout lookupDeoptInvokeLayout(int bci) {
+        return deoptInvokeLayouts.lookup(bci);
+    }
+
+    /** Compact immutable mapping from sorted invoke BCIs to their symbolic layouts. */
+    private static final class InvokeLayoutTable {
+        private final int[] invokeBCIs;
+        private final InvokeLayout[] layouts;
+
+        private InvokeLayoutTable(int[] invokeBCIs, InvokeLayout[] layouts) {
+            VMError.guarantee(invokeBCIs.length == layouts.length, "Ristretto invoke metadata arrays must have equal length");
+            this.invokeBCIs = invokeBCIs;
+            this.layouts = layouts;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private boolean isEmpty() {
+            return invokeBCIs.length == 0;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private InvokeLayout lookup(int bci) {
+            int low = 0;
+            int high = invokeBCIs.length - 1;
+            while (low <= high) {
+                int middle = (low + high) >>> 1;
+                int middleBci = invokeBCIs[middle];
+                if (middleBci < bci) {
+                    low = middle + 1;
+                } else if (middleBci > bci) {
+                    high = middle - 1;
+                } else {
+                    return layouts[middle];
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Symbolic call-site facts required to reconstruct the operand stack at an invoke boundary.
+     * These are intentionally the bytecode-level facts, not a linked adapter's effective calling
+     * convention.
+     */
+    public static final class InvokeLayout {
+        private final JavaKind returnKind;
+        private final int argumentSlotCount;
+
+        private InvokeLayout(JavaKind returnKind, int argumentSlotCount) {
+            this.returnKind = returnKind;
+            this.argumentSlotCount = argumentSlotCount;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public JavaKind getReturnKind() {
+            return returnKind;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getArgumentSlotCount() {
+            return argumentSlotCount;
+        }
     }
 
     public boolean isCompilationAttemptLimitReached() {
