@@ -32,6 +32,7 @@ import java.util.Queue;
 import java.util.TreeMap;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterControl;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -108,9 +109,16 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     }
 
     private void allocateObjectsInAlignedChunks(ChunkedImageHeapAllocator allocator, ImageHeapLayouterControl control) {
-        NavigableMap<Long, Queue<ImageHeapObject>> sortedObjects = createSortedObjectsMap();
-        while (!sortedObjects.isEmpty()) {
-            ImageHeapObject info = dequeueBestFit(sortedObjects, allocator.getRemainingBytesInAlignedChunk());
+        SortedObjects sortedObjects = computeSortedObjects();
+
+        while (!sortedObjects.grouped().isEmpty() || !sortedObjects.others().isEmpty()) {
+            ImageHeapObject info = null;
+            if (!sortedObjects.grouped().isEmpty()) {
+                info = dequeueBestFit(sortedObjects.grouped(), allocator.getRemainingBytesInAlignedChunk());
+            }
+            if (info == null) {
+                info = dequeueBestFit(sortedObjects.others(), allocator.getRemainingBytesInAlignedChunk());
+            }
             if (info == null) {
                 allocator.startNewAlignedChunk();
                 control.poll();
@@ -142,15 +150,25 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return obj;
     }
 
-    private NavigableMap<Long, Queue<ImageHeapObject>> createSortedObjectsMap() {
-        NavigableMap<Long, Queue<ImageHeapObject>> map = new TreeMap<>();
+    private record SortedObjects(NavigableMap<Long, Queue<ImageHeapObject>> grouped,
+                    NavigableMap<Long, Queue<ImageHeapObject>> others) {
+    }
+
+    private SortedObjects computeSortedObjects() {
+        SortedObjects sorted = new SortedObjects(new TreeMap<>(), new TreeMap<>());
         for (ImageHeapObject obj : objects) {
             long objSize = obj.getSize();
             assert objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize() : Assertions.errorMessage(obj, objSize);
+            NavigableMap<Long, Queue<ImageHeapObject>> map;
+            if (obj.getObjectClass() == DynamicHubCompanion.class) {
+                map = sorted.grouped;
+            } else {
+                map = sorted.others;
+            }
             Queue<ImageHeapObject> q = map.computeIfAbsent(objSize, k -> new ArrayDeque<>());
             q.add(obj);
         }
-        return map;
+        return sorted;
     }
 
     private void appendAllocatedObject(ImageHeapObject info, long allocationOffset) {
