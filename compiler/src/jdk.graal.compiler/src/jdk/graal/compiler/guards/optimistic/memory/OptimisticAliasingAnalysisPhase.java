@@ -59,7 +59,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
@@ -362,7 +361,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
             SpeculationLog.Speculation speculation = trySpeculation(loop.loopBegin());
             if (speculation != null) {
                 // place optimistic aliasing guards
-                LogicNode isAliasing = testPotentialAliasing(loop, write, potentiallyAliasingWritesBeforeWrite, false, false, constantReflection);
+                LogicNode isAliasing = testPotentialAliasing(loop, write, potentiallyAliasingWritesBeforeWrite, false, constantReflection);
                 if (isAliasing.isTautology()) {
                     // Definite aliasing, no use placing optimistic guards.
                     return false;
@@ -449,11 +448,8 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
                 // don't analyze array indices, only whether the accesses are to the same object.
                 boolean useStrictObjectEquality = nodeUsedByIfConditionInLoop(loop, read) && !potentialAliasingWritesAfterRead.isEmpty();
                 // place optimistic aliasing guards
-                LogicNode aliasingWritesBefore = testPotentialAliasing(loop, read, potentialAliasingWritesBeforeRead, false, useStrictObjectEquality, constantReflection);
-                // If the read is used by a phi in the loop, we cannot guarantee that the write will
-                // remain after it when we vectorize the loop. In this case, be more conservative.
-                boolean writeAfterRead = isUsedByPhiInLoop(loop, read) == TriState.FALSE;
-                LogicNode aliasingWritesAfter = testPotentialAliasing(loop, read, potentialAliasingWritesAfterRead, writeAfterRead, useStrictObjectEquality, constantReflection);
+                LogicNode aliasingWritesBefore = testPotentialAliasing(loop, read, potentialAliasingWritesBeforeRead, useStrictObjectEquality, constantReflection);
+                LogicNode aliasingWritesAfter = testPotentialAliasing(loop, read, potentialAliasingWritesAfterRead, useStrictObjectEquality, constantReflection);
 
                 if ((aliasingWritesBefore == null || aliasingWritesBefore.isTautology()) && (aliasingWritesAfter == null || aliasingWritesAfter.isTautology())) {
                     // Definite aliasing, no use placing optimistic guards.
@@ -632,10 +628,10 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
     // Test aliasing between an access (which may be a read or a write) and a list of writes. The
     // writes are either all before or all after the access, as given by writesAfterAccess.
     private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testPotentialAliasing(Loop loop, ValueAccess access, ArrayList<WriteNode> potentialAliasingWrites,
-                    boolean writesAfterAccess, boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
+                    boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
         LogicNode isAliasing = null;
         for (WriteNode write : potentialAliasingWrites) {
-            LogicNode accessWriteAliasing = testLoopAccessAliasing(loop, access, write, writesAfterAccess, useStrictObjectEquality, constantReflection);
+            LogicNode accessWriteAliasing = testLoopAccessAliasing(loop, access, write, useStrictObjectEquality, constantReflection);
             if (accessWriteAliasing.isTautology()) {
                 return accessWriteAliasing;
             }
@@ -654,7 +650,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
     // cases of writes after reads.
     // Returns a LogicNode that evaluates to true if the accesses alias in a way that prevents
     // vectorization.
-    private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testLoopAccessAliasing(Loop loop, ValueAccess access, WriteNode write, boolean writeAfterAccess,
+    private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testLoopAccessAliasing(Loop loop, ValueAccess access, WriteNode write,
                     boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
         StructuredGraph graph = loop.loopBegin().graph();
         boolean accessIsRead = access instanceof FloatingReadNode || access instanceof ReadNode;
@@ -703,8 +699,8 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
             return LogicConstantNode.tautology(graph);
         }
 
-        boolean writeAfterRead = accessIsRead && writeAfterAccess;
-        if (accessIsRead && !writeAfterAccess) {
+        boolean writeAfterRead = false;
+        if (accessIsRead) {
             // As far as the caller could tell, writes in this loop are not guaranteed to be after
             // the read. However, if we can prove that this particular write uses the read's value,
             // then we can guarantee the ordering for this write.
@@ -752,29 +748,6 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         }
 
         return mayAlias;
-    }
-
-    private static TriState isUsedByPhiInLoop(Loop loop, Node node) {
-        NodeFlood worklist = node.graph().createNodeFlood();
-
-        int iterations = 0;
-        worklist.add(node);
-        for (Node n : worklist) {
-            if (n instanceof ValuePhiNode && ((ValuePhiNode) n).merge() == loop.loopBegin()) {
-                return TriState.TRUE;
-            }
-            for (Node usage : n.usages()) {
-                if (!worklist.isMarked(usage) && !loop.isOutsideLoop(usage)) {
-                    worklist.add(usage);
-                }
-            }
-            iterations++;
-            if (iterations >= MAX_SEARCH_ITERATIONS) {
-                return TriState.UNKNOWN;
-            }
-        }
-
-        return TriState.FALSE;
     }
 
     private static TriState isWriteAfterNodeInLoop(WriteNode write, Node node, Loop loop) {
