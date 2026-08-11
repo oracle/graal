@@ -104,8 +104,23 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
         return new ValueNode[]{arrayStart, length, initialValue};
     }
 
+    /**
+     * Features required by the AVX2 runtime-compilation stub variant.
+     */
     public static EnumSet<AMD64.CPUFeature> runtimeFeaturesAMD64() {
         return EnumSet.of(AVX, AVX2);
+    }
+
+    /**
+     * Features required to enter the guarded AVX fast path. SSE3, SSSE3, SSE4.1, and SSE4.2 are
+     * intentionally omitted; the fast path guard must only check feature flags supported by
+     * RuntimeCPUFeatureCheck, which includes AVX and AVX2 but none of the SSE flags, currently.
+     * When AVX is available, AMD64VectorizedHashCodeOp emits exclusively AVX/AVX2 vector encodings,
+     * so this path does not require any extra SSE features (neither does the scalar fallback path
+     * that is used as the AMD64 baseline compatibility target).
+     */
+    public static EnumSet<AMD64.CPUFeature> guardedFeaturesAMD64() {
+        return EnumSet.of(AVX);
     }
 
     public static boolean isSupported(Architecture arch) {
@@ -122,7 +137,7 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     }
 
     @NodeIntrinsic
-    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "runtimeFeaturesAMD64")
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "runtimeFeaturesAMD64", guardedCPUFeaturesAMD64 = "guardedFeaturesAMD64")
     @GenerateStub(name = "vectorizedHashCodeBoolean", parameters = "Boolean")
     @GenerateStub(name = "vectorizedHashCodeChar", parameters = "Char")
     @GenerateStub(name = "vectorizedHashCodeByte", parameters = "Byte")
