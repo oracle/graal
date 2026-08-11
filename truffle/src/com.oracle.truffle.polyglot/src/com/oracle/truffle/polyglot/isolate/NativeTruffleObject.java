@@ -134,6 +134,14 @@ final class NativeTruffleObject implements TruffleObject {
         } else if (GET_LANGUAGE == message) {
             throw UnsupportedMessageException.create();
         }
+        int messageId = message.getId();
+        SymbolTable.Symbol symbol = null;
+        if (SymbolTable.isMemberNameMessage(messageId)) {
+            SymbolTable.Symbol s = context.hostSymbols.preRegister((String) args[0]);
+            if (s != null) {
+                args[0] = symbol = s;
+            }
+        }
         byte[] messageReadBufferIntoOutByteArray = null;
         int messageReadBufferIntoOutByteArrayOffset = -1;
         if (message == MESSAGE_READ_BUFFER) {
@@ -144,7 +152,10 @@ final class NativeTruffleObject implements TruffleObject {
         }
         // depending on message type, enable scoping here for function invocations. also for
         // instantiate?
-        Object result = context.guestObjectReflection.dispatch(guestReferenceId, message.getId(), args);
+        Object result = context.guestObjectReflection.dispatch(guestReferenceId, messageId, args);
+        if (symbol != null) {
+            symbol.finishRegistration();
+        }
         if (result == null) {
             return null;
         }

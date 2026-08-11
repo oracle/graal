@@ -120,6 +120,14 @@ final class HSTruffleObject implements TruffleObject {
         if (MESSAGE_IS_NULL == message) {
             return false;
         }
+        int messageId = message.getId();
+        SymbolTable.Symbol symbol = null;
+        if (SymbolTable.isMemberNameMessage(messageId)) {
+            SymbolTable.Symbol s = context.guestSymbols.preRegister((String) args[0]);
+            if (s != null) {
+                args[0] = symbol = s;
+            }
+        }
         byte[] messageReadBufferIntoOutByteArray = null;
         int messageReadBufferIntoOutByteArrayOffset = -1;
         if (message == MESSAGE_READ_BUFFER) {
@@ -130,7 +138,10 @@ final class HSTruffleObject implements TruffleObject {
         }
         Object result;
         try {
-            result = context.guestToHostDispatch.dispatch(hostReferenceId, message.getId(), args);
+            result = context.guestToHostDispatch.dispatch(hostReferenceId, messageId, args);
+            if (symbol != null) {
+                symbol.finishRegistration();
+            }
         } catch (AbstractTruffleException t) {
             /*
              * Capture the Java stack within the isolate to enable proper Guest Frame merging, which

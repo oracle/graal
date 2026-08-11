@@ -59,6 +59,8 @@ final class ForeignContext implements ForeignObject {
     private final PolyglotIsolateServices polyglotIsolateServices;
     private final IsolateSourceCache sourceCache;
     private final WeakReference<ForeignContext> weakThis;
+    final SymbolTable.Sink guestSymbols;
+    final SymbolTable.Source hostSymbols;
     int registrationRequired;
     private volatile Reference<Context> weakAPI;
     private boolean disposed;
@@ -75,6 +77,8 @@ final class ForeignContext implements ForeignObject {
         this.guestToHostReceiver = guestToHostReceiver;
         this.polyglotIsolateServices = polyglotIsolateServices;
         this.sourceCache = sourceCache;
+        this.guestSymbols = SymbolTable.createSinkTable();
+        this.hostSymbols = SymbolTable.createSourceTable();
         this.weakThis = new WeakReference<>(this);
         guestToHostReceiver.setAPI(this);
     }

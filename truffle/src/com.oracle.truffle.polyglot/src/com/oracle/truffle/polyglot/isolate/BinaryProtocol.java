@@ -107,6 +107,8 @@ final class BinaryProtocol {
     private static final byte BIG_INTEGER = 25;
     private static final byte BYTE_ARRAY = 26;
     private static final byte HOST_NULL = 27;
+    private static final byte SYMBOL_DEFINITION = 28;
+    private static final byte SYMBOL_REFERENCE = 29;
 
     // Exception kinds
     private static final byte EXCEPTION_KIND_INVALID_REFERENCE = 1;
@@ -145,6 +147,14 @@ final class BinaryProtocol {
                 return HSTruffleObject.createHostObjectReference(in.readLong(), context);
             case EXCEPTION:
                 return readGuestException(in, context);
+            case SYMBOL_DEFINITION: {
+                short symbolId = in.readShort();
+                String symbolName = in.readUTF();
+                context.hostSymbols.registerSymbol(symbolId, symbolName);
+                return symbolName;
+            }
+            case SYMBOL_REFERENCE:
+                return context.hostSymbols.lookupSymbolName(in.readShort());
             case TRUFFLE_LANGUAGE:
                 return GuestHostLanguage.class;
             default:
@@ -170,6 +180,14 @@ final class BinaryProtocol {
                 return context.getGuestToHostReceiver().getHostObject(in.readLong());
             case EXCEPTION:
                 return readHostException(in, context);
+            case SYMBOL_DEFINITION: {
+                short symbolId = in.readShort();
+                String symbolName = in.readUTF();
+                context.guestSymbols.registerSymbol(symbolId, symbolName);
+                return symbolName;
+            }
+            case SYMBOL_REFERENCE:
+                return context.guestSymbols.lookupSymbolName(in.readShort());
             default:
                 return readSimpleTypedValue(in, tag);
         }
@@ -515,6 +533,21 @@ final class BinaryProtocol {
         } else if (value instanceof TruffleString) {
             out.writeByte(TRUFFLE_STRING);
             out.writeUTF(((TruffleString) value).toJavaStringUncached());
+        } else if (value instanceof SymbolTable.Symbol symbol) {
+            int symbolId = symbol.getId();
+            /*
+             * Symbol ids are encoded as a short. SymbolTable.Source caps the ids at Short.MAX_VALUE so they always fit.
+             * Raising that cap requires widening the encoding here and in the SYMBOL_DEFINITION and SYMBOL_REFERENCE readers as well.
+             */
+            assert symbolId <= Short.MAX_VALUE : "Symbol id " + symbolId + " does not fit into a short";
+            if (symbol.isPending()) {
+                out.writeByte(SYMBOL_DEFINITION);
+                out.writeShort(symbolId);
+                out.writeUTF(symbol.getName());
+            } else {
+                out.writeByte(SYMBOL_REFERENCE);
+                out.writeShort(symbolId);
+            }
         } else if (value instanceof TriState) {
             out.writeByte(TRISTATE);
             out.writeInt(((TriState) value).ordinal());
