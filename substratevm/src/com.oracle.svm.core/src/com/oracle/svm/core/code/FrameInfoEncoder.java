@@ -615,6 +615,16 @@ public class FrameInfoEncoder {
                 frameInfo.deoptMethod = method;
                 encoders.objectConstants.addObject(constantAccess.forObject(method, false));
             }
+            /*
+             * Runtime frame-info customization requests method retention, and an interpreter
+             * counterpart is precisely what makes a runtime-installed frame eligible to resume in
+             * Ristretto. Make that producer contract explicit here: the lazy-deoptimization stub
+             * selector must never have to guess a return-register root kind from an anonymous
+             * AfterPop frame. General AOT encodings remain allowed to omit this optional field.
+             */
+            if (customization.storeDeoptTargetMethod() && method.getInterpreterMethod() != null) {
+                VMError.guarantee(method.equals(frameInfo.deoptMethod), "Runtime interpreter frame metadata must retain its deoptimization method");
+            }
 
             frameInfo.numLocals = frame.numLocals;
             frameInfo.numStack = frame.numStack;

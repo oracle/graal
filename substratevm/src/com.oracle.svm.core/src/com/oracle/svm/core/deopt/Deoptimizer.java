@@ -35,6 +35,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -1154,13 +1155,34 @@ public final class Deoptimizer {
     }
 
     private static CFunctionPointer getLazyDeoptStub(CodeInfoQueryResult sourceChunk, CodePointer pc, boolean ignoreNonDeoptimizable) {
-        if (hasInstalledCodeInterpreterDeoptTarget(pc)) {
+        if (InterpreterSupport.isEnabled() && hasInstalledCodeInterpreterDeoptTarget(pc)) {
             /*
-             * Runtime-compiled Ristretto code has no AOT deopt target method entry, but its
-             * CodeInfo still records whether this deopt entry leaves an object in the GP return
-             * register. The compiled method signature is too broad for non-call deopt entries.
+             * Do not use sourceChunk.getDeoptReturnValueIsObject() here. That bit describes an AOT
+             * deoptimization-entry call site, while Ristretto code deoptimizes to a Crema
+             * interpreter frame. It can therefore be false even when the ABI return register
+             * contains an object.
+             *
+             * This can happen for an AfterPop frame at an invoke BCI. The callee has returned and
+             * the caller has consumed the arguments, but the result still exists only in the ABI
+             * return register. It belongs to the invoke at the decoded BCI, possibly in an inlined
+             * frame, rather than to the compiled method's declared return type.
+             *
+             * The correct stub must be selected before the DeoptimizedFrame is constructed,
+             * because construction can allocate and trigger a moving GC. The object-return stub
+             * exposes the register as a GC root so that GC can update it. The primitive stub
+             * preserves only an UnsignedWord, which could leave a stale address if the register
+             * contains an object.
+             *
+             * For this reason, classify the return value only for an AfterPop frame at an invoke
+             * in a Ristretto method. Determine its kind from existing interpreter linkage without
+             * linking during deoptimization. All other states use the primitive stub. The AOT path
+             * below continues to use the target deoptimization entry's CodeInfo bit.
              */
-            return selectLazyDeoptStub(sourceChunk.getDeoptReturnValueIsObject());
+            boolean objectReturnValueIsObject = InterpreterSupport.singleton().isInterpreterDeoptReturnValueObject(sourceChunk.getFrameInfo());
+            if (ImageSingletons.contains(LazyDeoptStubSelectionRecorder.class)) {
+                ImageSingletons.lookup(LazyDeoptStubSelectionRecorder.class).recordLazyDeoptStubSelection(sourceChunk, pc, objectReturnValueIsObject);
+            }
+            return selectLazyDeoptStub(objectReturnValueIsObject);
         }
 
         FrameInfoQueryResult frameInfo = sourceChunk.getFrameInfo();
@@ -1855,6 +1877,11 @@ public final class Deoptimizer {
             current = current.getCaller();
         }
         throw VMError.shouldNotReachHere(sb.toString());
+    }
+
+    /** Test-only observer for lazy-deoptimization stub selection. */
+    public interface LazyDeoptStubSelectionRecorder {
+        void recordLazyDeoptStubSelection(CodeInfoQueryResult sourceChunk, CodePointer pc, boolean objectReturnValueIsObject);
     }
 
 }
