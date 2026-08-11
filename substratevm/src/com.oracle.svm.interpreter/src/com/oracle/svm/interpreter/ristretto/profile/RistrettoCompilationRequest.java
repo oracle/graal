@@ -73,6 +73,17 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
      */
     private final int osrCompilationRequestId;
 
+    /// Monotonic time at which this request entered the compilation manager.
+    private volatile long submittedAtNanos;
+
+    /// Compilation requests are one-shot queue entries.
+    private boolean submitted;
+
+    /// Intrusive links used only while this request is tracked for watchdog diagnostics.
+    RistrettoCompilationRequest previousQueuedRequestToReport;
+    RistrettoCompilationRequest nextQueuedRequestToReport;
+    boolean sampledForCompilationWatchdog;
+
     public RistrettoCompilationRequest(RistrettoMethod rMethod, int priority) {
         this(rMethod, priority, RistrettoUtils.INVOCATION_ENTRY_BCI, RistrettoMethod.NO_OSR_COMPILATION_REQUEST);
     }
@@ -167,6 +178,26 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
 
     public boolean isOSR() {
         return entryBCI != RistrettoUtils.INVOCATION_ENTRY_BCI;
+    }
+
+    /**
+     * Records the monotonic time at which this request entered the compilation queue.
+     *
+     * @param nowNanos submission time obtained from {@link System#nanoTime()}
+     */
+    synchronized void markSubmitted(long nowNanos) {
+        if (submitted) {
+            throw new IllegalStateException("A Ristretto compilation request can only be submitted once.");
+        }
+        submitted = true;
+        submittedAtNanos = nowNanos;
+    }
+
+    /**
+     * Returns the monotonic time at which this request entered the compilation queue.
+     */
+    long getSubmittedAtNanos() {
+        return submittedAtNanos;
     }
 
     /**

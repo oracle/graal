@@ -80,6 +80,7 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoReplacements;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoStampProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager;
 import com.oracle.svm.interpreter.ristretto.verify.RistrettoGraphJVMCITypeVerifier;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.option.CommonOptionParser;
@@ -650,7 +651,7 @@ public class RistrettoUtils {
                 try (DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton().get(), new GraalDebugHandlersFactory(runtimeConfig.getProviders().getSnippetReflection()))
                                 .description(getDescription(method))
                                 .build()) {
-                    try (CompilationWatchDog _ = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, SubstrateGraalUtils.COMPILATION_WATCH_DOG_EVENT_HANDLER, null)) {
+                    try (CompilationWatchDog _ = watchCompilation(compilationId, debug.getOptions())) {
                         StructuredGraph graph;
                         Suites suites;
                         PhaseSuite<HighTierContext> graphBuilderSuite;
@@ -774,6 +775,17 @@ public class RistrettoUtils {
         GraalError.guarantee(allowAssumptions == StructuredGraph.AllowAssumptions.YES || completedCompilation.getAssumptions() == null || completedCompilation.getAssumptions().length == 0,
                         "Compilation with assumptions disabled produced assumptions: %s", method);
         return completedCompilation;
+    }
+
+    private static CompilationWatchDog watchCompilation(SubstrateCompilationIdentifier compilationId, OptionValues options) {
+        int ristrettoDelaySeconds = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue();
+        RistrettoOptions.validateCompilationWatchdogTimeoutValue(ristrettoDelaySeconds);
+        if (ristrettoDelaySeconds == 0) {
+            return CompilationWatchDog.watch(compilationId, options, false, SubstrateGraalUtils.COMPILATION_WATCH_DOG_EVENT_HANDLER, null);
+        }
+        OptionValues ristrettoWatchDogOptions = new OptionValues(options, CompilationWatchDog.Options.CompilationWatchDogStartDelay, ristrettoDelaySeconds,
+                        CompilationWatchDog.Options.CompilationWatchDogVMExitDelay, 0);
+        return CompilationWatchDog.watch(compilationId, ristrettoWatchDogOptions, false, RistrettoCompilationManager.getCompilationWatchDogEventHandler(), null);
     }
 
     private static boolean assertVerifyRistrettoJVMCI(Suites suites) {

@@ -38,6 +38,9 @@ import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 
+import jdk.graal.compiler.core.CompilationWatchDog;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+
 public final class RistrettoCompilationManager {
     private static final class RistrettoCompilerThread extends Thread implements RuntimeClassLoading.NoClassLoadingThread {
         RistrettoCompilerThread(Runnable target) {
@@ -50,6 +53,24 @@ public final class RistrettoCompilationManager {
      * Global compilation manager instance. Created lazily on first access.
      */
     private static volatile RistrettoCompilationManager MANAGER;
+
+    private static final int MAX_QUEUED_REQUESTS_TO_REPORT = 5;
+
+    private static final CompilationWatchDog.EventHandler COMPILATION_WATCH_DOG_EVENT_HANDLER = new CompilationWatchDog.EventHandler() {
+        @Override
+        public void onLongCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, long elapsed, StackTraceElement[] stackTrace) {
+            RistrettoCompilationManager manager = MANAGER;
+            if (manager == null) {
+                CompilationWatchDog.EventHandler.super.onLongCompilation(watchDog, watched, compilation, elapsed, stackTrace);
+            } else {
+                manager.reportLongRunningCompilation(watched, compilation, elapsed, stackTrace);
+            }
+        }
+    };
+
+    public static CompilationWatchDog.EventHandler getCompilationWatchDogEventHandler() {
+        return COMPILATION_WATCH_DOG_EVENT_HANDLER;
+    }
 
     /**
      * Returns the isolate tear-down hook that stops the background Ristretto compiler threads.
@@ -83,6 +104,15 @@ public final class RistrettoCompilationManager {
      */
     private final PriorityBlockingQueue<RistrettoCompilationRequest> compilationQueue;
     /**
+     * An intrusive live-queue view used to capture bounded watchdog samples. Iterating
+     * {@link PriorityBlockingQueue} creates a copy of its complete backing array, which is
+     * undesirable while diagnosing a large backlog.
+     */
+    private final Object queuedRequestsToReportLock;
+    private RistrettoCompilationRequest firstQueuedRequestToReport;
+    private RistrettoCompilationRequest lastQueuedRequestToReport;
+    private int queuedRequestsToReportCount;
+    /**
      * The background threadpool that works off all compilation tasks.
      */
     private final ExecutorService compilerExecutorService;
@@ -107,6 +137,8 @@ public final class RistrettoCompilationManager {
      */
     private final AtomicLong finishedRequests;
 
+    private final AtomicLong compilationWatchDogReportCount;
+
     /**
      * The daemon reporter thread that periodically dumps compiler statistics.
      */
@@ -123,10 +155,12 @@ public final class RistrettoCompilationManager {
         statisticsReporterPeriodSeconds = RistrettoOptions.JITTraceCompilerStatisticsPeriodSeconds.getValue();
         compilerExecutorService = Executors.newFixedThreadPool(compilerThreadCount, RistrettoCompilerThread::new);
         compilationQueue = new PriorityBlockingQueue<>();
+        queuedRequestsToReportLock = new Object();
         performedCompilations = Collections.synchronizedList(new ArrayList<>());
         submittedRequests = new AtomicLong();
         startedRequests = new AtomicLong();
         finishedRequests = new AtomicLong();
+        compilationWatchDogReportCount = new AtomicLong();
         statisticsReporterThread = startStatisticsReporterThread();
 
         for (int i = 0; i < compilerThreadCount; i++) {
@@ -134,25 +168,10 @@ public final class RistrettoCompilationManager {
                 while (!Thread.currentThread().isInterrupted()) {
                     try {
                         var task = compilationQueue.take();
-                        startedRequests.incrementAndGet();
-                        try {
-                            if (task.call() != null) {
-                                RistrettoDiagnostics.SuccessfulCompiles.incrementAndGet();
-                            }
-                        } catch (Throwable e) {
-                            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilation, "[Ristretto Compiler]Compiler saw exception %s %s", Thread.currentThread(), e.getMessage());
-                            if (RistrettoOptions.JITPrintExceptions.getValue()) {
-                                Log.log().exception(e);
-                            }
-                            RistrettoDiagnostics.CompilerExceptionsSeen.incrementAndGet();
-                            compilerExceptions.add(e);
-                        } finally {
-                            // even if we fail we want to record the compilation
-                            if (TestingBackdoor.recordUninstallTasks()) {
-                                performedCompilations.add(task);
-                            }
-                            finishedRequests.incrementAndGet();
+                        if (task.sampledForCompilationWatchdog) {
+                            removeQueuedRequestToReport(task);
                         }
+                        processCompilationRequest(task);
                     } catch (InterruptedException e) {
                         // swallow and abort, we must break because the interrupted exception
                         // clears the interrupted flag and we would be waiting indefinitely else
@@ -160,6 +179,132 @@ public final class RistrettoCompilationManager {
                     }
                 }
             });
+        }
+    }
+
+    private void processCompilationRequest(RistrettoCompilationRequest task) {
+        startedRequests.incrementAndGet();
+        try {
+            if (task.call() != null) {
+                RistrettoDiagnostics.SuccessfulCompiles.incrementAndGet();
+            }
+        } catch (Throwable e) {
+            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilation, "[Ristretto Compiler]Compiler saw exception %s %s", Thread.currentThread(), e.getMessage());
+            if (RistrettoOptions.JITPrintExceptions.getValue()) {
+                Log.log().exception(e);
+            }
+            RistrettoDiagnostics.CompilerExceptionsSeen.incrementAndGet();
+            compilerExceptions.add(e);
+        } finally {
+            // even if we fail we want to record the compilation
+            if (TestingBackdoor.recordUninstallTasks()) {
+                performedCompilations.add(task);
+            }
+            finishedRequests.incrementAndGet();
+        }
+    }
+
+    private void reportLongRunningCompilation(Thread watched, CompilationIdentifier compilation, long elapsedNanos, StackTraceElement[] stackTrace) {
+        Log log = Log.log();
+        log.string("[Ristretto Compilation Watchdog] Long-running compilation observedMs=").signed(TimeUnit.NANOSECONDS.toMillis(elapsedNanos)).string(" compilation=")
+                        .string(compilation.toString()).string("; ").string(describeStatistics()).newline();
+        if (watched != null) {
+            log.string("[Ristretto Compilation Watchdog] Compiler thread name=\"").string(watched.getName()).string("\" state=").string(watched.getState().name()).newline();
+        }
+        if (stackTrace != null) {
+            for (StackTraceElement element : stackTrace) {
+                log.string("    at ").string(element.toString()).newline();
+            }
+        }
+        int queuedRequestIndex = 0;
+        long nowNanos = System.nanoTime();
+        List<RistrettoCompilationRequest> queuedRequestsToReportSnapshot = queuedRequestsToReportSnapshot();
+        int trackedQueueSize = queuedRequestsToReportCount();
+        int queueSize = compilationQueue.size();
+        log.string("[Ristretto Compilation Watchdog] Queue sample tracked=").signed(trackedQueueSize).string(" total=").signed(queueSize).string(" complete=")
+                        .bool(trackedQueueSize == queueSize).newline();
+        for (RistrettoCompilationRequest request : queuedRequestsToReportSnapshot) {
+            long submittedAtNanos = request.getSubmittedAtNanos();
+            log.string("[Ristretto Compilation Watchdog] Queued request index=").signed(queuedRequestIndex).string(" ageMs=");
+            if (submittedAtNanos == 0) {
+                log.string("unknown");
+            } else {
+                log.signed(TimeUnit.NANOSECONDS.toMillis(nowNanos - submittedAtNanos));
+            }
+            log.string(" request=").string(request.toString()).newline();
+            queuedRequestIndex++;
+        }
+        log.flush();
+        compilationWatchDogReportCount.incrementAndGet();
+    }
+
+    private void addQueuedRequestToReport(RistrettoCompilationRequest request) {
+        synchronized (queuedRequestsToReportLock) {
+            request.sampledForCompilationWatchdog = true;
+            request.previousQueuedRequestToReport = lastQueuedRequestToReport;
+            if (lastQueuedRequestToReport == null) {
+                firstQueuedRequestToReport = request;
+            } else {
+                lastQueuedRequestToReport.nextQueuedRequestToReport = request;
+            }
+            lastQueuedRequestToReport = request;
+            queuedRequestsToReportCount++;
+            compilationQueue.add(request);
+        }
+    }
+
+    private void removeQueuedRequestToReport(RistrettoCompilationRequest request) {
+        synchronized (queuedRequestsToReportLock) {
+            RistrettoCompilationRequest previous = request.previousQueuedRequestToReport;
+            RistrettoCompilationRequest next = request.nextQueuedRequestToReport;
+            if (previous == null) {
+                firstQueuedRequestToReport = next;
+            } else {
+                previous.nextQueuedRequestToReport = next;
+            }
+            if (next == null) {
+                lastQueuedRequestToReport = previous;
+            } else {
+                next.previousQueuedRequestToReport = previous;
+            }
+            request.previousQueuedRequestToReport = null;
+            request.nextQueuedRequestToReport = null;
+            request.sampledForCompilationWatchdog = false;
+            queuedRequestsToReportCount--;
+        }
+    }
+
+    private List<RistrettoCompilationRequest> queuedRequestsToReportSnapshot() {
+        synchronized (queuedRequestsToReportLock) {
+            List<RistrettoCompilationRequest> snapshot = new ArrayList<>(MAX_QUEUED_REQUESTS_TO_REPORT);
+            RistrettoCompilationRequest request = firstQueuedRequestToReport;
+            while (request != null && snapshot.size() < MAX_QUEUED_REQUESTS_TO_REPORT) {
+                snapshot.add(request);
+                request = request.nextQueuedRequestToReport;
+            }
+            return snapshot;
+        }
+    }
+
+    private int queuedRequestsToReportCount() {
+        synchronized (queuedRequestsToReportLock) {
+            return queuedRequestsToReportCount;
+        }
+    }
+
+    private void clearQueuedRequestsToReport() {
+        synchronized (queuedRequestsToReportLock) {
+            RistrettoCompilationRequest request = firstQueuedRequestToReport;
+            while (request != null) {
+                RistrettoCompilationRequest next = request.nextQueuedRequestToReport;
+                request.previousQueuedRequestToReport = null;
+                request.nextQueuedRequestToReport = null;
+                request.sampledForCompilationWatchdog = false;
+                request = next;
+            }
+            firstQueuedRequestToReport = null;
+            lastQueuedRequestToReport = null;
+            queuedRequestsToReportCount = 0;
         }
     }
 
@@ -236,9 +381,15 @@ public final class RistrettoCompilationManager {
     }
 
     public void submitCompilationRequest(RistrettoCompilationRequest request) {
+        boolean compilationWatchdogEnabled = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue() > 0;
+        request.markSubmitted(compilationWatchdogEnabled ? System.nanoTime() : 0);
         submittedRequests.incrementAndGet();
         RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Submitting compilation request %s %n", request);
-        compilationQueue.add(request);
+        if (compilationWatchdogEnabled) {
+            addQueuedRequestToReport(request);
+        } else {
+            compilationQueue.add(request);
+        }
         RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Queue size after submitting %s =%s %n", request, compilationQueue.size());
     }
 
@@ -269,6 +420,14 @@ public final class RistrettoCompilationManager {
             return compilationManager.compilerExceptions;
         }
 
+        public static long getProgressWatchdogReportCount() {
+            return get().compilationWatchDogReportCount.get();
+        }
+
+        public static int getQueuedRequestsToReportCount() {
+            return get().queuedRequestsToReportSnapshot().size();
+        }
+
         public static synchronized void reset() {
             RistrettoCompilationManager m = get();
             RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "Invalidating and resetting %s compilations%n",
@@ -296,6 +455,8 @@ public final class RistrettoCompilationManager {
             m.submittedRequests.set(0);
             m.startedRequests.set(0);
             m.finishedRequests.set(0);
+            m.compilationWatchDogReportCount.set(0);
+            m.clearQueuedRequestsToReport();
             RistrettoDiagnostics.reset();
         }
 
