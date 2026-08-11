@@ -25,7 +25,6 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
-import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.nodes.java.InstanceOfNode.doInstanceof;
 
 import org.graalvm.word.LocationIdentity;
@@ -33,7 +32,6 @@ import org.graalvm.word.impl.Word;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
@@ -45,14 +43,22 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class DigestBaseSnippets implements Snippets {
+
+    private static final TargetDescription INJECTED_TARGET = null;
 
     public static class Templates extends SnippetTemplate.AbstractTemplates {
 
@@ -77,27 +83,27 @@ public class DigestBaseSnippets implements Snippets {
         Object realReceiver = PiNode.piCast(receiver, receiverType, false, true, SnippetAnchorNode.anchor());
 
         Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + ofs));
-        if (useMD5Intrinsics(INJECTED_VMCONFIG) && doInstanceof(md5type, realReceiver)) {
+        if (useMD5Intrinsics(INJECTED_TARGET) && doInstanceof(md5type, realReceiver)) {
             Object md5obj = PiNode.piCast(realReceiver, md5type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(md5obj, HotSpotReplacementsUtil.getFieldOffset(md5type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return MD5MultiBlockNode.md5ImplCompressMB(bufAddr, stateAddr, ofs, limit);
-        } else if (useSHA1Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha1type, realReceiver)) {
+        } else if (useSHA1Intrinsics(INJECTED_TARGET) && doInstanceof(sha1type, realReceiver)) {
             Object sha1obj = PiNode.piCast(realReceiver, sha1type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha1obj, HotSpotReplacementsUtil.getFieldOffset(sha1type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return SHA1MultiBlockNode.sha1ImplCompressMB(bufAddr, stateAddr, ofs, limit);
-        } else if (useSHA256Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha256type, realReceiver)) {
+        } else if (useSHA256Intrinsics(INJECTED_TARGET) && doInstanceof(sha256type, realReceiver)) {
             Object sha256obj = PiNode.piCast(realReceiver, sha256type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha256obj, HotSpotReplacementsUtil.getFieldOffset(sha256type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return SHA256MultiBlockNode.sha256ImplCompressMB(bufAddr, stateAddr, ofs, limit);
-        } else if (useSHA512Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha512type, realReceiver)) {
+        } else if (useSHA512Intrinsics(INJECTED_TARGET) && doInstanceof(sha512type, realReceiver)) {
             Object sha512obj = PiNode.piCast(realReceiver, sha512type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha512obj, HotSpotReplacementsUtil.getFieldOffset(sha512type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Long)));
             return SHA512MultiBlockNode.sha512ImplCompressMB(bufAddr, stateAddr, ofs, limit);
-        } else if (useSHA3Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha3type, realReceiver)) {
+        } else if (useSHA3Intrinsics(INJECTED_TARGET) && doInstanceof(sha3type, realReceiver)) {
             Object sha3obj = PiNode.piCast(realReceiver, sha3type, false, true, SnippetAnchorNode.anchor());
             int blockSize = RawLoadNode.loadInt(sha3obj, HotSpotReplacementsUtil.getFieldOffset(sha3type, "blockSize"), JavaKind.Int, LocationIdentity.any());
             Object state = RawLoadNode.load(sha3obj, HotSpotReplacementsUtil.getFieldOffset(sha3type, "state"), JavaKind.Object, LocationIdentity.any());
@@ -109,27 +115,27 @@ public class DigestBaseSnippets implements Snippets {
     }
 
     @Fold
-    public static boolean useMD5Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.md5ImplCompressMultiBlock != 0L;
+    public static boolean useMD5Intrinsics(@Fold.InjectedParameter TargetDescription target) {
+        return MD5Node.isSupported(target.arch);
     }
 
     @Fold
-    public static boolean useSHA1Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.sha1ImplCompressMultiBlock != 0L;
+    public static boolean useSHA1Intrinsics(@Fold.InjectedParameter TargetDescription target) {
+        return SHA1Node.isSupported(target.arch);
     }
 
     @Fold
-    public static boolean useSHA256Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.sha256ImplCompressMultiBlock != 0L;
+    public static boolean useSHA256Intrinsics(@Fold.InjectedParameter TargetDescription target) {
+        return SHA256Node.isSupported(target.arch);
     }
 
     @Fold
-    public static boolean useSHA512Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.sha512ImplCompressMultiBlock != 0L;
+    public static boolean useSHA512Intrinsics(@Fold.InjectedParameter TargetDescription target) {
+        return SHA512Node.isSupported(target.arch);
     }
 
     @Fold
-    public static boolean useSHA3Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.sha3ImplCompressMultiBlock != 0L;
+    public static boolean useSHA3Intrinsics(@Fold.InjectedParameter TargetDescription target) {
+        return SHA3Node.isSupported(target.arch);
     }
 }

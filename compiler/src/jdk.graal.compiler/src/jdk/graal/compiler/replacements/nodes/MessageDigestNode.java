@@ -359,7 +359,7 @@ public abstract class MessageDigestNode extends MemoryKillStubIntrinsicNode {
         }
 
         @NodeIntrinsic
-        @GenerateStub(name = "sha3ImplCompress", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+        @GenerateStub(name = "sha3ImplCompress", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
         public static native void sha3ImplCompress(Pointer buf, Pointer state, int blockSize);
 
         @NodeIntrinsic

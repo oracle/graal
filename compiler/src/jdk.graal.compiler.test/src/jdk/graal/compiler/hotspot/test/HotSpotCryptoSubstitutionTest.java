@@ -79,6 +79,7 @@ import jdk.graal.compiler.replacements.nodes.KyberNode.KyberInverseNttNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttMultNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode.KyberNttNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5MultiBlockNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1MultiBlockNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256MultiBlockNode;
@@ -343,31 +344,31 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testDigestBaseSHA() throws Exception {
-        Assume.assumeTrue("SHA1 not supported", runtime().getVMConfig().sha1ImplCompressMultiBlock != 0L);
+        Assume.assumeTrue("SHA1 not supported", SHA1Node.isSupported(getArchitecture()));
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-1", SHA1MultiBlockNode.class, SHA1MultiBlockNode.STUB);
     }
 
     @Test
     public void testDigestBaseSHA2() throws Exception {
-        Assume.assumeTrue("SHA256 not supported", runtime().getVMConfig().sha256ImplCompressMultiBlock != 0L);
+        Assume.assumeTrue("SHA256 not supported", SHA256Node.isSupported(getArchitecture()));
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-256", SHA256MultiBlockNode.class, SHA256MultiBlockNode.STUB);
     }
 
     @Test
     public void testDigestBaseSHA5() throws Exception {
-        Assume.assumeTrue("SHA512 not supported", runtime().getVMConfig().sha512ImplCompressMultiBlock != 0L);
+        Assume.assumeTrue("SHA512 not supported", SHA512Node.isSupported(getArchitecture()));
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-512", SHA512MultiBlockNode.class, SHA512MultiBlockNode.STUB);
     }
 
     @Test
     public void testDigestBaseSHA3() throws Exception {
-        Assume.assumeTrue("SHA3 not supported", runtime().getVMConfig().sha3ImplCompressMultiBlock != 0L);
+        Assume.assumeTrue("SHA3 not supported", SHA3Node.isSupported(getArchitecture()));
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA3-512", SHA3MultiBlockNode.class, SHA3MultiBlockNode.STUB);
     }
 
     @Test
     public void testDigestBaseMD5() throws Exception {
-        Assume.assumeTrue("MD5 not supported", runtime().getVMConfig().md5ImplCompressMultiBlock != 0L);
+        Assume.assumeTrue("MD5 not supported", MD5Node.isSupported(getArchitecture()));
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "MD5", MD5MultiBlockNode.class, MD5MultiBlockNode.STUB);
     }
 
