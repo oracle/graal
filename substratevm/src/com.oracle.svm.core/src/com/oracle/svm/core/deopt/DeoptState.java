@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 
 import jdk.graal.compiler.core.common.util.TypeConversion;
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -209,12 +208,12 @@ public class DeoptState {
                 materializedObjects[virtualObjectId] = obj;
                 return obj;
             } else {
-                /* Allocate an instance and zero it. The data will be filled in below. */
-                try {
-                    obj = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
-                } catch (InstantiationException ex) {
-                    throw fatalDeoptimizationError("Instantiation exception: " + ex, sourceFrame);
-                }
+                /*
+                 * Allocate an instance and zero it. The data will be filled in below. The object
+                 * was already allocated by compiled code before escape analysis virtualized it, so
+                 * this VM-internal re-allocation must not require unsafe allocation metadata.
+                 */
+                obj = KnownIntrinsics.unvalidatedAllocateInstance(DynamicHub.toClass(hub));
             }
             curOffset = Word.unsigned(objectLayout.getFirstFieldOffset());
         }
