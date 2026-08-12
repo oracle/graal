@@ -133,22 +133,28 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
                     BinaryMarshaller<Throwable> throwableMarshaller,
                     DispatchHandler[] dispatchHandlers,
                     ToLongBiFunction<ProcessIsolateThread, Long> releaseObjectHandle) throws IsolateCreateException {
-        if (config.getLauncher() == null) {
+        Path launcher = config.getLauncher();
+        if (launcher == null) {
             throw new IllegalArgumentException("Config must be an initiator ProcessIsolateConfig.");
         }
         DispatchSupportImpl dispatchSupport = new DispatchSupportImpl(throwableMarshaller, dispatchHandlers);
         ProcessIsolateThreadSupport processIsolateThreadSupport;
+        try {
+            processIsolateThreadSupport = ProcessIsolateThreadSupport.newBuilder(dispatchSupport).setLocalAddress(config.getInitiatorAddress()).buildInitiator();
+        } catch (IOException e) {
+            throw new IsolateCreateException(e);
+        }
         List<String> commandLine = new ArrayList<>();
-        commandLine.add(config.getLauncher().toString());
+        commandLine.add(launcher.toString());
         commandLine.addAll(config.getLauncherArguments());
         Process process;
         try {
-            processIsolateThreadSupport = ProcessIsolateThreadSupport.newBuilder(dispatchSupport).setLocalAddress(config.getInitiatorAddress()).buildInitiator();
             ProcessBuilder builder = new ProcessBuilder(commandLine);
             builder.inheritIO();
             process = builder.start();
         } catch (IOException e) {
-            throw new IsolateCreateException("Failed to start polyglot isolate subprocess with command line '" + String.join(" ", commandLine) + "'", e);
+            String message = "Failed to start polyglot isolate subprocess with command line '" + String.join(" ", commandLine) + "'. " + executableFileAttributes(launcher);
+            throw new IsolateCreateException(message, e);
         }
         long pid = process.pid();
         ProcessIsolate processIsolate = new ProcessIsolate(pid, processIsolateThreadSupport, releaseObjectHandle,
@@ -182,6 +188,36 @@ public final class ProcessIsolate extends AbstractIsolate<ProcessIsolateThread> 
             throw new IllegalStateException("ProcessIsolate for process " + pid + " already exists and is not disposed.");
         }
         return processIsolate;
+    }
+
+    private static String executableFileAttributes(Path launcher) {
+        try {
+            Path absoluteLauncher = launcher.toAbsolutePath().normalize();
+            boolean exists = Files.exists(absoluteLauncher);
+            String firstUnavailable = null;
+            if (!exists) {
+                Path last = absoluteLauncher;
+                Path current;
+                for (current = absoluteLauncher.getParent(); current != null;) {
+                    if (Files.exists(current)) {
+                        break;
+                    }
+                    last = current;
+                    current = current.getParent();
+                }
+                firstUnavailable = last.toString();
+            }
+            return String.format("Launcher attributes: absolutePath='%s', exists=%s, regularFile=%s, readable=%s, executable=%s, firstUnavailablePath=%s.",
+                            absoluteLauncher,
+                            exists,
+                            Files.isRegularFile(absoluteLauncher),
+                            Files.isReadable(absoluteLauncher),
+                            Files.isExecutable(absoluteLauncher),
+                            firstUnavailable == null ? "<none>" : "'" + firstUnavailable + "'");
+        } catch (RuntimeException e) {
+            // Prevent masking ProcessBuilder.start() exceptions; catch unexpected RuntimeExceptions from file ops.
+            return String.format("Launcher attributes: path='%s'", launcher);
+        }
     }
 
     public static void connectProcessIsolate(ProcessIsolateConfig config,
