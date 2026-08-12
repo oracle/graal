@@ -1,8 +1,29 @@
-package jdk.graal.compiler.phases.common.test;
+/*
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 
-import static jdk.graal.compiler.phases.common.test.DFAnalysisLSCCPTest.rtc2;
-import static jdk.graal.compiler.phases.common.test.DFAnalysisLSCCPTest.rtcEmpty;
-import static jdk.graal.compiler.phases.common.test.DFAnalysisLSCCPTest.rubyLoopObjectConstPattern;
+package jdk.graal.compiler.phases.common.test;
 
 import org.junit.Test;
 
@@ -28,7 +49,7 @@ public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
 
     @Test
     public void binSearch() {
-        test("binSearchSnippet", new long[]{1, 3, 4, 5, 7, 8, 10, 15, 34, 54}, 5l);
+        test("binSearchSnippet", new long[]{1, 3, 4, 5, 7, 8, 10, 15, 34, 54}, 5L);
     }
 
     @DFATestSnippet(deopts = 1)
@@ -90,10 +111,11 @@ public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
         test(options, "loopPentagonSnippet", new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
     }
 
-    @DFATestSnippet(deopts = 1)
+    @DFATestSnippet(anchors = 1, deopts = 1)
     public static void loopPentagonSnippet(int[] a) {
         // the only remaining deopt should be the null check for a
         for (int i = 1; i < a.length; i++) {
+            // this anchor forces a singular blackhole, it stays
             GraalDirectives.controlFlowAnchor();
             GraalDirectives.blackhole(a[i] + a[i - 1]);
         }
@@ -101,8 +123,8 @@ public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
 
     @Test
     public void rubyLoopObjectConst() {
-        rtc2 = new DFAnalysisLSCCPTest.RubyTestClassObject();
-        rtc2.field = rtcEmpty;
+        DFAnalysisLSCCPTest.rtc2 = new DFAnalysisLSCCPTest.RubyTestClassObject();
+        DFAnalysisLSCCPTest.rtc2.field = DFAnalysisLSCCPTest.rtcEmpty;
         OptionValues opt = new OptionValues(getInitialOptions(),
                         GraalOptions.LoopPeeling, false,
                         GraalOptions.OptReadElimination, false,
@@ -114,7 +136,17 @@ public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet(loops = 1, anchors = 0, deopts = 1)
     public static Object rubyLoopObjectConstSnippet(int limit) {
-        return rubyLoopObjectConstPattern(limit);
+        return DFAnalysisLSCCPTest.rubyLoopObjectConstPattern(limit);
     }
 
+    @Test
+    public void symbolicFacts() {
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.FullUnroll, false);
+        test(opt, "symbolicFactsSnippet", 8, 5);
+    }
+
+    @DFATestSnippet(loops = 1, anchors = 2)
+    public static int symbolicFactsSnippet(int a, int b) {
+        return DFAnalysisLSCCPTest.symbolicFactsPattern(a, b);
+    }
 }

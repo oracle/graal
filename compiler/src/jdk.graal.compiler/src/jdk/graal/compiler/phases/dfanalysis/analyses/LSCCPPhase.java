@@ -1,6 +1,26 @@
 /*
  * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis.analyses;
@@ -10,6 +30,7 @@ import java.util.Optional;
 
 import org.graalvm.collections.MapCursor;
 
+import jdk.graal.compiler.core.common.calc.FloatConvertCategory;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
@@ -36,6 +57,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
@@ -46,24 +68,19 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.PostRunCanonicalizationPhase;
-import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.dfanalysis.AnalysisDomainDefinition;
 import jdk.graal.compiler.phases.dfanalysis.DFAMap;
 import jdk.graal.compiler.phases.dfanalysis.DFAnalysis;
 import jdk.graal.compiler.replacements.nodes.arithmetic.BinaryIntegerExactArithmeticSplitNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerExactOverflowNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerNegExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
@@ -71,8 +88,11 @@ import jdk.vm.ci.meta.TriState;
 /**
  * <p>
  * This phase implements a variation of sparse conditional constant propagation as described in
- * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">this paper<a/>.
+ * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">Lazy Sparse Conditional Constant
+ * Propagation in the Sea of Nodes</a> by Chistoph Aigner, Gerg&ouml; Barany, and Hanspeter
+ * M&ouml;ssenb&ouml;ck.
  * </p>
+ * new HashSet<>
  * <p>
  * The domain of constants is represented using stamps which have all of their information stripped
  * except if a value is constant or not (see {@link ConstantNormalizedStamps#normalize}). The
@@ -113,83 +133,90 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return NotApplicable.unlessRunBefore(this, GraphState.StageFlag.VALUE_PROXY_REMOVAL, graphState);
+        return DFAnalysis.notApplicableTo(this, graphState);
     }
 
     @Override
     public boolean shouldApply(StructuredGraph graph) {
-        return graph.hasLoops() || DFAnalysis.Options.DFA_EvalAll.getValue(graph.getOptions());
+        return DFAnalysis.shouldApply(graph);
     }
 
     @Override
     @SuppressWarnings({"try", "unused"})
     protected void run(StructuredGraph graph, CoreProviders context) {
-
         if (DFAnalysis.Options.DFA_PreCanonicalize.getValue(graph.getOptions())) {
             CanonicalizerPhase.create().apply(graph, context);
         }
 
         try (DebugContext.Scope scope = graph.getDebug().scope("LSCCPApplication")) {
-            boolean inferencesEnabled = Options.LSCCP_AllowInferences.getValue(graph.getOptions()) && DFAnalysis.Options.DFA_AllowInferences.getValue(graph.getOptions());
-            // run analysis
-            DFAnalysis<Stamp> analysis = DFAnalysis.create(Stamp.class, graph, CONSTANT_NORMALIZED_STAMPS, nd -> switch (nd) {
-                case ConstantNode ignored -> true;
-                case LogicConstantNode ignored -> true;
-                case PiNode ignored -> true;
-                case IsNullNode ignored -> inferencesEnabled; // only useful for inferences
-                case IntegerSwitchNode ignored -> true;
-                default -> false;
-            });
+            // create the analysis
+            DFAnalysis<Stamp> analysis = prepareAnalysis(graph);
+            // run the analysis
             DFAMap<Stamp> map = analysis.run();
+            // replace the found constants
+            processResults(graph, map);
+            // cleanup stuff that the analysis left behind
+            cleanup(graph, analysis);
+        }
+    }
 
-            // replace constants in graph
-            MapCursor<ValueNode, Stamp> stampCursor = map.getEntries();
-            int constantsFound = 0;
-            int branchesEliminated = 0;
-            while (stampCursor.advance()) {
-                ValueNode node = stampCursor.getKey();
-                Stamp stamp = stampCursor.getValue();
-                if (stamp.isConstant() && !(node instanceof ConstantNode || node instanceof LogicConstantNode)) {
-                    constantsFound++;
-                    String tNodeString = graph.getDebug().isLogEnabled(DebugContext.VERY_DETAILED_LEVEL) ? node.toString() : "";
-                    if (stamp instanceof LogicValueStamp logicStamp) {
-                        graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "replacing %s with constant %s", node, stateForLogicStamp(logicStamp));
-                        node.replaceAtUsagesAndDelete(LogicConstantNode.forBoolean(stateForLogicStamp(logicStamp).toBoolean(), graph));
-                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Replaced %s with constant", node);
-                    } else {
-                        if (stamp instanceof AbstractObjectStamp constantObjectStamp) {
-                            if (node.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp curStamp) {
-                                /*
-                                 * Type information is not tracked by this analysis (see
-                                 * ConstantNormalizedStamps#normalize). To generate proper
-                                 * constants, we need to restore the type information. For that we
-                                 * just read the type information from the stamp of the node we are
-                                 * trying to replace with a null-constant.
-                                 */
-                                stamp = constantObjectStamp.asType(curStamp.type(), curStamp.isExactType(), curStamp.isAlwaysArray());
-                            } else {
-                                throw GraalError.shouldNotReachHere("trying to insert AbstractObjectStamp for node that previously had no AbstractObjectStamp");
-                            }
+    private DFAnalysis<Stamp> prepareAnalysis(StructuredGraph graph) {
+        boolean inferencesEnabled = Options.LSCCP_AllowInferences.getValue(graph.getOptions()) && DFAnalysis.Options.DFA_AllowInferences.getValue(graph.getOptions());
+        // run analysis
+        return DFAnalysis.create(Stamp.class, graph, CONSTANT_NORMALIZED_STAMPS, nd -> switch (nd) {
+            case ConstantNode ignored -> true;
+            case LogicConstantNode ignored -> true;
+            case PiNode ignored -> true;
+            case IsNullNode ignored -> inferencesEnabled; // only useful for inferences
+            case IntegerSwitchNode ignored -> true;
+            default -> false;
+        });
+    }
+
+    private void processResults(StructuredGraph graph, DFAMap<Stamp> results) {
+        MapCursor<ValueNode, Stamp> stampCursor = results.getEntries();
+        while (stampCursor.advance()) {
+            ValueNode node = stampCursor.getKey();
+            Stamp stamp = stampCursor.getValue();
+            if (stamp.isConstant() && !(node instanceof ConstantNode || node instanceof LogicConstantNode)) {
+                if (stamp instanceof LogicValueStamp logicStamp) {
+                    graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "replacing %s with constant %s", node, stateForLogicStamp(logicStamp));
+                    node.replaceAtUsagesAndDelete(LogicConstantNode.forBoolean(stateForLogicStamp(logicStamp).toBoolean(), graph));
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Replaced %s with constant", node);
+                } else {
+                    if (stamp instanceof AbstractObjectStamp constantObjectStamp) {
+                        if (node.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp curStamp) {
+                            /*
+                             * Type information is not tracked by this analysis (see
+                             * ConstantNormalizedStamps#normalize). To generate proper constants, we
+                             * need to restore the type information. For that we just read the type
+                             * information from the stamp of the node we are trying to replace with
+                             * a null-constant.
+                             */
+                            stamp = constantObjectStamp.asType(curStamp.type(), curStamp.isExactType(), curStamp.isAlwaysArray());
+                        } else {
+                            throw GraalError.shouldNotReachHere("trying to insert AbstractObjectStamp for node that previously had no AbstractObjectStamp");
                         }
-                        if (stamp.asConstant() instanceof JavaConstant javaConstant) {
-                            ConstantNode c = graph.addOrUnique(new ConstantNode(javaConstant, stamp));
-                            GraalError.guarantee(c.stamp(NodeView.DEFAULT).isCompatible(node.stamp(NodeView.DEFAULT)),
-                                            "Incompatible stamps at CCP replacement (replacing node %s with stamp %s by constant with stamp %s)",
-                                            node, node.stamp(NodeView.DEFAULT), c.stamp(NodeView.DEFAULT));
-                            node.replaceAtUsages(c);
-                            graph.getOptimizationLog().report(LSCCPPhase.class, "LsccpConstantReplacement", node);
-                        }
+                    }
+                    if (stamp.asConstant() instanceof JavaConstant javaConstant) {
+                        ConstantNode c = graph.addOrUnique(new ConstantNode(javaConstant, stamp));
+                        GraalError.guarantee(c.stamp(NodeView.DEFAULT).isCompatible(node.stamp(NodeView.DEFAULT)),
+                                        "Incompatible stamps at CCP replacement (replacing node %s with stamp %s by constant with stamp %s)",
+                                        node, node.stamp(NodeView.DEFAULT), c.stamp(NodeView.DEFAULT));
+                        node.replaceAtUsages(c);
+                        graph.getOptimizationLog().report(LSCCPPhase.class, "LsccpConstantReplacement", node);
                     }
                 }
             }
-
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After constant replacement");
-
-            // cleanup stuff that the analysis left behind
-            analysis.cleanup();
-
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After LSCCP cleanup");
         }
+
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After constant replacement");
+    }
+
+    private void cleanup(StructuredGraph graph, DFAnalysis<Stamp> analysis) {
+        // cleanup stuff that the analysis left behind
+        analysis.cleanup();
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After LSCCP cleanup");
     }
 
     private static final AnalysisDomainDefinition<Stamp> CONSTANT_NORMALIZED_STAMPS = new ConstantNormalizedStamps();
@@ -264,7 +291,7 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
 
         @Override
         public TriState isWeakerThan(Stamp x, Stamp y) {
-            assert x.getClass().equals(y.getClass()) : "incompatible stamps";
+            GraalError.guarantee(x.getClass().equals(y.getClass()), "incompatible stamps");
             if (isEqual(x, y)) {
                 return TriState.FALSE;
             }
@@ -317,25 +344,14 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
         @Override
         public Stamp transfer(ValueNode node, DFAMap<Stamp> map) {
             Stamp result = switch (node) {
-                case ConstantNode constant ->
-                    constant.stamp(NodeView.DEFAULT);
-                case LogicConstantNode constant ->
-                    stampForBoolean(constant.getValue());
-                case ProxyNode proxy ->
-                    map.getOrUnrestricted(proxy.value());
+                case ConstantNode constant -> constant.stamp(NodeView.DEFAULT);
+                case LogicConstantNode constant -> stampForBoolean(constant.getValue());
+                case ProxyNode proxy -> map.getOrUnrestricted(proxy.value());
                 case PiNode pi -> {
                     /*
                      * This node can produce a stronger than unrestricted results while still having
-                     * its input unevaluated.
-                     *
-                     * If a pi for example marks a value as non-zero and has an unevaluated input
-                     * this method returns a non-zero value. If later the input is evaluated to a
-                     * constant 1, this function returns the stronger value constant 1 even though
-                     * its input (now 1 instead of unevaluated which is interpreted as unrestricted)
-                     * is technically weaker.
-                     *
-                     * An according case in ConstantNormalizedStamps#countUnevaluatedInputs has been
-                     * implemented.
+                     * its input unevaluated (e.g. with an integern-non-zero piStamp). An according
+                     * case in ConstantNormalizedStamps#countUnevaluatedInputs has been implemented.
                      */
                     Stamp input = map.getOrUnrestricted(pi.getOriginalNode());
                     Stamp piStamp = normalize(pi.piStamp());
@@ -346,19 +362,32 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                         Stamp improved = normalize(input.improveWith(piStamp));
                         if (improved.isEmpty()) {
                             /*
-                             * If we encounter incompatible values, we ignore the PI and just use
-                             * the input.
+                             * The transfer function must never return UNEVALUATED (i.e. an empty
+                             * stamp). Therefore, we simply return the incomming value if we
+                             * encounter incompatible values. Incompatible values at this point are
+                             * an indication that the branch this Pi sits in is currently
+                             * unreachable, but still, we must adhere to the requirements for the
+                             * transfer function, possibly incurring a slight loss in precision.
+                             * This problem can be mitigated by using inferences, since these nodes
+                             * implicitly block evaluation of the input to the Pi until it becomes
+                             * reachable.
                              */
                             improved = input;
                         }
                         /*
-                         * If we had conflicting stamps despite an evaluated input in the last
-                         * iteration, we need to merge that result into the current result to uphold
-                         * monotonicity.
+                         * Since we might have incurred a loss of precision from an earlier
+                         * evaluation to an impossible value, we need to merge the previous result
+                         * with the current result, to not break monotonicity.
                          *
-                         * If we trust the pi stamp: [-1] transferPi([0..1000]) = [0..1000] which is
-                         * weaker than [-1..0] transferPi([0..1000]) = [0] even though the first
-                         * inputs are stronger.
+                         * As an example of a situation where we need this extra logic, consider a
+                         * loop from 0 to 100 and a condition that x (the Pi's input) is non-zero.
+                         * Evaluating this Pi in the first loop iteration yields an impossible value
+                         * (strengthening 0 with non-zero). Since we must not return UNEVALUATED, we
+                         * return 0. Evaluating the Pi in the second loop iteration yields a
+                         * non-zero value (strengthening UNRESTRICTED with non-zero). Returning that
+                         * would break monotonicity since the input x became weaker while the output
+                         * became stronger. To avoid this issue we include all previous results by
+                         * merging, in this case, 0 with non-zero, yielding UNRESTRICTED.
                          */
                         yield merge(map.getOrUnevaluated(pi), improved);
                     }
@@ -368,21 +397,14 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                     Stamp evaluationResult = normalize(switch (cond) {
                         case TRUE -> map.getOrUnrestricted(conditional.trueValue());
                         case FALSE -> map.getOrUnrestricted(conditional.falseValue());
-                        case UNKNOWN -> map.getOrUnrestricted(conditional.trueValue()).meet(map.getOrUnrestricted(conditional.falseValue()));
+                        case UNKNOWN ->
+                            map.getOrUnrestricted(conditional.trueValue()).meet(map.getOrUnrestricted(conditional.falseValue()));
                     });
                     /*
                      * This node can produce a stronger than unrestricted results while still having
-                     * unevaluated inputs (i.e. when only the condition is unevaluated).
-                     *
-                     * If a conditional for example as its value inputs evaluated but not its
-                     * condition like (cond: ???, trueVal: 1, falseVal: 2) we return a non-special
-                     * result here even though it is a weaker result than the one we return later
-                     * when the condition becomes evaluated (cond: true, trueVal: 1, falseVal: 2)
-                     * namely in this case constant 1.
-                     *
-                     * Since we still want to produce a result even in the case where the condition
-                     * stays unevaluated throughout the analysis, an according case is implemented
-                     * in ConstantNormalizedStamps#countUnevaluatedInputs.
+                     * unevaluated inputs (i.e. when only the condition is unevaluated). An
+                     * according case is implemented in
+                     * ConstantNormalizedStamps#countUnevaluatedInputs.
                      */
                     yield evaluationResult;
                 }
@@ -399,15 +421,22 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                         yield LogicValueStamp.UNRESTRICTED;
                     }
                 }
-                case IntegerExactOverflowNode exactOverflowNode -> stampForTriState(isOverflowing(ExactOp.forOverflow(exactOverflowNode),
-                                (IntegerStamp) map.getOrUnrestricted(exactOverflowNode.getX()),
-                                (IntegerStamp) map.getOrUnrestricted(exactOverflowNode.getY())));
+                case IntegerExactOverflowNode exactOverflowNode ->
+                    stampForTriState(AnalysisHelpers.isOverflowing(exactOverflowNode,
+                                    (IntegerStamp) map.getOrUnrestricted(exactOverflowNode.getX()),
+                                    (IntegerStamp) map.getOrUnrestricted(exactOverflowNode.getY())));
                 case IntegerNegExactOverflowNode exactNegate -> {
                     IntegerStamp valueStamp = (IntegerStamp) map.getOrUnrestricted(exactNegate.getValue());
                     PrimitiveConstant value = (PrimitiveConstant) valueStamp.asConstant();
                     yield value != null ? stampForBoolean(value.asLong() == CodeUtil.minValue(valueStamp.getBits())) : LogicValueStamp.UNRESTRICTED;
                 }
                 case IntegerExactArithmeticSplitNode exactSplit -> {
+                    /*
+                     * The result of an exact arithmetic split node are only used in non-exception
+                     * branch. Therefore, we can just go ahead disregard the exceptional branch and
+                     * yield a result as if the operation would not overflow, even though assuming
+                     * this result would be incorrect in the exception branch.
+                     */
                     if (exactSplit instanceof IntegerNegExactSplitNode exactNegate) {
                         IntegerStamp valueStamp = (IntegerStamp) map.getOrUnrestricted(exactNegate.getValue());
                         yield ArithmeticOpTable.forStamp(valueStamp).getNeg().foldStamp(valueStamp);
@@ -419,7 +448,8 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                             case IntegerAddExactSplitNode ignored -> table.getAdd();
                             case IntegerSubExactSplitNode ignored -> table.getSub();
                             case IntegerMulExactSplitNode ignored -> table.getMul();
-                            default -> throw GraalError.shouldNotReachHere("Unknown binary exact arithmetic split node " + binarySplit.getClass().getName());
+                            default ->
+                                throw GraalError.shouldNotReachHere("Unknown binary exact arithmetic split node " + binarySplit.getClass().getName());
                         };
                         yield op.foldStamp(map.getOrUnrestricted(binarySplit.getX()), map.getOrUnrestricted(binarySplit.getY()));
                     }
@@ -427,9 +457,7 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                 case UnaryOpLogicNode unary -> !map.isEvaluated(unary.getValue())
                                 /*
                                  * If the input is not evaluated yet, we do not touch this node
-                                 * (i.e. return unrestricted). An example for this is an int to
-                                 * float conversion that returns non-NaN for unevaluated inputs
-                                 * which blocks further discovery of possible constants.
+                                 * (i.e. return unrestricted).
                                  */
                                 ? unrestricted(unary)
                                 : stampForTriState(unary.tryFold(map.getOrUnrestricted(unary.getValue())));
@@ -441,14 +469,29 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                                  */
                                 ? unrestricted(binary)
                                 : stampForTriState(binary.tryFold(map.getOrUnrestricted(binary.getX()), map.getOrUnrestricted(binary.getY())));
+                case FloatConvertNode convert ->
+                    convert.getFloatConvert().getCategory() == FloatConvertCategory.IntegerToFloatingPoint
+                                    /*
+                                     * A conversion from integer to floating point yields a non-NaN
+                                     * value, even for unevaluated inputs. An according case is
+                                     * implemented in
+                                     * ConstantNormalizedStamps#countUnevaluatedInputs.
+                                     */
+                                    ? convert.foldStamp(map.getOrUnevaluated(convert.getValue()))
+                                    /*
+                                     * If this is not an int to float conversion, we simply treat it
+                                     * as any other unary node.
+                                     */
+                                    : !map.isEvaluated(convert.getValue())
+                                                    ? unrestricted(convert)
+                                                    : convert.foldStamp(map.getOrUnrestricted(convert.getValue()));
                 case UnaryNode unary -> !map.isEvaluated(unary.getValue())
                                 ? unrestricted(unary)
                                 : unary.foldStamp(map.getOrUnrestricted(unary.getValue()));
                 case BinaryNode binary -> !map.isEvaluated(binary.getX()) || !map.isEvaluated(binary.getY())
                                 ? unrestricted(binary)
                                 : binary.foldStamp(map.getOrUnrestricted(binary.getX()), map.getOrUnrestricted(binary.getY()));
-                case null ->
-                    throw GraalError.shouldNotReachHere("can not evaluate node 'null'");
+                case null -> throw GraalError.shouldNotReachHere("can not evaluate node 'null'");
                 default ->
                     // If we do not know the node but initially indicated interest in the given
                     // node, we default to unrestricted
@@ -471,46 +514,11 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                     };
                 }
                 case SwitchNode switchNode -> {
-                    Stamp value = map.getOrUnrestricted(switchNode.value());
-                    boolean[] reach = new boolean[switchNode.getSuccessorCount()];
-                    if (value.isConstant()) {
-                        /*
-                         * Exactly one successor edge is reachable; valueConstant is guaranteed
-                         * non-null, otherwise valueLevel would not be CONSTANT
-                         */
-                        Constant valueConstant = value.asConstant();
-                        boolean foundKey = false;
-                        for (int i = 0; i < switchNode.keyCount(); i++) {
-                            if (valueConstant.equals(switchNode.keyAt(i))) {
-                                reach[switchNode.keySuccessorIndex(i)] = true;
-                                foundKey = true;
-                            }
-                        }
-                        if (!foundKey) {
-                            reach[switchNode.defaultSuccessorIndex()] = true;
-                        }
-                        boolean doNotTripTwice = false;
-                        for (boolean b : reach) {
-                            assert !(b && doNotTripTwice) : "nondeterminism???";
-                            doNotTripTwice |= b;
-                        }
-                        assert doNotTripTwice : "we're on a road to nowhere";
-                    } else if (isNonSpecial(value) && switchNode instanceof IntegerSwitchNode integerSwitch) {
-                        // all non 0 successors are reachable
-                        for (int i = 0; i < switchNode.keyCount(); i++) {
-                            reach[switchNode.keySuccessorIndex(i)] |= integerSwitch.intKeyAt(i) != 0;
-                        }
-                        // default successor is always considered reachable for non 0
-                        reach[switchNode.defaultSuccessorIndex()] = true;
-                    } else {
-                        // all successors are reachable
-                        Arrays.fill(reach, true);
-                    }
-                    return reach;
+                    return AnalysisHelpers.calcStampSwitchReachability(switchNode, map.getOrUnrestricted(switchNode.value()));
                 }
                 case BinaryIntegerExactArithmeticSplitNode exactBinary -> {
                     // boolean[] {defaultSuccessor, overflowSuccessor}
-                    return switch (isOverflowing(ExactOp.forBinarySplit(exactBinary), (IntegerStamp) map.getOrUnrestricted(exactBinary.getX()),
+                    return switch (AnalysisHelpers.isOverflowing(exactBinary, (IntegerStamp) map.getOrUnrestricted(exactBinary.getX()),
                                     (IntegerStamp) map.getOrUnrestricted(exactBinary.getY()))) {
                         case UNKNOWN -> TRUE_TRUE;
                         case TRUE -> FALSE_TRUE;
@@ -521,7 +529,7 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                     // boolean[] {defaultSuccessor, overflowSuccessor}
                     IntegerStamp valueStamp = (IntegerStamp) map.getOrUnrestricted(exactNegate.getValue());
                     PrimitiveConstant value = (PrimitiveConstant) valueStamp.asConstant();
-                    return value != null ? (value.asLong() == 1L << (valueStamp.getBits() - 1) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
+                    return value != null ? (value.asLong() == CodeUtil.minValue(valueStamp.getBits()) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
                 }
                 case null ->
                     throw GraalError.shouldNotReachHere("can not compute successor reachability for split 'null'");
@@ -603,6 +611,12 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                     }
                     yield unevalCnt;
                 }
+                case FloatConvertNode convert ->
+                    convert.getFloatConvert().getCategory() == FloatConvertCategory.IntegerToFloatingPoint
+                                    // special case for int to float conversion
+                                    ? map.isEvaluated(convert.getValue()) ? 0 : 1
+                                    // default case otherwise
+                                    : AnalysisDomainDefinition.super.countUnevaluatedInputs(node, map);
                 default -> AnalysisDomainDefinition.super.countUnevaluatedInputs(node, map);
             };
         }
@@ -631,7 +645,7 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
          * Remove all incompletely tracked information (meaning everything but information about
          * whether the stamp represents a constant or a non-special value) in order to not
          * involuntarily make false assumptions based on incomplete information.
-         *
+         * <p>
          * For object stamps, we can only track nullability, therefore we erase all other
          * information.
          */
@@ -656,7 +670,8 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                     }
                     yield fStamp.unrestricted();
                 }
-                case PrimitiveStamp pStamp -> throw GraalError.shouldNotReachHere("Unknown PrimitiveStamp '%s'".formatted(pStamp.getClass().getName()));
+                case PrimitiveStamp pStamp ->
+                    throw GraalError.shouldNotReachHere("Unknown PrimitiveStamp '%s'".formatted(pStamp.getClass().getName()));
                 case AbstractObjectStamp oStamp -> {
                     if (oStamp.isEmpty()) {
                         yield oStamp;
@@ -669,63 +684,9 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                     }
                     yield oStamp.unrestricted();
                 }
-                default -> throw GraalError.shouldNotReachHere("Unknown stamp type '%s'".formatted(input.getClass().getName()));
+                default ->
+                    throw GraalError.shouldNotReachHere("Unknown stamp type '%s'".formatted(input.getClass().getName()));
             };
-        }
-
-        /**
-         * Check if op results in an overflow given the input stamps.
-         *
-         * @return {@link TriState#UNKNOWN} if one or both inputs are not constant.
-         */
-        private static TriState isOverflowing(ExactOp op, IntegerStamp xStamp, IntegerStamp yStamp) {
-            int bits = xStamp.getBits();
-            PrimitiveConstant xConst = (PrimitiveConstant) xStamp.asConstant();
-            PrimitiveConstant yConst = (PrimitiveConstant) yStamp.asConstant();
-            if (xConst == null || yConst == null) {
-                return TriState.UNKNOWN;
-            }
-            long x = xConst.asLong();
-            long y = yConst.asLong();
-            try {
-                // try the exact operation
-                switch (op) {
-                    case ADD -> LoopUtility.addExact(bits, x, y);
-                    case SUB -> LoopUtility.subtractExact(bits, x, y);
-                    case MUL -> LoopUtility.multiplyExact(bits, x, y);
-                }
-                // if the operation succeeded, we know it does not overflow
-                return TriState.FALSE;
-            } catch (ArithmeticException ignored) {
-                // if the operation failed, we know it does overflow
-                return TriState.TRUE;
-            }
-        }
-
-        enum ExactOp {
-            ADD,
-            SUB,
-            MUL;
-
-            public static ExactOp forOverflow(IntegerExactOverflowNode node) {
-                return switch (node) {
-                    case IntegerAddExactOverflowNode ignored -> ExactOp.ADD;
-                    case IntegerSubExactOverflowNode ignored -> ExactOp.SUB;
-                    case IntegerMulExactOverflowNode ignored -> ExactOp.MUL;
-                    case null -> throw GraalError.shouldNotReachHere("got 'null' as IntegerExactOverflowNode");
-                    default -> throw GraalError.shouldNotReachHere("unexpected IntegerExactOverflowNode " + node.getClass().getSimpleName());
-                };
-            }
-
-            public static ExactOp forBinarySplit(BinaryIntegerExactArithmeticSplitNode node) {
-                return switch (node) {
-                    case IntegerAddExactSplitNode ignored -> ExactOp.ADD;
-                    case IntegerSubExactSplitNode ignored -> ExactOp.SUB;
-                    case IntegerMulExactSplitNode ignored -> ExactOp.MUL;
-                    case null -> throw GraalError.shouldNotReachHere("got 'null' as IntegerExactOverflowNode");
-                    default -> throw GraalError.shouldNotReachHere("unexpected IntegerExactOverflowNode " + node.getClass().getSimpleName());
-                };
-            }
         }
     }
 

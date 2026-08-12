@@ -1,6 +1,26 @@
 /*
  * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis;
@@ -16,7 +36,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
-import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -60,7 +79,7 @@ import jdk.vm.ci.meta.TriState;
  * use2(x);
  * </pre>
  *
- * This is effectively transformed into:
+ * {@link AnalysisInferenceHelper#generateInferredFacts} transforms this to:
  *
  * <pre>
  * if (x == null) {
@@ -92,10 +111,8 @@ import jdk.vm.ci.meta.TriState;
  * {@link AnalysisInferenceHelper#createInferenceNode(DFAnalysis, ValueNode, AbstractBeginNode, ValueNode, Object, ValueNode)}.
  * </p>
  * <p>
- * Helper class that contains the logic to generate data flow information based on given control
- * flow. This class only holds static methods. The entry point to this logic is
- * {@link AnalysisInferenceHelper#generateInferredFacts}. It is intentionally package private as the
- * contained logic is only needed for {@link DFAnalysis}.
+ * The entry point to this logic is {@link AnalysisInferenceHelper#generateInferredFacts}. It is
+ * intentionally package private as the contained logic is only needed for {@link DFAnalysis}.
  * </p>
  */
 final class AnalysisInferenceHelper {
@@ -165,8 +182,8 @@ final class AnalysisInferenceHelper {
         // apply inferred information
         if (toInsert != null) {
             for (AbstractBeginNode[] branches : allTargetBranches) {
-                // per control flow split, we collect dominated inferences for optimization, since a
-                // node cannot be dominated by more than 1 successor
+                // per control flow branch, we collect dominated inferences for optimization, since
+                // a node cannot be dominated by more than 1 successor
                 EconomicSet<ValueNode> dominatedInferences = EconomicSet.create();
                 GraalError.guarantee(toInsert.length == branches.length, "Expected values for %s branches, got %s values", branches.length, toInsert.length);
                 for (int bIdx = 0; bIdx < branches.length; bIdx++) {
@@ -236,9 +253,12 @@ final class AnalysisInferenceHelper {
      * usages of the target and, when reaching a node with connection to the control flow part of
      * the graph, checking if the begin-node of the target branch dominates this usage.
      * <p>
-     * The {@code usagesToSkip} set is amended with all nodes that are dominated by the current
-     * {@code branch} during the dominance check. This set may be handed back to this method later,
-     * when called for another successor branch of the same control split.
+     * The set {@code usagesToSkip} contains nodes that were already found to be dominated by other
+     * branches at the same control split. Since usages cannot be dominated by multiple branches, we
+     * skip these usages as an optimization. All usages of {@code value} found to be dominated by
+     * the current branch are added to this set automatically. This method always expects
+     * {@code usagesToSkip} to be an instance of a set. On the first call the empty set on the first
+     * call for the current control split.
      */
     private static <T> void insertInference(DFAnalysis<T> analysis, ValueNode generator, ValueNode value, AbstractBeginNode branch, T fact, EconomicSet<ValueNode> usagesToSkip) {
         final Class<T> elementType = analysis.elementType;
@@ -254,32 +274,31 @@ final class AnalysisInferenceHelper {
                         "inferred about the value in the given branch, UNRESTRICTED should be inferred instead");
 
         // it only makes sense to actually print logs if we can generate an inference
-        StringBuilder logBuilder = new StringBuilder();
-        if (debug.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
-            logBuilder = new StringBuilder();
-        }
+        final StringBuilder logBuilder = debug.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL) ? new StringBuilder() : null;
         boolean printLog = false;
 
         log(logBuilder, "  Inserting inference %s in %s (now %s) with %s\n", value, branch, value.stamp(NodeView.DEFAULT), fact);
 
         /*
          * Actually inserting an inferred UNRESTRICTED value is not worth the effort since there is
-         * no information to be gained here. Therefore, we only correct preexisting inferences to
-         * UNRESTRICTED.
+         * no information to be gained here. Therefore, when asked to insert an UNRESTRICTED
+         * inference, we do nothing, except if there is a preexisting inference that we need to
+         * adjust to UNRESTRICTED.
          *
          * The attemptedInferences represent a list of inferences (denoted by the value for which we
          * are inferring new information, the generator, and the branch in which the inference is
          * applicable) we already tried to calculate the expensive dominance check for. If we find
          * that we already did the dominance check for the current inference attempt in an earlier
-         * attempt (see the second line after the logical OR), we can assume that all
-         * needed/possible InferredFactNodes were already created. Therefore, we can skip dominance
+         * attempt, we can assume that all needed/possible InferredFactNodes were already created.
+         * The part after the logical OR for onlyCorrectPreviousInferences tests if we already tried
+         * inserting an inference at this point. Finding a previous attempt, we can skip dominance
          * calculation and insertion of new InferredFactNodes and just use the already existing
          * inference nodes without compromising on precision.
          */
-        boolean onlyCorrectPreviousInferencess = domain.isUnrestricted(fact) ||
+        boolean onlyCorrectPreviousInferences = domain.isUnrestricted(fact) ||
                         attemptedInferences.containsKey(value) && attemptedInferences.get(value).contains(Pair.create(generator, branch));
 
-        debug.log(DebugContext.VERY_DETAILED_LEVEL, "   inserting [%s in %s] (onlyCorrecting=%s) %s", value, branch, onlyCorrectPreviousInferencess, fact);
+        log(logBuilder, "   inserting [%s in %s] (onlyCorrecting=%s) %s", value, branch, onlyCorrectPreviousInferences, fact);
 
         EconomicSet<ValuePhiNode> inferredForPhis = EconomicSet.create();
         EconomicSet<ValueNode> inferredForUsages = EconomicSet.create();
@@ -303,7 +322,7 @@ final class AnalysisInferenceHelper {
                                 oldInference, elemMap.getOrUnevaluated(oldInference), fact);
                 T loggingOldInfo = oldInference.getAdditionalInformation();
                 oldInference.overrideInformation(fact);
-                debug.log(DebugContext.VERY_DETAILED_LEVEL, "updated inference %s to %s", oldInference, fact);
+                log(logBuilder, "updated inference %s to %s", oldInference, fact);
                 debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "after updating inference %s to %s", oldInference, fact);
                 workList.schedule(oldInference);
                 printLog = true;
@@ -312,7 +331,7 @@ final class AnalysisInferenceHelper {
                 continue;
             }
 
-            if (onlyCorrectPreviousInferencess) {
+            if (onlyCorrectPreviousInferences) {
                 // we don't want to create new inferences
                 log(logBuilder, "        not doing it for %s (%s)\n", usage,
                                 attemptedInferences.containsKey(value) && attemptedInferences.get(value).contains(Pair.create(generator, branch))
@@ -398,115 +417,14 @@ final class AnalysisInferenceHelper {
             usagesToSkip.add(usage);
         }
 
-        /*
-         * Consider the following code with the optimal inferences inserted as pseudo instructions:
-         */
-        /*-
-         * boolean c1 = a == 2
-         * if (c1) {
-         *     infer(a, 2)
-         *     // ...
-         * }
-         * boolean c2 = a > 0
-         * if (c2) {
-         *     infer(a, 1..MAX)
-         *     if (c1) {
-         *         infer(a, 2)
-         *         // ...
-         *     }
-         *     // ...
-         * }
-         */
-        /*
-         * For InferredFactNodes to produce an accurate result, we rely on a very specific graph
-         * shape. Consider the graph structure at the first IF condition:
-         */
-        /*-
-         *  Value(a)       Const(2)
-         *   |     \        /
-         *   |     EqualsNode
-         *   |     /        \
-         *   |    /        IfNode
-         *   |   /         /    \
-         *   |  |  Begin(true)  Begin(false)
-         *    \ |     /
-         *   Inferred(c1)
-         *      |
-         *    Use(a)
-         */
-        /*
-         * The important shape is, that 'Inferred(c1)' references 'EqualsNode' as its generator and
-         * the 'Value(a)' it is encoding additional information for, is a direct input of its
-         * generator. If this shape is broken, 'Inferred(c1)' is not be accurately updated if the
-         * inferrable information for 'Value(a)' caused by 'EqualsNode' changes.
-         *
-         * Now imagine, in the earlier example, we already inserted the two inferences caused by c1
-         * and are now about to insert the inference caused by c2. If we just insert the new
-         * InferredFactNode, we would end up with the following construct at the third IF node:
-         */
-        /*-
-         *        Value(a)    Const(2)
-         *        /      \     /
-         *  Inferred(c2)  EqualsNode
-         *     /         /    |
-         *    |     ----    IfNode
-         *    |   /         /    \
-         *    |  |  Begin(true)  Begin(false)
-         *    |  |    /
-         *   Inferred(c1)
-         *      |
-         *    Use(a)
-         */
-        /*
-         * (For 'Inferred(c2)' all inputs except its value input were omitted for clarity.) Here, we
-         * first infer that 'a' is positive in 'Inferred(c2)' and then infer that 'a' is equal to 2
-         * in 'Inferred(c1)'. Now the connection from 'Inferred(c1)' to 'Value(a)' is severed. If
-         * now the analysis later comes to the conclusion that the other input for 'EqualsNode' is
-         * not a constant 2, we need to update all inferences for 'Value(a)' caused by 'EqualsNode'.
-         * Because 'Inferred(c1)' does not have 'Value(a)' as a direct input anymore, it is
-         * crucially not detected as an inference that needs to be corrected, leading to an
-         * incorrect result.
-         *
-         * Destroying such delicate graph shapes can only happen if a new inference is inserted as
-         * an input to an already existing inference, which is why we hold off on such insertions
-         * until we are sure that by inserting this new node, we maintain this graph shape, or
-         * otherwise skip inserting this new node. We may insert a new inference as an input of an
-         * already existing inference, if and only if the new inference is not only an input to the
-         * existing inference, but crucially also to its generating node.
-         *
-         * Slightly modifying the example (by pulling the calculation for the second usage of c1
-         * into the second IF condition) to yield the following graph shape is a valid insertion of
-         * 'Inferred(c2)' even though it is an input to another preexisting inference. This is
-         * because here the value input for 'Inferred(c1)' is still a direct input to its generating
-         * 'EqualsNode':
-         */
-        /*-
-         *      Value(a)
-         *         |
-         *     Inferred(c2)  Const(2)
-         *      /       \    /
-         *     /      EqualsNode
-         *    /         /    \
-         *   |     ----    IfNode
-         *   |   /         /    \
-         *   |  |  Begin(true)  Begin(false)
-         *   |  |    /
-         *  Inferred(c1)
-         *      |
-         *    Use(a)
-         */
-        for (InferredFactNode<T> iFact : heldOffInferences) {
-            if (inferredForUsages.contains(iFact.getGenerator())) {
-                createInferenceNode(analysis, generator, branch, value, fact, iFact);
-                printLog = true;
-            }
-        }
+        // do the insertion regardless and accumulate that with the previous request for logging
+        printLog = insertSafeHeldOffInferences(heldOffInferences, inferredForUsages, analysis, generator, branch, value, fact) | printLog;
 
         if (logBuilder != null && printLog) {
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", logBuilder);
         }
 
-        if (!onlyCorrectPreviousInferencess) {
+        if (!onlyCorrectPreviousInferences) {
             if (!attemptedInferences.containsKey(value)) {
                 attemptedInferences.put(value, EconomicSet.create());
             }
@@ -529,113 +447,136 @@ final class AnalysisInferenceHelper {
     }
 
     /**
-     * Checks if all transitive usages of {@code usage} are dominated by {@code targetBranch}.
+     * <p>
+     * This method checks if inserting a held of inference is "safe", meaning inserting it does not
+     * cause another inference to break the restriction on {@link InferredFactNode#value}, which
+     * must be a direct input to {@link InferredFactNode#generator}. As an example for an unsafe
+     * insertion, consider the following code with the optimal inferences inserted as pseudo
+     * instructions:
+     * </p>
+     *
+     * <pre>
+     * boolean c1 = a == 2
+     * if (c1) {
+     *     infer(a, 2)
+     *     // ...
+     * }
+     * boolean c2 = a > 0
+     * if (c2) {
+     *     int a1 = infer(a, 1..MAX)
+     *     if (c1) {
+     *         int a2 = infer(a1, 2)
+     *         use(a2)
+     *         // ...
+     *     }
+     *     // ...
+     * }
+     * </pre>
+     *
+     * <p>
+     * For InferredFactNodes to produce an accurate result, we rely on a very specific graph shape.
+     * Consider the graph structure at the first IF condition:
+     * </p>
+     *
+     * <pre>
+     *  Value(a)       Const(2)
+     *   |     \        /
+     *   |     EqualsNode
+     *   |     /        \
+     *   |    /        IfNode
+     *   |   /         /    \
+     *   |  |  Begin(true)  Begin(false)
+     *    \ |     /
+     *   Inferred(c1)
+     *      |
+     *    Use(a)
+     * </pre>
+     *
+     * <p>
+     * The important shape is, that 'Inferred(c1)' references 'EqualsNode' as its generator and the
+     * 'Value(a)' it is encoding additional information for, is a direct input of its generator (see
+     * {@link InferredFactNode#generator}). If this shape is broken, 'Inferred(c1)' is not be
+     * accurately updated if the inferrable information for 'Value(a)' caused by 'EqualsNode'
+     * changes.
+     * <p/>
+     * <p>
+     * Now imagine, in the earlier example, we already inserted the two inferences caused by c1 and
+     * are now about to insert the inference caused by c2. If we just insert the new
+     * InferredFactNode, we would end up with the following construct at the third IF node:
+     * </p>
+     *
+     * <pre>
+     *        Value(a)    Const(2)
+     *        /      \     /
+     *  Inferred(c2)  EqualsNode
+     *     /         /    |
+     *    |     ----    IfNode
+     *    |   /         /    \
+     *    |  |  Begin(true)  Begin(false)
+     *    |  |    /
+     *   Inferred(c1)
+     *      |
+     *    Use(a)
+     * </pre>
+     *
+     * <p>
+     * (For 'Inferred(c2)' all inputs except its value input were omitted for clarity.) Here, we
+     * first infer that 'a' is positive in 'Inferred(c2)' and then infer that 'a' is equal to 2 in
+     * 'Inferred(c1)'. Now the connection from 'Inferred(c1)' to 'Value(a)' is severed. If now the
+     * analysis later comes to the conclusion that the other input for 'EqualsNode' is not a
+     * constant 2, we need to update all inferences for 'Value(a)' caused by 'EqualsNode'. Because
+     * 'Inferred(c1)' does not have 'Value(a)' as a direct input anymore, it is crucially not
+     * detected as an inference that needs to be corrected, leading to an incorrect result.
+     * <p/>
+     * <p>
+     * Destroying such delicate graph shapes can only happen if a new inference is inserted as an
+     * input to an already existing inference, which is why we hold off on such insertions until we
+     * are sure that by inserting this new node, we maintain this graph shape, or otherwise skip
+     * inserting this new node. We may insert a new inference as an input of an already existing
+     * inference, if and only if the new inference is not only an input to the existing inference,
+     * but crucially also to its generating node.
+     * <p/>
+     * <p>
+     * Slightly modifying the example (by pulling the calculation for the second usage of c1 into
+     * the second IF condition) to yield the following graph shape is a valid insertion of
+     * 'Inferred(c2)' even though it is an input to another preexisting inference. This is because
+     * here the value input for 'Inferred(c1)' is still a direct input to its generating
+     * 'EqualsNode':
+     * </p>
+     *
+     * <pre>
+     *      Value(a)
+     *         |
+     *     Inferred(c2)  Const(2)
+     *      /       \    /
+     *     /      EqualsNode
+     *    /         /    \
+     *   |     ----    IfNode
+     *   |   /         /    \
+     *   |  |  Begin(true)  Begin(false)
+     *   |  |    /
+     *  Inferred(c1)
+     *      |
+     *    Use(a)
+     * </pre>
+     */
+    private static <T> boolean insertSafeHeldOffInferences(ArrayList<InferredFactNode<T>> heldOffInferences, EconomicSet<ValueNode> inferredForUsages,
+                    DFAnalysis<T> analysis, ValueNode generator, AbstractBeginNode branch, ValueNode value, T fact) {
+        for (InferredFactNode<T> iFact : heldOffInferences) {
+            if (inferredForUsages.contains(iFact.getGenerator())) {
+                createInferenceNode(analysis, generator, branch, value, fact, iFact);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if all transitive usages of {@code usage} are dominated by {@code targetBranch} and
+     * updated the dominance cache along the way.
      */
     private static <T> boolean checkTransitiveUsages(DFAnalysis<T> analysis, StringBuilder logBuilder, ValueNode usage, ValueNode value, HIRBlock targetBranch) {
-        if (true) {
-            return recursiveTransitiveCheck(analysis.dominanceCache, new NodeFlood(analysis.graph), usage, analysis, logBuilder, usage, value, targetBranch);
-        }
-
-        final ControlFlowGraph cfg = analysis.cfg;
-        NodeFlood usageWorkList = analysis.graph.createNodeFlood();
-        usageWorkList.add(usage);
-        int limit = 15;
-        int loopCnt = 0;
-        for (Node curTransitiveNode : usageWorkList) {
-            CompilationAlarm.checkProgress(analysis.graph);
-            if (loopCnt++ > limit) {
-                return false;
-            }
-            if (!(curTransitiveNode instanceof ValueNode curTransitiveUsage)) {
-                return false;
-            }
-            if (curTransitiveUsage instanceof ConditionalNode) {
-                log(logBuilder, "        not doing it for %s -> %s (conditional)\n", usage, curTransitiveUsage);
-                return false;
-            }
-
-            HIRBlock block = switch (curTransitiveUsage) {
-                case InferredFactNode<?> iFact ->
-                    iFact.isOfGeneric(analysis.elementType) ? cfg.blockFor(iFact.getGuard()) : null;
-                case ProxyNode proxy -> cfg.blockFor(proxy.proxyPoint());
-                case FixedNode fixed -> cfg.blockFor(fixed);
-                case ValuePhiNode phi ->
-                    throw GraalError.shouldNotReachHere("Found %s in usageWorkList while inserting inferred facts for %s".formatted(phi, value));
-                default -> null;
-            };
-            if (block != null) {
-                if (!targetBranch.dominates(block)) {
-                    // no inference can be inserted for this usage
-                    log(logBuilder, "        not doing it for %s -> %s (%s does not dominate %s)\n", usage, curTransitiveUsage, targetBranch, block);
-                    return false;
-                } else {
-                    log(logBuilder, "    ((-> %s) %s dominates %s)\n", curTransitiveUsage, targetBranch, block);
-                }
-            } else {
-                if (curTransitiveNode instanceof GuardedNode guarded) {
-                    switch (checkGuarded(cfg, targetBranch, guarded)) {
-                        case TRUE -> {
-                            // the dominance check succeeded for this guard, therefore we skip
-                            // to
-                            // the next iteration
-                            log(logBuilder, "    ((-> %s) %s dominates %s)\n", curTransitiveUsage, targetBranch, guarded);
-                            continue;
-                        }
-                        case FALSE -> {
-                            log(logBuilder, "        not doing it for %s -> %s (%s does not dominate %s)\n", usage, curTransitiveUsage, targetBranch, guarded);
-                            return false;
-                        }
-                        // if the guard based dominance check did not yield a result (i.e.
-                        // UNKNOWN),
-                        // we continue on just like any other floating node
-                    }
-                }
-                int usageCnt = 0;
-                for (Node usageOfUsage : curTransitiveUsage.usages()) {
-                    ValueNode u;
-                    if (usageOfUsage instanceof ValueNode vu) {
-                        u = vu;
-                    } else {
-                        // we do not want to mess with any unknown non-value nodes, therefore we
-                        // do not insert an inference here
-                        log(logBuilder, "        not doing it for %s -> %s (transitive non-value usage)\n", usage, usageOfUsage);
-                        return false;
-                    }
-                    if (MemoryKill.isMemoryKill(curTransitiveUsage) && isMemoryUsage(curTransitiveUsage, u)) {
-                        // we can not full reason about memory edges, therefore we can not
-                        // insert an inference here
-                        log(logBuilder, "        not doing it for %s -> %s (memory edge)\n", usage, curTransitiveUsage);
-                        return false;
-                    }
-                    // to check phis, we need the associated input, therefore we do no add phis
-                    // to the work list but rather evaluate domination here
-                    if (u instanceof ValuePhiNode phi) {
-                        for (AbstractEndNode associatedEnd : getEndsForPhiInput(phi, curTransitiveUsage)) {
-                            if (targetBranch.dominates(cfg.blockFor(associatedEnd))) {
-                                log(logBuilder, "    ((PHI) %s dominates %s)\n", targetBranch, cfg.blockFor(associatedEnd));
-                            } else {
-                                log(logBuilder, "        not doing it for %s -> %s ((PHI) %s does not dominate %s)\n",
-                                                usage, curTransitiveUsage, targetBranch, cfg.blockFor(associatedEnd));
-                                return false;
-                            }
-                        }
-                    } else {
-                        usageWorkList.add(u);
-                    }
-                    usageCnt++;
-                }
-
-                if (usageCnt < 1) {
-                    // this a floating node without usages, we have no clue in which branch we
-                    // are, therefore we do not insert an inference here
-                    log(logBuilder, "        not doing it for %s -> %s (unused)\n", usage, curTransitiveUsage);
-                    return false;
-                }
-            }
-        }
-
-        // if we pass this loop, all transitive usages are dominated by the targetBranch
-        return true;
+        return recursiveTransitiveCheck(analysis.dominanceCache, new NodeFlood(analysis.graph), usage, analysis, logBuilder, usage, value, targetBranch);
     }
 
     private static <T> boolean recursiveTransitiveCheck(EconomicMap<Node, HIRBlock> domMap, NodeFlood flood, Node curTransitiveNode, DFAnalysis<T> analysis, StringBuilder logBuilder,

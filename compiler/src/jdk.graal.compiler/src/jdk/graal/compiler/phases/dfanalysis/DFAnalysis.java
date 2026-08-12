@@ -1,6 +1,26 @@
 /*
  * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis;
@@ -8,6 +28,7 @@ package jdk.graal.compiler.phases.dfanalysis;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -38,53 +59,37 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.dfanalysis.DFEdgeMap.CFGEdge;
 import jdk.graal.compiler.phases.dfanalysis.DFEdgeMap.Reachability;
 
 /**
  * <p>
  * This class is a framework to be used for control flow sensitive optimistic data flow analysis.
- * This framework applies a common fixed point algorithm using a given analysis domain that takes
- * the shape of a complete lattice. It tracks abstract domain values for nodes in the graph as well
- * as information about reachability of control flow edges. The algorithm is designed in a way that
- * it does not require a full schedule of the graph and additionally only iterates over portions of
- * the graph that may contribute to new values being discovered.
+ * This framework applies a fixed point algorithm described in
+ * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">Lazy Sparse Conditional Constant
+ * Propagation in the Sea of Nodes</a> by Chistoph Aigner, Gerg&ouml; Barany, and Hanspeter
+ * M&ouml;ssenb&ouml;ck, using a given analysis domain that takes the shape of a
+ * <a href="https://en.wikipedia.org/wiki/Lattice_(order)">complete lattice</a>. It tracks abstract
+ * domain values for nodes in the graph as well as information about reachability of control flow
+ * edges. The algorithm is designed in a way that it does not require a full schedule of the graph.
+ * Additionally only iterates over portions of the graph that may contribute to new values being
+ * discovered, a property we call "lazy iteration".
  * </p>
  * <p>
- * This framework implements the fixed point algorithm described in
- * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">this paper</a>. It is an optimistic
- * algorithm designed to find fixed points for loops with control flow which can not be found using
- * the pessimistic approach used in canonicalization and conditional elimination. This algorithm is
- * "optimistic" in the sense that all back edges of loops are initially assumed to be unreachable.
- * For all other evaluations of Phis, unevaluated reachable inputs are interpreted as data flow that
- * will never yield a result.
+ * Generally, this analysis iterates over the graph in an approximation of a top-down order
+ * (resembling reverse-post-order traversal). This analysis is "lazy" in the sense that it updates
+ * values that lie above the depth that the analysis has reached <i>implicitly</i> to an
+ * unrestricted value.
  * </p>
  * <p>
- * For this fixed point algorithm to yield the correct result, the analysis domains for this
- * framework need to be a <a href="https://en.wikipedia.org/wiki/Lattice_(order)">complete
- * lattice</a> with the unrestricted element representing all possible values. The
- * {@link AnalysisDomainDefinition} interface provides a skeleton of methods used to represent such
- * a complete lattice for use in this framework. The semi-order of a lattice defined using this
- * interface is defined in {@link AnalysisDomainDefinition#isWeakerThan}. If a value is "weaker
- * than" another, it means, the weaker value is less specific than the stronger value. The strongest
- * value in this lattice is an "unevaluated" value, meaning, the analysis has not reached this node
- * yet. The weakest value in this lattice is "unrestricted", representing the fact that the analysis
- * can not infer any information about the given node and its output could be any concrete value.
- * The algorithm in this framework starts all nodes on "unevaluated" and gradually computes weaker
- * values for each node until a fixed point is reached.
- * </p>
- * <p>
- * Evaluating a PHI "pessimistically" means, all unevaluated reachable values are taken as
- * unrestricted. This effectively means, that branches that are unevaluated when evaluating this PHI
- * will never produce new information. This is the default evaluation method of PHI nodes. The order
- * in which nodes are processed in this framework and the conditions for
- * {@link AnalysisDomainDefinition#transfer} ensure that at the point where the given PHI is
- * evaluated, all inputs are sure to already be evaluated to their strongest non-unevaluated value.
- * Therefore, this pessimistic assumption can be made without compromising on precision.
- * </p>
- * <p>
- * On the first encounter, loop PHIs are evaluated "optimistically". This "optimistic" property of
- * the fixed point algorithm is necessary to find constants like the following example:
+ * This framework is "optimistic" in the sense that the initial assumption is that the entire graph
+ * is unreachable and all values are impossible values. This obviously too strict assumption is then
+ * gradually weakened until a fixed point is reached. The opposite direction, starting with the
+ * overapproximation that any value is possible and all branches are reachable, and
+ * "pessimistically" narrowing the assumption until reaching a fixed point would be a "pessimistic"
+ * analysis. An example of a constant that can be found only with optimistic analysis is the
+ * following loop:
  * </p>
  *
  * <pre>
@@ -99,21 +104,29 @@ import jdk.graal.compiler.phases.dfanalysis.DFEdgeMap.Reachability;
  * <p>
  * Here, detecting 'x' as constant 1 requires the knowledge that 'x = 2' is unreachable. But
  * detecting this, in turn, requires the knowledge that 'x' is constant 1. Initially optimistically
- * assuming either 'x' to be constant 1, or 'x = 2' to be unreachable (these assumptions are
- * mechanically equivalent) and afterward checking the assumption allows us to break this cycle and
- * detect 'x' to be constant.
+ * assuming 'x = 2' to be unreachable and afterward checking the assumption allows us to break this
+ * cycle and detect 'x' to be constant.
+ * </p>
+ * <p>
+ * The analysis domains for this framework must be a complete lattice with the unrestricted element
+ * representing all possible values. The {@link AnalysisDomainDefinition} interface provides a
+ * skeleton of methods used to represent such a complete lattice for use in this framework. The
+ * partial order of a lattice defined using this interface is defined in
+ * {@link AnalysisDomainDefinition#isWeakerThan}. If a value is "weaker than" another, it means that
+ * the weaker value is less specific than the stronger value. The strongest value in this lattice is
+ * an "unevaluated" value, meaning, the analysis has not reached this node yet. The weakest value in
+ * this lattice is "unrestricted", representing the fact that the analysis can not infer any
+ * information about the given node and its output could be any concrete value. The algorithm in
+ * this framework starts all nodes on "unevaluated" and gradually computes weaker values for each
+ * node until a fixed point is reached.
  * </p>
  * <p>
  * The transfer function ({@link AnalysisDomainDefinition#transfer} must satisfy monotonicity. This
  * means, interpreting unevaluated values as unrestricted, given increasingly more general (weaker)
  * inputs, the result of the transfer function must be weaker or equal to the result given more
  * precise (stronger) inputs (i.e. given inputs
- * {@code a <= x & b <= y: transferForAdd(a, b) <= transferForAdd(x, y)}). For the case that
- * monotonicity may be violated when an additional input gets evaluated for a node, {@link DFAMap}
- * (the map passed to the transfer function to retrieve information about the given node's inputs)
- * offers a way to circumvent monotonicity in form of the method {@link DFAMap#resetNodeAndUsages}.
- * The user may call this method inside the transfer function and then provide a stronger result
- * than was associated with the given node before.
+ * {@code a <= x & b <= y: transferForAdd(a, b) <= transferForAdd(x, y)}). Furthermore, the transfer
+ * function must never return UNEVALUATED.
  * </p>
  * <p>
  * This analysis is capable of inferring additional information based on control flow by
@@ -135,14 +148,40 @@ import jdk.graal.compiler.phases.dfanalysis.DFEdgeMap.Reachability;
  * The analysis domain is intended to be passed as a stateless instance of
  * {@link AnalysisDomainDefinition} using the same type parameter as the instance of this analysis.
  * </p>
- * 
+ *
  * @param <T> Type of the analysis domain element used for this analysis.
  */
 public final class DFAnalysis<T> {
 
-    // =================================================================================================================
-    // Creation and fields of DFAnalysis class
-    // =================================================================================================================
+    public static final class Options {
+        // @formatter:off
+        @Option(help = "Records a trace for each node in the element map", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DFA_RecordTrace = new OptionKey<>(false);
+
+        /**
+         * Shows warnings if the analysis detects inferred facts that should be unreachable but
+         * according to the information retrieved from the analysis domain can not safely be
+         * considered to be unreachable.
+         * <br/>
+         * A value of {@code 0} disables warnings, a value of {@code 1} only prints to TTY,
+         * a value of {@code 2} also dumps a graph when printing a warning.
+         * <br/>
+         * Enabling this option is <b>highly</b> recommended during the development of an
+         * analysis.
+         */
+        @Option(help = "Prints a warning if an inferred fact is encountered that should be unreachable", type = OptionType.Debug)
+        public static final OptionKey<Integer> DFA_WarnUnreachable = new OptionKey<>(0);
+
+        @Option(help = "Allows the analysis framework to infer information from conditions of control flow branches", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DFA_AllowInferences = new OptionKey<>(true);
+
+        @Option(help = "Runs a full Canonicalizer before applying the Pentagonal Analysis Phase", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DFA_PreCanonicalize = new OptionKey<>(false);
+
+        @Option(help = "Runs the Analysis on all compilation units, not only units with loops", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DFA_EvalAll = new OptionKey<>(false);
+    }
+
     /**
      * Most control splits are binary, therefore we preallocate FALSE_FALSE to use in the case of an
      * unreachable binary control split node.
@@ -168,10 +207,6 @@ public final class DFAnalysis<T> {
     final EconomicMap<ValueNode, Integer> nodesWithUnevaluatedInputs;
     private final EconomicMap<LoopBeginNode, Integer> loopBeginEvalCnt;
     private boolean expended;
-
-    // =================================================================================================================
-    // Public access to behavior of DFAnalysis class
-    // =================================================================================================================
 
     private DFAnalysis(Class<T> elementType, StructuredGraph graph, ControlFlowGraph cfg, AnalysisDomainDefinition<T> domain) {
         this.elementType = elementType;
@@ -203,10 +238,6 @@ public final class DFAnalysis<T> {
         return cfg.blockFor(node).getEndNode().equals(node);
     }
 
-    // =================================================================================================================
-    // Private methods describing inner behavior
-    // =================================================================================================================
-
     static boolean isMemoryUsage(ValueNode value, ValueNode usage) {
         for (Position pos : usage.inputPositions()) {
             if (pos.getInputType() == InputType.Memory && pos.get(usage) == value) {
@@ -215,6 +246,14 @@ public final class DFAnalysis<T> {
             }
         }
         return false;
+    }
+
+    public static Optional<BasePhase.NotApplicable> notApplicableTo(BasePhase<?> phase, GraphState graphState) {
+        return BasePhase.NotApplicable.unlessRunBefore(phase, GraphState.StageFlag.VALUE_PROXY_REMOVAL, graphState);
+    }
+
+    public static boolean shouldApply(StructuredGraph graph) {
+        return graph.hasLoops() || DFAnalysis.Options.DFA_EvalAll.getValue(graph.getOptions());
     }
 
     @SuppressWarnings("try")
@@ -300,18 +339,33 @@ public final class DFAnalysis<T> {
     }
 
     /**
-     * All non-loop merges can be handled pessimistically since all possibly available reachability
-     * info as well as all the strongest non-unevaluated input values should already be calculated
-     * when the merge is evaluated. Loop phis, upon first evaluation, need to be handled
-     * optimistically because information about reachability of back-edges is not yet available.
-     * Because propagating values through loop phis optimistically can result in incorrect values,
-     * loop phis need to be reevaluated in a pessimistic fashion after processing their respective
-     * loop to ensure correctness of the result.
+     * This analysis is "optimistic" in the sense that all control flow is initially assumed to be
+     * unreachable. This means, back-edges of loops are also initially assumed to be unreachable,
+     * causing the analysis to start out with very strong and gradually weakens the assumption until
+     * a fixed point is reached. This allows the analysis to possibly reach better fixed points than
+     * if the initial assumption was that the back-edges were reachable (which would be a
+     * "pessimistic" assumption).
+     * <p>
+     * By passing below a control flow edge in the analysis or by the second iteration of evaluating
+     * the loop, any assumption of unreachbility is implicitly updated to reachable. We do this,
+     * since we would have marked any unreachable back-edges as such during evaluation of the upper
+     * part of the graph or the first iteration of evaluating the loop.
+     * <p>
+     * If we are evaluating a straight-line merge, we are at a point in the analysis where we
+     * implicitly updated unevaluated (and thereby UNKNOWN) edges to reachable. If we are evaluating
+     * a loop merge, we need to be more careful, since the back-edges originate from a lower point
+     * in the graph than what the analysis has reached when we first encounter the loop. On all
+     * subsequent evaluation, the analyis has already reached the bottom of the loop, thereby
+     * implicitly updating unevaluated edges to reachable.
+     * <p>
+     * Since reaching the bottom of the loop implicitly updates all unevaluated back-edges, we
+     * schedule loop merges to be reevaluated after the loop body. Furthermore, rescheduling the
+     * merge blocks any evaluation of the loop merge until the full loop body has been evaluated.
      */
     private void handleMergeNode(AbstractMergeNode mergeNode) {
         if (!mayBeReachable(cfg.blockFor(mergeNode))) {
             /*
-             * This phi is currently believed to be unreachable and will be rescheduled if it is
+             * This merge is currently believed to be unreachable and will be rescheduled if it is
              * considered reachable.
              */
             return;
@@ -351,17 +405,17 @@ public final class DFAnalysis<T> {
         for (int i = 0; i < results.length; i++) {
             ValuePhiNode curPhi = interestingPhis.get(i);
             T nuElem = results[i];
-            if (elemMap.update(curPhi, results[i])) {
+            if (elemMap.update(curPhi, nuElem)) {
                 updated = true;
                 if (curPhi.isLoopPhi() && !domain.isUnrestricted(nuElem)) {
                     /*
-                     * To prevent any reevaluation of the loop until the entire loop has been
-                     * evaluated once more, we reschedule the loop begin. Additionally, rescheduling
-                     * the loop begin after evaluating it optimistically implicitly schedules a
-                     * check if the optimistic assumption was correct. If not, we can rectify overly
-                     * optimistic assumptions then. If all phis at the loop begin were updated to
-                     * unrestricted, no further information will emerge here, therefore we do not
-                     * have to reschedule it.
+                     * Rescheduling the loop begin on a change of values for any associated phi
+                     * ensures that any optimistic assumption is rechecked even if the reachability
+                     * of back-edges only changes implicitly. Furthermore, rescheduling blocks any
+                     * evaluation of this loop begin until after the entire loop body has been
+                     * evaluated with the new information. If the new information is unrestricted,
+                     * we will not update this phi again, therefore creating no need to reschedule
+                     * the loop begin.
                      */
                     workList.rescheduleLoopBegin((LoopBeginNode) mergeNode, isOptimistic);
                 }
@@ -393,13 +447,17 @@ public final class DFAnalysis<T> {
                 /*
                  * If an inferred fact node is unreachable, we do not care to evaluate it at this
                  * point in the analysis, it will come up later if necessary but at this point the
-                 * inference might even be misleading.
+                 * inference might even be misleading. We insert inferences when evaluating its
+                 * generating branching condition, which might be a floating node. On evalulation of
+                 * floating nodes we cannot accurately predict the reachability of branches lower
+                 * down in the graph. Therefore, this guard by reachability is necessary.
                  */
                 return;
             } else {
                 /*
                  * The handling of inferred facts is independent of the analysis domain, therefore
-                 * we provide a generic transfer function here.
+                 * we provide a generic transfer function here. The evaluation of inferences is
+                 * hidden behind a check for reachability.
                  */
                 InferredFactNode<T> cFact = fact.castTo(elementType);
                 nuElement = cFact.transfer(this);
@@ -453,7 +511,7 @@ public final class DFAnalysis<T> {
 
         // then update and possibly schedule usages
         if (elemMap.update(node, nuElement)) {
-            // if the associated stamp has been updated we schedule all usages of the given node
+            // if the associated information has been updated we schedule all its usages
             workList.scheduleUsages(node);
         }
     }
@@ -465,31 +523,26 @@ public final class DFAnalysis<T> {
     private void handleControlSplitNode(ControlSplitNode split) {
         HIRBlock splitBlock = cfg.blockFor(split);
         boolean isCsReachable = mayBeReachable(splitBlock);
-        boolean[] succReachability = isCsReachable
-                        ? domain.splitReachability(split, elemMap)
-                        : splitBlock.getSuccessorCount() == 2 ? FALSE_FALSE : new boolean[splitBlock.getSuccessorCount()];
-        if (succReachability == null) {
-            if (splitBlock.getSuccessorCount() == 2) {
-                succReachability = TRUE_TRUE;
-            } else {
-                succReachability = new boolean[splitBlock.getSuccessorCount()];
-                Arrays.fill(succReachability, true);
+        boolean[] succReachability;
+        if (isCsReachable) {
+            succReachability = domain.splitReachability(split, elemMap);
+            if (succReachability == null) {
+                if (splitBlock.getSuccessorCount() == 2) {
+                    succReachability = TRUE_TRUE;
+                } else {
+                    succReachability = new boolean[splitBlock.getSuccessorCount()];
+                    Arrays.fill(succReachability, true);
+                }
             }
+        } else {
+            succReachability = splitBlock.getSuccessorCount() == 2 ? FALSE_FALSE : new boolean[splitBlock.getSuccessorCount()];
         }
         for (int i = 0; i < succReachability.length; i++) {
             HIRBlock successor = splitBlock.getSuccessorAt(i);
             CFGEdge edge = new CFGEdge(splitBlock, successor);
             if (edgeMap.update(edge, succReachability[i])) {
                 elemMap.recordPropagateReachability(split, edge, edgeMap, !isCsReachable);
-                workList.schedule(successor);
-                if (successor.getBeginNode() instanceof AbstractMergeNode merge) {
-                    // if an edge to a phi has changed, we need to reschedule the merge
-                    workList.schedule(merge);
-                }
-                // reschedule all inferred facts that might now have become reachable
-                if (succReachability[i]) {
-                    successor.getBeginNode().usages().filter(InferredFactNode.class).forEach(workList::schedule);
-                }
+                workList.schedule(successor, succReachability[i]);
             }
         }
     }
@@ -516,15 +569,7 @@ public final class DFAnalysis<T> {
         if (edgeMap.update(edge, nowReachable)) {
             elemMap.recordPropagateReachability(endNode, edge, edgeMap, true);
             // edge was updated
-            workList.schedule(next);
-            if (next.getBeginNode() instanceof AbstractMergeNode merge) {
-                // if an edge to a phi has changed, we need to reschedule the merge
-                workList.schedule(merge);
-            }
-            // reschedule all inferred facts that might now have become reachable
-            if (nowReachable) {
-                next.getBeginNode().usages().filter(InferredFactNode.class).forEach(workList::schedule);
-            }
+            workList.schedule(next, nowReachable);
         }
     }
 
@@ -552,34 +597,5 @@ public final class DFAnalysis<T> {
             }
         }
         return false;
-    }
-
-    public static final class Options {
-        // @formatter:off
-        @Option(help = "Records a trace for each node in the element map", type = OptionType.Debug)
-        public static final OptionKey<Boolean> DFA_RecordTrace = new OptionKey<>(false);
-
-        /**
-         * Shows warnings if the analysis detects inferred facts that should be unreachable but
-         * according to the information retrieved from the analysis domain can not safely be
-         * considered to be unreachable.
-         * <br/>
-         * A value of {@code 0} disables warnings, a value of {@code 1} only prints to TTY,
-         * a value of {@code 2} also dumps a graph when printing a warning.
-         * <br/>
-         * Enabling this option is <b>highly</b> recommended during the development of an
-         * analysis.
-         */
-        @Option(help = "Prints a warning if an inferred fact is encountered that should be unreachable", type = OptionType.Debug)
-        public static final OptionKey<Integer> DFA_WarnUnreachable = new OptionKey<>(0);
-
-        @Option(help = "Allows the analysis framework to infer information from conditions of control flow branches", type = OptionType.Debug)
-        public static final OptionKey<Boolean> DFA_AllowInferences = new OptionKey<>(true);
-
-        @Option(help = "Runs a full Canonicalizer before applying the Pentagonal Analysis Phase", type = OptionType.Debug)
-        public static final OptionKey<Boolean> DFA_PreCanonicalize = new OptionKey<>(false);
-
-        @Option(help = "Runs the Analysis on all compilation units, not only units with loops", type = OptionType.Debug)
-        public static final OptionKey<Boolean> DFA_EvalAll = new OptionKey<>(false);
     }
 }
