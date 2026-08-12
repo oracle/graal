@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -876,10 +877,18 @@ public abstract class ImageHeapScanner {
      * Returns true if the provided {@code object} was seen as reachable by the static analysis.
      */
     public boolean isObjectReachable(Object object) {
+        return checkObject(object, ImageHeapConstant::isReachable);
+    }
+
+    public boolean isObjectInSharedLayer(Object object) {
+        return checkObject(object, ImageHeapConstant::isInSharedLayer);
+    }
+
+    public boolean checkObject(Object object, Predicate<ImageHeapConstant> predicate) {
         var javaConstant = asConstant(Objects.requireNonNull(object));
         Object existingTask = imageHeap.getSnapshot(javaConstant);
         if (existingTask instanceof ImageHeapConstant imageHeapConstant) {
-            return imageHeapConstant.isReachable();
+            return predicate.test(imageHeapConstant);
         }
         return false;
     }

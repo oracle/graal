@@ -26,7 +26,6 @@ package com.oracle.svm.core.locks;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -37,11 +36,9 @@ import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -75,7 +72,7 @@ public class VMLockSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    void registerObjectReplacers(InternalFeature.DuringSetupAccess access) {
+    public void registerObjectReplacers(InternalFeature.DuringSetupAccess access) {
         mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class, mutexes, this::replaceVMMutex);
 
         access.registerObjectReplacer(mutexReplacer);
@@ -173,33 +170,6 @@ public class VMLockSupport {
             }
 
             log.indent(false);
-        }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-final class VMLockFeature implements InternalFeature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
-            ImageSingletons.add(VMLockSupport.class, new VMLockSupport());
-        }
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
-            /* Replace build-time with run-time objects. */
-            VMLockSupport support = ImageSingletons.lookup(VMLockSupport.class);
-            support.registerObjectReplacers(access);
-        } else {
-            /* Extension layers must not add any extra VMLockingPrimitives. */
-            Consumer<VMLockingPrimitive> disallowLockingPrimitives = (obj) -> {
-                Class<?> clazz = obj.getClass();
-                VMError.guarantee(clazz == RuntimeVMMutex.class || clazz == RuntimeVMCondition.class || clazz == RuntimeVMSemaphore.class,
-                                "A VMLockingPrimitive is added in an extension layer, which is unsupported: %s", obj);
-            };
-            access.registerObjectReachabilityHandler(disallowLockingPrimitives, VMLockingPrimitive.class);
         }
     }
 }
