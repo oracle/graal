@@ -31,10 +31,11 @@ import java.security.Provider;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
+// §FS-002-security-providers.2.2
 /**
  * The rule that decides how a JCA security provider can be constructed, stated in the JDK's terms.
  *
- * §FS-security-providers.2.2: A provider is constructed through the path the JDK would use. The JDK
+ * A provider is constructed through the path the JDK would use. The JDK
  * reaches a configured provider through {@code sun.security.jca.ProviderConfig}, which resolves the
  * entry through {@link java.util.ServiceLoader} and otherwise falls back to a legacy class-name load
  * that calls {@code Class.newInstance()}. The constructor path requires a public, concrete

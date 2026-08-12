@@ -82,17 +82,7 @@ public final class SecurityProviderRuntimeState {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerJdkConstructibleProvider(String providerClassName, Object verificationResult) {
-        registerProvider(providerClassName, AcquisitionKind.JDK_CONSTRUCTIBLE, verificationResult);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerApplicationSuppliedProvider(String providerClassName, Object verificationResult) {
-        registerProvider(providerClassName, AcquisitionKind.APPLICATION_SUPPLIED_ONLY, verificationResult);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult) {
+    public synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult) {
         Exception verificationFailure = verificationResult instanceof Exception exception ? exception : null;
         providerInfos.put(providerClassName, merge(providerInfos.get(providerClassName), new ProviderInfo(acquisitionKind, verificationFailure)));
     }
@@ -103,7 +93,8 @@ public final class SecurityProviderRuntimeState {
         if (previous == null) {
             configuredProviders.put(providerName, new ConfiguredProviderInfo(providerClassName, null));
         } else if (!previous.providerClassName().equals(providerClassName)) {
-            /* §FS-security-providers.7.1: Provider names are not globally unique class keys. */
+            // §FS-002-security-providers.7.1
+            // Provider names are not globally unique class keys.
             ambiguousConfiguredProviderNames.put(providerName, true);
         }
     }
@@ -141,7 +132,7 @@ public final class SecurityProviderRuntimeState {
         return result;
     }
 
-    public static boolean isJdkConstructible(String providerClassName) {
+    static boolean isJdkConstructible(String providerClassName) {
         ProviderInfo info = getProviderInfo(providerClassName);
         return info != null && info.acquisitionKind() == AcquisitionKind.JDK_CONSTRUCTIBLE;
     }

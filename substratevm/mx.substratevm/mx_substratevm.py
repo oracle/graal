@@ -561,6 +561,13 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments)
 
+    # Custom build arguments are part of the behavior under test for provider initialization and
+    # exact-metadata modes. Keep these focused groups in the public/GitHub presubmit tag.
+    with Task('security provider native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS):
+                security_provider_native_unittests_task(args.extra_image_builder_arguments)
+
     generic_field_type_tags = [GraalTags.native_unittests, GraalTags.all_native_unittests, GraalTags.generic_field_type]
     with Task('generic field type', tasks, tags=generic_field_type_tags) as t:
         if t:
@@ -891,6 +898,17 @@ def native_unittests_task(
     )
 
 
+def security_provider_native_unittests_task(extra_build_args=None):
+    computed = _compute_native_unittest_args(extra_build_args, include_svm_test_features=True)
+    native_image_context_run(_native_unittest, [
+        'com.oracle.svm.test.services.RuntimeCompilationSecurityProviderTest',
+        'com.oracle.svm.test.services.SecureRandomExplicitProviderRegistrationTest',
+        'com.oracle.svm.test.services.SecurityServiceExplicitProviderRegistrationTest',
+        'com.oracle.svm.test.services.SecurityServiceRuntimeInitializationTest',
+        'com.oracle.svm.test.services.SecurityServiceTest',
+    ] + computed)
+
+
 def generic_field_type_test_task(extra_build_args=None):
     test_dir = join(suite.dir, 'src', 'native-image-tests', 'generic-field-type')
     output_dir = join(svmbuild_dir(), 'generic-field-type-test')
@@ -1082,6 +1100,8 @@ def run_agent_security_provider_config_test(agent_path):
          'verifyProviderServiceConstructorWasRecorded'),
         ('service-selection', 'jceServiceSelectionRetainsConstructorMetadata',
          'verifySelectedJceServiceConstructorWasRecorded'),
+        ('parameterized-service', 'providerServiceUsesTheActualConstructorArgument',
+         'verifyProviderServiceUsedTheActualConstructorArgument'),
     ]
     for name, generator_method, verifier_method in cases:
         config_dir = join(svmbuild_dir(), 'security-provider-agent-' + name + '-test-config')

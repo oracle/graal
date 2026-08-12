@@ -14,4 +14,4 @@ The build-time guide links to the eight detailed lifecycle phases.
 The runtime guide describes the generated image after image writing has finished.
 
 - [Security Provider Architecture](security-providers.md): provider inclusion, verification, and
-  metadata tracing ([§AR-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java)).
+  metadata tracing ([§AR-002-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java)).

@@ -1,4 +1,4 @@
-# DF-complete-security-provider-registration: Register Providers as Complete Service Units
+# AR-003-complete-security-provider-registration: Register Providers as Complete Service Units
 
 ## 1. Context
 
@@ -53,8 +53,8 @@ For example, some engines accept a constructor parameter, some services declare 
 classes, and JKS and X.509 support require additional implementation metadata.
 
 The provider registration and service availability requirements are specified by
-[§FS-security-providers.1.1](../security-providers.md#11-registered-providers-and-services)
-and [§FS-security-providers.2.3](../security-providers.md#23-registration-effects).
+[§FS-002-security-providers.1.1](../security-providers.md#11-registered-providers-and-services)
+and [§FS-002-security-providers.2.3](../security-providers.md#23-registration-effects).
 The design question is where to place the application-controlled boundary between these two
 levels.
 Registering only the provider is compact but requires Native Image to complete its service catalog.
@@ -88,7 +88,7 @@ Native Image treats a registered provider as one complete service-registration u
 Qualifying reflection metadata for the provider is the application-controlled registration signal.
 The application does not enumerate reflection metadata for every implementation class named by that
 provider.
-This registration boundary follows [§DF-standard-jca-semantics.2](standard-jca-semantics.md#2-decision).
+This registration boundary follows [§AR-007-standard-jca-semantics.2](standard-jca-semantics.md#2-decision).
 
 At build time, Native Image constructs the registered provider and reads the provider's own catalog.
 It retains every valid service whose implementation class it can resolve.
@@ -126,7 +126,7 @@ requiring Native Image to predict that string at build time.
 
 Reachability of a JCA factory can continue to drive service-type registration only under the
 compatibility behavior in
-[§FS-security-providers.7.3](../security-providers.md#73-earlier-service-driven-inclusion-behavior).
+[§FS-002-security-providers.7.3](../security-providers.md#73-earlier-service-driven-inclusion-behavior).
 When explicit provider registration is enabled, reaching a service factory does not register an
 otherwise unregistered provider and does not select a subset of an already registered provider.
 
@@ -149,7 +149,7 @@ The result would depend on how far a particular JDK path progressed before it en
 missing constructor, rather than on one definition of service availability.
 
 The specification rejects this partial exposure in
-[§FS-security-providers.4.1](../security-providers.md#41-unregistered-providers).
+[§FS-002-security-providers.4.1](../security-providers.md#41-unregistered-providers).
 Completing the provider at build time makes provider registration a useful promise instead of merely
 permission to allocate the outer object.
 
