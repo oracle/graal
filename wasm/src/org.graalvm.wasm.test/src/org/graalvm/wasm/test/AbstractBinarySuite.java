@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -213,20 +213,23 @@ public abstract class AbstractBinarySuite {
             final int functionCount = types.size();
             b.addUnsignedInt32(functionCount);
             for (int i = 0; i < functionCount; i++) {
-                int[] locals = localEntries.get(i);
-                byte[] code = codeEntries.get(i);
-                int length = 1 + locals.length + code.length;
-                b.addUnsignedInt32(length);
-                b.addUnsignedInt32(locals.length);
-                for (int l : locals) {
-                    b.addSignedInt32(l);
-                }
-                for (byte op : code) {
-                    b.add(op);
-                }
+                byte[] body = generateFunctionBody(localEntries.get(i), codeEntries.get(i));
+                b.addUnsignedInt32(body.length);
+                b.addRange(body, 0, body.length);
             }
             b.set(1, (byte) (b.size() - 2));
             return b.toArray();
+        }
+
+        private static byte[] generateFunctionBody(int[] locals, byte[] code) {
+            ByteArrayList body = new ByteArrayList();
+            body.addUnsignedInt32(locals.length);
+            for (int local : locals) {
+                body.addUnsignedInt32(1);
+                body.addSignedInt32(local);
+            }
+            body.addRange(code, 0, code.length);
+            return body.toArray();
         }
     }
 
