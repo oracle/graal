@@ -42,10 +42,10 @@
 package org.graalvm.wasm.parser.bytecode;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
+import org.graalvm.wasm.vector.Vector128;
 
 /**
  * A data structure for generating the GraalWasm runtime bytecode.
@@ -88,8 +88,33 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         return Long.compareUnsigned(value, 4294967295L) <= 0;
     }
 
+    /**
+     * Branch hint derived from entries in the {@code metadata.code.branch_hint} custom section.
+     * Used to initialize the true and false branch profile counters for {@code if}/{@code br_if}.
+     * Runtime profiling remains adaptive and updates these counters as the branch executes.
+     */
+    public enum BranchHint {
+        NONE(0),
+        LIKELY_FALSE(0xff00), // true:false profile = 0:255
+        LIKELY_TRUE(0x00ff);  // true:false profile = 255:0
+
+        private final int profile;
+
+        BranchHint(int profile) {
+            this.profile = profile;
+        }
+
+        int profile() {
+            return profile;
+        }
+    }
+
     private void addProfile() {
-        add2(0);
+        addProfile(BranchHint.NONE);
+    }
+
+    private void addProfile(BranchHint branchHint) {
+        add2(branchHint.profile());
     }
 
     /**
@@ -386,16 +411,17 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds an if opcode to the bytecode and reserves an i32 value for the jump offset and a 2-byte
      * profile.
      *
+     * @param branchHint Optional branch hint used to initialize the branch profile.
      * @return The location of the jump offset to be patched later. (see
      *         {@link #patchLocation(int, int)}.
      */
-    public int addIfLocation() {
+    public int addIfLocation(BranchHint branchHint) {
         add1(Bytecode.IF);
         final int location = location();
         // target
         add4(0);
         // profile
-        addProfile();
+        addProfile(branchHint);
         return location;
     }
 
@@ -490,8 +516,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         public abstract void emitOpcodesI32(RuntimeBytecodeGen bytecode);
 
         public void emitProfile(RuntimeBytecodeGen bytecode) {
+            emitProfile(bytecode, BranchHint.NONE);
+        }
+
+        public void emitProfile(RuntimeBytecodeGen bytecode, BranchHint branchHint) {
             if (profiled) {
-                bytecode.addProfile();
+                bytecode.addProfile(branchHint);
             }
         }
     }
@@ -523,17 +553,24 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds a branch opcode to the bytecode and reserves an i32 value for the jump offset. In
      * addition, a profile with a size of 2-byte is added.
      *
+     * @param branchOp The branch operation to add.
+     * @param branchHint Optional branch hint used to initialize the branch profile.
      * @return The location of the jump offset to be patched later. (see
      *         {@link #patchLocation(int, int)})
      */
-    public int addBranchLocation(BranchOp branchOp) {
+    public int addBranchLocation(BranchOp branchOp, BranchHint branchHint) {
+        assert branchHint == BranchHint.NONE || branchOp == BranchOp.BR_IF : branchOp;
         branchOp.emitOpcodesI32(this);
         final int location = location();
         // target
         add4(0);
         // profile
-        branchOp.emitProfile(this);
+        branchOp.emitProfile(this, branchHint);
         return location;
+    }
+
+    public int addBranchLocation(BranchOp branchOp) {
+        return addBranchLocation(branchOp, BranchHint.NONE);
     }
 
     /**
