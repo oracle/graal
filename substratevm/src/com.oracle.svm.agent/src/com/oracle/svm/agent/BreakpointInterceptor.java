@@ -746,7 +746,7 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    /** §FS-security-providers.6.2: Observe an explicit-provider lookup without invoking it. */
+    /** §FS-002-security-providers.6.2: Observe an explicit-provider lookup without invoking it. */
     private static boolean getSecurityServiceForProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle provider = getObjectArgument(thread, 2);
         /*
@@ -760,7 +760,7 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    /** §FS-security-providers.6.1: Trace the provider selected for service instantiation. */
+    /** §FS-002-security-providers.6.1: Trace the provider selected for service instantiation. */
     private static boolean newSecurityServiceInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle service = getReceiver(thread);
         JNIObjectHandle callerClass = findExternalSecurityCaller(jni, state, 1);
@@ -772,7 +772,8 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    /** §FS-security-providers.6.1: Retain a service implementation cached by Provider.Service. */
+    // §FS-002-security-providers.6.1
+    /** Retain a service implementation cached by {@code Provider.Service}. */
     private static void traceCachedSecurityServiceImplementation(JNIEnvironment jni, JNIObjectHandle thread, JNIObjectHandle service, JNIObjectHandle callerClass,
                     InterceptedState state) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
@@ -808,7 +809,7 @@ final class BreakpointInterceptor {
                 return;
             }
         } else {
-            JNIObjectHandle constructorParameter = getObjectArgument(thread, 0);
+            JNIObjectHandle constructorParameter = getObjectArgument(thread, 1);
             parameterClass = constructorParameter.equal(nullHandle()) ? nullHandle() : jniFunctions().getGetObjectClass().invoke(jni, constructorParameter);
         }
 
@@ -895,9 +896,8 @@ final class BreakpointInterceptor {
         clearException(jni);
     }
 
-    /**
-     * §FS-security-providers.6.1: Trace a provider that was cached before a Security API lookup.
-     */
+    // §FS-002-security-providers.6.1
+    /** Trace a provider that was cached before a Security API lookup. */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         if (agent.handles().sunSecurityJcaProviderConfigProvider.isNull()) {
             return true;
@@ -987,7 +987,7 @@ final class BreakpointInterceptor {
                         method.equal(handles.javaSecurityRemoveProvider);
     }
 
-    /** §FS-security-providers.6.1: Cross only contiguous Provider.Service helper frames. */
+    /** §FS-002-security-providers.6.1: Cross only contiguous Provider.Service helper frames. */
     private static JNIObjectHandle findProviderServiceCaller(JNIEnvironment jni, InterceptedState state) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
         for (int depth = 1; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
@@ -1030,7 +1030,8 @@ final class BreakpointInterceptor {
                         className.startsWith("com.sun.crypto.provider.");
     }
 
-    /** §FS-security-providers.6.1: Retain construction for a successfully acquired JDK provider. */
+    // §FS-002-security-providers.6.1
+    /** Retain construction for a successfully acquired JDK provider. */
     private static void traceJdkConstructibleSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, JNIObjectHandle callerClass, InterceptedState state) {
         JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
         if (clearException(jni)) {
@@ -1050,7 +1051,8 @@ final class BreakpointInterceptor {
         }
     }
 
-    /** §FS-security-providers.6.1: Provider insertion and lookup trace provider type access. */
+    // §FS-002-security-providers.6.1
+    /** Provider insertion and lookup trace provider type access. */
     private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
         if (!validResult) {
             return;

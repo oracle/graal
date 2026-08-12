@@ -113,8 +113,9 @@ public class SecurityServiceTest {
              * Deterministically model the negative outcome produced by build-time JCE
              * authentication. Registering the later successful catalog result must not erase it.
              */
-            SecurityProviderRuntimeState.currentLayer().registerApplicationSuppliedProvider(
+            SecurityProviderRuntimeState.currentLayer().registerProvider(
                             FailedVerificationProvider.class.getName(),
+                            SecurityProviderRuntimeState.AcquisitionKind.APPLICATION_SUPPLIED_ONLY,
                             new SecurityException("simulated build-time provider verification failure"));
         }
     }
@@ -134,7 +135,7 @@ public class SecurityServiceTest {
         }
     }
 
-    /** §FS-security-providers.7.3: Tests the public-constructor compatibility surface. */
+    /** §FS-002-security-providers.7.3: Tests the public-constructor compatibility surface. */
     @Test
     public void testLegacyServiceInclusionRegistersEveryPublicProviderConstructor() throws Exception {
         Assert.assertFalse(FutureDefaultsOptions.explicitSecurityProviderRegistration());
@@ -142,7 +143,7 @@ public class SecurityServiceTest {
         Assert.assertEquals("legacy-constructor-provider-reflected", provider.getName());
     }
 
-    /** §FS-security-providers.7.3: Tests service-driven GSS provider inclusion. */
+    /** §FS-002-security-providers.7.3: Tests service-driven GSS provider inclusion. */
     @Test
     public void testGSSProviderServiceRegistration() throws Exception {
         Oid kerberosV5 = new Oid("1.2.840.113554.1.2.2");
@@ -156,7 +157,8 @@ public class SecurityServiceTest {
         Assert.assertNotNull("KEM service was not created", KEM.getInstance("ML-KEM"));
     }
 
-    /** §FS-security-providers.5.3 and §FS-security-providers.7.3: Tests compatibility-mode verification. */
+    // §FS-002-security-providers.5.3, §FS-002-security-providers.7.3
+    /** Tests compatibility-mode verification. */
     @Test
     public void testTypeMetadataApplicationProviderVerification() throws Exception {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
@@ -170,7 +172,7 @@ public class SecurityServiceTest {
         Assert.assertNotNull(Mac.getInstance(TYPE_METADATA_PROVIDER_MAC_ALGORITHM, provider));
     }
 
-    /** §FS-security-providers.5.3: Tests preservation of the failed-verification outcome. */
+    /** §FS-002-security-providers.5.3: Tests preservation of the failed-verification outcome. */
     @Test
     public void testFailedBuildTimeProviderVerificationStaysUnusable() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
@@ -184,7 +186,7 @@ public class SecurityServiceTest {
                         () -> Mac.getInstance(FAILED_VERIFICATION_PROVIDER_MAC_ALGORITHM, provider));
     }
 
-    /** §FS-security-providers.4.1: Tests omission without registration metadata. */
+    /** §FS-002-security-providers.4.1: Tests omission without registration metadata. */
     @Test
     public void testReachableProviderWithoutMetadataDoesNotRegisterServices() {
         Provider provider = new ReachableProviderWithoutMetadata();
@@ -197,7 +199,7 @@ public class SecurityServiceTest {
         }
     }
 
-    /** §FS-security-providers.4.3: Tests the non-exact diagnostic. */
+    /** §FS-002-security-providers.4.3: Tests the non-exact diagnostic. */
     @Test
     public void testUnregisteredJceProviderReportsActionableDiagnostic() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());

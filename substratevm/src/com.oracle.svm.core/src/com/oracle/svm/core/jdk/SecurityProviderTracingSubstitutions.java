@@ -34,7 +34,7 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 @TargetClass(value = java.security.Security.class, onlyWith = SecurityProvidersInitializedAtBuildTime.class)
 final class Target_java_security_Security_ProviderLookup {
 
-    /** §FS-security-providers.6: Successful name-based lookup traces provider construction. */
+    /** §FS-002-security-providers.6: Successful name-based lookup traces provider construction. */
     @Substitute
     public static Provider getProvider(String name) {
         return SecurityProviderRuntimeAccess.traceJdkProviderLookup(sun.security.jca.Providers.getProviderList().getProvider(name));
@@ -45,7 +45,7 @@ final class Target_java_security_Security_ProviderLookup {
 /** Keeps provider mutation tracing active in both provider-list initialization modes. */
 @TargetClass(java.security.Security.class)
 final class Target_java_security_Security_ProviderMutation {
-    /** §FS-security-providers.6.1: Mutation traces only the supplied provider. */
+    /** §FS-002-security-providers.6.1: Mutation traces only the supplied provider. */
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/java/security/Security.java#L469-L478")
     public static synchronized int insertProviderAt(Provider provider, int position) {
@@ -72,11 +72,8 @@ final class Target_java_security_Security_ProviderEnumeration {
 
 @TargetClass(className = "sun.security.jca.GetInstance")
 final class Target_sun_security_jca_GetInstance_Tracing {
-    /**
-     * §FS-security-providers.6.1: The JDK may cache the SPI class before native metadata tracing
-     * starts. Trace it and the selected provider after successful service construction so the
-     * collected metadata remains replayable for application-supplied providers.
-     */
+    // §FS-002-security-providers.6.1
+    /** Trace cached SPI and provider types after successful service construction. */
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/sun/security/jca/GetInstance.java#L243-L253")
     public static void checkSuperClass(Provider.Service service, Class<?> subClass, Class<?> superClass) throws NoSuchAlgorithmException {

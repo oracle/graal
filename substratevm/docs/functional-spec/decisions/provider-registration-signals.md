@@ -1,4 +1,4 @@
-# DF-provider-registration-signals: Separate the Registration Signal from the Construction Path
+# AR-005-provider-registration-signals: Separate the Registration Signal from the Construction Path
 
 ## 1. Context
 
@@ -45,11 +45,11 @@ JCA answers nothing about the first question.
 On HotSpot every provider class on the class path is loadable, so "is this provider intended to be
 present" is not a JCA concept at all; it exists only because Native Image builds a closed world.
 That signal therefore belongs to the Native Image metadata model, and
-[§DF-standard-jca-semantics.2](standard-jca-semantics.md#2-decision) requires it to be ordinary
+[§AR-007-standard-jca-semantics.2](standard-jca-semantics.md#2-decision) requires it to be ordinary
 reflection metadata rather than a provider-specific mechanism.
 
 The two questions are genuinely independent, not two spellings of the same fact.
-[§FS-security-providers.5](../security-providers.md#5-programmatically-supplied-providers) lets an
+[§FS-002-security-providers.5](../security-providers.md#5-programmatically-supplied-providers) lets an
 application construct a provider itself and pass it to a JCA factory.
 Such a provider class need not declare a nullary constructor at all, yet Native Image must still
 recognize it as registered so that JCE verification and provider-object factory calls work.
@@ -91,12 +91,12 @@ application-supplied operations.
 **Accept only a declared nullary constructor.**
 This is the smallest rule, and it was rejected for three reasons.
 It breaks the diagnostic loop required by
-[§FS-security-providers.4.3](../security-providers.md#43-missing-reflection-registration): the
+[§FS-002-security-providers.4.3](../security-providers.md#43-missing-reflection-registration): the
 missing-registration error identifies the provider *type* and instructs the user to add a type
 entry, so a build that then still rejects the provider would send the user around the same loop.
 It makes application-supplied providers unregistrable whenever the provider class has no nullary
 constructor, which is exactly the case
-[§FS-security-providers.5.1](../security-providers.md#51-provider-object-factory-calls) exists to
+[§FS-002-security-providers.5.1](../security-providers.md#51-provider-object-factory-calls) exists to
 support.
 It also excludes provider classes whose only JDK instantiation path is `provider()`.
 
@@ -110,10 +110,10 @@ JDK-managed providers even though they work on HotSpot.
 **Require type access together with a construction path.**
 Rejected because it adds no expressiveness in the metadata format, where a constructor entry
 already implies type access, and because it would reject application-supplied providers that
-[§FS-security-providers.5](../security-providers.md#5-programmatically-supplied-providers) permits.
+[§FS-002-security-providers.5](../security-providers.md#5-programmatically-supplied-providers) permits.
 
 **Introduce a provider-specific registration flag.**
-Rejected by [§DF-standard-jca-semantics.2](standard-jca-semantics.md#2-decision); repeating it here
+Rejected by [§AR-007-standard-jca-semantics.2](standard-jca-semantics.md#2-decision); repeating it here
 would create a second registration mechanism for the same fact.
 
 **Widen construction to every member Native Image could invoke.**
@@ -121,7 +121,7 @@ Native Image can reach a non-public constructor, and it can call `provider()` on
 provider, so treating both as construction paths would need no run-time cooperation from the JDK.
 This alternative was rejected because it makes a native executable accept provider configurations
 that fail on HotSpot, which is the provider-specific semantics that
-[§DF-standard-jca-semantics.2](standard-jca-semantics.md#2-decision) rules out.
+[§AR-007-standard-jca-semantics.2](standard-jca-semantics.md#2-decision) rules out.
 Construction is bounded by what the JDK does, not by what Native Image can reach.
 
 ## 4. Consequences
@@ -152,5 +152,5 @@ provider that satisfies neither is reported rather than silently omitted.
 
 Registration is deliberately cheap to express and construction is deliberately explicit, so the
 size cost specified by
-[§FS-security-providers.2.3](../security-providers.md#23-registration-effects) attaches to the
+[§FS-002-security-providers.2.3](../security-providers.md#23-registration-effects) attaches to the
 signal that actually asks Native Image to build the provider.

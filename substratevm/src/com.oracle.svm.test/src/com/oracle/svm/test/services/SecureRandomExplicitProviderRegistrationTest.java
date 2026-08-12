@@ -32,13 +32,17 @@ import org.junit.Test;
 
 import com.oracle.svm.test.NativeImageBuildArgs;
 
+/*
+ * The otherwise-unused property is an image-group discriminator. This test must not share an image
+ * with a test containing reachable new SecureRandom(), because that is a different platform signal.
+ */
 @NativeImageBuildArgs({
                 "--future-defaults=explicit-security-provider-registration",
                 "--exact-reachability-metadata=com.oracle.svm.test.services",
                 "-Dcom.oracle.svm.test.services.SecureRandomExplicitProviderRegistrationTest=true"
 })
 public class SecureRandomExplicitProviderRegistrationTest {
-    /** Tests §FS-security-providers.2.4. */
+    /** Tests §FS-002-security-providers.2.4. */
     @Test
     public void testNamedSecureRandomUsesPlatformRegistrationSignal() throws NoSuchAlgorithmException {
         SecureRandom random = SecureRandom.getInstance("DRBG");
