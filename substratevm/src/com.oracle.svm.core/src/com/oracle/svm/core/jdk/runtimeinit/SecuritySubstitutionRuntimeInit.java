@@ -140,7 +140,8 @@ final class Target_sun_security_jca_ProviderConfig {
             if (provider != null) {
                 return provider;
             }
-            String configuredProviderClassName = SecurityProviderRuntimeState.getConfiguredProviderClassName(provName);
+            SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProvider(provName);
+            String configuredProviderClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
             String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
                             : builtInProviderClassName != null ? builtInProviderClassName : provName;
@@ -159,7 +160,8 @@ final class Target_sun_security_jca_ProviderConfig {
                 /* §FS-security-providers.7.1:
                  * Load the catalog-resolved provider directly, avoiding a ServiceLoader scan that
                  * could touch unrelated omitted descriptors. */
-                provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName);
+                provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
+                                configuredProvider.effectiveConstructionClassName());
             } else {
                 if (isLoading) {
                     /*

@@ -85,7 +85,8 @@ public final class BuiltInSecurityProviderLoader {
     private static Provider loadReflectively(String providerClassName, Debug debug) {
         try {
             Class<?> providerClass = Class.forName(GraalDirectives.opaque(providerClassName));
-            return (Provider) providerClass.getDeclaredConstructor().newInstance();
+            // §FS-security-providers.2.2: Use the same construction path the build-time rule chose.
+            return SecurityProviderRuntimeAccess.constructProvider(providerClass);
         } catch (ReflectiveOperationException ex) {
             if (debug != null) {
                 debug.println("Error loading provider " + providerClassName);
