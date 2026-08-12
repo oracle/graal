@@ -1449,6 +1449,7 @@ def run_truffle_maven_tests(use_classpath=False, use_native_image=False, use_iso
     snapshot_repository = mx_sdk.maven_deploy_public_repo_dir()
 
     projects = os.path.join(_suite.get_mx_output_dir(), 'maven-test-projects')
+    internal_resource_cache = join(mx.get_env('BUILD_DIR', _suite.get_mx_output_dir()), 'resources')
     # clear previous projects
     mx.rmtree(projects, ignore_errors=True)
     use_hotspot_jvm = not use_native_image
@@ -1511,7 +1512,7 @@ def run_truffle_maven_tests(use_classpath=False, use_native_image=False, use_iso
             additional_vm_args += ['--add-exports', 'org.graalvm.espresso/com.oracle.truffle.espresso.runtime=ALL-UNNAMED']
             additional_vm_args += ['--add-exports', 'org.graalvm.espresso/com.oracle.truffle.espresso.impl=ALL-UNNAMED']
 
-        additional_image_build_args = []
+        additional_image_build_args = [f'-J-Dpolyglot.engine.userResourceCache={internal_resource_cache}']
         if 'wasm' in test.expected_ids:
             additional_image_build_args += ['--add-modules=jdk.incubator.vector']
 
@@ -1531,7 +1532,8 @@ def run_truffle_maven_tests(use_classpath=False, use_native_image=False, use_iso
         mx.log(f'{datetime.now():%d %b %Y %H:%M:%S} Testing project {project_path}. To reproduce use: ')
 
         polyglot_args = [f'-Dpolyglot.{option}' for option in polyglot_options]
-        polyglot_args.append("-Dpolyglotimpl.TraceInternalResources=true")
+        polyglot_args.append(f'-Dpolyglot.engine.userResourceCache={internal_resource_cache}')
+        polyglot_args.append('-Dpolyglotimpl.TraceInternalResources=true')
         if use_default_truffle_runtime:
             polyglot_args.append('-Dtruffle.UseFallbackRuntime=true')
         polyglot_args = ' '.join(polyglot_args)
