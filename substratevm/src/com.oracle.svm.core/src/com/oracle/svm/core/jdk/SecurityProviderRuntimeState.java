@@ -50,8 +50,19 @@ public final class SecurityProviderRuntimeState {
     public record ProviderInfo(AcquisitionKind acquisitionKind, Exception verificationFailure) {
     }
 
+    /**
+     * The implementation class controls registration and service retention. The construction class
+     * is the ServiceLoader declaration that owns the selected construction path and can differ from
+     * the implementation class for a provider method.
+     */
+    public record ConfiguredProviderInfo(String providerClassName, String constructionClassName) {
+        public String effectiveConstructionClassName() {
+            return constructionClassName != null ? constructionClassName : providerClassName;
+        }
+    }
+
     private final EconomicMap<String, ProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
-    private final EconomicMap<String, String> configuredProviderClassNames = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<String, ConfiguredProviderInfo> configuredProviders = ImageHeapMap.createNonLayeredMap();
     private final EconomicMap<String, Boolean> ambiguousConfiguredProviderNames = ImageHeapMap.createNonLayeredMap();
 
     private Properties savedInitialSecurityProperties;
@@ -88,12 +99,21 @@ public final class SecurityProviderRuntimeState {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerConfiguredProviderName(String providerName, String providerClassName) {
-        String previousClassName = configuredProviderClassNames.get(providerName);
-        if (previousClassName == null) {
-            configuredProviderClassNames.put(providerName, providerClassName);
-        } else if (!previousClassName.equals(providerClassName)) {
+        ConfiguredProviderInfo previous = configuredProviders.get(providerName);
+        if (previous == null) {
+            configuredProviders.put(providerName, new ConfiguredProviderInfo(providerClassName, null));
+        } else if (!previous.providerClassName().equals(providerClassName)) {
             /* §FS-security-providers.7.1: Provider names are not globally unique class keys. */
             ambiguousConfiguredProviderNames.put(providerName, true);
+        }
+    }
+
+    /** Records the first ServiceLoader declaration that resolved an already-configured provider. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized void registerServiceLoadedConfiguredProvider(String providerName, String providerClassName, String constructionClassName) {
+        ConfiguredProviderInfo previous = configuredProviders.get(providerName);
+        if (previous != null && previous.providerClassName().equals(providerClassName) && previous.constructionClassName() == null) {
+            configuredProviders.put(providerName, new ConfiguredProviderInfo(providerClassName, constructionClassName));
         }
     }
 
@@ -126,18 +146,18 @@ public final class SecurityProviderRuntimeState {
         return info != null && info.acquisitionKind() == AcquisitionKind.JDK_CONSTRUCTIBLE;
     }
 
-    public static String getConfiguredProviderClassName(String providerName) {
-        String result = null;
+    public static ConfiguredProviderInfo getConfiguredProvider(String providerName) {
+        ConfiguredProviderInfo result = null;
         for (SecurityProviderRuntimeState state : singletons()) {
             if (Boolean.TRUE.equals(state.ambiguousConfiguredProviderNames.get(providerName))) {
                 return null;
             }
-            String providerClassName = state.configuredProviderClassNames.get(providerName);
-            if (providerClassName != null) {
-                if (result != null && !result.equals(providerClassName)) {
+            ConfiguredProviderInfo info = state.configuredProviders.get(providerName);
+            if (info != null) {
+                if (result != null && !result.equals(info)) {
                     return null;
                 }
-                result = providerClassName;
+                result = info;
             }
         }
         return result;
