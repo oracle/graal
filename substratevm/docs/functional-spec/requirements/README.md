@@ -7,4 +7,4 @@ over, the shape of a counterexample, and the evidence that discharges it.
 
 - [JCA Security Provider Requirements](security-providers.md): construction parity, diagnostic
   sufficiency, and the safety properties of
-  [§FS-security-providers](../security-providers.md).
+  [§FS-002-security-providers](../security-providers.md).

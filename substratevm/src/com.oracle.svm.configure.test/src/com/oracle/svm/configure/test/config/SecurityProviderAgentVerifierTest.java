@@ -118,6 +118,25 @@ public class SecurityProviderAgentVerifierTest {
         Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
     }
 
+    @Test
+    public void verifyProviderServiceUsedTheActualConstructorArgument() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it verifies a previous agent run",
+                        Boolean.getBoolean(VERIFIER_ENABLED_PROPERTY));
+
+        TypeConfiguration reflectionConfiguration = loadActualConfig().getReflectionConfiguration();
+        ConfigurationType serviceType = reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                        NamedConfigurationTypeDescriptor.fromReflectionName(SecurityProviderAgentTest.ParameterizedService.class.getName()));
+        Assert.assertNotNull("Missing reflection metadata for the parameterized service implementation", serviceType);
+        String argumentDescriptor = "(L" + SecurityProviderAgentTest.ParameterizedServiceArgument.class.getName().replace('.', '/') + ";)V";
+        ConfigurationMemberInfo constructorInfo = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(
+                        serviceType, new ConfigurationMethod("<init>", argumentDescriptor));
+        Assert.assertNotNull("Missing parameterized service implementation constructor metadata", constructorInfo);
+        Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
+        ConfigurationMemberInfo receiverConstructor = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(
+                        serviceType, new ConfigurationMethod("<init>", "(Ljava/security/Provider$Service;)V"));
+        Assert.assertNull("The Provider.Service receiver must not be recorded as the constructor argument", receiverConstructor);
+    }
+
     private static void assertRecorded(TypeConfiguration reflectionConfiguration, String className) {
         Assert.assertNotNull("Missing reflection metadata for " + className,
                         reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),

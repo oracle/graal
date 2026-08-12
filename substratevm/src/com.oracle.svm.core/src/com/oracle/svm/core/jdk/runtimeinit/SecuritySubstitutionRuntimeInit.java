@@ -145,9 +145,10 @@ final class Target_sun_security_jca_ProviderConfig {
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
             String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
                             : builtInProviderClassName != null ? builtInProviderClassName : provName;
-            /* §FS-security-providers.7.1: Omit unregistered providers from the run-time list. */
+            // §FS-002-security-providers.7.1
+            // Omit unregistered providers from the run-time list.
             if (!SecurityProviderRuntimeAccess.shouldLoadUnregisteredConfiguredProvider() &&
-                            !SecurityProviderRuntimeState.isJdkConstructible(providerClassName)) {
+                            !SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
                 return null;
             }
             if (!shouldLoad()) {
@@ -157,7 +158,7 @@ final class Target_sun_security_jca_ProviderConfig {
             if (BuiltInSecurityProviderLoader.isBuiltIn(provName)) {
                 provider = BuiltInSecurityProviderLoader.load(provName, debug);
             } else if (configuredProviderClassName != null) {
-                /* §FS-security-providers.7.1:
+                /* §FS-002-security-providers.7.1:
                  * Load the catalog-resolved provider directly, avoiding a ServiceLoader scan that
                  * could touch unrelated omitted descriptors. */
                 provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,

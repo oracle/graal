@@ -1425,13 +1425,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return false;
         }
         TypeData data = types.get(analysisType);
-        return data != null && data.isRegisteredAs(ACCESSED);
+        return (data != null && data.isRegisteredAs(ACCESSED)) ||
+                        (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isTypeRegistered(analysisType, ACCESSED));
     }
 
     public boolean isMethodRegisteredForReflection(Executable method) {
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(method);
         ElementData data = methods.get(analysisMethod);
-        return data != null && data.isRegisteredAs(ACCESSED);
+        return (data != null && data.isRegisteredAs(ACCESSED)) ||
+                        (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod, ACCESSED));
     }
 
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz) {
