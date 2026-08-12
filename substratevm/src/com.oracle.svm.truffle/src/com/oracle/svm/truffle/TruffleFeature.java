@@ -25,7 +25,6 @@
 
 package com.oracle.svm.truffle;
 
-import static com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINE;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
 import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
@@ -115,6 +114,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
+import com.oracle.svm.core.UninterruptibleGuestValue;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;

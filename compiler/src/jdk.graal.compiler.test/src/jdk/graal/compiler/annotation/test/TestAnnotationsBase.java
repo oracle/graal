@@ -211,7 +211,7 @@ public class TestAnnotationsBase extends Universe {
     }
 
     /**
-     * Used to test error handling in {@link AnnotationValue#getEnum(Class, String)}.
+     * Used to test error handling in {@link AnnotationValue#getEnum(String, Class)}.
      */
     enum MyEnum {
     }
@@ -257,10 +257,10 @@ public class TestAnnotationsBase extends Universe {
                 } else if (elementType == EnumElement.class) {
                     actual = av.getEnum(name);
                     Class<? extends Enum> enumClass = (Class<? extends Enum>) aElement.getClass();
-                    var avEnumConstant = av.getEnum(enumClass, name);
+                    var avEnumConstant = av.getEnum(name, enumClass);
                     assertEquals(aElement, avEnumConstant);
                     try {
-                        av.getEnum(MyEnum.class, name);
+                        av.getEnum(name, MyEnum.class);
                         fail("expected " + IllegalArgumentException.class.getName());
                     } catch (IllegalArgumentException iae) {
                         // expected

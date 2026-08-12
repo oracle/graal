@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-@Platforms(Platform.HOSTED_ONLY.class)
 @GenerateAnnotationWrapper({
-                CEntryPoint.class,
-                CEntryPointOptions.class,
+                Uninterruptible.class,
+                CFunction.class,
+                InvokeCFunctionPointer.class,
 })
-package com.oracle.svm.hosted.code;
+package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
+import com.oracle.svm.shared.Uninterruptible;

@@ -33,12 +33,12 @@ import java.util.TreeSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
-import com.oracle.svm.core.UninterruptibleAnnotationUtils.UninterruptibleGuestValue;
+import com.oracle.svm.core.UninterruptibleGuestValue;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;

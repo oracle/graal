@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,8 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.shared.feature;
+package com.oracle.svm.common.annotation;
 
+import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -32,30 +33,34 @@ import java.lang.annotation.Target;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-/**
- * {@code com.oracle.svm.core.feature.InternalFeature} classes with this annotation are
- * automatically registered using an annotation processor. If both a class and a subclass are
- * annotated with {@link AutomaticallyRegisteredFeature}, only the subclass will be registered as a
- * feature.
- *
- * Note that this requires the {@code SVM_PROCESSOR} to be defined as an annotation processor in the
- * suite.py file.
- *
- * Only classes that are part of the image builder can use this annotation. Even parts of GraalVM
- * that are not on the image builder class path, but on the application class path, cannot use this
- * annotation. For example, the "driver" or our JVMTI agent implementations are part of the
- * application class path and therefore need to use explicit feature registration via a
- * native-image.properties file.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
+/// Generates guest-side representations of annotations in the annotated package. This annotation
+/// is intended for use on a `package-info.java` file:
+///
+/// ```java
+/// @GenerateAnnotationWrapper({ExampleAnnotation.class})
+/// package com.example;
+/// ```
+///
+/// For an `ExampleAnnotation` with `String name()` and `Class<?> target()` members, the annotation
+/// processor generates a record with the following shape:
+///
+/// ```java
+/// public record ExampleAnnotationGuestValue(String name, ResolvedJavaType target) {
+///     public static ExampleAnnotationGuestValue from(
+///                     AnnotationValue annotationValue) {
+///         // ...
+///     }
+/// }
+/// ```
+///
+/// Primitive and [String] members retain their declared type, [Class] members become
+/// `ResolvedJavaType`, and enum members retain their declared enum type. `String[]` members become
+/// `List<String>`, `Class<?>[]` members become `List<ResolvedJavaType>`, and other array members
+/// become `List<?>`. The generated source is compiled as part of the project containing the
+/// annotated package.
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.PACKAGE)
 @Platforms(Platform.HOSTED_ONLY.class)
-public @interface AutomaticallyRegisteredFeature {
-
-    /**
-     * Controls whether {@code AutomaticallyRegisteredFeatureProcessor} generates the service
-     * registration. If {@code false}, the processor generating the feature must emit both the
-     * registration class and its provider metadata.
-     */
-    boolean generateRegistration() default true;
+public @interface GenerateAnnotationWrapper {
+    Class<? extends Annotation>[] value();
 }

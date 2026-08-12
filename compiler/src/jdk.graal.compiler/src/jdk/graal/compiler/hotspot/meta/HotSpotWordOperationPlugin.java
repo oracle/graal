@@ -98,7 +98,7 @@ public class HotSpotWordOperationPlugin extends WordOperationPlugin {
             processWordOperation(b, args, wordTypes.getWordOperation(method, b.getMethod().getDeclaringClass()));
             return true;
         }
-        HotspotOpcode opcode = operation.getEnum(HotspotOpcode.class, "opcode");
+        HotspotOpcode opcode = operation.getEnum("opcode", HotspotOpcode.class);
         processHotSpotWordOperation(b, method, args, opcode);
         return true;
     }

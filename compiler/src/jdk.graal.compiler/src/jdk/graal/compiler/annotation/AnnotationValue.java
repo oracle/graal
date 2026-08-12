@@ -349,7 +349,7 @@ public final class AnnotationValue {
      *             {@code enumClass} does not match the expected enum type or {@code enumClass} has
      *             no constant with the specified name
      */
-    public <T extends Enum<T>> T getEnum(Class<T> enumClass, String name) {
+    public <T extends Enum<T>> T getEnum(String name, Class<T> enumClass) {
         EnumElement enumElement = getEnum(name);
         String foundType = enumElement.enumType.toClassName();
         if (!foundType.equals(enumClass.getName())) {
