@@ -26,6 +26,7 @@ package com.oracle.svm.test.junit.nativeimage.preserve;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -41,18 +42,23 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.test.api.NativeImageBuildArgs;
+import com.oracle.svm.test.junit.nativeimage.preserveassociated.SerializableLambdaAssociatedClass;
 
 @NativeImageBuildArgs({
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
+                "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.hub=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni.headers=ALL-UNNAMED",
+                "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.reflect.serialize=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.c=ALL-UNNAMED",
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:Preserve=package=com.oracle.svm.test.junit.nativeimage.preserve",
@@ -65,9 +71,21 @@ public class PreserveLambdaProxyClassesTest {
     private interface SerializableSupplier extends Supplier<String>, Serializable {
     }
 
+    private interface AssociatedSerializableSupplier extends Supplier<SerializableLambdaAssociatedClass>, Serializable {
+    }
+
     private static final class PreservedCapturingClass {
         static SerializableSupplier createSupplier() {
             String captured = EXPECTED;
+            return () -> captured;
+        }
+
+        static SerializableSupplier createStatelessSupplier() {
+            return () -> EXPECTED;
+        }
+
+        static AssociatedSerializableSupplier createAssociatedSupplier() {
+            SerializableLambdaAssociatedClass captured = new SerializableLambdaAssociatedClass(EXPECTED);
             return () -> captured;
         }
     }
@@ -85,6 +103,20 @@ public class PreserveLambdaProxyClassesTest {
         assertSerializableLambdaRoundTrip(supplier);
     }
 
+    @Test
+    public void preserveSupportsStatelessSerializableLambdaRoundTrip() throws Exception {
+        SerializableSupplier supplier = PreservedCapturingClass.createStatelessSupplier();
+        assertSerializableLambdaRoundTrip(supplier);
+    }
+
+    @Test
+    public void preserveMarksSerializableLambdaAssociatedClassesAsPreserved() throws Exception {
+        AssociatedSerializableSupplier supplier = PreservedCapturingClass.createAssociatedSupplier();
+        assertEquals(EXPECTED, supplier.get().value());
+        assertTrue(SerializationSupport.isPreservedForSerialization(DynamicHub.fromClass(SerializableLambdaAssociatedClass.class)));
+        assertSerializableLambdaRoundTrip(supplier);
+    }
+
     private static void assertReflectiveAccess(SerializableSupplier supplier) throws ReflectiveOperationException {
         Method get = supplier.getClass().getDeclaredMethod("get");
         assertEquals(EXPECTED, get.invoke(supplier));
@@ -95,6 +127,15 @@ public class PreserveLambdaProxyClassesTest {
     }
 
     private static void assertSerializableLambdaRoundTrip(SerializableSupplier supplier) throws Exception {
+        assertEquals(EXPECTED, ((Supplier<?>) serializeRoundTrip(supplier)).get());
+    }
+
+    private static void assertSerializableLambdaRoundTrip(AssociatedSerializableSupplier supplier) throws Exception {
+        SerializableLambdaAssociatedClass value = (SerializableLambdaAssociatedClass) ((Supplier<?>) serializeRoundTrip(supplier)).get();
+        assertEquals(EXPECTED, value.value());
+    }
+
+    private static Object serializeRoundTrip(Serializable supplier) throws Exception {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ObjectOutputStream stream = new ObjectOutputStream(bytes)) {
             stream.writeObject(supplier);
@@ -104,7 +145,7 @@ public class PreserveLambdaProxyClassesTest {
         try (ObjectInputStream stream = new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
             deserialized = stream.readObject();
         }
-        assertEquals(EXPECTED, ((Supplier<?>) deserialized).get());
+        return deserialized;
     }
 
     private static Field getCapturedField(Class<?> lambdaClass) {
