@@ -34,8 +34,6 @@ import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
 import static com.oracle.svm.hosted.reflect.ReflectionFeature.findCallerSensitiveAdapterMethod;
 
-import java.io.ObjectStreamClass;
-import java.io.ObjectStreamField;
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
@@ -79,7 +77,6 @@ import com.oracle.svm.util.OriginalClassProvider;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class PreserveOptionsSupport extends IncludeOptionsSupport {
@@ -250,8 +247,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 registerPreservedClass(bb, reflection, resources, proxy, always, reachedClass);
                 registerPreservedClassHierarchyMetadata(reflection, serialization, always, reachedClass);
                 if (Serializable.class.isAssignableFrom(reachedClass)) {
+                    serialization.registerIncludingAssociatedClasses(always, true, reachedClass);
                     serialization.register(always, true, SerializedLambda.class);
-                    registerSerializableLambdaFieldTypes(serialization, always, reachedClass);
                     serialization.registerLambdaCapturingClass(always, capturingClass);
                 }
                 access.requireAnalysisIteration();
@@ -337,27 +334,6 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             /* If we can't link we can not register fields and methods */
         }
         serialization.register(always, true, c);
-    }
-
-    private static void registerSerializableLambdaFieldTypes(RuntimeSerializationSupport<AccessCondition> serialization,
-                    AccessCondition always, Class<?> lambdaClass) {
-        ObjectStreamClass serializedLambdaDescriptor = ObjectStreamClass.lookup(SerializedLambda.class);
-        for (ObjectStreamField field : serializedLambdaDescriptor.getFields()) {
-            registerSerializationFieldType(serialization, always, field.getType());
-        }
-        for (Field field : lambdaClass.getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                registerSerializationFieldType(serialization, always, field.getType());
-            }
-        }
-    }
-
-    private static void registerSerializationFieldType(RuntimeSerializationSupport<AccessCondition> serialization,
-                    AccessCondition always, Class<?> fieldType) {
-        Class<?> serializationFieldType = fieldType.isPrimitive()
-                        ? JavaKind.fromJavaClass(fieldType).toBoxedJavaClass()
-                        : fieldType;
-        serialization.register(always, false, serializationFieldType);
     }
 
     public static void registerType(BigBang bb, RuntimeReflectionSupport reflection, Class<?> c) {
