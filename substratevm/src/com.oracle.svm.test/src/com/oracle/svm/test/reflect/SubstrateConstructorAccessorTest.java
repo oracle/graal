@@ -27,8 +27,10 @@ package com.oracle.svm.test.reflect;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.test.AddExports;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 
+@AddExports("java.base/jdk.internal.reflect")
 public class SubstrateConstructorAccessorTest {
 
     static final class DeclaringClass {
