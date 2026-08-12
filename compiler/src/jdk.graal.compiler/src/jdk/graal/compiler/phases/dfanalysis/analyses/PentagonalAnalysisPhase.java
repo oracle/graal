@@ -1,12 +1,31 @@
 /*
  * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis.analyses;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -65,7 +84,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.PostRunCanonicalizationPhase;
-import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.dfanalysis.AnalysisDomainDefinition;
 import jdk.graal.compiler.phases.dfanalysis.DFAMap;
 import jdk.graal.compiler.phases.dfanalysis.DFAnalysis;
@@ -75,15 +93,14 @@ import jdk.graal.compiler.phases.dfanalysis.analyses.Pentagon.LogicPentagon;
 import jdk.graal.compiler.phases.dfanalysis.analyses.Pentagon.ObjectPentagon;
 import jdk.graal.compiler.phases.dfanalysis.analyses.Pentagon.StampPentagon;
 import jdk.graal.compiler.replacements.nodes.arithmetic.BinaryIntegerExactArithmeticSplitNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerExactOverflowNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerNegExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -91,6 +108,20 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
+/**
+ * This phase implement an adapted version of the domain of pentagons introduced in
+ * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">Pentagons: a weakly relational abstract
+ * domain for the efficient validation of array accesses</a>. It uses {@link Pentagon} as its domain
+ * elements. This domain is intended as a more accurate version of the domain of stamps in
+ * {@link StampAnalysisPhase}. The elements in this domain generally wrap {@link Stamp} elements,
+ * but in some cases, extra information is tracked as well. For example, for objects we can also
+ * track non-null constants and for integers, symbolic bounds are tracked in addition to their
+ * stamps (see {@link IntegerPentagon}). The {@link DomainOfPentagons} implements special handling
+ * for symbolic information.
+ *
+ * This phase follows the same structure as {@link StampAnalysisPhase} and {@link LSCCPPhase}.
+ * First, it does the analysis, then it replaces all newly found constants in the graph.
+ */
 public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<CoreProviders> {
     public static final class Options {
         // @formatter:off
@@ -111,7 +142,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
         private final boolean useNonNullObjConstants;
         private final boolean doTypes;
 
-        public DomainOfPentagons(ConstantReflectionProvider constantReflection, int widenAfter, boolean useNonNullObjConstants, boolean doTypes) {
+        DomainOfPentagons(ConstantReflectionProvider constantReflection, int widenAfter, boolean useNonNullObjConstants, boolean doTypes) {
             this.constantReflection = constantReflection;
             this.widenAfter = widenAfter;
             this.useNonNullObjConstants = useNonNullObjConstants;
@@ -202,9 +233,21 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
         @Override
         public Pentagon[] controlFlowMerge(List<ValuePhiNode> phis, IntList reachableInputIndices, DFAMap<Pentagon> map) {
+            // only do the expensive logic if there are integer phis involved
+            boolean hasInteger = false;
+            for (ValuePhiNode phi : phis) {
+                if (phi.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                    hasInteger = true;
+                    break;
+                }
+            }
+            if (!hasInteger) {
+                // switch to simple logic instead
+                return AnalysisDomainDefinition.super.controlFlowMerge(phis, reachableInputIndices, map);
+            }
             /*
              * For non-integer phis, we just do a standard merge across all inputs.
-             * 
+             *
              * For integer phis, we want to apply additional reasoning to find symbolic relations
              * between phis at this merge. To do this, we apply a 3-step process: First, we do a
              * standard merge across inputs. Second, we try to prove symbolic relations between each
@@ -219,10 +262,14 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
             Pentagon[] results = new Pentagon[phis.size()];
             IntList iPhis = new IntList(phis.size());
             IntegerStamp[] intermediateRanges = new IntegerStamp[phis.size()];
-            Set<ValueNode>[] specialSUBs = new Set[phis.size()];
-            Set<ValueNode>[] specialLBs = new Set[phis.size()];
-            Set<ValueNode>[] rawSUBs = new Set[phis.size()];
-            Set<ValueNode>[] rawLBs = new Set[phis.size()];
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            EconomicHashSet<ValueNode>[] specialSUBs = new EconomicHashSet[phis.size()];
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            EconomicHashSet<ValueNode>[] specialLBs = new EconomicHashSet[phis.size()];
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            EconomicHashSet<ValueNode>[] rawSUBs = new EconomicHashSet[phis.size()];
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            EconomicHashSet<ValueNode>[] rawLBs = new EconomicHashSet[phis.size()];
             // do the standard merge across all reachable inputs
             for (int i = 0; i < phis.size(); i++) {
                 ValuePhiNode phi = phis.get(i);
@@ -235,12 +282,12 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                     }
                     intermediateRanges[i] = (IntegerStamp) iRes;
                     // initialize sets
-                    specialSUBs[i] = new HashSet<>();
-                    specialLBs[i] = new HashSet<>();
+                    specialSUBs[i] = new EconomicHashSet<>();
+                    specialLBs[i] = new EconomicHashSet<>();
                     // merge symbolic bounds
                     IntegerPentagon firstInput = map.getOrUnrestricted(phi.valueAt(reachableInputIndices.get(0))).asInteger();
-                    Set<ValueNode> sub = new HashSet<>(firstInput.strictUpperBounds);
-                    Set<ValueNode> lb = new HashSet<>(firstInput.lowerBounds);
+                    EconomicHashSet<ValueNode> sub = new EconomicHashSet<>(firstInput.strictUpperBounds);
+                    EconomicHashSet<ValueNode> lb = new EconomicHashSet<>(firstInput.lowerBounds);
                     for (int j = 1; j < reachableInputIndices.size(); j++) {
                         IntegerPentagon nextInput = map.getOrUnrestricted(phi.valueAt(reachableInputIndices.get(j))).asInteger();
                         sub.retainAll(nextInput.strictUpperBounds);
@@ -334,8 +381,8 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
             // Third pass: Construct integer pentagons
             for (int i = 0; i < iPhis.size(); i++) {
                 int idx = iPhis.get(i);
-                Set<ValueNode> lb = rawLBs[idx];
-                Set<ValueNode> sub = rawSUBs[idx];
+                EconomicHashSet<ValueNode> lb = rawLBs[idx];
+                EconomicHashSet<ValueNode> sub = rawSUBs[idx];
                 /*
                  * We found symbolic bounds by merging the inputs and also by using inter-phi
                  * reasoning. All of those are correct bounds to be added up for the result.
@@ -357,7 +404,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                 case ConstantNode cn ->
                     switch (cn.stamp(NodeView.DEFAULT)) {
                         case IntegerStamp iStamp ->
-                            Pentagon.of(iStamp, Set.of(), Set.of());
+                            Pentagon.of(iStamp, CollectionsUtil.setOf(), CollectionsUtil.setOf());
                         case FloatStamp fStamp ->
                             Pentagon.of(fStamp);
                         /*
@@ -412,12 +459,8 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
                 /*
                  * Pi nodes are special in the sense that they can generate new values even if their
-                 * input is not evaluated yet. We want to capture all the pi's power while also not
-                 * blocking possible future discovery of better values. Therefore, if we would raise
-                 * the value of a pi, we instead reset it and all of its usages.
-                 *
-                 * The framework can take care of this internally. The only thing needed is,
-                 * providing the number of currently unevaluated inputs in countUnevaluatedInputs.
+                 * input is not evaluated yet. An according case is implemented in
+                 * countUnevaluatedInputs.
                  */
                 case PiNode pi -> {
                     Pentagon input = map.getOrUnrestricted(pi.getOriginalNode());
@@ -429,7 +472,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             Stamp piStamp = pi.piStamp();
                             if (isUnevaluated(input)) {
                                 // we know original <= pi because original == pi
-                                yield Pentagon.of((IntegerStamp) piStamp, Set.of(pi.getOriginalNode()), iPtg.strictUpperBounds);
+                                yield Pentagon.of((IntegerStamp) piStamp, CollectionsUtil.setOf(pi.getOriginalNode()), iPtg.strictUpperBounds);
                             } else {
                                 Stamp improvedStamp = iPtg.range.improveWith(piStamp);
                                 if (improvedStamp.isEmpty()) {
@@ -543,7 +586,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
                 /*
                  * All logic unary operations are all handled here
-                 * 
+                 *
                  * If the input is not evaluated yet, we do not touch this node (i.e. return
                  * unrestricted). An example for this is an int to float conversion that returns
                  * non-NaN for unevaluated inputs which blocks further discovery of possible
@@ -641,7 +684,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
                 /*
                  * General unary nodes are handled here
-                 * 
+                 *
                  * Integer to floating point is never NaN (and therefore produces a non-unrestricted
                  * value even though its input is unevaluated). An according case is provided in
                  * countUnevaluatedInputs.
@@ -693,7 +736,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             if (py.range.lowerBound() >= 0) {
                                 nuLb = setUnion(px.lowerBounds, add.getX());
                             } else {
-                                nuLb = Set.of();
+                                nuLb = CollectionsUtil.setOf();
                             }
                             if (px.range.lowerBound() >= 0) {
                                 nuLb = setUnion(nuLb, py.lowerBounds, add.getY());
@@ -703,7 +746,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             } else if (py.range.upperBound() == 0) {
                                 nuSub = px.strictUpperBounds;
                             } else {
-                                nuSub = Set.of();
+                                nuSub = CollectionsUtil.setOf();
                             }
                             if (px.range.upperBound() < 0) {
                                 nuSub = setUnion(nuSub, py.strictUpperBounds, add.getY());
@@ -711,8 +754,8 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                                 nuSub = setUnion(nuSub, py.strictUpperBounds);
                             }
                         } else {
-                            nuLb = Set.of();
-                            nuSub = Set.of();
+                            nuLb = CollectionsUtil.setOf();
+                            nuSub = CollectionsUtil.setOf();
                         }
                         yield Pentagon.of(nuStamp, nuLb, nuSub);
                     } else {
@@ -724,7 +767,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
                 case UnsignedRightShiftNode ushr -> {
                     IntegerStamp stmp = (IntegerStamp) ushr.foldStamp(map.getOrUnrestricted(ushr.getX()).asInteger().range, map.getOrUnrestricted(ushr.getY()).asInteger().range);
-                    Set<ValueNode> sub = Set.of();
+                    Set<ValueNode> sub = CollectionsUtil.setOf();
                     if (ushr.getX() instanceof AddNode add && ushr.getY().isJavaConstant() && ushr.getY().asJavaConstant().asLong() == 1) {
                         /*
                          * The addition, the unsigned shift right and the constant form a pattern in
@@ -735,6 +778,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                          * order (the addition and the constant).
                          */
                         map.registerPattern(ushr, add, ushr.getY());
+
                         IntegerPentagon aX = map.getOrUnrestricted(add.getX()).asInteger();
                         IntegerPentagon aY = map.getOrUnrestricted(add.getY()).asInteger();
                         if (aX.range.lowerBound() >= 0 && aY.range.lowerBound() >= 0) {
@@ -746,7 +790,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                                             Math.max(aX.getStamp().upperBound(), aY.getStamp().upperBound())));
                         }
                     }
-                    yield Pentagon.of(stmp, Set.of(), sub);
+                    yield Pentagon.of(stmp, CollectionsUtil.setOf(), sub);
                 }
 
                 /*
@@ -772,7 +816,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                 /*
                  * Exact arithmetic related nodes.
                  */
-                case IntegerExactOverflowNode exactBinaryOverflow -> Pentagon.of(isOverflowing(exactBinaryOverflow,
+                case IntegerExactOverflowNode exactBinaryOverflow -> Pentagon.of(AnalysisHelpers.isOverflowing(exactBinaryOverflow,
                                 map.getOrUnrestricted(exactBinaryOverflow.getX()).asInteger().range,
                                 map.getOrUnrestricted(exactBinaryOverflow.getY()).asInteger().range));
 
@@ -786,7 +830,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
                 case IntegerNegExactSplitNode exactNegate -> {
                     IntegerStamp valueStamp = map.getOrUnrestricted(exactNegate.getValue()).asInteger().range;
-                    yield Pentagon.of((IntegerStamp) ArithmeticOpTable.forStamp(valueStamp).getNeg().foldStamp(valueStamp), Set.of(), Set.of());
+                    yield Pentagon.of((IntegerStamp) ArithmeticOpTable.forStamp(valueStamp).getNeg().foldStamp(valueStamp), CollectionsUtil.setOf(), CollectionsUtil.setOf());
                 }
 
                 case BinaryIntegerExactArithmeticSplitNode exactBinary -> {
@@ -803,7 +847,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             if (y.range.lowerBound() >= 0) {
                                 lbs = setUnion(x.lowerBounds, exactBinary.getX());
                             } else {
-                                lbs = Set.of();
+                                lbs = CollectionsUtil.setOf();
                             }
                             if (x.range.lowerBound() >= 0) {
                                 lbs = setUnion(lbs, y.lowerBounds, exactBinary.getY());
@@ -813,7 +857,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             } else if (y.range.upperBound() == 0) {
                                 subs = x.strictUpperBounds;
                             } else {
-                                subs = Set.of();
+                                subs = CollectionsUtil.setOf();
                             }
                             if (x.range.upperBound() < 0) {
                                 subs = setUnion(subs, y.strictUpperBounds, exactBinary.getY());
@@ -824,20 +868,20 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                         case IntegerSubExactSplitNode ignored -> {
                             op = table.getSub();
                             if (y.range.lowerBound() > 0) {
-                                subs = Set.of(exactBinary.getX());
+                                subs = CollectionsUtil.setOf(exactBinary.getX());
                             } else {
-                                subs = Set.of();
+                                subs = CollectionsUtil.setOf();
                             }
                             if (y.range.upperBound() <= 0) {
                                 lbs = setUnion(x.lowerBounds, exactBinary.getX());
                             } else {
-                                lbs = Set.of();
+                                lbs = CollectionsUtil.setOf();
                             }
                         }
                         case IntegerMulExactSplitNode ignored -> {
                             op = table.getMul();
-                            subs = Set.of();
-                            lbs = Set.of();
+                            subs = CollectionsUtil.setOf();
+                            lbs = CollectionsUtil.setOf();
                         }
                         default -> throw GraalError.shouldNotReachHere("Unknown binary exact arithmetic split node " + exactBinary.getClass().getName());
                     }
@@ -866,46 +910,11 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                     };
                 }
                 case IntegerSwitchNode switchNode -> {
-                    Stamp value = map.getOrUnrestricted(switchNode.value()).asInteger().range;
-                    boolean[] reach = new boolean[switchNode.getSuccessorCount()];
-                    if (value.isConstant()) {
-                        /*
-                         * Exactly one successor edge is reachable; valueConstant is guaranteed
-                         * non-null, otherwise valueLevel would not be CONSTANT
-                         */
-                        Constant valueConstant = value.asConstant();
-                        boolean foundKey = false;
-                        for (int i = 0; i < switchNode.keyCount(); i++) {
-                            if (valueConstant.equals(switchNode.keyAt(i))) {
-                                reach[switchNode.keySuccessorIndex(i)] = true;
-                                foundKey = true;
-                            }
-                        }
-                        if (!foundKey) {
-                            reach[switchNode.defaultSuccessorIndex()] = true;
-                        }
-                        boolean doNotTripTwice = false;
-                        for (boolean b : reach) {
-                            assert !(b && doNotTripTwice) : "nondeterminism???";
-                            doNotTripTwice |= b;
-                        }
-                        assert doNotTripTwice : "we're on a road to nowhere";
-                    } else if (!((IntegerStamp) value).canBeZero()) {
-                        // all non 0 successors are reachable
-                        for (int i = 0; i < switchNode.keyCount(); i++) {
-                            reach[switchNode.keySuccessorIndex(i)] |= switchNode.intKeyAt(i) != 0;
-                        }
-                        // default successor is always considered reachable for non 0
-                        reach[switchNode.defaultSuccessorIndex()] = true;
-                    } else {
-                        // all successors are reachable
-                        Arrays.fill(reach, true);
-                    }
-                    return reach;
+                    return AnalysisHelpers.calcStampSwitchReachability(switchNode, map.getOrUnrestricted(switchNode.value()).asInteger().range);
                 }
                 case BinaryIntegerExactArithmeticSplitNode exactBinary -> {
                     // boolean[] {defaultSuccessor, overflowSuccessor}
-                    return switch (isOverflowing(exactBinary, map.getOrUnrestricted(exactBinary.getX()).asInteger().range,
+                    return switch (AnalysisHelpers.isOverflowing(exactBinary, map.getOrUnrestricted(exactBinary.getX()).asInteger().range,
                                     map.getOrUnrestricted(exactBinary.getY()).asInteger().range)) {
                         case UNKNOWN -> TRUE_TRUE;
                         case TRUE -> FALSE_TRUE;
@@ -956,8 +965,14 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                     rYf = rYf == null ? unrestY : rYf;
                     if (xVal instanceof IntegerPentagon xInt) {
                         IntegerPentagon yInt = yVal.asInteger();
-                        Set<ValueNode> subXt, subYt, subXf, subYf;
-                        Set<ValueNode> lbXt, lbYt, lbXf, lbYf;
+                        Set<ValueNode> subXt;
+                        Set<ValueNode> subYt;
+                        Set<ValueNode> subXf;
+                        Set<ValueNode> subYf;
+                        Set<ValueNode> lbXt;
+                        Set<ValueNode> lbYt;
+                        Set<ValueNode> lbXf;
+                        Set<ValueNode> lbYf;
                         switch (compareNode) {
                             case IntegerBelowNode below -> {
                                 // we can only infer a signed strict upper bound in the unsigned
@@ -967,38 +982,38 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                                     subXt = setUnion(yInt.strictUpperBounds, y);
                                     lbYt = setUnion(xInt.lowerBounds, x);
                                 } else {
-                                    subXt = Set.of();
-                                    lbYt = Set.of();
+                                    subXt = CollectionsUtil.setOf();
+                                    lbYt = CollectionsUtil.setOf();
                                 }
-                                subYt = Set.of();
-                                lbXt = Set.of();
-                                subXf = Set.of();
-                                lbYf = Set.of();
+                                subYt = CollectionsUtil.setOf();
+                                lbXt = CollectionsUtil.setOf();
+                                subXf = CollectionsUtil.setOf();
+                                lbYf = CollectionsUtil.setOf();
                                 if (xInt.range.lowerBound() >= 0) {
                                     // same as standard lower-than
                                     subYf = xInt.strictUpperBounds;
                                     lbXf = setUnion(yInt.lowerBounds, y);
                                 } else {
-                                    subYf = Set.of();
-                                    lbXf = Set.of();
+                                    subYf = CollectionsUtil.setOf();
+                                    lbXf = CollectionsUtil.setOf();
                                 }
                             }
                             case IntegerLowerThanNode lessThan -> {
                                 // x is lower than y, therefore all subs of y also are subs for x,
                                 // including y itself
                                 subXt = setUnion(yInt.strictUpperBounds, y);
-                                subYt = Set.of();
+                                subYt = CollectionsUtil.setOf();
                                 // we also store the inverse information (lower bounds for y)
-                                lbXt = Set.of();
+                                lbXt = CollectionsUtil.setOf();
                                 lbYt = setUnion(xInt.lowerBounds, x);
                                 // y is lower or equal to x, therefore all subs of x are also subs
                                 // for y, but x is not a sub of y
-                                subXf = Set.of();
+                                subXf = CollectionsUtil.setOf();
                                 subYf = xInt.strictUpperBounds;
                                 // we also store the inverse information (lower bounds for x), also
                                 // y is an additional lower bound to x
                                 lbXf = setUnion(yInt.lowerBounds, y);
-                                lbYf = Set.of();
+                                lbYf = CollectionsUtil.setOf();
                             }
                             case IntegerEqualsNode iEquals -> {
                                 // if x and y are equal, they have the same upper bounds
@@ -1007,27 +1022,28 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                                 lbXt = yInt.lowerBounds;
                                 lbYt = xInt.lowerBounds;
                                 // if not equal, we can not infer any new strict upper bounds
-                                subXf = Set.of();
-                                subYf = Set.of();
-                                lbXf = Set.of();
-                                lbYf = Set.of();
+                                subXf = CollectionsUtil.setOf();
+                                subYf = CollectionsUtil.setOf();
+                                lbXf = CollectionsUtil.setOf();
+                                lbYf = CollectionsUtil.setOf();
                             }
                             default -> {
                                 // no new information regarding strict upper bounds
-                                subXt = Set.of();
-                                subYt = Set.of();
-                                subXf = Set.of();
-                                subYf = Set.of();
-                                lbXt = Set.of();
-                                lbYt = Set.of();
-                                lbXf = Set.of();
-                                lbYf = Set.of();
+                                subXt = CollectionsUtil.setOf();
+                                subYt = CollectionsUtil.setOf();
+                                subXf = CollectionsUtil.setOf();
+                                subYf = CollectionsUtil.setOf();
+                                lbXt = CollectionsUtil.setOf();
+                                lbYt = CollectionsUtil.setOf();
+                                lbXf = CollectionsUtil.setOf();
+                                lbYf = CollectionsUtil.setOf();
                             }
                         }
                         /*
                          * Here we might encounter impossible values (at inferences in unreachable
-                         * branches), which are canonicalized to UNEVALUATED. Since we should not
-                         * infer UNEVALUATED inputs, we default to UNRESTRICTED.
+                         * branches), which are canonicalized to UNEVALUATED. Since we must not
+                         * infer UNEVALUATED inputs, we default to UNRESTRICTED. This causes the
+                         * inference insertion to be skipped appropriately.
                          */
                         Pentagon pXt = Pentagon.of((IntegerStamp) rXt, lbXt, subXt);
                         pXt = pXt.isUnevaluated() ? unrestricted(pXt) : pXt;
@@ -1047,7 +1063,8 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                                     peq.getY().stamp(NodeView.DEFAULT).isObjectStamp()) {
                         ObjectPentagon xObj = xVal.asObject();
                         ObjectPentagon yObj = yVal.asObject();
-                        final ObjectPentagon pXt, pYt;
+                        final ObjectPentagon pXt;
+                        final ObjectPentagon pYt;
                         if (xObj.isNonNullConstant()) {
                             pYt = xObj;
                         } else {
@@ -1096,7 +1113,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                              */
                             inferences[i] = null;
                         } else {
-                            inferences[i] = Pentagon.of(inferredStamps[i], Set.of(), Set.of());
+                            inferences[i] = Pentagon.of(inferredStamps[i], CollectionsUtil.setOf(), CollectionsUtil.setOf());
                         }
                     }
                     yield AnalysisDomainDefinition.switchInference(Pentagon.class, inferences);
@@ -1160,22 +1177,44 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                         continue;
                     }
                     if ((evalCnt == widenAfter) && prelim instanceof IntegerPentagon iPtg) {
-                        // special widening heuristic to catch non-overflowing counted loops
+                        /*
+                         * This is a special widening heuristic to catch non-overflowing counted
+                         * loops. Instead of jumping to UNRESTRICTED, we look at the change of the
+                         * possible counter value since the last iteration and jump to a value one
+                         * such step below maxvalue. This allows for one more step in the loop to be
+                         * calculated, which is then hopefully followed by an exit condition that
+                         * prevents an overflow, assuming no overflow happened before. Consider the
+                         * following example:
+                         */
+                        /*-
+                         * Object[] myArray = getArray();
+                         * for (int i = 0; i < myArray.length - 1; i += 2) {
+                         *     // do sth
+                         * }
+                         */
+                        /*
+                         * Here 'i' is 0 in the first iteration, [0..2] in the second, [0..4] in the
+                         * third and so on. Using the special heuristic we do not widen to
+                         * UNRESTRICTED. Instead, we widen to [0..intmax-2]. Evaluating the loop
+                         * again adds another step the range, yielding [0..intmax]. An inference for
+                         * the loop condition then restricts the interval back to [0..intmax-2].
+                         * Reevaluating the loop phi, we see that we reached a fixed point that
+                         * explicitly excludes an integer overflow. This would not be possible
+                         * without this heuristic.
+                         */
                         if (iPtg.range.lowerBound() >= 0) {
                             // positive integer
                             IntegerPentagon lastStep = map.getOrUnevaluated(phi).asInteger();
                             if (iPtg.range.lowerBound() == lastStep.range.lowerBound()) {
                                 // this may be a loop variable that counts upwards
                                 int bits = iPtg.range.getBits();
-                                long mayBeSet = (-1 << Math.min(Long.numberOfTrailingZeros(iPtg.range.mayBeSet()), Long.numberOfTrailingZeros(lastStep.range.mayBeSet()))) & CodeUtil.maxValue(bits);
-                                long topMask = ~CodeUtil.mask(Long.numberOfTrailingZeros(mayBeSet));
-                                long upper = CodeUtil.maxValue(bits) & topMask;
+                                long upper = CodeUtil.maxValue(bits) - (iPtg.range.upperBound() - lastStep.range.upperBound());
                                 if (upper > iPtg.range.upperBound()) {
                                     // given the last step, it looks like there will be another step
-                                    IntegerStamp wideAttempt = IntegerStamp.create(bits, iPtg.range.lowerBound(), upper, 0, mayBeSet);
+                                    IntegerStamp wideAttempt = IntegerStamp.create(bits, iPtg.range.lowerBound(), upper, 0, CodeUtil.mask(bits));
                                     if (stampWeaker(phi.stamp(NodeView.DEFAULT), wideAttempt)) {
                                         // we actually have meaningful information gain here
-                                        result[i] = Pentagon.of(wideAttempt, Set.of(), Set.of());
+                                        result[i] = Pentagon.of(wideAttempt, CollectionsUtil.setOf(), CollectionsUtil.setOf());
                                         continue;
                                     }
                                 }
@@ -1285,56 +1324,28 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
             return elem.isUnrestricted();
         }
 
-        /**
-         * Check if op results in an overflow given the input stamps.
-         *
-         * @return {@link TriState#UNKNOWN} if one or both inputs are not constant.
-         */
-        private static TriState isOverflowing(ValueNode op, IntegerStamp xStamp, IntegerStamp yStamp) {
-            int bits = xStamp.getBits();
-            PrimitiveConstant xConst = (PrimitiveConstant) xStamp.asConstant();
-            PrimitiveConstant yConst = (PrimitiveConstant) yStamp.asConstant();
-            if (xConst == null || yConst == null) {
-                return TriState.UNKNOWN;
-            }
-            long x = xConst.asLong();
-            long y = yConst.asLong();
-            try {
-                // try the exact operation
-                switch (op) {
-                    case IntegerAddExactOverflowNode ignored -> LoopUtility.addExact(bits, x, y);
-                    case IntegerSubExactOverflowNode ignored -> LoopUtility.subtractExact(bits, x, y);
-                    case IntegerMulExactOverflowNode ignored -> LoopUtility.multiplyExact(bits, x, y);
-                    case IntegerAddExactSplitNode ignored -> LoopUtility.addExact(bits, x, y);
-                    case IntegerSubExactSplitNode ignored -> LoopUtility.subtractExact(bits, x, y);
-                    case IntegerMulExactSplitNode ignored -> LoopUtility.multiplyExact(bits, x, y);
-                    default -> throw GraalError.shouldNotReachHere("unexpected IntegerExactNode " + op.getClass().getSimpleName());
-                }
-                // if the operation succeeded, we know it does not overflow
-                return TriState.FALSE;
-            } catch (ArithmeticException ignored) {
-                // if the operation failed, we know it does overflow
-                return TriState.TRUE;
-            }
-        }
-
         private static Set<ValueNode> setUnion(Set<ValueNode> x, ValueNode y) {
-            if (x.contains(y)) {
+            if (x == null) {
+                return CollectionsUtil.setOf(y);
+            } else if (x.contains(y)) {
                 return x;
             }
-            Set<ValueNode> res = new HashSet<>(x == null ? Set.of() : x);
+            Set<ValueNode> res = new EconomicHashSet<>(x);
             res.add(y);
             return res;
         }
 
         private static Set<ValueNode> setUnion(Set<ValueNode> x, Set<ValueNode> y) {
-            Set<ValueNode> res = new HashSet<>(x == null ? Set.of() : x);
+            if (x == null) {
+                return y == null ? CollectionsUtil.setOf() : y;
+            }
+            Set<ValueNode> res = new EconomicHashSet<>(x);
             res.addAll(y);
             return res;
         }
 
         private static Set<ValueNode> setUnion(Set<ValueNode> x, Set<ValueNode> y, ValueNode z) {
-            Set<ValueNode> res = new HashSet<>(x == null ? Set.of() : x);
+            Set<ValueNode> res = new EconomicHashSet<>(x == null ? CollectionsUtil.setOf() : x);
             res.addAll(y);
             res.add(z);
             return res;
@@ -1342,9 +1353,9 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
         private static Set<ValueNode> setIntersection(Set<ValueNode> x, Set<ValueNode> y) {
             if (x == null) {
-                return y;
+                return CollectionsUtil.setOf();
             }
-            Set<ValueNode> res = new HashSet<>(x == null ? Set.of() : x);
+            Set<ValueNode> res = new EconomicHashSet<>(x);
             res.retainAll(y);
             return res;
         }
@@ -1373,6 +1384,14 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
             return !x.equals(y) && x.meet(y).equals(x);
         }
 
+        /**
+         * Types are already tracked pretty accurately by existing data-flow analyses. Therefore, we
+         * provide the option to skip tracking types and instead only focus on nullability and
+         * non-null object constants by disabling {@link Options#PA_TrackTypes}. In that case, we
+         * then erase all type information from the stamp to reduce the amount of nodes we evaluate.
+         * On constant replacement, the missing type information is reconstructed by reading it from
+         * the graph.
+         */
         private Pentagon normalize(Pentagon input) {
             if (doTypes || !(input instanceof ObjectPentagon obj) || obj.isNonNullConstant()) {
                 return input;
@@ -1394,98 +1413,110 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return NotApplicable.unlessRunBefore(this, GraphState.StageFlag.VALUE_PROXY_REMOVAL, graphState);
+        return DFAnalysis.notApplicableTo(this, graphState);
     }
 
     @Override
     public boolean shouldApply(StructuredGraph graph) {
-        return graph.hasLoops() || DFAnalysis.Options.DFA_EvalAll.getValue(graph.getOptions());
+        return DFAnalysis.shouldApply(graph);
     }
 
     @Override
     @SuppressWarnings({"try", "unused"})
     protected void run(StructuredGraph graph, CoreProviders context) {
+        if (DFAnalysis.Options.DFA_PreCanonicalize.getValue(graph.getOptions())) {
+            CanonicalizerPhase.create().apply(graph, context);
+        }
+
+        try (DebugContext.Scope scope = graph.getDebug().scope("PentagonApplication")) {
+            // create the analysis
+            DFAnalysis<Pentagon> analysis = prepareAnalysis(graph, context);
+            // run the analysis
+            DFAMap<Pentagon> map = analysis.run();
+            // replace the found constants
+            processResults(graph, context, map);
+            // cleanup stuff that the analysis left behind
+            cleanup(graph, analysis);
+        }
+    }
+
+    private DFAnalysis<Pentagon> prepareAnalysis(StructuredGraph graph, CoreProviders context) {
         final DomainOfPentagons domainOfPentagons = new DomainOfPentagons(
                         context.getConstantReflection(),
                         Options.PA_WidenAfter.getValue(graph.getOptions()),
                         Options.PA_UseNonNullObjConstants.getValue(graph.getOptions()),
                         Options.PA_TrackTypes.getValue(graph.getOptions()));
-
-        try (DebugContext.Scope scope = graph.getDebug().scope("PentagonApplication")) {
-            // run analysis
-            DFAnalysis<Pentagon> analysis = DFAnalysis.create(Pentagon.class, graph, domainOfPentagons,
-                            nd -> switch (nd) {
-                                case ConstantNode ignored -> true;
-                                case LogicConstantNode ignored -> true;
-                                case LogicNode ln -> {
-                                    for (Node input : ln.inputs()) {
-                                        if (!(input instanceof ValueNode vin) || !domainOfPentagons.isOfInterest(vin)) {
-                                            // we are not interested in logic nodes the inputs of
-                                            // which we do not
-                                            // understand
-                                            yield false;
-                                        }
+        return DFAnalysis.create(Pentagon.class, graph, domainOfPentagons,
+                        nd -> switch (nd) {
+                            case ConstantNode ignored -> true;
+                            case LogicConstantNode ignored -> true;
+                            case LogicNode ln -> {
+                                for (Node input : ln.inputs()) {
+                                    if (!(input instanceof ValueNode vin) || !domainOfPentagons.isOfInterest(vin)) {
+                                        // we are not interested in logic nodes the inputs of
+                                        // which we do not
+                                        // understand
+                                        yield false;
                                     }
-                                    yield true;
                                 }
-                                case IntegerSwitchNode ignored -> true;
-                                case ValueProxy vp -> domainOfPentagons.isOfInterest(vp.asNode());
-                                case ProxyNode pn -> domainOfPentagons.isOfInterest(pn);
-                                case FloatConvertNode fc -> fc.getFloatConvert().getCategory() == FloatConvertCategory.IntegerToFloatingPoint;
-                                case FloatingReadNode fRead -> domainOfPentagons.isOfInterest(fRead) && !fRead.stamp(NodeView.DEFAULT).isUnrestricted();
-                                case ReadNode rn -> domainOfPentagons.isOfInterest(rn) && !rn.stamp(NodeView.DEFAULT).isUnrestricted();
-                                case AllocatedObjectNode aon -> !aon.stamp(NodeView.DEFAULT).isUnrestricted();
-                                default -> false;
-                            });
-            DFAMap<Pentagon> map = analysis.run();
+                                yield true;
+                            }
+                            case IntegerSwitchNode ignored -> true;
+                            case ValueProxy vp -> domainOfPentagons.isOfInterest(vp.asNode());
+                            case ProxyNode pn -> domainOfPentagons.isOfInterest(pn);
+                            case FloatConvertNode fc -> fc.getFloatConvert().getCategory() == FloatConvertCategory.IntegerToFloatingPoint;
+                            case FloatingReadNode fRead -> domainOfPentagons.isOfInterest(fRead) && !fRead.stamp(NodeView.DEFAULT).isUnrestricted();
+                            case ReadNode rn -> domainOfPentagons.isOfInterest(rn) && !rn.stamp(NodeView.DEFAULT).isUnrestricted();
+                            case AllocatedObjectNode aon -> !aon.stamp(NodeView.DEFAULT).isUnrestricted();
+                            default -> false;
+                        });
+    }
 
-            // replace constants in graph
-            MapCursor<ValueNode, Pentagon> stampCursor = map.getEntries();
-            int constantsFound = 0;
-            while (stampCursor.advance()) {
-                ValueNode node = stampCursor.getKey();
-                Pentagon pentagon = stampCursor.getValue();
-                if (pentagon.isConstant() && !(node instanceof ConstantNode || node instanceof LogicConstantNode)) {
-                    constantsFound++;
-                    String tNodeString = graph.getDebug().isLogEnabled(DebugContext.VERY_DETAILED_LEVEL) ? node.toString() : "";
-                    if (pentagon instanceof LogicPentagon lp) {
-                        graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "replacing %s with constant %s", node, lp.logic);
-                        LogicConstantNode c = LogicConstantNode.forBoolean(lp.logic.toBoolean(), graph);
-                        node.replaceAtUsagesAndDelete(c);
+    private void processResults(StructuredGraph graph, CoreProviders context, DFAMap<Pentagon> results) {
+        MapCursor<ValueNode, Pentagon> stampCursor = results.getEntries();
+        int constantsFound = 0;
+        while (stampCursor.advance()) {
+            ValueNode node = stampCursor.getKey();
+            Pentagon pentagon = stampCursor.getValue();
+            if (pentagon.isConstant() && !(node instanceof ConstantNode || node instanceof LogicConstantNode)) {
+                constantsFound++;
+                String tNodeString = graph.getDebug().isLogEnabled(DebugContext.VERY_DETAILED_LEVEL) ? node.toString() : "";
+                if (pentagon instanceof LogicPentagon lp) {
+                    graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "replacing %s with constant %s", node, lp.logic);
+                    LogicConstantNode c = LogicConstantNode.forBoolean(lp.logic.toBoolean(), graph);
+                    node.replaceAtUsagesAndDelete(c);
+                    graph.getOptimizationLog().report(PentagonalAnalysisPhase.class, "PentagonsConstantReplacement", node);
+                } else {
+                    StampPentagon sp = pentagon.asStamp();
+                    /*
+                     * TODO something with null constants (and maybe object constants in general) is
+                     * weird because they might float away or something (cc David Leopoldseder)
+                     */
+                    Stamp stamp = sp.getStamp();
+                    GraalError.guarantee(stamp.getClass().equals(node.stamp(NodeView.DEFAULT).getClass()), "Mismatch in stamp types (in graph: %s, analysis: %s)",
+                                    node.stamp(NodeView.DEFAULT).getClass().getSimpleName(), stamp.getClass().getSimpleName());
+                    ConstantNode c = null;
+                    if (stamp.asConstant() instanceof JavaConstant javaConstant) {
+                        c = graph.addOrUnique(new ConstantNode(javaConstant, stamp));
+                    } else if (sp instanceof ObjectPentagon op && op.isNonNullConstant()) {
+                        c = graph.addOrUnique(ConstantNode.forConstant(op.stamp, op.constant, context.getMetaAccess()));
+                    }
+                    if (c != null) {
+                        GraalError.guarantee(c.stamp(NodeView.DEFAULT).isCompatible(node.stamp(NodeView.DEFAULT)),
+                                        "Incompatible stamps at constant replacement (replacing node %s with stamp %s by constant with stamp %s)",
+                                        node, node.stamp(NodeView.DEFAULT), c.stamp(NodeView.DEFAULT));
+                        node.replaceAtUsages(c);
                         graph.getOptimizationLog().report(PentagonalAnalysisPhase.class, "PentagonsConstantReplacement", node);
-                    } else {
-                        StampPentagon sp = pentagon.asStamp();
-                        /*
-                         * TODO something with null constants (and maybe object constants in
-                         * general) is weird because they might float away or something (cc David
-                         * Leopoldseder)
-                         */
-                        Stamp stamp = sp.getStamp();
-                        GraalError.guarantee(stamp.getClass().equals(node.stamp(NodeView.DEFAULT).getClass()), "Mismatch in stamp types (in graph: %s, analysis: %s)",
-                                        node.stamp(NodeView.DEFAULT).getClass().getSimpleName(), stamp.getClass().getSimpleName());
-                        ConstantNode c = null;
-                        if (stamp.asConstant() instanceof JavaConstant javaConstant) {
-                            c = graph.addOrUnique(new ConstantNode(javaConstant, stamp));
-                        } else if (sp instanceof ObjectPentagon op && op.isNonNullConstant()) {
-                            c = graph.addOrUnique(ConstantNode.forConstant(op.stamp, op.constant, context.getMetaAccess()));
-                        }
-                        if (c != null) {
-                            GraalError.guarantee(c.stamp(NodeView.DEFAULT).isCompatible(node.stamp(NodeView.DEFAULT)),
-                                            "Incompatible stamps at constant replacement (replacing node %s with stamp %s by constant with stamp %s)",
-                                            node, node.stamp(NodeView.DEFAULT), c.stamp(NodeView.DEFAULT));
-                            node.replaceAtUsages(c);
-                            graph.getOptimizationLog().report(StampAnalysisPhase.class, "PentagonsConstantReplacement", node);
-                        }
                     }
                 }
             }
-
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After constant replacement");
-
-            // cleanup stuff that the analysis left behind
-            analysis.cleanup();
-
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After PentagonalAnalysis cleanup");
         }
+
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After constant replacement");
+    }
+
+    private void cleanup(StructuredGraph graph, DFAnalysis<Pentagon> analysis) {
+        analysis.cleanup();
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After PentagonalAnalysis cleanup");
     }
 }

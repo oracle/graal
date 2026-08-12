@@ -1,6 +1,26 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis;
@@ -11,7 +31,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
@@ -44,17 +63,18 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
+import jdk.graal.compiler.util.EconomicHashMap;
 
 /**
  * <p>
- * Implementation of a priority based work list. This work list consists of 2 queues. Elements are
- * preferably taken from the first queue. Only if the first queue is empty, the element with the
- * lowest priority from the second queue is taken. The work list is considered empty if both queues
- * are empty.
+ * Implementation of a priority based work list. This work list consists of 2 queues. The first
+ * queue is an unordered queue of floating nodes. The second queue is a priority queue. Elements are
+ * preferably taken from the first queue. Elements are only taken from the second queue if the first
+ * queue is empty. The work list is considered empty if both queues are empty.
  * </p>
  * <p>
  * The first queue, called the value queue, is a standard queue without priority used for normal
- * value flow nodes, meaning floating value nodes without an easy connection to the CFG. Elements
+ * value flow nodes, meaning floating value nodes without a direct connection to the CFG. Elements
  * are preferably taken from this queue.
  * </p>
  * <p>
@@ -84,16 +104,16 @@ import jdk.graal.compiler.nodes.memory.MemoryKill;
  * inferences into branches are processed before anything in the respective branch. The second class
  * is used for BeginNodes or nodes related to BeginNodes like PhiNodes and ValueProxyNodes. The
  * third class is used for nodes in the middle of a block while the fourth class is used for Nodes
- * involved in control flow calculation like ControlSplitNodes. Also, AbstractBeginNodes are
- * scheduled in this class because they are used to denote control flow blocks to advance
- * reachability analysis after a block has been fully evaluated. This ordering ensures that values
- * produced by nodes in the given block are available when evaluating the control split at the end
- * of a block. The fifth class is used for rescheduled loop phis. Rescheduled phis are placed in the
- * base priority class of the deepest associated loop end, therefore requiring their own subclass to
- * ensure they are processed after the entire loop.
+ * involved in control flow calculation like ControlSplitNodes. Also, AbstractEndNodes are scheduled
+ * in this class because they are used to denote control flow blocks to advance reachability
+ * analysis after a block has been fully evaluated. This ordering ensures that values produced by
+ * nodes in the given block are available when evaluating the control split at the end of a block.
+ * The fifth class is used for rescheduled loop phis. Rescheduled phis are placed in the base
+ * priority class of the deepest associated loop end, therefore requiring their own priority class
+ * to ensure they are processed after the entire loop.
  * </p>
  */
-class WorkList {
+final class WorkList {
     private enum PriorityClass {
         INFERRED,
         BEGIN,
@@ -117,8 +137,37 @@ class WorkList {
      * of its predecessors not including back-edges of loops. Additionally, loop exit blocks are
      * assigned a priority 1 larger than the maximum priority of its predecessor and all loop ends
      * in the loop that this block is exiting. This is to ensure that any block depending on the
-     * result of a loop is evaluated after evaluation of the loop has finished.
+     * result of a loop is evaluated after evaluation of the loop has finished. Consider the
+     * following code example:
      * </p>
+     *
+     * <pre>
+     * int x = 1;
+     * do {
+     *     if (x != 1) {
+     *         x = 2;
+     *     }
+     * } while (cnt-- > 0);
+     * </pre>
+     *
+     * <p>
+     * Here this method calculates the following priorities for the control flow blocks:
+     * </p>
+     *
+     * <pre>
+     *         B0      0 = priority
+     *  -------|----------
+     *       - B1      1
+     *  ---/--/--\--------
+     *    | B2    B3   2
+     *  --|---\--/--------
+     *    |    B4      3
+     *  --|---/--\--------
+     *     -B5    |    4
+     *  ----------|-------
+     *            B6   5
+     * </pre>
+     *
      * <p>
      * To traverse the graph in the order of execution flow, the numeric value of the base priority
      * metric is later interpreted as a penalty on priority, meaning elements with lower numeric
@@ -237,10 +286,10 @@ class WorkList {
         this.prioQueue = new PriorityQueue<>(Comparator.comparingLong(PriorityElement::priority));
         this.cfg = cfg;
         this.debug = debug;
-        patternInputs = new HashMap<>();
+        patternInputs = new EconomicHashMap<>();
     }
 
-    public void initialize(StructuredGraph graph, NodePredicate isStartingPoint) {
+    void initialize(StructuredGraph graph, NodePredicate isStartingPoint) {
         for (Node nd : graph.getNodes()) {
             if (nd instanceof ValueNode vn) {
                 if (isStartingPoint.test(vn)) {
@@ -250,11 +299,11 @@ class WorkList {
         }
     }
 
-    public boolean hasNext() {
+    boolean hasNext() {
         return !scheduled.isEmpty();
     }
 
-    public ValueNode next() {
+    ValueNode next() {
         ValueNode nextNode;
         if (!valueQueue.isEmpty()) {
             nextNode = valueQueue.remove();
@@ -270,7 +319,7 @@ class WorkList {
         return nextNode;
     }
 
-    public void scheduleUsages(ValueNode node) {
+    void scheduleUsages(ValueNode node) {
         boolean watchOutForMemory = MemoryKill.isMemoryKill(node);
         for (Node u : node.usages()) {
             if (u instanceof ValueNode value) {
@@ -283,12 +332,32 @@ class WorkList {
         }
     }
 
-    public void schedule(HIRBlock block) {
-        // blocks are denoted by their last block
+    void schedule(HIRBlock block, boolean inputEdgeBecameReachable) {
+        /*
+         * An input edge to this block has changed. To correctly update phis in the future, we
+         * schedule the block's begin if there is a merge.
+         */
+        if (block.getBeginNode() instanceof AbstractMergeNode merge) {
+            schedule(merge);
+        }
+        if (inputEdgeBecameReachable) {
+            // if an input edge became reachable, we need to schedule all inferences of this block
+            for (InferredFactNode<?> iFact : block.getBeginNode().usages().filter(InferredFactNode.class)) {
+                schedule(iFact);
+            }
+        }
+        block.getBeginNode().usages().filter(InferredFactNode.class).forEach(this::schedule);
+        // for control flow propagation we schedule the block's end
         schedule(block.getEndNode());
     }
 
-    public void schedule(ValueNode node) {
+    /**
+     * This method enqueues work for future evaluation in the analysis. Nodes without a direct
+     * connection to the control flow graph are put into the unordered {@link WorkList#valueQueue},
+     * while nodes that do have a direct connection to the CFG are scheduled with priority in
+     * {@link WorkList#prioQueue}. This is not related to scheduling a graph.
+     */
+    void schedule(ValueNode node) {
         if (node instanceof ValuePhiNode phi) {
             /*
              * We do not schedule PHIs directly, we rather schedule their associated MERGE node to
@@ -371,7 +440,13 @@ class WorkList {
         }
     }
 
-    public void unschedule(ArrayList<ValueNode> toUnschedule) {
+    /**
+     * Upon resetting (see {@link DFAMap#resetNodeAndUsages}), we want to drop all nodes that we
+     * reset from the worklist. All nodes that we removed here will come up again naturally in the
+     * analysis, if evaluation is indeed required. We remove them here to avoid confusion regarding
+     * future resetting in combination with {@link AnalysisDomainDefinition#countUnevaluatedInputs}.
+     */
+    void unschedule(ArrayList<ValueNode> toUnschedule) {
         if (toUnschedule.isEmpty()) {
             return;
         }
@@ -414,7 +489,7 @@ class WorkList {
      * @param begin the LoopBegin in question.
      * @param optimistic denotes if this LoopBegin has just been evaluated optimistically.
      */
-    public void rescheduleLoopBegin(LoopBeginNode begin, boolean optimistic) {
+    void rescheduleLoopBegin(LoopBeginNode begin, boolean optimistic) {
         if (scheduled.add(begin)) {
             if (optimistic) {
                 optimisticLoopBegins.add(begin);
@@ -444,7 +519,7 @@ class WorkList {
         return deepest;
     }
 
-    public boolean isOptimisticLoopPhi(ValueNode value) {
+    boolean isOptimisticLoopPhi(ValueNode value) {
         return value instanceof ValuePhiNode phi && optimisticLoopBegins.contains(phi.merge());
     }
 
@@ -457,7 +532,7 @@ class WorkList {
      * Generates a pretty multiline string representation of this work list for debugging purposes.
      */
     @SuppressWarnings({"unused", "deprecation"})
-    public String prettyPrint() {
+    String prettyPrint() {
         StringBuilder sb = new StringBuilder();
         sb.append("WorkList: {");
         sb.append("\n    prios: {");

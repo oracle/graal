@@ -1,6 +1,26 @@
 /*
  * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis;
@@ -9,7 +29,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.SortedSet;
@@ -30,28 +49,27 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.phases.dfanalysis.DFEdgeMap.CFGEdge;
 import jdk.graal.compiler.phases.dfanalysis.DFEdgeMap.Reachability;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.meta.TriState;
 
 /**
  * This class is a wrapper around a {@code Map<ValueNode, LE_TYPE>} providing some extra
  * functionality for convenience.
- * 
+ *
  * @param <LE_TYPE>
  */
 public final class DFAMap<LE_TYPE> {
-    private record ValueUpdate<T>(int action, ValueNode node, T elem, Object[] reason) {
+    private record ValueUpdate<T>(Action action, ValueNode node, T elem, Object[] reason) {
+
         @Override
         public String toString() {
             return "[node=" + node + ", elem=" + elem + ']';
         }
 
-        public static String getAction(int act) {
-            return switch (act) {
-                case 0 -> "update";
-                case 1 -> "reset";
-                case 2 -> "reachability";
-                default -> "unknown";
-            };
+        public enum Action {
+            UPDATE,
+            RESET,
+            REACHABILITY
         }
     }
 
@@ -106,8 +124,21 @@ public final class DFAMap<LE_TYPE> {
         return nowUneval < analysis.nodesWithUnevaluatedInputs.get(node);
     }
 
+    /**
+     * While this framework generally operates on a per-node basis, there may be some computational
+     * patterns consisting of multiple nodes that may be of interest to some abstract domains. When
+     * evaluating the output node of such a pattern the user must register the given block of nodes
+     * as a pattern with the framework. Each time when evaluating a node in
+     * {@link AnalysisDomainDefinition#transfer} queries nodes that are not direct inputs to the
+     * current node, the current node is considered to be in a <b>pattern</b>. Therefore, the extra
+     * queried node must be registered as a pattern input using this funciton.
+     *
+     * Patterns may be registered ahead of time, or even on demand when a pattern comes up in the
+     * transfer function. Registering a pattern ensures that the output node is scheduled properly
+     * if a value for any of its (possibly indirect) inputs changes.
+     */
     public void registerPattern(ValueNode patternOut, ValueNode upperNode) {
-        analysis.workList.patternInputs.computeIfAbsent(upperNode, k -> new HashSet<>()).add(patternOut);
+        analysis.workList.patternInputs.computeIfAbsent(upperNode, k -> new EconomicHashSet<>()).add(patternOut);
     }
 
     public void registerPattern(ValueNode patternOut, ValueNode upperNode1, ValueNode upperNode2) {
@@ -202,7 +233,7 @@ public final class DFAMap<LE_TYPE> {
                         rs.add("%s-{%s}".formatted(vn, get(vn)));
                     }
                 }
-                trace.add(new ValueUpdate<>(0, node, nuElem, rs.toArray()));
+                trace.add(new ValueUpdate<>(ValueUpdate.Action.UPDATE, node, nuElem, rs.toArray()));
             }
             return true;
         } else if (!analysis.domain.isEqual(nuElem, curOrUnevaluated)) {
@@ -216,7 +247,8 @@ public final class DFAMap<LE_TYPE> {
     /**
      * Resets the given node and all its transitive usages. This method must never (directly or
      * transitively) reset inputs of PHI nodes that were already used to calculate the domain
-     * element for the PHI.
+     * element for the PHI. The caller of this method must be sure that the analysis state
+     * guarantees that resetting at this point is indeed safe.
      */
     void resetNodeAndUsages(ValueNode root) {
         if (!isEvaluated(root)) {
@@ -230,7 +262,7 @@ public final class DFAMap<LE_TYPE> {
             CompilationAlarm.checkProgress(root.graph());
             ValueNode cur = queue.remove();
             if (trace != null) {
-                trace.add(new ValueUpdate<>(1, cur, getOrUnevaluated(cur), new Object[]{root}));
+                trace.add(new ValueUpdate<>(ValueUpdate.Action.RESET, cur, getOrUnevaluated(cur), new Object[]{root}));
             }
             internalMap.removeKey(cur);
             resetNodes.add(cur);
@@ -334,7 +366,7 @@ public final class DFAMap<LE_TYPE> {
 
     void recordPropagateReachability(ValueNode end, CFGEdge edge, DFEdgeMap<LE_TYPE> edgeMap, boolean onlyProp) {
         if (trace != null) {
-            trace.add(new ValueUpdate<>(2, end, null, new Object[]{onlyProp, edge, edgeMap.get(edge)}));
+            trace.add(new ValueUpdate<>(ValueUpdate.Action.REACHABILITY, end, null, new Object[]{onlyProp, edge, edgeMap.get(edge)}));
         }
     }
 
@@ -364,7 +396,7 @@ public final class DFAMap<LE_TYPE> {
             EconomicMap<Node, List<LE_TYPE>> histMap = EconomicMap.create();
             for (ValueUpdate<LE_TYPE> act : trace) {
                 histMap.putIfAbsent(act.node(), new ArrayList<>());
-                LE_TYPE result = act.action() == 1 ? analysis.domain.unevaluated(act.elem()) : act.elem();
+                LE_TYPE result = act.action() == ValueUpdate.Action.RESET ? analysis.domain.unevaluated(act.elem()) : act.elem();
                 histMap.get(act.node()).add(result);
             }
             for (ValueNode k : keys) {
@@ -395,7 +427,7 @@ public final class DFAMap<LE_TYPE> {
             sb.append(" }");
         } else {
             for (ValueUpdate<LE_TYPE> ud : trace) {
-                sb.append("\n    %s <<%s>> %s (with cause %s)".formatted(ud.node(), ValueUpdate.getAction(ud.action()), ud.elem(), Arrays.toString(ud.reason())));
+                sb.append("\n    %s <<%s>> %s (with cause %s)".formatted(ud.node(), ud.action().name().toLowerCase(), ud.elem(), Arrays.toString(ud.reason())));
             }
             sb.append("\n}");
         }
