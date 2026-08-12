@@ -30,7 +30,10 @@ import java.util.function.Supplier;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.MissingRegistrationSupport;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.metadata.MetadataTracer;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.security.ProviderConstruction;
 import com.oracle.svm.shared.security.SecurityProviderCatalog;
@@ -41,7 +44,7 @@ public final class SecurityProviderRuntimeAccess {
     private SecurityProviderRuntimeAccess() {
     }
 
-    /** §FS-security-providers.4.3: Explicit configured-provider lookups retain diagnostics. */
+    /** §FS-002-security-providers.4.3: Explicit configured-provider lookups retain diagnostics. */
     public static Provider loadUnregisteredConfiguredProvider(Supplier<Provider> loader) {
         Boolean previous = LOAD_UNREGISTERED_CONFIGURED_PROVIDER.get();
         LOAD_UNREGISTERED_CONFIGURED_PROVIDER.set(true);
@@ -56,12 +59,25 @@ public final class SecurityProviderRuntimeAccess {
         }
     }
 
-    /** §FS-security-providers.7.1: Provider-list construction filters unregistered providers. */
+    // §FS-002-security-providers.7.1
+    /** Provider-list construction filters unregistered providers. */
     public static boolean shouldLoadUnregisteredConfiguredProvider() {
         return Boolean.TRUE.equals(LOAD_UNREGISTERED_CONFIGURED_PROVIDER.get());
     }
 
-    /** §FS-security-providers.7.1: Load an already-resolved ServiceLoader provider directly. */
+    // §AR-002-security-providers.2
+    /** Apply the single JDK-acquisition filter to hosted or run-time eligibility state. */
+    public static boolean passesJdkAcquisitionFilter(boolean eligible) {
+        return eligible;
+    }
+
+    /** Resolve and filter a provider class through the layered run-time manifest. */
+    public static boolean isJdkAcquirable(String providerClassName) {
+        return passesJdkAcquisitionFilter(SecurityProviderRuntimeState.isJdkConstructible(providerClassName));
+    }
+
+    // §FS-002-security-providers.7.1
+    /** Load an already-resolved ServiceLoader provider directly. */
     public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName, String constructionClassName) {
         Provider candidate;
         try {
@@ -81,7 +97,8 @@ public final class SecurityProviderRuntimeAccess {
             throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
                             "returned an instance of " + candidate.getClass().getName(), null);
         }
-        /* §FS-security-providers.7.1: A renamed provider does not answer the configured entry. */
+        // §FS-002-security-providers.7.1
+        // A renamed provider does not answer the configured entry.
         if (!providerName.equals(candidate.getName())) {
             throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
                             "was constructed but reports the provider name " + candidate.getName(), null);
@@ -97,10 +114,8 @@ public final class SecurityProviderRuntimeAccess {
                         cause);
     }
 
-    /**
-     * §FS-security-providers.2.2: Construct a provider through the path the JDK would use. The
-     * build-time registration selected the same path, so the member this looks up is registered.
-     */
+    // §FS-002-security-providers.2.2
+    /** Construct a provider through the path the JDK would use. */
     public static Provider constructProvider(Class<?> providerClass) throws ReflectiveOperationException {
         Method providerMethod = findProviderMethod(providerClass);
         if (providerMethod != null) {
@@ -121,19 +136,27 @@ public final class SecurityProviderRuntimeAccess {
         }
     }
 
-    /** §FS-security-providers.4.3: Cache misses probe type access for standard diagnostics. */
+    /** §FS-002-security-providers.4.3: Cache misses probe type access for standard diagnostics. */
     @NeverInline("Keep the provider class name unknown to static analysis without an opaque compiler node.")
     public static void reportMissingRegistration(Class<?> providerClass) {
         String remediation = missingRegistrationRemediation();
-        try {
-            Class.forName(providerClass.getName(), false, providerClass.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            throw new SecurityException(
-                            "Attempted to use a security provider that was not registered for reflection at build time: " + providerClass.getName() + ". " +
-                                            remediation,
-                            ex);
+        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            StackTraceElement responsibleClass = findExactMetadataCaller();
+            if (responsibleClass != null) {
+                MissingReflectionRegistrationUtils.reportClassAccess(providerClass.getName(), responsibleClass);
+            }
         }
-        throw new SecurityException("Attempted to use a security provider without build-time verification: " + providerClass.getName() + ". " + remediation);
+        throw new SecurityException(
+                        "Attempted to use a security provider that was not registered for reflection at build time: " + providerClass.getName() + ". " + remediation);
+    }
+
+    private static StackTraceElement findExactMetadataCaller() {
+        for (StackTraceElement frame : new Throwable().getStackTrace()) {
+            if (MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(frame)) {
+                return frame;
+            }
+        }
+        return null;
     }
 
     private static String missingRegistrationRemediation() {
@@ -144,7 +167,7 @@ public final class SecurityProviderRuntimeAccess {
                         "Add qualifying metadata and rebuild with --future-defaults=explicit-security-provider-registration.";
     }
 
-    /** §FS-security-providers.6.1: Existing provider instances trace type access. */
+    /** §FS-002-security-providers.6.1: Existing provider instances trace type access. */
     public static Provider traceLookup(Provider provider) {
         if (provider != null && MetadataTracer.enabled()) {
             MetadataTracer.singleton().traceReflectionType(provider.getClass());
@@ -152,7 +175,8 @@ public final class SecurityProviderRuntimeAccess {
         return provider;
     }
 
-    /** §FS-security-providers.6.1: Successful service selection traces its provider and SPI. */
+    // §FS-002-security-providers.6.1
+    /** Successful service selection traces its provider and SPI. */
     public static void traceServiceSelection(Provider.Service service, Class<?> serviceClass) {
         if (MetadataTracer.enabled()) {
             Provider provider = service.getProvider();
@@ -164,7 +188,7 @@ public final class SecurityProviderRuntimeAccess {
         }
     }
 
-    /** §FS-security-providers.6.1: JDK-managed provider lookups retain construction. */
+    /** §FS-002-security-providers.6.1: JDK-managed provider lookups retain construction. */
     public static Provider traceJdkProviderLookup(Provider provider) {
         if (provider != null && MetadataTracer.enabled()) {
             Class<? extends Provider> providerClass = provider.getClass();
@@ -177,7 +201,7 @@ public final class SecurityProviderRuntimeAccess {
         return provider;
     }
 
-    /** §FS-security-providers.6.1: Enumeration traces every JDK-managed provider returned. */
+    /** §FS-002-security-providers.6.1: Enumeration traces every JDK-managed provider returned. */
     public static Provider[] traceJdkProviderLookups(Provider[] providers) {
         if (providers != null && MetadataTracer.enabled()) {
             for (Provider provider : providers) {

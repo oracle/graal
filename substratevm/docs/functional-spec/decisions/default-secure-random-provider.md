@@ -1,4 +1,4 @@
-# DF-default-secure-random-provider: Retain the Complete Default Provider for SecureRandom
+# AR-004-default-secure-random-provider: Retain the Complete Default Provider for SecureRandom
 
 ## 1. Context
 
@@ -13,8 +13,8 @@ retains the complete SUN provider even in an otherwise empty executable.
 Provider registration is intentionally complete: exposing a provider while omitting services that
 the provider advertises would create inconsistent discovery and factory results.
 This constraint is specified by
-[§FS-security-providers.1.1](../security-providers.md#11-registered-providers-and-services)
-and [§FS-security-providers.4.1](../security-providers.md#41-unregistered-providers).
+[§FS-002-security-providers.1.1](../security-providers.md#11-registered-providers-and-services)
+and [§FS-002-security-providers.4.1](../security-providers.md#41-unregistered-providers).
 
 ## 2. Decision
 
@@ -36,7 +36,7 @@ after registration.
 Reachability of other JCA factories does not register their providers when explicit
 security-provider registration is enabled.
 This bounded registration condition follows
-[§DF-reachability-independent-runtime-semantics.2](reachability-independent-runtime-semantics.md#2-decision).
+[§AR-006-reachability-independent-runtime-semantics.2](reachability-independent-runtime-semantics.md#2-decision).
 
 ## 3. Rejected Alternatives
 

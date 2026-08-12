@@ -60,13 +60,13 @@ import com.oracle.svm.shared.util.VMError;
 
 import sun.security.util.SecurityConstants;
 
-// §FS-security-providers.3.1 and §FS-security-providers.4.1:
+// §FS-002-security-providers.3.1 and §FS-002-security-providers.4.1:
 // Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it.
 @TargetClass(className = "sun.security.jca.Providers", onlyWith = ExplicitSecurityProviderRegistration.class)
 final class Target_sun_security_jca_Providers_ExplicitRegistration {
     @Substitute
     public static Provider getSunProvider() {
-        if (!SecurityProviderRuntimeState.isJdkConstructible("sun.security.provider.Sun")) {
+        if (!SecurityProviderRuntimeAccess.isJdkAcquirable("sun.security.provider.Sun")) {
             SecurityProviderRuntimeAccess.reportMissingRegistration(sun.security.provider.Sun.class);
         }
         return new sun.security.provider.Sun();
