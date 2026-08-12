@@ -212,7 +212,7 @@ public class ShenandoahBarrierSet extends BarrierSet {
                          */
                         addShenandoahSATBBarrier(node, node.getAddress(), writtenValue, expectedValue, graph);
                     }
-                    if (!init && useCardBarrier && !StampTool.isPointerAlwaysNull(writtenValue)) {
+                    if (!init && useCardBarrier && isInHeap(node.getLocationIdentity()) && !StampTool.isPointerAlwaysNull(writtenValue)) {
                         graph.addAfterFixed(node, graph.add(new ShenandoahCardBarrierNode(node.getAddress())));
                     }
                 }
@@ -338,5 +338,24 @@ public class ShenandoahBarrierSet extends BarrierSet {
             return BarrierType.READ;
         }
         return null;
+    }
+
+    /**
+     * Determines whether a write to {@code location} targets memory inside the Java heap.
+     *
+     * <p>
+     * The card marking post barrier computes a card address as
+     * {@code card_table_base + (store_address >> card_shift)}, which is only meaningful for heap
+     * addresses. Off-heap oop stores - for example a store into the contents of an
+     * {@code OopHandle} residing in a native OopStorage - must therefore not be card marked, since
+     * doing so writes a byte at an essentially arbitrary address outside the card table. This
+     * mirrors HotSpot, which gates the card barrier on the {@code IN_HEAP} decorator via
+     * {@code ShenandoahBarrierSet::need_card_barrier} and splits {@code oop_store_in_heap} from
+     * {@code oop_store_not_in_heap}. Note that the SATB pre barrier is still required for off-heap
+     * oop stores, so this predicate only affects the card barrier.
+     */
+    @SuppressWarnings("unused")
+    protected boolean isInHeap(LocationIdentity location) {
+        return true;
     }
 }
