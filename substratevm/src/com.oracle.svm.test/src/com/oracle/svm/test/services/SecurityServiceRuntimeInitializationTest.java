@@ -86,7 +86,7 @@ public class SecurityServiceRuntimeInitializationTest {
         Assert.assertEquals(SecurityServiceTest.NoOpImpl.class, implementation.getClass());
     }
 
-    /** §FS-security-providers.7.2: Tests absent service-provider metadata. */
+    /** §FS-002-security-providers.7.2: Tests absent service-provider metadata. */
     @Test
     public void testServiceLoaderProviderWithoutMetadataUsesReflectionLookupFailure() {
         Assert.assertTrue(ImageInfo.inImageRuntimeCode());
@@ -97,7 +97,7 @@ public class SecurityServiceRuntimeInitializationTest {
                         () -> SecurityServiceTest.JCACompliantNoOpService.getInstance(SERVICE_LOADED_PROVIDER_ALGORITHM));
     }
 
-    /** §FS-security-providers.7.2: Tests preserved metadata-registered service providers. */
+    /** §FS-002-security-providers.7.2: Tests preserved metadata-registered service providers. */
     @Test
     public void testServiceLoaderProviderWithMetadataIsPreserved() {
         Provider provider = findServiceLoaderProvider(REFLECTION_METADATA_PROVIDER_CLASS_NAME).get();
@@ -127,46 +127,46 @@ public class SecurityServiceRuntimeInitializationTest {
         }
     }
 
-    /** §FS-security-providers.7.3: Tests compatibility-mode provider inclusion. */
+    /** §FS-002-security-providers.7.3: Tests compatibility-mode provider inclusion. */
     @Test
     public void testReachableBuiltInProviderIsIncluded() {
         Assert.assertNotNull("Service-driven registration should include SunEC.", Security.getProvider("SunEC"));
     }
 
-    /** §FS-security-providers.7.3: Tests compatibility-mode service lookup. */
+    /** §FS-002-security-providers.7.3: Tests compatibility-mode service lookup. */
     @Test
     public void testReachableBuiltInProviderGetService() throws NoSuchAlgorithmException {
         Provider.Service service = GetInstance.getService(OMITTED_PROVIDER_SERVICE, OMITTED_PROVIDER_ALGORITHM);
         Assert.assertEquals("SunEC", service.getProvider().getName());
     }
 
-    /** §FS-security-providers.7.3: Tests compatibility-mode service instantiation. */
+    /** §FS-002-security-providers.7.3: Tests compatibility-mode service instantiation. */
     @Test
     public void testReachableBuiltInProviderGetInstance() throws NoSuchAlgorithmException {
         Assert.assertNotNull(GetInstance.getInstance(OMITTED_PROVIDER_SERVICE, null, OMITTED_PROVIDER_ALGORITHM));
     }
 
-    /** §FS-security-providers.7.3: Tests compatibility-mode service enumeration. */
+    /** §FS-002-security-providers.7.3: Tests compatibility-mode service enumeration. */
     @Test
     public void testReachableBuiltInProviderGetServices() {
         Iterator<Provider.Service> services = GetInstance.getServices(OMITTED_PROVIDER_SERVICE, OMITTED_PROVIDER_ALGORITHM);
         Assert.assertTrue(services.hasNext());
     }
 
-    /** §FS-security-providers.4.2: Tests the standard unavailable result. */
+    /** §FS-002-security-providers.4.2: Tests the standard unavailable result. */
     @Test
     public void testGenericMissingAlgorithmExhaustsProviderList() {
         Assert.assertThrows(NoSuchAlgorithmException.class, () -> KeyGenerator.getInstance(MISSING_KEY_GENERATOR_ALGORITHM));
     }
 
-    /** §FS-security-providers.7.3: Tests compatibility-mode algorithm enumeration. */
+    /** §FS-002-security-providers.7.3: Tests compatibility-mode algorithm enumeration. */
     @Test
     public void testSecurityGetAlgorithmsIncludesReachableBuiltInProviderAlgorithm() {
         Set<String> algorithms = Security.getAlgorithms(OMITTED_PROVIDER_SERVICE);
         Assert.assertTrue(algorithms.contains(OMITTED_PROVIDER_ALGORITHM.toUpperCase()));
     }
 
-    /** §FS-security-providers.7.3: Tests compatibility-mode provider filtering. */
+    /** §FS-002-security-providers.7.3: Tests compatibility-mode provider filtering. */
     @Test
     public void testSecurityGetProvidersFilterIncludesReachableBuiltInProvider() {
         Assert.assertNotNull(Security.getProviders(OMITTED_PROVIDER_SERVICE + "." + OMITTED_PROVIDER_ALGORITHM));

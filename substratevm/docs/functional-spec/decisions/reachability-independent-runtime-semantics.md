@@ -1,4 +1,4 @@
-# DF-reachability-independent-runtime-semantics: Keep Run-Time Semantics Independent of Reachability
+# AR-006-reachability-independent-runtime-semantics: Keep Run-Time Semantics Independent of Reachability
 
 ## 1. Context
 
@@ -34,10 +34,10 @@ behavior after inclusion.
 For security providers, reachability of a factory method, service type, algorithm constant, facade,
 or fallback path does not select a subset of an explicitly registered provider's services.
 It also does not register an otherwise unregistered provider, except where
-[§FS-security-providers.2.4](../security-providers.md#24-securerandom-providers) defines the bounded
+[§FS-002-security-providers.2.4](../security-providers.md#24-securerandom-providers) defines the bounded
 `SecureRandom` inclusion rule.
 The earlier service-driven behavior in
-[§FS-security-providers.7.3](../security-providers.md#73-earlier-service-driven-inclusion-behavior)
+[§FS-002-security-providers.7.3](../security-providers.md#73-earlier-service-driven-inclusion-behavior)
 remains a documented transition compatibility mode, not the planned run-time semantics.
 
 ## 3. Rejected Alternatives

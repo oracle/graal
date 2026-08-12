@@ -50,7 +50,8 @@ public final class BuiltInSecurityProviderLoader {
         return SecurityProviderCatalog.isDirectlyConstructible(providerNameOrClassName);
     }
 
-    /** §FS-security-providers.3.1, §FS-security-providers.4.3, and §FS-security-providers.7.1. */
+    // §FS-002-security-providers.3.1, §FS-002-security-providers.4.3
+    // §FS-002-security-providers.7.1
     public static Provider load(String providerNameOrClassName, Debug debug) {
         String providerClassName = getProviderClassName(providerNameOrClassName);
         if (providerClassName == null) {
@@ -58,15 +59,15 @@ public final class BuiltInSecurityProviderLoader {
         }
         return switch (providerClassName) {
             case "sun.security.provider.Sun" ->
-                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new sun.security.provider.Sun() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.provider.Sun() : loadReflectively(providerClassName, debug);
             case "sun.security.rsa.SunRsaSign" ->
-                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new sun.security.rsa.SunRsaSign() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.rsa.SunRsaSign() : loadReflectively(providerClassName, debug);
             case "com.sun.crypto.provider.SunJCE" ->
-                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new com.sun.crypto.provider.SunJCE() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new com.sun.crypto.provider.SunJCE() : loadReflectively(providerClassName, debug);
             case "sun.security.ssl.SunJSSE" ->
-                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? new sun.security.ssl.SunJSSE() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.ssl.SunJSSE() : loadReflectively(providerClassName, debug);
             case "sun.security.ec.SunEC" ->
-                SecurityProviderRuntimeState.isJdkConstructible(providerClassName) ? allocateSunECProvider() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? allocateSunECProvider() : loadReflectively(providerClassName, debug);
             case "apple.security.AppleProvider" -> loadReflectively(providerClassName, debug);
             default -> null;
         };
@@ -85,7 +86,8 @@ public final class BuiltInSecurityProviderLoader {
     private static Provider loadReflectively(String providerClassName, Debug debug) {
         try {
             Class<?> providerClass = Class.forName(GraalDirectives.opaque(providerClassName));
-            // §FS-security-providers.2.2: Use the same construction path the build-time rule chose.
+            // §FS-002-security-providers.2.2
+            // Use the same construction path the build-time rule chose.
             return SecurityProviderRuntimeAccess.constructProvider(providerClass);
         } catch (ReflectiveOperationException ex) {
             if (debug != null) {

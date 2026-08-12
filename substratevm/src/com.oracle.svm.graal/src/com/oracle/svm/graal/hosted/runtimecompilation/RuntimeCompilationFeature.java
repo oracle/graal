@@ -423,7 +423,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
          * only with its runtime-compilation consumer so ordinary executables do not retain JCA
          * security providers.
          */
-        // §FS-security-providers.2.4
+        // §FS-002-security-providers.2.4
         if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(RuntimeRandomness.class)) {
             ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
         }

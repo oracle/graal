@@ -1,4 +1,4 @@
-# FS-security-providers: JCA Security Provider Registration and Run-Time Access
+# FS-002-security-providers: JCA Security Provider Registration and Run-Time Access
 
 This specification defines Native Image behavior for Java Cryptography Architecture (JCA) security
 providers.
@@ -16,7 +16,7 @@ error that identifies the missing provider class.
 [§7](#7-transition-to-the-future-defaults) defines the future-default options that select this
 behavior during the transition from service-driven provider inclusion and build-time provider-list
 initialization.
-The implementation is described by [§AR-security-providers](../architecture/security-providers.md).
+The implementation is described by [§AR-002-security-providers](../architecture/security-providers.md).
 
 ## Notation
 
@@ -74,7 +74,7 @@ Registration is a build-time property: constructing a provider at run time regis
 > These are the paths the JDK uses to instantiate a configured provider, because it loads service
 > provider classes through `java.util.ServiceLoader`.
 > A provider that the JDK can construct on HotSpot therefore remains constructible in a native
-> executable; [§REQ-security-providers.1](requirements/security-providers.md#1-construction-parity)
+> executable; [§REQ-002-security-providers.1](requirements/security-providers.md#1-construction-parity)
 > requires it.
 > *Provider constructor* and *provider method* are the terms `java.util.ServiceLoader` uses for
 > them.
@@ -150,15 +150,15 @@ Type access alone does not make a provider JDK-constructible.
 A provider implementation class is not registered under any circumstance other than these signals,
 the platform-owned signal in [§2.4](#24-securerandom-providers), and the compatibility behavior in
 [§7.3](#73-earlier-service-driven-inclusion-behavior).
-[§REQ-security-providers.9.1](requirements/security-providers.md#91-closure-of-the-registration-signals)
+[§REQ-002-security-providers.9.1](requirements/security-providers.md#91-closure-of-the-registration-signals)
 states how this closure is discharged.
 
 > Using ordinary reflection metadata as this registration signal implements
-> [§DF-standard-jca-semantics.2](decisions/standard-jca-semantics.md#2-decision), and
-> [§REQ-security-providers.2](requirements/security-providers.md#2-metadata-closure) is the
+> [§AR-007-standard-jca-semantics.2](decisions/standard-jca-semantics.md#2-decision), and
+> [§REQ-002-security-providers.2](requirements/security-providers.md#2-metadata-closure) is the
 > acceptance criterion for it.
 > Separating the registration signal from the construction path implements
-> [§DF-provider-registration-signals.2](decisions/provider-registration-signals.md#2-decision).
+> [§AR-005-provider-registration-signals.2](decisions/provider-registration-signals.md#2-decision).
 
 ### 2.2 Provider Construction
 
@@ -198,7 +198,7 @@ Provider registration does not change the configured provider order or make an u
 visible by name.
 
 > This behavior implements
-> [§DF-complete-security-provider-registration.2](decisions/complete-security-provider-registration.md#2-decision).
+> [§AR-003-complete-security-provider-registration.2](decisions/complete-security-provider-registration.md#2-decision).
 
 ### 2.4 SecureRandom Providers
 
@@ -222,7 +222,7 @@ The presence of the optional internal randomness implementation must not registe
 executable.
 
 > This behavior implements
-> [§DF-default-secure-random-provider.2](decisions/default-secure-random-provider.md#2-decision).
+> [§AR-004-default-secure-random-provider.2](decisions/default-secure-random-provider.md#2-decision).
 
 ## 3. Permitted Run-Time Access
 
@@ -301,9 +301,9 @@ implementation can register the provider after the executable has been built.
 
 Application-supplied provider objects follow [§5](#5-programmatically-supplied-providers) and do not
 relax these requirements for JDK-managed providers.
-[§REQ-security-providers.4](requirements/security-providers.md#4-no-exposure-of-an-unregistered-provider)
+[§REQ-002-security-providers.4](requirements/security-providers.md#4-no-exposure-of-an-unregistered-provider)
 states the evidence for this rule, and
-[§REQ-security-providers.9.2](requirements/security-providers.md#92-the-acquisition-boundary) states
+[§REQ-002-security-providers.9.2](requirements/security-providers.md#92-the-acquisition-boundary) states
 how it holds for the acquisition paths that [§1.2](#12-jdk-managed-providers-and-acquisition) does
 not enumerate.
 
@@ -336,7 +336,7 @@ diagnostic is sufficient under [§2.1](#21-qualifying-reflection-metadata); Nati
 provider's construction and service metadata during the subsequent build.
 For an application-supplied provider without a supported construction path, that entry registers the
 provider class but retains no service implementations.
-[§REQ-security-providers.3](requirements/security-providers.md#3-diagnostic-sufficiency) requires
+[§REQ-002-security-providers.3](requirements/security-providers.md#3-diagnostic-sufficiency) requires
 the suggested entry to repair the reported failure.
 
 This requirement applies both to loading a provider from the configured provider list and to Java
@@ -438,7 +438,7 @@ The trace may locate `Provider.Service.newInstance` through contiguous helper fr
 
 Tracing a missing provider registration must use the ordinary reflection metadata format and
 diagnostics; it must not introduce a security-provider-specific metadata category or error.
-[§REQ-security-providers.8](requirements/security-providers.md#8-tracing-round-trip) requires
+[§REQ-002-security-providers.8](requirements/security-providers.md#8-tracing-round-trip) requires
 collected metadata to be both sufficient and minimal.
 
 ### 6.2 Observational Transparency
@@ -463,7 +463,7 @@ Run-time provider-list initialization can be selected independently; explicit pr
 depends on it and enables it implicitly.
 The supported combinations are legacy inclusion with build-time initialization, legacy inclusion
 with run-time initialization, and explicit registration with run-time initialization.
-[§REQ-security-providers.7](requirements/security-providers.md#7-transition-compatibility) requires
+[§REQ-002-security-providers.7](requirements/security-providers.md#7-transition-compatibility) requires
 each combination to be specified and selected at build time.
 
 ### 7.1 Run-Time Provider-List Initialization
@@ -530,7 +530,7 @@ enabled.
 > That signal registers complete providers for this commonly used JDK facility rather than inferring
 > partial provider support from a general service factory.
 > This planned behavior implements
-> [§DF-reachability-independent-runtime-semantics.2](decisions/reachability-independent-runtime-semantics.md#2-decision).
+> [§AR-006-reachability-independent-runtime-semantics.2](decisions/reachability-independent-runtime-semantics.md#2-decision).
 
 ### 7.4 Earlier Build-Time Initialization Behavior
 

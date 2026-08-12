@@ -1,4 +1,4 @@
-# DF-standard-jca-semantics: Preserve Standard JCA Semantics Without Provider-Specific Flags
+# AR-007-standard-jca-semantics: Preserve Standard JCA Semantics Without Provider-Specific Flags
 
 ## 1. Context
 
@@ -19,8 +19,8 @@ application's security configuration.
 They would also make otherwise standard JCA behavior depend on how the native executable was built
 rather than on the application's Java configuration.
 The registration requirements and standard run-time behavior are specified by
-[§FS-security-providers.1](../security-providers.md#1-provider-reflection-registration)
-and [§FS-security-providers.3](../security-providers.md#3-permitted-run-time-access).
+[§FS-002-security-providers.1](../security-providers.md#1-provider-reflection-registration)
+and [§FS-002-security-providers.3](../security-providers.md#3-permitted-run-time-access).
 
 ## 2. Decision
 

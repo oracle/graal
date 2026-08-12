@@ -45,11 +45,20 @@ import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 public final class MissingReflectionRegistrationUtils extends MissingRegistrationUtils {
 
     public static void reportClassAccess(String className) {
+        reportClassAccess(className, null);
+    }
+
+    /** Reports missing class access using an explicitly identified dynamic-access caller. */
+    public static void reportClassAccess(String className, StackTraceElement responsibleClass) {
         String json = elementToJSON(namedConfigurationType(className));
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
                         reflectionError("access the class", quote(className), json),
                         Class.class, null, className, null);
-        report(exception);
+        if (responsibleClass == null) {
+            report(exception);
+        } else {
+            MissingRegistrationUtils.report(exception, responsibleClass);
+        }
     }
 
     public static MissingReflectionRegistrationError reportUnsafeAllocation(Class<?> clazz) {

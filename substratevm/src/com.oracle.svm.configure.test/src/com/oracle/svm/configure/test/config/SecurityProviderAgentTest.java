@@ -50,8 +50,10 @@ public class SecurityProviderAgentTest {
     private static final String GENERATOR_ENABLED_PROPERTY = SecurityProviderAgentTest.class.getName() + ".generator.enabled";
     private static final String KEM_ALGORITHM = "AgentKEM";
     private static final String DELAYED_KEM_ALGORITHM = "AgentDelayedKEM";
+    private static final String PARAMETERIZED_SERVICE_TYPE = "AgentParameterizedService";
+    private static final String PARAMETERIZED_SERVICE_ALGORITHM = "AgentParameterizedAlgorithm";
 
-    /** Tests §FS-security-providers.6.1. */
+    /** Tests §FS-002-security-providers.6.1. */
     @Test
     public void enumerateSecurityProviders() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -62,7 +64,7 @@ public class SecurityProviderAgentTest {
         Assert.assertSame(ReflectiveProbe.class, Class.forName(ReflectiveProbe.class.getName()));
     }
 
-    /** Tests §FS-security-providers.6.1. */
+    /** Tests §FS-002-security-providers.6.1. */
     @Test
     public void programmaticProviderMutationDoesNotTraceConfiguredProviders() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -78,7 +80,7 @@ public class SecurityProviderAgentTest {
         }
     }
 
-    /** Tests §FS-security-providers.6.1. */
+    /** Tests §FS-002-security-providers.6.1. */
     @Test
     public void providerServiceHelpersRetainConstructorMetadata() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -94,7 +96,7 @@ public class SecurityProviderAgentTest {
         }
     }
 
-    /** Tests §FS-security-providers.6.1 for selection before service instantiation. */
+    /** Tests §FS-002-security-providers.6.1 for selection before service instantiation. */
     @Test
     public void jceServiceSelectionRetainsConstructorMetadata() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -108,6 +110,21 @@ public class SecurityProviderAgentTest {
         } finally {
             Security.removeProvider(provider.getName());
         }
+    }
+
+    /** Tests §FS-002-security-providers.6.1 for a non-standard parameterized service. */
+    @Test
+    public void providerServiceUsesTheActualConstructorArgument() throws Exception {
+        assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
+                        Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
+
+        Provider provider = new ProgrammaticallyAddedParameterizedProvider();
+        Provider.Service service = provider.getService(PARAMETERIZED_SERVICE_TYPE, PARAMETERIZED_SERVICE_ALGORITHM);
+        Assert.assertNotNull(service);
+        ParameterizedServiceArgument argument = new ParameterizedServiceArgument();
+        Assert.assertNotNull(service.newInstance(argument));
+        /* The second call exercises the agent path for an already cached implementation class. */
+        Assert.assertNotNull(service.newInstance(argument));
     }
 
     static final class ReflectiveProbe {
@@ -139,6 +156,26 @@ public class SecurityProviderAgentTest {
         ProgrammaticallyAddedDelayedKEMProvider() {
             super("AgentDelayedKEMProvider", 1.0, "Provider used to verify pre-instantiation service tracing");
             put("KEM." + DELAYED_KEM_ALGORITHM, DelayedTestKEM.class.getName());
+        }
+    }
+
+    static final class ProgrammaticallyAddedParameterizedProvider extends Provider {
+        private static final long serialVersionUID = 1L;
+
+        @SuppressWarnings("deprecation")
+        ProgrammaticallyAddedParameterizedProvider() {
+            super("AgentParameterizedProvider", 1.0, "Provider used to verify parameterized service tracing");
+            putService(new Service(this, PARAMETERIZED_SERVICE_TYPE, PARAMETERIZED_SERVICE_ALGORITHM,
+                            ParameterizedService.class.getName(), null, null));
+        }
+    }
+
+    public static final class ParameterizedServiceArgument {
+    }
+
+    public static final class ParameterizedService {
+        public ParameterizedService(ParameterizedServiceArgument argument) {
+            Assert.assertNotNull(argument);
         }
     }
 

@@ -34,13 +34,9 @@ import java.util.function.Function;
  * Tracks provider-registration intent separately from reflection metadata emitted to realize it.
  */
 final class SecurityProviderRegistrationPlanner {
-    enum Source {
-        APPLICATION_METADATA,
-        APPLICATION_VERIFICATION_METADATA,
-        PRESERVE,
-        SECURE_RANDOM_PLATFORM,
-        LEGACY_ADDITIONAL_PROVIDER,
-        LEGACY_SERVICE_REACHABILITY
+    enum PlanKind {
+        COMPLETE,
+        VERIFICATION_ONLY
     }
 
     private final Set<Class<?>> candidates = ConcurrentHashMap.newKeySet();
@@ -48,7 +44,6 @@ final class SecurityProviderRegistrationPlanner {
     private final Set<Class<?>> verificationCompleted = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> completePlans = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> legacyGeneratedReflection = ConcurrentHashMap.newKeySet();
-    private final ConcurrentHashMap<Class<?>, Set<Source>> sources = new ConcurrentHashMap<>();
     private final AtomicBoolean changed = new AtomicBoolean();
 
     void addCandidate(Class<?> providerClass) {
@@ -57,31 +52,24 @@ final class SecurityProviderRegistrationPlanner {
         }
     }
 
-    private void recordSource(Class<?> providerClass, Source source) {
-        sources.computeIfAbsent(providerClass, _ -> ConcurrentHashMap.newKeySet()).add(source);
-    }
-
-    void requestCompleteProvider(Class<?> providerClass, Source source) {
+    void requestCompleteProvider(Class<?> providerClass) {
         addCandidate(providerClass);
-        recordSource(providerClass, source);
         if (completePlans.add(providerClass)) {
             changed.set(true);
         }
     }
 
     void beforeLegacyReflectionRegistration(Class<?> providerClass) {
-        recordSource(providerClass, Source.LEGACY_SERVICE_REACHABILITY);
         legacyGeneratedReflection.add(providerClass);
     }
 
-    boolean processNewProviders(Function<Class<?>, Source> signalSource, Consumer<Class<?>> includeProvider, Consumer<Class<?>> registerVerification) {
+    boolean processNewProviders(Function<Class<?>, PlanKind> planKind, Consumer<Class<?>> includeProvider, Consumer<Class<?>> registerVerification) {
         boolean discoveredCandidate = changed.getAndSet(false);
         boolean processed = false;
         for (Class<?> providerClass : candidates) {
-            Source signal = !legacyGeneratedReflection.contains(providerClass) ? signalSource.apply(providerClass) : null;
-            if (signal != null) {
-                recordSource(providerClass, signal);
-                if (signal == Source.APPLICATION_VERIFICATION_METADATA) {
+            PlanKind plan = !legacyGeneratedReflection.contains(providerClass) ? planKind.apply(providerClass) : null;
+            if (plan != null) {
+                if (plan == PlanKind.VERIFICATION_ONLY) {
                     if (verificationCompleted.add(providerClass)) {
                         registerVerification.accept(providerClass);
                         processed = true;
