@@ -1,12 +1,31 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis.analyses;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -18,10 +37,23 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.util.CollectionsUtil;
+import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.TriState;
 
+/**
+ * This interface is the root of a little inheritance hierarchy for elements of the domain of
+ * pentagons. The domain of pentagons knows four different types of values: logic values
+ * ({@link LogicPentagon}), objects({@link ObjectPentagon}), floating point numbers
+ * ({@link FloatPentagon}), and integers ({@link IntegerPentagon}). Each type forms a sublattice in
+ * the domain. The domain of pentagons was first introduced in the paper
+ * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">Pentagons: a weakly relational abstract
+ * domain for the efficient validation of array accesses</a>. In addition to numeric bounds for
+ * integers, it also captures symbolic strict upper bound relationships between variables like
+ * {@code x < y}.
+ */
 public sealed interface Pentagon {
 
     sealed interface StampPentagon extends Pentagon {
@@ -53,7 +85,7 @@ public sealed interface Pentagon {
         // (we need to canonicalize those to UNEVALUATED)
         for (ValueNode sub : strictUpperBounds) {
             if (lowerBounds.contains(sub)) {
-                // this is an impossible value (these might occur
+                // this is an impossible value
                 return IntegerPentagon.UNEVALUATED[CodeUtil.log2(range.getBits())];
             }
         }
@@ -95,7 +127,7 @@ public sealed interface Pentagon {
 
     static Pentagon ofGeneralStamp(Stamp stamp) {
         return switch (stamp) {
-            case IntegerStamp iStamp -> Pentagon.of(iStamp, Set.of(), Set.of());
+            case IntegerStamp iStamp -> Pentagon.of(iStamp, CollectionsUtil.setOf(), CollectionsUtil.setOf());
             case FloatStamp fStamp -> Pentagon.of(fStamp);
             case AbstractObjectStamp oStamp -> Pentagon.of(oStamp);
             default -> throw GraalError.shouldNotReachHere("Cannot convert Stamp %s to Pentagon".formatted(stamp));
@@ -136,6 +168,9 @@ public sealed interface Pentagon {
 
     boolean isConstant();
 
+    /**
+     * A value in the domain of pentagons representing a boolean value.
+     */
     final class LogicPentagon implements Pentagon {
         public final TriState logic;
 
@@ -216,6 +251,45 @@ public sealed interface Pentagon {
         public static final LogicPentagon UNRESTRICTED = new LogicPentagon(TriState.UNKNOWN);
     }
 
+    /**
+     * <p>
+     * This is the most complex element in the domain of pentagons. In the original paper, a
+     * variable has a range which is described by numeric bounds and a set of other values that form
+     * strict upper bounds to the given variable. The range is represented using a standard integer
+     * stamp. The set of strict upper bounds in our case is a set of nodes. The framework operates
+     * on a per-node basis and the transfer function can only return an abstract value that is then
+     * associated with the node at hand and not a different node. Therefore, we also need to be able
+     * to represent the inverse direction when the node we are currently evaluating is a strict
+     * upper bound to another node. This could be represented as a set of strict lower bounds.
+     * </p>
+     * <p>
+     * But that still misses operations like proxies or phis with a singular reachable input, which
+     * do not change the value. Consider the following example:
+     * </p>
+     *
+     * <pre>
+     * int a = array.length - 1
+     * int len = proxy(array.length)
+     * prove a < len
+     * </pre>
+     *
+     * <p>
+     * Initially, we recognize that the array length is an upper bound to the result of the
+     * addition, namely {@code a}. Evaluating the proxy, we would ideally add the output of the
+     * proxy ({@code len}) to the strict upper bounds of {@code a}, but this is not possible in the
+     * framework. Since the proxy leaves the value unchanged, the array length is neither a strict
+     * upper nor a strict lower bound to {@code len}. Therefore, proving {@code a < len} would be
+     * impossible here.
+     * </p>
+     * <p>
+     * As a compromise between complexity and precision, we add the "may be equal" information to
+     * the strict lower bounds set, yielding a set of non-strict lower bounds in
+     * {@link IntegerPentagon#lowerBounds}. Now {@code len} has the array length as a non-strict
+     * lower bound. To prove {@code a < len}, we check for a non-empty set intersection between the
+     * strict upper bounds of {@code a} and the non-strict lower bounds of {@code len}. With this we
+     * can find that {@code a < array.length <= len}, with which we can prove this example.
+     * </p>
+     */
     final class IntegerPentagon implements StampPentagon {
         public final IntegerStamp range;
         public final Set<ValueNode> lowerBounds;
@@ -288,12 +362,12 @@ public sealed interface Pentagon {
             } else if (other.lowerBounds == null) {
                 nuLBs = lowerBounds;
             } else if (lowerBounds.isEmpty() || other.lowerBounds.isEmpty()) {
-                nuLBs = Set.of();
+                nuLBs = CollectionsUtil.setOf();
             } else {
-                nuLBs = new HashSet<>(lowerBounds);
+                nuLBs = new EconomicHashSet<>(lowerBounds);
                 nuLBs.retainAll(other.lowerBounds);
                 if (nuLBs.isEmpty()) {
-                    nuLBs = Set.of();
+                    nuLBs = CollectionsUtil.setOf();
                 }
             }
             // merge strict upper bounds
@@ -303,12 +377,12 @@ public sealed interface Pentagon {
             } else if (other.strictUpperBounds == null) {
                 nuSUBs = strictUpperBounds;
             } else if (strictUpperBounds.isEmpty() || other.strictUpperBounds.isEmpty()) {
-                nuSUBs = Set.of();
+                nuSUBs = CollectionsUtil.setOf();
             } else {
-                nuSUBs = new HashSet<>(strictUpperBounds);
+                nuSUBs = new EconomicHashSet<>(strictUpperBounds);
                 nuSUBs.retainAll(other.strictUpperBounds);
                 if (nuSUBs.isEmpty()) {
-                    nuSUBs = Set.of();
+                    nuSUBs = CollectionsUtil.setOf();
                 }
             }
             return Pentagon.of(nuRange, nuLBs, nuSUBs);
@@ -334,7 +408,7 @@ public sealed interface Pentagon {
             } else if (other.lowerBounds.isEmpty()) {
                 nuLBs = lowerBounds;
             } else {
-                nuLBs = new HashSet<>(lowerBounds);
+                nuLBs = new EconomicHashSet<>(lowerBounds);
                 nuLBs.addAll(other.lowerBounds);
             }
             // strengthen strict upper bounds
@@ -346,7 +420,7 @@ public sealed interface Pentagon {
             } else if (other.strictUpperBounds.isEmpty()) {
                 nuSUBs = strictUpperBounds;
             } else {
-                nuSUBs = new HashSet<>(strictUpperBounds);
+                nuSUBs = new EconomicHashSet<>(strictUpperBounds);
                 nuSUBs.addAll(other.strictUpperBounds);
                 // TODO maybe drop that because we don't modify the set anyway at any other point
                 nuSUBs = Collections.unmodifiableSet(nuSUBs);
@@ -450,14 +524,17 @@ public sealed interface Pentagon {
 
         static {
             for (int logBits = 0; logBits < UNRESTRICTED.length; logBits++) {
-                UNRESTRICTED[logBits] = new IntegerPentagon(IntegerStamp.create(1 << logBits), Set.of(), Set.of());
+                UNRESTRICTED[logBits] = new IntegerPentagon(IntegerStamp.create(1 << logBits), CollectionsUtil.setOf(), CollectionsUtil.setOf());
             }
-            for (int logBits = 0; logBits < UNRESTRICTED.length; logBits++) {
+            for (int logBits = 0; logBits < UNEVALUATED.length; logBits++) {
                 UNEVALUATED[logBits] = new IntegerPentagon(IntegerStamp.createEmptyStamp(1 << logBits), null, null);
             }
         }
     }
 
+    /**
+     * A wrapper of float stamps to make them accessible for the domain of pentagons.
+     */
     final class FloatPentagon implements StampPentagon {
         public final FloatStamp stamp;
 
@@ -543,6 +620,11 @@ public sealed interface Pentagon {
         public static final FloatPentagon DOUBLE_UNRESTRICTED = new FloatPentagon(FloatStamp.createUnrestricted(Double.SIZE));
     }
 
+    /**
+     * This domain element mainly wraps an object stamp to make them usable in the domain of
+     * pentagons. In addition to that, object pentagons are also capable of representing non-null
+     * object constants.
+     */
     final class ObjectPentagon implements StampPentagon {
         public final AbstractObjectStamp stamp;
         public final Constant constant; // nullable
@@ -584,8 +666,10 @@ public sealed interface Pentagon {
                 return other;
             }
             /*
-             * All results containing constants are already covered here because all constants lie
-             * directly below unevaluated. Therefore, we simply merge stamps and omit the constant.
+             * We do not need a special case for constants here. To obtain a constant result from a
+             * merge one either needs 2 instances of the same constant (covered by the equals case),
+             * or one constant and one unevaluated value (covered by the other two cases).
+             * Therefore, we simply merge stamps here.
              */
             return Pentagon.of((AbstractObjectStamp) stamp.meet(other.stamp));
         }
@@ -602,13 +686,10 @@ public sealed interface Pentagon {
                 return this;
             }
             /*
-             * Since in the lattice of ObjectStamps, there is a large section of the lattice below
-             * non-null constants, we need special handling for such constants (which are not
-             * represented in the stamps themselves, but rather as reference to the constant node).
-             * If this (exclusive-)or other is constant and stronger than the respective
-             * counterpart, then the result of the strengthen operation is the given element. An
-             * element is considered stronger in this case when the stamp strengthen is equal to the
-             * given element.
+             * In contrast to the case in merge, not all non-null constant results are covered at
+             * this point. Since these are not covered by ObjectStamps, we need special cases to
+             * handle them. For example strengthening a non-null type value with a non-null constant
+             * of a compatible type is not covered by the cases above.
              */
             AbstractObjectStamp joined = (AbstractObjectStamp) stamp.join(other.stamp);
             if (isConstant() && !other.isConstant() && joined.equals(stamp)) {
@@ -623,7 +704,7 @@ public sealed interface Pentagon {
         public boolean isConstant() {
             /*
              * Null constants are represented using the stamp. Other constants are represented by
-             * keeping a reference to the node that exactly represents this object, as well as a
+             * keeping a reference to the constant that exactly represents this object, as well as a
              * stamp with the exact type of the given object.
              */
             return stamp.isConstant() || isNonNullConstant();

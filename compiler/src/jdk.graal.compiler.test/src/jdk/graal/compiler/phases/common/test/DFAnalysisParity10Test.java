@@ -1,6 +1,26 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.common.test;
@@ -9,11 +29,14 @@ import java.util.ListIterator;
 import java.util.Optional;
 
 import org.graalvm.collections.MapCursor;
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.GraphState;
@@ -50,40 +73,56 @@ import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactSplitNode
  * information that can not be conveyed by {@link jdk.graal.compiler.core.common.type.Stamp} to show
  * that the framework is not bound to the Stamp system but rather can accommodate user defined
  * elements to describe data.
+ *
+ * The implementation of the parity-10 domain consists of two parts:<br />
+ * 1. A class containing an element representing the concrete data-flow information at a given point
+ * in the program, in this case {@link ParityElement}.<br />
+ * 2. An implementation of {@link AnalysisDomainDefinition}, {@link Parity10Lattice}, providing
+ * methods to construct a lattice consisting of the concrete data-flow elements. To achieve this,
+ * the class implements the methods {@code unevaluated}, {@code unrestricted}, {@code merge}, and
+ * {@code strengthen}. In addition to that, the class implements a transfer function in
+ * {@link Parity10Lattice#transfer}, which assigns abstract meaning to graph nodes in terms of the
+ * lattice elements. The methods {@code splitReachability} and {@code calcInferrableValues} provide
+ * the analysis with additional information regarding control flow.
  */
 public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
 
+    @Test
+    public void example() {
+        test("exampleSnippet", 5);
+    }
+
     /**
      * This is an example where the return value can be found by the Parity10 analysis. Stamps do
-     * not cover if a value is divisible by 10, therefore this case here is not covered.
-     * Additionally, to prove that the only reachable return statement returns a constant 1, control
-     * flow analysis is needed alongside the value flow analysis. The {@link DFAnalysis} framework
-     * takes care of this control flow analysis internally.
+     * not cover if a value is divisible by 10, therefore this case here is not covered by other
+     * analyses. Additionally, to prove that the only reachable return statement returns a constant
+     * 1, control flow analysis is needed alongside the value flow analysis. The {@link DFAnalysis}
+     * framework takes care of this control flow analysis internally.
      */
     @DFATestSnippet(anchors = 0, returns = "i32 [1]")
     public static int exampleSnippet(int a) {
         int ctr = a;
         int x = 10;
-        // x is parity 10
+        /* x is parity 10 */
         do {
-            // loop for an unknown amount of iterations
+            /* loop for an unknown amount of iterations */
             if (x % 10 != 0) {
-                // detected as unreachable by the Parity10Phase
+                /* detected as unreachable by the Parity10Phase, the anchor is removed */
                 GraalDirectives.controlFlowAnchor();
                 x = 11;
-                // if this was ever reached, x would not be parity 10 anymore
+                /* if this was ever reached, x would not be parity 10 anymore */
             }
-            // x stays parity 10 because the assignment above is unreachable
+            /* x stays parity 10 because the assignment above is unreachable */
         } while (ctr-- > 0);
-        // x is still parity 10
+        /* x is still parity 10 */
 
         if (x % 10 == 0) {
-            // this is reachable since x is parity 10
+            /* this is reachable since x is parity 10 */
             return 1;
         } else {
             /*
              * Detected as unreachable by the Parity10Phase (Parity10Lattice#transfer in 'case
-             * IntegerEqualsNode' and Parity10Lattice#splitReachability).
+             * IntegerEqualsNode' and Parity10Lattice#splitReachability), the anchor is removed.
              */
             GraalDirectives.controlFlowAnchor();
             return 2;
@@ -253,9 +292,9 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
      * It defines the domain that the analysis will use in the form of a
      * <a href="https://en.wikipedia.org/wiki/Complete_lattice">complete lattice</a>. The elements
      * in this domain are represented by instances of {@link ParityElement}. Domain definition
-     * instances are supposed to be essentially stateless. They only exist to provide functions to
-     * interact with a domain element unknown to the framework, and to calculate domain elements for
-     * operations like for example additions.
+     * instances are supposed to be stateless as observed by the framework. They only exist to
+     * provide functions to interact with a domain element unknown to the framework, and to
+     * calculate domain elements for operations like for example additions.
      * </p>
      * <p>
      * This domain evaluates nodes that produce integers by describing if their result values are
@@ -295,7 +334,8 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
 
         /**
          * This method calculates a result for the operation the given node represents, given the
-         * values of its inputs.
+         * mapping that contains the currently known information about its inputs (i.e., the current
+         * analysis state).
          */
         @Override
         public ParityElement transfer(ValueNode node, DFAMap<ParityElement> map) {
@@ -336,7 +376,8 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
                     boolean y0 = y.isZero();
                     if (x0 && y0) {
                         yield ParityElement.L_TRUE;
-                    } else if (x0 && y.isNotZero() || y0 && x.isNotZero()) {
+                    } else if (x0 && y.isNotZero() || y0 && x.isNotZero() ||
+                                    x.isParity() && y.isNotParity() || x.isNotParity() && y.isParity()) {
                         yield ParityElement.L_FALSE;
                     } else {
                         yield ParityElement.L_UNRESTRICTED;
@@ -349,7 +390,7 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
                  */
                 case SignedFloatingIntegerRemNode rem -> {
                     if (rem.getY().isJavaConstant() && rem.getY().asJavaConstant().asLong() == 10) {
-                        // this is a modulo 10 operation
+                        /* this is a modulo 10 operation */
                         if (map.getOrUnrestricted(rem.getX()).isParity()) {
                             yield ParityElement.P_IS_ZERO;
                         } else if (map.getOrUnrestricted(rem.getX()).isNotParity()) {
@@ -358,7 +399,7 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
                             yield ParityElement.P_UNRESTRICTED;
                         }
                     } else {
-                        // not a modulo 10 operation
+                        /* not a modulo 10 operation */
                         yield ParityElement.P_UNRESTRICTED;
                     }
                 }
@@ -400,7 +441,7 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
         public ParityElement[][] calcInferrableValues(ValueNode node, DFAMap<ParityElement> map) {
             if (node instanceof IntegerEqualsNode eq) {
                 return AnalysisDomainDefinition.ifInference(ParityElement.class,
-                                // inferences for the true branch
+                                /* inferences for the true branch */
                                 AnalysisDomainDefinition.binaryLogicInference(ParityElement.class,
                                                 /*
                                                  * For input X we can assume that if the equals
@@ -408,7 +449,7 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
                                                  * we already know input Y to be.
                                                  */
                                                 map.getOrUnrestricted(eq.getY()),
-                                                // similar for input Y
+                                                /* similar for input Y */
                                                 map.getOrUnrestricted(eq.getX())),
                                 /*
                                  * We will never produce an inference for the false branch,
@@ -471,10 +512,13 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
      * There are a few important things to note here. First, each instance of the analysis framework
      * created with {@link DFAnalysis#create} is only to be used one time, since throughout running
      * the analysis, the internal state changes. Second, running the analysis creates a map of nodes
-     * to their respective domain elements calculated using the domain definition. Lastly, the
-     * analysis inserts special nodes ({@link InferredFactNode}) into the graph representing a value
-     * in a special branch. These nodes are intended to be only short-lived and need to be cleaned
-     * up after the analysis by calling {@link DFAnalysis#cleanup}.
+     * to their respective domain elements calculated using the domain definition. The information
+     * in this map can be used by a phase to optimize the graph, typically by folding branch
+     * conditions to constants. Lastly, the analysis inserts special nodes.
+     * ({@link InferredFactNode}) into the graph representing additional knowledge about a value in
+     * a particular branch, derived from a branch condition (similar to Pi nodes). These nodes are
+     * intended to be only short-lived and need to be cleaned up after the analysis by calling
+     * {@link DFAnalysis#cleanup}.
      * </p>
      * <p>
      * To initialize the analysis, a list of node types used as starting points for the analysis
@@ -502,7 +546,7 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
              * The framework should work (with a performance penalty) even without value proxies but
              * this not tested and therefore not allowed.
              */
-            return NotApplicable.unlessRunBefore(this, GraphState.StageFlag.VALUE_PROXY_REMOVAL, graphState);
+            return DFAnalysis.notApplicableTo(this, graphState);
         }
 
         @Override
@@ -511,30 +555,39 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
             try (DebugContext.Scope scope = graph.getDebug().scope("Parity10Application")) {
 
                 // create analysis
-                DFAnalysis<ParityElement> analysis = DFAnalysis.create(ParityElement.class, graph, PARITY_10_DOMAIN, nd -> switch (nd) {
-                    case ConstantNode ignored -> true;
-                    case LogicConstantNode ignored -> true;
-                    default -> false;
-                });
+                DFAnalysis<ParityElement> analysis = DFAnalysis.create(ParityElement.class, graph, PARITY_10_DOMAIN, Parity10Phase::isStartingPoint);
 
                 // run analysis
                 DFAMap<ParityElement> result = analysis.run();
 
                 // replace the logic constants we found in graph
                 MapCursor<ValueNode, ParityElement> stampCursor = result.getEntries();
+                int replacementCnt = 0;
                 while (stampCursor.advance()) {
                     ValueNode node = stampCursor.getKey();
                     ParityElement value = stampCursor.getValue();
                     if (value.equals(ParityElement.L_TRUE)) {
                         replaceWithLogicConstant(graph, (LogicNode) node, true);
+                        replacementCnt++;
                     } else if (value.equals(ParityElement.L_FALSE)) {
                         replaceWithLogicConstant(graph, (LogicNode) node, false);
+                        replacementCnt++;
                     }
                 }
+
+                Assert.assertTrue("We expect Parity10 to optimize test cases", replacementCnt > 0);
 
                 // run cleanup
                 analysis.cleanup();
             }
+        }
+
+        private static boolean isStartingPoint(Node nd) {
+            return switch (nd) {
+                case ConstantNode ignored -> true;
+                case LogicConstantNode ignored -> true;
+                default -> false;
+            };
         }
 
         private static void replaceWithLogicConstant(StructuredGraph graph, LogicNode toReplace, boolean constantValue) {
@@ -547,11 +600,15 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
     }
 
     @Override
+    protected OptionValues modifyOptions(OptionValues current) {
+        return super.modifyOptions(new OptionValues(current, GraalOptions.ConditionalConstantPropagation, true));
+    }
+
+    @Override
     protected Suites createSuites(OptionValues opts) {
         Suites suites = super.createSuites(opts);
-        // insert Parity10Phase before LSCCPPhase
+        // insert Parity10Phase after LSCCPPhase
         ListIterator<BasePhase<? super MidTierContext>> pos = suites.getMidTier().findPhase(LSCCPPhase.class);
-        pos.previous();
         pos.add(new Parity10Phase(createCanonicalizerPhase()));
         return suites;
     }
@@ -559,11 +616,6 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
     // =================================================================================================================
     // More examples of code shapes detectable with the parity 10 analysis
     // =================================================================================================================
-
-    @Test
-    public void example() {
-        test("exampleSnippet", 5);
-    }
 
     @Test
     public void parity10() {
@@ -574,25 +626,25 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
     public static int parity10Snippet(int a) {
         int ctr = a;
         int x = 10;
-        // x is parity 10
+        /* x is parity 10 */
         do {
             if (x % 10 != 0) {
-                // detected as unreachable by the Parity10Phase
+                /* detected as unreachable by the Parity10Phase, the anchor is removed */
                 GraalDirectives.controlFlowAnchor();
                 x = 11;
             }
-            // x stays parity 10 because the assignment above is unreachable
+            /* x stays parity 10 because the assignment above is unreachable */
             if (ctr % 10 == 0) {
-                // branch is reachable (we know nothing about ctr)
+                /* branch is reachable (we know nothing about ctr) */
                 GraalDirectives.controlFlowAnchor();
                 x = 20;
-                // x is still parity 10
+                /* x is still parity 10 */
             }
-            // x stays parity 10
+            /* x stays parity 10 */
         } while (ctr-- > 0);
-        // x is still parity 10
+        /* x is still parity 10 */
 
-        // preserve parity with exact add with parity-10 value
+        /* preserve parity with exact add with parity-10 value */
         x = Math.addExact(x, 30);
         if (x % 10 == 0) {
             return 1;
@@ -615,25 +667,25 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
     public static int notParity10Snippet(int a) {
         int ctr = a;
         int x = 10;
-        // x is parity 10
+        /* x is parity 10 */
         do {
             if (x % 10 != 0) {
-                // detected as unreachable by the Parity10Phase
+                /* detected as unreachable by the Parity10Phase, the anchor is removed */
                 GraalDirectives.controlFlowAnchor();
                 x = 11;
             }
-            // x stays parity 10 because the assignment above is unreachable
+            /* x stays parity 10 because the assignment above is unreachable */
             if (ctr % 10 == 0) {
-                // branch is reachable (we know nothing about ctr)
+                /* branch is reachable (we know nothing about ctr) */
                 GraalDirectives.controlFlowAnchor();
                 x = 20;
-                // x is still parity 10
+                /* x is still parity 10 */
             }
-            // x stays parity 10
+            /* x stays parity 10 */
         } while (ctr-- > 0);
-        // x is still parity 10
+        /* x is still parity 10 */
 
-        // destroy parity with exact add with non-parity-10 value
+        /* destroy parity with exact add with non-parity-10 value */
         x = Math.addExact(x, 35);
         if (x % 10 == 0) {
             /*
@@ -656,16 +708,16 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
     public static int inferParity10Snippet(int a, int b) {
         int ctr = a;
         int x = 10;
-        // x is parity 10
+        /* x is parity 10 */
         do {
             if (x % 10 != 0) {
-                // detected as unreachable by the Parity10Phase
+                /* detected as unreachable by the Parity10Phase */
                 GraalDirectives.controlFlowAnchor();
                 x = 11;
             }
-            // x stays parity 10 because the assignment above is unreachable
+            /* x stays parity 10 because the assignment above is unreachable */
         } while (ctr-- > 0);
-        // x is parity 10 here
+        /* x is parity 10 here */
 
         if (b == x) {
             /*
@@ -674,17 +726,17 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
              * augmenting all usages of b inside the branch with the information that b is indeed
              * parity 10. For details see Parity10Lattice#calcInferrableValues.
              */
-            // this condition is provable by the parity 10 analysis.
+            /* this condition is provable by the parity 10 analysis. */
             if (b % 10 == 0) {
-                // reachable return
+                /* reachable return */
                 return 1;
             } else {
-                // detected as unreachable by the Parity10Phase
+                /* detected as unreachable by the Parity10Phase */
                 GraalDirectives.controlFlowAnchor();
                 return 2;
             }
         } else {
-            // reachable return
+            /* reachable return */
             return 1;
         }
     }

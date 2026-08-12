@@ -1,6 +1,26 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.common.test;
@@ -45,17 +65,21 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
     /**
      * This is not a tested snippet in itself. Rather, it is intended to be used to represent a
      * constant that needs conditional constant propagation to be found in other test snippets.
+     *
+     * @return {@code constant} as a conditional constant with a conditional offset of 3 for values
+     *         greater than 100.
      */
     public static int conditionalConstant(int z, int constant) {
         int conditionalConstant = constant;
         int a = z;
         do {
             if (conditionalConstant != constant) {
-                conditionalConstant = 2;
+                conditionalConstant = constant + 1;
+                // this anchor should be removed by LSCCP, FullStamps, and pentagonal analysis
                 GraalDirectives.controlFlowAnchor();
             }
         } while (a-- > 0);
-        if (conditionalConstant > 100) {
+        if (conditionalConstant > constant) {
             conditionalConstant = constant + 3;
         }
         return conditionalConstant;
@@ -73,6 +97,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         do {
             if (x != 1) {
                 x = 2;
+                // this anchor should be removed
                 GraalDirectives.controlFlowAnchor();
             }
             GraalDirectives.sideEffect(ctr);
@@ -92,6 +117,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         int y = 3;
         do {
             if (ShortCircuitOrNodeTest.shortCircuitOr(x != 1, y != 3)) {
+                // this anchor should be removed
                 GraalDirectives.controlFlowAnchor();
                 x = 10;
                 y = 30;
@@ -112,11 +138,13 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         int z = a;
         while (z-- > 0) {
             if (y != 2) {
+                // this anchor should be removed
                 GraalDirectives.controlFlowAnchor();
                 x = 2;
             }
             x = 2 - x;
             if (x != 1) {
+                // this anchor should be removed
                 GraalDirectives.controlFlowAnchor();
                 y = 3;
             }
@@ -132,17 +160,27 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet(loops = 1, anchors = 2)
     public static int symbolicFactsSnippet(int a, int b) {
+        return symbolicFactsPattern(a, b);
+    }
+
+    public static int symbolicFactsPattern(int a, int b) {
         int x = 1;
         int y = b;
         int z = a;
         while (z-- > 0) {
             if (y != b) {
+                /*
+                 * Constant propagation doesn't track the fact that y equals b, so it treats this
+                 * branch as reachable.
+                 */
                 x = 2;
+                // this anchor cannot be removed
                 GraalDirectives.controlFlowAnchor();
             }
             x = 2 - x;
             if (x != 1) {
                 y = 2;
+                // this anchor cannot be removed
                 GraalDirectives.controlFlowAnchor();
             }
         }
@@ -186,6 +224,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             case 9 -> 45724245;
             default -> 972;
         };
+        // this anchor forces a large PHI and cannot be removed
         GraalDirectives.controlFlowAnchor();
         return result + 42;
     }
@@ -211,6 +250,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             case 19 -> 45724245;
             default -> 972;
         };
+        // this anchor forces a large PHI and cannot be removed
         GraalDirectives.controlFlowAnchor();
         return result + 42;
     }
@@ -230,6 +270,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             case 1_000_000 -> 24662;
             default -> 972;
         };
+        // this anchor forces a large PHI and cannot be removed
         GraalDirectives.controlFlowAnchor();
         return result + 42;
     }
@@ -242,6 +283,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet(anchors = 0, returns = "i32 [5]")
     public static int loopStackSnippet(int z) {
+        // the anchor in the conditional constant will be removed
         int conditionalConstant = conditionalConstant(z);
         for (int i = 0; i < conditionalConstant; i++) {
             GraalDirectives.sideEffect(i);
@@ -352,7 +394,8 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
     @DFATestSnippet(anchors = 1, conditionals = 0, returns = "i32 [538]")
     public static int shortCircuitOrSnippet(int a) {
         int constant = conditionalConstant(a);
-        int conditional = constant != 3 && constant < 10 ? 538 : 126;
+        int conditional = constant != 3 && constant < 6 ? 538 : 126;
+        // this anchor forces a singular return, it stays
         GraalDirectives.controlFlowAnchor();
         return conditional;
     }
@@ -364,6 +407,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet(anchors = 0, returns = "i32 [2]")
     public static int piDivisionSnippet(int a) {
+        // the anchor in conditionalConstant is removed
         int constant = conditionalConstant(a);
         return 10 / constant;
     }
@@ -392,7 +436,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             e1[k - 1] = j * k * l;
         }
 
-        if (j + k + l != 6 && j * k * l != 6) {
+        if (j + k + l != 6 || j * k * l != 6) {
             // this will be removed because j, k and l are found to be constant
             GraalDirectives.deoptimizeAndInvalidate();
         }
@@ -509,6 +553,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet(anchors = 0, returns = "i32 [8]")
     public static int nestedConditionalConstantsSnippet(int a) {
+        // the two anchors in the conditional constants are removed
         return conditionalConstant(a, conditionalConstant(a, 8));
     }
 
@@ -525,7 +570,9 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         int z = a;
         do {
             if (b == 5) {
+                // an inference with b == 5 is generated
                 if (b != constant) {
+                    // this anchor is removed
                     GraalDirectives.controlFlowAnchor();
                     x = 2;
                 }
@@ -552,7 +599,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             default -> -5;
         };
 
-        // simulate discovery with CCP (constant = 5)
+        // simulate discovery with CCP (constant = 5), the internal anchor is removed
         int constant = conditionalConstant(a);
 
         // using inferences, this calculation should result in x = 5
@@ -569,7 +616,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
              */
         }
 
-        // simulate further discoveries with CCP (result = 5)
+        // simulate further discoveries with CCP (result = 5), the internal anchor is removed
         int result = conditionalConstant(a, x);
 
         // should be reduced to return 5;
@@ -581,7 +628,6 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         final int min = Integer.MAX_VALUE - 11;
         final int max = Integer.MAX_VALUE;
         OptionValues opt = new OptionValues(getInitialOptions(),
-                        GraalOptions.PartialUnroll, false,
                         GraalOptions.LoopUnswitch, false,
                         GraalOptions.PartialUnroll, false);
         test(opt, "inferInLoopSnippet", min, max);
@@ -615,8 +661,12 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         int res = 5;
         for (int i = 1; i < a; i++) {
             if (i != 1) {
-                // loop PHI is unreachable on first evaluation
-                // inferred fact for j is also unreachable until loop PHI becomes reachable
+                /*
+                 * The inner loop-PHI is unreachable on first evaluation of the outer loop. The
+                 * change of reachability of this branch in the second iteration of the outer loop
+                 * triggers the evaluation of the inferred fact at this branch and the inner
+                 * loop-PHI.
+                 */
                 for (int j = 1; j < i - 4; j += 4) {
                     res = j;
                 }
@@ -638,6 +688,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             if (res != 1) {
                 res = 3;
             } else {
+                // this anchor is removed
                 GraalDirectives.controlFlowAnchor();
                 res += 2;
             }
@@ -660,6 +711,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         for (int i = 0; i < a; i++) {
             if (target != null) {
                 target = b;
+                // this anchor is removed
                 GraalDirectives.controlFlowAnchor();
             }
         }
@@ -694,6 +746,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         while (i++ < limit) {
             if (myConst == 0) {
                 myConst = 1;
+                // this anchor is removed
                 GraalDirectives.controlFlowAnchor();
             } else {
                 // do sth else
@@ -741,6 +794,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             fiberLocals = rtc0;
             if (fiberLocals.field == 0) {
                 fiberLocals.field = 1;
+                // this anchor is removed
                 GraalDirectives.controlFlowAnchor();
             } else {
                 // do sth else
@@ -782,14 +836,17 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
     public static Object rubyLoopNullConstPattern(int limit) {
         RubyTestClassObject fiberLocals = rtc1;
         if (fiberLocals.field == null) {
+            // this anchor forces an if, it stays
             GraalDirectives.controlFlowAnchor();
             fiberLocals.field = rtcS1;
         } else {
+            // this anchor forces an if, it stays
             GraalDirectives.controlFlowAnchor();
             if (fiberLocals.field != rtcS1) {
                 GraalDirectives.deoptimizeAndInvalidate();
             }
         }
+        // this anchor forces a merge, it stays
         GraalDirectives.controlFlowAnchor();
         // rtc1.field == rtcS1 (but the stamp just says unspecified non-null object)
         int i = 0;
@@ -844,7 +901,8 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             if (fiberLocals.field == rtcEmpty) {
                 /*
                  * This cannot be proven without full Pentagons because C(rtcEmpty) can not be
-                 * represented in ObjectStamp. Pentagons though can proe this falls
+                 * represented in ObjectStamp. Therefore, this branch is considered reachable with
+                 * constants or stamps, but detected to be unreachable with pentagons.
                  */
                 fiberLocals.field = 1;
                 GraalDirectives.controlFlowAnchor();
@@ -874,8 +932,15 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         FuzzClass0() {
             boolean var4;
             var4 = 24376 % randomShort() == randomShort();
-            // the result of the modulo operation is only used in a frame state, we must not insert
-            // an inference there and create a false fact which results in a division by 0
+            /*
+             * Before the modulo operation is a check if the right input is not zero to throw an
+             * ArithmeticException if necessary. The analysis will try to insert an inference for
+             * this branch. Since the result of the modulo operation is only used in a frame state
+             * and not in a fixed node or a PHI, the analysis cannot determine the branch this
+             * modulo belongs to. Therefore, no inference that the right input is or is not zero
+             * must be inserted. Inserting a false inference here would result in a modulo by zero
+             * error.
+             */
         }
     }
 
@@ -920,6 +985,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet
     public static void secondFullInnerLoopEvalSnippet(int a) {
+        // this snippet checks if the analysis passes, no new constants are to be found here
         for (int i = 3; i > a;) {
             // i != 0
             i = switch (i) {
@@ -957,6 +1023,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet
     public static void delayedIsNullInferenceSnippet(int a) {
+        // this snippet checks if the analysis passes, no new constants are to be found here
         int const0 = conditionalConstant(a, 0);
         Object o = oc1;
         for (int i = 10; i > const0; i--) {
@@ -990,6 +1057,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @DFATestSnippet
     public static int doubleInferenceSnippet(int a) {
+        // this snippet checks if the analysis passes, no new constants are to be found here
         Object x = null;
         Object y = null;
         memWrite = new Object();
@@ -1040,7 +1108,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
             case 1, 2, 3 -> {
                 // b is not-zero
                 if (b == constantZero) {
-                    // this branch is unreachable
+                    // this branch is unreachable, the anchor is removed
                     GraalDirectives.controlFlowAnchor();
                     return 3;
                 } else {
@@ -1061,6 +1129,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
     @DFATestSnippet(anchors = 1, conditionals = 0, returns = "i32 [2]")
     public static int resetConditionalSnippet(int a) {
         int constantOne = conditionalConstant(a, 1);
+        // this anchor forces a singular return, it stays
         GraalDirectives.controlFlowAnchor();
         /*
          * This represents a ConditionalNode of which the condition is evaluated after its value
@@ -1074,11 +1143,12 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
     }
 
     @Test
-    public void t3() {
-        test("t3Snippet", new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
+    public void weirdDoubleLoopPhi() {
+        test("weirdDoubleLoopPhiSnippet", new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
     }
 
-    public static void t3Snippet(int[] a) {
+    public static void weirdDoubleLoopPhiSnippet(int[] a) {
+        // the output of one loop phi is directly used in the second loop phi
         for (int i = 0, j = 1; j < a.length; j = (i = j) + 1) {
             GraalDirectives.blackhole(a[i] + a[j]);
         }

@@ -1,6 +1,26 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
- * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 package jdk.graal.compiler.phases.dfanalysis;
@@ -99,7 +119,9 @@ public interface AnalysisDomainDefinition<ELEM_TYPE> {
 
     /**
      * Retrieves the {@code unevaluated} element for the smaller sub-lattice of which {@code elem}
-     * is a part of.
+     * is a part of. If, for example, the domain contains a sub-lattice for integer values, then
+     * this method should reply with the unevaluated-integer element whenever it is given any
+     * integer-element.
      */
     ELEM_TYPE unevaluated(ELEM_TYPE elem);
 
@@ -150,28 +172,23 @@ public interface AnalysisDomainDefinition<ELEM_TYPE> {
      * <p>
      * Generally, this function is expected to treat unevaluated values as unrestricted, which can
      * be done implicitly by using {@link DFAMap#getOrUnrestricted} to obtain information about
-     * input nodes. This transfer function must uphold monotonicity, meaning, interpreting
-     * unevaluated values as unrestricted and given increasingly weaker inputs, the result of the
-     * transfer function must be weaker or equal to the result given stronger inputs (i.e. given
-     * inputs {@code a <= x & b <= y: transferForAdd(a, b) <= transferForAdd(x, y)}).
+     * input nodes.
+     *
+     * After reinterpreting unevaluated values as unrestricted, the transfer function must uphold
+     * monotonicity. This means, given ever weaker inputs, the transfer function's result must also
+     * become weaker or stay the same. Formally,
+     * {@code forall a1..an, x1..xn: a1 <= x1 & ... -> transfer(op, a1, ...) <= transfer(op, x1, ...)}.
+     * Furthermore, the transfer function must never return UNEVALUATED.
      * </p>
      * <p>
-     * Nodes that may produce a stronger than unrestricted value if they still have unevaluated
-     * inputs can pose problems with monotonicity. Consider for example a Conditional node that
-     * first only has its value inputs evaluated ({@code cond: ???, trueVal: 1, falseVal: 2}). In
-     * this case we could return the set {1, 2} as the set of possible results for the conditional.
-     * If now the condition becomes evaluated to a constant true
-     * ({@code cond: ???, trueVal: 1, falseVal: 2}) we could return {1} as the set of possible
-     * results, which is stronger than the earlier result. This is despite upholding monotonicity
-     * <i>interpreting unevaluated inputs as unrestricted</i>. In this case, even though all inputs
-     * behave in a monotone manner, the output does not.
-     * </p>
-     * <p>
-     * The framework has a mechanism to deal with such situations. To be able to deal with nodes
-     * that may produce a stronger than unrestricted result even though not having all inputs
-     * evaluated, a special case in {@link AnalysisDomainDefinition#countUnevaluatedInputs} has to
-     * be implemented to inform the framework that the result given is preliminary since not all
-     * inputs have been evaluated.
+     * Note that <i>interpreting unevaluated inputs as unrestricted</i> may introduce problems with
+     * monotonicity in general (for an example, see
+     * {@link AnalysisDomainDefinition#countUnevaluatedInputs}). This is allowed and the framework
+     * has a mechanism to deal with such situations. To be able to deal with nodes that may produce
+     * a stronger than unrestricted result even though not having all inputs evaluated, a special
+     * case in {@link AnalysisDomainDefinition#countUnevaluatedInputs} has to be implemented to
+     * inform the framework that the result given is preliminary since not all inputs have been
+     * evaluated.
      * </p>
      *
      * @param node the node to evaluate.
@@ -269,7 +286,7 @@ public interface AnalysisDomainDefinition<ELEM_TYPE> {
      * This is so that the framework can mark such results as preliminary and reset them if needed
      * to still allow cases like the earlier example with the ConditionalNode.
      * </p>
-     * 
+     *
      * @param node the node to check the inputs for
      * @param map the current state of the analysis, intended to be used to retrieve the domain
      *            elements currently associated with the inputs of the given node.
