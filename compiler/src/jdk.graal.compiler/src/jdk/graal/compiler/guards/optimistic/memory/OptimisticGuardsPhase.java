@@ -29,6 +29,7 @@ import java.util.Optional;
 import jdk.graal.compiler.guards.optimistic.OptimisticFixedGuardNode;
 import jdk.graal.compiler.guards.optimistic.OptimisticGuardedNode;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
@@ -76,6 +77,7 @@ public class OptimisticGuardsPhase extends PostRunCanonicalizationPhase<CoreProv
             if (guard.usages().isEmpty()) {
                 graph.removeFixed(guard);
             } else {
+                GraalError.guarantee(guard.canDeoptimize(), "Cannot lower an optimistic guard that cannot deoptimize: %s", guard);
                 guard.lowerToIf();
             }
         }

@@ -38,6 +38,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.Position;
+import jdk.graal.compiler.guards.optimistic.OptimisticFixedGuardNode;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.DeoptimizingGuard;
@@ -540,7 +541,19 @@ public class ConditionalEliminationUtil {
     }
 
     public static boolean rewireGuards(GuardingNode guard, boolean result, ValueNode proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
+        if (!mayRewriteToGuard(guard)) {
+            return false;
+        }
         return rewireGuardFunction.rewire(guard, result, guardedValueStamp, proxifiedInput);
+    }
+
+    /**
+     * Determines whether this guard may be used as an anchor for general guards or Pi nodes.
+     * Optimistic guards that cannot deoptimize are meant to be reverted before lowering, so they
+     * must not have usages that would keep them alive as a deopt.
+     */
+    static boolean mayRewriteToGuard(GuardingNode guard) {
+        return !(guard instanceof OptimisticFixedGuardNode optimisticGuard && !optimisticGuard.canDeoptimize());
     }
 
     @FunctionalInterface
