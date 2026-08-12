@@ -113,6 +113,7 @@ import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.security.ProviderConstruction;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -333,6 +334,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + SecurityServicesFeature.class);
 
     private final Map<String, List<Provider>> buildTimeProvidersByClassName = new HashMap<>();
+    /** ServiceLoader declaration classes, in discovery order, keyed by returned implementation class. */
+    private final Map<Class<?>, List<Class<?>>> providerConstructionClasses = new HashMap<>();
     private SecurityProviderCatalogRegistrar catalogRegistrar;
     private ReflectionRegistrationView reflectionRegistrationView;
     private boolean preserveAll;
@@ -348,7 +351,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
             @Override
             public Provider instantiateProvider(Class<?> providerClass) {
-                return SecurityServicesFeature.instantiateProvider(providerClass);
+                return SecurityServicesFeature.this.instantiateProviderImplementation(providerClass);
             }
 
             @Override
@@ -363,19 +366,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
             @Override
             public void registerSelectedConstructionPath(DuringAnalysisAccess access, Class<?> providerClass) {
-                if (mode.explicitRegistration()) {
+                for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
                     /* §FS-security-providers.7.1:
                      * The run-time provider-list loader invokes this path from a different module.
                      * Open non-exported JDK provider packages only to that loader.
                     */
-                    ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityProviderRuntimeAccess.class, providerClass);
-                    SecurityServicesFeature.registerSelectedConstructionPath(providerClass);
-                } else {
-                    /* §FS-security-providers.7.3:
-                     * Legacy inclusion registers every public constructor; explicit mode selects
-                     * one JDK construction path. */
-                    ResolvedJavaType providerType = ((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(providerClass);
-                    JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getConstructors(providerType));
+                    ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityProviderRuntimeAccess.class, constructionClass);
+                    if (mode.explicitRegistration() || !constructionClass.equals(providerClass)) {
+                        SecurityServicesFeature.registerSelectedConstructionPath(constructionClass);
+                    } else {
+                        /* §FS-security-providers.7.3:
+                         * Legacy inclusion registers every public constructor; explicit mode
+                         * selects one JDK construction path. */
+                        ResolvedJavaType providerType = ((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(providerClass);
+                        JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getConstructors(providerType));
+                    }
                 }
             }
 
@@ -777,6 +782,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         getSpiClassMethod = getSpiClassMethod();
         availableServices = computeAvailableServices();
         buildTimeProvidersByClassName.clear();
+        providerConstructionClasses.clear();
         for (Provider provider : Security.getProviders()) {
             String providerClassName = provider.getClass().getName();
             buildTimeProvidersByClassName.computeIfAbsent(providerClassName, _ -> new ArrayList<>()).add(provider);
@@ -795,12 +801,21 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         accessImpl.getImageClassLoader().classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (serviceName.equals(Provider.class.getName())) {
                 // §FS-security-providers.7.2:
-                // Descriptors discover candidates without registering them.
-                for (String provider : providers) {
-                    Class<?> providerClass = access.findClassByName(provider);
-                    if (providerClass != null) {
-                        addCandidateProviderClass(providerClass);
+                // Descriptors resolve implementation candidates without registering them.
+                for (String serviceProviderClassName : providers) {
+                    Class<?> serviceProviderClass = access.findClassByName(serviceProviderClassName);
+                    Provider provider = tryInstantiateServiceProvider(serviceProviderClass);
+                    if (provider == null) {
+                        continue;
                     }
+                    Class<?> providerClass = provider.getClass();
+                    if (!ProviderConstruction.isProviderImplementationClass(providerClass)) {
+                        continue;
+                    }
+                    providerConstructionClasses.computeIfAbsent(providerClass, _ -> new ArrayList<>()).add(serviceProviderClass);
+                    SecurityProviderRuntimeState.currentLayer().registerServiceLoadedConfiguredProvider(
+                                    provider.getName(), providerClass.getName(), serviceProviderClass.getName());
+                    addCandidateProviderClass(providerClass);
                 }
             }
         });
@@ -1018,7 +1033,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     // §FS-security-providers.2.2 and §FS-security-providers.2.3:
     // Use the preferred construction path and retain the complete valid, resolvable catalog.
     private boolean isLoadableProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
-        if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive() || Modifier.isAbstract(providerClass.getModifiers())) {
+        if (!ProviderConstruction.isProviderImplementationClass(providerClass)) {
             return false;
         }
 
@@ -1032,19 +1047,49 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (providerType == null || !accessImpl.getHostVM().platformSupported(providerType) || substitutionProcessor.isDeleted(providerType)) {
             return false;
         }
-        return hasDeclaredNullaryConstructor(providerClass) || findProviderMethod(providerClass) != null;
+        return !getProviderConstructionClasses(providerClass).isEmpty();
     }
 
-    private static Provider instantiateProvider(Class<?> providerClass) {
-        try {
-            Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
-            if (constructor != null) {
-                return (Provider) constructor.newInstance();
+    private Provider instantiateProviderImplementation(Class<?> providerClass) {
+        for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
+            Provider provider = tryInstantiateServiceProvider(constructionClass);
+            if (provider != null && provider.getClass().equals(providerClass)) {
+                return provider;
             }
-            return (Provider) findProviderMethod(providerClass).invoke(null);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere("Security provider class is reachable but cannot be instantiated: " + providerClass.getName(), ex);
         }
+        throw VMError.shouldNotReachHere("Security provider class is reachable but cannot be instantiated: " + providerClass.getName());
+    }
+
+    private static Provider tryInstantiateServiceProvider(Class<?> serviceProviderClass) {
+        if (serviceProviderClass == null) {
+            return null;
+        }
+        try {
+            // §FS-security-providers.2.2: A qualifying provider() method precedes the constructor.
+            Method providerMethod = findProviderMethod(serviceProviderClass);
+            if (providerMethod != null) {
+                return (Provider) providerMethod.invoke(null);
+            }
+            Constructor<?> constructor = findNullaryConstructor(serviceProviderClass);
+            return constructor != null ? (Provider) constructor.newInstance() : null;
+        } catch (ReflectiveOperationException | SecurityException | LinkageError ex) {
+            /* ProviderConfig ignores a broken ServiceLoader entry and continues with the next. */
+            return null;
+        }
+    }
+
+    private List<Class<?>> getProviderConstructionClasses(Class<?> providerClass) {
+        List<Class<?>> serviceProviderClasses = providerConstructionClasses.get(providerClass);
+        boolean hasDirectPath = findProviderMethod(providerClass) != null || findNullaryConstructor(providerClass) != null;
+        if (serviceProviderClasses == null) {
+            return hasDirectPath ? List.of(providerClass) : List.of();
+        }
+        if (!hasDirectPath || serviceProviderClasses.contains(providerClass)) {
+            return serviceProviderClasses;
+        }
+        List<Class<?>> result = new ArrayList<>(serviceProviderClasses);
+        result.add(providerClass);
+        return result;
     }
 
     private void registerService(DuringAnalysisAccess a, Service service) {
@@ -1101,12 +1146,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private boolean isProviderConstructionRegisteredForReflection(Class<?> providerClass) {
         try {
-            Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
-            if (constructor != null && reflectionRegistrationView.hasExecutableAccess(constructor)) {
-                return true;
+            for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
+                Constructor<?> constructor = findNullaryConstructor(constructionClass);
+                if (constructor != null && reflectionRegistrationView.hasExecutableAccess(constructor)) {
+                    return true;
+                }
+                Method providerMethod = findProviderMethod(constructionClass);
+                if (providerMethod != null && reflectionRegistrationView.hasExecutableAccess(providerMethod)) {
+                    return true;
+                }
             }
-            Method providerMethod = findProviderMethod(providerClass);
-            return providerMethod != null && reflectionRegistrationView.hasExecutableAccess(providerMethod);
+            return false;
         } catch (UnsupportedPlatformException | DeletedElementException e) {
             return false;
         }
@@ -1132,7 +1182,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private static void registerProviderClassForReflection(Class<?> providerClass) {
         RuntimeReflection.register(providerClass);
-        Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
+        Constructor<?> constructor = findNullaryConstructor(providerClass);
         if (constructor != null) {
             RuntimeReflection.register(constructor);
         } else {
@@ -1142,37 +1192,44 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (providerMethod != null) {
             RuntimeReflection.register(providerMethod);
         } else {
-            RuntimeReflection.registerMethodLookup(providerClass, "provider");
+            /* Answer the ServiceLoader provider() lookup negatively instead of failing. */
+            RuntimeReflection.registerMethodLookup(providerClass, ProviderConstruction.PROVIDER_METHOD_NAME);
         }
         trace("Registered provider %s for reflection", providerClass.getName());
     }
 
     private static void registerSelectedConstructionPath(Class<?> providerClass) {
-        Constructor<?> constructor = findDeclaredNullaryConstructor(providerClass);
+        // §FS-security-providers.2.2: A qualifying provider() method precedes the constructor.
+        Method providerMethod = findProviderMethod(providerClass);
+        if (providerMethod != null) {
+            InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), providerMethod);
+            return;
+        }
+        Constructor<?> constructor = findNullaryConstructor(providerClass);
         if (constructor != null) {
             InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), constructor);
-        } else {
-            Method providerMethod = findProviderMethod(providerClass);
-            if (providerMethod != null) {
-                InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), providerMethod);
+            if (ProviderConstruction.isInExplicitModule(providerClass)) {
+                /* The run-time loader probes provider() first; answer that lookup negatively. */
+                RuntimeReflection.registerMethodLookup(providerClass, ProviderConstruction.PROVIDER_METHOD_NAME);
             }
         }
     }
 
-    private static boolean hasDeclaredNullaryConstructor(Class<?> providerClass) {
-        return findDeclaredNullaryConstructor(providerClass) != null;
+    /** §FS-security-providers.2.2: Only a public nullary constructor is a construction path. */
+    private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
+        Constructor<?> constructor = ReflectionUtil.lookupConstructor(true, providerClass);
+        return ProviderConstruction.isQualifyingConstructor(constructor) ? constructor : null;
     }
 
-    private static Constructor<?> findDeclaredNullaryConstructor(Class<?> providerClass) {
-        return ReflectionUtil.lookupConstructor(true, providerClass);
-    }
-
+    /** §FS-security-providers.2.2: Only an explicit module contributes a provider() path. */
     private static Method findProviderMethod(Class<?> providerClass) {
+        if (!ProviderConstruction.isInExplicitModule(providerClass)) {
+            return null;
+        }
         Method nullaryProviderMethod = null;
         try {
             for (Method method : providerClass.getDeclaredMethods()) {
-                if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) && method.getParameterCount() == 0 && method.getName().equals("provider") &&
-                                Provider.class.isAssignableFrom(method.getReturnType())) {
+                if (ProviderConstruction.isQualifyingProviderMethod(method)) {
                     if (nullaryProviderMethod == null) {
                         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityServicesFeature.class, providerClass);
                         method.setAccessible(true);
