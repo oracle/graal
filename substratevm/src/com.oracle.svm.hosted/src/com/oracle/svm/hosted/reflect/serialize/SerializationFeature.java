@@ -236,8 +236,8 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport<Acc
      * denied.
      */
     @Override
-    public void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz) {
-        register(condition, false, clazz);
+    public void registerIncludingAssociatedClasses(AccessCondition condition, boolean preserved, Class<?> clazz) {
+        register(condition, preserved, clazz);
     }
 
     @Override
@@ -313,13 +313,13 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz) {
+    public void registerIncludingAssociatedClasses(AccessCondition condition, boolean preserved, Class<?> clazz) {
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "serialization"));
-        registerIncludingAssociatedClasses(condition, clazz, EconomicSet.create());
+        registerIncludingAssociatedClasses(condition, preserved, clazz, EconomicSet.create());
     }
 
-    private void registerIncludingAssociatedClasses(AccessCondition condition, Class<?> clazz, EconomicSet<Class<?>> alreadyVisited) {
+    private void registerIncludingAssociatedClasses(AccessCondition condition, boolean preserved, Class<?> clazz, EconomicSet<Class<?>> alreadyVisited) {
         if (alreadyVisited.contains(clazz)) {
             return;
         }
@@ -329,7 +329,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         // always an Object.
         if (clazz.isPrimitive()) {
             Class<?> boxedType = JavaKind.fromJavaClass(clazz).toBoxedJavaClass();
-            registerIncludingAssociatedClasses(condition, boxedType, alreadyVisited);
+            registerIncludingAssociatedClasses(condition, preserved, boxedType, alreadyVisited);
             return;
         } else if (!Serializable.class.isAssignableFrom(clazz)) {
             return;
@@ -344,10 +344,10 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         } catch (NoSuchMethodException e) {
             // Expected case. Do nothing
         }
-        register(condition, false, clazz);
+        register(condition, preserved, clazz);
 
         if (clazz.isArray()) {
-            registerIncludingAssociatedClasses(condition, clazz.getComponentType(), alreadyVisited);
+            registerIncludingAssociatedClasses(condition, preserved, clazz.getComponentType(), alreadyVisited);
             return;
         }
         ObjectStreamClass osc = ObjectStreamClass.lookup(clazz);
@@ -355,7 +355,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             for (Object o : (Object[]) getDataLayoutMethod.invoke(osc)) {
                 ObjectStreamClass desc = (ObjectStreamClass) descField.get(o);
                 if (!desc.equals(osc)) {
-                    registerIncludingAssociatedClasses(condition, desc.forClass(), alreadyVisited);
+                    registerIncludingAssociatedClasses(condition, preserved, desc.forClass(), alreadyVisited);
                 }
             }
         } catch (ReflectiveOperationException e) {
@@ -363,7 +363,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         for (ObjectStreamField field : osc.getFields()) {
-            registerIncludingAssociatedClasses(condition, field.getType(), alreadyVisited);
+            registerIncludingAssociatedClasses(condition, preserved, field.getType(), alreadyVisited);
         }
     }
 

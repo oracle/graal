@@ -54,7 +54,11 @@ public interface RuntimeSerializationSupport<C> {
         return ImageSingletons.lookup(RuntimeSerializationSupport.class);
     }
 
-    void registerIncludingAssociatedClasses(C condition, Class<?> clazz);
+    default void registerIncludingAssociatedClasses(C condition, Class<?> clazz) {
+        registerIncludingAssociatedClasses(condition, false, clazz);
+    }
+
+    void registerIncludingAssociatedClasses(C condition, boolean preserved, Class<?> clazz);
 
     default void register(C condition, Class<?>... classes) {
         Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
