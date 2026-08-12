@@ -2003,6 +2003,26 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
                 // If an UnexpectedResultException occurs, specialize to the generic
                 // version.
+                if (model().defaultLocalValue != null) {
+                    /*
+                     * Explicitly generalize the cached tag to object here. Normally, we can rely on
+                     * each store operation updating the cached tag, but when a default local value
+                     * is used, a load.local may observe an object without the cached tag ever being
+                     * set to object. To prevent entering this slow path again, we need to
+                     * generalize the tag so that all stores switch to object.
+                     */
+                    b.startIf().string("tag != ").staticReference(parent.parent.frameTagsElement.getObject()).end().startBlock();
+                    b.startStatement().startCall(bytecodeNode, "setCachedLocalTagInternal");
+                    if (materialized) {
+                        b.startCall(bytecodeNode, "getLocalTags").end();
+                    } else {
+                        b.string("localTags");
+                    }
+                    b.tree(localIndex);
+                    b.staticReference(parent.parent.frameTagsElement.getObject());
+                    b.end(2);
+                    b.end(); // if cached tag != Object
+                }
                 b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericTypeInstruction)).end();
                 parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + genericTypeInstruction.getQuickeningName());
                 b.startStatement();
