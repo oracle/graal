@@ -147,7 +147,7 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
-    public void registerIncludingAssociatedClasses(UnresolvedAccessCondition condition, Class<?> clazz) {
+    public void registerIncludingAssociatedClasses(UnresolvedAccessCondition condition, boolean preserved, Class<?> clazz) {
         register(condition, false, clazz);
     }
 
