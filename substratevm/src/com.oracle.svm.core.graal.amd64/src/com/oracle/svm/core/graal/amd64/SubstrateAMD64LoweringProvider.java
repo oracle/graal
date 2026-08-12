@@ -75,8 +75,11 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
     @Override
     public void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers) {
         super.setConfiguration(runtimeConfig, options, providers);
-        arraycopySnippets = new ArrayCopySnippets.Templates(new SubstrateAMD64ArrayCopySnippets(), SnippetCounter.Group.NullFactory, options, providers);
-        providers.getReplacements().registerSnippetTemplateCache(arraycopySnippets);
+        arraycopySnippets = providers.getReplacements().getSnippetTemplateCache(ArrayCopySnippets.Templates.class);
+        if (arraycopySnippets == null) {
+            arraycopySnippets = new ArrayCopySnippets.Templates(new SubstrateAMD64ArrayCopySnippets(), SnippetCounter.Group.NullFactory, options, providers);
+            providers.getReplacements().registerSnippetTemplateCache(arraycopySnippets);
+        }
     }
 
     @SuppressWarnings("unchecked")
