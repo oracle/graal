@@ -69,4 +69,10 @@ public interface IsolateArguments extends PointerBase {
     @RawField
     boolean getIsCompilationIsolate();
 
+    @RawField
+    void setOwnsStringArguments(boolean value);
+
+    @RawField
+    boolean getOwnsStringArguments();
+
 }
