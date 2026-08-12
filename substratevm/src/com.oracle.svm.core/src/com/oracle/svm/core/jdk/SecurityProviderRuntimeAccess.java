@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.reflect.Method;
 import java.security.Provider;
 import java.util.function.Supplier;
 
@@ -31,6 +32,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.security.ProviderConstruction;
 import com.oracle.svm.shared.security.SecurityProviderCatalog;
 
 public final class SecurityProviderRuntimeAccess {
@@ -60,12 +62,61 @@ public final class SecurityProviderRuntimeAccess {
     }
 
     /** §FS-security-providers.7.1: Load an already-resolved ServiceLoader provider directly. */
-    public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName) {
+    public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName, String constructionClassName) {
+        Provider candidate;
         try {
-            Class<?> providerClass = Class.forName(providerClassName, true, ClassLoader.getSystemClassLoader());
-            Provider candidate = providerClass.asSubclass(Provider.class).getConstructor().newInstance();
-            return providerName.equals(candidate.getName()) ? candidate : null;
-        } catch (ReflectiveOperationException | SecurityException ex) {
+            Class<?> constructionClass = Class.forName(constructionClassName, true, ClassLoader.getSystemClassLoader());
+            candidate = constructProvider(constructionClass);
+        } catch (ReflectiveOperationException | SecurityException | LinkageError ex) {
+            throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName, "could not be constructed", ex);
+        }
+        return validateConfiguredProvider(providerName, providerClassName, constructionClassName, candidate);
+    }
+
+    static Provider validateConfiguredProvider(String providerName, String providerClassName, String constructionClassName, Provider candidate) {
+        if (candidate == null) {
+            throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName, "returned null from its construction path", null);
+        }
+        if (!providerClassName.equals(candidate.getClass().getName())) {
+            throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
+                            "returned an instance of " + candidate.getClass().getName(), null);
+        }
+        /* §FS-security-providers.7.1: A renamed provider does not answer the configured entry. */
+        if (!providerName.equals(candidate.getName())) {
+            throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
+                            "was constructed but reports the provider name " + candidate.getName(), null);
+        }
+        return candidate;
+    }
+
+    private static SecurityException unusableConfiguredProvider(String providerName, String providerClassName, String constructionClassName, String problem, Throwable cause) {
+        return new SecurityException("The configured security provider " + providerName + " resolved to the implementation class " + providerClassName +
+                        " through the service provider class " + constructionClassName + ", which " + problem +
+                        ". The provider was registered for reflection and constructible when the native image was built, so the provider class changed or its " +
+                        "construction depends on run-time state. Register the provider class that answers the configured entry and rebuild the native image.",
+                        cause);
+    }
+
+    /**
+     * §FS-security-providers.2.2: Construct a provider through the path the JDK would use. The
+     * build-time registration selected the same path, so the member this looks up is registered.
+     */
+    public static Provider constructProvider(Class<?> providerClass) throws ReflectiveOperationException {
+        Method providerMethod = findProviderMethod(providerClass);
+        if (providerMethod != null) {
+            return (Provider) providerMethod.invoke(null);
+        }
+        return providerClass.asSubclass(Provider.class).getConstructor().newInstance();
+    }
+
+    private static Method findProviderMethod(Class<?> providerClass) {
+        if (!ProviderConstruction.isInExplicitModule(providerClass)) {
+            return null;
+        }
+        try {
+            Method method = providerClass.getDeclaredMethod(ProviderConstruction.PROVIDER_METHOD_NAME);
+            return ProviderConstruction.isQualifyingProviderMethod(method) ? method : null;
+        } catch (NoSuchMethodException ex) {
             return null;
         }
     }
