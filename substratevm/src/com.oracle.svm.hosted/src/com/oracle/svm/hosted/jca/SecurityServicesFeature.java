@@ -82,6 +82,7 @@ import javax.security.auth.login.Configuration;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
@@ -124,7 +125,6 @@ import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
-import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
@@ -138,9 +138,10 @@ import sun.security.x509.OIDMap;
 /// AR-002-security-providers: Security Provider Architecture
 ///
 /// The security-provider implementation separates build-time policy from run-time enforcement.
-/// Reflection metadata, platform rules, and compatibility inputs are build-time registration
-/// signals; the reflection registry is not itself the provider-policy model. This architecture
-/// implements §FS-002-security-providers.
+/// Reflection metadata is the authoritative source of permanent provider-registration intent.
+/// Platform rules and deprecated provider options express that intent by registering reflective
+/// access; only transition-only service-driven inclusion feeds the planner directly. This
+/// architecture implements §FS-002-security-providers.
 ///
 /// ## 1. Supported Transition Modes
 ///
@@ -153,11 +154,12 @@ import sun.security.x509.OIDMap;
 ///
 /// ## 2. Registration Chokepoint and Acquisition Filter
 ///
-/// `SecurityProviderRegistrationPlanner` converts every supported signal into either a complete or
-/// verification-only plan. `SecurityProviderCatalogRegistrar.writeProviderManifest` is the sole
-/// production chokepoint that writes provider eligibility to `SecurityProviderRuntimeState`.
-/// Registration metadata emitted while realizing a plan is an output and is not reinterpreted as a
-/// new application signal. A feature that adds a signal must feed the planner and must not write the
+/// `SecurityProviderRegistrationPlanner` converts reflection registrations and the transition-only
+/// compatibility signal into either a complete or verification-only plan.
+/// `SecurityProviderCatalogRegistrar.writeProviderManifest` is the sole production chokepoint that
+/// writes provider eligibility to `SecurityProviderRuntimeState`. Registration metadata emitted
+/// while realizing a plan is an output and is not reinterpreted as a new application signal. A
+/// feature that adds a permanent signal must register reflective access and must not write the
 /// manifest directly. This structurally discharges §REQ-002-security-providers.9.1.
 ///
 /// Every hosted-list filter, run-time-list decision, and direct JDK construction passes through
@@ -483,8 +485,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         registerServiceProviderCandidates(access);
         LegacySecurityProviderCompatibility.registerAdditionalProviders(access, providerClass -> {
             if (shouldRegisterProviderClassForReflection(access, providerClass)) {
-                addCandidateProviderClass(providerClass);
-                providerPlanner.requestCompleteProvider(providerClass);
                 registerProviderClassForReflection(providerClass);
             }
         });
@@ -847,7 +847,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             providerClasses.add(service.getProvider().getClass());
         }
         for (Class<?> providerClass : providerClasses) {
-            providerPlanner.requestCompleteProvider(providerClass);
             registerProviderClassForReflection(providerClass);
         }
     }
@@ -956,7 +955,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         try {
             Class<?> spiClass = (Class<?>) getSpiClassMethod.invoke(null, serviceType);
             /* The constructor doesn't need to be registered, objects are not allocated. */
-            RuntimeReflection.register(spiClass);
+            InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), spiClass);
         } catch (IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -1073,7 +1072,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return result;
     }
 
-    void registerProviderConstructionPaths(DuringAnalysisAccess access, Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
+    void registerProviderConstructionPaths(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
         for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
             // §FS-002-security-providers.7.1
             // Open non-exported JDK provider packages only to the run-time list loader.
@@ -1083,8 +1082,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             } else {
                 // §FS-002-security-providers.7.3
                 // Legacy inclusion registers every public constructor.
-                ResolvedJavaType providerType = ((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(providerClass);
-                JVMCIRuntimeReflection.register(JVMCIReflectionUtil.getConstructors(providerType));
+                InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), providerClass.getConstructors());
             }
         }
     }
@@ -1174,20 +1172,24 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, constructionMetadata);
     }
 
-    private static void registerProviderClassForReflection(Class<?> providerClass) {
-        RuntimeReflection.register(providerClass);
-        Constructor<?> constructor = findNullaryConstructor(providerClass);
-        if (constructor != null) {
-            RuntimeReflection.register(constructor);
-        } else {
-            RuntimeReflection.registerConstructorLookup(providerClass);
-        }
-        Method providerMethod = findProviderMethod(providerClass);
-        if (providerMethod != null) {
-            RuntimeReflection.register(providerMethod);
-        } else {
-            /* Answer the ServiceLoader provider() lookup negatively instead of failing. */
-            RuntimeReflection.registerMethodLookup(providerClass, ProviderConstruction.PROVIDER_METHOD_NAME);
+    private void registerProviderClassForReflection(Class<?> providerClass) {
+        InternalReflectiveAccess reflectiveAccess = InternalReflectiveAccess.singleton();
+        AccessCondition unconditional = AccessCondition.unconditional();
+        reflectiveAccess.register(unconditional, providerClass);
+        for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
+            Method providerMethod = findProviderMethod(constructionClass);
+            if (providerMethod != null) {
+                reflectiveAccess.register(unconditional, providerMethod);
+                continue;
+            }
+            Constructor<?> constructor = findNullaryConstructor(constructionClass);
+            if (constructor != null) {
+                reflectiveAccess.register(unconditional, constructor);
+                if (ProviderConstruction.isInExplicitModule(constructionClass)) {
+                    /* The run-time loader probes provider() first; answer that lookup negatively. */
+                    RuntimeReflection.registerMethodLookup(constructionClass, ProviderConstruction.PROVIDER_METHOD_NAME);
+                }
+            }
         }
         trace("Registered provider %s for reflection", providerClass.getName());
     }
@@ -1324,8 +1326,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static void registerForReflection(Class<?> clazz) {
-        RuntimeReflection.register(clazz);
-        RuntimeReflection.register(clazz.getConstructors());
+        InternalReflectiveAccess reflectiveAccess = InternalReflectiveAccess.singleton();
+        AccessCondition unconditional = AccessCondition.unconditional();
+        reflectiveAccess.register(unconditional, clazz);
+        reflectiveAccess.register(unconditional, clazz.getConstructors());
     }
 
     void registerForReflection(Class<?> clazz, RuntimeDynamicAccessMetadata metadata) {

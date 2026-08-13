@@ -89,7 +89,7 @@ final class SecurityProviderCatalogRegistrar {
         usedProviders.add(provider);
         feature.registerForReflection(provider.getClass(), metadata);
         if (feature.isLoadableProviderClass(access, provider.getClass())) {
-            feature.registerProviderConstructionPaths(access, provider.getClass(), metadata);
+            feature.registerProviderConstructionPaths(provider.getClass(), metadata);
         }
         /* Trigger initialization of lazy field java.security.Provider.entrySet. */
         provider.entrySet();
