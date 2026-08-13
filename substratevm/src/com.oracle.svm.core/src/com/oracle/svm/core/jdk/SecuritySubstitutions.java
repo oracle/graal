@@ -64,12 +64,24 @@ import sun.security.util.SecurityConstants;
 // Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it.
 @TargetClass(className = "sun.security.jca.Providers", onlyWith = ExplicitSecurityProviderRegistration.class)
 final class Target_sun_security_jca_Providers_ExplicitRegistration {
+    @Alias
+    public static native sun.security.jca.ProviderList getProviderList();
+
     @Substitute
     public static Provider getSunProvider() {
         if (!SecurityProviderRuntimeAccess.isJdkAcquirable("sun.security.provider.Sun")) {
             SecurityProviderRuntimeAccess.reportMissingRegistration(sun.security.provider.Sun.class);
         }
         return new sun.security.provider.Sun();
+    }
+
+    /**
+     * Keep conditionally registered configurations in their original positions. Enumeration
+     * filters inactive entries without letting {@code ProviderList.removeInvalid()} discard them.
+     */
+    @Substitute
+    public static sun.security.jca.ProviderList getFullProviderList() {
+        return getProviderList();
     }
 }
 

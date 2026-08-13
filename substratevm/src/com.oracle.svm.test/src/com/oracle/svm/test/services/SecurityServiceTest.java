@@ -52,6 +52,7 @@ import org.junit.Test;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -115,7 +116,8 @@ public class SecurityServiceTest {
             SecurityProviderRuntimeState.currentLayer().registerProvider(
                             FailedVerificationProvider.class.getName(),
                             SecurityProviderRuntimeState.AcquisitionKind.APPLICATION_SUPPLIED_ONLY,
-                            new SecurityException("simulated build-time provider verification failure"));
+                            new SecurityException("simulated build-time provider verification failure"),
+                            RuntimeDynamicAccessMetadata.alwaysAvailable(false));
         }
     }
 

@@ -146,6 +146,9 @@ type registers the provider implementation class.
 Access to a supported construction path also registers the provider implementation class, because
 requesting a construction path states a stronger intent than naming the type.
 Any one of these signals therefore registers the provider implementation class.
+A signal carries the condition of the metadata entry that registers it;
+[§2.5](#25-conditional-registration-signals) defines how a condition gates registration at build
+time and its observability at run time.
 Type access alone does not make a provider JDK-constructible.
 A provider implementation class is not registered under any circumstance other than these signals,
 the platform-owned signal in [§2.4](#24-securerandom-providers), and the compatibility behavior in
@@ -223,6 +226,65 @@ executable.
 
 > This behavior implements
 > [§AR-004-default-secure-random-provider.2](decisions/default-secure-random-provider.md#2-decision).
+
+### 2.5 Conditional Registration Signals
+
+A reachability metadata entry can carry a
+[condition](../../../docs/reference-manual/native-image/ReachabilityMetadata.md#conditional-metadata-entries)
+on a *condition type*, and a qualifying signal ([§2.1](#21-qualifying-reflection-metadata)) carries
+the condition of the metadata entry that registers it.
+A **conditional signal** is a signal that carries a condition.
+A *run-time-checked* condition is **satisfied** at a point in run-time execution if and only if its
+condition type has been reached by that point; a *build-time-checked* condition is discharged
+entirely at build time.
+The platform-owned signal of [§2.4](#24-securerandom-providers) is conditional on build-time
+reachability of an acquisition path but carries no metadata condition.
+
+At build time, a conditional signal whose condition type is not reachable contributes no
+registration and none of the effects of [§2.3](#23-registration-effects).
+A signal whose build-time-checked condition is discharged is thereafter an unconditional signal.
+Registration remains a build-time property ([§1.1](#11-registered-providers-and-services)); a
+run-time-checked condition determines when a registration that build time established becomes
+observable.
+
+A provider implementation class's registration is **active** at a point in run-time execution if
+and only if a signal that registers it is unconditional or has its run-time-checked condition
+satisfied at that point.
+A provider whose registration is not active is an unregistered provider for every run-time rule of
+[§3](#3-permitted-run-time-access), [§4](#4-prohibited-run-time-access-and-errors), and
+[§5](#5-programmatically-supplied-providers).
+Activation is monotonic: a registration that is active remains active for the rest of the
+execution.
+
+Whether a registration is active is observed at the acquisition boundary defined in
+[§4.1](#41-unregistered-providers).
+An acquisition that begins after activation observes the provider: a configured provider becomes
+observable in the run-time provider list at the position [§1.3](#13-run-time-provider-list) assigns
+it, and filtering providers with inactive registrations preserves the relative order of the
+remaining providers.
+Whether an acquisition after activation observes the provider must not depend on when the run-time
+provider list of [§7.1](#71-run-time-provider-list-initialization) was initialized, and Native
+Image must not construct a configured provider while its registration is inactive.
+
+Every effect that a signal causes carries that signal's condition, and an effect caused by several
+signals carries the union of their conditions: the construction-path and service metadata retained
+by [§2.3](#23-registration-effects) and the JCE verification outcome established by
+[§5.3](#53-jce-verification) are guarded exactly as the registration itself.
+An effect of conditional signals must not become unconditional: while no causing signal's condition
+is satisfied, reflective access to a retained construction path or service implementation class
+follows [§4.3](#43-missing-reflection-registration).
+This section governs explicit provider registration; the compatibility behavior of
+[§7.3](#73-earlier-service-driven-inclusion-behavior) is unchanged by it.
+
+> A run-time-checked condition is written `"condition": {"typeReached": ...}` in
+> `reachability-metadata.json` and is the only condition that metadata format can express;
+> build-time-checked conditions are the `typeReachable` conditions of the earlier configuration
+> files.
+> This behavior implements
+> [§AR-008-conditional-provider-registration.2](decisions/conditional-provider-registration.md#2-decision),
+> and
+> [§REQ-002-security-providers.10](requirements/security-providers.md#10-condition-fidelity) is its
+> acceptance criterion.
 
 ## 3. Permitted Run-Time Access
 

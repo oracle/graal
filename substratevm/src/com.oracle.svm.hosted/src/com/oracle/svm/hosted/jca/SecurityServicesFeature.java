@@ -82,7 +82,6 @@ import javax.security.auth.login.Configuration;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
@@ -92,6 +91,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -1073,13 +1073,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return result;
     }
 
-    void registerProviderConstructionPaths(DuringAnalysisAccess access, Class<?> providerClass) {
+    void registerProviderConstructionPaths(DuringAnalysisAccess access, Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
         for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
             // §FS-002-security-providers.7.1
             // Open non-exported JDK provider packages only to the run-time list loader.
             ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityProviderRuntimeAccess.class, constructionClass);
             if (mode.explicitRegistration() || !constructionClass.equals(providerClass)) {
-                registerSelectedConstructionPath(constructionClass);
+                registerSelectedConstructionPath(constructionClass, metadata);
             } else {
                 // §FS-002-security-providers.7.3
                 // Legacy inclusion registers every public constructor.
@@ -1092,36 +1092,45 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     void registerService(DuringAnalysisAccess a, Service service) {
         // §FS-002-security-providers.7.3
         // Explicit mode disables service-driven provider inclusion.
-        if (mode.explicitRegistration() && !isProviderRegisteredForReflection(service.getProvider().getClass())) {
-            trace("Skipped service %s because provider %s was not registered for reflection.", asString(service), service.getProvider().getClass().getName());
-            return;
+        RuntimeDynamicAccessMetadata metadata = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
+        if (mode.explicitRegistration()) {
+            SecurityProviderRegistrationPlanner.RegistrationPlan plan = providerRegistrationPlan(service.getProvider().getClass());
+            if (plan == null || plan.completeMetadata() == null) {
+                trace("Skipped service %s because provider %s was not registered for reflection.", asString(service), service.getProvider().getClass().getName());
+                return;
+            }
+            metadata = plan.completeMetadata();
         }
+        registerService(a, service, metadata);
+        if (!mode.explicitRegistration()) {
+            Class<?> providerClass = service.getProvider().getClass();
+            providerPlanner.beforeLegacyReflectionRegistration(providerClass);
+            providerPlanner.requestCompleteProvider(providerClass);
+        }
+    }
+
+    void registerService(DuringAnalysisAccess a, Service service, RuntimeDynamicAccessMetadata metadata) {
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable _ = trace(service)) {
-                registerForReflection(serviceClassResult.get());
+                registerForReflection(serviceClassResult.get(), metadata);
 
                 Class<?> ctrParamClass = ctrParamClassAccessor.apply(service.getType());
                 if (ctrParamClass != null) {
-                    registerForReflection(ctrParamClass);
+                    registerForReflection(ctrParamClass, metadata);
                     trace("Registered service constructor parameter class: %s", ctrParamClass.getName());
                 }
 
                 if (isSignature(service) || isCipher(service) || isKeyAgreement(service)) {
                     for (String keyClassName : getSupportedKeyClasses(service)) {
-                        loader.findClass(keyClassName).ifPresent(SecurityServicesFeature::registerForReflection);
+                        loader.findClass(keyClassName).ifPresent(keyClass -> registerForReflection(keyClass, metadata));
                     }
                 }
                 if (isKeyStore(service) && service.getAlgorithm().equals(JKS)) {
-                    registerJks(loader);
+                    registerJks(loader, metadata);
                 }
                 if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
-                    registerX509Extensions(a);
-                }
-                if (!mode.explicitRegistration()) {
-                    Class<?> providerClass = service.getProvider().getClass();
-                    providerPlanner.beforeLegacyReflectionRegistration(providerClass);
-                    providerPlanner.requestCompleteProvider(providerClass);
+                    registerX509Extensions(a, metadata);
                 }
             }
         } else {
@@ -1131,51 +1140,38 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     // §FS-002-security-providers.1.1 and §FS-002-security-providers.2.1:
     // Recognize every qualifying reflection-registration signal.
-    private boolean isProviderRegisteredForReflection(Class<?> providerClass) {
-        try {
-            if (reflectionRegistrationView.hasTypeAccess(providerClass)) {
-                return true;
-            }
-            return isProviderConstructionRegisteredForReflection(providerClass);
-        } catch (UnsupportedPlatformException | DeletedElementException e) {
-            return false;
-        }
-    }
-
-    private boolean isProviderConstructionRegisteredForReflection(Class<?> providerClass) {
+    private RuntimeDynamicAccessMetadata providerConstructionRegistrationMetadata(Class<?> providerClass) {
+        RuntimeDynamicAccessMetadata result = null;
         try {
             for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
                 Constructor<?> constructor = findNullaryConstructor(constructionClass);
-                if (constructor != null && reflectionRegistrationView.hasExecutableAccess(constructor)) {
-                    return true;
+                if (constructor != null) {
+                    result = ReflectionRegistrationView.merge(result, reflectionRegistrationView.executableAccess(constructor));
                 }
                 Method providerMethod = findProviderMethod(constructionClass);
-                if (providerMethod != null && reflectionRegistrationView.hasExecutableAccess(providerMethod)) {
-                    return true;
+                if (providerMethod != null) {
+                    result = ReflectionRegistrationView.merge(result, reflectionRegistrationView.executableAccess(providerMethod));
                 }
             }
-            return false;
+            return result;
         } catch (UnsupportedPlatformException | DeletedElementException e) {
-            return false;
+            return null;
         }
     }
 
-    private SecurityProviderRegistrationPlanner.PlanKind providerRegistrationPlan(Class<?> providerClass) {
-        if (!isProviderRegisteredForReflection(providerClass)) {
+    private SecurityProviderRegistrationPlanner.RegistrationPlan providerRegistrationPlan(Class<?> providerClass) {
+        RuntimeDynamicAccessMetadata typeMetadata = reflectionRegistrationView.typeAccess(providerClass);
+        RuntimeDynamicAccessMetadata constructionMetadata = providerConstructionRegistrationMetadata(providerClass);
+        RuntimeDynamicAccessMetadata registrationMetadata = ReflectionRegistrationView.merge(typeMetadata, constructionMetadata);
+        if (registrationMetadata == null) {
             return null;
         }
-        if (preserveAll) {
-            return SecurityProviderRegistrationPlanner.PlanKind.COMPLETE;
-        }
-        if (mode.explicitRegistration()) {
-            return SecurityProviderRegistrationPlanner.PlanKind.COMPLETE;
+        if (preserveAll || mode.explicitRegistration()) {
+            return new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, registrationMetadata);
         }
         // §FS-002-security-providers.7.3: Compatibility type-only metadata identifies application
         // providers. It preserves JCE verification without construction or service expansion.
-        if (reflectionRegistrationView.hasTypeAccess(providerClass) && !isProviderConstructionRegisteredForReflection(providerClass)) {
-            return SecurityProviderRegistrationPlanner.PlanKind.VERIFICATION_ONLY;
-        }
-        return null;
+        return new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, constructionMetadata);
     }
 
     private static void registerProviderClassForReflection(Class<?> providerClass) {
@@ -1196,20 +1192,16 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         trace("Registered provider %s for reflection", providerClass.getName());
     }
 
-    private static void registerSelectedConstructionPath(Class<?> providerClass) {
+    private static void registerSelectedConstructionPath(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
         // §FS-002-security-providers.2.2: A qualifying provider() method precedes the constructor.
         Method providerMethod = findProviderMethod(providerClass);
         if (providerMethod != null) {
-            InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), providerMethod);
+            ReflectionRegistrationView.forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, providerMethod));
             return;
         }
         Constructor<?> constructor = findNullaryConstructor(providerClass);
         if (constructor != null) {
-            InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), constructor);
-            if (ProviderConstruction.isInExplicitModule(providerClass)) {
-                /* The run-time loader probes provider() first; answer that lookup negatively. */
-                RuntimeReflection.registerMethodLookup(providerClass, ProviderConstruction.PROVIDER_METHOD_NAME);
-            }
+            ReflectionRegistrationView.forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, constructor));
         }
     }
 
@@ -1250,16 +1242,16 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
      * JavaKeyStore$DualFormatJKS, i.e., the KeyStore.JKS implementation class in the SUN provider,
      * and dynamically allocated by sun.security.provider.KeyStoreDelegator.engineLoad().
      */
-    private static void registerJks(ImageClassLoader loader) {
+    private void registerJks(ImageClassLoader loader, RuntimeDynamicAccessMetadata metadata) {
         Class<?> javaKeyStoreJks = loader.findClassOrFail("sun.security.provider.JavaKeyStore$JKS");
-        registerForReflection(javaKeyStoreJks);
+        registerForReflection(javaKeyStoreJks, metadata);
         trace("Registered KeyStore.JKS implementation class: %s", javaKeyStoreJks.getName());
     }
 
     /**
      * Register the x509 certificate extension classes for reflection.
      */
-    private void registerX509Extensions(DuringAnalysisAccess a) {
+    private void registerX509Extensions(DuringAnalysisAccess a, RuntimeDynamicAccessMetadata metadata) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         /*
          * The OIDInfo class which represents the values in the map is not visible. Get the list of
@@ -1271,7 +1263,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             try {
                 Class<?> extensionClass = OIDMap.getClass(name);
                 assert sun.security.x509.Extension.class.isAssignableFrom(extensionClass);
-                registerForReflection(extensionClass);
+                registerForReflection(extensionClass, metadata);
                 trace("Registered X.509 extension class: %s", extensionClass.getName());
             } catch (CertificateException e) {
                 throw VMError.shouldNotReachHere(e);
@@ -1286,7 +1278,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         // Consume concurrent plans in the serialized feature pass.
         if (providerPlanner.processNewProviders(
                         this::providerRegistrationPlan,
-                        providerClass -> catalogRegistrar.includeProviderClass(access, providerClass),
+                        (providerClass, metadata) -> catalogRegistrar.includeProviderClass(access, providerClass, metadata),
                         catalogRegistrar::registerApplicationSuppliedProviderClass)) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
@@ -1334,6 +1326,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static void registerForReflection(Class<?> clazz) {
         RuntimeReflection.register(clazz);
         RuntimeReflection.register(clazz.getConstructors());
+    }
+
+    void registerForReflection(Class<?> clazz, RuntimeDynamicAccessMetadata metadata) {
+        ReflectionRegistrationView.forEachCondition(metadata, condition -> {
+            InternalReflectiveAccess.singleton().register(condition, clazz);
+            InternalReflectiveAccess.singleton().register(condition, clazz.getConstructors());
+        });
     }
 
     private static boolean isSignature(Service s) {
