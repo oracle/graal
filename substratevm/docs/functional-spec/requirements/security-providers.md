@@ -15,8 +15,8 @@ Each requirement is written so that it can be falsified, and states:
 - the **evidence** that discharges it, named as an execution mode of
   §FS-001-native-image-semantics.3 or as an audit of a finite artifact.
 
-[§1](#1-construction-parity) through [§8](#8-tracing-round-trip) are discharged by executable
-evidence.
+[§1](#1-construction-parity) through [§8](#8-tracing-round-trip) and
+[§10](#10-condition-fidelity) are discharged by executable evidence.
 [§9](#9-obligations-discharged-by-architecture) states the two obligations that no finite set of
 executable tests can discharge.
 
@@ -245,3 +245,39 @@ states that its list of acquisition paths is not exhaustive, so
 All run-time provider-list construction and provider lookup must therefore pass through a single
 filter that the architecture record names, so that the safety property is argued once about that
 filter and holds for the paths no test enumerates.
+
+## 10. Condition Fidelity
+
+**Requirement.** A conditional registration signal must register a provider exactly as far as its
+condition permits
+([§FS-002-security-providers.2.5](../security-providers.md#25-conditional-registration-signals)).
+At build time, a signal whose condition type is not reachable must contribute no registration.
+At run time, no acquisition may observe the provider, one of its services, or metadata retained as
+an effect of its signals while no condition of those signals is satisfied; once a condition is
+satisfied, subsequent acquisition must observe the provider with the effects of
+[§FS-002-security-providers.2.3](../security-providers.md#23-registration-effects), independent of
+the point at which the run-time provider list was initialized.
+
+**Domain.** The qualifying signal shapes of
+[§FS-002-security-providers.2.1](../security-providers.md#21-qualifying-reflection-metadata), each
+combined with an unconditional entry, a build-time-checked condition, and a run-time-checked
+condition in both run-time states (unsatisfied and satisfied), observed through the acquisition
+surface of
+[§FS-002-security-providers.1.2](../security-providers.md#12-jdk-managed-providers-and-acquisition).
+
+**Falsifier.** An acquisition that observes a provider or a derived element while every condition
+of the signals that caused it is unsatisfied; a satisfied condition after which the provider
+remains unobservable; an acquisition after condition satisfaction whose result depends on whether
+the run-time provider list was initialized before or after the condition was satisfied; or a build
+in which a signal whose condition type is unreachable registers a provider.
+
+**Evidence.** `WITH_REGISTRATION` runs of one executable per domain entry: a run that never reaches
+the condition type asserts the absence of the provider from every list observation and the
+standard results of
+[§FS-002-security-providers.4.2](../security-providers.md#42-standard-unavailable-results) and
+[§FS-002-security-providers.4.3](../security-providers.md#43-missing-reflection-registration); runs
+that reach the condition type before and after the first provider-list use both assert the
+provider observable in configured order with usable services; and a run asserts that direct
+reflection on a retained service implementation class is gated identically.
+The universal negative over the acquisition paths that no test enumerates is discharged by the
+single filter of [§9.2](#92-the-acquisition-boundary), which must evaluate activation.

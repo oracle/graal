@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -50,6 +51,10 @@ public final class SecurityProviderRuntimeState {
     public record ProviderInfo(AcquisitionKind acquisitionKind, Exception verificationFailure) {
     }
 
+    private record ConditionalProviderInfo(RuntimeDynamicAccessMetadata registrationMetadata,
+                    RuntimeDynamicAccessMetadata jdkConstructionMetadata, Exception verificationFailure) {
+    }
+
     /**
      * The implementation class controls registration and service retention. The construction class
      * is the ServiceLoader declaration that owns the selected construction path and can differ from
@@ -61,7 +66,7 @@ public final class SecurityProviderRuntimeState {
         }
     }
 
-    private final EconomicMap<String, ProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<String, ConditionalProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
     private final EconomicMap<String, ConfiguredProviderInfo> configuredProviders = ImageHeapMap.createNonLayeredMap();
     private final EconomicMap<String, Boolean> ambiguousConfiguredProviderNames = ImageHeapMap.createNonLayeredMap();
 
@@ -82,9 +87,11 @@ public final class SecurityProviderRuntimeState {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult) {
+    public synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult, RuntimeDynamicAccessMetadata metadata) {
         Exception verificationFailure = verificationResult instanceof Exception exception ? exception : null;
-        providerInfos.put(providerClassName, merge(providerInfos.get(providerClassName), new ProviderInfo(acquisitionKind, verificationFailure)));
+        RuntimeDynamicAccessMetadata constructionMetadata = acquisitionKind == AcquisitionKind.JDK_CONSTRUCTIBLE ? metadata : null;
+        providerInfos.put(providerClassName, mergeConditional(providerInfos.get(providerClassName),
+                        new ConditionalProviderInfo(metadata, constructionMetadata, verificationFailure)));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -108,7 +115,18 @@ public final class SecurityProviderRuntimeState {
         }
     }
 
-    private static ProviderInfo merge(ProviderInfo oldInfo, ProviderInfo newInfo) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static ConditionalProviderInfo mergeConditional(ConditionalProviderInfo oldInfo, ConditionalProviderInfo newInfo) {
+        if (oldInfo == null || newInfo == null) {
+            return oldInfo != null ? oldInfo : newInfo;
+        }
+        RuntimeDynamicAccessMetadata registrationMetadata = RuntimeDynamicAccessMetadata.merge(oldInfo.registrationMetadata(), newInfo.registrationMetadata());
+        RuntimeDynamicAccessMetadata constructionMetadata = RuntimeDynamicAccessMetadata.merge(oldInfo.jdkConstructionMetadata(), newInfo.jdkConstructionMetadata());
+        Exception verificationFailure = oldInfo.verificationFailure() != null ? oldInfo.verificationFailure() : newInfo.verificationFailure();
+        return new ConditionalProviderInfo(registrationMetadata, constructionMetadata, verificationFailure);
+    }
+
+    private static ProviderInfo mergeActive(ProviderInfo oldInfo, ProviderInfo newInfo) {
         if (oldInfo == null || newInfo == null) {
             return oldInfo != null ? oldInfo : newInfo;
         }
@@ -127,14 +145,25 @@ public final class SecurityProviderRuntimeState {
         SecurityProviderRuntimeState[] states = singletons();
         ProviderInfo result = null;
         for (SecurityProviderRuntimeState state : states) {
-            result = merge(result, state.providerInfos.get(providerClassName));
+            ConditionalProviderInfo info = state.providerInfos.get(providerClassName);
+            if (info != null && info.registrationMetadata().satisfied()) {
+                AcquisitionKind acquisitionKind = info.jdkConstructionMetadata() != null && info.jdkConstructionMetadata().satisfied()
+                                ? AcquisitionKind.JDK_CONSTRUCTIBLE
+                                : AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
+                result = mergeActive(result, new ProviderInfo(acquisitionKind, info.verificationFailure()));
+            }
         }
         return result;
     }
 
     static boolean isJdkConstructible(String providerClassName) {
-        ProviderInfo info = getProviderInfo(providerClassName);
-        return info != null && info.acquisitionKind() == AcquisitionKind.JDK_CONSTRUCTIBLE;
+        for (SecurityProviderRuntimeState state : singletons()) {
+            ConditionalProviderInfo info = state.providerInfos.get(providerClassName);
+            if (info != null && info.jdkConstructionMetadata() != null && info.jdkConstructionMetadata().satisfied()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static ConfiguredProviderInfo getConfiguredProvider(String providerName) {
