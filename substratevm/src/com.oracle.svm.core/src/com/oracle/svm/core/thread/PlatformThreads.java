@@ -126,7 +126,7 @@ public abstract class PlatformThreads {
         return ImageSingletons.lookup(PlatformThreads.class);
     }
 
-    protected static final CEntryPointLiteral<CFunctionPointer> threadStartRoutine = CEntryPointLiteral.create(PlatformThreads.class, "threadStartRoutine", IsolateThread.class);
+    protected static final CEntryPointLiteral<CFunctionPointer> threadStartEntryPoint = CEntryPointLiteral.create(PlatformThreads.class, "threadStartEntryPoint", IsolateThread.class);
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
@@ -934,7 +934,7 @@ public abstract class PlatformThreads {
     /**
      * Start a new OS thread. The implementation must call {@link #prepareThreadStart} after
      * preparations and before starting the thread. The new OS thread must call
-     * {@link #threadStartRoutine}. This method must not throw any exceptions.
+     * {@link #threadStartEntryPoint}. This method must not throw any exceptions.
      *
      * @param javaStackSize the requested Java stack size before platform-specific native
      *        adjustments, or zero to select the platform default
@@ -946,8 +946,15 @@ public abstract class PlatformThreads {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = ThreadStartRoutinePrologue.class, epilogue = CEntryPointSetup.LeaveDetachThreadEpilogue.class)
+    @Uninterruptible(reason = "Prevent stack overflow checks and recurring callbacks until the thread is fully set up.")
+    protected static WordBase threadStartEntryPoint(IsolateThread isolateThread) {
+        threadStartRoutine(isolateThread);
+        return Word.nullPointer();
+    }
+
+    /** Completes thread setup and runs the Java thread after the current OS thread was attached. */
     @Uninterruptible(reason = "Prevent stack overflow checks and recurring callbacks until the thread is fully set up.", calleeMustBe = false)
-    protected static WordBase threadStartRoutine(IsolateThread isolateThread) {
+    protected static void threadStartRoutine(IsolateThread isolateThread) {
         /*
          * Before the thread was attached, its yellow zone was made available to prevent stack
          * overflow checks and recurring callback execution. Now that we have reached
@@ -958,12 +965,11 @@ public abstract class PlatformThreads {
         Thread javaThread = Thread.currentThread();
         singleton().afterThreadStart(javaThread);
         ThreadListenerSupport.get().afterThreadStart(isolateThread, javaThread);
-        threadStartRoutine(javaThread);
-        return Word.nullPointer();
+        threadStartRoutine0(javaThread);
     }
 
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
-    protected static void threadStartRoutine(Thread thread) {
+    protected static void threadStartRoutine0(Thread thread) {
         try {
             if (VMThreads.isTearingDown()) {
                 /*

@@ -175,7 +175,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
             return Word.nullPointer();
         }
         Pthread.pthread_tPointer newThread = UnsafeStackValue.get(Pthread.pthread_tPointer.class);
-        if (Pthread.pthread_create(newThread, attributes, threadStartRoutine.getFunctionPointer(), isolateThread) != 0) {
+        if (Pthread.pthread_create(newThread, attributes, threadStartEntryPoint.getFunctionPointer(), isolateThread) != 0) {
             undoPrepareStartOnError(thread, isolateThread);
             return Word.nullPointer();
         }
