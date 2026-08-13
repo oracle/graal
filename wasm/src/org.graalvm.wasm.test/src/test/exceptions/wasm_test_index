@@ -8,6 +8,7 @@ exceptions_with_params
 exceptions_with_params_catch_all
 exceptions_with_params_catch_ref
 multi_exception_types
+try_table_catch_with_outer_block_param
 throw_ref
 legacy_delegate_no_throw
 legacy_delegate_throw

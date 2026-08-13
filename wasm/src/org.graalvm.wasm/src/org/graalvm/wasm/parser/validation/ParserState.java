@@ -381,7 +381,7 @@ public class ParserState {
         checkLabelExists(label);
         final ControlFrame labelFrame = getFrame(label);
         // we reuse the block frame, instead of introducing a new catch frame.
-        final ControlFrame frame = new BlockFrame(WasmType.VOID_TYPE_ARRAY, labelFrame.labelTypes(), labelFrame.initialStackSize(), controlStack.peek());
+        final ControlFrame frame = new BlockFrame(WasmType.VOID_TYPE_ARRAY, labelFrame.labelTypes(), valueStack.size(), controlStack.peek());
         controlStack.push(frame);
         final ExceptionHandler e = new ExceptionHandler(opcode, tag);
         labelFrame.addLabelFixup(e);
