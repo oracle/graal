@@ -61,7 +61,9 @@ public final class GraphState {
                     StageFlag.SAFEPOINTS_INSERTION,
                     StageFlag.GUARD_LOWERING,
                     StageFlag.MID_TIER_LOWERING,
+                    StageFlag.OPTIMISTIC_ALIASING,
                     StageFlag.FSA,
+                    StageFlag.NODE_VECTORIZATION,
                     StageFlag.MID_TIER_BARRIER_ADDITION);
     private static final EnumSet<StageFlag> LOW_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.LOW_TIER_LOWERING,
@@ -70,16 +72,6 @@ public final class GraphState {
                     StageFlag.REMOVE_OPAQUE_VALUES,
                     StageFlag.FINAL_SCHEDULE,
                     StageFlag.LOW_TIER_BARRIER_ADDITION);
-    private static final EnumSet<StageFlag> ENTERPRISE_MID_TIER_MANDATORY_STAGES = EnumSet.of(
-                    StageFlag.OPTIMISTIC_ALIASING,
-                    StageFlag.GUARD_LOWERING,
-                    StageFlag.VALUE_PROXY_REMOVAL,
-                    StageFlag.SAFEPOINTS_INSERTION,
-                    StageFlag.MID_TIER_LOWERING,
-                    StageFlag.FSA,
-                    StageFlag.NODE_VECTORIZATION,
-                    StageFlag.MID_TIER_BARRIER_ADDITION);
-
     /**
      * This set of {@link StageFlag}s represents the stages a {@link StructuredGraph} initially
      * requires to correctly pass all the other stages of the compilation. (See
@@ -780,7 +772,7 @@ public final class GraphState {
     public enum MandatoryStages {
         ECONOMY(HIGH_TIER_MANDATORY_STAGES, MID_TIER_MANDATORY_STAGES, LOW_TIER_MANDATORY_STAGES),
         COMMUNITY(HIGH_TIER_MANDATORY_STAGES, MID_TIER_MANDATORY_STAGES, LOW_TIER_MANDATORY_STAGES),
-        ENTERPRISE(HIGH_TIER_MANDATORY_STAGES, ENTERPRISE_MID_TIER_MANDATORY_STAGES, LOW_TIER_MANDATORY_STAGES);
+        ENTERPRISE(HIGH_TIER_MANDATORY_STAGES, MID_TIER_MANDATORY_STAGES, LOW_TIER_MANDATORY_STAGES);
 
         private final EnumSet<StageFlag> highTier;
         private final EnumSet<StageFlag> midTier;
