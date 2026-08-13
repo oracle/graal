@@ -24,26 +24,32 @@
  */
 package com.oracle.svm.hosted.jca;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
+
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 
 /**
  * Tracks provider-registration intent separately from reflection metadata emitted to realize it.
  */
 final class SecurityProviderRegistrationPlanner {
-    enum PlanKind {
-        COMPLETE,
-        VERIFICATION_ONLY
+    record RegistrationPlan(RuntimeDynamicAccessMetadata registrationMetadata, RuntimeDynamicAccessMetadata completeMetadata) {
+        RegistrationPlan {
+            if (registrationMetadata == null && completeMetadata != null) {
+                registrationMetadata = completeMetadata;
+            }
+        }
     }
 
     private final Set<Class<?>> candidates = ConcurrentHashMap.newKeySet();
-    private final Set<Class<?>> completed = ConcurrentHashMap.newKeySet();
-    private final Set<Class<?>> verificationCompleted = ConcurrentHashMap.newKeySet();
-    private final Set<Class<?>> completePlans = ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> forcedCompletePlans = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> legacyGeneratedReflection = ConcurrentHashMap.newKeySet();
+    private final Map<Class<?>, RuntimeDynamicAccessMetadata> completedMetadata = new ConcurrentHashMap<>();
+    private final Map<Class<?>, RuntimeDynamicAccessMetadata> verificationMetadata = new ConcurrentHashMap<>();
     private final AtomicBoolean changed = new AtomicBoolean();
 
     void addCandidate(Class<?> providerClass) {
@@ -54,7 +60,7 @@ final class SecurityProviderRegistrationPlanner {
 
     void requestCompleteProvider(Class<?> providerClass) {
         addCandidate(providerClass);
-        if (completePlans.add(providerClass)) {
+        if (forcedCompletePlans.add(providerClass)) {
             changed.set(true);
         }
     }
@@ -63,23 +69,23 @@ final class SecurityProviderRegistrationPlanner {
         legacyGeneratedReflection.add(providerClass);
     }
 
-    boolean processNewProviders(Function<Class<?>, PlanKind> planKind, Consumer<Class<?>> includeProvider, Consumer<Class<?>> registerVerification) {
+    boolean processNewProviders(Function<Class<?>, RegistrationPlan> planProvider,
+                    BiConsumer<Class<?>, RuntimeDynamicAccessMetadata> includeProvider,
+                    BiConsumer<Class<?>, RuntimeDynamicAccessMetadata> registerVerification) {
         boolean discoveredCandidate = changed.getAndSet(false);
         boolean processed = false;
         for (Class<?> providerClass : candidates) {
-            PlanKind plan = !legacyGeneratedReflection.contains(providerClass) ? planKind.apply(providerClass) : null;
-            if (plan != null) {
-                if (plan == PlanKind.VERIFICATION_ONLY) {
-                    if (verificationCompleted.add(providerClass)) {
-                        registerVerification.accept(providerClass);
-                        processed = true;
-                    }
-                } else {
-                    completePlans.add(providerClass);
-                }
+            RegistrationPlan plan = !legacyGeneratedReflection.contains(providerClass) ? planProvider.apply(providerClass) : null;
+            RuntimeDynamicAccessMetadata complete = forcedCompletePlans.contains(providerClass)
+                            ? RuntimeDynamicAccessMetadata.alwaysAvailable(false)
+                            : plan != null ? plan.completeMetadata() : null;
+            RuntimeDynamicAccessMetadata registration = plan != null ? plan.registrationMetadata() : null;
+            if (complete != null && completedMetadata.put(providerClass, complete) != complete) {
+                includeProvider.accept(providerClass, complete);
+                processed = true;
             }
-            if (completePlans.contains(providerClass) && completed.add(providerClass)) {
-                includeProvider.accept(providerClass);
+            if (registration != null && verificationMetadata.put(providerClass, registration) != registration) {
+                registerVerification.accept(providerClass, registration);
                 processed = true;
             }
         }

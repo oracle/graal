@@ -238,7 +238,7 @@ public class SecurityProviderRuntimeAccessTest {
     static final class NonPublicProvider extends Provider {
         private static final long serialVersionUID = 1L;
 
-        public NonPublicProvider() {
+        NonPublicProvider() {
             super("non-public-provider", "1.0", "Non-public provider class");
         }
     }

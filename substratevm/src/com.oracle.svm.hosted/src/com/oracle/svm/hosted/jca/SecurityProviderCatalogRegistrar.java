@@ -33,8 +33,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState.AcquisitionKind;
 
@@ -64,9 +64,9 @@ final class SecurityProviderCatalogRegistrar {
                         provider.getName(), provider.getClass().getName(), constructionClass.getName());
     }
 
-    void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
+    void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
         if (!feature.isLoadableProviderClass(access, providerClass)) {
-            registerApplicationSuppliedProviderClass(providerClass);
+            registerApplicationSuppliedProviderClass(providerClass, metadata);
             return;
         }
         List<Provider> providers = buildTimeProvidersByClassName.get(providerClass.getName());
@@ -76,43 +76,42 @@ final class SecurityProviderCatalogRegistrar {
         // §FS-002-security-providers.2.3:
         // Register every configured instance and the union of their service metadata.
         for (Provider provider : providers) {
-            registerProvider(access, provider);
+            registerProvider(access, provider, metadata);
             for (Service service : provider.getServices()) {
                 if (SecurityServicesFeature.isValid(service)) {
-                    feature.registerService(access, service);
+                    feature.registerService(access, service, metadata);
                 }
             }
         }
     }
 
-    private void registerProvider(DuringAnalysisAccess access, Provider provider) {
-        if (usedProviders.add(provider)) {
-            RuntimeReflection.register(provider.getClass());
-            if (feature.isLoadableProviderClass(access, provider.getClass())) {
-                feature.registerProviderConstructionPaths(access, provider.getClass());
-            }
-            /* Trigger initialization of lazy field java.security.Provider.entrySet. */
-            provider.entrySet();
-            String providerClassName = provider.getClass().getName();
-            Object verificationResult = feature.getProviderVerificationResult(provider);
-            recordConfiguredProvider(provider);
-            AcquisitionKind acquisitionKind = feature.isLoadableProviderClass(access, provider.getClass())
-                            ? AcquisitionKind.JDK_CONSTRUCTIBLE
-                            : AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
-            writeProviderManifest(providerClassName, acquisitionKind, verificationResult);
+    private void registerProvider(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {
+        usedProviders.add(provider);
+        feature.registerForReflection(provider.getClass(), metadata);
+        if (feature.isLoadableProviderClass(access, provider.getClass())) {
+            feature.registerProviderConstructionPaths(access, provider.getClass(), metadata);
         }
+        /* Trigger initialization of lazy field java.security.Provider.entrySet. */
+        provider.entrySet();
+        String providerClassName = provider.getClass().getName();
+        Object verificationResult = feature.getProviderVerificationResult(provider);
+        recordConfiguredProvider(provider);
+        AcquisitionKind acquisitionKind = feature.isLoadableProviderClass(access, provider.getClass())
+                        ? AcquisitionKind.JDK_CONSTRUCTIBLE
+                        : AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
+        writeProviderManifest(providerClassName, acquisitionKind, verificationResult, metadata);
     }
 
-    void registerApplicationSuppliedProviderClass(Class<?> providerClass) {
+    void registerApplicationSuppliedProviderClass(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
         // §FS-002-security-providers.5.3
         // Preserve verification without reconstructing the provider.
         List<Provider> buildTimeProviders = buildTimeProvidersByClassName.get(providerClass.getName());
         Object verificationResult = buildTimeProviders == null ? Boolean.TRUE : feature.getProviderVerificationResult(buildTimeProviders.getFirst());
-        writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, verificationResult);
+        writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, verificationResult, metadata);
     }
 
     /** The sole production chokepoint that writes provider eligibility into the run-time manifest. */
-    private static void writeProviderManifest(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult) {
-        SecurityProviderRuntimeState.currentLayer().registerProvider(providerClassName, acquisitionKind, verificationResult);
+    private static void writeProviderManifest(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult, RuntimeDynamicAccessMetadata metadata) {
+        SecurityProviderRuntimeState.currentLayer().registerProvider(providerClassName, acquisitionKind, verificationResult, metadata);
     }
 }
