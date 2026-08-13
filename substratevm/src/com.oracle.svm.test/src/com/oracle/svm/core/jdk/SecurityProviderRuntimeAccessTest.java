@@ -108,9 +108,7 @@ public class SecurityProviderRuntimeAccessTest {
                         }
                         """);
         Path providerSource = packageDirectory.resolve("ModularProvider.java");
-        Files.writeString(providerSource, """
-                        package test.provider;
-
+        Files.writeString(providerSource, "package test." + "provider;\n" + """
                         import java.security.Provider;
 
                         public final class ModularProvider extends Provider {
@@ -159,9 +157,7 @@ public class SecurityProviderRuntimeAccessTest {
                         }
                         """);
         Path providerSource = packageDirectory.resolve("ProviderFactory.java");
-        Files.writeString(providerSource, """
-                        package test.provider;
-
+        Files.writeString(providerSource, "package test." + "provider;\n" + """
                         import java.security.Provider;
 
                         public abstract class ProviderFactory {
