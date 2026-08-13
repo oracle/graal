@@ -25,10 +25,13 @@
 package com.oracle.svm.hosted.jca;
 
 import java.lang.reflect.Executable;
+import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 
 /**
@@ -36,21 +39,35 @@ import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
  * concrete reflection builder to provider-policy code.
  */
 interface ReflectionRegistrationView {
-    boolean hasTypeAccess(Class<?> type);
+    RuntimeDynamicAccessMetadata typeAccess(Class<?> type);
 
-    boolean hasExecutableAccess(Executable executable);
+    RuntimeDynamicAccessMetadata executableAccess(Executable executable);
+
+    static RuntimeDynamicAccessMetadata merge(RuntimeDynamicAccessMetadata first, RuntimeDynamicAccessMetadata second) {
+        return RuntimeDynamicAccessMetadata.merge(first, second);
+    }
+
+    static void forEachCondition(RuntimeDynamicAccessMetadata metadata, Consumer<AccessCondition> action) {
+        if (metadata.isAlwaysAvailable()) {
+            action.accept(AccessCondition.unconditional());
+            return;
+        }
+        for (Class<?> conditionType : metadata.getTypesForEncoding()) {
+            action.accept(AccessCondition.typeReached(conditionType));
+        }
+    }
 
     static ReflectionRegistrationView singleton() {
         ReflectionDataBuilder builder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
         return new ReflectionRegistrationView() {
             @Override
-            public boolean hasTypeAccess(Class<?> type) {
-                return builder.isTypeRegisteredForReflection(type);
+            public RuntimeDynamicAccessMetadata typeAccess(Class<?> type) {
+                return builder.getTypeRegistrationMetadata(type);
             }
 
             @Override
-            public boolean hasExecutableAccess(Executable executable) {
-                return builder.isMethodRegisteredForReflection(executable);
+            public RuntimeDynamicAccessMetadata executableAccess(Executable executable) {
+                return builder.getMethodRegistrationMetadata(executable);
             }
         };
     }

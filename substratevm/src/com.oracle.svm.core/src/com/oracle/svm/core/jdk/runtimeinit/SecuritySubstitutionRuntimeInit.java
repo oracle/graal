@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk.runtimeinit;
 
 import java.net.URL;
 import java.security.Provider;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
@@ -220,6 +221,19 @@ final class Target_sun_security_jca_ProviderList {
             }
         }
         return null;
+    }
+
+    /** Return only active providers without removing inactive configurations from this list. */
+    @Substitute
+    public Provider[] toArray() {
+        ArrayList<Provider> activeProviders = new ArrayList<>(configs.length);
+        for (Target_sun_security_jca_ProviderConfig config : configs) {
+            Provider provider = config.getProvider();
+            if (provider != null) {
+                activeProviders.add(provider);
+            }
+        }
+        return activeProviders.toArray(new Provider[0]);
     }
 }
 
