@@ -55,11 +55,11 @@ final class SecurityProviderCatalogRegistrar {
         return usedProviders.contains(provider);
     }
 
-    void recordConfiguredProvider(Provider provider) {
+    static void recordConfiguredProvider(Provider provider) {
         SecurityProviderRuntimeState.currentLayer().registerConfiguredProviderName(provider.getName(), provider.getClass().getName());
     }
 
-    void recordServiceLoadedConfiguredProvider(Provider provider, Class<?> constructionClass) {
+    static void recordServiceLoadedConfiguredProvider(Provider provider, Class<?> constructionClass) {
         SecurityProviderRuntimeState.currentLayer().registerServiceLoadedConfiguredProvider(
                         provider.getName(), provider.getClass().getName(), constructionClass.getName());
     }

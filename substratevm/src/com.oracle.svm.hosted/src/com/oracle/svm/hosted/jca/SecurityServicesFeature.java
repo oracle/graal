@@ -755,7 +755,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             /* §FS-002-security-providers.7.1:
              * Resolve configured names independently because a token may be a provider name or a
              * ServiceLoader descriptor. */
-            catalogRegistrar.recordConfiguredProvider(provider);
+            SecurityProviderCatalogRegistrar.recordConfiguredProvider(provider);
             // Configured providers can predate the subtype handler.
             // §FS-002-security-providers.2.1: Reflection registration still controls inclusion.
             addCandidateProviderClass(provider.getClass());
@@ -779,7 +779,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         continue;
                     }
                     providerConstructionClasses.computeIfAbsent(providerClass, _ -> new ArrayList<>()).add(serviceProviderClass);
-                    catalogRegistrar.recordServiceLoadedConfiguredProvider(provider, serviceProviderClass);
+                    SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, serviceProviderClass);
                     addCandidateProviderClass(providerClass);
                 }
             }
@@ -1244,8 +1244,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
      * JavaKeyStore$DualFormatJKS, i.e., the KeyStore.JKS implementation class in the SUN provider,
      * and dynamically allocated by sun.security.provider.KeyStoreDelegator.engineLoad().
      */
-    private void registerJks(ImageClassLoader loader, RuntimeDynamicAccessMetadata metadata) {
-        Class<?> javaKeyStoreJks = loader.findClassOrFail("sun.security.provider.JavaKeyStore$JKS");
+    private void registerJks(ImageClassLoader imageClassLoader, RuntimeDynamicAccessMetadata metadata) {
+        Class<?> javaKeyStoreJks = imageClassLoader.findClassOrFail("sun.security.provider.JavaKeyStore$JKS");
         registerForReflection(javaKeyStoreJks, metadata);
         trace("Registered KeyStore.JKS implementation class: %s", javaKeyStoreJks.getName());
     }
@@ -1323,13 +1323,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void afterHeapLayout(AfterHeapLayoutAccess access) {
         SecurityServicesPrinter.endTracing();
-    }
-
-    private static void registerForReflection(Class<?> clazz) {
-        InternalReflectiveAccess reflectiveAccess = InternalReflectiveAccess.singleton();
-        AccessCondition unconditional = AccessCondition.unconditional();
-        reflectiveAccess.register(unconditional, clazz);
-        reflectiveAccess.register(unconditional, clazz.getConstructors());
     }
 
     void registerForReflection(Class<?> clazz, RuntimeDynamicAccessMetadata metadata) {
