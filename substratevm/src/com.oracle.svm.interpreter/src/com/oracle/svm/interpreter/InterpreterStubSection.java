@@ -58,6 +58,7 @@ import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
@@ -66,6 +67,7 @@ import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
@@ -298,51 +300,51 @@ public abstract class InterpreterStubSection {
         return enterHelper(interpreterMethod, enterData);
     }
 
-    public static long enterInterpreterForJNIUpcallArrayVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallArrayVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer array) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, false);
         return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterInterpreterForJNIUpcallArrayNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallArrayNonVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer array) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, false);
         return enterInterpreterForJNIUpcallNonVirtual(method, args);
     }
 
-    public static long enterInterpreterForJNIUpcallArrayReadDoubleForFloatVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallArrayReadDoubleForFloatVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer array) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, true);
         return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterInterpreterForJNIUpcallArrayReadDoubleForFloatNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer array) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallArrayReadDoubleForFloatNonVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer array) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Object[] args = prepareJNIArgsFromArray(receiverOrClass, method, array, true);
         return enterInterpreterForJNIUpcallNonVirtual(method, args);
     }
 
-    public static long enterInterpreterForJNIUpcallVarargsVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer jniEnterData) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallVarargsVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer jniEnterData) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Object[] args = prepareJNIArgsFromVarargs(receiverOrClass, method, jniEnterData, false);
         return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterInterpreterForJNIUpcallVarargsNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer jniEnterData) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallVarargsNonVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer jniEnterData) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Object[] args = prepareJNIArgsFromVarargs(receiverOrClass, method, jniEnterData, true);
         return enterInterpreterForJNIUpcallNonVirtual(method, args);
     }
 
-    public static long enterInterpreterForJNIUpcallVaListVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer vaList) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallVaListVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer vaList) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Pointer vaListInitialized = VaListInitializationNode.vaListInitialization(vaList);
         Object[] args = prepareJNIArgsFromVaList(receiverOrClass, method, vaListInitialized);
         return enterInterpreterForJNIUpcallVirtual(method, args);
     }
 
-    public static long enterInterpreterForJNIUpcallVaListNonVirtual(JNIObjectHandle receiverOrClass, JNIObjectHandle methodId, Pointer vaList) throws InstantiationException {
-        InterpreterResolvedJavaMethod method = JNIObjectHandles.getObject(methodId);
+    public static long enterInterpreterForJNIUpcallVaListNonVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer vaList) throws InstantiationException {
+        InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
         Pointer vaListInitialized = VaListInitializationNode.vaListInitialization(vaList);
         Object[] args = prepareJNIArgsFromVaList(receiverOrClass, method, vaListInitialized);
         return enterInterpreterForJNIUpcallNonVirtual(method, args);

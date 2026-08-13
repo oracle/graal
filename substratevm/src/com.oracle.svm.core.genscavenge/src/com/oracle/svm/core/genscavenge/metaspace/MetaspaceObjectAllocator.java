@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
@@ -60,6 +59,8 @@ class MetaspaceObjectAllocator {
     private final UninterruptibleUtils.AtomicLong byteArrayCount = new UninterruptibleUtils.AtomicLong(0);
     private final UninterruptibleUtils.AtomicLong intArraySize = new UninterruptibleUtils.AtomicLong(0);
     private final UninterruptibleUtils.AtomicLong intArrayCount = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleUtils.AtomicLong objectSize = new UninterruptibleUtils.AtomicLong(0);
+    private final UninterruptibleUtils.AtomicLong objectCount = new UninterruptibleUtils.AtomicLong(0);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     MetaspaceObjectAllocator(ChunkedMetaspaceMemory memory) {
@@ -102,19 +103,25 @@ class MetaspaceObjectAllocator {
         return (int[]) allocateArrayLikeObject(hub, length, intArraySize);
     }
 
-    public CremaJNIStaticFieldId allocateCremaJNIStaticFieldId() {
-        DynamicHub hub = DynamicHub.fromClass(CremaJNIStaticFieldId.class);
+    public <T> T allocateObject(Class<T> clazz) {
+        DynamicHub hub = DynamicHub.fromClass(clazz);
         assert LayoutEncoding.isPureInstance(hub.getLayoutEncoding());
-        return (CremaJNIStaticFieldId) allocatePureInstance(hub);
+        if (collectsStats()) {
+            objectCount.getAndIncrement();
+        }
+        return clazz.cast(allocatePureInstance(hub, objectSize));
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private Object allocatePureInstance(DynamicHub hub) {
+    private Object allocatePureInstance(DynamicHub hub, UninterruptibleUtils.AtomicLong counter) {
         UnsignedWord size = LayoutEncoding.getPureInstanceSize(hub, false);
 
         Pointer ptr = memory.allocate(size);
         Object result = FormatObjectNode.formatObject(ptr, DynamicHub.toClass(hub), true, AllocationSnippets.FillContent.WITH_ZEROES, true);
         assert size == LayoutEncoding.getSizeFromObject(result);
+        if (collectsStats()) {
+            counter.getAndAdd(size.rawValue());
+        }
 
         enableRememberedSetTracking(result, size);
         return result;
@@ -181,8 +188,18 @@ class MetaspaceObjectAllocator {
             log.string("int[]: 0 objects").newline();
         }
 
-        long totalCount = hubCount + byteCount + intCount;
-        long totalSize = hubSize + byteSize + intSize;
+        long pureObjectCount = objectCount.get();
+        long pureObjectSize = objectSize.get();
+        if (pureObjectCount > 0) {
+            log.string("Object: ").unsigned(pureObjectCount)
+                            .string(" objects for a total of ").rational(pureObjectSize, mega, 2)
+                            .string("MB (avg: ").rational(pureObjectSize, pureObjectCount, 2).string("B)").newline();
+        } else {
+            log.string("Object: 0 objects").newline();
+        }
+
+        long totalCount = hubCount + byteCount + intCount + pureObjectCount;
+        long totalSize = hubSize + byteSize + intSize + pureObjectSize;
         if (totalCount > 0) {
             log.string("Total: ").unsigned(totalCount)
                             .string(" objects for a total of ").rational(totalSize, mega, 2)

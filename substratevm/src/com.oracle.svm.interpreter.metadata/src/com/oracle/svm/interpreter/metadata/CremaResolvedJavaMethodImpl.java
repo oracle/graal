@@ -26,21 +26,15 @@ package com.oracle.svm.interpreter.metadata;
 
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Modifier;
-import java.util.Collections;
-import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
-
-import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.registry.SVMSymbols;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
-import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.reflect.CremaConstructorAccessor;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
 import com.oracle.svm.espresso.classfile.ExceptionHandler;
@@ -74,8 +68,6 @@ public class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMethod i
     private final ExceptionHandler[] rawExceptionHandlers;
     private final Attribute[] attributes;
 
-    private static final Map<CremaResolvedJavaMethodImpl, Long> methodIds = Collections.synchronizedMap(new WeakHashMap<>());
-
     private CremaResolvedJavaMethodImpl(InterpreterResolvedObjectType declaringClass, ParserMethod parserMethod, int vtableIndex) {
         super(declaringClass, parserMethod, vtableIndex);
         CodeAttribute codeAttribute = (CodeAttribute) parserMethod.getAttribute(CodeAttribute.NAME);
@@ -96,15 +88,8 @@ public class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMethod i
 
     @Override
     public JNIMethodId getOrCreateJNIMethodId() {
-        synchronized (methodIds) {
-            Long existing = methodIds.get(this);
-            if (existing == null) {
-                JNIObjectHandle globalHandle = JNIObjectHandles.newWeakGlobalRef(JNIObjectHandles.createLocal(this));
-                existing = globalHandle.rawValue();
-                methodIds.put(this, existing);
-            }
-            return Word.pointer(existing);
-        }
+        CremaResolvedObjectType type = ((CremaResolvedObjectType) getDeclaringClass());
+        return CremaJNIMethodIds.forMethod(type.classRegistry().getOrCreateCremaJNIMethodId(this));
     }
 
     @Override

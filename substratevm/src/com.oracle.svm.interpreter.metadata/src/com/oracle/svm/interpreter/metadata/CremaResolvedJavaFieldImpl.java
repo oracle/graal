@@ -139,7 +139,8 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
         if (!isStatic()) {
             return CremaJNIFieldIds.forInstanceField(getOffset());
         }
-        return ((CremaResolvedObjectType) getDeclaringClass()).jniStaticFieldIdFor(getOffset());
+        CremaResolvedObjectType type = ((CremaResolvedObjectType) getDeclaringClass());
+        return CremaJNIFieldIds.forStaticField(type.classRegistry().getOrCreateCremaJNIStaticFieldId(this, type.getHub(), getOffset()));
     }
 
     @Override

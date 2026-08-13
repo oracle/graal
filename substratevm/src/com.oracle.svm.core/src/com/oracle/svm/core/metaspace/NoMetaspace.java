@@ -31,7 +31,6 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
@@ -80,7 +79,7 @@ public final class NoMetaspace implements Metaspace {
     }
 
     @Override
-    public CremaJNIStaticFieldId allocateCremaJNIStaticFieldId() {
+    public <T> T allocateObject(Class<T> clazz) {
         throw VMError.shouldNotReachHere("Must not be called if metaspace support is not available.");
     }
 

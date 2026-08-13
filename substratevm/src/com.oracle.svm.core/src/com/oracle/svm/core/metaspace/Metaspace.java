@@ -32,7 +32,6 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds.CremaJNIStaticFieldId;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -93,8 +92,8 @@ public interface Metaspace {
     /** Allocates an int array. */
     int[] allocateIntArray(int length);
 
-    /** Allocates a runtime JNI field id node. */
-    CremaJNIStaticFieldId allocateCremaJNIStaticFieldId();
+    /** Allocates a pure-instance object of the given class. */
+    <T> T allocateObject(Class<T> clazz);
 
     default byte[] copyToMetaspace(byte[] heapArray) {
         byte[] result = Metaspace.singleton().allocateByteArray(heapArray.length);
