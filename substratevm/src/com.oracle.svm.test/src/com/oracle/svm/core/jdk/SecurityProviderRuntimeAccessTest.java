@@ -47,8 +47,7 @@ import com.oracle.svm.shared.security.ProviderConstruction;
 
 public class SecurityProviderRuntimeAccessTest {
 
-    @Rule
-    public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+    @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
     public void nullConfiguredProviderReportsActionableError() {
@@ -250,6 +249,7 @@ public class SecurityProviderRuntimeAccessTest {
             super("private-constructor-provider", "1.0", "Provider with private construction members");
         }
 
+        @SuppressWarnings("unused")
         private static Provider provider() {
             return new PrivateConstructorProvider();
         }
