@@ -193,6 +193,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static final String SIGNATURE_SERVICE = "Signature";
     private static final String CIPHER_SERVICE = "Cipher";
     private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
+    private static final String KEM_SERVICE = "KEM";
     private static final String KEY_STORE = "KeyStore";
     private static final String CERTIFICATE_FACTORY = "CertificateFactory";
     private static final String JKS = "JKS";
@@ -268,6 +269,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
 
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), true, "java.base", "sun.security.ssl");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
@@ -722,7 +724,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Service service : services) {
                 registerService(access, service);
             }
+            if (serviceType.equals(KEM_SERVICE)) {
+                registerHybridProviderServices(access);
+            }
         }
+    }
+
+    private void registerHybridProviderServices(DuringAnalysisAccess access) {
+        optionalClazz(access, "sun.security.ssl.HybridProvider").ifPresent(hybridProviderClass -> {
+            Provider provider = ReflectionUtil.readStaticField(hybridProviderClass, "PROVIDER");
+            for (Service service : provider.getServices()) {
+                registerService(access, service);
+            }
+            registerProvider(access, provider);
+        });
     }
 
     /** Service.getInstance() methods must be public static and should return the service type. */
