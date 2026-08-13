@@ -89,7 +89,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         if (isolateThread.isNull()) {
             return Word.nullPointer();
         }
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), nativeStackSize, threadStartRoutine.getFunctionPointer(), isolateThread, initFlag, Word.nullPointer());
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(Word.nullPointer(), nativeStackSize, threadStartEntryPoint.getFunctionPointer(), isolateThread, initFlag, Word.nullPointer());
         if (osThreadHandle.isNull()) {
             undoPrepareStartOnError(thread, isolateThread);
             return Word.nullPointer();
