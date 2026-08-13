@@ -2146,6 +2146,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IALOAD, safepoint = false)
         private static long ialoadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayLoad(frame, expandedState.top, IALOAD);
+            expandedState.top += ConstantBytecodes.stackEffectOf(IALOAD);
             return advanceToNextBytecode(curBCI, IALOAD, expandedState, state, frame);
         }
 
@@ -2153,6 +2154,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LALOAD, safepoint = false)
         private static long laloadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayLoad(frame, expandedState.top, LALOAD);
+            expandedState.top += ConstantBytecodes.stackEffectOf(LALOAD);
             return advanceToNextBytecode(curBCI, LALOAD, expandedState, state, frame);
         }
 
@@ -2160,6 +2162,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FALOAD, safepoint = false)
         private static long faloadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayLoad(frame, expandedState.top, FALOAD);
+            expandedState.top += ConstantBytecodes.stackEffectOf(FALOAD);
             return advanceToNextBytecode(curBCI, FALOAD, expandedState, state, frame);
         }
 
@@ -2167,6 +2170,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DALOAD, safepoint = false)
         private static long daloadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayLoad(frame, expandedState.top, DALOAD);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DALOAD);
             return advanceToNextBytecode(curBCI, DALOAD, expandedState, state, frame);
         }
 
@@ -2174,6 +2178,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = AALOAD, safepoint = false)
         private static long aaloadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             objectArrayLoad(frame, state.methodProfile, curBCI, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(AALOAD);
             return advanceToNextBytecode(curBCI, AALOAD, expandedState, state, frame);
         }
 
@@ -2181,6 +2186,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = BALOAD, safepoint = false)
         private static long baloadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             byteArrayLoad(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(BALOAD);
             return advanceToNextBytecode(curBCI, BALOAD, expandedState, state, frame);
         }
 
@@ -2188,6 +2194,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = CALOAD, safepoint = false)
         private static long caloadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayLoad(frame, expandedState.top, CALOAD);
+            expandedState.top += ConstantBytecodes.stackEffectOf(CALOAD);
             return advanceToNextBytecode(curBCI, CALOAD, expandedState, state, frame);
         }
 
@@ -2195,6 +2202,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = SALOAD, safepoint = false)
         private static long saloadHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayLoad(frame, expandedState.top, SALOAD);
+            expandedState.top += ConstantBytecodes.stackEffectOf(SALOAD);
             return advanceToNextBytecode(curBCI, SALOAD, expandedState, state, frame);
         }
 
@@ -2202,6 +2210,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IASTORE, safepoint = false)
         private static long iastoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayStore(frame, expandedState.top, IASTORE);
+            expandedState.top += ConstantBytecodes.stackEffectOf(IASTORE);
             return advanceToNextBytecode(curBCI, IASTORE, expandedState, state, frame);
         }
 
@@ -2209,6 +2218,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LASTORE, safepoint = false)
         private static long lastoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayStore(frame, expandedState.top, LASTORE);
+            expandedState.top += ConstantBytecodes.stackEffectOf(LASTORE);
             return advanceToNextBytecode(curBCI, LASTORE, expandedState, state, frame);
         }
 
@@ -2216,6 +2226,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FASTORE, safepoint = false)
         private static long fastoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayStore(frame, expandedState.top, FASTORE);
+            expandedState.top += ConstantBytecodes.stackEffectOf(FASTORE);
             return advanceToNextBytecode(curBCI, FASTORE, expandedState, state, frame);
         }
 
@@ -2223,6 +2234,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DASTORE, safepoint = false)
         private static long dastoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayStore(frame, expandedState.top, DASTORE);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DASTORE);
             return advanceToNextBytecode(curBCI, DASTORE, expandedState, state, frame);
         }
 
@@ -2230,6 +2242,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = AASTORE, safepoint = false)
         private static long aastoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             objectArrayStore(frame, state.methodProfile, curBCI, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(AASTORE);
             return advanceToNextBytecode(curBCI, AASTORE, expandedState, state, frame);
         }
 
@@ -2237,6 +2250,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = BASTORE, safepoint = false)
         private static long bastoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             byteArrayStore(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(BASTORE);
             return advanceToNextBytecode(curBCI, BASTORE, expandedState, state, frame);
         }
 
@@ -2244,6 +2258,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = CASTORE, safepoint = false)
         private static long castoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayStore(frame, expandedState.top, CASTORE);
+            expandedState.top += ConstantBytecodes.stackEffectOf(CASTORE);
             return advanceToNextBytecode(curBCI, CASTORE, expandedState, state, frame);
         }
 
@@ -2251,6 +2266,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = SASTORE, safepoint = false)
         private static long sastoreHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             arrayStore(frame, expandedState.top, SASTORE);
+            expandedState.top += ConstantBytecodes.stackEffectOf(SASTORE);
             return advanceToNextBytecode(curBCI, SASTORE, expandedState, state, frame);
         }
 
@@ -2259,6 +2275,7 @@ public final class Interpreter {
         private static long pop2Handler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             clearReference(frame, expandedState.top, -1);
             clearReference(frame, expandedState.top, -2);
+            expandedState.top += ConstantBytecodes.stackEffectOf(POP2);
             return advanceToNextBytecode(curBCI, POP2, expandedState, state, frame);
         }
 
@@ -2266,6 +2283,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = POP, safepoint = false)
         private static long popHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             clearReference(frame, expandedState.top, -1);
+            expandedState.top += ConstantBytecodes.stackEffectOf(POP);
             return advanceToNextBytecode(curBCI, POP, expandedState, state, frame);
         }
 
@@ -2273,6 +2291,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DUP, safepoint = false)
         private static long dupHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             dup1(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DUP);
             return advanceToNextBytecode(curBCI, DUP, expandedState, state, frame);
         }
 
@@ -2280,6 +2299,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DUP_X1, safepoint = false)
         private static long dupX1Handler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             dupx1(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DUP_X1);
             return advanceToNextBytecode(curBCI, DUP_X1, expandedState, state, frame);
         }
 
@@ -2287,6 +2307,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DUP_X2, safepoint = false)
         private static long dupX2Handler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             dupx2(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DUP_X2);
             return advanceToNextBytecode(curBCI, DUP_X2, expandedState, state, frame);
         }
 
@@ -2294,6 +2315,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DUP2, safepoint = false)
         private static long dup2Handler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             dup2(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DUP2);
             return advanceToNextBytecode(curBCI, DUP2, expandedState, state, frame);
         }
 
@@ -2301,6 +2323,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DUP2_X1, safepoint = false)
         private static long dup2X1Handler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             dup2x1(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DUP2_X1);
             return advanceToNextBytecode(curBCI, DUP2_X1, expandedState, state, frame);
         }
 
@@ -2308,6 +2331,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DUP2_X2, safepoint = false)
         private static long dup2X2Handler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             dup2x2(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(DUP2_X2);
             return advanceToNextBytecode(curBCI, DUP2_X2, expandedState, state, frame);
         }
 
@@ -2315,6 +2339,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = SWAP, safepoint = false)
         private static long swapHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             swapSingle(frame, expandedState.top);
+            expandedState.top += ConstantBytecodes.stackEffectOf(SWAP);
             return advanceToNextBytecode(curBCI, SWAP, expandedState, state, frame);
         }
 
@@ -2322,6 +2347,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IADD, safepoint = false)
         private static long iaddHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, popInt(frame, expandedState.top, -1) + popInt(frame, expandedState.top, -2));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IADD);
             return advanceToNextBytecode(curBCI, IADD, expandedState, state, frame);
         }
 
@@ -2329,6 +2355,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LADD, safepoint = false)
         private static long laddHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, popLong(frame, expandedState.top, -1) + popLong(frame, expandedState.top, -3));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LADD);
             return advanceToNextBytecode(curBCI, LADD, expandedState, state, frame);
         }
 
@@ -2336,6 +2363,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FADD, safepoint = false)
         private static long faddHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -2, popFloat(frame, expandedState.top, -1) + popFloat(frame, expandedState.top, -2));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FADD);
             return advanceToNextBytecode(curBCI, FADD, expandedState, state, frame);
         }
 
@@ -2343,6 +2371,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DADD, safepoint = false)
         private static long daddHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -4, popDouble(frame, expandedState.top, -1) + popDouble(frame, expandedState.top, -3));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DADD);
             return advanceToNextBytecode(curBCI, DADD, expandedState, state, frame);
         }
 
@@ -2350,6 +2379,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = ISUB, safepoint = false)
         private static long isubHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, popInt(frame, expandedState.top, -2) - popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(ISUB);
             return advanceToNextBytecode(curBCI, ISUB, expandedState, state, frame);
         }
 
@@ -2357,6 +2387,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LSUB, safepoint = false)
         private static long lsubHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, popLong(frame, expandedState.top, -3) - popLong(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LSUB);
             return advanceToNextBytecode(curBCI, LSUB, expandedState, state, frame);
         }
 
@@ -2364,6 +2395,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FSUB, safepoint = false)
         private static long fsubHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -2, popFloat(frame, expandedState.top, -2) - popFloat(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FSUB);
             return advanceToNextBytecode(curBCI, FSUB, expandedState, state, frame);
         }
 
@@ -2371,6 +2403,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DSUB, safepoint = false)
         private static long dsubHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -4, popDouble(frame, expandedState.top, -3) - popDouble(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DSUB);
             return advanceToNextBytecode(curBCI, DSUB, expandedState, state, frame);
         }
 
@@ -2378,6 +2411,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IMUL, safepoint = false)
         private static long imulHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, popInt(frame, expandedState.top, -1) * popInt(frame, expandedState.top, -2));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IMUL);
             return advanceToNextBytecode(curBCI, IMUL, expandedState, state, frame);
         }
 
@@ -2385,6 +2419,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LMUL, safepoint = false)
         private static long lmulHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, popLong(frame, expandedState.top, -1) * popLong(frame, expandedState.top, -3));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LMUL);
             return advanceToNextBytecode(curBCI, LMUL, expandedState, state, frame);
         }
 
@@ -2392,6 +2427,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FMUL, safepoint = false)
         private static long fmulHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -2, popFloat(frame, expandedState.top, -1) * popFloat(frame, expandedState.top, -2));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FMUL);
             return advanceToNextBytecode(curBCI, FMUL, expandedState, state, frame);
         }
 
@@ -2399,6 +2435,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DMUL, safepoint = false)
         private static long dmulHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -4, popDouble(frame, expandedState.top, -1) * popDouble(frame, expandedState.top, -3));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DMUL);
             return advanceToNextBytecode(curBCI, DMUL, expandedState, state, frame);
         }
 
@@ -2406,6 +2443,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IDIV, safepoint = false)
         private static long idivHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, divInt(popInt(frame, expandedState.top, -1), popInt(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IDIV);
             return advanceToNextBytecode(curBCI, IDIV, expandedState, state, frame);
         }
 
@@ -2413,6 +2451,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LDIV, safepoint = false)
         private static long ldivHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, divLong(popLong(frame, expandedState.top, -1), popLong(frame, expandedState.top, -3)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LDIV);
             return advanceToNextBytecode(curBCI, LDIV, expandedState, state, frame);
         }
 
@@ -2420,6 +2459,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FDIV, safepoint = false)
         private static long fdivHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -2, divFloat(popFloat(frame, expandedState.top, -1), popFloat(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FDIV);
             return advanceToNextBytecode(curBCI, FDIV, expandedState, state, frame);
         }
 
@@ -2427,6 +2467,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DDIV, safepoint = false)
         private static long ddivHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -4, divDouble(popDouble(frame, expandedState.top, -1), popDouble(frame, expandedState.top, -3)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DDIV);
             return advanceToNextBytecode(curBCI, DDIV, expandedState, state, frame);
         }
 
@@ -2434,6 +2475,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IREM, safepoint = false)
         private static long iremHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, remInt(popInt(frame, expandedState.top, -1), popInt(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IREM);
             return advanceToNextBytecode(curBCI, IREM, expandedState, state, frame);
         }
 
@@ -2441,6 +2483,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LREM, safepoint = false)
         private static long lremHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, remLong(popLong(frame, expandedState.top, -1), popLong(frame, expandedState.top, -3)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LREM);
             return advanceToNextBytecode(curBCI, LREM, expandedState, state, frame);
         }
 
@@ -2448,6 +2491,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FREM, safepoint = false)
         private static long fremHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -2, remFloat(popFloat(frame, expandedState.top, -1), popFloat(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FREM);
             return advanceToNextBytecode(curBCI, FREM, expandedState, state, frame);
         }
 
@@ -2455,6 +2499,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DREM, safepoint = false)
         private static long dremHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -4, remDouble(popDouble(frame, expandedState.top, -1), popDouble(frame, expandedState.top, -3)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DREM);
             return advanceToNextBytecode(curBCI, DREM, expandedState, state, frame);
         }
 
@@ -2462,6 +2507,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = INEG, safepoint = false)
         private static long inegHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -1, -popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(INEG);
             return advanceToNextBytecode(curBCI, INEG, expandedState, state, frame);
         }
 
@@ -2469,6 +2515,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LNEG, safepoint = false)
         private static long lnegHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -2, -popLong(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LNEG);
             return advanceToNextBytecode(curBCI, LNEG, expandedState, state, frame);
         }
 
@@ -2476,6 +2523,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FNEG, safepoint = false)
         private static long fnegHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -1, -popFloat(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FNEG);
             return advanceToNextBytecode(curBCI, FNEG, expandedState, state, frame);
         }
 
@@ -2483,6 +2531,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DNEG, safepoint = false)
         private static long dnegHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -2, -popDouble(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DNEG);
             return advanceToNextBytecode(curBCI, DNEG, expandedState, state, frame);
         }
 
@@ -2490,6 +2539,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = ISHL, safepoint = false)
         private static long ishlHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, shiftLeftInt(popInt(frame, expandedState.top, -1), popInt(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(ISHL);
             return advanceToNextBytecode(curBCI, ISHL, expandedState, state, frame);
         }
 
@@ -2497,6 +2547,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LSHL, safepoint = false)
         private static long lshlHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -3, shiftLeftLong(popInt(frame, expandedState.top, -1), popLong(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LSHL);
             return advanceToNextBytecode(curBCI, LSHL, expandedState, state, frame);
         }
 
@@ -2504,6 +2555,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = ISHR, safepoint = false)
         private static long ishrHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, shiftRightSignedInt(popInt(frame, expandedState.top, -1), popInt(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(ISHR);
             return advanceToNextBytecode(curBCI, ISHR, expandedState, state, frame);
         }
 
@@ -2511,6 +2563,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LSHR, safepoint = false)
         private static long lshrHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -3, shiftRightSignedLong(popInt(frame, expandedState.top, -1), popLong(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LSHR);
             return advanceToNextBytecode(curBCI, LSHR, expandedState, state, frame);
         }
 
@@ -2518,6 +2571,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IUSHR, safepoint = false)
         private static long iushrHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, shiftRightUnsignedInt(popInt(frame, expandedState.top, -1), popInt(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IUSHR);
             return advanceToNextBytecode(curBCI, IUSHR, expandedState, state, frame);
         }
 
@@ -2525,6 +2579,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LUSHR, safepoint = false)
         private static long lushrHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -3, shiftRightUnsignedLong(popInt(frame, expandedState.top, -1), popLong(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LUSHR);
             return advanceToNextBytecode(curBCI, LUSHR, expandedState, state, frame);
         }
 
@@ -2532,6 +2587,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IAND, safepoint = false)
         private static long iandHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, popInt(frame, expandedState.top, -1) & popInt(frame, expandedState.top, -2));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IAND);
             return advanceToNextBytecode(curBCI, IAND, expandedState, state, frame);
         }
 
@@ -2539,6 +2595,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LAND, safepoint = false)
         private static long landHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, popLong(frame, expandedState.top, -1) & popLong(frame, expandedState.top, -3));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LAND);
             return advanceToNextBytecode(curBCI, LAND, expandedState, state, frame);
         }
 
@@ -2546,6 +2603,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IOR, safepoint = false)
         private static long iorHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, popInt(frame, expandedState.top, -1) | popInt(frame, expandedState.top, -2));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IOR);
             return advanceToNextBytecode(curBCI, IOR, expandedState, state, frame);
         }
 
@@ -2553,6 +2611,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LOR, safepoint = false)
         private static long lorHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, popLong(frame, expandedState.top, -1) | popLong(frame, expandedState.top, -3));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LOR);
             return advanceToNextBytecode(curBCI, LOR, expandedState, state, frame);
         }
 
@@ -2560,6 +2619,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IXOR, safepoint = false)
         private static long ixorHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, popInt(frame, expandedState.top, -1) ^ popInt(frame, expandedState.top, -2));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IXOR);
             return advanceToNextBytecode(curBCI, IXOR, expandedState, state, frame);
         }
 
@@ -2567,6 +2627,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LXOR, safepoint = false)
         private static long lxorHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -4, popLong(frame, expandedState.top, -1) ^ popLong(frame, expandedState.top, -3));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LXOR);
             return advanceToNextBytecode(curBCI, LXOR, expandedState, state, frame);
         }
 
@@ -2575,6 +2636,7 @@ public final class Interpreter {
         private static long iincHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             setLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI),
                             getLocalInt(frame, BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI)) + BytecodeStream.uncheckedReadIncrement1(state.code, curBCI));
+            expandedState.top += ConstantBytecodes.stackEffectOf(IINC);
             return advanceToNextBytecode(curBCI, IINC, expandedState, state, frame);
         }
 
@@ -2582,6 +2644,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = I2L, safepoint = false)
         private static long i2lHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -1, popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(I2L);
             return advanceToNextBytecode(curBCI, I2L, expandedState, state, frame);
         }
 
@@ -2589,6 +2652,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = I2F, safepoint = false)
         private static long i2fHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -1, popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(I2F);
             return advanceToNextBytecode(curBCI, I2F, expandedState, state, frame);
         }
 
@@ -2596,6 +2660,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = I2D, safepoint = false)
         private static long i2dHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -1, popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(I2D);
             return advanceToNextBytecode(curBCI, I2D, expandedState, state, frame);
         }
 
@@ -2603,6 +2668,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = L2I, safepoint = false)
         private static long l2iHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, (int) popLong(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(L2I);
             return advanceToNextBytecode(curBCI, L2I, expandedState, state, frame);
         }
 
@@ -2610,6 +2676,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = L2F, safepoint = false)
         private static long l2fHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -2, popLong(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(L2F);
             return advanceToNextBytecode(curBCI, L2F, expandedState, state, frame);
         }
 
@@ -2617,6 +2684,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = L2D, safepoint = false)
         private static long l2dHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -2, popLong(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(L2D);
             return advanceToNextBytecode(curBCI, L2D, expandedState, state, frame);
         }
 
@@ -2624,6 +2692,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = F2I, safepoint = false)
         private static long f2iHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -1, (int) popFloat(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(F2I);
             return advanceToNextBytecode(curBCI, F2I, expandedState, state, frame);
         }
 
@@ -2631,6 +2700,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = F2L, safepoint = false)
         private static long f2lHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -1, (long) popFloat(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(F2L);
             return advanceToNextBytecode(curBCI, F2L, expandedState, state, frame);
         }
 
@@ -2638,6 +2708,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = F2D, safepoint = false)
         private static long f2dHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putDouble(frame, expandedState.top, -1, popFloat(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(F2D);
             return advanceToNextBytecode(curBCI, F2D, expandedState, state, frame);
         }
 
@@ -2645,6 +2716,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = D2I, safepoint = false)
         private static long d2iHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, (int) popDouble(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(D2I);
             return advanceToNextBytecode(curBCI, D2I, expandedState, state, frame);
         }
 
@@ -2652,6 +2724,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = D2L, safepoint = false)
         private static long d2lHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putLong(frame, expandedState.top, -2, (long) popDouble(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(D2L);
             return advanceToNextBytecode(curBCI, D2L, expandedState, state, frame);
         }
 
@@ -2659,6 +2732,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = D2F, safepoint = false)
         private static long d2fHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putFloat(frame, expandedState.top, -2, (float) popDouble(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(D2F);
             return advanceToNextBytecode(curBCI, D2F, expandedState, state, frame);
         }
 
@@ -2666,6 +2740,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = I2B, safepoint = false)
         private static long i2bHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -1, (byte) popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(I2B);
             return advanceToNextBytecode(curBCI, I2B, expandedState, state, frame);
         }
 
@@ -2673,6 +2748,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = I2C, safepoint = false)
         private static long i2cHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -1, (char) popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(I2C);
             return advanceToNextBytecode(curBCI, I2C, expandedState, state, frame);
         }
 
@@ -2680,6 +2756,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = I2S, safepoint = false)
         private static long i2sHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -1, (short) popInt(frame, expandedState.top, -1));
+            expandedState.top += ConstantBytecodes.stackEffectOf(I2S);
             return advanceToNextBytecode(curBCI, I2S, expandedState, state, frame);
         }
 
@@ -2687,6 +2764,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LCMP, safepoint = false)
         private static long lcmpHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -4, compareLong(popLong(frame, expandedState.top, -1), popLong(frame, expandedState.top, -3)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(LCMP);
             return advanceToNextBytecode(curBCI, LCMP, expandedState, state, frame);
         }
 
@@ -2694,6 +2772,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FCMPL, safepoint = false)
         private static long fcmplHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, compareFloatLess(popFloat(frame, expandedState.top, -1), popFloat(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FCMPL);
             return advanceToNextBytecode(curBCI, FCMPL, expandedState, state, frame);
         }
 
@@ -2701,6 +2780,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FCMPG, safepoint = false)
         private static long fcmpgHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -2, compareFloatGreater(popFloat(frame, expandedState.top, -1), popFloat(frame, expandedState.top, -2)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(FCMPG);
             return advanceToNextBytecode(curBCI, FCMPG, expandedState, state, frame);
         }
 
@@ -2708,6 +2788,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DCMPL, safepoint = false)
         private static long dcmplHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -4, compareDoubleLess(popDouble(frame, expandedState.top, -1), popDouble(frame, expandedState.top, -3)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DCMPL);
             return advanceToNextBytecode(curBCI, DCMPL, expandedState, state, frame);
         }
 
@@ -2715,15 +2796,16 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DCMPG, safepoint = false)
         private static long dcmpgHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -4, compareDoubleGreater(popDouble(frame, expandedState.top, -1), popDouble(frame, expandedState.top, -3)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(DCMPG);
             return advanceToNextBytecode(curBCI, DCMPG, expandedState, state, frame);
         }
 
         @AlwaysInline("Fold primitive branch opcode in individual handlers")
-        private static long primitive1Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode) {
+        private static long primitive1Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode, int stackEffect) {
             boolean branchTaken = takeBranchPrimitive1(popInt(frame, expandedState.top, -1), curOpcode);
             profileBranch(state.methodProfile, curBCI, branchTaken);
+            expandedState.top += stackEffect;
             if (branchTaken) {
-                expandedState.top += Bytecodes.stackEffectOf(curOpcode);
                 return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
@@ -2732,45 +2814,45 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFEQ, safepoint = false)
         private static long ifeqHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive1Branch(curBCI, expandedState, state, frame, IFEQ);
+            return primitive1Branch(curBCI, expandedState, state, frame, IFEQ, ConstantBytecodes.stackEffectOf(IFEQ));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFNE, safepoint = false)
         private static long ifneHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive1Branch(curBCI, expandedState, state, frame, IFNE);
+            return primitive1Branch(curBCI, expandedState, state, frame, IFNE, ConstantBytecodes.stackEffectOf(IFNE));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFLT, safepoint = false)
         private static long ifltHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive1Branch(curBCI, expandedState, state, frame, IFLT);
+            return primitive1Branch(curBCI, expandedState, state, frame, IFLT, ConstantBytecodes.stackEffectOf(IFLT));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFGE, safepoint = false)
         private static long ifgeHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive1Branch(curBCI, expandedState, state, frame, IFGE);
+            return primitive1Branch(curBCI, expandedState, state, frame, IFGE, ConstantBytecodes.stackEffectOf(IFGE));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFGT, safepoint = false)
         private static long ifgtHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive1Branch(curBCI, expandedState, state, frame, IFGT);
+            return primitive1Branch(curBCI, expandedState, state, frame, IFGT, ConstantBytecodes.stackEffectOf(IFGT));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFLE, safepoint = false)
         private static long ifleHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive1Branch(curBCI, expandedState, state, frame, IFLE);
+            return primitive1Branch(curBCI, expandedState, state, frame, IFLE, ConstantBytecodes.stackEffectOf(IFLE));
         }
 
         @AlwaysInline("Fold primitive compare branch opcode in individual handlers")
-        private static long primitive2Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode) {
+        private static long primitive2Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode, int stackEffect) {
             boolean branchTaken = takeBranchPrimitive2(popInt(frame, expandedState.top, -1), popInt(frame, expandedState.top, -2), curOpcode);
             profileBranch(state.methodProfile, curBCI, branchTaken);
+            expandedState.top += stackEffect;
             if (branchTaken) {
-                expandedState.top += Bytecodes.stackEffectOf(curOpcode);
                 return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
@@ -2779,45 +2861,45 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPEQ, safepoint = false)
         private static long ifIcmpeqHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPEQ);
+            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPEQ, ConstantBytecodes.stackEffectOf(IF_ICMPEQ));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPNE, safepoint = false)
         private static long ifIcmpneHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPNE);
+            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPNE, ConstantBytecodes.stackEffectOf(IF_ICMPNE));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPLT, safepoint = false)
         private static long ifIcmpltHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPLT);
+            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPLT, ConstantBytecodes.stackEffectOf(IF_ICMPLT));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPGE, safepoint = false)
         private static long ifIcmpgeHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPGE);
+            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPGE, ConstantBytecodes.stackEffectOf(IF_ICMPGE));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPGT, safepoint = false)
         private static long ifIcmpgtHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPGT);
+            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPGT, ConstantBytecodes.stackEffectOf(IF_ICMPGT));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPLE, safepoint = false)
         private static long ifIcmpleHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPLE);
+            return primitive2Branch(curBCI, expandedState, state, frame, IF_ICMPLE, ConstantBytecodes.stackEffectOf(IF_ICMPLE));
         }
 
         @AlwaysInline("Fold reference branch opcode in individual handlers")
-        private static long ref2Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode) {
+        private static long ref2Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode, int stackEffect) {
             boolean branchTaken = takeBranchRef2(popObject(frame, expandedState.top, -1), popObject(frame, expandedState.top, -2), curOpcode);
             profileBranch(state.methodProfile, curBCI, branchTaken);
+            expandedState.top += stackEffect;
             if (branchTaken) {
-                expandedState.top += Bytecodes.stackEffectOf(curOpcode);
                 return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
@@ -2826,21 +2908,21 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ACMPEQ, safepoint = false)
         private static long ifAcmpeqHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return ref2Branch(curBCI, expandedState, state, frame, IF_ACMPEQ);
+            return ref2Branch(curBCI, expandedState, state, frame, IF_ACMPEQ, ConstantBytecodes.stackEffectOf(IF_ACMPEQ));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ACMPNE, safepoint = false)
         private static long ifAcmpneHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return ref2Branch(curBCI, expandedState, state, frame, IF_ACMPNE);
+            return ref2Branch(curBCI, expandedState, state, frame, IF_ACMPNE, ConstantBytecodes.stackEffectOf(IF_ACMPNE));
         }
 
         @AlwaysInline("Fold null branch opcode in individual handlers")
-        private static long ref1Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode) {
+        private static long ref1Branch(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode, int stackEffect) {
             boolean branchTaken = takeBranchRef1(popObject(frame, expandedState.top, -1), curOpcode);
             profileBranch(state.methodProfile, curBCI, branchTaken);
+            expandedState.top += stackEffect;
             if (branchTaken) {
-                expandedState.top += Bytecodes.stackEffectOf(curOpcode);
                 return finishJump(curBCI, BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI), expandedState, state, frame);
             }
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
@@ -2849,13 +2931,13 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFNULL, safepoint = false)
         private static long ifnullHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return ref1Branch(curBCI, expandedState, state, frame, IFNULL);
+            return ref1Branch(curBCI, expandedState, state, frame, IFNULL, ConstantBytecodes.stackEffectOf(IFNULL));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFNONNULL, safepoint = false)
         private static long ifnonnullHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return ref1Branch(curBCI, expandedState, state, frame, IFNONNULL);
+            return ref1Branch(curBCI, expandedState, state, frame, IFNONNULL, ConstantBytecodes.stackEffectOf(IFNONNULL));
         }
 
         @AlwaysInline("Fold jump width in individual handlers")
@@ -2956,6 +3038,7 @@ public final class Interpreter {
         private static long getstaticHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField resolvedJavaField = resolveField(state.method, GETSTATIC, state.code, curBCI);
             expandedState.top += getStaticField(frame, expandedState.top, resolvedJavaField);
+            expandedState.top += ConstantBytecodes.stackEffectOf(GETSTATIC);
             return advanceToNextBytecode(curBCI, GETSTATIC, expandedState, state, frame);
         }
 
@@ -2964,6 +3047,7 @@ public final class Interpreter {
         private static long getfieldHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField resolvedJavaField = resolveField(state.method, GETFIELD, state.code, curBCI);
             expandedState.top += getInstanceField(frame, expandedState.top, resolvedJavaField);
+            expandedState.top += ConstantBytecodes.stackEffectOf(GETFIELD);
             return advanceToNextBytecode(curBCI, GETFIELD, expandedState, state, frame);
         }
 
@@ -2972,6 +3056,7 @@ public final class Interpreter {
         private static long quickGetstaticHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETSTATIC, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             expandedState.top += getStaticField(frame, expandedState.top, resolvedJavaField);
+            expandedState.top += ConstantBytecodes.stackEffectOf(QUICK_GETSTATIC);
             return advanceToNextBytecode(curBCI, QUICK_GETSTATIC, expandedState, state, frame);
         }
 
@@ -2980,6 +3065,7 @@ public final class Interpreter {
         private static long quickGetfieldHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETFIELD, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             expandedState.top += getInstanceField(frame, expandedState.top, resolvedJavaField);
+            expandedState.top += ConstantBytecodes.stackEffectOf(QUICK_GETFIELD);
             return advanceToNextBytecode(curBCI, QUICK_GETFIELD, expandedState, state, frame);
         }
 
@@ -2988,6 +3074,7 @@ public final class Interpreter {
         private static long putstaticHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField field = resolveField(state.method, PUTSTATIC, state.code, curBCI);
             expandedState.top += putStaticField(frame, expandedState.top, field);
+            expandedState.top += ConstantBytecodes.stackEffectOf(PUTSTATIC);
             return advanceToNextBytecode(curBCI, PUTSTATIC, expandedState, state, frame);
         }
 
@@ -2996,6 +3083,7 @@ public final class Interpreter {
         private static long putfieldHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField field = resolveField(state.method, PUTFIELD, state.code, curBCI);
             expandedState.top += putInstanceField(frame, expandedState.top, field);
+            expandedState.top += ConstantBytecodes.stackEffectOf(PUTFIELD);
             return advanceToNextBytecode(curBCI, PUTFIELD, expandedState, state, frame);
         }
 
@@ -3004,6 +3092,7 @@ public final class Interpreter {
         private static long quickPutstaticHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTSTATIC, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             expandedState.top += putStaticField(frame, expandedState.top, field);
+            expandedState.top += ConstantBytecodes.stackEffectOf(QUICK_PUTSTATIC);
             return advanceToNextBytecode(curBCI, QUICK_PUTSTATIC, expandedState, state, frame);
         }
 
@@ -3012,11 +3101,12 @@ public final class Interpreter {
         private static long quickPutfieldHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTFIELD, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             expandedState.top += putInstanceField(frame, expandedState.top, field);
+            expandedState.top += ConstantBytecodes.stackEffectOf(QUICK_PUTFIELD);
             return advanceToNextBytecode(curBCI, QUICK_PUTFIELD, expandedState, state, frame);
         }
 
         @AlwaysInline("Fold invoke opcode in individual handlers")
-        private static long invokeBytecode(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode) {
+        private static long invokeBytecode(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode, int stackEffect) {
             boolean preferStayInInterpreter = state.forceStayInInterpreter;
             SteppingControl steppingControl = null;
             boolean stepEventDisabled = false;
@@ -3058,43 +3148,45 @@ public final class Interpreter {
                     }
                 }
             }
+            expandedState.top += stackEffect;
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEVIRTUAL)
         private static long invokevirtualHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return invokeBytecode(curBCI, expandedState, state, frame, INVOKEVIRTUAL);
+            return invokeBytecode(curBCI, expandedState, state, frame, INVOKEVIRTUAL, ConstantBytecodes.stackEffectOf(INVOKEVIRTUAL));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKESPECIAL)
         private static long invokespecialHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return invokeBytecode(curBCI, expandedState, state, frame, INVOKESPECIAL);
+            return invokeBytecode(curBCI, expandedState, state, frame, INVOKESPECIAL, ConstantBytecodes.stackEffectOf(INVOKESPECIAL));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKESTATIC)
         private static long invokestaticHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return invokeBytecode(curBCI, expandedState, state, frame, INVOKESTATIC);
+            return invokeBytecode(curBCI, expandedState, state, frame, INVOKESTATIC, ConstantBytecodes.stackEffectOf(INVOKESTATIC));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEINTERFACE)
         private static long invokeinterfaceHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return invokeBytecode(curBCI, expandedState, state, frame, INVOKEINTERFACE);
+            return invokeBytecode(curBCI, expandedState, state, frame, INVOKEINTERFACE, ConstantBytecodes.stackEffectOf(INVOKEINTERFACE));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEDYNAMIC)
         private static long invokedynamicHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return invokeBytecode(curBCI, expandedState, state, frame, INVOKEDYNAMIC);
+            return invokeBytecode(curBCI, expandedState, state, frame, INVOKEDYNAMIC, ConstantBytecodes.stackEffectOf(INVOKEDYNAMIC));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = NEW)
         private static long newHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putObject(frame, expandedState.top, InterpreterToVM.createNewReference(resolveType(state.method, NEW, BytecodeStream.uncheckedReadCPI2(state.code, curBCI))));
+            expandedState.top += ConstantBytecodes.stackEffectOf(NEW);
             return advanceToNextBytecode(curBCI, NEW, expandedState, state, frame);
         }
 
@@ -3102,6 +3194,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = NEWARRAY)
         private static long newarrayHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putObject(frame, expandedState.top, -1, InterpreterToVM.createNewPrimitiveArray(BytecodeStream.uncheckedReadByte(state.code, curBCI), popInt(frame, expandedState.top, -1)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(NEWARRAY);
             return advanceToNextBytecode(curBCI, NEWARRAY, expandedState, state, frame);
         }
 
@@ -3110,6 +3203,7 @@ public final class Interpreter {
         private static long anewarrayHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putObject(frame, expandedState.top, -1,
                             InterpreterToVM.createNewReferenceArray(resolveType(state.method, ANEWARRAY, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)), popInt(frame, expandedState.top, -1)));
+            expandedState.top += ConstantBytecodes.stackEffectOf(ANEWARRAY);
             return advanceToNextBytecode(curBCI, ANEWARRAY, expandedState, state, frame);
         }
 
@@ -3117,6 +3211,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = ARRAYLENGTH, safepoint = false)
         private static long arraylengthHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             putInt(frame, expandedState.top, -1, InterpreterToVM.arrayLength(nullCheck(popObject(frame, expandedState.top, -1))));
+            expandedState.top += ConstantBytecodes.stackEffectOf(ARRAYLENGTH);
             return advanceToNextBytecode(curBCI, ARRAYLENGTH, expandedState, state, frame);
         }
 
@@ -3136,6 +3231,7 @@ public final class Interpreter {
                 InterpreterResolvedJavaType type = resolveType(state.method, CHECKCAST, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
                 InterpreterToVM.checkCast(receiver, type.getJavaClass());
             }
+            expandedState.top += ConstantBytecodes.stackEffectOf(CHECKCAST);
             return advanceToNextBytecode(curBCI, CHECKCAST, expandedState, state, frame);
         }
 
@@ -3146,30 +3242,32 @@ public final class Interpreter {
             profileType(state.methodProfile, curBCI, receiver);
             putInt(frame, expandedState.top, -1,
                             (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(state.method, INSTANCEOF, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)))) ? 1 : 0);
+            expandedState.top += ConstantBytecodes.stackEffectOf(INSTANCEOF);
             return advanceToNextBytecode(curBCI, INSTANCEOF, expandedState, state, frame);
         }
 
         @AlwaysInline("Fold monitor opcode in individual handlers")
-        private static long monitorBytecode(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode) {
+        private static long monitorBytecode(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame, int curOpcode, int stackEffect) {
             Object receiver = nullCheck(popObject(frame, expandedState.top, -1));
             if (curOpcode == MONITORENTER) {
                 InterpreterToVM.monitorEnter(frame, receiver);
             } else {
                 InterpreterToVM.monitorExit(frame, receiver);
             }
+            expandedState.top += stackEffect;
             return advanceToNextBytecode(curBCI, curOpcode, expandedState, state, frame);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MONITORENTER)
         private static long monitorenterHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return monitorBytecode(curBCI, expandedState, state, frame, MONITORENTER);
+            return monitorBytecode(curBCI, expandedState, state, frame, MONITORENTER, ConstantBytecodes.stackEffectOf(MONITORENTER));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MONITOREXIT)
         private static long monitorexitHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            return monitorBytecode(curBCI, expandedState, state, frame, MONITOREXIT);
+            return monitorBytecode(curBCI, expandedState, state, frame, MONITOREXIT, ConstantBytecodes.stackEffectOf(MONITOREXIT));
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
@@ -3206,6 +3304,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = MULTIANEWARRAY)
         private static long multianewarrayHandler(long curBCI, ExpandedState expandedState, State state, InterpreterFrame frame) {
             expandedState.top += allocateMultiArray(frame, expandedState.top, state, curBCI);
+            expandedState.top += ConstantBytecodes.stackEffectOf(MULTIANEWARRAY);
             return advanceToNextBytecode(curBCI, MULTIANEWARRAY, expandedState, state, frame);
         }
 
@@ -3225,21 +3324,20 @@ public final class Interpreter {
         }
 
         /**
-         * Completes a bytecode that continues at its sequential successor. This applies the
-         * bytecode's stack effect to the interpreter operand-stack pointer, advances the BCI by the
-         * encoded bytecode length, and prepares the opcode at the resulting BCI for dispatch.
+         * Completes a bytecode that continues at its sequential successor. The caller must apply
+         * the bytecode's stack effect to the interpreter operand-stack pointer. This advances the
+         * BCI by the encoded bytecode length and prepares the opcode at the resulting BCI for
+         * dispatch.
          *
          * <p>
-         * This helper is only suitable when {@link Bytecodes#stackEffectOf(int)} and
-         * {@link Bytecodes#lengthOf(int)} describe the complete transition to the next bytecode.
-         * Branches and other bytecodes with a separately selected successor must prepare that
-         * target explicitly.
+         * This helper is only suitable when {@link Bytecodes#lengthOf(int)} describes the
+         * transition to the next bytecode. Branches and other bytecodes with a separately selected
+         * successor must prepare that target explicitly.
          *
          * @return the BCI of the prepared successor bytecode
          */
         @AlwaysInline("Keep common opcode completion on the fast path")
         private static long advanceToNextBytecode(long curBCI, int curOpcode, ExpandedState expandedState, State state, InterpreterFrame frame) {
-            expandedState.top += Bytecodes.stackEffectOf(curOpcode);
             long nextBCI = curBCI + Bytecodes.lengthOf(curOpcode);
             prepareOpcodeForDispatch(nextBCI, expandedState, state, frame);
             return nextBCI;
