@@ -30,6 +30,7 @@ import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSIST
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.STRING;
 
 import java.lang.reflect.Array;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -143,6 +144,8 @@ final class ImageLayerConstantLoader {
         int parallelism = Math.max(1, ForkJoinPool.commonPool().getParallelism());
         int taskCount = Math.max(1, Math.min(constantCount, parallelism));
 
+        prepareFieldDeclaringTypes(isLateLoading);
+
         try (ExecutorService relinkingExecutor = Executors.newFixedThreadPool(taskCount)) {
             AnalysisFuture<?>[] tasks = new AnalysisFuture<?>[taskCount];
             for (int i = 0; i < taskCount; ++i) {
@@ -158,6 +161,31 @@ final class ImageLayerConstantLoader {
             }
             for (AnalysisFuture<?> task : tasks) {
                 task.guardedGet();
+            }
+        }
+    }
+
+    private void prepareFieldDeclaringTypes(boolean isLateLoading) {
+        Set<Integer> loadedDeclaringTypes = new HashSet<>();
+        for (int i = 0; i < snapshot.getConstants().size(); i++) {
+            PersistedConstantData.Loader constantData = snapshot.getConstants().get(i);
+            if (!constantData.isObject()) {
+                continue;
+            }
+            RelinkingData.Loader relinking = constantData.getObject().getRelinking();
+            if (relinking.isFieldConstant() && relinking.getFieldConstant().getRequiresLateLoading() == isLateLoading) {
+                int fieldId = relinking.getFieldConstant().getOriginFieldId();
+                int declaringTypeId = loader.findField(fieldId).getDeclaringTypeId();
+                if (loadedDeclaringTypes.add(declaringTypeId)) {
+                    /*
+                     * Loading a base-layer type can initialize its hosted class. Preserve the
+                     * snapshot order used before relinking was parallelized: class initialization
+                     * cycles can otherwise observe partially initialized static fields when a
+                     * different class becomes the initialization root. Only declaring types are
+                     * loaded here; field loading and constant reconstruction remain parallel.
+                     */
+                    loader.getAnalysisTypeForBaseLayerId(declaringTypeId);
+                }
             }
         }
     }

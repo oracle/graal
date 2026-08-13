@@ -1032,7 +1032,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         return analysisField;
     }
 
-    private PersistedAnalysisFieldData.Loader findField(int fid) {
+    PersistedAnalysisFieldData.Loader findField(int fid) {
         return SnapshotAdapters.binarySearchUnique(fid, snapshot.getFields(), PersistedAnalysisFieldData.Loader::getId);
     }
 
