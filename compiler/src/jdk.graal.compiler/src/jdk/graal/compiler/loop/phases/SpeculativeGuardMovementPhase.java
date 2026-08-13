@@ -254,11 +254,11 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
-        EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED, Graph.NodeEvent.CONTROL_FLOW_CHANGED));
+        EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             boolean iterate = false;
             try (NodeEventScope news = graph.trackNodeEvents(change)) {
-                if (graph.getDebug().areCountersEnabled()) {
+                if (graph.getDebug().isCountEnabled()) {
                     DebugContext.counter("SpeculativeGuardMovement_Iteration" + i).increment(graph.getDebug());
                 }
                 LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);

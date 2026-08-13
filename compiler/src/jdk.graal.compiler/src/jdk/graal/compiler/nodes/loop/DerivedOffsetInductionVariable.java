@@ -210,7 +210,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         } else {
             GraalError.guarantee(value instanceof SubNode, "Expected subtraction-based offset induction variable for %s but got %s", this, value);
             LogicNode subOverflow;
-            if (baseIsSubtrahend) {
+            if (base.valueNode() == value.getY()) {
                 subOverflow = IntegerSubExactOverflowNode.create(offsetValue, baseEndpoint);
             } else {
                 subOverflow = IntegerSubExactOverflowNode.create(baseEndpoint, offsetValue);
