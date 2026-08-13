@@ -144,7 +144,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
      * here {@code reverseIv} stride node is actually {@code i} negated since the IV is not
      * {@code i op off} but {@code off op i} where {@code op} is a subtraction.
      */
-    private boolean isMaskedNegateStride() {
+    boolean isMaskedNegateStride() {
         return value instanceof SubNode && base.valueNode() == value.getY();
     }
 
