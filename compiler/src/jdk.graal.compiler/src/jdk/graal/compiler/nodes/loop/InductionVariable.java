@@ -298,7 +298,7 @@ public abstract class InductionVariable {
             if (iv instanceof BasicInductionVariable) {
                 return true;
             }
-            if (iv instanceof DerivedOffsetInductionVariable offsetIV && !offsetIV.baseIsSubtrahend) {
+            if (iv instanceof DerivedOffsetInductionVariable offsetIV && offsetIV.getBase().valueNode() == offsetIV.valueNode().getX()) {
                 /* match offsetIV = `base +/- offset` */
                 return true;
             }
