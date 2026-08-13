@@ -121,12 +121,20 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
     @Substitution
     @SuppressWarnings("unused")
     public static long transferTo0(@JavaType(FileDescriptor.class) StaticObject src, long position, long count, @JavaType(FileDescriptor.class) StaticObject dst, boolean append) {
+        /*
+         * sun.nio.ch.FileChannelImpl.transferTo throws ClosedByInterrupt. Have this in mind when
+         * implementing this method and take com.oracle.truffle.espresso.io.TruffleIO.accept as reference.
+         */
         throw JavaSubstitution.unimplemented();
     }
 
     @Substitution
     @SuppressWarnings("unused")
     public static long transferFrom0(@JavaType(FileDescriptor.class) StaticObject src, @JavaType(FileDescriptor.class) StaticObject dst, long position, long count, boolean append) {
+        /*
+         * sun.nio.ch.FileChannelImpl.transferFrom throws ClosedByInterrupt. Have this in mind when
+         * implementing this method and take com.oracle.truffle.espresso.io.TruffleIO.accept as reference.
+         */
         throw JavaSubstitution.unimplemented();
     }
 
