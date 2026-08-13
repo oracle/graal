@@ -333,7 +333,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         }
     }
 
-    private WasmTestStatus  runTestCase(WasmCase testCase, Engine sharedEngine) {
+    private WasmTestStatus runTestCase(WasmCase testCase, Engine sharedEngine) {
         ByteArrayOutputStream testOut = new ByteArrayOutputStream();
         Path tempWorkingDirectory = null;
         try {
@@ -413,6 +413,14 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             String legacyExceptionsOption = testCase.options().getProperty("wasm.LegacyExceptions");
             if ("true".equals(exceptionsOption) || "true".equals(legacyExceptionsOption)) {
                 options.add(WasmBinaryTools.WabtOption.EXCEPTIONS);
+            }
+            String typedFunctionReferencesOption = testCase.options().getProperty("wasm.TypedFunctionReferences");
+            if ("true".equals(typedFunctionReferencesOption)) {
+                options.add(WasmBinaryTools.WabtOption.FUNCTION_REFERENCES);
+            }
+            String tailCallsOption = testCase.options().getProperty("wasm.TailCalls");
+            if ("true".equals(tailCallsOption)) {
+                options.add(WasmBinaryTools.WabtOption.TAIL_CALLS);
             }
             ArrayList<Source> sources = testCase.getSources(options);
 

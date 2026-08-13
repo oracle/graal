@@ -477,35 +477,35 @@ public abstract class BytecodeParser {
             final int originalOffset = offset;
             offset++;
             switch (opcode) {
-                case Bytecode.CALL_U8: {
+                case Bytecode.CALL_U8, Bytecode.RETURN_CALL_U8: {
                     final int functionIndex = rawPeekU8(bytecode, offset + 1);
-                    callNodes.add(new CallNode(originalOffset, functionIndex));
+                    callNodes.add(new CallNode(originalOffset, functionIndex, opcode == Bytecode.RETURN_CALL_U8));
                     offset += 2;
                     break;
                 }
-                case Bytecode.CALL_I32: {
+                case Bytecode.CALL_I32, Bytecode.RETURN_CALL_I32: {
                     final int functionIndex = rawPeekI32(bytecode, offset + 4);
-                    callNodes.add(new CallNode(originalOffset, functionIndex));
+                    callNodes.add(new CallNode(originalOffset, functionIndex, opcode == Bytecode.RETURN_CALL_I32));
                     offset += 8;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_U8: {
-                    callNodes.add(new CallNode(originalOffset));
+                case Bytecode.CALL_INDIRECT_U8, Bytecode.RETURN_CALL_INDIRECT_U8: {
+                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_INDIRECT_U8));
                     offset += 3;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_I32: {
-                    callNodes.add(new CallNode(originalOffset));
+                case Bytecode.CALL_INDIRECT_I32, Bytecode.RETURN_CALL_INDIRECT_I32: {
+                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_INDIRECT_I32));
                     offset += 12;
                     break;
                 }
-                case Bytecode.CALL_REF_U8: {
-                    callNodes.add(new CallNode(originalOffset));
+                case Bytecode.CALL_REF_U8, Bytecode.RETURN_CALL_REF_U8: {
+                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_REF_U8));
                     offset += 2;
                     break;
                 }
-                case Bytecode.CALL_REF_I32: {
-                    callNodes.add(new CallNode(originalOffset));
+                case Bytecode.CALL_REF_I32, Bytecode.RETURN_CALL_REF_I32: {
+                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_REF_I32));
                     offset += 8;
                     break;
                 }
@@ -707,12 +707,6 @@ public abstract class BytecodeParser {
                 }
                 case Bytecode.MEMORY_SIZE:
                 case Bytecode.MEMORY_GROW:
-                case Bytecode.LOCAL_GET_I32:
-                case Bytecode.LOCAL_GET_OBJ_I32:
-                case Bytecode.LOCAL_SET_I32:
-                case Bytecode.LOCAL_SET_OBJ_I32:
-                case Bytecode.LOCAL_TEE_I32:
-                case Bytecode.LOCAL_TEE_OBJ_I32:
                 case Bytecode.GLOBAL_GET_I32:
                 case Bytecode.GLOBAL_SET_I32:
                 case Bytecode.I32_LOAD_I32:
@@ -740,19 +734,11 @@ public abstract class BytecodeParser {
                 case Bytecode.I64_STORE_32_I32:
                 case Bytecode.I32_CONST_I32:
                 case Bytecode.F32_CONST:
-                case Bytecode.REF_FUNC: {
+                case Bytecode.REF_FUNC, Bytecode.BR_I32: {
                     offset += 4;
                     break;
                 }
-                case Bytecode.BR_I32: {
-                    offset += 4;
-                    break;
-                }
-                case Bytecode.IF: {
-                    offset += 6;
-                    break;
-                }
-                case Bytecode.BR_IF_I32: {
+                case Bytecode.IF, Bytecode.BR_IF_I32: {
                     offset += 6;
                     break;
                 }
@@ -868,30 +854,8 @@ public abstract class BytecodeParser {
                     int miscOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (miscOpcode) {
-                        case Bytecode.I32_TRUNC_SAT_F32_S:
-                        case Bytecode.I32_TRUNC_SAT_F32_U:
-                        case Bytecode.I32_TRUNC_SAT_F64_S:
-                        case Bytecode.I32_TRUNC_SAT_F64_U:
-                        case Bytecode.I64_TRUNC_SAT_F32_S:
-                        case Bytecode.I64_TRUNC_SAT_F32_U:
-                        case Bytecode.I64_TRUNC_SAT_F64_S:
-                        case Bytecode.I64_TRUNC_SAT_F64_U:
-                        case Bytecode.I64_ADD128:
-                        case Bytecode.I64_SUB128:
-                        case Bytecode.I64_MUL_WIDE_S:
-                        case Bytecode.I64_MUL_WIDE_U:
-                        case Bytecode.THROW_REF:
-                        case Bytecode.REF_EQ:
-                        case Bytecode.LEGACY_CATCH_DROP:
-                        case Bytecode.RETURN_CALL_LOOP: {
-                            break;
-                        }
                         case Bytecode.LEGACY_CATCH_UNWIND: {
                             maxLegacyCatchDepth = Math.max(maxLegacyCatchDepth, rawPeekI32(bytecode, offset));
-                            offset += 4;
-                            break;
-                        }
-                        case Bytecode.RETHROW: {
                             offset += 4;
                             break;
                         }
@@ -912,11 +876,37 @@ public abstract class BytecodeParser {
                             offset += 16;
                             break;
                         }
+                        case Bytecode.I32_TRUNC_SAT_F32_S:
+                        case Bytecode.I32_TRUNC_SAT_F32_U:
+                        case Bytecode.I32_TRUNC_SAT_F64_S:
+                        case Bytecode.I32_TRUNC_SAT_F64_U:
+                        case Bytecode.I64_TRUNC_SAT_F32_S:
+                        case Bytecode.I64_TRUNC_SAT_F32_U:
+                        case Bytecode.I64_TRUNC_SAT_F64_S:
+                        case Bytecode.I64_TRUNC_SAT_F64_U:
+                        case Bytecode.I64_ADD128:
+                        case Bytecode.I64_SUB128:
+                        case Bytecode.I64_MUL_WIDE_S:
+                        case Bytecode.I64_MUL_WIDE_U:
+                        case Bytecode.THROW_REF:
+                        case Bytecode.REF_EQ:
+                        case Bytecode.LEGACY_CATCH_DROP:
+                        case Bytecode.BR_RETURN_CALL: {
+                            break;
+                        }
                         case Bytecode.BR_ON_NULL_U8:
                         case Bytecode.BR_ON_NON_NULL_U8: {
                             offset += 3;
                             break;
                         }
+                        case Bytecode.LOCAL_GET_I32:
+                        case Bytecode.LOCAL_GET_OBJ_I32:
+                        case Bytecode.LOCAL_SET_I32:
+                        case Bytecode.LOCAL_SET_OBJ_I32:
+                        case Bytecode.LOCAL_TEE_I32:
+                        case Bytecode.LOCAL_TEE_OBJ_I32:
+                        case Bytecode.RETHROW:
+                        case Bytecode.THROW:
                         case Bytecode.MEMORY_FILL:
                         case Bytecode.MEMORY64_FILL:
                         case Bytecode.MEMORY64_SIZE:
@@ -926,24 +916,14 @@ public abstract class BytecodeParser {
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
                         case Bytecode.TABLE_FILL:
-                        case Bytecode.THROW:
                         case Bytecode.TABLE_GET:
-                        case Bytecode.TABLE_SET:
-                        case Bytecode.RETURN_CALL_I32: {
+                        case Bytecode.TABLE_SET: {
                             offset += 4;
                             break;
                         }
                         case Bytecode.BR_ON_NULL_I32:
                         case Bytecode.BR_ON_NON_NULL_I32: {
                             offset += 6;
-                            break;
-                        }
-                        case Bytecode.RETURN_CALL_U8: {
-                            offset += 1;
-                            break;
-                        }
-                        case Bytecode.RETURN_CALL_INDIRECT_U8: {
-                            offset += 2;
                             break;
                         }
                         case Bytecode.MEMORY_INIT:
@@ -953,8 +933,7 @@ public abstract class BytecodeParser {
                         case Bytecode.MEMORY64_COPY_D64_S32:
                         case Bytecode.MEMORY64_COPY_D64_S64:
                         case Bytecode.TABLE_INIT:
-                        case Bytecode.TABLE_COPY:
-                        case Bytecode.RETURN_CALL_INDIRECT_I32: {
+                        case Bytecode.TABLE_COPY: {
                             offset += 8;
                             break;
                         }

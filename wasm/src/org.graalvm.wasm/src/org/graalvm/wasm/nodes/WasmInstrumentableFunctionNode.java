@@ -134,8 +134,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         return codeEntry.stackBase();
     }
 
-    void execute(VirtualFrame frame, WasmInstance instance) {
-        functionNode.execute(frame, instance);
+    Object execute(VirtualFrame frame, WasmInstance instance) {
+        return functionNode.execute(frame, instance);
     }
 
     @Override
