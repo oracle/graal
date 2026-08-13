@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
+import com.oracle.svm.util.dynamicaccess.JVMCIForeignAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIReflectiveAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIResourceAccess;
@@ -108,7 +109,7 @@ public final class JVMCIFeatureAccess {
         /**
          * JVMCI-based counterpart of {@link org.graalvm.nativeimage.hosted.Feature.AfterRegistrationAccess#getForeignAccess()}.
          */
-        Object getJVMCIForeignAccess();
+        JVMCIForeignAccess getJVMCIForeignAccess();
     }
 
     /**

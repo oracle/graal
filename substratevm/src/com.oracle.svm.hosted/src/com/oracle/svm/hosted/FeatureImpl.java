@@ -92,6 +92,7 @@ import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.dynamicaccess.JVMCIJNIAccessImpl;
+import com.oracle.svm.hosted.dynamicaccess.JVMCIForeignAccessImpl;
 import com.oracle.svm.hosted.dynamicaccess.JVMCIReflectiveAccessImpl;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
@@ -111,6 +112,7 @@ import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIForeignAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIReflectiveAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIResourceAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
@@ -265,8 +267,8 @@ public class FeatureImpl {
         }
 
         @Override
-        public Object getJVMCIForeignAccess() {
-            throw VMError.unimplemented("JVMCI foreign access is not implemented yet.");
+        public JVMCIForeignAccess getJVMCIForeignAccess() {
+            return JVMCIForeignAccessImpl.singleton();
         }
     }
 
