@@ -58,6 +58,7 @@ public interface SignalHandlerSupport extends IsolateListener {
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class NoSignalHandlerSupport implements SignalHandlerSupport {
     @Override
+    @Uninterruptible(reason = "Signal handlers can be installed during early isolate startup before thread state is set up.")
     public void tryInstallHandlersForIgnoredSignals() {
         /* Nothing to do. */
     }
