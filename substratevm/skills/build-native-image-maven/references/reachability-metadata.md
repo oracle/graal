@@ -4,13 +4,11 @@ Use this guide to resolve native-image build failures caused by missing reachabi
 
 ## Detect Missing Metadata
 
-Add these options to your Maven plugin configuration to enable metadata checks and warnings:
+Add these runtime options to your Maven plugin configuration to enable metadata checks and warnings:
 ```xml
 <configuration>
-  <buildArgs>
-    <buildArg>--exact-reachability-metadata</buildArg>
-  </buildArgs>
   <runtimeArgs>
+    <runtimeArg>-XX:+ExactReachabilityMetadata</runtimeArg>
     <runtimeArg>-XX:MissingRegistrationReportingMode=Warn</runtimeArg>
   </runtimeArgs>
 </configuration>

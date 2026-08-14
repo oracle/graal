@@ -1327,9 +1327,14 @@ public class SubstrateOptions {
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         public static final HostedOptionKey<Boolean> UseCompressedReferenceShift = new HostedOptionKey<>(true);
 
-        @APIOption(name = "exact-reachability-metadata")//
+        /** FS-001-native-image-semantics.3.4. */
+        @APIOption(name = "exact-reachability-metadata", deprecated = "Use '-XX:+ExactReachabilityMetadata' globally or '-XX:ExactReachabilityMetadataPackages=<packages>' for specific packages at run time instead.")//
         @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
         public static final RuntimeOptionKey<Boolean> ExactReachabilityMetadata = new RuntimeOptionKey<>(false, Immutable);
+
+        /** FS-001-native-image-semantics.3.4. */
+        @Option(help = "Comma-separated list of packages that use exact reachability metadata.")//
+        public static final RuntimeOptionKey<String> ExactReachabilityMetadataPackages = new RuntimeOptionKey<>("", Immutable);
 
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
@@ -1749,7 +1754,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ReduceImplicitExceptionStackTraceInformation = new HostedOptionKey<>(false);
 
     @Option(help = "Allow all instantiated types to be allocated via Unsafe.allocateInstance().", type = OptionType.Expert, //
-                    deprecated = true, deprecationMessage = "--exact-reachability-metadata is the preferred way to detect missing unsafe-allocation metadata.") //
+                    deprecated = true, deprecationMessage = "Use -XX:+ExactReachabilityMetadata to detect missing unsafe-allocation metadata.") //
     public static final HostedOptionKey<Boolean> AllowUnsafeAllocationOfAllInstantiatedTypes = new HostedOptionKey<>(null);
 
     @Option(help = "Enable fallback to mremap for initializing the image heap.")//

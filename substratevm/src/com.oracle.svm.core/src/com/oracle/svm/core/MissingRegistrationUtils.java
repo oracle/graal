@@ -61,7 +61,15 @@ public class MissingRegistrationUtils {
     }
 
     public static boolean exactReachabilityMetadata() {
+        return globalExactReachabilityMetadata() || !exactReachabilityMetadataPackages().isEmpty();
+    }
+
+    public static boolean globalExactReachabilityMetadata() {
         return SubstrateOptions.ConcealedOptions.ExactReachabilityMetadata.getValue();
+    }
+
+    public static String exactReachabilityMetadataPackages() {
+        return SubstrateOptions.ConcealedOptions.ExactReachabilityMetadataPackages.getValue();
     }
 
     public static SubstrateOptions.ReportingMode missingRegistrationReportingMode() {

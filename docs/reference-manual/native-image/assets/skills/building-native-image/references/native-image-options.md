@@ -46,14 +46,16 @@ native-image -J<flag> <class>
 
 ## Missing reachability metadata
 
-**If you want exact error reporting for missing reflection/JNI/proxy/resource/serialization registrations (GraalVM JDK 23+):**
-```bash
-native-image --exact-reachability-metadata <class>
-```
+**If you want exact error reporting for missing reachability metadata:**
 
-**If you want to select exact metadata handling when starting the executable:**
 ```bash
 ./application -XX:+ExactReachabilityMetadata
+```
+
+**If you want exact error reporting only for specific packages:**
+
+```bash
+./application -XX:ExactReachabilityMetadataPackages=com.example,org.example
 ```
 
 ## Output and binary type

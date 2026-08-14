@@ -26,6 +26,7 @@
 package com.oracle.svm.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -40,8 +41,10 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.junit.Test;
 
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.test.exactmetadataexcluded.ExactReachabilityMetadataExcludedCaller;
 
 import jdk.internal.misc.Unsafe;
 
@@ -187,7 +190,8 @@ public class ReflectionRegistrationTest {
     }
 
     @NativeImageBuildArgs({
-                    "--exact-reachability-metadata",
+                    "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
+                    "-R:ExactReachabilityMetadataPackages=com.example.unused,com.oracle.svm.test",
                     "--features=com.oracle.svm.test.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
     })
     public static class ExactReachabilityTest {
@@ -204,6 +208,14 @@ public class ReflectionRegistrationTest {
             Field field = ExactFieldLookupTarget.class.getDeclaredField(fieldName());
             assertEquals(fieldName(), field.getName());
             assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new ExactFieldLookupTarget()));
+        }
+
+        /** FS-001-native-image-semantics.3.4. */
+        @Test
+        public void testExactReachabilityMetadataPackageFilter() {
+            MissingRegistrationSupport support = MissingRegistrationSupport.singleton();
+            assertTrue(support.reportMissingRegistrationErrors(ExactReachabilityTest.class));
+            assertFalse(support.reportMissingRegistrationErrors(ExactReachabilityMetadataExcludedCaller.class));
         }
 
         private static String fieldName() {
