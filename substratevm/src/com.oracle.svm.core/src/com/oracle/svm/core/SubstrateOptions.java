@@ -1328,7 +1328,6 @@ public class SubstrateOptions {
         public static final HostedOptionKey<Boolean> UseCompressedReferenceShift = new HostedOptionKey<>(true);
 
         /** FS-001-native-image-semantics.3.4. */
-        @APIOption(name = "exact-reachability-metadata", deprecated = "Use '-XX:+ExactReachabilityMetadata' globally or '-XX:ExactReachabilityMetadataPackages=<packages>' for specific packages at run time instead.")//
         @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
         public static final RuntimeOptionKey<Boolean> ExactReachabilityMetadata = new RuntimeOptionKey<>(false, Immutable);
 
@@ -1592,6 +1591,15 @@ public class SubstrateOptions {
     @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug, //
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
+
+    @APIOption(name = "exact-reachability-metadata", defaultValue = "", deprecated = "Use '-XX:+ExactReachabilityMetadata' globally or '-XX:ExactReachabilityMetadataPackages=<packages>' for specific packages at run time instead.")//
+    @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt", deprecated = true, deprecationMessage = "Use the ExactReachabilityMetadata runtime options instead.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
+    @APIOption(name = "exact-reachability-metadata-path", deprecated = "Use '-XX:ExactReachabilityMetadataPackages=<packages>' at run time instead.")//
+    @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt", deprecated = true, deprecationMessage = "Use the ExactReachabilityMetadataPackages runtime option instead.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.build());
 
     public enum ReportingMode {
         Warn,

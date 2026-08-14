@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.option.OptionClassFilter;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -39,8 +40,13 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class MissingRegistrationSupport {
+    private final OptionClassFilter legacyExactMetadataFilter;
+    private final boolean legacyExactMetadata;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public MissingRegistrationSupport() {
+    public MissingRegistrationSupport(OptionClassFilter legacyExactMetadataFilter, boolean legacyExactMetadata) {
+        this.legacyExactMetadataFilter = legacyExactMetadataFilter;
+        this.legacyExactMetadata = legacyExactMetadata;
     }
 
     @Fold
@@ -49,16 +55,26 @@ public class MissingRegistrationSupport {
     }
 
     public boolean reportMissingRegistrationErrors(StackTraceElement responsibleClass) {
-        return reportMissingRegistrationErrors(getPackageName(responsibleClass.getClassName()));
+        return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
     }
 
     public boolean reportMissingRegistrationErrors(Class<?> clazz) {
-        return reportMissingRegistrationErrors(clazz.getPackageName());
+        Module module = clazz.getModule();
+        return reportMissingRegistrationErrors(module.isNamed() ? module.getName() : null, clazz.getPackageName(), clazz.getName());
     }
 
-    private static boolean reportMissingRegistrationErrors(String packageName) {
+    public boolean reportMissingRegistrationErrorsWithoutResponsibleClass() {
+        return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || legacyExactMetadata;
+    }
+
+    private boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
         /* Hosted plugins must retain the metadata needed by either runtime mode. */
-        return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || exactMetadataForPackage(packageName);
+        return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || exactMetadataForPackage(packageName) ||
+                        legacyExactMetadataFilter.isIncluded(moduleName, packageName, className) != null;
+    }
+
+    public boolean legacyExactMetadata() {
+        return legacyExactMetadata;
     }
 
     private static boolean exactMetadataForPackage(String packageName) {

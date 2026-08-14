@@ -57,12 +57,7 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
                         reflectionError("access the class", quote(className), json),
                         Class.class, null, className, null);
-        report(exception);
-        /*
-         * If report doesn't throw, we throw the exception anyway since this is a Native
-         * Image-specific error that is unrecoverable in any case.
-         */
-        throw exception;
+        return report(exception) ? exception : null;
     }
 
     public static MissingReflectionRegistrationError reportUnsafeAllocation(Class<?> clazz) {
@@ -72,8 +67,7 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
                         reflectionError("unsafe instantiate", typeDescriptor(clazz), json),
                         Class.class, null, clazz.getTypeName(), null);
-        report(exception);
-        return exception;
+        return report(exception) ? exception : null;
     }
 
     public static void reportFieldQuery(Class<?> declaringClass, String fieldName) {
@@ -86,17 +80,22 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
     }
 
     public static MissingReflectionRegistrationError reportAccessedField(Field field) {
+        MissingReflectionRegistrationError exception = accessedFieldError(field);
+        report(exception);
+        return exception;
+    }
+
+    public static MissingReflectionRegistrationError reportLegacyAccessedField(Field field) {
+        MissingReflectionRegistrationError exception = accessedFieldError(field);
+        return report(exception) ? exception : null;
+    }
+
+    private static MissingReflectionRegistrationError accessedFieldError(Field field) {
         ConfigurationType type = getConfigurationType(field.getDeclaringClass());
         addField(type, field.getName());
-        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+        return new MissingReflectionRegistrationError(
                         reflectionError("read or write field", quote(field.toString()), elementToJSON(type)),
                         field.getClass(), field.getDeclaringClass(), field.getName(), null);
-        report(exception);
-        /*
-         * If report doesn't throw, we throw the exception anyway since this is a Native
-         * Image-specific error that is unrecoverable in any case.
-         */
-        throw exception;
     }
 
     public static void reportMethodQuery(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
@@ -170,9 +169,9 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         return registrationMessage(failedAction, elementDescriptor, json, "reflectively", "reflection", "reflection");
     }
 
-    private static void report(MissingReflectionRegistrationError exception) {
+    private static boolean report(MissingReflectionRegistrationError exception) {
         StackTraceElement responsibleClass = getResponsibleClass(exception, reflectionEntryPoints);
-        MissingRegistrationUtils.report(exception, responsibleClass);
+        return MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
     /*
@@ -180,8 +179,8 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
      * registration errors. This should be implemented using wrapping substitutions once they are
      * available.
      */
-    private static final Map<String, Set<String>> reflectionEntryPoints = Map.of(
-                    Class.class.getTypeName(), Set.of(
+    private static final Map<String, Set<String>> reflectionEntryPoints = Map.ofEntries(
+                    Map.entry(Class.class.getTypeName(), Set.of(
                                     "forName",
                                     "getClasses",
                                     "getDeclaredClasses",
@@ -202,13 +201,18 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
                                     "getRecordComponents",
                                     "getSigners",
                                     "arrayType",
-                                    "newInstance"),
-                    Method.class.getTypeName(), Set.of("invoke"),
-                    Constructor.class.getTypeName(), Set.of("newInstance"),
-                    Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"),
-                    "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
-                    "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
-                    "sun.misc.Unsafe", Set.of("allocateInstance"),
+                                    "newInstance")),
+                    Map.entry(ClassLoader.class.getTypeName(), Set.of("defineClass")),
+                    Map.entry(Field.class.getTypeName(), Set.of(
+                                    "get", "getBoolean", "getByte", "getChar", "getShort", "getInt", "getLong", "getFloat", "getDouble",
+                                    "set", "setBoolean", "setByte", "setChar", "setShort", "setInt", "setLong", "setFloat", "setDouble")),
+                    Map.entry(Method.class.getTypeName(), Set.of("invoke")),
+                    Map.entry(Constructor.class.getTypeName(), Set.of("newInstance")),
+                    Map.entry(Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance")),
+                    Map.entry("java.lang.reflect.ReflectAccess", Set.of("newInstance")),
+                    Map.entry("jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods")),
+                    Map.entry("jdk.internal.misc.Unsafe", Set.of("allocateInstance", "objectFieldOffset", "staticFieldOffset")),
+                    Map.entry("sun.misc.Unsafe", Set.of("allocateInstance", "objectFieldOffset", "staticFieldOffset")),
                     /* For jdk.internal.misc.Unsafe.allocateInstance(), which is intrinsified */
-                    SubstrateAllocationSnippets.class.getName(), Set.of("slowPathHubOrUnsafeInstantiationError"));
+                    Map.entry(SubstrateAllocationSnippets.class.getName(), Set.of("slowPathHubOrUnsafeInstantiationError")));
 }

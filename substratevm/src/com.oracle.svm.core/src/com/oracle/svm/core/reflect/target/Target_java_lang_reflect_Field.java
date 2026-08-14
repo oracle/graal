@@ -34,8 +34,6 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -46,7 +44,10 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.reflect.UnsafeFieldUtil;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import sun.reflect.generics.repository.FieldRepository;
@@ -72,6 +73,9 @@ public final class Target_java_lang_reflect_Field {
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
     public int offset;
+
+    /** Whether the field offset is available for compatibility with legacy reflection metadata. */
+    @Inject @RecomputeFieldValue(kind = Kind.Reset) public boolean legacyAccess;
 
     /**
      * If a static field and building a layered image, stores the layer the field was installed in.
@@ -108,6 +112,7 @@ public final class Target_java_lang_reflect_Field {
 
     @Substitute
     Target_jdk_internal_reflect_FieldAccessor getFieldAccessor() {
+        UnsafeFieldUtil.checkLegacyAccess(this);
         Target_jdk_internal_reflect_FieldAccessor accessor = fieldAccessor;
         if (accessor != null) {
             return accessor;
@@ -122,6 +127,7 @@ public final class Target_java_lang_reflect_Field {
 
     @Substitute
     Target_jdk_internal_reflect_FieldAccessor getOverrideFieldAccessor() {
+        UnsafeFieldUtil.checkLegacyAccess(this);
         Target_jdk_internal_reflect_FieldAccessor accessor = overrideFieldAccessor;
         if (accessor != null) {
             return accessor;

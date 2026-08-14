@@ -274,6 +274,7 @@ import com.oracle.svm.hosted.util.CPUTypeRISCV64;
 import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
 import com.oracle.svm.shared.c.libc.LibCKind;
 import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.option.OptionClassFilter;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl.HostedManagement;
@@ -1076,7 +1077,10 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
-                MissingRegistrationSupport missingRegistrationSupport = new MissingRegistrationSupport();
+                OptionClassFilter legacyExactMetadataFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ThrowMissingRegistrationErrors,
+                                SubstrateOptions.ThrowMissingRegistrationErrorsPaths);
+                boolean legacyExactMetadata = SubstrateOptions.ThrowMissingRegistrationErrors.hasBeenSet() || SubstrateOptions.ThrowMissingRegistrationErrorsPaths.hasBeenSet();
+                MissingRegistrationSupport missingRegistrationSupport = new MissingRegistrationSupport(legacyExactMetadataFilter, legacyExactMetadata);
                 ImageSingletons.add(MissingRegistrationSupport.class, missingRegistrationSupport);
 
                 if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(options)) {

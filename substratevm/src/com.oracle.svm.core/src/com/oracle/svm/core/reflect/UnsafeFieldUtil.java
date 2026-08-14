@@ -27,6 +27,7 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.Field;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
@@ -44,10 +45,23 @@ public class UnsafeFieldUtil {
         }
         int offset = field.root == null ? field.offset : field.root.offset;
         boolean conditionsSatisfied = dynamicAccessMetadata.satisfied();
+        if (conditionsSatisfied) {
+            checkLegacyAccess(field);
+        }
         if (offset <= 0 || !conditionsSatisfied) {
             throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class));
         }
         return offset;
+    }
+
+    public static void checkLegacyAccess(Target_java_lang_reflect_Field field) {
+        boolean legacyAccess = field.legacyAccess || (field.root != null && field.root.legacyAccess);
+        if (legacyAccess && MissingRegistrationUtils.exactReflection()) {
+            var exception = MissingReflectionRegistrationUtils.reportLegacyAccessedField(SubstrateUtil.cast(field, Field.class));
+            if (exception != null) {
+                throw exception;
+            }
+        }
     }
 
     private static void traceFieldAccess(Field f) {

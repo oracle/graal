@@ -1137,6 +1137,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return canUnsafeAllocate != null && canUnsafeAllocate.satisfied();
     }
 
+    public boolean isUnsafeAllocationAllowedForLegacyCompatibility() {
+        return isFlagSet(companion.additionalFlags, ADDITIONAL_FLAGS_LEGACY_UNSAFE_ALLOCATION_BIT);
+    }
+
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata() {
         return registeredUnsafeAllocationMetadata();
     }

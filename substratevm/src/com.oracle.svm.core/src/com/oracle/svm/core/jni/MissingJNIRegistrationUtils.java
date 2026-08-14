@@ -51,12 +51,7 @@ public final class MissingJNIRegistrationUtils extends MissingRegistrationUtils 
         MissingJNIRegistrationError exception = new MissingJNIRegistrationError(
                         jniMessage("access field", declaringClass.getTypeName() + "." + fieldName, elementToJSON(type)),
                         Field.class, declaringClass, fieldName, null);
-        report(exception);
-        /*
-         * If report doesn't throw, we throw the exception anyway since this is a Native
-         * Image-specific error that is unrecoverable in any case.
-         */
-        throw exception;
+        return report(exception) ? exception : null;
     }
 
     public static MissingJNIRegistrationError reportMethodAccess(Class<?> declaringClass, String methodName, String signature) {
@@ -67,20 +62,15 @@ public final class MissingJNIRegistrationUtils extends MissingRegistrationUtils 
         MissingJNIRegistrationError exception = new MissingJNIRegistrationError(
                         jniMessage("access method", declaringClass.getTypeName() + "." + methodName + signature, json),
                         Method.class, declaringClass, methodName, signature);
-        report(exception);
-        /*
-         * If report doesn't throw, we throw the exception anyway since this is a Native
-         * Image-specific error that is unrecoverable in any case.
-         */
-        throw exception;
+        return report(exception) ? exception : null;
     }
 
     private static String jniMessage(String failedAction, String elementDescriptor, String json) {
         return registrationMessage(failedAction, elementDescriptor, json, "reflectively", "reflection", "reflection");
     }
 
-    private static void report(MissingJNIRegistrationError exception) {
+    private static boolean report(MissingJNIRegistrationError exception) {
         // GR-54504: get responsible class from anchor
-        MissingRegistrationUtils.report(exception, null);
+        return MissingRegistrationUtils.report(exception, null);
     }
 }

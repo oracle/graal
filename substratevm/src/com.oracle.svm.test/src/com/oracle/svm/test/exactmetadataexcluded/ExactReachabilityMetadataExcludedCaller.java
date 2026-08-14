@@ -24,7 +24,13 @@
  */
 package com.oracle.svm.test.exactmetadataexcluded;
 
+import java.lang.reflect.Field;
+
 public final class ExactReachabilityMetadataExcludedCaller {
     private ExactReachabilityMetadataExcludedCaller() {
+    }
+
+    public static Object readField(Field field, Object receiver) throws IllegalAccessException {
+        return field.get(receiver);
     }
 }

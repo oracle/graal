@@ -39,7 +39,6 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -120,6 +119,10 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     public static int clearInternalModifiers(int modifiers) {
         return modifiers & (~ALL_FLAGS_MASK);
+    }
+
+    public static boolean isLegacyFieldAccess(int modifiers) {
+        return (modifiers & LEGACY_ACCESS_FLAG_MASK) != 0;
     }
 
     public static int getRawModifiers(Method m) {
@@ -424,8 +427,6 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         boolean preserved = (modifiers & PRESERVED_FLAG_MASK) != 0;
-        boolean legacyAccess = (modifiers & LEGACY_ACCESS_FLAG_MASK) != 0;
-
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Field field = (Field) decodeObject(buf, layerId);
@@ -471,9 +472,6 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
         int offset = buf.getSVInt();
-        if (legacyAccess && MissingRegistrationUtils.exactReflection()) {
-            offset = ReflectionObjectFactory.FIELD_OFFSET_NONE;
-        }
         int installedLayerNumber = Modifier.isStatic(modifiers) ? buf.getSVInt() : MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
         String deletedReason = decodeOtherString(buf, layerId);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
