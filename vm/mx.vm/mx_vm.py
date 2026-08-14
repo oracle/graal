@@ -89,7 +89,6 @@ ce_components_minimal = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insighth
 ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-utils', 'ni', 'nic', 'nil', 'svm', 'svmt', 'svmnfi', 'svmsl']
 ce_python_components = ['antlr4', 'sllvmvm', 'cmp', 'cov', 'dap', 'dis', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'pyn', 'pynl', 'rgx', 'sdk',
                         'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
-ce_fastr_components = ce_components + llvm_components + ['antlr4', 'xz', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'sRvm', 'bnative-image-utils', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl', 'llrlf']
 ce_no_native_components = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'tflllm', 'truffle-json']
 
 # Main GraalVMs
@@ -101,7 +100,6 @@ mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_f
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'xz', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent', 'tflsm'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['gwal', 'gwa', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm', 'swasmvm', 'tflsm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl', 'llrlf'], _suite, env_file='ce-llvm')
-mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
 mx_sdk_vm.register_vm_config('libgraal', ['cmp', 'lg', 'sdkc', 'tflc'], _suite)
 mx_sdk_vm.register_vm_config('libgraal-bash', llvm_components + ['cmp', 'gvm', 'lg', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
@@ -362,18 +360,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_project: (mx.Project) -> None
     :type register_distribution: (mx.Distribution) -> None
     """
-    if mx_sdk_vm_impl.has_component('FastR'):
-        fastr_release_env = mx.get_env('FASTR_RELEASE', None)
-        if fastr_release_env != 'true':
-            mx.abort(
-                f"When including FastR, please set FASTR_RELEASE to 'true' (env FASTR_RELEASE=true mx ...). "
-                f"Got FASTR_RELEASE={fastr_release_env}. "
-                'For local development, you may also want to disable recommended packages build '
-                '(FASTR_NO_RECOMMENDED=true) and capturing of system libraries '
-                '(export FASTR_CAPTURE_DEPENDENCIES set to an empty value). '
-                'See building.md in FastR documentation for more details.'
-            )
-
     if register_distribution and _suite.primary:
         # Only primary suite can register languages and tools distributions.
         # If the suite is not a primary suite, languages and tools distributions might not have been loaded yet.
