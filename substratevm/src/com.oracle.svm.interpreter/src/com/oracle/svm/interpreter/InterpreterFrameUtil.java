@@ -142,14 +142,12 @@ public final class InterpreterFrameUtil {
     public static Object popObject(InterpreterFrame frame, long slot) {
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
-        assert !(result instanceof ReturnAddress);
         return result;
     }
 
     public static Object popObject(InterpreterFrame frame, long slot, long slotOffset) {
         Object result = frame.getObjectStatic(slot, slotOffset);
         clearReference(frame, slot, slotOffset);
-        assert !(result instanceof ReturnAddress);
         return result;
     }
 
@@ -175,18 +173,6 @@ public final class InterpreterFrameUtil {
 
     public static double popDouble(InterpreterFrame frame, long slot, long slotOffset) {
         return frame.getDoubleStatic(slot, slotOffset);
-    }
-
-    static Object popReturnAddressOrObject(InterpreterFrame frame, long slot) {
-        Object result = frame.getObjectStatic(slot);
-        clearReference(frame, slot);
-        return result;
-    }
-
-    static Object popReturnAddressOrObject(InterpreterFrame frame, long slot, long slotOffset) {
-        Object result = frame.getObjectStatic(slot, slotOffset);
-        clearReference(frame, slot, slotOffset);
-        return result;
     }
 
     static void putReturnAddress(InterpreterFrame frame, long slot, int targetBCI) {
@@ -274,6 +260,11 @@ public final class InterpreterFrameUtil {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLocalInt(InterpreterFrame frame, int localSlot, int value) {
         frame.setIntStatic(localSlot, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void incrementLocalInt(InterpreterFrame frame, int localSlot, int increment) {
+        frame.incrementIntStatic(localSlot, increment);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

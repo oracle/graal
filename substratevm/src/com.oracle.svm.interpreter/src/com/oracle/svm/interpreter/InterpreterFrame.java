@@ -164,6 +164,17 @@ public final class InterpreterFrame {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void incrementIntStatic(long slot, int increment) {
+        /*
+         * Only the low 32 bits of a verified int slot are observable; a later category-2 store
+         * overwrites the whole slot. Keep this as a 32-bit read-modify-write so the backend can
+         * update memory directly.
+         */
+        long offset = Unsafe.ARRAY_LONG_BASE_OFFSET + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE);
+        UNSAFE.putInt(primitives, offset, UNSAFE.getInt(primitives, offset) + increment);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setFloatStatic(long slot, float value) {
         setFloatStatic(slot, 0, value);
     }

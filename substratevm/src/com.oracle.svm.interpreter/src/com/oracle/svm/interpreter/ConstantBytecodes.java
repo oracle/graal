@@ -45,15 +45,4 @@ final class ConstantBytecodes {
     public static int lengthOf(int opcode) {
         return Bytecodes.lengthOf(opcode);
     }
-
-    /**
-     * Version of {@link Bytecodes#stackEffectOf(int)} that returns a constant. The opcode must be a
-     * compile-time constant.
-     * 
-     * @see Bytecodes#stackEffectOf(int)
-     */
-    @Fold
-    public static int stackEffectOf(int opcode) {
-        return Bytecodes.stackEffectOf(opcode);
-    }
 }
