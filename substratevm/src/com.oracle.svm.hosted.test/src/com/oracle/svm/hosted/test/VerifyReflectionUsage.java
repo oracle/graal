@@ -92,6 +92,8 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
     /// - replace the reflection usage with JVMCI or similar alternatives
     /// - move them to the [#JUSTIFIED_EXCLUDED_CLASSES]
     /// - adjust this verifier to ignore certain patterns that are known to be acceptable
+    ///
+    /// Entries must be sorted lexicographically, ignoring case.
     private static final List<UnhandledExcludeEntry> UNHANDLED_EXCLUDED_CLASSES = List.of(
                     clazz("com.oracle.graal.pointsto.AbstractAnalysisEngine"),
                     clazz("com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder"),
@@ -295,6 +297,9 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.hosted.ResourcesFeature$1"),
                     clazz("com.oracle.svm.hosted.ResourcesFeature$ResourceCollectorImpl"),
                     clazz("com.oracle.svm.hosted.ResourcesFeature$ResourcesRegistryImpl"),
+                    clazz("com.oracle.svm.hosted.sboutlining.concat.SubstrateStringConcatFactory"),
+                    clazz("com.oracle.svm.hosted.sboutlining.concat.SubstrateStringConcatGraphBuilder"),
+                    clazz("com.oracle.svm.hosted.sboutlining.SBOutliningAnalysis$MetadataLookup"),
                     clazz("com.oracle.svm.hosted.SecurityServicesFeature"),
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins"),
                     clazz("com.oracle.svm.hosted.snippets.ReflectionPlugins$3"),

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initSortedArray;
 import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initStringList;
 
 import java.io.IOException;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
@@ -87,6 +88,7 @@ import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerSubstitutionType;
 import com.oracle.svm.hosted.reflect.ReflectionExpandSignatureMethod;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
+import com.oracle.svm.hosted.sboutlining.OutlinedSBMethod;
 import com.oracle.svm.hosted.snapshot.capnproto.CapnProtoSharedLayerSnapshotFormat;
 import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.dynamichub.ClassInitializationInfoData;
@@ -322,7 +324,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsUnsafeAllocated(type.isUnsafeAllocated());
         builder.setIsReachable(type.isReachable());
 
-        delegatePersistType(type, builder);
+        persistWrappedType(type, builder);
 
         Set<AnalysisType> subTypes = type.getSubTypes().stream().filter(AnalysisElement::isTrackedAcrossLayers).collect(Collectors.toSet());
         var subTypesBuilder = builder.initSubTypes(subTypes.size());
@@ -336,7 +338,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         afterTypeAdded(type);
     }
 
-    protected void delegatePersistType(AnalysisType type, PersistedAnalysisTypeData.Writer builder) {
+    private static void persistWrappedType(AnalysisType type, PersistedAnalysisTypeData.Writer builder) {
         if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             WrappedType.SerializationGenerated.Writer b = builder.getWrappedType().initSerializationGenerated();
             var key = SerializationSupport.currentLayer().getKeyFromConstructorAccessorClass(type.getJavaClass());
@@ -447,14 +449,23 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         graphWriter.writeMethodGraphs(method, builder);
 
-        delegatePersistMethod(method, builder);
+        persistWrappedMethod(method, builder);
 
         HostedMethod hMethod = hUniverse.lookup(method);
         builder.setHostedMethodIndex(LayeredDispatchTableFeature.singleton().getPersistedHostedMethodIndex(hMethod));
     }
 
-    protected void delegatePersistMethod(AnalysisMethod method, PersistedAnalysisMethodData.Writer builder) {
-        if (method.wrapped instanceof FactoryMethod factoryMethod) {
+    private void persistWrappedMethod(AnalysisMethod method, PersistedAnalysisMethodData.Writer builder) {
+        if (method.wrapped instanceof OutlinedSBMethod outlinedSBMethod) {
+            WrappedMethod.OutlinedSB.Writer b = builder.getWrappedMethod().initOutlinedSB();
+            MethodType methodType = outlinedSBMethod.getMethodType();
+            Class<?>[] parameterArray = methodType.parameterArray();
+            var parameters = b.initMethodTypeParameters(parameterArray.length);
+            for (int i = 0; i < parameterArray.length; i++) {
+                parameters.set(i, parameterArray[i].getName());
+            }
+            b.setMethodTypeReturn(methodType.returnType().getName());
+        } else if (method.wrapped instanceof FactoryMethod factoryMethod) {
             WrappedMethod.FactoryMethod.Writer b = builder.getWrappedMethod().initFactoryMethod();
             AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
             b.setTargetConstructorId(targetConstructor.getId());

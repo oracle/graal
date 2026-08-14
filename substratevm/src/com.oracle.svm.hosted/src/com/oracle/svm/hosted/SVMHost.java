@@ -138,6 +138,8 @@ import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
+import com.oracle.svm.hosted.sboutlining.SBOutliningFeature;
+import com.oracle.svm.hosted.sboutlining.SBOutliningPhase;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.shared.AlwaysInline;
@@ -843,6 +845,13 @@ public class SVMHost extends HostVM {
         }
         if (shouldIntrinsifyStringFormat(method)) {
             new StringFormatPhase(allowStringFormatFormatterFallback()).apply(graph, bb.getProviders(method));
+        }
+        if (method.isOriginalMethod() && SBOutliningFeature.outlineSBSequences()) {
+            /*
+             * SB outlining creates synthetic graphs into which deoptimizations cannot be inserted.
+             * It also alters frame states in a deoptimization-unsafe way.
+             */
+            new SBOutliningPhase().apply(graph, bb.getProviders(method));
         }
     }
 
