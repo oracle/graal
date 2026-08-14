@@ -65,12 +65,12 @@ final class SecurityProviderCatalogRegistrar {
     }
 
     void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
-        if (!feature.isLoadableProviderClass(access, providerClass)) {
-            registerApplicationSuppliedProviderClass(providerClass, metadata);
-            return;
-        }
         List<Provider> providers = buildTimeProvidersByClassName.get(providerClass.getName());
         if (providers == null) {
+            if (!feature.isLoadableProviderClass(access, providerClass)) {
+                registerApplicationSuppliedProviderClass(providerClass, metadata);
+                return;
+            }
             providers = List.of(feature.instantiateProviderImplementation(providerClass));
         }
         // §FS-002-security-providers.2.3:
