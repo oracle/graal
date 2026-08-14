@@ -403,6 +403,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.shared.option.OptionUtils", SHARED_CODE),
                     clazz("com.oracle.svm.shared.option.ReplacingLocatableMultiOptionValue", SHARED_CODE),
                     clazz("com.oracle.svm.shared.option.SubstrateOptionsParser", SHARED_CODE),
+                    clazz("com.oracle.svm.shared.security.ProviderConstruction", SHARED_CODE),
                     clazz("com.oracle.svm.shared.util.ClassUtil", SHARED_CODE),
                     clazz("com.oracle.svm.shared.util.ModuleSupport", SHARED_CODE),
                     clazz("com.oracle.svm.shared.util.ModuleSupport$Access$1", SHARED_CODE),
