@@ -3,7 +3,8 @@
 This specification defines Native Image behavior for Java Cryptography Architecture (JCA) security
 providers.
 The JDK can acquire or select a provider at run time only if the provider class was [*registered for
-reflection*](#11-registered-providers-and-services) at build time.
+reflection*](#11-registered-providers-and-services) at build time; a registered provider and its
+services then behave as they do on HotSpot.
 Registration alone does not install a provider: it does not add one to the run-time provider list
 ([§1.3](#13-run-time-provider-list)) that `Security.getProviders()` returns, that
 `Security.getProvider(String)` searches, and that name-based JCA factory overloads such as
@@ -12,6 +13,12 @@ Native Image builds that list at run time from the `security.provider.<n>` secur
 configured at build time, keeping only the providers that are registered.
 With `--exact-reachability-metadata`, reflective acquisition of an unregistered provider throws an
 error that identifies the missing provider class.
+
+> An application registers a third-party provider with one ordinary reflection entry in
+> `reachability-metadata.json`, for example
+> `{"type": "org.bouncycastle.jce.provider.BouncyCastleProvider"}`.
+> A run under the Tracing Agent collects that entry automatically ([§6](#6-tracing-metadata)), so a
+> traced application needs no manual provider configuration.
 
 [§7](#7-transition-to-the-future-defaults) defines the future-default options that select this
 behavior during the transition from service-driven provider inclusion and build-time provider-list
@@ -29,24 +36,23 @@ It uses these further terms:
 - Initialization of the run-time provider list, defined in [§1.3](#13-run-time-provider-list), is
   not class initialization (JLS §12.4), although [§7.1](#71-run-time-provider-list-initialization)
   changes when the class initialization that populates that list runs.
-- A *service provider class* is a public class or interface that `java.util.ServiceLoader` locates
-  as a provider of a service: the class named in the `with` clause of a `provides` directive
-  (JLS §7.7.4) of a module declaration, or a class named in a class-path provider-configuration
-  file, for example _META-INF/services/java.security.Provider_.
-  It is the class that `java.util.ServiceLoader` examines for a provider constructor or provider
-  method.
-- A *provider implementation class* is the concrete `Provider` subtype of an acquired provider
-  instance.
-  A provider method can return an implementation whose class differs from the service provider
-  class.
-- A *provider constructor* and a *provider method* are the two construction paths
-  `java.util.ServiceLoader` uses to instantiate a service provider.
-  [§1.1](#11-registered-providers-and-services) defines how those paths resolve a provider
-  implementation class.
+- The provider terms *service provider class*, *provider implementation class*, *provider
+  constructor*, and *provider method* are defined in
+  [§1.1](#11-registered-providers-and-services).
 
 ## 1. Provider Reflection Registration
 
 ### 1.1 Registered Providers and Services
+
+A *service provider class* is a public class or interface that `java.util.ServiceLoader` locates
+as a provider of a service: the class named in the `with` clause of a `provides` directive
+(JLS §7.7.4) of a module declaration, or a class named in a class-path provider-configuration
+file, for example _META-INF/services/java.security.Provider_.
+It is the class that `java.util.ServiceLoader` examines for a provider constructor or provider
+method.
+A *provider implementation class* is the concrete `Provider` subtype of an acquired provider
+instance; a provider method can return an implementation whose class differs from the service
+provider class.
 
 A provider implementation class is **registered for reflection** if and only if reflection metadata
 registers access to its type or to a supported construction path that resolves to an instance of
@@ -141,11 +147,9 @@ Algorithm aliases and provider selection otherwise follow the standard JCA API b
 
 ### 2.1 Qualifying Reflection Metadata
 
-Type access is the provider registration signal: registering access to the provider implementation
-type registers the provider implementation class.
-Access to a supported construction path also registers the provider implementation class, because
-requesting a construction path states a stronger intent than naming the type.
-Any one of these signals therefore registers the provider implementation class.
+The two signals of [§1.1](#11-registered-providers-and-services) — access to the provider
+implementation type and access to a supported construction path — each register the provider
+implementation class on their own.
 A signal carries the condition of the metadata entry that registers it;
 [§2.5](#25-conditional-registration-signals) defines how a condition gates registration at build
 time and its observability at run time.
@@ -153,15 +157,17 @@ Type access alone does not make a provider JDK-constructible.
 A provider implementation class is not registered under any circumstance other than these signals,
 the platform-owned signal in [§2.4](#24-securerandom-providers), and the compatibility behavior in
 [§7.3](#73-earlier-service-driven-inclusion-behavior).
-[§REQ-002-security-providers.9.1](requirements/security-providers.md#91-closure-of-the-registration-signals)
-states how this closure is discharged.
 
-> Using ordinary reflection metadata as this registration signal implements
-> [§AR-007-standard-jca-semantics.2](decisions/standard-jca-semantics.md#2-decision), and
+> Access to a construction path registers the class because requesting a construction path states a
+> stronger intent than naming the type.
+> Using ordinary reflection metadata as the registration signal implements
+> [§AR-009-security-provider-registration.2.1](decisions/security-provider-registration.md#21-ordinary-reflection-metadata-is-the-registration-signal),
+> and separating the registration signal from the construction path implements
+> [§AR-009-security-provider-registration.2.2](decisions/security-provider-registration.md#22-type-access-registers-and-construction-follows-the-jdk).
 > [§REQ-002-security-providers.2](requirements/security-providers.md#2-metadata-closure) is the
-> acceptance criterion for it.
-> Separating the registration signal from the construction path implements
-> [§AR-005-provider-registration-signals.2](decisions/provider-registration-signals.md#2-decision).
+> acceptance criterion, and
+> [§REQ-002-security-providers.9.1](requirements/security-providers.md#91-closure-of-the-registration-signals)
+> states how the closure of the registration signals is discharged.
 
 ### 2.2 Provider Construction
 
@@ -201,14 +207,17 @@ Provider registration does not change the configured provider order or make an u
 visible by name.
 
 > This behavior implements
-> [§AR-003-complete-security-provider-registration.2](decisions/complete-security-provider-registration.md#2-decision).
+> [§AR-009-security-provider-registration.2.3](decisions/security-provider-registration.md#23-the-provider-is-the-registration-unit).
 
 ### 2.4 SecureRandom Providers
 
 When a `SecureRandom` acquisition path is reachable, Native Image must register the complete
 configured providers that declare `SecureRandom` services.
-The acquisition path is a platform-owned conditional provider-registration signal, so the
-application need not supply reflection metadata for those providers.
+The acquisition path is a platform-owned provider-registration signal — the *`SecureRandom`
+platform signal* — so the application need not supply reflection metadata for those providers.
+The signal is conditional on build-time reachability of an acquisition path but carries no metadata
+condition ([§2.5](#25-conditional-registration-signals)), so the registrations it causes are always
+active.
 This registration has the effects of [§2.3](#23-registration-effects), including retention of every
 valid, resolvable service each registered provider declares.
 
@@ -218,14 +227,14 @@ It is not the earlier service-driven inclusion behavior of
 [§7.3](#73-earlier-service-driven-inclusion-behavior): the platform supplies a provider-registration
 signal, and the ordinary complete-provider semantics of [§2.3](#23-registration-effects) apply.
 Native Image must not register these providers when no `SecureRandom` acquisition path is reachable.
+Native Image's own internal use of `SecureRandom` is not an application acquisition path: it must
+cause this registration only in an executable that includes the optional subsystem that consumes
+that randomness, and its mere presence must not register providers in an ordinary executable.
 
-Native Image internal runtime randomness must cause this registration only in an executable that
-includes the runtime-compilation subsystem that consumes that randomness.
-The presence of the optional internal randomness implementation must not register SUN in an ordinary
-executable.
-
+> The optional subsystem is runtime compilation, whose hardening Native Image seeds from an internal
+> `SecureRandom`.
 > This behavior implements
-> [§AR-004-default-secure-random-provider.2](decisions/default-secure-random-provider.md#2-decision).
+> [§AR-009-security-provider-registration.2.5](decisions/security-provider-registration.md#25-the-securerandom-platform-signal).
 
 ### 2.5 Conditional Registration Signals
 
@@ -233,16 +242,12 @@ A reachability metadata entry can carry a
 [condition](../../../docs/reference-manual/native-image/ReachabilityMetadata.md#conditional-metadata-entries)
 on a *condition type*, and a qualifying signal ([§2.1](#21-qualifying-reflection-metadata)) carries
 the condition of the metadata entry that registers it.
-A **conditional signal** is a signal that carries a condition.
 A *run-time-checked* condition is **satisfied** at a point in run-time execution if and only if its
 condition type has been reached by that point; a *build-time-checked* condition is discharged
-entirely at build time.
-The platform-owned signal of [§2.4](#24-securerandom-providers) is conditional on build-time
-reachability of an acquisition path but carries no metadata condition.
-
-At build time, a conditional signal whose condition type is not reachable contributes no
-registration and none of the effects of [§2.3](#23-registration-effects).
-A signal whose build-time-checked condition is discharged is thereafter an unconditional signal.
+entirely at build time, and a signal whose build-time-checked condition is discharged is thereafter
+an unconditional signal.
+At build time, a signal whose condition type is not reachable contributes no registration and none
+of the effects of [§2.3](#23-registration-effects).
 Registration remains a build-time property ([§1.1](#11-registered-providers-and-services)); a
 run-time-checked condition determines when a registration that build time established becomes
 observable.
@@ -257,31 +262,41 @@ Activation is monotonic: a registration that is active remains active for the re
 execution.
 
 Whether a registration is active is observed at the acquisition boundary defined in
-[§4.1](#41-unregistered-providers).
-An acquisition that begins after activation observes the provider: a configured provider becomes
-observable in the run-time provider list at the position [§1.3](#13-run-time-provider-list) assigns
-it, and filtering providers with inactive registrations preserves the relative order of the
-remaining providers.
-Whether an acquisition after activation observes the provider must not depend on when the run-time
-provider list of [§7.1](#71-run-time-provider-list-initialization) was initialized, and Native
-Image must not construct a configured provider while its registration is inactive.
+[§4.1](#41-unregistered-providers): an acquisition that begins after activation observes a
+configured provider in the run-time provider list at the position
+[§1.3](#13-run-time-provider-list) assigns it, independent of when the run-time provider list of
+[§7.1](#71-run-time-provider-list-initialization) was initialized.
+Native Image must not construct a configured provider while its registration is inactive.
 
 Every effect that a signal causes carries that signal's condition, and an effect caused by several
-signals carries the union of their conditions: the construction-path and service metadata retained
-by [§2.3](#23-registration-effects) and the JCE verification outcome established by
-[§5.3](#53-jce-verification) are guarded exactly as the registration itself.
-An effect of conditional signals must not become unconditional: while no causing signal's condition
-is satisfied, reflective access to a retained construction path or service implementation class
-follows [§4.3](#43-missing-reflection-registration).
+signals carries the union of their conditions.
+The construction-path and service metadata retained by [§2.3](#23-registration-effects) and the JCE
+verification outcome established by [§5.3](#53-jce-verification) are therefore guarded exactly as
+the registration itself: while no causing signal's condition is satisfied, reflective access to a
+retained construction path or service implementation class follows
+[§4.3](#43-missing-reflection-registration).
 This section governs explicit provider registration; the compatibility behavior of
 [§7.3](#73-earlier-service-driven-inclusion-behavior) is unchanged by it.
 
 > A run-time-checked condition is written `"condition": {"typeReached": ...}` in
-> `reachability-metadata.json` and is the only condition that metadata format can express;
+> `reachability-metadata.json` and is the only condition that the metadata format can express;
 > build-time-checked conditions are the `typeReachable` conditions of the earlier configuration
 > files.
+>
+> For example, consider a configured provider `com.example.MyProvider` registered by a single entry
+> whose condition is `{"typeReached": "com.example.CryptoConfig"}`.
+> Before `com.example.CryptoConfig` is reached, `Security.getProviders()` omits the provider,
+> `Security.getProvider("MyProvider")` returns `null`, a factory call that names the provider throws
+> `NoSuchProviderException` ([§4.2](#42-standard-unavailable-results)), reflectively loading the
+> provider class follows [§4.3](#43-missing-reflection-registration), and a factory overload given
+> an application-constructed instance cannot use its services.
+> After `com.example.CryptoConfig` is reached, the next acquisition observes the provider at its
+> configured position — even if the run-time provider list was initialized earlier — and every
+> service of the complete provider ([§2.3](#23-registration-effects)) becomes available on all of
+> these surfaces at once.
+>
 > This behavior implements
-> [§AR-008-conditional-provider-registration.2](decisions/conditional-provider-registration.md#2-decision),
+> [§AR-009-security-provider-registration.2.4](decisions/security-provider-registration.md#24-conditions-gate-registration-and-every-derived-effect),
 > and
 > [§REQ-002-security-providers.10](requirements/security-providers.md#10-condition-fidelity) is its
 > acceptance criterion.
@@ -291,24 +306,15 @@ This section governs explicit provider registration; the compatibility behavior 
 ### 3.1 JDK-Managed Acquisition
 
 Every JDK-managed provider acquired at run time must be a JDK-constructible registered provider.
-This rule applies uniformly to:
-
-- direct provider APIs, including provider enumeration, name lookup, filtering, and algorithm
-  discovery through the `Security` methods listed in
-  [§1.2](#12-jdk-managed-providers-and-acquisition);
-- reflective provider loading or construction by class name;
-- JCA factories, the `Provider` and `Provider.Service` methods listed in
-  [§1.2](#12-jdk-managed-providers-and-acquisition), and engine objects that expose their selected
-  provider;
-- security-service facades that select provider services without using a JCA engine factory,
-  including GSS-API and SASL; and
-- service loading, default selection, and fallback paths that construct a provider or service
-  implementation directly.
+This rule applies uniformly to every acquisition path of
+[§1.2](#12-jdk-managed-providers-and-acquisition), including reflective provider loading or
+construction by class name and the service-loading, default-selection, and fallback paths that
+construct a provider or service implementation directly.
 
 A direct JDK fallback must not bypass registration when the configured provider list contains no
 matching registered provider.
-Default `SecureRandom` construction follows the platform-owned conditional registration signal in
-[§2.4](#24-securerandom-providers); other fallbacks must fail before exposing an unregistered
+Default `SecureRandom` construction follows the `SecureRandom` platform signal
+([§2.4](#24-securerandom-providers)); other fallbacks must fail before exposing an unregistered
 provider.
 
 ### 3.2 Provider List Lookups
@@ -363,11 +369,12 @@ implementation can register the provider after the executable has been built.
 
 Application-supplied provider objects follow [§5](#5-programmatically-supplied-providers) and do not
 relax these requirements for JDK-managed providers.
-[§REQ-002-security-providers.4](requirements/security-providers.md#4-no-exposure-of-an-unregistered-provider)
-states the evidence for this rule, and
-[§REQ-002-security-providers.9.2](requirements/security-providers.md#92-the-acquisition-boundary) states
-how it holds for the acquisition paths that [§1.2](#12-jdk-managed-providers-and-acquisition) does
-not enumerate.
+
+> [§REQ-002-security-providers.4](requirements/security-providers.md#4-no-exposure-of-an-unregistered-provider)
+> states the evidence for this rule, and
+> [§REQ-002-security-providers.9.2](requirements/security-providers.md#92-the-acquisition-boundary)
+> states how it holds for the acquisition paths that
+> [§1.2](#12-jdk-managed-providers-and-acquisition) does not enumerate.
 
 ### 4.2 Standard Unavailable Results
 
@@ -398,14 +405,15 @@ diagnostic is sufficient under [§2.1](#21-qualifying-reflection-metadata); Nati
 provider's construction and service metadata during the subsequent build.
 For an application-supplied provider without a supported construction path, that entry registers the
 provider class but retains no service implementations.
-[§REQ-002-security-providers.3](requirements/security-providers.md#3-diagnostic-sufficiency) requires
-the suggested entry to repair the reported failure.
 
 This requirement applies both to loading a provider from the configured provider list and to Java
 Cryptography Extension (JCE) verification of a programmatically supplied provider.
 Without exact reachability metadata checking, the operation throws an actionable
 `java.lang.SecurityException` that identifies the unregistered provider class instead of an internal
 error.
+
+> [§REQ-002-security-providers.3](requirements/security-providers.md#3-diagnostic-sufficiency)
+> requires the suggested entry to repair the reported failure.
 
 ## 5. Programmatically Supplied Providers
 
@@ -448,9 +456,12 @@ Extension (JCE) verification, Native Image must have established a verification 
 provider at build time.
 Registration is necessary for such an operation but is not successful verification.
 
-For a registered application-supplied provider class that is not one of the build-time configured
-providers, Native Image establishes the successful verification outcome from the class registration
-without constructing a provider instance.
+For a registered JDK-constructible provider, Native Image establishes the verification outcome from
+a build-time instance, whether or not the configured provider list names the provider.
+For a registered provider class that is not JDK-constructible, Native Image reuses the verification
+outcome of a build-time instance of that class when one exists, and otherwise establishes the
+successful verification outcome from the class registration without constructing a provider
+instance.
 
 > This permits JCE use of an existing application-supplied instance while avoiding an unsupported
 > attempt to reconstruct it.
@@ -500,8 +511,9 @@ The trace may locate `Provider.Service.newInstance` through contiguous helper fr
 
 Tracing a missing provider registration must use the ordinary reflection metadata format and
 diagnostics; it must not introduce a security-provider-specific metadata category or error.
-[§REQ-002-security-providers.8](requirements/security-providers.md#8-tracing-round-trip) requires
-collected metadata to be both sufficient and minimal.
+
+> [§REQ-002-security-providers.8](requirements/security-providers.md#8-tracing-round-trip) requires
+> collected metadata to be both sufficient and minimal.
 
 ### 6.2 Observational Transparency
 
@@ -525,8 +537,9 @@ Run-time provider-list initialization can be selected independently; explicit pr
 depends on it and enables it implicitly.
 The supported combinations are legacy inclusion with build-time initialization, legacy inclusion
 with run-time initialization, and explicit registration with run-time initialization.
-[§REQ-002-security-providers.7](requirements/security-providers.md#7-transition-compatibility) requires
-each combination to be specified and selected at build time.
+
+> [§REQ-002-security-providers.7](requirements/security-providers.md#7-transition-compatibility)
+> requires each combination to be specified and selected at build time.
 
 ### 7.1 Run-Time Provider-List Initialization
 
@@ -539,10 +552,12 @@ Native Image also retains the service provider class and construction path that 
 implementation.
 At run time, Native Image invokes that retained path directly, without loading or constructing
 unrelated provider descriptors.
-When that construction does not yield the configured provider, because it fails or because the
-constructed instance reports a different provider name, Native Image throws an actionable error that
-identifies the provider implementation class and service provider class instead of silently omitting
-the provider from the list.
+When that construction does not yield the configured provider, because it fails, returns a different
+implementation class, or — for a name-configured entry — reports a different provider name, Native
+Image throws an actionable error that identifies the provider implementation class and service
+provider class instead of silently omitting the provider from the list.
+An entry configured by implementation class accepts that implementation's declared provider name,
+as the JDK does.
 Provider names do not globally identify provider implementation classes: if multiple registered
 implementation classes report the same name, Native Image retains their class-based registration
 but does not treat that name as an unambiguous configured-provider-to-class mapping.
@@ -586,8 +601,7 @@ disabled.
 A factory call for an algorithm supplied only by an unregistered provider follows
 [§4.2](#42-standard-unavailable-results), and a lookup that reflectively loads the provider follows
 [§4.3](#43-missing-reflection-registration).
-The platform-owned `SecureRandom` registration signal in [§2.4](#24-securerandom-providers) remains
-enabled.
+The `SecureRandom` platform signal ([§2.4](#24-securerandom-providers)) remains enabled.
 
 > That signal registers complete providers for this commonly used JDK facility rather than inferring
 > partial provider support from a general service factory.
