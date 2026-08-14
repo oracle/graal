@@ -61,7 +61,7 @@ public class MissingRegistrationUtils {
     }
 
     public static boolean exactReachabilityMetadata() {
-        return globalExactReachabilityMetadata() || !exactReachabilityMetadataPackages().isEmpty();
+        return globalExactReachabilityMetadata() || !exactReachabilityMetadataPackages().isEmpty() || MissingRegistrationSupport.singleton().legacyExactMetadata();
     }
 
     public static boolean globalExactReachabilityMetadata() {
@@ -78,9 +78,11 @@ public class MissingRegistrationUtils {
 
     private static final AtomicReference<Set<String>> seenOutputs = new AtomicReference<>(null);
 
-    public static void report(Error exception, StackTraceElement responsibleClass) {
-        if (missingRegistrationErrorsSuspended.get() || (responsibleClass != null && !MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(responsibleClass))) {
-            return;
+    public static boolean report(Error exception, StackTraceElement responsibleClass) {
+        MissingRegistrationSupport support = MissingRegistrationSupport.singleton();
+        boolean callerInScope = responsibleClass != null ? support.reportMissingRegistrationErrors(responsibleClass) : support.reportMissingRegistrationErrorsWithoutResponsibleClass();
+        if (missingRegistrationErrorsSuspended.get() || !callerInScope) {
+            return false;
         }
         switch (missingRegistrationReportingMode()) {
             case Throw -> {
@@ -136,6 +138,7 @@ public class MissingRegistrationUtils {
                 }
             }
         }
+        return true;
     }
 
     private static final ThreadLocal<Boolean> missingRegistrationErrorsSuspended = ThreadLocal.withInitial(() -> false);

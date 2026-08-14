@@ -218,6 +218,13 @@ public class ReflectionRegistrationTest {
             assertFalse(support.reportMissingRegistrationErrors(ExactReachabilityMetadataExcludedCaller.class));
         }
 
+        @Test
+        public void testExcludedPackageKeepsLegacyFieldAccess() throws ReflectiveOperationException {
+            Field field = ExactFieldLookupTarget.class.getDeclaredField(fieldName());
+            Object value = ExactReachabilityMetadataExcludedCaller.readField(field, new ExactFieldLookupTarget());
+            assertEquals(FIELD_LOOKUP_TEST_VALUE, value);
+        }
+
         private static String fieldName() {
             return System.nanoTime() == Long.MIN_VALUE ? "missing" : "value";
         }

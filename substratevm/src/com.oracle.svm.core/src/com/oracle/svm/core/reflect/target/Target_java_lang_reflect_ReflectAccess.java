@@ -60,6 +60,7 @@ public final class Target_java_lang_reflect_ReflectAccess {
     public Target_java_lang_reflect_Field copyField(Target_java_lang_reflect_Field field) {
         Target_java_lang_reflect_Field copy = field.copy();
         copy.offset = field.offset;
+        copy.legacyAccess = field.legacyAccess;
         copy.installedLayerNumber = field.installedLayerNumber;
         copy.deletedReason = field.deletedReason;
         copyAccessibleObject(SubstrateUtil.cast(copy, Target_java_lang_reflect_AccessibleObject.class),

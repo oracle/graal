@@ -409,7 +409,10 @@ public final class ClassRegistries implements ParsingContext {
         assert RuntimeClassLoading.isSupported();
         String reflectionName = toReflectionName(name);
         if (MissingRegistrationUtils.exactReflection() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
-            throw MissingReflectionRegistrationUtils.reportDefineClass(reflectionName);
+            var exception = MissingReflectionRegistrationUtils.reportDefineClass(reflectionName);
+            if (exception != null) {
+                throw exception;
+            }
         }
         AbstractRuntimeClassRegistry registry = (AbstractRuntimeClassRegistry) runtimeLastLayer().getRegistry(loader);
         if (name != null) {

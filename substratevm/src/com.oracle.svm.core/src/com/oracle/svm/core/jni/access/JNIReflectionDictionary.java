@@ -412,7 +412,10 @@ public final class JNIReflectionDictionary {
              * A malformed signature never throws a missing registration error since it can't
              * possibly match an existing method.
              */
-            throw MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
+            var exception = MissingJNIRegistrationUtils.reportMethodAccess(clazz, name.toString(), signature.toString());
+            if (exception != null) {
+                throw exception;
+            }
         } else if (method != null && method.isNegative()) {
             return null;
         }
@@ -509,7 +512,10 @@ public final class JNIReflectionDictionary {
 
     private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name) {
         if (exactReflection() && field == null) {
-            throw MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
+            var exception = MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
+            if (exception != null) {
+                throw exception;
+            }
         } else if (field != null && field.isNegative()) {
             return null;
         }
