@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -403,6 +403,24 @@ public class StandardOp {
      * {@link SaveRegistersOp}.
      */
     public interface RestoreRegistersOp {
+    }
+
+    /**
+     * Defines a fixed register without changing its contents.
+     */
+    public static final class ArbitraryValueOp extends LIRInstruction {
+        public static final LIRInstructionClass<ArbitraryValueOp> TYPE = LIRInstructionClass.create(ArbitraryValueOp.class);
+
+        @Def({OperandFlag.REG}) private AllocatableValue result;
+
+        public ArbitraryValueOp(AllocatableValue result) {
+            super(TYPE);
+            this.result = result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+        }
     }
 
     /**

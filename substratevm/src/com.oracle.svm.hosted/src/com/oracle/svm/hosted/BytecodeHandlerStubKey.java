@@ -31,29 +31,38 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Identifies a registered bytecode handler stub by the handler method, the declaring type that
- * holds the interpreter switch, and the associated {@link BytecodeHandlerConfig}.
+ * Hosted-only identity for a registered bytecode handler stub. The invoke plugin maps each handler
+ * method, interpreter holder, configuration, and template index to its generated stub wrapper. The
+ * outline phase uses this mapping to find the wrapper, and hosted initialization uses it to build
+ * the threaded and main-dispatch handler tables.
  * <p>
- * Keys with a null method identify the interpreter itself.
+ * Keys with a null method identify the default handler and threaded-handler table for one
+ * interpreter configuration and template index.
  */
 public final class BytecodeHandlerStubKey {
 
     private final ResolvedJavaMethod method;
     private final ResolvedJavaType interpreterHolder;
     private final BytecodeHandlerConfig handlerConfig;
+    private final int templateIndex;
 
-    private BytecodeHandlerStubKey(ResolvedJavaMethod method, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
+    private BytecodeHandlerStubKey(ResolvedJavaMethod method, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig, int templateIndex) {
         this.method = method;
         this.interpreterHolder = Objects.requireNonNull(interpreterHolder);
         this.handlerConfig = Objects.requireNonNull(handlerConfig);
+        this.templateIndex = templateIndex;
     }
 
     public static BytecodeHandlerStubKey create(ResolvedJavaMethod method, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
-        return new BytecodeHandlerStubKey(method, interpreterHolder, handlerConfig);
+        return create(method, interpreterHolder, handlerConfig, 0);
     }
 
-    public static BytecodeHandlerStubKey createDefaultHandlerKey(ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig) {
-        return new BytecodeHandlerStubKey(null, interpreterHolder, handlerConfig);
+    public static BytecodeHandlerStubKey create(ResolvedJavaMethod method, ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig, int templateIndex) {
+        return new BytecodeHandlerStubKey(method, interpreterHolder, handlerConfig, templateIndex);
+    }
+
+    public static BytecodeHandlerStubKey createDefaultHandlerKey(ResolvedJavaType interpreterHolder, BytecodeHandlerConfig handlerConfig, int templateIndex) {
+        return new BytecodeHandlerStubKey(null, interpreterHolder, handlerConfig, templateIndex);
     }
 
     public ResolvedJavaMethod method() {
@@ -68,6 +77,10 @@ public final class BytecodeHandlerStubKey {
         return handlerConfig;
     }
 
+    public int templateIndex() {
+        return templateIndex;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -76,11 +89,11 @@ public final class BytecodeHandlerStubKey {
         if (!(obj instanceof BytecodeHandlerStubKey other)) {
             return false;
         }
-        return Objects.equals(method, other.method) && interpreterHolder.equals(other.interpreterHolder) && handlerConfig.equals(other.handlerConfig);
+        return Objects.equals(method, other.method) && interpreterHolder.equals(other.interpreterHolder) && handlerConfig.equals(other.handlerConfig) && templateIndex == other.templateIndex;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(method, interpreterHolder, handlerConfig);
+        return Objects.hash(method, interpreterHolder, handlerConfig, templateIndex);
     }
 }

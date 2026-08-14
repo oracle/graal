@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.ArbitraryValueNode;
 import jdk.graal.compiler.nodes.memory.MemoryMapNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -68,9 +69,13 @@ public final class ReturnNode extends MemoryMapControlSinkNode implements LIRLow
             JavaKind returnResultKind = unproxiedResult == null ? JavaKind.Void : unproxiedResult.getStackKind();
             Value returnResult = unproxiedResult == null ? null : gen.operand(unproxiedResult);
             Value[] additionalReturnResults = multiReturnNode.getAdditionalReturnResults().stream().map(gen::operand).toArray(Value[]::new);
+            boolean[] arbitraryAdditionalReturns = new boolean[additionalReturnResults.length];
+            for (int i = 0; i < arbitraryAdditionalReturns.length; i++) {
+                arbitraryAdditionalReturns[i] = multiReturnNode.getAdditionalReturnResults().get(i) instanceof ArbitraryValueNode;
+            }
             Value tailCallTarget = multiReturnNode.getTailCallTarget() == null ? null : gen.operand(multiReturnNode.getTailCallTarget());
 
-            gen.getLIRGeneratorTool().emitMultiReturns(returnResultKind, returnResult, additionalReturnResults, tailCallTarget);
+            gen.getLIRGeneratorTool().emitMultiReturns(returnResultKind, returnResult, additionalReturnResults, arbitraryAdditionalReturns, tailCallTarget);
         } else {
             gen.getLIRGeneratorTool().emitReturn(result.getStackKind(), gen.operand(result));
         }

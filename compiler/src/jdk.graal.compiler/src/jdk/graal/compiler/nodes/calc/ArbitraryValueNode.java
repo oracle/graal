@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package jdk.graal.compiler.nodes.calc;
 
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
-public interface SubstrateLIRGenerator extends LIRGeneratorTool {
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
-    @Override
-    default AllocatableValue getAdditionalReturnLocation(CallingConvention callingConvention, int index) {
-        return ((SubstrateCallingConvention) callingConvention).getAdditionalReturnLocation(index);
+/**
+ * Produces a value with unrestricted bits and no data dependency on another value.
+ */
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+public final class ArbitraryValueNode extends FloatingNode implements LIRLowerable {
+
+    public static final NodeClass<ArbitraryValueNode> TYPE = NodeClass.create(ArbitraryValueNode.class);
+
+    public ArbitraryValueNode() {
+        super(TYPE, StampFactory.forKind(JavaKind.Long));
     }
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
-
-    void emitDeadEnd();
-
-    void emitVerificationMarker(Object marker);
-
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
+    @Override
+    public void generate(NodeLIRBuilderTool builder) {
+        builder.setResult(this, builder.getLIRGeneratorTool().emitJavaConstant(JavaConstant.LONG_0));
+    }
 }
