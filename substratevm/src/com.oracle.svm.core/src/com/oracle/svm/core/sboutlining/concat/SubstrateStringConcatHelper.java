@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.sboutlining.concat;
 
-import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -393,7 +392,6 @@ public final class SubstrateStringConcatHelper {
      * @param second        second argument
      * @return String       resulting string
      */
-    @AlwaysInline("@ForceInline in JDK")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L410-L423")
     static String simpleConcat(Object first, Object second) {
         String s1 = stringOf(first);
@@ -438,7 +436,6 @@ public final class SubstrateStringConcatHelper {
      * @param arg           the only argument
      * @return String       resulting string
      */
-    @AlwaysInline("@ForceInline in JDK")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L453-L456")
     static String newStringOf(Object arg) {
         return new String(stringOf(arg));
@@ -475,7 +472,6 @@ public final class SubstrateStringConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
-    @AlwaysInline("@ForceInline in JDK")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L544-L553")
     static byte[] newArrayWithSuffix(String suffix, long indexCoder) {
         byte[] buf = newArray(indexCoder + suffix.length());
@@ -493,7 +489,6 @@ public final class SubstrateStringConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
-    @AlwaysInline("@ForceInline in JDK")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L561-L566")
     static byte[] newArray(long indexCoder) {
         byte coder = (byte)(indexCoder >> 32);
