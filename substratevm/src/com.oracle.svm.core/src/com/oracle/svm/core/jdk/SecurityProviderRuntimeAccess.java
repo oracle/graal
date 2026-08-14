@@ -76,11 +76,21 @@ public final class SecurityProviderRuntimeAccess {
         return passesJdkAcquisitionFilter(SecurityProviderRuntimeState.isJdkConstructible(providerClassName));
     }
 
+    /** §FS-002-security-providers.4.1 and §FS-002-security-providers.5.1. */
+    public static void requireRegisteredProvider(Provider provider) {
+        if (SecurityProviderRuntimeState.getProviderInfo(provider) == null) {
+            reportMissingRegistration(provider.getClass());
+        }
+    }
+
     // §FS-002-security-providers.7.1
     /** Load an already-resolved ServiceLoader provider directly. */
     public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName, String constructionClassName) {
         Provider candidate;
-        try {
+        /* §FS-002-security-providers.6.1: A filtered lookup must not trace providers constructed
+         * while materializing the full provider list. The acquisition boundary traces the selected
+         * provider, so internal construction must not be recorded as application use. */
+        try (var _ = MetadataTracer.disableTracing("security provider list construction")) {
             Class<?> constructionClass = Class.forName(constructionClassName, true, ClassLoader.getSystemClassLoader());
             candidate = constructProvider(constructionClass);
         } catch (ReflectiveOperationException | SecurityException | LinkageError ex) {
