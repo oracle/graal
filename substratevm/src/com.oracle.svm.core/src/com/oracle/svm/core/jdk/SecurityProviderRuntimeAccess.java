@@ -98,8 +98,8 @@ public final class SecurityProviderRuntimeAccess {
                             "returned an instance of " + candidate.getClass().getName(), null);
         }
         // §FS-002-security-providers.7.1
-        // A renamed provider does not answer the configured entry.
-        if (!providerName.equals(candidate.getName())) {
+        // A class-configured entry may legitimately differ from the provider's declared name.
+        if (!providerName.equals(providerClassName) && !providerName.equals(candidate.getName())) {
             throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
                             "was constructed but reports the provider name " + candidate.getName(), null);
         }

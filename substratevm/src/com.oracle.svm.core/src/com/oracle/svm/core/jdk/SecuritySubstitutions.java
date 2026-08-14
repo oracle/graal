@@ -85,6 +85,63 @@ final class Target_sun_security_jca_Providers_ExplicitRegistration {
     }
 }
 
+@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = ExplicitSecurityProviderRegistration.class)
+final class Target_sun_security_jca_ProviderConfig_ExplicitRegistration {
+    @Alias //
+    String provName;
+
+    @Alias //
+    Provider provider;
+}
+
+@TargetClass(className = "sun.security.jca.ProviderList", onlyWith = ExplicitSecurityProviderRegistration.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
+    @Alias //
+    private Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs;
+
+    @Alias
+    Target_sun_security_jca_ProviderList_ExplicitRegistration(
+                    @SuppressWarnings("unused") Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs,
+                    @SuppressWarnings("unused") boolean allLoaded) {
+    }
+
+    // §FS-002-security-providers.2.5:
+    /**
+     * Preserve inactive conditional configurations when a provider is removed. The JDK
+     * implementation assumes that {@code getFullProviderList()} discarded configurations whose
+     * provider is {@code null}, but explicit registration intentionally retains them so they can
+     * become observable after their run-time condition is satisfied.
+     */
+    @Substitute
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/sun/security/jca/ProviderList.java#L112-L129")
+    public static sun.security.jca.ProviderList remove(sun.security.jca.ProviderList providerList, String name) {
+        Target_sun_security_jca_ProviderList_ExplicitRegistration targetProviderList = SubstrateUtil.cast(providerList,
+                        Target_sun_security_jca_ProviderList_ExplicitRegistration.class);
+        /* Load the active configurations, as the original getFullProviderList() call would. */
+        providerList.toArray();
+        int removeIndex = -1;
+        for (int index = 0; index < targetProviderList.configs.length; index++) {
+            Target_sun_security_jca_ProviderConfig_ExplicitRegistration config = targetProviderList.configs[index];
+            Provider provider = config.provider;
+            if (provider != null && provider.getName().equals(name)) {
+                removeIndex = index;
+                break;
+            }
+        }
+        if (removeIndex < 0) {
+            return providerList;
+        }
+
+        Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] updatedConfigs = new Target_sun_security_jca_ProviderConfig_ExplicitRegistration[targetProviderList.configs.length - 1];
+        System.arraycopy(targetProviderList.configs, 0, updatedConfigs, 0, removeIndex);
+        System.arraycopy(targetProviderList.configs, removeIndex + 1, updatedConfigs, removeIndex,
+                        targetProviderList.configs.length - removeIndex - 1);
+        return SubstrateUtil.cast(new Target_sun_security_jca_ProviderList_ExplicitRegistration(updatedConfigs, true),
+                        sun.security.jca.ProviderList.class);
+    }
+}
+
 /*
  * All security checks are disabled.
  */

@@ -85,7 +85,7 @@ option list, and the exception types the provider paths can throw.
 substitute.
 
 > This requirement is the acceptance criterion for
-> [§AR-007-standard-jca-semantics.2](../decisions/standard-jca-semantics.md#2-decision).
+> [§AR-009-security-provider-registration.2.1](../decisions/security-provider-registration.md#21-ordinary-reflection-metadata-is-the-registration-signal).
 
 ## 3. Diagnostic Sufficiency
 

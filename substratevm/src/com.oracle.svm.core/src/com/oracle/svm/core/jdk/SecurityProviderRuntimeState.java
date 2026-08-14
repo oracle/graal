@@ -96,22 +96,42 @@ public final class SecurityProviderRuntimeState {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerConfiguredProviderName(String providerName, String providerClassName) {
-        ConfiguredProviderInfo previous = configuredProviders.get(providerName);
+        registerConfiguredProviderKey(providerName, providerClassName);
+        registerConfiguredProviderKey(providerClassName, providerClassName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void registerConfiguredProviderKey(String configuredValue, String providerClassName) {
+        ConfiguredProviderInfo previous = configuredProviders.get(configuredValue);
         if (previous == null) {
-            configuredProviders.put(providerName, new ConfiguredProviderInfo(providerClassName, null));
+            configuredProviders.put(configuredValue, new ConfiguredProviderInfo(providerClassName, null));
         } else if (!previous.providerClassName().equals(providerClassName)) {
             // §FS-002-security-providers.7.1
             // Provider names are not globally unique class keys.
-            ambiguousConfiguredProviderNames.put(providerName, true);
+            ambiguousConfiguredProviderNames.put(configuredValue, true);
         }
     }
 
-    /** Records the first ServiceLoader declaration that resolved an already-configured provider. */
+    /** Records the first ServiceLoader declaration that resolves a provider name. */
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerServiceLoadedConfiguredProvider(String providerName, String providerClassName, String constructionClassName) {
-        ConfiguredProviderInfo previous = configuredProviders.get(providerName);
-        if (previous != null && previous.providerClassName().equals(providerClassName) && previous.constructionClassName() == null) {
-            configuredProviders.put(providerName, new ConfiguredProviderInfo(providerClassName, constructionClassName));
+        registerServiceLoadedConfiguredProviderKey(providerName, providerClassName, constructionClassName);
+        // §FS-002-security-providers.7.1
+        // Security properties accept either the provider name or its implementation class name.
+        registerServiceLoadedConfiguredProviderKey(providerClassName, providerClassName, constructionClassName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void registerServiceLoadedConfiguredProviderKey(String configuredValue, String providerClassName, String constructionClassName) {
+        ConfiguredProviderInfo previous = configuredProviders.get(configuredValue);
+        if (previous == null) {
+            configuredProviders.put(configuredValue, new ConfiguredProviderInfo(providerClassName, constructionClassName));
+        } else if (previous.providerClassName().equals(providerClassName) && previous.constructionClassName() == null) {
+            configuredProviders.put(configuredValue, new ConfiguredProviderInfo(providerClassName, constructionClassName));
+        } else if (!previous.providerClassName().equals(providerClassName)) {
+            // §FS-002-security-providers.7.1
+            // Multiple descriptors can report the same provider name.
+            ambiguousConfiguredProviderNames.put(configuredValue, true);
         }
     }
 
