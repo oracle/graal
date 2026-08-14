@@ -2,6 +2,6 @@ Enables exact and user-friendly handling of reflection, resources, JNI, and seri
 When reachability metadata for an element is specified, the executable has expected and predictable behavior.
 When metadata is missing, the executable fails fast with a subtype of `java.lang.Error` that identifies the missing element.
 
-This global option sets the executable's default for the immutable runtime option `-XX:+ExactReachabilityMetadata`.
-The runtime option can also be enabled or disabled explicitly during executable startup.
+Enable this mode globally with the immutable runtime option `-XX:+ExactReachabilityMetadata`.
+To limit this mode to specific packages, use `-XX:ExactReachabilityMetadataPackages=<comma-separated-packages>`.
 Unlike `--future-defaults=exact-reflection`, exact reachability metadata also reports missing registrations for `Class.forName` and ordinary resource lookups.

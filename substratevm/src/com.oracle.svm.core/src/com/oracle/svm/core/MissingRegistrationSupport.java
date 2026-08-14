@@ -48,16 +48,37 @@ public class MissingRegistrationSupport {
         return ImageSingletons.lookup(MissingRegistrationSupport.class);
     }
 
-    public boolean reportMissingRegistrationErrors(@SuppressWarnings("unused") StackTraceElement responsibleClass) {
-        return reportMissingRegistrationErrors();
+    public boolean reportMissingRegistrationErrors(StackTraceElement responsibleClass) {
+        return reportMissingRegistrationErrors(getPackageName(responsibleClass.getClassName()));
     }
 
-    public boolean reportMissingRegistrationErrors(@SuppressWarnings("unused") Class<?> clazz) {
-        return reportMissingRegistrationErrors();
+    public boolean reportMissingRegistrationErrors(Class<?> clazz) {
+        return reportMissingRegistrationErrors(clazz.getPackageName());
     }
 
-    private static boolean reportMissingRegistrationErrors() {
+    private static boolean reportMissingRegistrationErrors(String packageName) {
         /* Hosted plugins must retain the metadata needed by either runtime mode. */
-        return SubstrateUtil.HOSTED || MissingRegistrationUtils.exactReflection();
+        return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || exactMetadataForPackage(packageName);
+    }
+
+    private static boolean exactMetadataForPackage(String packageName) {
+        String packages = MissingRegistrationUtils.exactReachabilityMetadataPackages();
+        int start = 0;
+        while (start < packages.length()) {
+            int end = packages.indexOf(',', start);
+            if (end == -1) {
+                end = packages.length();
+            }
+            if (packageName.length() == end - start && packages.regionMatches(start, packageName, 0, packageName.length())) {
+                return true;
+            }
+            start = end + 1;
+        }
+        return false;
+    }
+
+    private static String getPackageName(String className) {
+        int lastDot = className.lastIndexOf('.');
+        return lastDot == -1 ? "" : className.substring(0, lastDot);
     }
 }

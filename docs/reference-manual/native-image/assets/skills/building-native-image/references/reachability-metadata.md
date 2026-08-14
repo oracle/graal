@@ -36,13 +36,16 @@ Use `Exit` mode during testing to catch errors hidden inside `catch (Throwable t
 ```shell
 java -XX:MissingRegistrationReportingMode=Exit -jar your-app.jar
 ```
-Make strict metadata mode the executable default at build time:
-```shell
-native-image --exact-reachability-metadata ...
-```
-Or select it globally when starting the executable:
+Enable exact reachability metadata when starting the executable:
+
 ```shell
 ./application -XX:+ExactReachabilityMetadata
+```
+
+To limit exact reachability metadata to specific packages, pass a comma-separated package list:
+
+```shell
+./application -XX:ExactReachabilityMetadataPackages=com.example,org.example
 ```
 
 ---
