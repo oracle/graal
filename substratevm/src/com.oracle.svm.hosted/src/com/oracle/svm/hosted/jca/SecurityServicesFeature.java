@@ -1169,7 +1169,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
         // §FS-002-security-providers.7.3: Compatibility type-only metadata identifies application
         // providers. It preserves JCE verification without construction or service expansion.
-        return new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, constructionMetadata);
+        return new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, null);
     }
 
     private void registerProviderClassForReflection(Class<?> providerClass) {
