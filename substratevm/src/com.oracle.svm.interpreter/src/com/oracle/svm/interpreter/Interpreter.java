@@ -1098,7 +1098,7 @@ public final class Interpreter {
             }
 
             @AlwaysInline("Keep VirtualStack virtual-expanded")
-            void adjustAfterMaterializedOperation(int slotDelta) {
+            void adjustTop(int slotDelta) {
                 assert tosLevel == 0;
                 top += slotDelta;
             }
@@ -1141,7 +1141,7 @@ public final class Interpreter {
             }
 
             @AlwaysInline("Kill dependencies on unused cached primitive returns")
-            void reset() {
+            void killUnusedFields() {
                 if (tosLevel == 0) {
                     tosPrimitive0 = GraalDirectives.arbitraryValue(tosPrimitive0);
                     tosPrimitive1 = GraalDirectives.arbitraryValue(tosPrimitive1);
@@ -1819,7 +1819,6 @@ public final class Interpreter {
         private static void prepareOpcodeForDispatch(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
             boolean debuggerEventsSupported = debuggerEventsSupported();
             if (!debuggerEventsSupported && !InterpreterOptions.InterpreterTraceSupport.getValue()) {
-                virtualStack.reset();
                 return;
             }
 
@@ -1928,6 +1927,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = NOP, safepoint = false)
         private static long nopHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(NOP);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
             return nextBCI;
@@ -1936,6 +1936,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ACONST_NULL, safepoint = false)
         private static long aconstNullHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushObject(frame, null);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ACONST_NULL);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -1945,6 +1946,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ICONST_M1, safepoint = false)
         private static long iconstM1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushInt(frame, -1);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ICONST_M1);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -1954,6 +1956,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ICONST_0, safepoint = false)
         private static long iconst0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushInt(frame, 0);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ICONST_0);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -1963,6 +1966,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ICONST_1, safepoint = false)
         private static long iconst1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushInt(frame, 1);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ICONST_1);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -1972,6 +1976,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ICONST_2, safepoint = false)
         private static long iconst2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushInt(frame, 2);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ICONST_2);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -1981,6 +1986,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ICONST_3, safepoint = false)
         private static long iconst3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushInt(frame, 3);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ICONST_3);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -1990,6 +1996,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ICONST_4, safepoint = false)
         private static long iconst4Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushInt(frame, 4);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ICONST_4);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -1999,6 +2006,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ICONST_5, safepoint = false)
         private static long iconst5Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushInt(frame, 5);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ICONST_5);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2008,6 +2016,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LCONST_0, safepoint = false)
         private static long lconst0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushLong(frame, 0L);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LCONST_0);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2017,6 +2026,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LCONST_1, safepoint = false)
         private static long lconst1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushLong(frame, 1L);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LCONST_1);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2026,6 +2036,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FCONST_0, safepoint = false)
         private static long fconst0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushFloat(frame, 0.0f);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FCONST_0);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2035,6 +2046,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FCONST_1, safepoint = false)
         private static long fconst1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushFloat(frame, 1.0f);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FCONST_1);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2044,6 +2056,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FCONST_2, safepoint = false)
         private static long fconst2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushFloat(frame, 2.0f);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FCONST_2);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2053,6 +2066,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DCONST_0, safepoint = false)
         private static long dconst0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushDouble(frame, 0.0d);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DCONST_0);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2062,6 +2076,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DCONST_1, safepoint = false)
         private static long dconst1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pushDouble(frame, 1.0d);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DCONST_1);
             prepareOpcodeForDispatch(nextBCI, state, frame, virtualStack);
@@ -2071,6 +2086,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = BIPUSH, safepoint = false)
         private static long bipushHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             byte value = BytecodeStream.uncheckedReadByte(state.code, curBCI);
             virtualStack.pushInt(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(BIPUSH);
@@ -2081,6 +2097,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = SIPUSH, safepoint = false)
         private static long sipushHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             short value = BytecodeStream.uncheckedReadShort(state.code, curBCI);
             virtualStack.pushInt(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(SIPUSH);
@@ -2091,12 +2108,13 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LDC, safepoint = false)
         private static long ldcHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             /*
              * Keep the unsigned one-byte CPI in one 32-bit interval. Without this opaque boundary,
              * lowering creates separate zero- and sign-extended CPI intervals, increasing register
              * pressure and potentially causing stack spills.
              */
-            int cpi = GraalDirectives.opaque(BytecodeStream.uncheckedReadCPI1(state.code, curBCI));
+            long cpi = GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI1(state.code, curBCI));
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
                 throw noClassDefFoundError(LDC, null);
             }
@@ -2109,6 +2127,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LDC_W, safepoint = false)
         private static long ldcWHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int cpi = GraalDirectives.opaque(BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
                 throw noClassDefFoundError(LDC_W, null);
@@ -2122,6 +2141,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LDC2_W, safepoint = false)
         private static long ldc2WHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int cpi = GraalDirectives.opaque(BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             loadConstant2(frame, state, cpi, virtualStack);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC2_W);
@@ -2132,6 +2152,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ILOAD, safepoint = false)
         private static long iloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             int value = getLocalInt(frame, index);
             virtualStack.pushInt(frame, value);
@@ -2143,6 +2164,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LLOAD, safepoint = false)
         private static long lloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             long value = getLocalLong(frame, index);
             virtualStack.pushLong(frame, value);
@@ -2154,6 +2176,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FLOAD, safepoint = false)
         private static long floadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             float value = getLocalFloat(frame, index);
             virtualStack.pushFloat(frame, value);
@@ -2165,6 +2188,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DLOAD, safepoint = false)
         private static long dloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             double value = getLocalDouble(frame, index);
             virtualStack.pushDouble(frame, value);
@@ -2176,6 +2200,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ALOAD, safepoint = false)
         private static long aloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             Object value = getLocalObject(frame, index);
             virtualStack.pushObject(frame, value);
@@ -2187,6 +2212,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ILOAD_0, safepoint = false)
         private static long iload0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = getLocalInt(frame, 0);
             virtualStack.pushInt(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ILOAD_0);
@@ -2197,6 +2223,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ILOAD_1, safepoint = false)
         private static long iload1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = getLocalInt(frame, 1);
             virtualStack.pushInt(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ILOAD_1);
@@ -2207,6 +2234,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ILOAD_2, safepoint = false)
         private static long iload2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = getLocalInt(frame, 2);
             virtualStack.pushInt(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ILOAD_2);
@@ -2217,6 +2245,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ILOAD_3, safepoint = false)
         private static long iload3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = getLocalInt(frame, 3);
             virtualStack.pushInt(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ILOAD_3);
@@ -2227,6 +2256,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LLOAD_0, safepoint = false)
         private static long lload0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = getLocalLong(frame, 0);
             virtualStack.pushLong(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LLOAD_0);
@@ -2237,6 +2267,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LLOAD_1, safepoint = false)
         private static long lload1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = getLocalLong(frame, 1);
             virtualStack.pushLong(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LLOAD_1);
@@ -2247,6 +2278,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LLOAD_2, safepoint = false)
         private static long lload2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = getLocalLong(frame, 2);
             virtualStack.pushLong(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LLOAD_2);
@@ -2257,6 +2289,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LLOAD_3, safepoint = false)
         private static long lload3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = getLocalLong(frame, 3);
             virtualStack.pushLong(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LLOAD_3);
@@ -2267,6 +2300,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FLOAD_0, safepoint = false)
         private static long fload0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = getLocalFloat(frame, 0);
             virtualStack.pushFloat(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FLOAD_0);
@@ -2277,6 +2311,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FLOAD_1, safepoint = false)
         private static long fload1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = getLocalFloat(frame, 1);
             virtualStack.pushFloat(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FLOAD_1);
@@ -2287,6 +2322,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FLOAD_2, safepoint = false)
         private static long fload2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = getLocalFloat(frame, 2);
             virtualStack.pushFloat(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FLOAD_2);
@@ -2297,6 +2333,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FLOAD_3, safepoint = false)
         private static long fload3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = getLocalFloat(frame, 3);
             virtualStack.pushFloat(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FLOAD_3);
@@ -2307,6 +2344,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DLOAD_0, safepoint = false)
         private static long dload0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = getLocalDouble(frame, 0);
             virtualStack.pushDouble(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DLOAD_0);
@@ -2317,6 +2355,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DLOAD_1, safepoint = false)
         private static long dload1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = getLocalDouble(frame, 1);
             virtualStack.pushDouble(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DLOAD_1);
@@ -2327,6 +2366,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DLOAD_2, safepoint = false)
         private static long dload2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = getLocalDouble(frame, 2);
             virtualStack.pushDouble(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DLOAD_2);
@@ -2337,6 +2377,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DLOAD_3, safepoint = false)
         private static long dload3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = getLocalDouble(frame, 3);
             virtualStack.pushDouble(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DLOAD_3);
@@ -2347,6 +2388,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ALOAD_0, safepoint = false)
         private static long aload0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = getLocalObject(frame, 0);
             virtualStack.pushObject(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ALOAD_0);
@@ -2357,6 +2399,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ALOAD_1, safepoint = false)
         private static long aload1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = getLocalObject(frame, 1);
             virtualStack.pushObject(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ALOAD_1);
@@ -2367,6 +2410,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ALOAD_2, safepoint = false)
         private static long aload2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = getLocalObject(frame, 2);
             virtualStack.pushObject(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ALOAD_2);
@@ -2377,6 +2421,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ALOAD_3, safepoint = false)
         private static long aload3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = getLocalObject(frame, 3);
             virtualStack.pushObject(frame, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ALOAD_3);
@@ -2387,6 +2432,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISTORE, safepoint = false)
         private static long istoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             int value = virtualStack.popInt(frame);
             setLocalInt(frame, index, value);
@@ -2398,6 +2444,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSTORE, safepoint = false)
         private static long lstoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             long value = virtualStack.popLong(frame);
             setLocalLong(frame, index, value);
@@ -2409,6 +2456,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FSTORE, safepoint = false)
         private static long fstoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             float value = virtualStack.popFloat(frame);
             setLocalFloat(frame, index, value);
@@ -2420,6 +2468,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DSTORE, safepoint = false)
         private static long dstoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             double value = virtualStack.popDouble(frame);
             setLocalDouble(frame, index, value);
@@ -2431,6 +2480,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ASTORE, safepoint = false)
         private static long astoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             Object value = virtualStack.popObject(frame);
             setLocalObjectOrReturnAddress(frame, index, value);
@@ -2442,6 +2492,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISTORE_0, safepoint = false)
         private static long istore0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             setLocalInt(frame, 0, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ISTORE_0);
@@ -2452,6 +2503,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISTORE_1, safepoint = false)
         private static long istore1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             setLocalInt(frame, 1, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ISTORE_1);
@@ -2462,6 +2514,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISTORE_2, safepoint = false)
         private static long istore2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             setLocalInt(frame, 2, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ISTORE_2);
@@ -2472,6 +2525,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISTORE_3, safepoint = false)
         private static long istore3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             setLocalInt(frame, 3, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ISTORE_3);
@@ -2482,6 +2536,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSTORE_0, safepoint = false)
         private static long lstore0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             setLocalLong(frame, 0, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LSTORE_0);
@@ -2492,6 +2547,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSTORE_1, safepoint = false)
         private static long lstore1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             setLocalLong(frame, 1, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LSTORE_1);
@@ -2502,6 +2558,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSTORE_2, safepoint = false)
         private static long lstore2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             setLocalLong(frame, 2, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LSTORE_2);
@@ -2512,6 +2569,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSTORE_3, safepoint = false)
         private static long lstore3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             setLocalLong(frame, 3, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LSTORE_3);
@@ -2522,6 +2580,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FSTORE_0, safepoint = false)
         private static long fstore0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             setLocalFloat(frame, 0, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FSTORE_0);
@@ -2532,6 +2591,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FSTORE_1, safepoint = false)
         private static long fstore1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             setLocalFloat(frame, 1, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FSTORE_1);
@@ -2542,6 +2602,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FSTORE_2, safepoint = false)
         private static long fstore2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             setLocalFloat(frame, 2, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FSTORE_2);
@@ -2552,6 +2613,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FSTORE_3, safepoint = false)
         private static long fstore3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             setLocalFloat(frame, 3, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(FSTORE_3);
@@ -2562,6 +2624,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DSTORE_0, safepoint = false)
         private static long dstore0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             setLocalDouble(frame, 0, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DSTORE_0);
@@ -2572,6 +2635,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DSTORE_1, safepoint = false)
         private static long dstore1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             setLocalDouble(frame, 1, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DSTORE_1);
@@ -2582,6 +2646,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DSTORE_2, safepoint = false)
         private static long dstore2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             setLocalDouble(frame, 2, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DSTORE_2);
@@ -2592,6 +2657,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DSTORE_3, safepoint = false)
         private static long dstore3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             setLocalDouble(frame, 3, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(DSTORE_3);
@@ -2602,6 +2668,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ASTORE_0, safepoint = false)
         private static long astore0Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = virtualStack.popObject(frame);
             setLocalObjectOrReturnAddress(frame, 0, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ASTORE_0);
@@ -2612,6 +2679,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ASTORE_1, safepoint = false)
         private static long astore1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = virtualStack.popObject(frame);
             setLocalObjectOrReturnAddress(frame, 1, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ASTORE_1);
@@ -2622,6 +2690,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ASTORE_2, safepoint = false)
         private static long astore2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = virtualStack.popObject(frame);
             setLocalObjectOrReturnAddress(frame, 2, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ASTORE_2);
@@ -2632,6 +2701,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ASTORE_3, safepoint = false)
         private static long astore3Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object value = virtualStack.popObject(frame);
             setLocalObjectOrReturnAddress(frame, 3, value);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(ASTORE_3);
@@ -2642,6 +2712,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IALOAD, safepoint = false)
         private static long ialoadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
             int[] array = uncheckedCast(nonNullReceiver, int[].class);
@@ -2656,6 +2727,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LALOAD, safepoint = false)
         private static long laloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
             long[] array = uncheckedCast(nonNullReceiver, long[].class);
@@ -2670,6 +2742,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FALOAD, safepoint = false)
         private static long faloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
             float[] array = uncheckedCast(nonNullReceiver, float[].class);
@@ -2684,6 +2757,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DALOAD, safepoint = false)
         private static long daloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
             double[] array = uncheckedCast(nonNullReceiver, double[].class);
@@ -2698,6 +2772,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = AALOAD, safepoint = false)
         private static long aaloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
@@ -2713,10 +2788,13 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = BALOAD, safepoint = false)
         private static long baloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
 
-            if (nonNullReceiver instanceof boolean[] booleanArray) {
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
+                            nonNullReceiver instanceof boolean[])) {
+                boolean[] booleanArray = (boolean[]) nonNullReceiver;
                 virtualStack.avoidHoistingTop();
                 int index = virtualStack.peekIntAtOffset(frame, -1);
                 int value = InterpreterToVM.getArrayBooleanInternal(index, booleanArray);
@@ -2739,6 +2817,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = CALOAD, safepoint = false)
         private static long caloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
             char[] array = uncheckedCast(nonNullReceiver, char[].class);
@@ -2753,6 +2832,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = SALOAD, safepoint = false)
         private static long saloadHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -2);
             Object nonNullReceiver = nullCheck(receiver);
             short[] array = uncheckedCast(nonNullReceiver, short[].class);
@@ -2767,6 +2847,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IASTORE, safepoint = false)
         private static long iastoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -3);
             Object nonNullReceiver = nullCheck(receiver);
             int[] array = uncheckedCast(nonNullReceiver, int[].class);
@@ -2785,6 +2866,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LASTORE, safepoint = false)
         private static long lastoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -4);
             Object nonNullReceiver = nullCheck(receiver);
             long[] array = uncheckedCast(nonNullReceiver, long[].class);
@@ -2804,6 +2886,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FASTORE, safepoint = false)
         private static long fastoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -3);
             Object nonNullReceiver = nullCheck(receiver);
             float[] array = uncheckedCast(nonNullReceiver, float[].class);
@@ -2822,6 +2905,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DASTORE, safepoint = false)
         private static long dastoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -4);
             Object nonNullReceiver = nullCheck(receiver);
             double[] array = uncheckedCast(nonNullReceiver, double[].class);
@@ -2841,6 +2925,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = AASTORE, safepoint = false)
         private static long aastoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -3);
             Object nonNullReceiver = nullCheck(receiver);
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
@@ -2861,6 +2946,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = BASTORE, safepoint = false)
         private static long bastoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -3);
             Object nonNullReceiver = nullCheck(receiver);
             if (nonNullReceiver instanceof byte[] byteArray) {
@@ -2896,6 +2982,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = CASTORE, safepoint = false)
         private static long castoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -3);
             Object nonNullReceiver = nullCheck(receiver);
             char[] array = uncheckedCast(nonNullReceiver, char[].class);
@@ -2914,6 +3001,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = SASTORE, safepoint = false)
         private static long sastoreHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(frame, -3);
             Object nonNullReceiver = nullCheck(receiver);
             short[] array = uncheckedCast(nonNullReceiver, short[].class);
@@ -2932,6 +3020,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = POP, safepoint = false)
         private static long popHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pop1(frame);
             return advanceToNextBytecode(curBCI, POP, state, frame, virtualStack);
         }
@@ -2939,6 +3028,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = POP2, safepoint = false)
         private static long pop2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.pop2(frame);
             return advanceToNextBytecode(curBCI, POP2, state, frame, virtualStack);
         }
@@ -2946,6 +3036,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DUP, safepoint = false)
         private static long dupHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.dup1(frame);
             return advanceToNextBytecode(curBCI, DUP, state, frame, virtualStack);
         }
@@ -2953,6 +3044,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DUP_X1, safepoint = false)
         private static long dupX1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.dupx1(frame);
             return advanceToNextBytecode(curBCI, DUP_X1, state, frame, virtualStack);
         }
@@ -2960,6 +3052,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DUP_X2, safepoint = false)
         private static long dupX2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.dupx2(frame);
             return advanceToNextBytecode(curBCI, DUP_X2, state, frame, virtualStack);
         }
@@ -2967,6 +3060,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DUP2, safepoint = false)
         private static long dup2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.dup2(frame);
             return advanceToNextBytecode(curBCI, DUP2, state, frame, virtualStack);
         }
@@ -2974,6 +3068,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DUP2_X1, safepoint = false)
         private static long dup2X1Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.dup2x1(frame);
             return advanceToNextBytecode(curBCI, DUP2_X1, state, frame, virtualStack);
         }
@@ -2981,6 +3076,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DUP2_X2, safepoint = false)
         private static long dup2X2Handler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.dup2x2(frame);
             return advanceToNextBytecode(curBCI, DUP2_X2, state, frame, virtualStack);
         }
@@ -2988,6 +3084,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = SWAP, safepoint = false)
         private static long swapHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             virtualStack.swap(frame);
             return advanceToNextBytecode(curBCI, SWAP, state, frame, virtualStack);
         }
@@ -2995,6 +3092,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IADD, safepoint = false)
         private static long iaddHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int b = virtualStack.popInt(frame);
             int a = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, a + b);
@@ -3004,6 +3102,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LADD, safepoint = false)
         private static long laddHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long b = virtualStack.popLong(frame);
             long a = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, a + b);
@@ -3013,6 +3112,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FADD, safepoint = false)
         private static long faddHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float b = virtualStack.popFloat(frame);
             float a = virtualStack.popFloat(frame);
             virtualStack.pushFloat(frame, a + b);
@@ -3022,6 +3122,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DADD, safepoint = false)
         private static long daddHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double b = virtualStack.popDouble(frame);
             double a = virtualStack.popDouble(frame);
             virtualStack.pushDouble(frame, a + b);
@@ -3031,6 +3132,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISUB, safepoint = false)
         private static long isubHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int b = virtualStack.popInt(frame);
             int a = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, a - b);
@@ -3040,6 +3142,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSUB, safepoint = false)
         private static long lsubHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long b = virtualStack.popLong(frame);
             long a = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, a - b);
@@ -3049,6 +3152,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FSUB, safepoint = false)
         private static long fsubHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float b = virtualStack.popFloat(frame);
             float a = virtualStack.popFloat(frame);
             virtualStack.pushFloat(frame, a - b);
@@ -3058,6 +3162,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DSUB, safepoint = false)
         private static long dsubHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double b = virtualStack.popDouble(frame);
             double a = virtualStack.popDouble(frame);
             virtualStack.pushDouble(frame, a - b);
@@ -3067,6 +3172,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IMUL, safepoint = false)
         private static long imulHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int b = virtualStack.popInt(frame);
             int a = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, a * b);
@@ -3076,6 +3182,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LMUL, safepoint = false)
         private static long lmulHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long b = virtualStack.popLong(frame);
             long a = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, a * b);
@@ -3085,6 +3192,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FMUL, safepoint = false)
         private static long fmulHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float b = virtualStack.popFloat(frame);
             float a = virtualStack.popFloat(frame);
             virtualStack.pushFloat(frame, a * b);
@@ -3094,6 +3202,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DMUL, safepoint = false)
         private static long dmulHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double b = virtualStack.popDouble(frame);
             double a = virtualStack.popDouble(frame);
             virtualStack.pushDouble(frame, a * b);
@@ -3103,6 +3212,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IDIV, safepoint = false)
         private static long idivHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int divisor = virtualStack.peekIntAtOffset(frame, -1);
             int dividend = virtualStack.peekIntAtOffset(frame, -2);
             int result = divInt(divisor, dividend);
@@ -3114,6 +3224,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LDIV, safepoint = false)
         private static long ldivHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long divisor = virtualStack.peekLong(virtualStack.top, frame, -1);
             long dividend = virtualStack.peekLong(virtualStack.top, frame, -3);
             long result = divLong(divisor, dividend);
@@ -3126,6 +3237,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FDIV, safepoint = false)
         private static long fdivHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float divisor = virtualStack.popFloat(frame);
             float dividend = virtualStack.popFloat(frame);
             virtualStack.pushFloat(frame, dividend / divisor);
@@ -3135,6 +3247,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DDIV, safepoint = false)
         private static long ddivHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double divisor = virtualStack.popDouble(frame);
             double dividend = virtualStack.popDouble(frame);
             virtualStack.pushDouble(frame, dividend / divisor);
@@ -3144,6 +3257,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IREM, safepoint = false)
         private static long iremHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int divisor = virtualStack.peekIntAtOffset(frame, -1);
             int dividend = virtualStack.peekIntAtOffset(frame, -2);
             int result = remInt(divisor, dividend);
@@ -3155,6 +3269,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LREM, safepoint = false)
         private static long lremHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long divisor = virtualStack.peekLong(virtualStack.top, frame, -1);
             long dividend = virtualStack.peekLong(virtualStack.top, frame, -3);
             long result = remLong(divisor, dividend);
@@ -3167,6 +3282,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FREM, safepoint = false)
         private static long fremHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float divisor = virtualStack.popFloat(frame);
             float dividend = virtualStack.popFloat(frame);
             virtualStack.pushFloat(frame, dividend % divisor);
@@ -3176,6 +3292,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DREM, safepoint = false)
         private static long dremHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double divisor = virtualStack.popDouble(frame);
             double dividend = virtualStack.popDouble(frame);
             virtualStack.pushDouble(frame, dividend % divisor);
@@ -3185,6 +3302,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INEG, safepoint = false)
         private static long inegHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, -value);
             return advanceToNextBytecode(curBCI, INEG, state, frame, virtualStack);
@@ -3193,6 +3311,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LNEG, safepoint = false)
         private static long lnegHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, -value);
             return advanceToNextBytecode(curBCI, LNEG, state, frame, virtualStack);
@@ -3201,6 +3320,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FNEG, safepoint = false)
         private static long fnegHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             virtualStack.pushFloat(frame, -value);
             return advanceToNextBytecode(curBCI, FNEG, state, frame, virtualStack);
@@ -3209,6 +3329,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DNEG, safepoint = false)
         private static long dnegHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             virtualStack.pushDouble(frame, -value);
             return advanceToNextBytecode(curBCI, DNEG, state, frame, virtualStack);
@@ -3217,6 +3338,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISHL, safepoint = false)
         private static long ishlHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int bits = virtualStack.popInt(frame);
             int value = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, value << bits);
@@ -3226,6 +3348,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSHL, safepoint = false)
         private static long lshlHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int bits = virtualStack.popInt(frame);
             long value = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, value << bits);
@@ -3235,6 +3358,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ISHR, safepoint = false)
         private static long ishrHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int bits = virtualStack.popInt(frame);
             int value = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, value >> bits);
@@ -3244,6 +3368,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LSHR, safepoint = false)
         private static long lshrHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int bits = virtualStack.popInt(frame);
             long value = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, value >> bits);
@@ -3253,6 +3378,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IUSHR, safepoint = false)
         private static long iushrHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int bits = virtualStack.popInt(frame);
             int value = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, value >>> bits);
@@ -3262,6 +3388,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LUSHR, safepoint = false)
         private static long lushrHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int bits = virtualStack.popInt(frame);
             long value = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, value >>> bits);
@@ -3271,6 +3398,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IAND, safepoint = false)
         private static long iandHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int b = virtualStack.popInt(frame);
             int a = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, a & b);
@@ -3280,6 +3408,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LAND, safepoint = false)
         private static long landHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long b = virtualStack.popLong(frame);
             long a = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, a & b);
@@ -3289,6 +3418,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IOR, safepoint = false)
         private static long iorHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int b = virtualStack.popInt(frame);
             int a = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, a | b);
@@ -3298,6 +3428,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LOR, safepoint = false)
         private static long lorHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long b = virtualStack.popLong(frame);
             long a = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, a | b);
@@ -3307,6 +3438,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IXOR, safepoint = false)
         private static long ixorHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int b = virtualStack.popInt(frame);
             int a = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, a ^ b);
@@ -3316,6 +3448,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LXOR, safepoint = false)
         private static long lxorHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long b = virtualStack.popLong(frame);
             long a = virtualStack.popLong(frame);
             virtualStack.pushLong(frame, a ^ b);
@@ -3325,6 +3458,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IINC, safepoint = false)
         private static long iincHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int localIndex = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             int increment = BytecodeStream.uncheckedReadIncrement1(state.code, curBCI);
             incrementLocalInt(frame, localIndex, increment);
@@ -3334,6 +3468,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = I2L, safepoint = false)
         private static long i2lHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             virtualStack.pushLong(frame, value);
             return advanceToNextBytecode(curBCI, I2L, state, frame, virtualStack);
@@ -3342,6 +3477,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = I2F, safepoint = false)
         private static long i2fHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             virtualStack.pushFloat(frame, value);
             return advanceToNextBytecode(curBCI, I2F, state, frame, virtualStack);
@@ -3350,6 +3486,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = I2D, safepoint = false)
         private static long i2dHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             virtualStack.pushDouble(frame, value);
             return advanceToNextBytecode(curBCI, I2D, state, frame, virtualStack);
@@ -3358,6 +3495,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = L2I, safepoint = false)
         private static long l2iHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             virtualStack.pushInt(frame, (int) value);
             return advanceToNextBytecode(curBCI, L2I, state, frame, virtualStack);
@@ -3366,6 +3504,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = L2F, safepoint = false)
         private static long l2fHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             virtualStack.pushFloat(frame, value);
             return advanceToNextBytecode(curBCI, L2F, state, frame, virtualStack);
@@ -3374,6 +3513,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = L2D, safepoint = false)
         private static long l2dHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long value = virtualStack.popLong(frame);
             virtualStack.pushDouble(frame, value);
             return advanceToNextBytecode(curBCI, L2D, state, frame, virtualStack);
@@ -3382,6 +3522,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = F2I, safepoint = false)
         private static long f2iHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             virtualStack.pushInt(frame, (int) value);
             return advanceToNextBytecode(curBCI, F2I, state, frame, virtualStack);
@@ -3390,6 +3531,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = F2L, safepoint = false)
         private static long f2lHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             virtualStack.pushLong(frame, (long) value);
             return advanceToNextBytecode(curBCI, F2L, state, frame, virtualStack);
@@ -3398,6 +3540,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = F2D, safepoint = false)
         private static long f2dHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float value = virtualStack.popFloat(frame);
             virtualStack.pushDouble(frame, value);
             return advanceToNextBytecode(curBCI, F2D, state, frame, virtualStack);
@@ -3406,6 +3549,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = D2I, safepoint = false)
         private static long d2iHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             virtualStack.pushInt(frame, (int) value);
             return advanceToNextBytecode(curBCI, D2I, state, frame, virtualStack);
@@ -3414,6 +3558,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = D2L, safepoint = false)
         private static long d2lHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             virtualStack.pushLong(frame, (long) value);
             return advanceToNextBytecode(curBCI, D2L, state, frame, virtualStack);
@@ -3422,6 +3567,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = D2F, safepoint = false)
         private static long d2fHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double value = virtualStack.popDouble(frame);
             virtualStack.pushFloat(frame, (float) value);
             return advanceToNextBytecode(curBCI, D2F, state, frame, virtualStack);
@@ -3430,6 +3576,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = I2B, safepoint = false)
         private static long i2bHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, (byte) value);
             return advanceToNextBytecode(curBCI, I2B, state, frame, virtualStack);
@@ -3438,6 +3585,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = I2C, safepoint = false)
         private static long i2cHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, (char) value);
             return advanceToNextBytecode(curBCI, I2C, state, frame, virtualStack);
@@ -3446,6 +3594,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = I2S, safepoint = false)
         private static long i2sHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int value = virtualStack.popInt(frame);
             virtualStack.pushInt(frame, (short) value);
             return advanceToNextBytecode(curBCI, I2S, state, frame, virtualStack);
@@ -3454,6 +3603,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LCMP, safepoint = false)
         private static long lcmpHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long y = virtualStack.popLong(frame);
             long x = virtualStack.popLong(frame);
             virtualStack.pushInt(frame, Long.compare(x, y));
@@ -3463,6 +3613,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FCMPL, safepoint = false)
         private static long fcmplHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float y = virtualStack.popFloat(frame);
             float x = virtualStack.popFloat(frame);
             virtualStack.pushInt(frame, compareFloatLess(y, x));
@@ -3472,6 +3623,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = FCMPG, safepoint = false)
         private static long fcmpgHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             float y = virtualStack.popFloat(frame);
             float x = virtualStack.popFloat(frame);
             virtualStack.pushInt(frame, compareFloatGreater(y, x));
@@ -3481,6 +3633,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DCMPL, safepoint = false)
         private static long dcmplHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double y = virtualStack.popDouble(frame);
             double x = virtualStack.popDouble(frame);
             virtualStack.pushInt(frame, compareDoubleLess(y, x));
@@ -3490,6 +3643,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = DCMPG, safepoint = false)
         private static long dcmpgHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             double y = virtualStack.popDouble(frame);
             double x = virtualStack.popDouble(frame);
             virtualStack.pushInt(frame, compareDoubleGreater(y, x));
@@ -3509,6 +3663,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFEQ, safepoint = false)
         private static long ifeqHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int operand = virtualStack.popInt(frame);
             boolean branchTaken = operand == 0;
             return branch(curBCI, state, frame, IFEQ, branchTaken, virtualStack);
@@ -3517,6 +3672,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFNE, safepoint = false)
         private static long ifneHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int operand = virtualStack.popInt(frame);
             boolean branchTaken = operand != 0;
             return branch(curBCI, state, frame, IFNE, branchTaken, virtualStack);
@@ -3525,6 +3681,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFLT, safepoint = false)
         private static long ifltHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int operand = virtualStack.popInt(frame);
             boolean branchTaken = operand < 0;
             return branch(curBCI, state, frame, IFLT, branchTaken, virtualStack);
@@ -3533,6 +3690,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFGE, safepoint = false)
         private static long ifgeHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int operand = virtualStack.popInt(frame);
             boolean branchTaken = operand >= 0;
             return branch(curBCI, state, frame, IFGE, branchTaken, virtualStack);
@@ -3541,6 +3699,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFGT, safepoint = false)
         private static long ifgtHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int operand = virtualStack.popInt(frame);
             boolean branchTaken = operand > 0;
             return branch(curBCI, state, frame, IFGT, branchTaken, virtualStack);
@@ -3549,6 +3708,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFLE, safepoint = false)
         private static long ifleHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int operand = virtualStack.popInt(frame);
             boolean branchTaken = operand <= 0;
             return branch(curBCI, state, frame, IFLE, branchTaken, virtualStack);
@@ -3557,6 +3717,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPEQ, safepoint = false)
         private static long ifIcmpeqHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int rhs = virtualStack.popInt(frame);
             int lhs = virtualStack.popInt(frame);
             boolean branchTaken = lhs == rhs;
@@ -3566,6 +3727,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPNE, safepoint = false)
         private static long ifIcmpneHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int rhs = virtualStack.popInt(frame);
             int lhs = virtualStack.popInt(frame);
             boolean branchTaken = lhs != rhs;
@@ -3575,6 +3737,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPLT, safepoint = false)
         private static long ifIcmpltHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int rhs = virtualStack.popInt(frame);
             int lhs = virtualStack.popInt(frame);
             boolean branchTaken = lhs < rhs;
@@ -3584,6 +3747,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPGE, safepoint = false)
         private static long ifIcmpgeHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int rhs = virtualStack.popInt(frame);
             int lhs = virtualStack.popInt(frame);
             boolean branchTaken = lhs >= rhs;
@@ -3593,6 +3757,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPGT, safepoint = false)
         private static long ifIcmpgtHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int rhs = virtualStack.popInt(frame);
             int lhs = virtualStack.popInt(frame);
             boolean branchTaken = lhs > rhs;
@@ -3602,6 +3767,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ICMPLE, safepoint = false)
         private static long ifIcmpleHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int rhs = virtualStack.popInt(frame);
             int lhs = virtualStack.popInt(frame);
             boolean branchTaken = lhs <= rhs;
@@ -3611,6 +3777,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ACMPEQ, safepoint = false)
         private static long ifAcmpeqHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object rhs = virtualStack.popObject(frame);
             Object lhs = virtualStack.popObject(frame);
             boolean branchTaken = lhs == rhs;
@@ -3620,6 +3787,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IF_ACMPNE, safepoint = false)
         private static long ifAcmpneHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object rhs = virtualStack.popObject(frame);
             Object lhs = virtualStack.popObject(frame);
             boolean branchTaken = lhs != rhs;
@@ -3629,6 +3797,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFNULL, safepoint = false)
         private static long ifnullHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object operand = virtualStack.popObject(frame);
             boolean branchTaken = operand == null;
             return branch(curBCI, state, frame, IFNULL, branchTaken, virtualStack);
@@ -3637,6 +3806,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = IFNONNULL, safepoint = false)
         private static long ifnonnullHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object operand = virtualStack.popObject(frame);
             boolean branchTaken = operand != null;
             return branch(curBCI, state, frame, IFNONNULL, branchTaken, virtualStack);
@@ -3645,6 +3815,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = GOTO, safepoint = false)
         private static long gotoHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long targetBCI = BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI);
             return finishJump(curBCI, targetBCI, state, frame, virtualStack);
         }
@@ -3652,6 +3823,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = GOTO_W, safepoint = false)
         private static long gotoWHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long targetBCI = BytecodeStream.uncheckedReadBranchDest4(state.code, curBCI);
             return finishJump(curBCI, targetBCI, state, frame, virtualStack);
         }
@@ -3659,6 +3831,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = JSR, safepoint = false)
         private static long jsrHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int returnBCI = (int) (curBCI + ConstantBytecodes.lengthOf(JSR));
             virtualStack.pushReturnAddress(frame, returnBCI);
             long targetBCI = BytecodeStream.uncheckedReadBranchDest2(state.code, curBCI);
@@ -3668,6 +3841,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = JSR_W, safepoint = false)
         private static long jsrWHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int returnBCI = (int) (curBCI + ConstantBytecodes.lengthOf(JSR_W));
             virtualStack.pushReturnAddress(frame, returnBCI);
             long targetBCI = BytecodeStream.uncheckedReadBranchDest4(state.code, curBCI);
@@ -3677,6 +3851,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = RET, safepoint = false)
         private static long retHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int localIndex = BytecodeStream.uncheckedReadLocalIndex1(state.code, curBCI);
             int targetBCI = getLocalReturnAddress(frame, localIndex);
             return finishJump(curBCI, targetBCI, state, frame, virtualStack);
@@ -3685,6 +3860,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = TABLESWITCH, safepoint = false)
         private static long tableswitchHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int index = virtualStack.peekIntAtOffset(frame, -1);
             int low = TableSwitch.uncheckedLowKey(state.code, curBCI);
             int high = TableSwitch.uncheckedHighKey(state.code, curBCI);
@@ -3703,6 +3879,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = LOOKUPSWITCH, safepoint = false)
         private static long lookupswitchHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int key = virtualStack.peekIntAtOffset(frame, -1);
             int low = 0;
             int high = LookupSwitch.uncheckedNumberOfCases(state.code, curBCI) - 1;
@@ -3726,6 +3903,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = GETSTATIC)
         private static long getstaticHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField resolvedJavaField = resolveField(state.method, GETSTATIC, state.code, curBCI);
             getStaticField(frame, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, GETSTATIC, state, frame, virtualStack);
@@ -3734,6 +3912,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = GETFIELD)
         private static long getfieldHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField resolvedJavaField = resolveField(state.method, GETFIELD, state.code, curBCI);
             getInstanceField(frame, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, GETFIELD, state, frame, virtualStack);
@@ -3742,6 +3921,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_GETSTATIC)
         private static long quickGetstaticHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETSTATIC, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             getStaticField(frame, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_GETSTATIC, state, frame, virtualStack);
@@ -3750,6 +3930,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_GETFIELD)
         private static long quickGetfieldHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETFIELD, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             getInstanceField(frame, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_GETFIELD, state, frame, virtualStack);
@@ -3758,6 +3939,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = PUTSTATIC)
         private static long putstaticHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField field = resolveField(state.method, PUTSTATIC, state.code, curBCI);
             putStaticField(frame, field, virtualStack);
             return advanceToNextBytecode(curBCI, PUTSTATIC, state, frame, virtualStack);
@@ -3766,6 +3948,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = PUTFIELD)
         private static long putfieldHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField field = resolveField(state.method, PUTFIELD, state.code, curBCI);
             putInstanceField(frame, field, virtualStack);
             return advanceToNextBytecode(curBCI, PUTFIELD, state, frame, virtualStack);
@@ -3774,6 +3957,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_PUTSTATIC)
         private static long quickPutstaticHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTSTATIC, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             putStaticField(frame, field, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_PUTSTATIC, state, frame, virtualStack);
@@ -3782,6 +3966,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_PUTFIELD)
         private static long quickPutfieldHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTFIELD, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             putInstanceField(frame, field, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_PUTFIELD, state, frame, virtualStack);
@@ -3816,7 +4001,7 @@ public final class Interpreter {
                 long materializedTop = virtualStack.materializedTop(frame);
                 int slotDelta = invoke(frame, state.methodProfile, state.method, state.code, materializedTop, (int) curBCI, curOpcode,
                                 state.forceStayInInterpreter, preferStayInInterpreter);
-                virtualStack.adjustAfterMaterializedOperation(slotDelta);
+                virtualStack.adjustTop(slotDelta);
             } finally {
                 if (debuggerEventsSupported()) {
                     Thread currentThread = Thread.currentThread();
@@ -3839,36 +4024,42 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEVIRTUAL)
         private static long invokevirtualHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             return invokeBytecode(curBCI, state, frame, INVOKEVIRTUAL, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKESPECIAL)
         private static long invokespecialHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             return invokeBytecode(curBCI, state, frame, INVOKESPECIAL, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKESTATIC)
         private static long invokestaticHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             return invokeBytecode(curBCI, state, frame, INVOKESTATIC, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEINTERFACE)
         private static long invokeinterfaceHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             return invokeBytecode(curBCI, state, frame, INVOKEINTERFACE, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEDYNAMIC)
         private static long invokedynamicHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             return invokeBytecode(curBCI, state, frame, INVOKEDYNAMIC, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = NEW)
         private static long newHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
             InterpreterResolvedJavaType type = resolveType(state.method, NEW, cpi);
             Object value = InterpreterToVM.createNewReference(type);
@@ -3879,6 +4070,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = NEWARRAY)
         private static long newarrayHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int length = virtualStack.peekIntAtOffset(frame, -1);
             Object array = InterpreterToVM.createNewPrimitiveArray(BytecodeStream.uncheckedReadByte(state.code, curBCI), length);
             virtualStack.replaceTopWithObject(frame, 1, array);
@@ -3888,6 +4080,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ANEWARRAY)
         private static long anewarrayHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int length = virtualStack.peekIntAtOffset(frame, -1);
             Object array = InterpreterToVM.createNewReferenceArray(resolveType(state.method, ANEWARRAY, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)), length);
             virtualStack.replaceTopWithObject(frame, 1, array);
@@ -3897,10 +4090,12 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ARRAYLENGTH, safepoint = false)
         private static long arraylengthHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
-            Object array = nullCheck(virtualStack.peekObjectAtOffset(virtualStack.top, frame, -1));
-            int length = InterpreterToVM.arrayLength(array);
-            clearReference(frame, virtualStack.top, -1);
-            virtualStack.replaceTopWithInt(1, length);
+            virtualStack.killUnusedFields();
+            Object array = virtualStack.peekObjectAtOffset(frame, -1);
+            Object nonNullArray = nullCheck(array);
+            int length = InterpreterToVM.arrayLength(nonNullArray);
+            virtualStack.pop1(frame);
+            virtualStack.pushInt(frame, length);
             return advanceToNextBytecode(curBCI, ARRAYLENGTH, state, frame, virtualStack);
         }
 
@@ -3908,12 +4103,16 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = ATHROW)
         private static long athrowHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
-            throw SemanticJavaException.raise((Throwable) nullCheck(virtualStack.popObject(frame)));
+            virtualStack.killUnusedFields();
+            Object exception = virtualStack.popObject(frame);
+            Object nonNullException = nullCheck(exception);
+            throw SemanticJavaException.raise((Throwable) nonNullException);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = CHECKCAST)
         private static long checkcastHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObject(virtualStack.top, frame, 0);
             profileType(state.methodProfile, curBCI, receiver);
             if (receiver != null) {
@@ -3926,6 +4125,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INSTANCEOF)
         private static long instanceofHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(virtualStack.top, frame, -1);
             profileType(state.methodProfile, curBCI, receiver);
             int result = (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(state.method, INSTANCEOF, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)))) ? 1 : 0;
@@ -3950,18 +4150,21 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MONITORENTER)
         private static long monitorenterHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             return monitorBytecode(curBCI, state, frame, MONITORENTER, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MONITOREXIT)
         private static long monitorexitHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             return monitorBytecode(curBCI, state, frame, MONITOREXIT, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = WIDE, safepoint = false)
         private static long wideHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             int wideOpcode = BytecodeStream.uncheckedOpcode(state.code, curBCI + 1);
             switch (wideOpcode) {
                 case ILOAD -> {
@@ -4037,8 +4240,9 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MULTIANEWARRAY)
         private static long multianewarrayHandler(long curBCI, State state, InterpreterFrame frame, VirtualStack virtualStack) {
+            virtualStack.killUnusedFields();
             long materializedTop = virtualStack.materializedTop(frame);
-            virtualStack.adjustAfterMaterializedOperation(allocateMultiArray(frame, materializedTop, state, curBCI));
+            virtualStack.adjustTop(allocateMultiArray(frame, materializedTop, state, curBCI));
             return advanceToNextBytecode(curBCI, MULTIANEWARRAY, state, frame, virtualStack);
         }
 
@@ -4315,22 +4519,26 @@ public final class Interpreter {
     }
 
     @AlwaysInline("Keep resolved constant fast paths in bytecode-handler stubs")
-    private static void loadConstant(InterpreterFrame frame, Root.State state, int cpi, int opcode, Root.VirtualStack virtualStack) {
+    private static void loadConstant(InterpreterFrame frame, Root.State state, long cpi, int opcode, Root.VirtualStack virtualStack) {
         assert opcode == LDC || opcode == LDC_W;
         InterpreterConstantPool pool = getConstantPool(state.method);
         byte numericTag = pool.uncheckedTagValueAt(cpi);
-        if (GraalDirectives.injectBranchProbability(GraalDirectives.UNLIKELY_PROBABILITY,
-                        numericTag == ConstantPool.CONSTANT_Integer)) {
-            virtualStack.pushInt(frame, pool.uncheckedIntAt(cpi));
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
+                        numericTag == ConstantPool.CONSTANT_Float)) {
+            virtualStack.avoidHoistingTop();
+            InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
+            virtualStack.pushFloat(frame, branchPool.uncheckedFloatAt(cpi));
             return;
         }
         if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY,
-                        numericTag == ConstantPool.CONSTANT_Float)) {
-            virtualStack.pushFloat(frame, pool.uncheckedFloatAt(cpi));
+                        numericTag == ConstantPool.CONSTANT_Integer)) {
+            virtualStack.avoidHoistingTop();
+            InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
+            virtualStack.pushInt(frame, branchPool.uncheckedIntAt(cpi));
             return;
         }
         resolveConstantAtSlowPath(frame, state, virtualStack.materializedTop(frame), cpi, opcode, pool);
-        virtualStack.adjustAfterMaterializedOperation(1);
+        virtualStack.adjustTop(1);
     }
 
     @AlwaysInline("Keep resolved constant fast paths in bytecode-handler stubs")
@@ -4338,34 +4546,37 @@ public final class Interpreter {
         VMError.guarantee(cpi != 0);
         InterpreterConstantPool pool = getConstantPool(state.method);
         byte numericTag = pool.uncheckedTagValueAt(cpi);
-        if (numericTag == ConstantPool.CONSTANT_Long) {
-            virtualStack.pushLong(frame, pool.uncheckedLongAt(cpi));
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
+                        numericTag == ConstantPool.CONSTANT_Long)) {
+            InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
+            virtualStack.pushLong(frame, branchPool.uncheckedLongAt(cpi));
             return;
         }
         if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY,
                         numericTag == ConstantPool.CONSTANT_Double)) {
-            virtualStack.pushDouble(frame, pool.uncheckedDoubleAt(cpi));
+            InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
+            virtualStack.pushDouble(frame, branchPool.uncheckedDoubleAt(cpi));
             return;
         }
         resolveConstantAtSlowPath(frame, state, virtualStack.materializedTop(frame), cpi, LDC2_W, pool);
-        virtualStack.adjustAfterMaterializedOperation(2);
+        virtualStack.adjustTop(2);
     }
 
     /**
      * Resolves non-primitive constant-pool entries that can execute arbitrary Java code.
      */
     @NeverInline("Keep constant resolution out of the bytecode-handler stubs")
-    private static void resolveConstantAtSlowPath(InterpreterFrame frame, Root.State state, long top, int cpi, int opcode, InterpreterConstantPool pool) {
+    private static void resolveConstantAtSlowPath(InterpreterFrame frame, Root.State state, long top, long cpi, int opcode, InterpreterConstantPool pool) {
         InterpreterResolvedJavaMethod method = state.method;
         char narrowCpi = (char) cpi;
-        ConstantPool.Tag tag = pool.uncheckedTagAt(cpi);
+        ConstantPool.Tag tag = pool.uncheckedTagAt(narrowCpi);
         switch (tag) {
             case CLASS -> {
                 InterpreterResolvedJavaType resolvedType = resolveType(method, opcode, narrowCpi);
                 putObject(frame, top, resolvedType.getJavaClass());
             }
             case STRING -> {
-                String string = pool.resolveStringAt(cpi);
+                String string = pool.resolveStringAt(narrowCpi);
                 putObject(frame, top, string);
             }
             case METHODTYPE -> {
@@ -4376,7 +4587,7 @@ public final class Interpreter {
             }
             case DYNAMIC -> {
                 Object constant = resolveDynamicConstant(pool, method, opcode, narrowCpi);
-                switch (symbolToJvmciKind(pool.dynamicType(cpi))) {
+                switch (symbolToJvmciKind(pool.dynamicType(narrowCpi))) {
                     case Boolean -> putInt(frame, top, (Boolean) constant ? 1 : 0);
                     case Byte -> putInt(frame, top, (Byte) constant);
                     case Short -> putInt(frame, top, (Short) constant);
@@ -4386,14 +4597,14 @@ public final class Interpreter {
                     case Long -> putLong(frame, top, (Long) constant);
                     case Double -> putDouble(frame, top, (Double) constant);
                     case Object -> putObject(frame, top, constant);
-                    default -> throw VMError.shouldNotReachHere("Unexpected dynamic constant type " + pool.dynamicType(cpi));
+                    default -> throw VMError.shouldNotReachHere("Unexpected dynamic constant type " + pool.dynamicType(narrowCpi));
                 }
             }
             case INVOKEDYNAMIC -> {
                 // TODO(peterssen): GR-68576 Storing the pre-resolved appendix in the CP is a
                 // workaround for the JDWP debugger until proper INVOKEDYNAMIC resolution is
                 // implemented.
-                Object appendix = pool.uncheckedResolvedAt(cpi, null);
+                Object appendix = pool.uncheckedResolvedAt(narrowCpi, null);
                 if (appendix instanceof ReferenceConstant<?> referenceConstant) {
                     VMError.guarantee(referenceConstant.isNonNull(), FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP);
                     Object constantValue = referenceConstant.getReferent();
@@ -4622,7 +4833,7 @@ public final class Interpreter {
     }
 
     private static Object resolveDynamicConstant(InterpreterConstantPool pool, InterpreterResolvedJavaMethod method, int opcode, char cpi) {
-        assert opcode == LDC || opcode == LDC_W : Bytecodes.nameOf(opcode);
+        assert opcode == LDC || opcode == LDC_W || opcode == LDC2_W : Bytecodes.nameOf(opcode);
         try {
             return pool.uncheckedResolvedDynamicConstantAt(cpi, method.getDeclaringClass());
         } catch (Throwable t) {

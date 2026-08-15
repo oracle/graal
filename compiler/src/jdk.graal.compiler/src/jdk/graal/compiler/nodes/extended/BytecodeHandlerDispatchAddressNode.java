@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -130,11 +131,11 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
 
     private ValueNode createTableBase(LoweringTool tool, StructuredGraph graph) {
         if (templateValues.isEmpty()) {
-            return createTableBaseConstant(tool, graph, 0);
+            return createTableBaseConstant(tool, graph, 0, this);
         }
         GraalError.guarantee(templateValues.size() == templateVariants.length, "Invalid template value metadata");
         EconomicSet<ValueNode> activePhis = EconomicSet.create(Equivalence.IDENTITY);
-        return createTableBase(tool, graph, templateValues.toArray(ValueNode.EMPTY_ARRAY), activePhis);
+        return createTableBase(tool, graph, templateValues.toArray(ValueNode.EMPTY_ARRAY), activePhis, this);
     }
 
     /**
@@ -143,10 +144,10 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
      * inputs can be selected path-by-path.
      */
     private ValueNode createTableBase(LoweringTool tool, StructuredGraph graph, ValueNode[] values,
-                    EconomicSet<ValueNode> activePhis) {
+                    EconomicSet<ValueNode> activePhis, FixedNode insertionPoint) {
         int constantTemplateIndex = tryComputeConstantTemplateIndex(values);
         if (constantTemplateIndex >= 0) {
-            return createTableBaseConstant(tool, graph, constantTemplateIndex);
+            return createTableBaseConstant(tool, graph, constantTemplateIndex, insertionPoint);
         }
 
         AbstractMergeNode merge = null;
@@ -185,11 +186,17 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
                         pathValues[i] = phi.valueAt(path);
                     }
                 }
-                tables[path] = createTableBase(tool, graph, pathValues, activePhis);
-                allSame &= path == 0 || tables[path] == tables[0];
+                tables[path] = createTableBase(tool, graph, pathValues, activePhis, merge.forwardEndAt(path));
+                allSame &= path == 0 || sameTable(tables[path], tables[0]);
             }
             if (allSame) {
-                return tables[0];
+                JavaConstant tableConstant = ((BytecodeHandlerTableLoadNode) tables[0]).tableConstant();
+                for (ValueNode table : tables) {
+                    BytecodeHandlerTableLoadNode load = (BytecodeHandlerTableLoadNode) table;
+                    GraphUtil.unlinkFixedNode(load);
+                    load.safeDelete();
+                }
+                return createTableBaseLoad(tool, graph, tableConstant, insertionPoint);
             }
 
             ValuePhiNode tablePhi = graph.addWithoutUnique(new ValuePhiNode(tables[0].stamp(NodeView.DEFAULT).unrestricted(), merge, tables));
@@ -204,10 +211,20 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
         }
     }
 
-    private ConstantNode createTableBaseConstant(LoweringTool tool, StructuredGraph graph, int templateIndex) {
+    private ValueNode createTableBaseConstant(LoweringTool tool, StructuredGraph graph, int templateIndex, FixedNode insertionPoint) {
         Object bytecodeHandlerTable = bytecodeHandlerTableSupplier.apply(templateIndex);
         JavaConstant bytecodeHandlerTableConstant = tool.getSnippetReflection().forObject(bytecodeHandlerTable);
-        return ConstantNode.forConstant(bytecodeHandlerTableConstant, tool.getMetaAccess(), graph);
+        return createTableBaseLoad(tool, graph, bytecodeHandlerTableConstant, insertionPoint);
+    }
+
+    private static ValueNode createTableBaseLoad(LoweringTool tool, StructuredGraph graph, JavaConstant tableConstant, FixedNode insertionPoint) {
+        BytecodeHandlerTableLoadNode load = graph.add(new BytecodeHandlerTableLoadNode(tableConstant, StampFactory.forConstant(tableConstant, tool.getMetaAccess())));
+        graph.addBeforeFixed(insertionPoint, load);
+        return load;
+    }
+
+    private static boolean sameTable(ValueNode a, ValueNode b) {
+        return a instanceof BytecodeHandlerTableLoadNode loadA && b instanceof BytecodeHandlerTableLoadNode loadB && loadA.tableConstant().equals(loadB.tableConstant());
     }
 
     /**

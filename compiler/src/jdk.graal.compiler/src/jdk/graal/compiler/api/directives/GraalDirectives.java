@@ -745,6 +745,12 @@ public final class GraalDirectives {
         return value;
     }
 
+    /** Anchors {@code value} at this control-flow position while preserving its stamp. */
+    @SuppressWarnings("unused")
+    public static <T> T anchorValue(T value) {
+        return value;
+    }
+
     public static <T> T guardingNonNull(T value) {
         if (value == null) {
             deoptimize();

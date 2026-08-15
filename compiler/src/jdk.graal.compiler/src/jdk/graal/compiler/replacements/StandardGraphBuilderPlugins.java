@@ -141,6 +141,7 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.extended.CacheWritebackNode;
 import jdk.graal.compiler.nodes.extended.CacheWritebackSyncNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
@@ -2204,6 +2205,14 @@ public class StandardGraphBuilderPlugins {
                 });
             }
         }
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("anchorValue", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Object, new FixedValueAnchorNode(value));
+                return true;
+            }
+        });
 
         r.register(new RequiredInlineOnlyInvocationPlugin("spillRegisters") {
             @Override

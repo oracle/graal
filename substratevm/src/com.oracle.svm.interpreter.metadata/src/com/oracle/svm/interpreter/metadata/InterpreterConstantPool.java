@@ -98,19 +98,19 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     private static final AtomicReferenceFieldUpdater<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> RISTRETTO_CONSTANT_POOL_UPDATER = AtomicReferenceFieldUpdater
                     .newUpdater(InterpreterConstantPool.class, jdk.vm.ci.meta.ConstantPool.class, "ristrettoConstantPool");
 
-    private static long byteArrayOffset(int index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + ((long) index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+    private static long byteArrayOffset(long index) {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE;
     }
 
-    private static long intArrayOffset(int index) {
-        return Unsafe.ARRAY_INT_BASE_OFFSET + ((long) index * Unsafe.ARRAY_INT_INDEX_SCALE);
+    private static long intArrayOffset(long index) {
+        return Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE;
     }
 
-    private static long objectArrayOffset(int index) {
-        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+    private static long objectArrayOffset(long index) {
+        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE;
     }
 
-    private Object uncheckedCachedEntryAt(int cpi) {
+    private Object uncheckedCachedEntryAt(long cpi) {
         return UNSAFE.getReference(cachedEntries, objectArrayOffset(cpi));
     }
 
@@ -120,7 +120,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return tag;
     }
 
-    public byte uncheckedTagValueAt(int cpi) {
+    public byte uncheckedTagValueAt(long cpi) {
         return UNSAFE.getByte(tags, byteArrayOffset(cpi));
     }
 
@@ -128,7 +128,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return uncheckedCachedEntryAt(cpi);
     }
 
-    public int uncheckedIntAt(int cpi) {
+    public int uncheckedIntAt(long cpi) {
         Object entry = uncheckedCachedEntryAt(cpi);
         assert entry == null || entry instanceof PrimitiveConstant;
         if (entry instanceof PrimitiveConstant primitiveConstant) {
@@ -138,7 +138,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return UNSAFE.getInt(entries, intArrayOffset(cpi));
     }
 
-    public float uncheckedFloatAt(int cpi) {
+    public float uncheckedFloatAt(long cpi) {
         Object entry = uncheckedCachedEntryAt(cpi);
         assert entry == null || entry instanceof PrimitiveConstant;
         if (entry instanceof PrimitiveConstant primitiveConstant) {
