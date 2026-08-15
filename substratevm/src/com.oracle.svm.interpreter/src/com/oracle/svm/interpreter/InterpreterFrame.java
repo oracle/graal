@@ -89,6 +89,14 @@ public final class InterpreterFrame {
         return arguments;
     }
 
+    long[] getPrimitives() {
+        return primitives;
+    }
+
+    Object[] getReferences() {
+        return references;
+    }
+
     void publishDebuggerEventBCI(int bci) {
         assert debuggerEventBCI == BytecodeFrame.UNKNOWN_BCI;
         debuggerEventBCI = bci;
