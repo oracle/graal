@@ -264,8 +264,8 @@ final class InterpreterState {
         return getDoubleStatic(slot, slotOffset);
     }
 
-    void putReturnAddress(long slot, long slotOffset, int targetBCI) {
-        setObjectStatic(slot, slotOffset, ReturnAddress.create(targetBCI));
+    void putReturnAddress(long slot, int targetBCI) {
+        setObjectStatic(slot, ReturnAddress.create(targetBCI));
     }
 
     void putObject(long slot, Object value) {

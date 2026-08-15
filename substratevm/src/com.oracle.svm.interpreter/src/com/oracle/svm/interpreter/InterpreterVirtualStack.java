@@ -106,6 +106,13 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void pushReturnAddress(InterpreterState state, int targetBCI) {
+        materialize(state);
+        state.putReturnAddress(top, targetBCI);
+        top++;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void materialize(InterpreterState state) {
         if (tosLevel == 1) {
             state.setLongStatic(top, tosPrimitive0);
@@ -294,13 +301,6 @@ final class InterpreterVirtualStack {
         return state.peekObject(top, offset + tosLevel);
     }
 
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pushReturnAddress(InterpreterState state, int targetBCI) {
-        materialize(state);
-        top++;
-        state.putReturnAddress(top, -1, targetBCI);
-    }
-
     @AlwaysInline("Materialize before an outlined stack operation without passing InterpreterVirtualStack")
     long materializedTop(InterpreterState state) {
         materialize(state);
@@ -393,7 +393,7 @@ final class InterpreterVirtualStack {
             tosPrimitive1 = tosPrimitive0;
             tosLevel = 2;
         } else {
-            state.setLongStatic(top, tosPrimitive0);
+            fillSlot(state, 0, tosPrimitive0);
             tosPrimitive0 = tosPrimitive1;
             top++;
         }
@@ -404,11 +404,10 @@ final class InterpreterVirtualStack {
         if (tosLevel == 0) {
             state.dupx1(top);
         } else if (tosLevel == 1) {
-            state.copyStatic(top, -1, top, 0);
-            state.setLongStatic(top, -1, tosPrimitive0);
-            state.clearReference(top, -1);
+            copySlot(state, -1, 0);
+            overwriteSlot(state, -1, tosPrimitive0);
         } else {
-            state.setLongStatic(top, tosPrimitive1);
+            fillSlot(state, 0, tosPrimitive1);
         }
         top++;
     }
@@ -418,12 +417,12 @@ final class InterpreterVirtualStack {
         if (tosLevel == 0) {
             state.dupx2(top);
         } else if (tosLevel == 1) {
-            state.copyStatic(top, -1, top, 0);
-            state.copyStatic(top, -2, top, -1);
-            putCachedPrimitive(state, top, -2, tosPrimitive0);
+            copySlot(state, -1, 0);
+            copySlot(state, -2, -1);
+            overwriteSlot(state, -2, tosPrimitive0);
         } else {
-            state.copyStatic(top, -1, top, 0);
-            putCachedPrimitive(state, top, -1, tosPrimitive1);
+            copySlot(state, -1, 0);
+            overwriteSlot(state, -1, tosPrimitive1);
         }
         top++;
     }
@@ -433,11 +432,11 @@ final class InterpreterVirtualStack {
         if (tosLevel == 0) {
             state.dup2(top);
         } else if (tosLevel == 1) {
-            putCachedPrimitive(state, top, 0, tosPrimitive0);
-            state.copyStatic(top, -1, top, 1);
+            fillSlot(state, 0, tosPrimitive0);
+            copySlot(state, -1, 1);
         } else {
-            putCachedPrimitive(state, top, 0, tosPrimitive0);
-            putCachedPrimitive(state, top, 1, tosPrimitive1);
+            fillSlot(state, 0, tosPrimitive0);
+            fillSlot(state, 1, tosPrimitive1);
         }
         top += 2;
     }
@@ -447,14 +446,14 @@ final class InterpreterVirtualStack {
         if (tosLevel == 0) {
             state.dup2x1(top);
         } else if (tosLevel == 1) {
-            state.copyStatic(top, -1, top, 1);
-            state.copyStatic(top, -2, top, 0);
-            state.copyStatic(top, -1, top, -2);
-            putCachedPrimitive(state, top, -1, tosPrimitive0);
+            copySlot(state, -1, 1);
+            copySlot(state, -2, 0);
+            copySlot(state, -1, -2);
+            overwriteSlot(state, -1, tosPrimitive0);
         } else {
-            state.copyStatic(top, -1, top, 1);
-            putCachedPrimitive(state, top, -1, tosPrimitive0);
-            putCachedPrimitive(state, top, 0, tosPrimitive1);
+            copySlot(state, -1, 1);
+            overwriteSlot(state, -1, tosPrimitive0);
+            overwriteSlot(state, 0, tosPrimitive1);
         }
         top += 2;
     }
@@ -464,16 +463,16 @@ final class InterpreterVirtualStack {
         if (tosLevel == 0) {
             state.dup2x2(top);
         } else if (tosLevel == 1) {
-            state.copyStatic(top, -1, top, 1);
-            state.copyStatic(top, -2, top, 0);
-            state.copyStatic(top, -3, top, -1);
-            state.copyStatic(top, 1, top, -3);
-            putCachedPrimitive(state, top, -2, tosPrimitive0);
+            copySlot(state, -1, 1);
+            copySlot(state, -2, 0);
+            copySlot(state, -3, -1);
+            copySlot(state, 1, -3);
+            overwriteSlot(state, -2, tosPrimitive0);
         } else {
-            state.copyStatic(top, -1, top, 1);
-            state.copyStatic(top, -2, top, 0);
-            putCachedPrimitive(state, top, -2, tosPrimitive0);
-            putCachedPrimitive(state, top, -1, tosPrimitive1);
+            copySlot(state, -1, 1);
+            copySlot(state, -2, 0);
+            overwriteSlot(state, -2, tosPrimitive0);
+            overwriteSlot(state, -1, tosPrimitive1);
         }
         top += 2;
     }
@@ -483,9 +482,8 @@ final class InterpreterVirtualStack {
         if (tosLevel == 0) {
             state.swapSingle(top);
         } else if (tosLevel == 1) {
-            state.copyStatic(top, -1, top, 0);
-            state.setLongStatic(top, -1, tosPrimitive0);
-            state.clearReference(top, -1);
+            copySlot(state, -1, 0);
+            overwriteSlot(state, -1, tosPrimitive0);
             top++;
             tosLevel = 0;
         } else {
@@ -496,9 +494,19 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private static void putCachedPrimitive(InterpreterState state, long sp, long offset, long value) {
-        state.clearReference(sp, offset);
-        state.setLongStatic(sp, offset, value);
+    private void copySlot(InterpreterState state, long srcOffset, long dstOffset) {
+        state.copyStatic(top, srcOffset, top, dstOffset);
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    private void fillSlot(InterpreterState state, long offset, long value) {
+        state.setLongStatic(top, offset, value);
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    private void overwriteSlot(InterpreterState state, long offset, long value) {
+        state.clearReference(top, offset);
+        fillSlot(state, offset, value);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
