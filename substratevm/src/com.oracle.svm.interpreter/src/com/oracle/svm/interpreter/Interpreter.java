@@ -25,27 +25,11 @@
 package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.interpreter.InterpreterFrameUtil.clear;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.clearReference;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.getLocalDouble;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.getLocalFloat;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.getLocalInt;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.getLocalLong;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.getLocalObject;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.getLocalReturnAddress;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.incrementLocalInt;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.popInt;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.putDouble;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.putFloat;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.putInt;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.putLong;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.putObject;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.putReturnAddress;
 import static com.oracle.svm.interpreter.InterpreterFrameUtil.setLocalDouble;
 import static com.oracle.svm.interpreter.InterpreterFrameUtil.setLocalFloat;
 import static com.oracle.svm.interpreter.InterpreterFrameUtil.setLocalInt;
 import static com.oracle.svm.interpreter.InterpreterFrameUtil.setLocalLong;
 import static com.oracle.svm.interpreter.InterpreterFrameUtil.setLocalObject;
-import static com.oracle.svm.interpreter.InterpreterFrameUtil.setLocalObjectOrReturnAddress;
 import static com.oracle.svm.interpreter.InterpreterFrameUtil.startingStackOffset;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterToVM.nullCheck;
@@ -2166,7 +2150,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             int[] array = uncheckedCast(nonNullReceiver, int[].class);
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             int value = InterpreterToVM.getArrayInt(index, array);
             virtualStack.pop1(state, false);
             virtualStack.pop1(state);
@@ -2181,7 +2165,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             long[] array = uncheckedCast(nonNullReceiver, long[].class);
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             long value = InterpreterToVM.getArrayLong(index, array);
             virtualStack.pop1(state, false);
             virtualStack.pop1(state);
@@ -2196,7 +2180,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             float[] array = uncheckedCast(nonNullReceiver, float[].class);
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             float value = InterpreterToVM.getArrayFloat(index, array);
             virtualStack.pop1(state, false);
             virtualStack.pop1(state);
@@ -2211,7 +2195,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             double[] array = uncheckedCast(nonNullReceiver, double[].class);
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             double value = InterpreterToVM.getArrayDouble(index, array);
             virtualStack.pop1(state, false);
             virtualStack.pop1(state);
@@ -2226,7 +2210,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             Object value = InterpreterToVM.getArrayObject(index, array);
             profileType(state.methodProfile, curBCI, value);
             virtualStack.pop1(state, false);
@@ -2242,11 +2226,12 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
 
+            // TODO decide which is fast path
             if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
                             nonNullReceiver instanceof boolean[])) {
                 boolean[] booleanArray = (boolean[]) nonNullReceiver;
                 virtualStack.avoidHoistingTop();
-                int index = virtualStack.peekIntAtOffset(state, -1);
+                int index = virtualStack.peekInt(state, -1);
                 int value = InterpreterToVM.getArrayBooleanInternal(index, booleanArray);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
@@ -2255,7 +2240,7 @@ public final class Interpreter {
             } else {
                 byte[] byteArray = (byte[]) nonNullReceiver;
                 virtualStack.avoidHoistingTop();
-                int index = virtualStack.peekIntAtOffset(state, -1);
+                int index = virtualStack.peekInt(state, -1);
                 int value = InterpreterToVM.getArrayByteInternal(index, byteArray);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
@@ -2271,7 +2256,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             char[] array = uncheckedCast(nonNullReceiver, char[].class);
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             int value = InterpreterToVM.getArrayChar(index, array);
             virtualStack.pop1(state, false);
             virtualStack.pop1(state);
@@ -2286,7 +2271,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             short[] array = uncheckedCast(nonNullReceiver, short[].class);
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             int value = InterpreterToVM.getArrayShort(index, array);
             virtualStack.pop1(state, false);
             virtualStack.pop1(state);
@@ -2301,12 +2286,12 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             int[] array = uncheckedCast(nonNullReceiver, int[].class);
-            int index = virtualStack.peekIntAtOffset(state, -2);
+            int index = virtualStack.peekInt(state, -2);
             int length = array.length;
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
-            int value = virtualStack.peekIntAtOffset(state, -1);
+            int value = virtualStack.peekInt(state, -1);
             InterpreterToVM.setArrayInt(value, index, array);
             virtualStack.pop2(state, false);
             virtualStack.pop1(state);
@@ -2320,12 +2305,12 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -4);
             Object nonNullReceiver = nullCheck(receiver);
             long[] array = uncheckedCast(nonNullReceiver, long[].class);
-            int index = virtualStack.peekIntAtOffset(state, -3);
+            int index = virtualStack.peekInt(state, -3);
             int length = array.length;
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
-            long value = virtualStack.peekLong(virtualStack.top, state, -1);
+            long value = virtualStack.peekLong(state, -1);
             InterpreterToVM.setArrayLong(value, index, array);
             virtualStack.pop2(state, false);
             virtualStack.pop1(state, false);
@@ -2340,12 +2325,12 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             float[] array = uncheckedCast(nonNullReceiver, float[].class);
-            int index = virtualStack.peekIntAtOffset(state, -2);
+            int index = virtualStack.peekInt(state, -2);
             int length = array.length;
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
-            float value = virtualStack.peekFloat(virtualStack.top, state, -1);
+            float value = virtualStack.peekFloat(state, -1);
             InterpreterToVM.setArrayFloat(value, index, array);
             virtualStack.pop2(state, false);
             virtualStack.pop1(state);
@@ -2359,12 +2344,12 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -4);
             Object nonNullReceiver = nullCheck(receiver);
             double[] array = uncheckedCast(nonNullReceiver, double[].class);
-            int index = virtualStack.peekIntAtOffset(state, -3);
+            int index = virtualStack.peekInt(state, -3);
             int length = array.length;
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
-            double value = virtualStack.peekDouble(virtualStack.top, state, -1);
+            double value = virtualStack.peekDouble(state, -1);
             InterpreterToVM.setArrayDouble(value, index, array);
             virtualStack.pop2(state, false);
             virtualStack.pop1(state, false);
@@ -2379,7 +2364,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
-            int index = virtualStack.peekIntAtOffset(state, -2);
+            int index = virtualStack.peekInt(state, -2);
             int length = array.length;
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
@@ -2399,29 +2384,32 @@ public final class Interpreter {
             virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObjectAtOffset(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
-            if (nonNullReceiver instanceof byte[] byteArray) {
+
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
+                            nonNullReceiver instanceof boolean[])) {
+                boolean[] booleanArray = (boolean[]) nonNullReceiver;
                 virtualStack.avoidHoistingTop();
-                int index = virtualStack.peekIntAtOffset(state, -2);
-                int length = byteArray.length;
+                int index = virtualStack.peekInt(state, -2);
+                int length = booleanArray.length;
                 if (Integer.compareUnsigned(index, length) >= 0) {
                     throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
                 }
-                byte value = (byte) virtualStack.peekIntAtOffset(state, -1);
-                InterpreterToVM.setArrayByteInternal(value, index, byteArray);
+                byte value = (byte) virtualStack.peekInt(state, -1);
+                InterpreterToVM.setArrayBooleanInternal(value, index, booleanArray);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
                 return advanceToNextBytecode(curBCI, BASTORE, state, virtualStack);
             } else {
-                boolean[] booleanArray = (boolean[]) nonNullReceiver;
+                byte[] byteArray = (byte[]) nonNullReceiver;
                 virtualStack.avoidHoistingTop();
-                int index = virtualStack.peekIntAtOffset(state, -2);
-                int length = booleanArray.length;
+                int index = virtualStack.peekInt(state, -2);
+                int length = byteArray.length;
                 if (Integer.compareUnsigned(index, length) >= 0) {
                     throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
                 }
-                byte value = (byte) virtualStack.peekIntAtOffset(state, -1);
-                InterpreterToVM.setArrayBooleanInternal(value, index, booleanArray);
+                byte value = (byte) virtualStack.peekInt(state, -1);
+                InterpreterToVM.setArrayByteInternal(value, index, byteArray);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
@@ -2436,12 +2424,12 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             char[] array = uncheckedCast(nonNullReceiver, char[].class);
-            int index = virtualStack.peekIntAtOffset(state, -2);
+            int index = virtualStack.peekInt(state, -2);
             int length = array.length;
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
-            char value = (char) virtualStack.peekIntAtOffset(state, -1);
+            char value = (char) virtualStack.peekInt(state, -1);
             InterpreterToVM.setArrayChar(value, index, array);
             virtualStack.pop2(state, false);
             virtualStack.pop1(state);
@@ -2455,12 +2443,12 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObjectAtOffset(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             short[] array = uncheckedCast(nonNullReceiver, short[].class);
-            int index = virtualStack.peekIntAtOffset(state, -2);
+            int index = virtualStack.peekInt(state, -2);
             int length = array.length;
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
-            short value = (short) virtualStack.peekIntAtOffset(state, -1);
+            short value = (short) virtualStack.peekInt(state, -1);
             InterpreterToVM.setArrayShort(value, index, array);
             virtualStack.pop2(state, false);
             virtualStack.pop1(state);
@@ -2663,8 +2651,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IDIV, safepoint = false)
         private static long idivHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int divisor = virtualStack.peekIntAtOffset(state, -1);
-            int dividend = virtualStack.peekIntAtOffset(state, -2);
+            int divisor = virtualStack.peekInt(state, -1);
+            int dividend = virtualStack.peekInt(state, -2);
             int result = divInt(divisor, dividend);
             virtualStack.pop2(state, false);
             virtualStack.pushInt(state, result);
@@ -2675,8 +2663,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LDIV, safepoint = false)
         private static long ldivHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long divisor = virtualStack.peekLong(virtualStack.top, state, -1);
-            long dividend = virtualStack.peekLong(virtualStack.top, state, -3);
+            long divisor = virtualStack.peekLong(state, -1);
+            long dividend = virtualStack.peekLong(state, -3);
             long result = divLong(divisor, dividend);
             virtualStack.pop2(state, false);
             virtualStack.pop2(state, false);
@@ -2708,8 +2696,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IREM, safepoint = false)
         private static long iremHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int divisor = virtualStack.peekIntAtOffset(state, -1);
-            int dividend = virtualStack.peekIntAtOffset(state, -2);
+            int divisor = virtualStack.peekInt(state, -1);
+            int dividend = virtualStack.peekInt(state, -2);
             int result = remInt(divisor, dividend);
             virtualStack.pop2(state, false);
             virtualStack.pushInt(state, result);
@@ -2720,8 +2708,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LREM, safepoint = false)
         private static long lremHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long divisor = virtualStack.peekLong(virtualStack.top, state, -1);
-            long dividend = virtualStack.peekLong(virtualStack.top, state, -3);
+            long divisor = virtualStack.peekLong(state, -1);
+            long dividend = virtualStack.peekLong(state, -3);
             long result = remLong(divisor, dividend);
             virtualStack.pop2(state, false);
             virtualStack.pop2(state, false);
@@ -3311,7 +3299,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = TABLESWITCH, safepoint = false)
         private static long tableswitchHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int index = virtualStack.peekIntAtOffset(state, -1);
+            int index = virtualStack.peekInt(state, -1);
             int low = TableSwitch.uncheckedLowKey(state.code, curBCI);
             int high = TableSwitch.uncheckedHighKey(state.code, curBCI);
             assert low <= high;
@@ -3330,7 +3318,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LOOKUPSWITCH, safepoint = false)
         private static long lookupswitchHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int key = virtualStack.peekIntAtOffset(state, -1);
+            int key = virtualStack.peekInt(state, -1);
             int low = 0;
             int high = LookupSwitch.uncheckedNumberOfCases(state.code, curBCI) - 1;
             while (low <= high) {
@@ -3521,7 +3509,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = NEWARRAY)
         private static long newarrayHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int length = virtualStack.peekIntAtOffset(state, -1);
+            int length = virtualStack.peekInt(state, -1);
             Object array = InterpreterToVM.createNewPrimitiveArray(BytecodeStream.uncheckedReadByte(state.code, curBCI), length);
             virtualStack.replaceTopWithObject(state, 1, array);
             return advanceToNextBytecode(curBCI, NEWARRAY, state, virtualStack);
@@ -3531,7 +3519,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = ANEWARRAY)
         private static long anewarrayHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int length = virtualStack.peekIntAtOffset(state, -1);
+            int length = virtualStack.peekInt(state, -1);
             Object array = InterpreterToVM.createNewReferenceArray(resolveType(state.method, ANEWARRAY, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)), length);
             virtualStack.replaceTopWithObject(state, 1, array);
             return advanceToNextBytecode(curBCI, ANEWARRAY, state, virtualStack);
@@ -3563,7 +3551,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = CHECKCAST)
         private static long checkcastHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObject(virtualStack.top, state, 0);
+            Object receiver = virtualStack.peekObjectAtOffset(state, -1);
             profileType(state.methodProfile, curBCI, receiver);
             if (receiver != null) {
                 InterpreterResolvedJavaType type = resolveType(state.method, CHECKCAST, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
@@ -3576,7 +3564,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = INSTANCEOF)
         private static long instanceofHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(virtualStack.top, state, -1);
+            Object receiver = virtualStack.peekObjectAtOffset(state, -1);
             profileType(state.methodProfile, curBCI, receiver);
             int result = (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(state.method, INSTANCEOF, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)))) ? 1 : 0;
             state.clearReference(virtualStack.top, -1);
@@ -3586,7 +3574,7 @@ public final class Interpreter {
 
         @AlwaysInline("Fold monitor opcode in individual handlers")
         private static long monitorBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
-            Object receiver = nullCheck(virtualStack.peekObjectAtOffset(virtualStack.top, state, -1));
+            Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -1));
             if (curOpcode == MONITORENTER) {
                 InterpreterToVM.monitorEnter(state.frame, receiver);
             } else {
@@ -3757,16 +3745,16 @@ public final class Interpreter {
         JavaKind returnType = method.getSignature().getReturnKind();
         // @formatter:off
         return switch (returnType) {
-            case Boolean -> stackIntToBoolean(virtualStack.peekIntAtOffset( state, -1));
-            case Byte    -> (byte) virtualStack.peekIntAtOffset( state, -1);
-            case Short   -> (short) virtualStack.peekIntAtOffset( state, -1);
-            case Char    -> (char) virtualStack.peekIntAtOffset( state, -1);
-            case Int     -> virtualStack.peekIntAtOffset( state, -1);
-            case Long    -> virtualStack.peekLong(top, state, -1);
-            case Float   -> virtualStack.peekFloat(top, state, -1);
-            case Double  -> virtualStack.peekDouble(top, state, -1);
+            case Boolean -> stackIntToBoolean(virtualStack.peekInt( state, -1));
+            case Byte    -> (byte) virtualStack.peekInt(state, -1);
+            case Short   -> (short) virtualStack.peekInt(state, -1);
+            case Char    -> (char) virtualStack.peekInt(state, -1);
+            case Int     -> virtualStack.peekInt(state, -1);
+            case Long    -> virtualStack.peekLong(state, -1);
+            case Float   -> virtualStack.peekFloat(state, -1);
+            case Double  -> virtualStack.peekDouble(state, -1);
             case Void    -> null; // void
-            case Object  -> virtualStack.peekObjectAtOffset(top, state, -1);
+            case Object  -> virtualStack.peekObjectAtOffset(state, -1);
             default      -> throw VMError.shouldNotReachHereAtRuntime();
         };
         // @formatter:on
@@ -4531,39 +4519,39 @@ public final class Interpreter {
 
         switch (kind) {
             case Boolean -> {
-                InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekIntAtOffset(state, -1)), receiver, field, true);
+                InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
                 virtualStack.popPrimitive1();
             }
             case Byte -> {
-                InterpreterToVM.setFieldByte((byte) virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.popPrimitive1();
             }
             case Char -> {
-                InterpreterToVM.setFieldChar((char) virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.popPrimitive1();
             }
             case Short -> {
-                InterpreterToVM.setFieldShort((short) virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.popPrimitive1();
             }
             case Int -> {
-                InterpreterToVM.setFieldInt(virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.popPrimitive1();
             }
             case Double -> {
-                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(top, state, -1), receiver, field, true);
+                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
                 virtualStack.popPrimitive2();
             }
             case Float -> {
-                InterpreterToVM.setFieldFloat(virtualStack.peekFloat(top, state, -1), receiver, field, true);
+                InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, field, true);
                 virtualStack.popPrimitive1();
             }
             case Long -> {
-                InterpreterToVM.setFieldLong(virtualStack.peekLong(top, state, -1), receiver, field, true);
+                InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, field, true);
                 virtualStack.popPrimitive2();
             }
             case Object -> {
-                InterpreterToVM.setFieldObject(virtualStack.peekObjectAtOffset(top, state, -1), receiver, field, true);
+                InterpreterToVM.setFieldObject(virtualStack.peekObjectAtOffset(state, -1), receiver, field, true);
                 virtualStack.pop1(state);
             }
             default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
@@ -4585,66 +4573,66 @@ public final class Interpreter {
         long logicalTop = top + virtualStack.tosLevel;
         switch (kind) {
             case Boolean -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -2));
-                InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekIntAtOffset(state, -1)), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Byte -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -2));
-                InterpreterToVM.setFieldByte((byte) virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Char -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -2));
-                InterpreterToVM.setFieldChar((char) virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Short -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -2));
-                InterpreterToVM.setFieldShort((short) virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Int -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -2));
-                InterpreterToVM.setFieldInt(virtualStack.peekIntAtOffset(state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Double -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -3));
-                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(top, state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -3));
+                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -3);
                 virtualStack.popPrimitive2();
                 virtualStack.popPrimitive1();
             }
             case Float -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -2));
-                InterpreterToVM.setFieldFloat(virtualStack.peekFloat(top, state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Long -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -3));
-                InterpreterToVM.setFieldLong(virtualStack.peekLong(top, state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -3));
+                InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -3);
                 virtualStack.popPrimitive2();
                 virtualStack.popPrimitive1();
             }
             case Object -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -2));
-                InterpreterToVM.setFieldObject(virtualStack.peekObjectAtOffset(top, state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                InterpreterToVM.setFieldObject(virtualStack.peekObjectAtOffset(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 state.clearReference(logicalTop, -1);
@@ -4693,7 +4681,7 @@ public final class Interpreter {
 
         long top = virtualStack.top;
         long logicalTop = top + virtualStack.tosLevel;
-        Object receiver = nullCheck(virtualStack.peekObjectAtOffset(top, state, -1));
+        Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -1));
 
         JavaKind kind = field.getJavaKind();
         // @formatter:off

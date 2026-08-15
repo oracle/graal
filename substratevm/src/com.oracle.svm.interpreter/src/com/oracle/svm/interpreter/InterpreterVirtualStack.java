@@ -223,7 +223,7 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    int peekIntAtOffset(InterpreterState state, long offset) {
+    int peekInt(InterpreterState state, long offset) {
         if (tosLevel == 2) {
             if (offset == -1) {
                 return GraalDirectives.assumeInt(tosPrimitive1);
@@ -239,20 +239,23 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    Object peekObjectAtOffset(InterpreterState state, long offset) {
-        if (offset >= -tosLevel) {
-            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+    float peekFloat(InterpreterState state, long offset) {
+        if (tosLevel == 2) {
+            if (offset == -1) {
+                return GraalDirectives.assumeFloat(tosPrimitive1);
+            }
+            if (offset == -2) {
+                return GraalDirectives.assumeFloat(tosPrimitive0);
+            }
+        } else if (tosLevel == 1 && offset == -1) {
+            return GraalDirectives.assumeFloat(tosPrimitive0);
         }
-        return state.peekObject(top, offset + tosLevel);
+        assert offset < -tosLevel;
+        return state.getFloatStatic(top, offset + tosLevel);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    float peekFloat(long sp, InterpreterState state, long offset) {
-        return GraalDirectives.assumeFloat(peekPrimitive(sp, state, offset));
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    long peekLong(long sp, InterpreterState state, long offset) {
+    long peekLong(InterpreterState state, long offset) {
         if (tosLevel == 2) {
             if (offset == -1) {
                 return tosPrimitive1;
@@ -264,11 +267,11 @@ final class InterpreterVirtualStack {
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
-        return state.popLong(sp + tosLevel, offset);
+        return state.popLong(top, offset + tosLevel);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    double peekDouble(long sp, InterpreterState state, long offset) {
+    double peekDouble(InterpreterState state, long offset) {
         if (tosLevel == 2) {
             if (offset == -1) {
                 return Double.longBitsToDouble(tosPrimitive1);
@@ -280,23 +283,15 @@ final class InterpreterVirtualStack {
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
-        return state.popDouble(sp + tosLevel, offset);
+        return state.popDouble(top, offset + tosLevel);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    Object peekObject(long sp, InterpreterState state, long depth) {
-        if (tosLevel != 0) {
-            throw InterpreterUtil.shouldNotReachHereAtRuntime();
-        }
-        return state.peekObject(sp, -1 - depth);
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    Object peekObjectAtOffset(long sp, InterpreterState state, long offset) {
+    Object peekObjectAtOffset(InterpreterState state, long offset) {
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
-        return state.peekObject(sp + tosLevel, offset);
+        return state.peekObject(top, offset + tosLevel);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
@@ -504,22 +499,6 @@ final class InterpreterVirtualStack {
     private static void putCachedPrimitive(InterpreterState state, long sp, long offset, long value) {
         state.clearReference(sp, offset);
         state.setLongStatic(sp, offset, value);
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private long peekPrimitive(long sp, InterpreterState state, long offset) {
-        if (tosLevel == 2) {
-            if (offset == -1) {
-                return tosPrimitive1;
-            }
-            if (offset == -2) {
-                return tosPrimitive0;
-            }
-        } else if (tosLevel == 1 && offset == -1) {
-            return tosPrimitive0;
-        }
-        assert offset < -tosLevel;
-        return state.peekPrimitive(sp + tosLevel, offset);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
