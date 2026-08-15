@@ -148,7 +148,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return Float.intBitsToFloat(UNSAFE.getInt(entries, intArrayOffset(cpi)));
     }
 
-    public long uncheckedLongAt(int cpi) {
+    public long uncheckedLongAt(long cpi) {
         Object entry = uncheckedCachedEntryAt(cpi);
         assert entry == null || entry instanceof PrimitiveConstant;
         if (entry instanceof PrimitiveConstant primitiveConstant) {
@@ -160,7 +160,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return (hiBytes << 32) | (loBytes & 0xFFFFFFFFL);
     }
 
-    public double uncheckedDoubleAt(int cpi) {
+    public double uncheckedDoubleAt(long cpi) {
         Object entry = uncheckedCachedEntryAt(cpi);
         assert entry == null || entry instanceof PrimitiveConstant;
         if (entry instanceof PrimitiveConstant primitiveConstant) {

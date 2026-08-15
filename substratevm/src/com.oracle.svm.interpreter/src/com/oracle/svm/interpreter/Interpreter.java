@@ -1578,7 +1578,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LDC_W, safepoint = false)
         private static long ldcWHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int cpi = GraalDirectives.opaque(BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
                 throw noClassDefFoundError(LDC_W, null);
             }
@@ -1592,7 +1592,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LDC2_W, safepoint = false)
         private static long ldc2WHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            int cpi = GraalDirectives.opaque(BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
             loadConstant2(state, cpi, virtualStack);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC2_W);
             prepareOpcodeForDispatch(nextBCI, state, virtualStack);
@@ -3995,20 +3995,22 @@ public final class Interpreter {
     }
 
     @AlwaysInline("Keep resolved constant fast paths in bytecode-handler stubs")
-    private static void loadConstant2(InterpreterState state, int cpi, InterpreterVirtualStack virtualStack) {
+    private static void loadConstant2(InterpreterState state, long cpi, InterpreterVirtualStack virtualStack) {
         VMError.guarantee(cpi != 0);
         InterpreterConstantPool pool = getConstantPool(state.method);
         byte numericTag = pool.uncheckedTagValueAt(cpi);
         if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
-                        numericTag == ConstantPool.CONSTANT_Long)) {
+                        numericTag == ConstantPool.CONSTANT_Double)) {
+            virtualStack.avoidHoistingTop();
             InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
-            virtualStack.pushLong(state, branchPool.uncheckedLongAt(cpi));
+            virtualStack.pushDouble(state, branchPool.uncheckedDoubleAt(cpi));
             return;
         }
         if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY,
-                        numericTag == ConstantPool.CONSTANT_Double)) {
+                        numericTag == ConstantPool.CONSTANT_Long)) {
+            virtualStack.avoidHoistingTop();
             InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
-            virtualStack.pushDouble(state, branchPool.uncheckedDoubleAt(cpi));
+            virtualStack.pushLong(state, branchPool.uncheckedLongAt(cpi));
             return;
         }
         resolveConstantAtSlowPath(state, virtualStack.materializedTop(state), cpi, LDC2_W, pool);
