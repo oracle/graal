@@ -945,10 +945,23 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                 block.markFastPathBlock();
             }
             if (isStubFastPathBlock(block)) {
-                for (HIRBlock fastPathBlock = block; fastPathBlock != null; fastPathBlock = fastPathBlock.getDominator()) {
-                    fastPathBlock.markFastPathBlock();
+                markLikelyPredecessorPath(block);
+            }
+        }
+    }
+
+    private void markLikelyPredecessorPath(HIRBlock block) {
+        for (int i = 0; block != null && i < reversePostOrder.length; i++) {
+            block.markFastPathBlock();
+            HIRBlock mostLikelyPredecessor = null;
+            for (int predecessorIndex = 0; predecessorIndex < block.getPredecessorCount(); predecessorIndex++) {
+                HIRBlock predecessor = block.getPredecessorAt(predecessorIndex);
+                if (!predecessor.isLoopEnd() &&
+                                (mostLikelyPredecessor == null || predecessor.getRelativeFrequency() > mostLikelyPredecessor.getRelativeFrequency())) {
+                    mostLikelyPredecessor = predecessor;
                 }
             }
+            block = mostLikelyPredecessor;
         }
     }
 
@@ -959,8 +972,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
     /**
      * Determines whether {@code block} is the exit of a bytecode-handler stub fast path. Such a
-     * block returns the results of a {@link MultiReturnNode}; its dominator chain forms the fast
-     * path.
+     * block returns the results of a {@link MultiReturnNode}; the highest-frequency predecessor
+     * chain forms the fast path.
      */
     private static boolean isStubFastPathBlock(HIRBlock block) {
         return block.getEndNode() instanceof ReturnNode returnNode && returnNode.result() instanceof MultiReturnNode;

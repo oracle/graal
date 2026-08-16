@@ -83,7 +83,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             return;
         }
         BasicBlock<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
-        if (defBlock.isFastPathBlock()) {
+        if (coversFastPathBlock(interval)) {
             // TODO (GR-69742): Generalize this optimization to handle generic cases based on split
             // block frequencies
             interval.setSpillState(SpillState.NoOptimization);
@@ -238,6 +238,15 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
                 return new IntervalBlockIterator(interval);
             }
         };
+    }
+
+    private boolean coversFastPathBlock(Interval interval) {
+        for (BasicBlock<?> block : blocksForInterval(interval)) {
+            if (block.isFastPathBlock()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static BasicBlock<?> moveSpillOutOfLoop(BasicBlock<?> defBlock, BasicBlock<?> spillBlock) {

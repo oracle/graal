@@ -818,6 +818,9 @@ class LinearScanWalker extends IntervalWalker {
                     if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(allocator.getOptions())) {
                         // find best spill position in dominator the tree
                         interval.setSpillState(SpillState.SpillInDominator);
+                    } else if (coversFastPathBlock(interval)) {
+                        // Keep the spill local instead of adding a store to a fast path.
+                        interval.setSpillState(SpillState.NoOptimization);
                     } else {
                         // store at definition of the interval
                         interval.setSpillState(SpillState.StoreAtDefinition);
@@ -840,6 +843,9 @@ class LinearScanWalker extends IntervalWalker {
                     if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(allocator.getOptions())) {
                         // the interval is spilled more then once
                         interval.setSpillState(SpillState.SpillInDominator);
+                    } else if (coversFastPathBlock(interval)) {
+                        // Keep the spills local instead of adding a store to a fast path.
+                        interval.setSpillState(SpillState.NoOptimization);
                     } else {
                         // It is better to store it to memory at the definition.
                         interval.setSpillState(SpillState.StoreAtDefinition);
