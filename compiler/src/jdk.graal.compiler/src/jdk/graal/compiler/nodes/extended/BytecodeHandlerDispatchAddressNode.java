@@ -130,12 +130,22 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
     }
 
     private ValueNode createTableBase(LoweringTool tool, StructuredGraph graph) {
+        ValueNode tableBase;
         if (templateValues.isEmpty()) {
-            return createTableBaseConstant(tool, graph, 0, this);
+            tableBase = createTableBaseConstant(tool, graph, 0, this);
+        } else {
+            GraalError.guarantee(templateValues.size() == templateVariants.length, "Invalid template value metadata");
+            EconomicSet<ValueNode> activePhis = EconomicSet.create(Equivalence.IDENTITY);
+            tableBase = createTableBase(tool, graph, templateValues.toArray(ValueNode.EMPTY_ARRAY), activePhis, this);
         }
-        GraalError.guarantee(templateValues.size() == templateVariants.length, "Invalid template value metadata");
-        EconomicSet<ValueNode> activePhis = EconomicSet.create(Equivalence.IDENTITY);
-        return createTableBase(tool, graph, templateValues.toArray(ValueNode.EMPTY_ARRAY), activePhis, this);
+        /* Allow the backend to fold a single table constant into the indexed address. */
+        if (tableBase instanceof BytecodeHandlerTableLoadNode load) {
+            JavaConstant tableConstant = load.tableConstant();
+            GraphUtil.unlinkFixedNode(load);
+            load.safeDelete();
+            return ConstantNode.forConstant(tableConstant, tool.getMetaAccess(), graph);
+        }
+        return tableBase;
     }
 
     /**
