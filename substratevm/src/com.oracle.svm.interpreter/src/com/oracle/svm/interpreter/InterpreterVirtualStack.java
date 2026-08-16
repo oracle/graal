@@ -326,7 +326,7 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void dup1(InterpreterState state) {
         if (tosLevel == 0) {
-            state.dup1(top);
+            state.copyStatic(top, -1, top, 0);
             top++;
         } else if (tosLevel == 1) {
             tosPrimitive1 = tosPrimitive0;

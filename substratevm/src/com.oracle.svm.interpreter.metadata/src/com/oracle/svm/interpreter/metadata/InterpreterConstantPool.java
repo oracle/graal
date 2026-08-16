@@ -110,7 +110,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE;
     }
 
-    private Object uncheckedCachedEntryAt(long cpi) {
+    public Object uncheckedCachedEntryAt(long cpi) {
         return UNSAFE.getReference(cachedEntries, objectArrayOffset(cpi));
     }
 

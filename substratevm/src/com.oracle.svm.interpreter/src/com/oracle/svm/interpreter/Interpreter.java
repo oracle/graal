@@ -3554,7 +3554,8 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObject(state, -1);
             profileType(state.methodProfile, curBCI, receiver);
             if (receiver != null) {
-                InterpreterResolvedJavaType type = resolveType(state.method, CHECKCAST, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+                char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
+                InterpreterResolvedJavaType type = resolveType(state.method, CHECKCAST, cpi);
                 InterpreterToVM.checkCast(receiver, type.getJavaClass());
             }
             return advanceToNextBytecode(curBCI, CHECKCAST, state, virtualStack);
@@ -3566,9 +3567,16 @@ public final class Interpreter {
             virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObject(state, -1);
             profileType(state.methodProfile, curBCI, receiver);
-            int result = (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(state.method, INSTANCEOF, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)))) ? 1 : 0;
-            state.clearReference(virtualStack.top, -1);
-            virtualStack.replaceTopWithInt(1, result);
+            int result;
+            if (receiver != null) {
+                char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
+                InterpreterResolvedJavaType type = resolveType(state.method, INSTANCEOF, cpi);
+                result = InterpreterToVM.instanceOf(receiver, type) ? 1 : 0;
+            } else {
+                result = 0;
+            }
+            virtualStack.pop1(state);
+            virtualStack.pushInt(state, result);
             return advanceToNextBytecode(curBCI, INSTANCEOF, state, virtualStack);
         }
 
@@ -4286,17 +4294,17 @@ public final class Interpreter {
 
     // region Class/Method/Field resolution
 
-    private static InterpreterResolvedJavaType resolveType(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    private static InterpreterResolvedJavaType resolveType(InterpreterResolvedJavaMethod method, int opcode, long cpi) {
         assert opcode == INSTANCEOF || opcode == CHECKCAST || opcode == NEW || opcode == ANEWARRAY || opcode == MULTIANEWARRAY || opcode == LDC || opcode == LDC_W : Bytecodes.nameOf(opcode);
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
             throw noClassDefFoundError(opcode, null);
         }
         try {
-            return getConstantPool(method).uncheckedResolvedTypeAt(method.getDeclaringClass(), cpi);
+            return getConstantPool(method).uncheckedResolvedTypeAt(method.getDeclaringClass(), (int) cpi);
         } catch (UnsupportedResolutionException e) {
             // CP does not support resolution, try to provide a hint of the non-resolvable entry.
             UnresolvedJavaType missingType = null;
-            if (getConstantPool(method).uncheckedPeekCachedEntry(cpi) instanceof UnresolvedJavaType unresolvedJavaType) {
+            if (getConstantPool(method).uncheckedCachedEntryAt(cpi) instanceof UnresolvedJavaType unresolvedJavaType) {
                 missingType = unresolvedJavaType;
             }
             throw noClassDefFoundError(opcode, missingType);
