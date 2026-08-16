@@ -1548,7 +1548,7 @@ public final class Interpreter {
                 throw noClassDefFoundError(LDC, null);
             }
             loadConstant(state, cpi, LDC, virtualStack);
-            long nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC);
+            long nextBCI = GraalDirectives.anchorValue(curBCI) + ConstantBytecodes.lengthOf(LDC);
             prepareOpcodeForDispatch(nextBCI, state, virtualStack);
             return nextBCI;
         }
@@ -1562,7 +1562,7 @@ public final class Interpreter {
                 throw noClassDefFoundError(LDC_W, null);
             }
             loadConstant(state, cpi, LDC_W, virtualStack);
-            long nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC_W);
+            long nextBCI = GraalDirectives.anchorValue(curBCI) + ConstantBytecodes.lengthOf(LDC_W);
             prepareOpcodeForDispatch(nextBCI, state, virtualStack);
             return nextBCI;
         }
@@ -1612,7 +1612,7 @@ public final class Interpreter {
                 resolveConstantAtSlowPath(state, top, cpi, LDC2_W, pool);
                 virtualStack.endOutlinedCall(2);
             }
-            long nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC2_W);
+            long nextBCI = GraalDirectives.anchorValue(curBCI) + ConstantBytecodes.lengthOf(LDC2_W);
             prepareOpcodeForDispatch(nextBCI, state, virtualStack);
             return nextBCI;
         }
@@ -3598,17 +3598,18 @@ public final class Interpreter {
 
         @AlwaysInline("Keep checkcast type testing in bytecode-handler stubs")
         private static boolean checkCastSucceeds(InterpreterState state, InterpreterVirtualStack virtualStack, long bci) {
-            DynamicHub receiverHub = loadReceiverHub(state, virtualStack, bci);
+            DynamicHub receiverHub = loadReceiverHub(bci, state, virtualStack);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiverHub != null)) {
-                long cpi = state.readCPI2(bci);
-                Class<?> classToCheck = resolveType(state, CHECKCAST, cpi).getJavaClass();
-                return InterpreterToVM.instanceOf(receiverHub, classToCheck);
+                DynamicHub testHub = loadTestHub(bci, state, CHECKCAST);
+                // Hide as many locals as possible from an outlined call in the following type check
+                // snippet.
+                return InterpreterToVM.instanceOf(receiverHub, testHub);
             }
             return true;
         }
 
-        @AlwaysInline("Keep checkcast receiver loading in bytecode-handler stubs")
-        private static DynamicHub loadReceiverHub(InterpreterState state, InterpreterVirtualStack virtualStack, long bci) {
+        @AlwaysInline("Keep type-check receiver loading in bytecode-handler stubs")
+        private static DynamicHub loadReceiverHub(long bci, InterpreterState state, InterpreterVirtualStack virtualStack) {
             Object receiver = virtualStack.peekObject(state, -1);
             profileType(state, bci, receiver);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiver != null)) {
@@ -3617,23 +3618,28 @@ public final class Interpreter {
             return null;
         }
 
+        @AlwaysInline("Keep type-check target loading in bytecode-handler stubs")
+        private static DynamicHub loadTestHub(long bci, InterpreterState state, int opcode) {
+            long cpi = state.readCPI2(bci);
+            InterpreterResolvedJavaType resolvedType = resolveType(state, opcode, cpi);
+            return DynamicHub.fromClass(resolvedType.getJavaClass());
+        }
+
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INSTANCEOF)
         private static long instanceofHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObject(state, -1);
-            profileType(state, curBCI, receiver);
+            DynamicHub receiverHub = loadReceiverHub(curBCI, state, virtualStack);
             int result;
-            if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiver != null)) {
-                long cpi = state.readCPI2(curBCI);
-                InterpreterResolvedJavaType type = resolveType(state, INSTANCEOF, cpi);
-                result = InterpreterToVM.instanceOf(receiver, type) ? 1 : 0;
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiverHub != null)) {
+                DynamicHub testHub = loadTestHub(curBCI, state, INSTANCEOF);
+                result = InterpreterToVM.instanceOf(receiverHub, testHub) ? 1 : 0;
             } else {
                 result = 0;
             }
             virtualStack.pop1(state);
             virtualStack.pushInt(state, result);
-            return advanceToNextBytecode(curBCI, INSTANCEOF, state, virtualStack);
+            return advanceToNextBytecode(GraalDirectives.anchorValue(curBCI), INSTANCEOF, state, virtualStack);
         }
 
         @AlwaysInline("Fold monitor opcode in individual handlers")

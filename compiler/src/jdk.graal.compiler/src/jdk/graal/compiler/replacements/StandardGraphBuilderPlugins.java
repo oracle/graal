@@ -2213,6 +2213,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("anchorValue", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Long, new FixedValueAnchorNode(value));
+                return true;
+            }
+        });
 
         r.register(new RequiredInlineOnlyInvocationPlugin("spillRegisters") {
             @Override
