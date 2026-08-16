@@ -2246,7 +2246,7 @@ public final class Interpreter {
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
             int index = virtualStack.peekInt(state, -1);
             Object value = InterpreterToVM.getArrayObject(index, array);
-            profileType(state.methodProfile, curBCI, value);
+            profileType(state, curBCI, value);
             virtualStack.pop1(state, false);
             virtualStack.pop1(state);
             virtualStack.pushObject(state, value);
@@ -2404,7 +2404,7 @@ public final class Interpreter {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
             Object value = virtualStack.peekObject(state, -1);
-            profileType(state.methodProfile, curBCI, value);
+            profileType(state, curBCI, value);
             InterpreterToVM.setArrayObject(value, index, array);
             virtualStack.pop1(state);
             virtualStack.pop1(state, false);
@@ -3475,8 +3475,7 @@ public final class Interpreter {
 
             try {
                 long materializedTop = virtualStack.beginOutlinedCall(state);
-                int slotDelta = invoke(state.frame, state.methodProfile, state.method, state.code, materializedTop, (int) curBCI, curOpcode,
-                                state.forceStayInInterpreter, preferStayInInterpreter);
+                int slotDelta = invoke(state, materializedTop, (int) curBCI, curOpcode, preferStayInInterpreter);
                 virtualStack.endOutlinedCall(slotDelta);
             } finally {
                 if (debuggerEventsSupported()) {
@@ -3591,8 +3590,8 @@ public final class Interpreter {
         private static long checkcastHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObject(state, -1);
-            profileType(state.methodProfile, curBCI, receiver);
-            if (receiver != null) {
+            profileType(state, curBCI, receiver);
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiver != null)) {
                 long cpi = state.readCPI2(curBCI);
                 InterpreterResolvedJavaType type = resolveType(state.method, CHECKCAST, cpi);
                 InterpreterToVM.checkCast(receiver, type.getJavaClass());
@@ -3605,9 +3604,9 @@ public final class Interpreter {
         private static long instanceofHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
             Object receiver = virtualStack.peekObject(state, -1);
-            profileType(state.methodProfile, curBCI, receiver);
+            profileType(state, curBCI, receiver);
             int result;
-            if (receiver != null) {
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiver != null)) {
                 long cpi = state.readCPI2(curBCI);
                 InterpreterResolvedJavaType type = resolveType(state.method, INSTANCEOF, cpi);
                 result = InterpreterToVM.instanceOf(receiver, type) ? 1 : 0;
@@ -3769,9 +3768,9 @@ public final class Interpreter {
     }
 
     @AlwaysInline("Profile-site guards must fold away when Ristretto is disabled in the hosted image.")
-    private static void profileType(MethodProfile methodProfile, long bci, Object o) {
-        if (SubstrateOptions.useRistretto() && methodProfile != null) {
-            methodProfile.profileReceiver((int) bci, o);
+    private static void profileType(InterpreterState state, long bci, Object o) {
+        if (SubstrateOptions.useRistretto() && state.methodProfile != null) {
+            state.methodProfile.profileReceiver((int) bci, o);
         }
     }
 
@@ -4067,9 +4066,11 @@ public final class Interpreter {
     }
 
     @NeverInline("Keep stack-consuming invocation out of bytecode-handler stubs")
-    private static int invoke(InterpreterFrame callerFrame, MethodProfile methodProfile, InterpreterResolvedJavaMethod method, byte[] code, long top, int curBCI, int opcode,
-                    boolean forceStayInInterpreter,
-                    boolean preferStayInInterpreter) {
+    private static int invoke(InterpreterState state, long top, int curBCI, int opcode, boolean preferStayInInterpreter) {
+        InterpreterFrame callerFrame = state.frame;
+        InterpreterResolvedJavaMethod method = state.method;
+        byte[] code = state.code;
+        boolean forceStayInInterpreter = state.forceStayInInterpreter;
         long invokeTop = top;
 
         InterpreterResolvedJavaType symbolicHolder = null;
@@ -4152,7 +4153,7 @@ public final class Interpreter {
         Object[] calleeArgs = InterpreterFrameUtil.popArguments(callerFrame, invokeTop, hasReceiver, seedSignature);
         if (hasReceiver) {
             Object receiver = calleeArgs[0];
-            profileType(methodProfile, curBCI, receiver);
+            profileType(state, curBCI, receiver);
             receiver = nullCheck(receiver);
             calleeArgs[0] = receiver;
             if (requiresSymbolicTypeCheck) {
