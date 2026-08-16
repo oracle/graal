@@ -434,7 +434,7 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void swap(InterpreterState state) {
         if (tosLevel == 0) {
-            state.swapStatic(top, -1, top, -2);
+            swapSlot(state, -1, -2);
         } else if (tosLevel == 1) {
             copySlot(state, -1, 0);
             overwriteSlot(state, -1, tosPrimitive0);
@@ -450,6 +450,11 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     private void copySlot(InterpreterState state, long srcOffset, long dstOffset) {
         state.copyStatic(top, srcOffset, top, dstOffset);
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    private void swapSlot(InterpreterState state, long srcOffset, long dstOffset) {
+        state.swapStatic(top, srcOffset, top, dstOffset);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")

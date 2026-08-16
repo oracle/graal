@@ -26,10 +26,12 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.shared.Uninterruptible;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -348,5 +350,23 @@ final class InterpreterState {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long referenceOffset(long slot, long slotOffset) {
         return Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((slot + slotOffset) * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+    }
+
+    public long readCPI1(long bci) {
+        /*
+         * Keep the unsigned one-byte CPI behind one opaque boundary. Otherwise lowering can
+         * create separate zero- and sign-extended CPI intervals, increasing register pressure and
+         * potentially causing stack spills in bytecode handlers.
+         */
+        return GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI1(code, bci));
+    }
+
+    public long readCPI2(long bci) {
+        /*
+         * Keep the unsigned two-byte CPI behind one opaque boundary. Otherwise lowering can
+         * create separate zero- and sign-extended CPI intervals, increasing register pressure and
+         * potentially causing stack spills in bytecode handlers.
+         */
+        return GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI2(code, bci));
     }
 }

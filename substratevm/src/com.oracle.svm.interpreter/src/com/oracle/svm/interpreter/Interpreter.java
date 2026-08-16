@@ -1543,12 +1543,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LDC, safepoint = false)
         private static long ldcHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            /*
-             * Keep the unsigned one-byte CPI in one 32-bit interval. Without this opaque boundary,
-             * lowering creates separate zero- and sign-extended CPI intervals, increasing register
-             * pressure and potentially causing stack spills.
-             */
-            long cpi = GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI1(state.code, curBCI));
+            long cpi = state.readCPI1(curBCI);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
                 throw noClassDefFoundError(LDC, null);
             }
@@ -1562,7 +1557,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LDC_W, safepoint = false)
         private static long ldcWHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long cpi = GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = state.readCPI2(curBCI);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, cpi == 0)) {
                 throw noClassDefFoundError(LDC_W, null);
             }
@@ -1576,7 +1571,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LDC2_W, safepoint = false)
         private static long ldc2WHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long cpi = GraalDirectives.opaque((long) BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = state.readCPI2(curBCI);
             loadConstant2(state, cpi, virtualStack);
             long nextBCI = curBCI + ConstantBytecodes.lengthOf(LDC2_W);
             prepareOpcodeForDispatch(nextBCI, state, virtualStack);
@@ -3360,7 +3355,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_GETSTATIC)
         private static long quickGetstaticHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETSTATIC, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = state.readCPI2(curBCI);
+            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETSTATIC, cpi);
             getStaticField(state, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_GETSTATIC, state, virtualStack);
         }
@@ -3369,7 +3365,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_GETFIELD)
         private static long quickGetfieldHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETFIELD, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = state.readCPI2(curBCI);
+            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETFIELD, cpi);
             getInstanceField(state, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_GETFIELD, state, virtualStack);
         }
@@ -3396,7 +3393,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_PUTSTATIC)
         private static long quickPutstaticHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTSTATIC, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = state.readCPI2(curBCI);
+            InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTSTATIC, cpi);
             putStaticField(state, field, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_PUTSTATIC, state, virtualStack);
         }
@@ -3405,7 +3403,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_PUTFIELD)
         private static long quickPutfieldHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTFIELD, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
+            long cpi = state.readCPI2(curBCI);
+            InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTFIELD, cpi);
             putInstanceField(state, field, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_PUTFIELD, state, virtualStack);
         }
@@ -3498,7 +3497,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = NEW)
         private static long newHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
+            long cpi = state.readCPI2(curBCI);
             InterpreterResolvedJavaType type = resolveType(state.method, NEW, cpi);
             Object value = InterpreterToVM.createNewReference(type);
             virtualStack.pushObject(state, value);
@@ -3520,7 +3519,8 @@ public final class Interpreter {
         private static long anewarrayHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
             int length = virtualStack.peekInt(state, -1);
-            Object array = InterpreterToVM.createNewReferenceArray(resolveType(state.method, ANEWARRAY, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)), length);
+            long cpi = state.readCPI2(curBCI);
+            Object array = InterpreterToVM.createNewReferenceArray(resolveType(state.method, ANEWARRAY, cpi), length);
             virtualStack.replaceTopWithObject(state, 1, array);
             return advanceToNextBytecode(curBCI, ANEWARRAY, state, virtualStack);
         }
@@ -3554,7 +3554,7 @@ public final class Interpreter {
             Object receiver = virtualStack.peekObject(state, -1);
             profileType(state.methodProfile, curBCI, receiver);
             if (receiver != null) {
-                char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
+                long cpi = state.readCPI2(curBCI);
                 InterpreterResolvedJavaType type = resolveType(state.method, CHECKCAST, cpi);
                 InterpreterToVM.checkCast(receiver, type.getJavaClass());
             }
@@ -3569,7 +3569,7 @@ public final class Interpreter {
             profileType(state.methodProfile, curBCI, receiver);
             int result;
             if (receiver != null) {
-                char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
+                long cpi = state.readCPI2(curBCI);
                 InterpreterResolvedJavaType type = resolveType(state.method, INSTANCEOF, cpi);
                 result = InterpreterToVM.instanceOf(receiver, type) ? 1 : 0;
             } else {
@@ -4415,12 +4415,12 @@ public final class Interpreter {
         }
     }
 
-    private static InterpreterResolvedJavaField resolveQuickenedField(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
+    private static InterpreterResolvedJavaField resolveQuickenedField(InterpreterResolvedJavaMethod method, int opcode, long cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : Bytecodes.nameOf(opcode);
         assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
         try {
             // The first execution cached the resolved field after applying opcode-specific access checks.
-            return (InterpreterResolvedJavaField) getConstantPool(method).uncheckedPeekCachedEntry(cpi);
+            return (InterpreterResolvedJavaField) getConstantPool(method).uncheckedCachedEntryAt(cpi);
         } catch (Throwable t) {
             throw InterpreterUtil.shouldNotReachHere("Quickened field access must use an already resolved field entry", t);
         }
@@ -4435,7 +4435,8 @@ public final class Interpreter {
 
     @NeverInline("Keep multi-array allocation out of bytecode-handler stubs")
     private static int allocateMultiArray(InterpreterState state, long top, long bci) {
-        ResolvedJavaType multiArrayType = resolveType(state.method, MULTIANEWARRAY, BytecodeStream.uncheckedReadCPI2(state.code, bci));
+        long cpi = state.readCPI2(bci);
+        ResolvedJavaType multiArrayType = resolveType(state.method, MULTIANEWARRAY, cpi);
         int allocatedDimensions = BytecodeStream.uncheckedReadUByte(state.code, bci + 3);
         assert multiArrayType.isArray() : multiArrayType;
         assert allocatedDimensions > 0 : allocatedDimensions;
