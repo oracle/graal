@@ -44,6 +44,23 @@ public class InterpreterUtil {
         assertionsEnabled = status;
     }
 
+    /** Alternative to {@link VMError#guarantee(boolean)} that keeps the failure path outlined. */
+    public static void guarantee(boolean condition) {
+        if (!condition) {
+            throw shouldNotReachHereAtRuntime();
+        }
+    }
+
+    /**
+     * Alternative to {@link VMError#guarantee(boolean, String)} that keeps the failure path
+     * outlined.
+     */
+    public static void guarantee(boolean condition, String message) {
+        if (!condition) {
+            throw shouldNotReachHere(message);
+        }
+    }
+
     /**
      * Alternative to {@link VMError#guarantee(boolean, String, Object)} that avoids
      * {@link String#format(String, Object...)} .
@@ -84,6 +101,11 @@ public class InterpreterUtil {
     @NeverInline("Keep guarantee failure formatting out of bytecode-handler stubs")
     public static RuntimeException shouldNotReachHereAtRuntime() {
         throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    @NeverInline("Keep guarantee failure out of bytecode-handler stubs")
+    public static RuntimeException shouldNotReachHere(String message) {
+        throw VMError.shouldNotReachHere(message);
     }
 
     @NeverInline("Keep guarantee failure formatting out of bytecode-handler stubs")
