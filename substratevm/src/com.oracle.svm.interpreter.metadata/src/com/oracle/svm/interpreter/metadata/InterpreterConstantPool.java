@@ -393,7 +393,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     @NeverInline("Interpreter handler slow path")
-    private synchronized Object forceResolveAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+    private synchronized Object forceResolveAt(long cpi, InterpreterResolvedObjectType accessingClass) {
         // TODO(peterssen): GR-68611 Avoid deadlocks when hitting breakpoints (JDWP debugger)
         // during class resolution.
         /*
@@ -401,9 +401,10 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
          * but) in the user class loaders where it can hit a breakpoint (JDWP debugger), causing
          * a deadlock.
          */
-        Object entry = cachedEntries[cpi];
+        int narrowCpi = (int) cpi;
+        Object entry = cachedEntries[narrowCpi];
         if (isUnresolved(entry)) {
-            cachedEntries[cpi] = entry = resolve(cpi, accessingClass);
+            cachedEntries[narrowCpi] = entry = resolve(narrowCpi, accessingClass);
         }
         return entry;
     }
@@ -411,7 +412,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     /**
      * Returns a constant-pool entry whose index and type were established by bytecode verification.
      */
-    public Object uncheckedResolvedAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+    public Object uncheckedResolvedAt(long cpi, InterpreterResolvedObjectType accessingClass) {
         Object entry = uncheckedCachedEntryAt(cpi);
         if (isUnresolved(entry)) {
             entry = forceResolveAt(cpi, accessingClass);
@@ -610,7 +611,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return (InterpreterResolvedObjectType) resolvedEntry;
     }
 
-    public InterpreterResolvedObjectType uncheckedResolvedTypeAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
+    public InterpreterResolvedObjectType uncheckedResolvedTypeAt(InterpreterResolvedObjectType accessingKlass, long cpi) {
         Object resolvedEntry = uncheckedResolvedAt(cpi, accessingKlass);
         assert resolvedEntry != null;
         return (InterpreterResolvedObjectType) resolvedEntry;
