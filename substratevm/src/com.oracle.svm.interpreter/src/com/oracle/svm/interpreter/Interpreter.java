@@ -1197,7 +1197,7 @@ public final class Interpreter {
                         clearOperandStack(state, method, virtualStack.top, virtualStack);
                         virtualStack.top = startingStackOffset(method.getMaxLocals());
                         virtualStack.pushObject(state, exception);
-                        curBCI = beforeJumpChecks(methodProfile, method, state, forceStayInInterpreter, curBCI, handler.getHandlerBCI(), virtualStack);
+                        curBCI = beforeJumpChecks(state, curBCI, handler.getHandlerBCI(), virtualStack);
                         prepareOpcodeForDispatch(curBCI, state, virtualStack);
                         continue;
                     } else {
@@ -3765,7 +3765,7 @@ public final class Interpreter {
          */
         @AlwaysInline("Keep branch completion on the fast path")
         private static long finishJump(long curBCI, long targetBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
-            long nextBCI = beforeJumpChecks(state.methodProfile, state.method, state, state.forceStayInInterpreter, curBCI, targetBCI, virtualStack);
+            long nextBCI = beforeJumpChecks(state, curBCI, targetBCI, virtualStack);
             prepareOpcodeForDispatch(nextBCI, state, virtualStack);
             return nextBCI;
         }
@@ -3862,13 +3862,12 @@ public final class Interpreter {
      * in the interpreter.
      */
     @SuppressWarnings("unused")
-    private static long beforeJumpChecks(MethodProfile methodProfile, InterpreterResolvedJavaMethod method, InterpreterState state, boolean forceStayInInterpreter, long curBCI, long targetBCI,
-                    InterpreterVirtualStack virtualStack) {
+    private static long beforeJumpChecks(InterpreterState state, long curBCI, long targetBCI, InterpreterVirtualStack virtualStack) {
         if (targetBCI <= curBCI) {
             GraalDirectives.safepoint();
-            if (SubstrateOptions.useRistretto() && !forceStayInInterpreter) {
+            if (SubstrateOptions.useRistretto() && !state.forceStayInInterpreter) {
                 virtualStack.materialize(state);
-                OSRResult result = RistrettoOSRSupport.tryOSR(method, methodProfile, state.frame, (int) targetBCI, (int) virtualStack.top);
+                OSRResult result = RistrettoOSRSupport.tryOSR(state.method, state.methodProfile, state.frame, (int) targetBCI, (int) virtualStack.top);
                 if (result != null) {
                     if (result.exception() != null) {
                         throw new OSRException(result.exception());

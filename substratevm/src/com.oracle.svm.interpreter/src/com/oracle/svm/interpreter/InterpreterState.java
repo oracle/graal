@@ -126,12 +126,6 @@ final class InterpreterState {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void incrementIntStatic(long slot, int increment) {
-        long offset = primitiveOffset(slot, 0);
-        UNSAFE.putInt(primitives, offset, UNSAFE.getInt(primitives, offset) + increment);
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setFloatStatic(long slot, float value) {
         setFloatStatic(slot, 0, value);
     }
@@ -306,7 +300,8 @@ final class InterpreterState {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void incrementLocalInt(int localSlot, int increment) {
-        incrementIntStatic(localSlot, increment);
+        long offset = primitiveOffset(localSlot, 0);
+        UNSAFE.putInt(primitives, offset, UNSAFE.getInt(primitives, offset) + increment);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
