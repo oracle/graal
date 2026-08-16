@@ -159,10 +159,6 @@ final class InterpreterState {
         setPrimitiveStatic(slot, slotOffset, Double.doubleToRawLongBits(value));
     }
 
-    void clearReference(long slot) {
-        clearReference(slot, 0);
-    }
-
     void clearReference(long slot, long slotOffset) {
         setReferenceStatic(slot, slotOffset, null);
     }
@@ -189,49 +185,6 @@ final class InterpreterState {
     void copyStatic(long src, long srcOffset, long dst, long dstOffset) {
         setPrimitiveStatic(dst, dstOffset, getPrimitiveStatic(src, srcOffset));
         setReferenceStatic(dst, dstOffset, getReferenceStatic(src, srcOffset));
-    }
-
-    void dup1(long top) {
-        copyStatic(top, -1, top, 0);
-    }
-
-    void dupx1(long top) {
-        copyStatic(top, -1, top, 0);
-        copyStatic(top, -2, top, -1);
-        copyStatic(top, 0, top, -2);
-    }
-
-    void dupx2(long top) {
-        copyStatic(top, -1, top, 0);
-        copyStatic(top, -2, top, -1);
-        copyStatic(top, -3, top, -2);
-        copyStatic(top, 0, top, -3);
-    }
-
-    void dup2(long top) {
-        copyStatic(top, -2, top, 0);
-        copyStatic(top, -1, top, 1);
-    }
-
-    void dup2x1(long top) {
-        copyStatic(top, -2, top, 0);
-        copyStatic(top, -1, top, 1);
-        copyStatic(top, -3, top, -1);
-        copyStatic(top, 0, top, -3);
-        copyStatic(top, 1, top, -2);
-    }
-
-    void dup2x2(long top) {
-        copyStatic(top, -1, top, 1);
-        copyStatic(top, -2, top, 0);
-        copyStatic(top, -3, top, -1);
-        copyStatic(top, -4, top, -2);
-        copyStatic(top, 0, top, -4);
-        copyStatic(top, 1, top, -3);
-    }
-
-    void swapSingle(long top) {
-        swapStatic(top, -1, top, -2);
     }
 
     int popInt(long slot, long slotOffset) {

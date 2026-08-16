@@ -326,7 +326,7 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void dup1(InterpreterState state) {
         if (tosLevel == 0) {
-            state.copyStatic(top, -1, top, 0);
+            copySlot(state, -1, 0);
             top++;
         } else if (tosLevel == 1) {
             tosPrimitive1 = tosPrimitive0;
@@ -341,7 +341,9 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void dupx1(InterpreterState state) {
         if (tosLevel == 0) {
-            state.dupx1(top);
+            copySlot(state, -1, 0);
+            copySlot(state, -2, -1);
+            copySlot(state, 0, -2);
         } else if (tosLevel == 1) {
             copySlot(state, -1, 0);
             overwriteSlot(state, -1, tosPrimitive0);
@@ -354,7 +356,10 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void dupx2(InterpreterState state) {
         if (tosLevel == 0) {
-            state.dupx2(top);
+            copySlot(state, -1, 0);
+            copySlot(state, -2, -1);
+            copySlot(state, -3, -2);
+            copySlot(state, 0, -3);
         } else if (tosLevel == 1) {
             copySlot(state, -1, 0);
             copySlot(state, -2, -1);
@@ -369,7 +374,8 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void dup2(InterpreterState state) {
         if (tosLevel == 0) {
-            state.dup2(top);
+            copySlot(state, -2, 0);
+            copySlot(state, -1, 1);
         } else if (tosLevel == 1) {
             fillSlot(state, 0, tosPrimitive0);
             copySlot(state, -1, 1);
@@ -383,7 +389,11 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void dup2x1(InterpreterState state) {
         if (tosLevel == 0) {
-            state.dup2x1(top);
+            copySlot(state, -2, 0);
+            copySlot(state, -1, 1);
+            copySlot(state, -3, -1);
+            copySlot(state, 0, -3);
+            copySlot(state, 1, -2);
         } else if (tosLevel == 1) {
             copySlot(state, -1, 1);
             copySlot(state, -2, 0);
@@ -400,7 +410,12 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void dup2x2(InterpreterState state) {
         if (tosLevel == 0) {
-            state.dup2x2(top);
+            copySlot(state, -1, 1);
+            copySlot(state, -2, 0);
+            copySlot(state, -3, -1);
+            copySlot(state, -4, -2);
+            copySlot(state, 0, -4);
+            copySlot(state, 1, -3);
         } else if (tosLevel == 1) {
             copySlot(state, -1, 1);
             copySlot(state, -2, 0);
@@ -419,7 +434,7 @@ final class InterpreterVirtualStack {
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void swap(InterpreterState state) {
         if (tosLevel == 0) {
-            state.swapSingle(top);
+            state.swapStatic(top, -1, top, -2);
         } else if (tosLevel == 1) {
             copySlot(state, -1, 0);
             overwriteSlot(state, -1, tosPrimitive0);
