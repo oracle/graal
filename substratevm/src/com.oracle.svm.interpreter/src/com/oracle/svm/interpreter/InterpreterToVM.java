@@ -763,16 +763,22 @@ public final class InterpreterToVM {
         if (instance == null) {
             return false;
         }
-        return classToCheck.isAssignableFrom(instance.getClass());
+        DynamicHub typeHub = DynamicHub.fromClass(classToCheck);
+        DynamicHub instanceHub = getObjectHub(instance);
+        return instanceOf(instanceHub, typeHub);
     }
 
-    public static Object checkCast(Object instance, Class<?> classToCheck) throws SemanticJavaException {
-        assert classToCheck != null;
-        // Avoid Class#cast since it pollutes stack traces.
-        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, instance != null && !instanceOf(instance, classToCheck))) {
-            throw SemanticJavaException.raiseClassCastException(instance, classToCheck);
-        }
-        return instance;
+    public static DynamicHub getObjectHub(Object object) {
+        return DynamicHubIntrinsics.readHub(object);
+    }
+
+    public static boolean instanceOf(DynamicHub instanceHub, Class<?> classToCheck) {
+        DynamicHub typeHub = DynamicHub.fromClass(classToCheck);
+        return instanceOf(instanceHub, typeHub);
+    }
+
+    public static boolean instanceOf(DynamicHub instanceHub, DynamicHub typeHub) {
+        return ClassIsAssignableFromNode.isAssignableFrom(typeHub, instanceHub, true);
     }
 
     public static int arrayLength(Object array) {

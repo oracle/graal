@@ -3589,14 +3589,32 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = CHECKCAST)
         private static long checkcastHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObject(state, -1);
-            profileType(state, curBCI, receiver);
-            if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiver != null)) {
-                long cpi = state.readCPI2(curBCI);
-                InterpreterResolvedJavaType type = resolveType(state, CHECKCAST, cpi);
-                InterpreterToVM.checkCast(receiver, type.getJavaClass());
+            // Avoid Class#cast since it pollutes stack traces.
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !checkCastSucceeds(state, virtualStack, curBCI))) {
+                throw SemanticJavaException.raiseClassCastException(curBCI, virtualStack.top, state);
             }
             return advanceToNextBytecode(curBCI, CHECKCAST, state, virtualStack);
+        }
+
+        @AlwaysInline("Keep checkcast type testing in bytecode-handler stubs")
+        private static boolean checkCastSucceeds(InterpreterState state, InterpreterVirtualStack virtualStack, long bci) {
+            DynamicHub receiverHub = loadReceiverHub(state, virtualStack, bci);
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiverHub != null)) {
+                long cpi = state.readCPI2(bci);
+                Class<?> classToCheck = resolveType(state, CHECKCAST, cpi).getJavaClass();
+                return InterpreterToVM.instanceOf(receiverHub, classToCheck);
+            }
+            return true;
+        }
+
+        @AlwaysInline("Keep checkcast receiver loading in bytecode-handler stubs")
+        private static DynamicHub loadReceiverHub(InterpreterState state, InterpreterVirtualStack virtualStack, long bci) {
+            Object receiver = virtualStack.peekObject(state, -1);
+            profileType(state, bci, receiver);
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiver != null)) {
+                return InterpreterToVM.getObjectHub(receiver);
+            }
+            return null;
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
