@@ -181,7 +181,12 @@ public final class PEReadEliminationBlockState extends PartialEscapeBlockState<P
     }
 
     public void killReadCache() {
-        readCache.clear();
+        Iterator<ReadCacheEntry> iterator = readCache.getKeys().iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().identity.isMutable()) {
+                iterator.remove();
+            }
+        }
     }
 
     public void killReadCache(LocationIdentity identity, int index) {

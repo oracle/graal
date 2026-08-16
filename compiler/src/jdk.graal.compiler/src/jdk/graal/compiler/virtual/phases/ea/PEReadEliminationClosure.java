@@ -275,6 +275,15 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             state.killReadCache();
             return false;
         }
+        if (load.field().isFinal()) {
+            ValueNode receiver = GraphUtil.unproxify(getAlias(load.object()));
+            ValueNode immutableAlias = state.getReadCache(receiver, new FieldLocationIdentity(load.field(), true), -1, load.field().getJavaKind(), this);
+            if (immutableAlias != null) {
+                effects.replaceAtUsages(load, immutableAlias, load);
+                addScalarAlias(load, immutableAlias);
+                return true;
+            }
+        }
         return processLoad(load, load.object(), new FieldLocationIdentity(load.field()), -1, load.field().getJavaKind(), state, effects);
     }
 
@@ -283,7 +292,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
      */
     private boolean processFieldAlias(FieldAliasNode fieldAliasNode, PEReadEliminationBlockState state) {
         ValueNode receiver = GraphUtil.unproxify(fieldAliasNode.getReceiver());
-        FieldLocationIdentity locationIdentity = new FieldLocationIdentity(fieldAliasNode.getField());
+        LocationIdentity locationIdentity = fieldAliasNode.getLocationIdentity();
         ValueNode cachedValue = state.getReadCache(receiver, locationIdentity, -1, fieldAliasNode.getField().getJavaKind(), this);
         GraalError.guarantee(cachedValue == null, "FieldAliasNode %s should be inserted at the beginning of the method but there is an existing cached value %s", fieldAliasNode, cachedValue);
         state.addReadCache(receiver, locationIdentity, -1, fieldAliasNode.getField().getJavaKind(), false, fieldAliasNode.getAlias(), this);

@@ -41,6 +41,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
@@ -199,6 +200,9 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             object = GraphUtil.unproxify(object);
                             LoadCacheEntry identifier = new LoadCacheEntry(object, location);
                             ValueNode cachedValue = state.getCacheEntry(identifier);
+                            if (cachedValue == null && node instanceof LoadFieldNode loadFieldNode && loadFieldNode.field().isFinal()) {
+                                cachedValue = state.getCacheEntry(new LoadCacheEntry(object, new FieldLocationIdentity(loadFieldNode.field(), true)));
+                            }
 
                             if (cachedValue != null && areValuesReplaceable(access, cachedValue, considerGuards)) {
                                 effects.replaceAtUsages(access, cachedValue, (FixedNode) access);

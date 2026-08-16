@@ -135,7 +135,7 @@ public final class BytecodeHandlerStubHelper {
                     }
                 } else {
                     ValueNode owner = handlerArguments.getLast();
-                    kit.append(new FieldAliasNode(owner, argumentInfo.field(), stubParameters[argumentInfo.index()]));
+                    kit.append(new FieldAliasNode(owner, argumentInfo.field(), stubParameters[argumentInfo.index()], argumentInfo.isImmutable()));
                 }
             } else {
                 handlerArguments.add(stubParameters[argumentInfo.index()]);
