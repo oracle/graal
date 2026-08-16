@@ -2147,7 +2147,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IALOAD, safepoint = false)
         private static long ialoadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             int[] array = uncheckedCast(nonNullReceiver, int[].class);
             int index = virtualStack.peekInt(state, -1);
@@ -2162,7 +2162,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LALOAD, safepoint = false)
         private static long laloadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             long[] array = uncheckedCast(nonNullReceiver, long[].class);
             int index = virtualStack.peekInt(state, -1);
@@ -2177,7 +2177,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FALOAD, safepoint = false)
         private static long faloadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             float[] array = uncheckedCast(nonNullReceiver, float[].class);
             int index = virtualStack.peekInt(state, -1);
@@ -2192,7 +2192,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DALOAD, safepoint = false)
         private static long daloadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             double[] array = uncheckedCast(nonNullReceiver, double[].class);
             int index = virtualStack.peekInt(state, -1);
@@ -2207,7 +2207,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = AALOAD, safepoint = false)
         private static long aaloadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
             int index = virtualStack.peekInt(state, -1);
@@ -2223,7 +2223,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = BALOAD, safepoint = false)
         private static long baloadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
 
             // TODO decide which is fast path
@@ -2253,7 +2253,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = CALOAD, safepoint = false)
         private static long caloadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             char[] array = uncheckedCast(nonNullReceiver, char[].class);
             int index = virtualStack.peekInt(state, -1);
@@ -2268,7 +2268,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = SALOAD, safepoint = false)
         private static long saloadHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -2);
+            Object receiver = virtualStack.peekObject(state, -2);
             Object nonNullReceiver = nullCheck(receiver);
             short[] array = uncheckedCast(nonNullReceiver, short[].class);
             int index = virtualStack.peekInt(state, -1);
@@ -2283,7 +2283,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = IASTORE, safepoint = false)
         private static long iastoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -3);
+            Object receiver = virtualStack.peekObject(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             int[] array = uncheckedCast(nonNullReceiver, int[].class);
             int index = virtualStack.peekInt(state, -2);
@@ -2302,7 +2302,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = LASTORE, safepoint = false)
         private static long lastoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -4);
+            Object receiver = virtualStack.peekObject(state, -4);
             Object nonNullReceiver = nullCheck(receiver);
             long[] array = uncheckedCast(nonNullReceiver, long[].class);
             int index = virtualStack.peekInt(state, -3);
@@ -2322,7 +2322,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = FASTORE, safepoint = false)
         private static long fastoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -3);
+            Object receiver = virtualStack.peekObject(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             float[] array = uncheckedCast(nonNullReceiver, float[].class);
             int index = virtualStack.peekInt(state, -2);
@@ -2341,7 +2341,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = DASTORE, safepoint = false)
         private static long dastoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -4);
+            Object receiver = virtualStack.peekObject(state, -4);
             Object nonNullReceiver = nullCheck(receiver);
             double[] array = uncheckedCast(nonNullReceiver, double[].class);
             int index = virtualStack.peekInt(state, -3);
@@ -2361,7 +2361,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = AASTORE, safepoint = false)
         private static long aastoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -3);
+            Object receiver = virtualStack.peekObject(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
             int index = virtualStack.peekInt(state, -2);
@@ -2369,7 +2369,7 @@ public final class Interpreter {
             if (Integer.compareUnsigned(index, length) >= 0) {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
-            Object value = virtualStack.peekObjectAtOffset(state, -1);
+            Object value = virtualStack.peekObject(state, -1);
             profileType(state.methodProfile, curBCI, value);
             InterpreterToVM.setArrayObject(value, index, array);
             virtualStack.pop1(state);
@@ -2382,7 +2382,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = BASTORE, safepoint = false)
         private static long bastoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -3);
+            Object receiver = virtualStack.peekObject(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
 
             if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
@@ -2421,7 +2421,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = CASTORE, safepoint = false)
         private static long castoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -3);
+            Object receiver = virtualStack.peekObject(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             char[] array = uncheckedCast(nonNullReceiver, char[].class);
             int index = virtualStack.peekInt(state, -2);
@@ -2440,7 +2440,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = SASTORE, safepoint = false)
         private static long sastoreHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -3);
+            Object receiver = virtualStack.peekObject(state, -3);
             Object nonNullReceiver = nullCheck(receiver);
             short[] array = uncheckedCast(nonNullReceiver, short[].class);
             int index = virtualStack.peekInt(state, -2);
@@ -3436,10 +3436,10 @@ public final class Interpreter {
             }
 
             try {
-                long materializedTop = virtualStack.materializedTop(state);
+                long materializedTop = virtualStack.beginOutlinedCall(state);
                 int slotDelta = invoke(state.frame, state.methodProfile, state.method, state.code, materializedTop, (int) curBCI, curOpcode,
                                 state.forceStayInInterpreter, preferStayInInterpreter);
-                virtualStack.adjustTop(slotDelta);
+                virtualStack.endOutlinedCall(slotDelta);
             } finally {
                 if (debuggerEventsSupported()) {
                     Thread currentThread = Thread.currentThread();
@@ -3529,7 +3529,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = ARRAYLENGTH, safepoint = false)
         private static long arraylengthHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object array = virtualStack.peekObjectAtOffset(state, -1);
+            Object array = virtualStack.peekObject(state, -1);
             Object nonNullArray = nullCheck(array);
             int length = InterpreterToVM.arrayLength(nonNullArray);
             virtualStack.pop1(state);
@@ -3551,7 +3551,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = CHECKCAST)
         private static long checkcastHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -1);
+            Object receiver = virtualStack.peekObject(state, -1);
             profileType(state.methodProfile, curBCI, receiver);
             if (receiver != null) {
                 InterpreterResolvedJavaType type = resolveType(state.method, CHECKCAST, BytecodeStream.uncheckedReadCPI2(state.code, curBCI));
@@ -3564,7 +3564,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = INSTANCEOF)
         private static long instanceofHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            Object receiver = virtualStack.peekObjectAtOffset(state, -1);
+            Object receiver = virtualStack.peekObject(state, -1);
             profileType(state.methodProfile, curBCI, receiver);
             int result = (receiver != null && InterpreterToVM.instanceOf(receiver, resolveType(state.method, INSTANCEOF, BytecodeStream.uncheckedReadCPI2(state.code, curBCI)))) ? 1 : 0;
             state.clearReference(virtualStack.top, -1);
@@ -3574,7 +3574,7 @@ public final class Interpreter {
 
         @AlwaysInline("Fold monitor opcode in individual handlers")
         private static long monitorBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
-            Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -1));
+            Object receiver = nullCheck(virtualStack.peekObject(state, -1));
             if (curOpcode == MONITORENTER) {
                 InterpreterToVM.monitorEnter(state.frame, receiver);
             } else {
@@ -3679,8 +3679,8 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = MULTIANEWARRAY)
         private static long multianewarrayHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long materializedTop = virtualStack.materializedTop(state);
-            virtualStack.adjustTop(allocateMultiArray(state, materializedTop, curBCI));
+            long materializedTop = virtualStack.beginOutlinedCall(state);
+            virtualStack.endOutlinedCall(allocateMultiArray(state, materializedTop, curBCI));
             return advanceToNextBytecode(curBCI, MULTIANEWARRAY, state, virtualStack);
         }
 
@@ -3754,7 +3754,7 @@ public final class Interpreter {
             case Float   -> virtualStack.peekFloat(state, -1);
             case Double  -> virtualStack.peekDouble(state, -1);
             case Void    -> null; // void
-            case Object  -> virtualStack.peekObjectAtOffset(state, -1);
+            case Object  -> virtualStack.peekObject(state, -1);
             default      -> throw VMError.shouldNotReachHereAtRuntime();
         };
         // @formatter:on
@@ -3796,8 +3796,8 @@ public final class Interpreter {
         if (targetBCI <= curBCI) {
             GraalDirectives.safepoint();
             if (SubstrateOptions.useRistretto() && !forceStayInInterpreter) {
-                long materializedTop = virtualStack.materializedTop(state);
-                OSRResult result = RistrettoOSRSupport.tryOSR(method, methodProfile, state.frame, (int) targetBCI, (int) materializedTop);
+                virtualStack.materialize(state);
+                OSRResult result = RistrettoOSRSupport.tryOSR(method, methodProfile, state.frame, (int) targetBCI, (int) virtualStack.top);
                 if (result != null) {
                     if (result.exception() != null) {
                         throw new OSRException(result.exception());
@@ -3978,8 +3978,8 @@ public final class Interpreter {
             virtualStack.pushInt(state, branchPool.uncheckedIntAt(cpi));
             return;
         }
-        resolveConstantAtSlowPath(state, virtualStack.materializedTop(state), cpi, opcode, pool);
-        virtualStack.adjustTop(1);
+        resolveConstantAtSlowPath(state, virtualStack.beginOutlinedCall(state), cpi, opcode, pool);
+        virtualStack.endOutlinedCall(1);
     }
 
     @AlwaysInline("Keep resolved constant fast paths in bytecode-handler stubs")
@@ -4001,8 +4001,8 @@ public final class Interpreter {
             virtualStack.pushLong(state, branchPool.uncheckedLongAt(cpi));
             return;
         }
-        resolveConstantAtSlowPath(state, virtualStack.materializedTop(state), cpi, LDC2_W, pool);
-        virtualStack.adjustTop(2);
+        resolveConstantAtSlowPath(state, virtualStack.beginOutlinedCall(state), cpi, LDC2_W, pool);
+        virtualStack.endOutlinedCall(2);
     }
 
     /**
@@ -4551,7 +4551,7 @@ public final class Interpreter {
                 virtualStack.popPrimitive2();
             }
             case Object -> {
-                InterpreterToVM.setFieldObject(virtualStack.peekObjectAtOffset(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, field, true);
                 virtualStack.pop1(state);
             }
             default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
@@ -4573,42 +4573,42 @@ public final class Interpreter {
         long logicalTop = top + virtualStack.tosLevel;
         switch (kind) {
             case Boolean -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Byte -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Char -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Short -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Int -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Double -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -3));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -3));
                 InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -3);
@@ -4616,14 +4616,14 @@ public final class Interpreter {
                 virtualStack.popPrimitive1();
             }
             case Float -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 virtualStack.popPrimitive2();
             }
             case Long -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -3));
+                Object receiver = nullCheck(virtualStack.peekObject(state, -3));
                 InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -3);
@@ -4631,8 +4631,8 @@ public final class Interpreter {
                 virtualStack.popPrimitive1();
             }
             case Object -> {
-                Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -2));
-                InterpreterToVM.setFieldObject(virtualStack.peekObjectAtOffset(state, -1), receiver, field, true);
+                Object receiver = nullCheck(virtualStack.peekObject(state, -2));
+                InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, field, true);
                 virtualStack.clear();
                 state.clearReference(logicalTop, -2);
                 state.clearReference(logicalTop, -1);
@@ -4681,7 +4681,7 @@ public final class Interpreter {
 
         long top = virtualStack.top;
         long logicalTop = top + virtualStack.tosLevel;
-        Object receiver = nullCheck(virtualStack.peekObjectAtOffset(state, -1));
+        Object receiver = nullCheck(virtualStack.peekObject(state, -1));
 
         JavaKind kind = field.getJavaKind();
         // @formatter:off

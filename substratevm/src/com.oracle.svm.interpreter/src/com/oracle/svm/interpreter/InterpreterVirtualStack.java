@@ -52,6 +52,42 @@ final class InterpreterVirtualStack {
         top = GraalDirectives.opaque(top);
     }
 
+    @AlwaysInline("Kill dependencies on unused cached primitive returns")
+    void killUnusedFields() {
+        if (tosLevel == 0) {
+            tosPrimitive0 = GraalDirectives.arbitraryValue(tosPrimitive0);
+            tosPrimitive1 = GraalDirectives.arbitraryValue(tosPrimitive1);
+        } else if (tosLevel == 1) {
+            tosPrimitive1 = GraalDirectives.arbitraryValue(tosPrimitive1);
+        }
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void materialize(InterpreterState state) {
+        if (tosLevel == 1) {
+            state.setLongStatic(top, tosPrimitive0);
+            top++;
+            tosLevel = 0;
+        } else if (tosLevel == 2) {
+            state.setLongStatic(top, tosPrimitive0);
+            state.setLongStatic(top + 1, tosPrimitive1);
+            top += 2;
+            tosLevel = 0;
+        }
+    }
+
+    @AlwaysInline("Materialize before an outlined stack operation without passing InterpreterVirtualStack")
+    long beginOutlinedCall(InterpreterState state) {
+        materialize(state);
+        return top;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void endOutlinedCall(int slotDelta) {
+        assert tosLevel == 0;
+        top += slotDelta;
+    }
+
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void pushInt(InterpreterState state, int value) {
         if (tosLevel == 0) {
@@ -110,20 +146,6 @@ final class InterpreterVirtualStack {
         materialize(state);
         state.putReturnAddress(top, targetBCI);
         top++;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void materialize(InterpreterState state) {
-        if (tosLevel == 1) {
-            state.setLongStatic(top, tosPrimitive0);
-            top++;
-            tosLevel = 0;
-        } else if (tosLevel == 2) {
-            state.setLongStatic(top, tosPrimitive0);
-            state.setLongStatic(top + 1, tosPrimitive1);
-            top += 2;
-            tosLevel = 0;
-        }
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
@@ -294,94 +316,11 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    Object peekObjectAtOffset(InterpreterState state, long offset) {
+    Object peekObject(InterpreterState state, long offset) {
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
         return state.peekObject(top, offset + tosLevel);
-    }
-
-    @AlwaysInline("Materialize before an outlined stack operation without passing InterpreterVirtualStack")
-    long materializedTop(InterpreterState state) {
-        materialize(state);
-        return top;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void adjustTop(int slotDelta) {
-        assert tosLevel == 0;
-        top += slotDelta;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithInt(int consumedSlots, int value) {
-        replaceTopWithPrimitive(consumedSlots, value);
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithFloat(int consumedSlots, float value) {
-        replaceTopWithPrimitive(consumedSlots, Float.floatToRawIntBits(value));
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithLong(InterpreterState state, int consumedSlots, long value) {
-        materializeSurvivors(state, consumedSlots);
-        pushLong(state, value);
-        top -= consumedSlots;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithDouble(InterpreterState state, int consumedSlots, double value) {
-        materializeSurvivors(state, consumedSlots);
-        pushLong(state, Double.doubleToRawLongBits(value));
-        top -= consumedSlots;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithObject(InterpreterState state, int consumedSlots, Object value) {
-        long logicalTop = top + tosLevel;
-        materializeSurvivors(state, consumedSlots);
-        state.putObject(logicalTop - consumedSlots, value);
-        top += 1 - consumedSlots;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void discardCachedValues() {
-        tosLevel = 0;
-    }
-
-    @AlwaysInline("Kill dependencies on unused cached primitive returns")
-    void killUnusedFields() {
-        if (tosLevel == 0) {
-            tosPrimitive0 = GraalDirectives.arbitraryValue(tosPrimitive0);
-            tosPrimitive1 = GraalDirectives.arbitraryValue(tosPrimitive1);
-        } else if (tosLevel == 1) {
-            tosPrimitive1 = GraalDirectives.arbitraryValue(tosPrimitive1);
-        }
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void clear() {
-        top += tosLevel;
-        tosLevel = 0;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void popPrimitive1() {
-        int oldTosLevel = tosLevel;
-        if (tosLevel == 2) {
-            tosLevel = 1;
-        } else if (tosLevel == 1) {
-            tosLevel = 0;
-        }
-        top += oldTosLevel - tosLevel - 1;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void popPrimitive2() {
-        int oldTosLevel = tosLevel;
-        tosLevel = 0;
-        top += oldTosLevel - tosLevel - 2;
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
@@ -537,5 +476,66 @@ final class InterpreterVirtualStack {
         }
         tosLevel = 0;
         top += oldTosLevel;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void popPrimitive1() {
+        int oldTosLevel = tosLevel;
+        if (tosLevel == 2) {
+            tosLevel = 1;
+        } else if (tosLevel == 1) {
+            tosLevel = 0;
+        }
+        top += oldTosLevel - tosLevel - 1;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void popPrimitive2() {
+        int oldTosLevel = tosLevel;
+        tosLevel = 0;
+        top += oldTosLevel - tosLevel - 2;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void replaceTopWithInt(int consumedSlots, int value) {
+        replaceTopWithPrimitive(consumedSlots, value);
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void replaceTopWithFloat(int consumedSlots, float value) {
+        replaceTopWithPrimitive(consumedSlots, Float.floatToRawIntBits(value));
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void replaceTopWithLong(InterpreterState state, int consumedSlots, long value) {
+        materializeSurvivors(state, consumedSlots);
+        pushLong(state, value);
+        top -= consumedSlots;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void replaceTopWithDouble(InterpreterState state, int consumedSlots, double value) {
+        materializeSurvivors(state, consumedSlots);
+        pushLong(state, Double.doubleToRawLongBits(value));
+        top -= consumedSlots;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void replaceTopWithObject(InterpreterState state, int consumedSlots, Object value) {
+        long logicalTop = top + tosLevel;
+        materializeSurvivors(state, consumedSlots);
+        state.putObject(logicalTop - consumedSlots, value);
+        top += 1 - consumedSlots;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void discardCachedValues() {
+        tosLevel = 0;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    void clear() {
+        top += tosLevel;
+        tosLevel = 0;
     }
 }
