@@ -612,7 +612,10 @@ public final class G1Heap extends Heap {
         G1InternalState state = UnsafeStackValue.get(G1InternalState.class);
         fillGCInternalState(state);
 
-        if (pointsIntoTable(ptr, state.blockOffsetTableStart(), state.blockOffsetTableSize())) {
+        if (pointsIntoTable(ptr, state.cardTableStart(), state.cardTableSize())) {
+            log.string("points into the card table");
+            return true;
+        } else if (pointsIntoTable(ptr, state.blockOffsetTableStart(), state.blockOffsetTableSize())) {
             log.string("points into the block offset table");
             return true;
         }
