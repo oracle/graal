@@ -3344,7 +3344,7 @@ public final class Interpreter {
             } else {
                 targetBCI = TableSwitch.uncheckedDefaultTarget(state.code, curBCI);
             }
-            virtualStack.popPrimitive1();
+            virtualStack.pop1(state, false);
             return finishJump(curBCI, targetBCI, state, virtualStack);
         }
 
@@ -3363,12 +3363,12 @@ public final class Interpreter {
                 } else if (midVal > key) {
                     high = mid - 1;
                 } else {
-                    virtualStack.popPrimitive1();
+                    virtualStack.pop1(state, false);
                     return finishJump(curBCI, curBCI + LookupSwitch.uncheckedOffsetAt(state.code, curBCI, mid), state, virtualStack);
                 }
             }
 
-            virtualStack.popPrimitive1();
+            virtualStack.pop1(state, false);
             return finishJump(curBCI, LookupSwitch.uncheckedDefaultTarget(state.code, curBCI), state, virtualStack);
         }
 
@@ -3547,8 +3547,10 @@ public final class Interpreter {
         private static long newarrayHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
             int length = virtualStack.peekInt(state, -1);
-            Object array = InterpreterToVM.createNewPrimitiveArray(BytecodeStream.uncheckedReadByte(state.code, curBCI), length);
-            virtualStack.replaceTopWithObject(state, 1, array);
+            byte primitiveType = BytecodeStream.uncheckedReadByte(state.code, curBCI);
+            Object array = InterpreterToVM.createNewPrimitiveArray(primitiveType, length);
+            virtualStack.pop1(state, false);
+            virtualStack.pushObject(state, array);
             return advanceToNextBytecode(curBCI, NEWARRAY, state, virtualStack);
         }
 
@@ -3559,7 +3561,8 @@ public final class Interpreter {
             int length = virtualStack.peekInt(state, -1);
             long cpi = state.readCPI2(curBCI);
             Object array = InterpreterToVM.createNewReferenceArray(resolveType(state, ANEWARRAY, cpi), length);
-            virtualStack.replaceTopWithObject(state, 1, array);
+            virtualStack.pop1(state, false);
+            virtualStack.pushObject(state, array);
             return advanceToNextBytecode(curBCI, ANEWARRAY, state, virtualStack);
         }
 
@@ -3642,31 +3645,24 @@ public final class Interpreter {
             return advanceToNextBytecode(GraalDirectives.anchorValue(curBCI), INSTANCEOF, state, virtualStack);
         }
 
-        @AlwaysInline("Fold monitor opcode in individual handlers")
-        private static long monitorBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
-            Object receiver = nullCheck(virtualStack.peekObject(state, -1));
-            if (curOpcode == MONITORENTER) {
-                InterpreterToVM.monitorEnter(state.frame, receiver);
-            } else {
-                InterpreterToVM.monitorExit(state.frame, receiver);
-            }
-            state.clearReference(virtualStack.top, -1);
-            virtualStack.pop1(state);
-            return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
-        }
-
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MONITORENTER)
         private static long monitorenterHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            return monitorBytecode(curBCI, state, MONITORENTER, virtualStack);
+            Object receiver = nullCheck(virtualStack.peekObject(state, -1));
+            InterpreterToVM.monitorEnter(state.frame, receiver);
+            virtualStack.pop1(state);
+            return advanceToNextBytecode(curBCI, MONITORENTER, state, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = MONITOREXIT)
         private static long monitorexitHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            return monitorBytecode(curBCI, state, MONITOREXIT, virtualStack);
+            Object receiver = nullCheck(virtualStack.peekObject(state, -1));
+            InterpreterToVM.monitorExit(state.frame, receiver);
+            virtualStack.pop1(state);
+            return advanceToNextBytecode(curBCI, MONITOREXIT, state, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
@@ -3728,10 +3724,8 @@ public final class Interpreter {
                 }
                 case IINC -> {
                     int index = BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI);
-                    int value = state.getLocalInt(index);
                     int increment = BytecodeStream.uncheckedReadIncrement2(state.code, curBCI);
-                    int result = value + increment;
-                    state.setLocalInt(index, result);
+                    state.incrementLocalInt(index, increment);
                 }
                 case RET -> {
                     int index = BytecodeStream.uncheckedReadLocalIndex2(state.code, curBCI);
@@ -3750,7 +3744,8 @@ public final class Interpreter {
         private static long multianewarrayHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
             long materializedTop = virtualStack.beginOutlinedCall(state);
-            virtualStack.endOutlinedCall(allocateMultiArray(state, materializedTop, curBCI));
+            int slotDelta = allocateMultiArray(state, materializedTop, curBCI);
+            virtualStack.endOutlinedCall(slotDelta);
             return advanceToNextBytecode(curBCI, MULTIANEWARRAY, state, virtualStack);
         }
 
