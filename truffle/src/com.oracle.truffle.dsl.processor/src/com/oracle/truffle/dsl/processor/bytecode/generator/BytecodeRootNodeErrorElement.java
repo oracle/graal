@@ -63,6 +63,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -307,10 +308,11 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createEnd(OperationModel operation) {
+            TypeMirror returnType = operation.kind == OperationKind.BIND_STACKVALUE ? types.StackValue : type(void.class);
             if (hasTypedSignature(operation.operationEndArguments)) {
-                return createTypedMethodStub("end" + operation.name, type(void.class), operation.operationEndArguments, operation.kind == OperationModel.OperationKind.TAG);
+                return createTypedMethodStub("end" + operation.name, returnType, operation.operationEndArguments, operation.kind == OperationModel.OperationKind.TAG);
             }
-            return createMethodStub("end" + operation.name, type(void.class));
+            return createMethodStub("end" + operation.name, returnType);
         }
 
         private CodeExecutableElement createEndRoot() {

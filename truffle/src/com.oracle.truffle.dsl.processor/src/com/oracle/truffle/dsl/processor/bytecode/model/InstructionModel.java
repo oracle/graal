@@ -73,9 +73,11 @@ public final class InstructionModel implements PrettyPrintable {
     public enum InstructionKind {
         LOAD_ARGUMENT,
         LOAD_CONSTANT,
+        LOAD_STACKVALUE,
         LOAD_LOCAL,
         CLEAR_LOCAL,
         STORE_LOCAL,
+        STORE_STACKVALUE,
         BRANCH,
         BRANCH_BACKWARD,
         BRANCH_FALSE,

@@ -238,6 +238,10 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_EXCEPTION, "load.exception", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.STACK_POINTER, "exception_sp"));
+        m.loadStackValueInstruction = m.instruction(InstructionKind.LOAD_STACKVALUE, "load.stackvalue", m.signature(Object.class)) //
+                        .addImmediate(ImmediateKind.SHORT, "offset");
+        m.storeStackValueInstruction = m.instruction(InstructionKind.STORE_STACKVALUE, "store.stackvalue", m.signature(void.class, "value", Object.class, Object.class)) //
+                        .addImmediate(ImmediateKind.SHORT, "offset");
         m.loadLocalOperation = m.operation(OperationKind.LOAD_LOCAL, "LoadLocal",
                         String.format("""
                                         LoadLocal reads {@code local} from the current frame.
@@ -461,6 +465,36 @@ public class BytecodeDSLBuiltins {
      * specification only if an operation with the same name is not already defined.
      */
     private static void addBackwardCompatibleOperations(BytecodeDSLModel m, TruffleTypes types) {
+        m.bindStackValueOperation = m.operation(OperationKind.BIND_STACKVALUE, "BindStackValue",
+                        """
+                                        BindStackValue binds its child's result while it remains live on the operand stack.
+                                        It must be directly enclosed by a custom operation or Block, ignoring Source and SourceSection metadata operations.
+                                        The returned StackValue is valid while the enclosing operation is active.
+                                        """, "BindStackValue", true);
+        if (m.bindStackValueOperation != null) {
+            m.bindStackValueOperation.setDynamicOperands(child("value"));
+        }
+
+        m.loadStackValueOperation = m.operation(OperationKind.LOAD_STACKVALUE, "LoadStackValue", """
+                        LoadStackValue reads {@code stackValue}.
+                        The stack value must belong to an active custom operation or Block in the current root.
+                        """, "LoadStackValue", true);
+        if (m.loadStackValueOperation != null) {
+            m.loadStackValueOperation.setOperationBeginArguments(new OperationArgument(types.StackValue, Encoding.STACK_VALUE, "stackValue", "the stack value to load")) //
+                            .setInstruction(m.loadStackValueInstruction);
+        }
+
+        m.storeStackValueOperation = m.operation(OperationKind.STORE_STACKVALUE, "StoreStackValue", """
+                        StoreStackValue writes the value produced by {@code value} into {@code stackValue}.
+                        The stack value must belong to an active custom operation or Block in the current root.
+                        """, "StoreStackValue", true);
+        if (m.storeStackValueOperation != null) {
+            m.storeStackValueOperation.setVoid(true) //
+                            .setOperationBeginArguments(new OperationArgument(types.StackValue, Encoding.STACK_VALUE, "stackValue", "the stack value to store to")) //
+                            .setDynamicOperands(child("value")) //
+                            .setInstruction(m.storeStackValueInstruction);
+        }
+
         OperationModel clearLocalOperation = m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
                         ClearLocal clears {@code local} in the current frame.
                         Until a value is written to the local, a subsequent LoadLocal %s.

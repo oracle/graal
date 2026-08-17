@@ -60,6 +60,7 @@ import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.LocalVariable;
+import com.oracle.truffle.api.bytecode.StackValue;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -204,6 +205,86 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         }
         assertEquals(42L, node.getCallTarget().call());
 
+    }
+
+    @Test
+    public void testLoadTopStackValuePop() {
+        BasicInterpreter node = parseNode("loadTopStackValuePop", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            b.beginBindStackValue();
+            b.emitLoadNull();
+            StackValue x = b.endBindStackValue();
+
+            // this result is popped.
+            b.emitLoadStackValue(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.null",
+                            "load.constant",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.null",
+                            "dup",
+                            "pop",
+                            "load.constant",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testLoadStackValuePop() {
+        BasicInterpreter node = parseNode("loadStackValuePop", (BasicInterpreterBuilder b) -> {
+            b.beginRoot();
+
+            b.beginBlock();
+            b.beginBindStackValue();
+            b.emitLoadNull();
+            StackValue x = b.endBindStackValue();
+
+            b.beginBindStackValue();
+            b.emitLoadNull();
+            b.endBindStackValue();
+
+            // this result is popped.
+            b.emitLoadStackValue(x);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        if (run.hasInstructionRewriting()) {
+            assertInstructions(node,
+                            "load.null",
+                            "load.null",
+                            "load.constant",
+                            "return");
+        } else {
+            assertInstructions(node,
+                            "load.null",
+                            "load.null",
+                            "load.stackvalue",
+                            "pop",
+                            "load.constant",
+                            "return");
+        }
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test
