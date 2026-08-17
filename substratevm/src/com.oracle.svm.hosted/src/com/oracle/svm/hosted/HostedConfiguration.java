@@ -115,7 +115,7 @@ public class HostedConfiguration {
         }
 
         if (!ImageSingletons.contains(ObjectLayout.class)) {
-            ObjectLayout objectLayout = createObjectLayout(IdentityHashMode.TYPE_SPECIFIC);
+            ObjectLayout objectLayout = createObjectLayout();
             ImageSingletons.add(ObjectLayout.class, objectLayout);
         }
     }
@@ -130,7 +130,23 @@ public class HostedConfiguration {
         return new CompressEncoding(compressBase, compressShift);
     }
 
-    public static ObjectLayout createObjectLayout(IdentityHashMode identityHashMode) {
+    /**
+     * Defines the serial/epsilon GC object layout.
+     *
+     * The identity hash code field is optional by default (see
+     * {@link SubstrateOptions#OptionalIdentityHashCodes}) and it is only materialized
+     * during garbage collection. The field materialization may change the object size (unless there
+     * is an otherwise unused gap in the object that can be used instead) and writes a valid
+     * identity hash code into the field. Note that non-GC code may only access the identity hash
+     * code field after it was materialized (regardless if the field is placed in an unused gap or
+     * not).
+     *
+     * @see #createObjectLayout(JavaKind, IdentityHashMode)
+     */
+    public static ObjectLayout createObjectLayout() {
+        boolean useOptionalIdentityHashField = SubstrateOptions.canUseOptionalIdentityHashCodes() &&
+                        !Boolean.FALSE.equals(SubstrateOptions.OptionalIdentityHashCodes.getValue());
+        IdentityHashMode identityHashMode = useOptionalIdentityHashField ? IdentityHashMode.OPTIONAL : IdentityHashMode.TYPE_SPECIFIC;
         JavaKind referenceKind = JavaKind.Object;
         if (SubstrateOptions.useCompressedReferences()) {
             referenceKind = JavaKind.Int;
@@ -139,16 +155,18 @@ public class HostedConfiguration {
     }
 
     /**
-     * Defines the serial/epsilon GC object layout. The monitor slot and the identity hash code
-     * fields are appended to instance objects (unless there is an otherwise unused gap in the
-     * object that can be used).
+     * Defines the serial/epsilon GC object layout, using the given identity hash mode. The monitor
+     * slot is appended to instance objects unless there is an otherwise unused gap in the object
+     * that can be used.
      *
      * The layout of instance objects is:
      * <ul>
      * <li>32/64 bit hub reference</li>
      * <li>instance fields (references, primitives)</li>
-     * <li>32/64 bit object monitor reference (if needed)</li>
-     * <li>32 bit identity hashcode (if needed)</li>
+     * <li>32/64 bit object monitor reference (if needed; may be placed in a gap between instance
+     * fields instead)</li>
+     * <li>32 bit identity hashcode (if needed; may be added at runtime or placed in a gap between
+     * instance fields instead)</li>
      * </ul>
      *
      * The layout of array objects is:

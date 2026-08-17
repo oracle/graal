@@ -898,6 +898,27 @@ public class SubstrateOptions {
         }
     }
 
+    @Option(help = "Allocate memory for identity hash codes only for those objects that need it.", type = Expert)//
+    public static final HostedOptionKey<Boolean> OptionalIdentityHashCodes = new HostedOptionKey<>(null, optionKey -> {
+        if (!Boolean.TRUE.equals(optionKey.getValue())) {
+            return;
+        }
+
+        if (!useSerialGC() && !useEpsilonGC()) {
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial ('--gc=serial') or the epsilon garbage collector ('--gc=epsilon').");
+        }
+        if (!canUseOptionalIdentityHashCodes()) {
+            throw UserError.abort("Option %s cannot be used together with %s or %s.",
+                            SubstrateOptionsParser.commandArgument(optionKey, "+"),
+                            SubstrateOptionsParser.commandArgument(ConcealedOptions.UseCompressedReferences, "-"),
+                            SubstrateOptionsParser.commandArgument(ConcealedOptions.UseCompressedReferenceShift, "-"));
+        }
+    });
+
+    public static boolean canUseOptionalIdentityHashCodes() {
+        return useCompressedReferences() && ConcealedOptions.UseCompressedReferenceShift.getValue();
+    }
+
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Fill unused and freed native memory with sentinel values. Needs NMT.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> ZapNativeMemory = new HostedOptionKey<>(false, SubstrateOptions::validateZapNativeMemory);

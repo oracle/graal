@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM 25.4 (Internal Version 25.4.4)
+* (GR-78784) Default to optional identity hash code fields with SerialGC. Few objects need one, and this optimization adds them during garbage collection. It can be disabled with `-H:-OptionalIdentityHashCodes`.
+
 ## GraalVM 25.3 (Internal Version 25.3.4.1)
 * (GR-77137) Added `SubstratePriorityInliningPhase` to leverage the new priority inliner added to the compiler suite.
 * (GR-77637) Fast inline execution paths and optimized spinning for `synchronized`. This generally improves locking performance, but inlined fast paths might increase image size. They can be disabled with `-H:-UseMonitorFastPath`.
