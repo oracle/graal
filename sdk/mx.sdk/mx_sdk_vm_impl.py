@@ -1912,7 +1912,7 @@ class NativeImageResourcesFileListBuildTask(mx.ProjectBuildTask, metaclass=ABCMe
                             for line in fp:
                                 contents.append(line.strip())
 
-            self._native_image_resources_filelist_contents = os.linesep.join(contents)
+            self._native_image_resources_filelist_contents = '\n'.join(contents)
         return self._native_image_resources_filelist_contents
 
     def newestOutput(self):
