@@ -181,6 +181,7 @@ import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.vm.ci.code.Architecture;
@@ -501,8 +502,10 @@ public class SubstrateGraphBuilderPlugins {
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
                 Runnable proxyRegistrationRunnable = interceptProxyInterfaces(b, targetMethod, annotationSubstitutions, args[1]);
                 if (proxyRegistrationRunnable != null) {
-                    Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
-                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass);
+                    ResolvedJavaType callerClass = b.getMethod().getDeclaringClass();
+                    ResolvedJavaModule callerModule = JVMCIReflectionUtil.getModule(callerClass);
+                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerModule.isNamed() ? callerModule.getName() : null,
+                                    JVMCIReflectionUtil.getPackageName(callerClass), JVMCIReflectionUtil.getTypeName(callerClass));
                     if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
                         b.add(ReachabilityCallbackNode.create(proxyRegistrationRunnable, reason));
                         if (inferenceLog != null) {
