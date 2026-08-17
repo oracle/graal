@@ -21,9 +21,9 @@ Oracle GraalVM container images are published in two OCR repositories: **jdk** a
 Both repositories provide regular container images for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8, 9, and 10.
 The `muslib` container images are available for x64 only.
 
-Oracle GraalVM is installed in _/usr/lib64/graalvm/graalvm-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `25`, `25i2`, and so on.
+Oracle GraalVM is installed in _/usr/lib64/graalvm/graalvm-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `25`, `25i3`, and so on.
 
-For example, Oracle GraalVM 25.2 is installed in _/usr/lib64/graalvm/graalvm-java25i2/_.
+For example, Oracle GraalVM 25.3 is installed in _/usr/lib64/graalvm/graalvm-java25i3/_.
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 ## Tags
@@ -36,47 +36,47 @@ $graalvm-version[-$jdk-version][-muslib][-$platform][-$build-date]
 
 The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom).
 The most-specific tag is unique and always points to the same container image, while the less-specific tags point to newer container image variants over time.
-For Oracle GraalVM 25.2+ innovation releases, the tag prefix combines the JDK feature version, the letter `i`, and the Oracle GraalVM feature release number.
-For example, `25i2` selects Oracle GraalVM 25.2+.
-Oracle GraalVM 25.2.4 is based on Oracle JDK 25.0.4+7, so its more-specific tags also contain `25.0.4`.
+For Oracle GraalVM 25.3+ innovation releases, the tag prefix combines the JDK feature version, the letter `i`, and the Oracle GraalVM feature release number.
+For example, `25i3` selects Oracle GraalVM 25.3+.
+Oracle GraalVM 25.3.4.1 is based on Oracle JDK 25.0.4+7, so its more-specific tags also contain `25.0.4`.
 ```bash
-25i2-25.0.4-ol9-$build-date
-25i2-25.0.4-ol9
-25i2-25.0.4
-25i2-ol9
-25i2
+25i3-25.0.4-ol9-$build-date
+25i3-25.0.4-ol9
+25i3-25.0.4
+25i3-ol9
+25i3
 ```
 
 ## Pulling Images
 
-1. To pull the container image for Oracle GraalVM JDK for a specific feature release, such as _25.2_, run:
+1. To pull the container image for Oracle GraalVM JDK for a specific feature release, such as _25.3_, run:
     ```bash
-    docker pull container-registry.oracle.com/graalvm/jdk:25i2
+    docker pull container-registry.oracle.com/graalvm/jdk:25i3
     ```
 
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM container-registry.oracle.com/graalvm/jdk:25i2
+    FROM container-registry.oracle.com/graalvm/jdk:25i3
     ```
 
-2.  To pull the container image for Oracle GraalVM `native-image` utility for a specific feature release, such as _25.2_, run:
+2.  To pull the container image for Oracle GraalVM `native-image` utility for a specific feature release, such as _25.3_, run:
     ```bash
-    docker pull container-registry.oracle.com/graalvm/native-image:25i2
+    docker pull container-registry.oracle.com/graalvm/native-image:25i3
     ```
 
     Alternatively, to pull the container image for Oracle GraalVM `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, run:
     ```bash
-    docker pull container-registry.oracle.com/graalvm/native-image:25i2-muslib
+    docker pull container-registry.oracle.com/graalvm/native-image:25i3-muslib
     ```
 
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM container-registry.oracle.com/graalvm/native-image:25i2-muslib
+    FROM container-registry.oracle.com/graalvm/native-image:25i3-muslib
     ```
 
 3. To verify, start the container and enter a Bash session:
     ```bash
-    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:25i2
+    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:25i3
     ```
 
     To check the version of Oracle GraalVM and its installed location, run the `env` command from the `bash` prompt:
@@ -99,7 +99,7 @@ Oracle GraalVM 25.2.4 is based on Oracle JDK 25.0.4+7, so its more-specific tags
 
 4. A `docker pull` command that omits a processor architecture pulls a container image for the processor architecture that matches your Docker client. To pull a container image for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/arm64` as follows:
     ```bash
-    docker pull --platform linux/arm64 container-registry.oracle.com/graalvm/native-image:25i2
+    docker pull --platform linux/arm64 container-registry.oracle.com/graalvm/native-image:25i3
     ```
 
 ### Related Documentation
