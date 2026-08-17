@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,11 +55,14 @@ import jdk.graal.compiler.nodes.calc.SignedDivNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerDivNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import jdk.graal.compiler.nodes.calc.SignedRemNode;
+import jdk.graal.compiler.nodes.calc.UnsignedDivNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRemNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -84,7 +87,7 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
         try (NodeEventScope nes = graph.trackNodeEvents(ec)) {
             for (IntegerDivRemNode rem : graph.getNodes(IntegerDivRemNode.TYPE)) {
-                if (rem instanceof SignedRemNode && isDivByNonZeroConstantNonOverflowingAbs(rem)) {
+                if (rem.getOp() == IntegerDivRemNode.Op.REM && isDivByNonZeroConstantNonOverflowingAbs(rem)) {
                     try (DebugCloseable position = rem.withNodeSourcePosition()) {
                         optimizeRem(rem);
                     }
@@ -98,9 +101,15 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
                 }
             }
             for (IntegerDivRemNode div : graph.getNodes(IntegerDivRemNode.TYPE)) {
-                if (div instanceof SignedDivNode && isDivByNonZeroConstantNonOverflowingAbs(div)) {
-                    try (DebugCloseable position = div.withNodeSourcePosition()) {
-                        optimizeSignedDiv(div);
+                if (isDivByNonZeroConstantNonOverflowingAbs(div)) {
+                    if (div instanceof SignedDivNode) {
+                        try (DebugCloseable position = div.withNodeSourcePosition()) {
+                            optimizeSignedDiv(div);
+                        }
+                    } else if (div instanceof UnsignedDivNode) {
+                        try (DebugCloseable position = div.withNodeSourcePosition()) {
+                            optimizeUnsignedDiv((UnsignedDivNode) div);
+                        }
                     }
                 }
             }
@@ -172,7 +181,10 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     }
 
     protected ValueNode createDiv(ValueNode val) {
-        if (val instanceof SignedRemNode) {
+        if (val instanceof UnsignedRemNode) {
+            UnsignedRemNode rem = (UnsignedRemNode) val;
+            return UnsignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroGuard(), NodeView.DEFAULT);
+        } else if (val instanceof SignedRemNode) {
             SignedRemNode rem = (SignedRemNode) val;
             return SignedDivNode.create(rem.getX(), rem.getY(), rem.getZeroGuard(), NodeView.DEFAULT);
         } else {
@@ -244,6 +256,135 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         StructuredGraph graph = ((ValueNode) div).graph();
         assert div instanceof SignedDivNode || div instanceof SignedFloatingIntegerDivNode : "Unknown or invalid div:" + div;
         replacePreserveOriginalStamp(graph, (ValueNode) div, value);
+    }
+
+    private static void optimizeUnsignedDiv(UnsignedDivNode div) {
+        StructuredGraph graph = div.graph();
+        long divisor = div.getY().asJavaConstant().asLong();
+        if (divisor == 1 || divisor == -1 || divisor == 0) {
+            /*
+             * Leave to canonicalization. The constant may have been produced by optimizing another
+             * div, without a chance to canonicalize this div yet.
+             */
+            return;
+        }
+
+        // Hacker's delight chapter 10
+        // we only need to code the case for non-power-of-2
+        // the power-of-2 case is handled by the canonicalizer
+        IntegerStamp dividendStamp = (IntegerStamp) div.getX().stamp(NodeView.DEFAULT);
+        int bits = dividendStamp.getBits();
+        UMagic magic = computeUMagic(divisor, bits);
+
+        ConstantNode m = ConstantNode.forIntegerBits(bits, magic.m, graph);
+        ValueNode quot = graph.unique(new UnsignedMulHighNode(m, div.getX()));
+
+        if (magic.a) {
+            assert magic.s > 0 : "Magic.s must be positive " + magic.s;
+            /*
+             * What we want here is (x + q) >>> s, but because of overflow, we need to use the
+             * equivalent (((x - q) >>> 1) + q) >>> (s-1).
+             *
+             * That's correct because (x + q) / 2 == (x - q) / 2 + q.
+             *
+             * It's possible to use (x + q) >>> s directly on platforms that support a
+             * "shift right with carry" instruction, using only 2 instead of 4 instructions. If a
+             * platform only supports "rotate right with carry", we could still rotate right by 1,
+             * and then shift the rest, getting 3 instructions.
+             *
+             * None of these additional optimizations are currently implemented, since we don't
+             * support flags dependencies in the compiler graph.
+             */
+            ValueNode t = BinaryArithmeticNode.sub(graph, div.getX(), quot, NodeView.DEFAULT);
+            t = graph.addOrUnique(UnsignedRightShiftNode.create(t, ConstantNode.forInt(1, graph), NodeView.DEFAULT));
+            quot = BinaryArithmeticNode.add(graph, t, quot, NodeView.DEFAULT);
+            if (magic.s > 1) {
+                ConstantNode s = ConstantNode.forInt(magic.s - 1, graph);
+                quot = graph.addOrUnique(UnsignedRightShiftNode.create(quot, s, NodeView.DEFAULT));
+            }
+        } else if (magic.s > 0) {
+            ConstantNode s = ConstantNode.forInt(magic.s, graph);
+            quot = graph.addOrUnique(UnsignedRightShiftNode.create(quot, s, NodeView.DEFAULT));
+        }
+
+        graph.replaceFixedWithFloating(div, graph.addOrUniqueWithInputs(PiNode.create(quot, div.stamp(NodeView.DEFAULT))));
+        graph.getOptimizationLog().report(OptimizeDivPhase.class, "UnsignedDivOptimized", div);
+    }
+
+    // Unsigned division uses the magic-number construction from Hacker's Delight, chapter 10.
+    private static final class UMagic {
+        public long m;
+        public boolean a;
+        public int s;
+    }
+
+    private static UMagic computeUMagic(/* unsigned */ long dInput, int bits) {
+        long bitsMask = CodeUtil.mask(bits);
+        /*
+         * Fix up d if it was sign-extended from a negative int value because we must interpret it
+         * as unsigned.
+         */
+        long d = dInput & bitsMask;
+
+        // Checkstyle: stop
+        // Hacker's delight, figure 10-2
+        /*
+         * This version differs from the printed version (2nd edition, 2013) as it includes the fix
+         * from the errata at:
+         * https://ptgmedia.pearsoncmg.com/images/9780321842688/Errata/9780321842688errata031417.pdf
+         *
+         * An extra flag "gt" tracks if q1 exceeded the value of 0x800..000. According to the errata
+         * this is needed for correct handling of the divisor 0x800..001. In our tests this doesn't
+         * seem to make a difference, but it doesn't hurt either.
+         *
+         * The online version of Hacker's Delight at https://learning.oreilly.com contains an
+         * incomplete version of the fix for this erratum.
+         */
+        int p, gt = 0;
+        /* unsigned */ long nc, delta, q1, r1, q2, r2;
+        /* unsigned */ long twoP;
+        // Checkstyle: resume
+
+        UMagic magu = new UMagic();
+        magu.a = false;                                             // Initialize "add" indicator.
+        nc = bitsMask - Long.remainderUnsigned((-d) & bitsMask, d); // Unsigned arithmetic here.
+        p = bits - 1;                                               // Init. p.
+        twoP = 1L << p;
+        q1 = Long.divideUnsigned(twoP, nc);                         // Init. q1 = 2**p/nc.
+        r1 = twoP - q1 * nc;                                        // Init. r1 = rem(2**p, nc)
+        q2 = Long.divideUnsigned(twoP - 1, d);                      // Init. q2 = (2**p - 1)/d.
+        r2 = (twoP - 1) - q2 * d;                                   // Init. r2 = rem(2**p - 1, d).
+        do {
+            p = p + 1;
+            if (Long.compareUnsigned(q1, twoP) >= 0) {
+                gt = 1; // Means q1 > delta.
+            }
+            if (Long.compareUnsigned(r1, nc - r1) >= 0) {
+                q1 = (2 * q1 + 1) & bitsMask;       // Update q1.
+                r1 = (2 * r1 - nc) & bitsMask;      // Update r1.
+            } else {
+                q1 = (2 * q1) & bitsMask;
+                r1 = (2 * r1) & bitsMask;
+            }
+            if (Long.compareUnsigned(r2 + 1, d - r2) >= 0) {
+                if (Long.compareUnsigned(q2, twoP - 1) >= 0) {
+                    magu.a = true;
+                }
+                q2 = (2 * q2 + 1) & bitsMask;       // Update q2.
+                r2 = (2 * r2 + 1 - d) & bitsMask;   // Update r2.
+            } else {
+                if (Long.compareUnsigned(q2, twoP) >= 0) {
+                    magu.a = true;
+                }
+                q2 = (2 * q2) & bitsMask;
+                r2 = (2 * r2 + 1) & bitsMask;
+            }
+            delta = d - 1 - r2;
+        } while (gt == 0 && p < 2 * bits && (Long.compareUnsigned(q1, delta) < 0 || (q1 == delta && r1 == 0)));
+
+        magu.m = q2 + 1;                            // Magic number
+        magu.s = p - bits;                          // and shift amount to return
+        return magu;                                // (magu.a was set above).
     }
 
     /**
