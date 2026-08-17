@@ -3593,6 +3593,7 @@ public final class Interpreter {
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !checkCastSucceeds(state, virtualStack, curBCI))) {
                 throw SemanticJavaException.raiseClassCastException(curBCI, virtualStack.top, state);
             }
+            GraalDirectives.preserveFrameStateHere();
             return advanceToNextBytecode(curBCI, CHECKCAST, state, virtualStack);
         }
 

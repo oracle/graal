@@ -757,6 +757,12 @@ public final class GraalDirectives {
         return value;
     }
 
+    /**
+     * Preserves the frame state at this program point without emitting machine code.
+     */
+    public static void preserveFrameStateHere() {
+    }
+
     public static <T> T guardingNonNull(T value) {
         if (value == null) {
             deoptimize();
