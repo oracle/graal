@@ -169,7 +169,7 @@ public final class RuntimeCodeInfoAccess {
     public static void walkWeakReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
         CodeInfoImpl impl = cast(info);
         NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectFields(), visitor, CodeInfoImpl.FIRST_WEAKLY_REFERENCED_OBJFIELD, CodeInfoImpl.WEAKLY_REFERENCED_OBJFIELD_COUNT);
-        if (CodeInfoAccess.isAliveState(impl.getState())) {
+        if (CodeInfoAccess.hasLiveCodeConstants(impl)) {
             CodeReferenceMapDecoder.walkOffsetsFromPointer(impl.getCodeStart(), impl.getCodeConstantsReferenceMapEncoding(), impl.getCodeConstantsReferenceMapIndex(), visitor, null);
         }
         NonmovableArrays.walkUnmanagedObjectArray(impl.getObjectConstants(), visitor);

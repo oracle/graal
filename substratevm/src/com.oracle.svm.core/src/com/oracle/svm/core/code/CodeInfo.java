@@ -79,6 +79,8 @@ public interface CodeInfo extends UntetheredCodeInfo {
      * freed by the GC once the tether object becomes unreachable. Until then, the GC must continue
      * visiting all heap references, including code constants that are directly embedded into the
      * machine code.
+     *
+     * @see CodeInfoAccess#isLiveCodeConstantsState
      */
     @DuplicatedInNativeCode //
     int STATE_REMOVED_FROM_CODE_CACHE = STATE_PENDING_REMOVAL_FROM_CODE_CACHE + 1;
