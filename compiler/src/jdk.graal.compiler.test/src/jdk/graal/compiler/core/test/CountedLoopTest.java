@@ -41,14 +41,12 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GuardNode;
-import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -108,44 +106,28 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     /**
-     * Checks the static proof and fallback guard without executing loops that can cycle forever.
-     * Specializes guards built with an unbound stride to check both rejection and acceptance.
+     * Checks counted-loop detection for negated strides without executing loops that can cycle
+     * forever. Stride domains containing MIN_VALUE must be rejected; domains excluding it retain
+     * the static overflow proof.
      */
     private void checkNegatedStrideOverflow(String method) {
-        CountedLoopInfo nonWrapping = parseNegatedStrideLoop(method, 1, false);
+        Loop nonWrappingLoop = parseNegatedStrideLoop(method, 1, false);
+        Assert.assertTrue(nonWrappingLoop.detectCounted());
+        CountedLoopInfo nonWrapping = nonWrappingLoop.counted();
+        Assert.assertTrue(nonWrapping.getLimitCheckedIV() instanceof DerivedOffsetInductionVariable);
+        Assert.assertEquals(InductionVariable.Direction.Up, nonWrapping.getDirection());
+        Assert.assertFalse(nonWrapping.isUnsignedCheck());
         Assert.assertTrue(nonWrapping.counterNeverOverflows());
         Assert.assertTrue(nonWrapping.createOverflowGuardCondition().isContradiction());
 
-        CountedLoopInfo concreteWrap = parseNegatedStrideLoop(method, 0, true);
-        Assert.assertFalse(concreteWrap.counterNeverOverflows());
-        Assert.assertTrue("The existing guard must reject a concrete MIN_VALUE stride", concreteWrap.createOverflowGuardCondition().isTautology());
-
-        // The two bindings select MIN_VALUE and MIN_VALUE + 1 root strides.
-        for (int lowStrideBit = 0; lowStrideBit <= 1; lowStrideBit++) {
-            CountedLoopInfo possibleWrap = parseNegatedStrideLoop(method, 0, false);
-            Assert.assertFalse("The negated stride stamp cannot bound the MIN_VALUE step", possibleWrap.counterNeverOverflows());
-            LogicNode overflow = possibleWrap.createOverflowGuardCondition();
-            Assert.assertFalse(overflow.isContradiction());
-            Assert.assertFalse(overflow.isTautology());
-            StructuredGraph graph = possibleWrap.getLimitCheckedIV().valueNode().graph();
-            ReturnNode returnNode = graph.getNodes(ReturnNode.TYPE).first();
-            JavaKind kind = returnNode.result().getStackKind();
-            // Keep this guard condition live across binding and canonicalization without executing it.
-            returnNode.replaceFirstInput(returnNode.result(), graph.addOrUniqueWithInputs(ConditionalNode.create(overflow, ConstantNode.forIntegerKind(kind, 1, graph),
-                            ConstantNode.forIntegerKind(kind, 0, graph), NodeView.DEFAULT)));
-            Object stride = kind == JavaKind.Int ? (Object) lowStrideBit : (long) lowStrideBit;
-            bindArguments(graph, new Object[]{NO_BIND, stride, NO_BIND});
-            createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
-            Assert.assertTrue(returnNode.result().isConstant());
-            Assert.assertEquals("The dynamic guard must reject MIN_VALUE and accept MIN_VALUE + 1", 1 - lowStrideBit, returnNode.result().asJavaConstant().asLong());
-            Assert.assertTrue(graph.verify());
-        }
+        Assert.assertFalse("A concrete MIN_VALUE stride must not be counted", parseNegatedStrideLoop(method, 0, true).detectCounted());
+        Assert.assertFalse("A stride that can be MIN_VALUE must not be counted", parseNegatedStrideLoop(method, 0, false).detectCounted());
     }
 
     /**
      * Binds the stride domain before canonicalization and obtains fresh loop analysis afterwards.
      */
-    private CountedLoopInfo parseNegatedStrideLoop(String method, int lowBit, boolean bindStride) {
+    private Loop parseNegatedStrideLoop(String method, int lowBit, boolean bindStride) {
         StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
         Object stride = NO_BIND;
         if (bindStride) {
@@ -157,13 +139,8 @@ public class CountedLoopTest extends GraalCompilerTest {
         LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
         Assert.assertEquals(1, loops.loops().size());
         Loop loop = loops.loops().get(0);
-        Assert.assertTrue(loop.detectCounted());
-        CountedLoopInfo counted = loop.counted();
-        Assert.assertTrue(counted.getLimitCheckedIV() instanceof DerivedOffsetInductionVariable);
-        Assert.assertEquals(InductionVariable.Direction.Up, counted.getDirection());
-        Assert.assertFalse(counted.isUnsignedCheck());
         Assert.assertTrue(graph.verify());
-        return counted;
+        return loop;
     }
 
     public static int signExtendedCounter(long limit) {
@@ -1405,6 +1382,50 @@ public class CountedLoopTest extends GraalCompilerTest {
         testCounted("disjointOrToAddSnippet", 256);
     }
 
+    public static void scaledIVDirectionOverflowSnippet(int limit) {
+        for (int i = 0; i * 0x00808081 < limit; i += 255) {
+            // Because of overflow, 255 * 0x00808081 < 0; so limit checked iv is decreasing
+            GraalDirectives.sideEffect(i);
+        }
+    }
+
+    @Test
+    public void testScaledIVDirectionOverflow() {
+        testNotCountedWithDirection("scaledIVDirectionOverflowSnippet", InductionVariable.Direction.Down);
+    }
+
+    public static void basicIVDirectionOverflowSnippet(int selector, int limit) {
+        int stride = selector | Integer.MIN_VALUE;
+        /*
+         * stride has strictly negative stamp [MIN_VALUE, -1], and the stamp for -stride includes MIN_VALUE too
+         * Because this negated stamp is not strictly positive, iv direction is not constant, so this can't be a counted loop
+         */
+        for (int i = 0; i < limit; i -= stride) {
+            GraalDirectives.sideEffect(i);
+        }
+    }
+
+    @Test
+    public void testBasicIVDirectionOverflow() {
+        testNotCountedWithDirection("basicIVDirectionOverflowSnippet", null);
+    }
+
+    public static void offsetIVDirectionOverflowSnippet(int offset, int limit) {
+        for (int i = 0; offset - i < limit; i += Integer.MIN_VALUE) {
+            /*
+             * basicIV has stride < 0, direction = Down
+             * offsetIV with base as subtrahend negates the basic IV's stride, and because it is MIN_VALUE,
+             * the resulting stride is also < 0, so its direction should also be Down
+             */
+            GraalDirectives.sideEffect(i);
+        }
+    }
+
+    @Test
+    public void testOffsetIVDirectionOverflow() {
+        testNotCountedWithDirection("offsetIVDirectionOverflowSnippet", InductionVariable.Direction.Down);
+    }
+
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static class IVPropertyNode extends FloatingNode implements LIRLowerable {
         public static final NodeClass<IVPropertyNode> TYPE = NodeClass.create(IVPropertyNode.class);
@@ -1566,5 +1587,28 @@ public class CountedLoopTest extends GraalCompilerTest {
         test(snippetName, args);
         this.argsToBind = null;
         this.loopCanBeRemoved = false;
+    }
+
+    private void testNotCountedWithDirection(String snippetName, InductionVariable.Direction expectedDirection) {
+        StructuredGraph graph = parseEager(snippetName, StructuredGraph.AllowAssumptions.YES);
+        createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
+        LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
+        Assert.assertEquals("expected one loop", 1, loops.loops().size());
+        Loop loop = loops.loops().get(0);
+
+        CompareNode compare = graph.getNodes().filter(CompareNode.class).first();
+        Assert.assertNotNull("expected loop comparison", compare);
+        ValueNode checkedValue;
+        if (loop.isOutsideLoop(compare.getX())) {
+            checkedValue = compare.getY();
+        } else {
+            assertTrue("comparison must have loop invariant input", loop.isOutsideLoop(compare.getY()));
+            checkedValue = compare.getX();
+        }
+
+        InductionVariable limitCheckedIV = loop.getInductionVariables().get(checkedValue);
+        Assert.assertNotNull("loop comparison value must be an induction variable", limitCheckedIV);
+        Assert.assertEquals("direction", expectedDirection, limitCheckedIV.direction());
+        assertFalse("loop must not be counted", loop.detectCounted());
     }
 }
