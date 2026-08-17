@@ -32,6 +32,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.shared.NeverInline;
@@ -78,8 +79,14 @@ public final class SecurityProviderRuntimeAccess {
 
     /** §FS-002-security-providers.4.1 and §FS-002-security-providers.5.1. */
     public static void requireRegisteredProvider(Provider provider) {
+        Class<?> providerClass = provider.getClass();
+        // §FS-002-security-providers.5.1: A class defined at run time cannot carry build-time
+        // metadata, so the JDK semantics for the factory call apply unchanged.
+        if (DynamicHub.fromClass(providerClass).isRuntimeLoaded()) {
+            return;
+        }
         if (SecurityProviderRuntimeState.getProviderInfo(provider) == null) {
-            reportMissingRegistration(provider.getClass());
+            reportMissingRegistration(providerClass);
         }
     }
 
