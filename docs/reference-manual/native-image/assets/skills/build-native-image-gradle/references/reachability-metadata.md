@@ -4,10 +4,11 @@ Use this guide to resolve native-image build failures caused by missing reachabi
 
 ## Detect Missing Metadata
 
-Add these runtime options to your Gradle configuration to enable metadata checks and warnings:
+Add the build option and these runtime options to your Gradle configuration to enable metadata checks and warnings:
 ```groovy
 graalvmNative {
   binaries.all {
+    buildArgs.add('--future-defaults=exact-reflection')
     runtimeArgs.add('-XX:+ExactReachabilityMetadata')
     runtimeArgs.add('-XX:MissingRegistrationReportingMode=Warn')
   }

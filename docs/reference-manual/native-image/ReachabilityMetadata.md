@@ -30,9 +30,9 @@ You can provide reachability metadata to the `native-image` builder using the fo
 
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
-> Select the global mode when starting the executable with `-XX:+ExactReachabilityMetadata` or `-XX:-ExactReachabilityMetadata`.
-> To select the mode only for specific packages, use `-XX:ExactReachabilityMetadataPackages=<comma-separated-packages>`.
-> These runtime options are immutable after startup.
+> To enable the new user-friendly reachability-metadata mode for your application, pass `--future-defaults=exact-reflection` at build time.
+> Executables built this way accept two immutable runtime options: `-XX:+ExactReachabilityMetadata` selects the mode globally, including `Class.forName` and ordinary resource lookups, and `-XX:ExactReachabilityMetadataPackages=<comma-separated-packages>` limits it to specific packages.
+> Executables built without `--future-defaults=exact-reflection` keep the legacy behavior and reject these runtime options.
 >
 > To get an overview of all places in your code where missing registrations occur, without committing to the exact behavior, you can pass `-XX:MissingRegistrationReportingMode=Warn` when starting the application.
 >

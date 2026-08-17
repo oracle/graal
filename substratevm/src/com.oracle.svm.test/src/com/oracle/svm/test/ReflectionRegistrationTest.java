@@ -30,6 +30,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.classfile.ClassFile;
+import java.lang.constant.ClassDesc;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Set;
@@ -189,8 +191,10 @@ public class ReflectionRegistrationTest {
         }
     }
 
+    /** The package option narrows the future default (FS-001-native-image-semantics.3.4). */
     @NativeImageBuildArgs({
                     "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
+                    "--future-defaults=exact-reflection",
                     "-R:ExactReachabilityMetadataPackages=com.example.unused,com.oracle.svm.test",
                     "--features=com.oracle.svm.test.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
     })
@@ -227,6 +231,70 @@ public class ReflectionRegistrationTest {
 
         private static String fieldName() {
             return System.nanoTime() == Long.MIN_VALUE ? "missing" : "value";
+        }
+    }
+
+    /** Warn mode only reports and keeps legacy behavior (FS-001-native-image-semantics.3.4). */
+    @NativeImageBuildArgs({
+                    "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+                    "--future-defaults=exact-reflection",
+                    "-R:+ExactReachabilityMetadata",
+                    "-R:MissingRegistrationReportingMode=Warn",
+                    "--features=com.oracle.svm.test.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
+    })
+    public static class WarnExactReflectionTest {
+        @Test
+        public void testWarningKeepsLegacyFieldAccess() throws ReflectiveOperationException {
+            Field field = ExactFieldLookupTarget.class.getDeclaredField("value");
+            assertEquals(FIELD_LOOKUP_TEST_VALUE, field.get(new ExactFieldLookupTarget()));
+        }
+
+        @Test
+        public void testWarningKeepsLegacyUnsafeAllocationExceptionType() {
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> unsafeAllocate(UnsafeAllocationTarget.class));
+            assertTrue(exception.getMessage().contains("unsafeAllocated"));
+        }
+    }
+
+    /** Unnamed defineClass is checked by class-file name (FS-001-native-image-semantics.3.4). */
+    @NativeImageBuildArgs({
+                    "-H:+UnlockExperimentalVMOptions",
+                    "-H:+RuntimeClassLoading",
+                    "--future-defaults=exact-reflection",
+                    "--features=com.oracle.svm.test.ReflectionRegistrationTest$UnnamedDefineClassExactReflectionTest$TestFeature"
+    })
+    public static class UnnamedDefineClassExactReflectionTest {
+        private static final String REGISTERED_CLASS_NAME = "com.oracle.svm.test.RuntimeDefinedRegisteredClass";
+        private static final String UNREGISTERED_CLASS_NAME = "com.oracle.svm.test.RuntimeDefinedUnregisteredClass";
+
+        public static class TestFeature implements Feature {
+            @Override
+            public void beforeAnalysis(BeforeAnalysisAccess access) {
+                RuntimeReflection.registerClassLookup(REGISTERED_CLASS_NAME);
+            }
+        }
+
+        private static final class TestClassLoader extends ClassLoader {
+            @SuppressWarnings("deprecation")
+            private Class<?> define(byte[] bytes) {
+                return defineClass(bytes, 0, bytes.length);
+            }
+        }
+
+        @Test
+        public void testRegisteredUnnamedClassDefinition() {
+            Class<?> definedClass = new TestClassLoader().define(generateClassBytes(REGISTERED_CLASS_NAME));
+            assertEquals(REGISTERED_CLASS_NAME, definedClass.getName());
+        }
+
+        @Test
+        public void testUnregisteredUnnamedClassDefinition() {
+            assertThrows(MissingReflectionRegistrationError.class, () -> new TestClassLoader().define(generateClassBytes(UNREGISTERED_CLASS_NAME)));
+        }
+
+        private static byte[] generateClassBytes(String className) {
+            return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder.withSuperclass(ClassDesc.of("java.lang.Object")));
         }
     }
 }

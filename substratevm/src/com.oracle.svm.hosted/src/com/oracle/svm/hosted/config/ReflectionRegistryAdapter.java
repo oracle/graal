@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadataSupported;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.StrictConfiguration;
 
 import java.io.ObjectStreamClass;
@@ -97,7 +98,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
             if (classLookupException instanceof LinkageError) {
                 String reflectionName = ClassNameSupport.typeNameToReflectionName(namedDescriptor.name());
                 reflectionSupport.registerClassLookupException(condition, reflectionName, classLookupException);
-            } else if (jniAccessible & classLookupException instanceof ClassNotFoundException) {
+            } else if (exactReachabilityMetadataSupported() && jniAccessible & classLookupException instanceof ClassNotFoundException) {
                 String jniName = ClassNameSupport.typeNameToJNIName(namedDescriptor.name());
                 jniSupport.registerClassLookup(condition, false, jniName);
             }

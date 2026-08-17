@@ -34,19 +34,26 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+/**
+ * Exact reachability metadata is selected at build time by {@code --future-defaults=exact-reflection}
+ * or the deprecated build-time aliases. Only such builds encode the exact-mode metadata and
+ * reporting paths; the runtime options merely refine the scope within them.
+ */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class MissingRegistrationSupport {
     private final OptionClassFilter legacyExactMetadataFilter;
     private final boolean legacyExactMetadata;
+    /** Set iff the build selects exact metadata (FS-001-native-image-semantics.3.4). */
+    private final boolean exactMetadataSupported;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public MissingRegistrationSupport(OptionClassFilter legacyExactMetadataFilter, boolean legacyExactMetadata) {
         this.legacyExactMetadataFilter = legacyExactMetadataFilter;
         this.legacyExactMetadata = legacyExactMetadata;
+        this.exactMetadataSupported = FutureDefaultsOptions.exactReflection() || legacyExactMetadata;
     }
 
     @Fold
@@ -54,27 +61,50 @@ public class MissingRegistrationSupport {
         return ImageSingletons.lookup(MissingRegistrationSupport.class);
     }
 
+    /**
+     * Whether this image was built with exact reachability metadata, i.e., whether the exact-mode
+     * metadata and reporting paths exist. Constant-folded through {@link #singleton()}.
+     */
+    public boolean exactMetadataSupported() {
+        return exactMetadataSupported;
+    }
+
+    /**
+     * Whether the build must prepare exact-mode metadata for a call made from the given class. The
+     * runtime options can only narrow the scope, so the future default covers every caller and the
+     * deprecated aliases cover their configured scope.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean prepareExactMetadata(String moduleName, String packageName, String className) {
+        return FutureDefaultsOptions.exactReflection() || legacyExactMetadataFilter.isIncluded(moduleName, packageName, className) != null;
+    }
+
     public boolean reportMissingRegistrationErrors(StackTraceElement responsibleClass) {
         return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
     }
 
     public boolean reportMissingRegistrationErrorsWithoutResponsibleClass() {
-        return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || legacyExactMetadata;
+        return FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || legacyExactMetadata;
     }
 
-    /** FS-001-native-image-semantics.3.4. */
+    /**
+     * {@code -XX:+ExactReachabilityMetadata} covers all callers, {@code -XX:ExactReachabilityMetadataPackages}
+     * limits the future default to the listed packages and the deprecated aliases report for their
+     * configured scope.
+     */
     public boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
-        /* Hosted plugins must retain the metadata needed by either runtime mode. */
-        return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || exactMetadataForPackage(packageName) ||
-                        legacyExactMetadataFilter.isIncluded(moduleName, packageName, className) != null;
+        /* Runtime scope selection, see FS-001-native-image-semantics.3.4. */
+        String packages = MissingRegistrationUtils.exactReachabilityMetadataPackages();
+        return MissingRegistrationUtils.globalExactReachabilityMetadata() || exactMetadataForPackage(packages, packageName) ||
+                        legacyExactMetadataFilter.isIncluded(moduleName, packageName, className) != null ||
+                        (FutureDefaultsOptions.exactReflection() && packages.isEmpty());
     }
 
     public boolean legacyExactMetadata() {
         return legacyExactMetadata;
     }
 
-    private static boolean exactMetadataForPackage(String packageName) {
-        String packages = MissingRegistrationUtils.exactReachabilityMetadataPackages();
+    private static boolean exactMetadataForPackage(String packages, String packageName) {
         int start = 0;
         while (start < packages.length()) {
             int end = packages.indexOf(',', start);

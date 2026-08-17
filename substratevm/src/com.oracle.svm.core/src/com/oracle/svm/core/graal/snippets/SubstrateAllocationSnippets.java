@@ -386,10 +386,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             } else {
                 Class<?> clazz = DynamicHub.toClass(hub);
                 if (MissingRegistrationUtils.exactReflection()) {
-                    var exception = MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
-                    if (exception != null) {
-                        throw exception;
-                    }
+                    MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
                     if (hub.isUnsafeAllocationAllowedForLegacyCompatibility()) {
                         return hub;
                     }

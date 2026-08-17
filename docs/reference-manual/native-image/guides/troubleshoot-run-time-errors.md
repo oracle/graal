@@ -21,9 +21,9 @@ In some cases, you need to provide the analysis with configuration to make all d
 Failing to do so will result in an image that terminates at run-time with hard-to-diagnose errors once the dynamic feature is used in the application.
 This can be avoided by eagerly checking for missing metadata.
 
-1. Enable exact reachability metadata when starting the executable.
+1. Build the executable with `--future-defaults=exact-reflection` and enable exact reachability metadata when starting it.
    Pass `-XX:+ExactReachabilityMetadata` to enable it globally, or pass `-XX:ExactReachabilityMetadataPackages=<comma-separated-packages>` to limit it to specific packages.
-   The runtime options can only be changed during startup.
+   The runtime options can only be changed during startup and are rejected by executables built without `--future-defaults=exact-reflection`.
 
 2. Run the generated native executable passing the `-XX:MissingRegistrationReportingMode=Warn` option to find all places in your code where missing registrations occur.
 

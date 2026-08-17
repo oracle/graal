@@ -51,6 +51,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -325,7 +326,7 @@ public final class ReflectionPlugins {
         registerFoldInvocationPlugins(plugins, false, ReflectionUtil.lookupClass(false, "sun.nio.ch.Reflect"),
                         "lookupConstructor", "lookupMethod", "lookupField");
 
-        if (nonStrictDynamicAccessInference() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+        if (nonStrictDynamicAccessInference() && MissingRegistrationUtils.exactReachabilityMetadataSupported() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getConstructors", RuntimeReflection::registerAllConstructors);

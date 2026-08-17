@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadataSupported;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -88,7 +90,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
     public TypeResult<List<Class<?>>> resolveTypes(AccessCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives, boolean jniAccessible) {
         TypeResult<List<Class<?>>> result = resolveTypesInternal(typeDescriptor, allowPrimitives);
         if (typeDescriptor.getDescriptorType() == ConfigurationTypeDescriptor.Kind.NAMED && !result.isPresent()) {
-            if (result.getException() instanceof ClassNotFoundException) {
+            if (exactReachabilityMetadataSupported() && result.getException() instanceof ClassNotFoundException) {
                 registry.registerClassLookup(condition, false, result.getName());
             }
         }
@@ -286,11 +288,15 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
 
     @Override
     @SuppressWarnings("unused")
-    public final void registerField(AccessCondition condition, Class<?> type, String fieldName, boolean allowWrite, boolean jniAccessible) {
+    public final void registerField(AccessCondition condition, Class<?> type, String fieldName, boolean allowWrite, boolean jniAccessible) throws NoSuchFieldException {
         try {
             registerField(condition, allowWrite, jniAccessible, type.getDeclaredField(fieldName));
         } catch (NoSuchFieldException e) {
-            registerFieldNegativeQuery(condition, jniAccessible, type, fieldName);
+            if (exactReachabilityMetadataSupported()) {
+                registerFieldNegativeQuery(condition, jniAccessible, type, fieldName);
+            } else {
+                throw e;
+            }
         }
     }
 
@@ -342,7 +348,8 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
     }
 
     @Override
-    public final void registerMethod(AccessCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes, boolean jniAccessible) {
+    public final void registerMethod(AccessCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes, boolean jniAccessible)
+                    throws NoSuchMethodException {
         if (queriedOnly) {
             return;
         }
@@ -369,12 +376,17 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
             }
             registerExecutable(condition, jniAccessible, method);
         } catch (NoSuchMethodException e) {
-            registerMethodNegativeQuery(condition, jniAccessible, type, methodName, methodParameterTypes);
+            if (exactReachabilityMetadataSupported()) {
+                registerMethodNegativeQuery(condition, jniAccessible, type, methodName, methodParameterTypes);
+            } else {
+                throw e;
+            }
         }
     }
 
     @Override
-    public final void registerConstructor(AccessCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes, boolean jniAccessible) {
+    public final void registerConstructor(AccessCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes, boolean jniAccessible)
+                    throws NoSuchMethodException {
         if (queriedOnly) {
             return;
         }
@@ -382,7 +394,11 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Ac
         try {
             registerExecutable(condition, jniAccessible, type.getDeclaredConstructor(parameterTypesArray));
         } catch (NoSuchMethodException e) {
-            registerConstructorNegativeQuery(condition, jniAccessible, type, methodParameterTypes);
+            if (exactReachabilityMetadataSupported()) {
+                registerConstructorNegativeQuery(condition, jniAccessible, type, methodParameterTypes);
+            } else {
+                throw e;
+            }
         }
     }
 
