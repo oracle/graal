@@ -10,7 +10,7 @@ redirect_from: /reference-manual/native-image/Agent/
 
 The Native Image tool relies on the static analysis of an application's reachable code at runtime. 
 However, the analysis cannot always completely predict all usages of the Java Native Interface (JNI), Foreign Function and Memory (FFM) API, Java Reflection, Dynamic Proxy objects, or class path resources. 
-Undetected usages of these dynamic features must be provided to the `native-image` tool in the form of [metadata](ReachabilityMetadata.md) (precomputed in code or as JSON configuration files). For a complete reference of JSON field configurations, see [Reachability Metadata JSON Format Reference](ReachabilityMetadata.md#reachability-metadata-json-format-reference).
+Undetected usages of these dynamic features must be provided to the `native-image` tool in the form of [metadata](ReachabilityMetadata.md) (precomputed in code or as JSON configuration files). For a complete reference of JSON field configurations, see [Metadata JSON Format Reference](ReachabilityMetadata.md#metadata-json-format-reference).
 
 Here you will find information how to automatically collect metadata for an application and write JSON configuration files.
 To learn how to compute dynamic feature calls in code, see [Reachability Metadata](ReachabilityMetadata.md#computing-metadata-in-code).
@@ -178,8 +178,33 @@ Unlike the caller-based filters described above, which filter dynamic accesses b
 Therefore, access filters enable directly excluding packages and classes (and their members) from the generated configuration.
 
 By default, all accessed classes (which also pass the caller-based filters and the built-in filters) are included in the generated configuration.
-Using the `access-filter-file` option, a custom filter file that follows the file structure described above can be added.
-The option can be specified more than once to add multiple filter files and can be combined with the other filter options, for example, `-agentlib:access-filter-file=/path/to/access-filter-file,caller-filter-file=/path/to/caller-filter-file,config-output-dir=...`.
+Use the `access-filter-file` option to specify a custom access-filter file.
+The file can have any name; this guide uses _access-filter.json_.
+The access-filter file uses the same `rules` and optional `regexRules` structure as a [caller-based filter file](#caller-based-filters).
+For example, the following file excludes all classes in `com.example.internal` and its subpackages from generated metadata:
+
+```json
+{
+  "rules": [
+    {
+      "excludeClasses": "com.example.internal.**"
+    }
+  ]
+}
+```
+
+Specify the file when you start the tracing agent:
+
+```shell
+java -agentlib:native-image-agent=access-filter-file=/path/to/access-filter.json,config-output-dir=metadata-output ...
+```
+
+You can specify `access-filter-file` more than once to combine multiple files.
+You can also combine access filters with caller filters:
+
+```shell
+java -agentlib:native-image-agent=access-filter-file=/path/to/access-filter.json,caller-filter-file=/path/to/caller-filter.json,config-output-dir=metadata-output ...
+```
 
 ### Specify Configuration Files as Arguments
 
