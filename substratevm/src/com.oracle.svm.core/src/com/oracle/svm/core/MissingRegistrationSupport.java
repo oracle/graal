@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,16 +58,12 @@ public class MissingRegistrationSupport {
         return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
     }
 
-    public boolean reportMissingRegistrationErrors(Class<?> clazz) {
-        Module module = clazz.getModule();
-        return reportMissingRegistrationErrors(module.isNamed() ? module.getName() : null, clazz.getPackageName(), clazz.getName());
-    }
-
     public boolean reportMissingRegistrationErrorsWithoutResponsibleClass() {
         return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || legacyExactMetadata;
     }
 
-    private boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
+    /** FS-001-native-image-semantics.3.4. */
+    public boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
         /* Hosted plugins must retain the metadata needed by either runtime mode. */
         return SubstrateUtil.HOSTED || FutureDefaultsOptions.exactReflection() || MissingRegistrationUtils.globalExactReachabilityMetadata() || exactMetadataForPackage(packageName) ||
                         legacyExactMetadataFilter.isIncluded(moduleName, packageName, className) != null;
