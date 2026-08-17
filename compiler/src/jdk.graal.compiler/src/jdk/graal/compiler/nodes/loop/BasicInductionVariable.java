@@ -30,7 +30,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.UnsignedLong;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -88,23 +87,22 @@ public class BasicInductionVariable extends InductionVariable {
 
     @Override
     public Direction direction() {
-        Stamp stamp = rawStride.stamp(NodeView.DEFAULT);
-        if (stamp instanceof IntegerStamp) {
-            IntegerStamp integerStamp = (IntegerStamp) stamp;
-            Direction dir = null;
-            if (integerStamp.isStrictlyPositive()) {
-                dir = Direction.Up;
-            } else if (integerStamp.isStrictlyNegative()) {
-                dir = Direction.Down;
+        return directionForRawStride(rawStride.stamp(NodeView.DEFAULT));
+    }
+
+    /**
+     * Computes the direction of this basic induction variable for a raw stride stamp. The
+     * raw stride is the right-hand operand of the update operation, so a subtraction requires
+     * negating the raw stride in the native integer width to correctly handle {@code -MIN_VALUE} overflow.
+     */
+    public Direction directionForRawStride(Stamp rawStrideStamp) {
+        if (rawStrideStamp instanceof IntegerStamp integerStamp) {
+            if (op instanceof SubNode) {
+                integerStamp = (IntegerStamp) IntegerStamp.OPS.getNeg().foldStamp(integerStamp);
+            } else {
+                assert op instanceof AddNode : "basicIv op=" + op;
             }
-            if (dir != null) {
-                if (op instanceof AddNode) {
-                    return dir;
-                } else {
-                    assert op instanceof SubNode : Assertions.errorMessage(op);
-                    return dir.opposite();
-                }
-            }
+            return Direction.fromStrideStamp(integerStamp);
         }
         return null;
     }
