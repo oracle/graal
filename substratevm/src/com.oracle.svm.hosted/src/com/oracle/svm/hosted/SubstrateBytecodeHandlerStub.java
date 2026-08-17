@@ -64,6 +64,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.PreserveFrameStateNode;
 import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
 import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.graal.compiler.phases.util.BytecodeHandlerStubHelper;
@@ -137,7 +138,11 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
                         SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
         if (needSafepoint) {
             for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
-                graph.addBeforeFixed(returnNode, graph.add(new SafepointNode()));
+                SafepointNode safepointNode = graph.add(new SafepointNode());
+                graph.addBeforeFixed(returnNode, safepointNode);
+                PreserveFrameStateNode preserveFrameStateNode = graph.add(new PreserveFrameStateNode());
+                preserveFrameStateNode.setStateAfter(graph.start().stateAfter().duplicate());
+                graph.addBeforeFixed(safepointNode, preserveFrameStateNode);
             }
         }
         return graph;

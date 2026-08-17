@@ -3593,7 +3593,6 @@ public final class Interpreter {
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !checkCastSucceeds(state, virtualStack, curBCI))) {
                 throw SemanticJavaException.raiseClassCastException(curBCI, virtualStack.top, state);
             }
-            GraalDirectives.preserveFrameStateHere();
             return advanceToNextBytecode(curBCI, CHECKCAST, state, virtualStack);
         }
 
@@ -3741,7 +3740,7 @@ public final class Interpreter {
                 }
                 default -> throw invalidOpcode(wideOpcode);
             }
-            long nextBCI = curBCI + ((wideOpcode == IINC) ? 6 : 4);
+            long nextBCI = GraalDirectives.anchorValue(curBCI) + ((wideOpcode == IINC) ? 6 : 4);
             prepareOpcodeForDispatch(nextBCI, state, virtualStack);
             return nextBCI;
         }
