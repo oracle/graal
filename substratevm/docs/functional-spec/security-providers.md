@@ -430,6 +430,13 @@ list.
 If the provider is unregistered and the operation requires JCE verification, the operation follows
 the missing-registration behavior in [§4.3](#43-missing-reflection-registration).
 
+A provider class defined at run time, such as a class defined by a run-time class loader, cannot
+carry build-time reflection metadata.
+The registration requirement of this section does not apply to such a class, and the JDK semantics
+for the factory call apply unchanged.
+A class defined at run time can reach a factory only as an application-supplied provider object, so
+this exemption does not relax [§4.1](#41-unregistered-providers) for JDK-managed providers.
+
 ### 5.2 Programmatic Provider-List Changes
 
 An application can call `Security.addProvider(Provider)` or
