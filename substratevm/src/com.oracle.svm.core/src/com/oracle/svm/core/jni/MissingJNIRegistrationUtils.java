@@ -44,17 +44,17 @@ public final class MissingJNIRegistrationUtils extends MissingRegistrationUtils 
         report(exception);
     }
 
-    public static MissingJNIRegistrationError reportFieldAccess(Class<?> declaringClass, String fieldName) {
+    public static void reportFieldAccess(Class<?> declaringClass, String fieldName) {
         var type = getConfigurationType(declaringClass);
         type.setJniAccessible();
         addField(type, fieldName);
         MissingJNIRegistrationError exception = new MissingJNIRegistrationError(
                         jniMessage("access field", declaringClass.getTypeName() + "." + fieldName, elementToJSON(type)),
                         Field.class, declaringClass, fieldName, null);
-        return report(exception) ? exception : null;
+        report(exception);
     }
 
-    public static MissingJNIRegistrationError reportMethodAccess(Class<?> declaringClass, String methodName, String signature) {
+    public static void reportMethodAccess(Class<?> declaringClass, String methodName, String signature) {
         ConfigurationType type = getConfigurationType(declaringClass);
         type.setJniAccessible();
         type.addMethod(methodName, signature, ConfigurationMemberInfo.ConfigurationMemberDeclaration.PRESENT);
@@ -62,15 +62,15 @@ public final class MissingJNIRegistrationUtils extends MissingRegistrationUtils 
         MissingJNIRegistrationError exception = new MissingJNIRegistrationError(
                         jniMessage("access method", declaringClass.getTypeName() + "." + methodName + signature, json),
                         Method.class, declaringClass, methodName, signature);
-        return report(exception) ? exception : null;
+        report(exception);
     }
 
     private static String jniMessage(String failedAction, String elementDescriptor, String json) {
         return registrationMessage(failedAction, elementDescriptor, json, "reflectively", "reflection", "reflection");
     }
 
-    private static boolean report(MissingJNIRegistrationError exception) {
+    private static void report(MissingJNIRegistrationError exception) {
         // GR-54504: get responsible class from anchor
-        return MissingRegistrationUtils.report(exception, null);
+        MissingRegistrationUtils.report(exception, null);
     }
 }

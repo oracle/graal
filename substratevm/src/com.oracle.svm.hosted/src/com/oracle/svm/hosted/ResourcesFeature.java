@@ -75,6 +75,7 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -744,9 +745,14 @@ public class ResourcesFeature implements InternalFeature {
         Set<CompiledConditionalPattern> excludePatterns = compilePatternWorkset(excludedResourcePatterns);
 
         ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns);
-        /* Store all included patterns so the runtime exactness option can be selected at startup. */
-        includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
-                        resourcePattern.compiledPattern.pattern.pattern()));
+        /*
+         * Register all included patterns in the Resources singleton when the image is built with
+         * exact reachability metadata, so they can be queried at run time to detect missing entries.
+         */
+        if (MissingRegistrationUtils.exactReachabilityMetadataSupported()) {
+            includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
+                            resourcePattern.compiledPattern.pattern.pattern()));
+        }
 
         /* if we have any entry in resource config file we should collect resources */
         if (!resourcePatternWorkSet.isEmpty() || !globWorkSet.isEmpty() || SubstrateOptions.Preserve.hasBeenSet()) {

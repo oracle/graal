@@ -57,10 +57,7 @@ public class UnsafeFieldUtil {
     public static void checkLegacyAccess(Target_java_lang_reflect_Field field) {
         boolean legacyAccess = field.legacyAccess || (field.root != null && field.root.legacyAccess);
         if (legacyAccess && MissingRegistrationUtils.exactReflection()) {
-            var exception = MissingReflectionRegistrationUtils.reportLegacyAccessedField(SubstrateUtil.cast(field, Field.class));
-            if (exception != null) {
-                throw exception;
-            }
+            MissingReflectionRegistrationUtils.reportLegacyAccessedField(SubstrateUtil.cast(field, Field.class));
         }
     }
 

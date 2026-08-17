@@ -46,9 +46,10 @@ native-image -J<flag> <class>
 
 ## Missing reachability metadata
 
-**If you want exact error reporting for missing reachability metadata:**
+**If you want exact error reporting for missing reachability metadata (build with `--future-defaults=exact-reflection`):**
 
 ```bash
+native-image --future-defaults=exact-reflection <class>
 ./application -XX:+ExactReachabilityMetadata
 ```
 

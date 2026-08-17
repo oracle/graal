@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.reflect;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility.ACCESSED;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility.NONE;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility.QUERIED;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadataSupported;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_CLASSES_FLAG;
@@ -255,7 +256,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 for (var innerType : t.getDeclaredTypes()) {
                     if (innerType.isPublic()) {
                         innerType.registerAsReachable("Is inner class of class registered for reflection.");
-                        if (!shouldExcludeClass(innerType, ACCESSED)) {
+                        if (!exactReachabilityMetadataSupported() && !shouldExcludeClass(innerType, ACCESSED)) {
                             registerClass(unconditional(), QUERIED, innerType, true);
                         }
                     }
@@ -270,7 +271,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             for (var innerType : type.getDeclaredTypes()) {
                 innerType.registerAsReachable("Is inner class of class registered for reflection.");
-                if (!shouldExcludeClass(innerType, ACCESSED)) {
+                if (!exactReachabilityMetadataSupported() && !shouldExcludeClass(innerType, ACCESSED)) {
                     registerClass(unconditional(), QUERIED, innerType, true);
                 }
             }
@@ -487,7 +488,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding methods, the declaring class of the method has to be registered to allow
          * individual queries at run-time.
          */
-        registerMethodDeclaringType(condition, method.getDeclaringClass(), method.isConstructor(), preserved);
+        /* Only exact-metadata builds encode it (FS-001-native-image-semantics.3.4). */
+        if (exactReachabilityMetadataSupported()) {
+            registerMethodDeclaringType(condition, method.getDeclaringClass(), method.isConstructor(), preserved);
+        }
         registerMethod(condition, ACCESSED, preserved, method);
     }
 
@@ -605,7 +609,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (!aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
                         processAnnotationMethod(accessibility, aMethod);
                     }
-                    checkHidingMethods(aMethod);
+                    if (!exactReachabilityMetadataSupported()) {
+                        checkHidingMethods(aMethod);
+                    }
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -657,7 +663,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding fields, the declaring class of the field has to be registered to allow
          * individual queries at run-time.
          */
-        registerFieldDeclaringType(condition, field.getDeclaringClass(), preserved);
+        /* Only exact-metadata builds encode it (FS-001-native-image-semantics.3.4). */
+        if (exactReachabilityMetadataSupported()) {
+            registerFieldDeclaringType(condition, field.getDeclaringClass(), preserved);
+        }
         registerField(condition, ACCESSED, preserved, field);
     }
 
@@ -767,7 +776,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (analysisField.getDeclaringClass().isAnnotation()) {
                         processAnnotationField(accessibility, analysisField);
                     }
-                    checkHidingFields(analysisField);
+                    if (!exactReachabilityMetadataSupported()) {
+                        checkHidingFields(analysisField);
+                    }
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -1301,9 +1312,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             }
                         }
                     });
-                    AnalysisType enclosingType = type.getEnclosingType();
-                    if (enclosingType != null) {
-                        innerClasses.computeIfAbsent(enclosingType.getJavaClass(), _ -> new HashSet<>()).add(type.getJavaClass());
+                    if (!exactReachabilityMetadataSupported()) {
+                        AnalysisType enclosingType = type.getEnclosingType();
+                        if (enclosingType != null) {
+                            innerClasses.computeIfAbsent(enclosingType.getJavaClass(), _ -> new HashSet<>()).add(type.getJavaClass());
+                        }
                     }
                 } catch (LinkageError ignored) {
                     // The linkage error is handled in registerAllDeclaredClasses

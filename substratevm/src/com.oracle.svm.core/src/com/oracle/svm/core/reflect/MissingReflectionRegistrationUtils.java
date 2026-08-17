@@ -52,22 +52,22 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         report(exception);
     }
 
-    public static MissingReflectionRegistrationError reportDefineClass(String className) {
+    public static void reportDefineClass(String className) {
         String json = elementToJSON(namedConfigurationType(className));
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
                         reflectionError("access the class", quote(className), json),
                         Class.class, null, className, null);
-        return report(exception) ? exception : null;
+        report(exception);
     }
 
-    public static MissingReflectionRegistrationError reportUnsafeAllocation(Class<?> clazz) {
+    public static void reportUnsafeAllocation(Class<?> clazz) {
         ConfigurationType type = getConfigurationType(clazz);
         type.setUnsafeAllocated();
         String json = elementToJSON(type);
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
                         reflectionError("unsafe instantiate", typeDescriptor(clazz), json),
                         Class.class, null, clazz.getTypeName(), null);
-        return report(exception) ? exception : null;
+        report(exception);
     }
 
     public static void reportFieldQuery(Class<?> declaringClass, String fieldName) {
@@ -85,9 +85,8 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         return exception;
     }
 
-    public static MissingReflectionRegistrationError reportLegacyAccessedField(Field field) {
-        MissingReflectionRegistrationError exception = accessedFieldError(field);
-        return report(exception) ? exception : null;
+    public static void reportLegacyAccessedField(Field field) {
+        report(accessedFieldError(field));
     }
 
     private static MissingReflectionRegistrationError accessedFieldError(Field field) {
@@ -169,9 +168,9 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         return registrationMessage(failedAction, elementDescriptor, json, "reflectively", "reflection", "reflection");
     }
 
-    private static boolean report(MissingReflectionRegistrationError exception) {
+    private static void report(MissingReflectionRegistrationError exception) {
         StackTraceElement responsibleClass = getResponsibleClass(exception, reflectionEntryPoints);
-        return MissingRegistrationUtils.report(exception, responsibleClass);
+        MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
     /*

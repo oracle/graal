@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadataSupported;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
@@ -576,38 +577,40 @@ public abstract class NativeImageCodeCache {
             }
         }
 
-        reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fields) -> {
-            HostedType hostedType = hUniverse.optionalLookup(analysisType);
-            if (hostedType != null) {
-                for (String field : fields) {
-                    runtimeMetadataEncoder.addNegativeFieldQueryMetadata(hostedType, field);
-                }
-            }
-        });
-
-        reflectionSupport.getNegativeMethodQueries().forEach((analysisType, methodSignatures) -> {
-            HostedType hostedType = hUniverse.optionalLookup(analysisType);
-            if (hostedType != null) {
-                for (AnalysisMethod.Signature methodSignature : methodSignatures) {
-                    HostedType[] parameterTypes = hUniverse.optionalLookup(methodSignature.parameterTypes());
-                    if (parameterTypes != null) {
-                        runtimeMetadataEncoder.addNegativeMethodQueryMetadata(hostedType, methodSignature.name(), parameterTypes);
+        if (exactReachabilityMetadataSupported()) {
+            reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fields) -> {
+                HostedType hostedType = hUniverse.optionalLookup(analysisType);
+                if (hostedType != null) {
+                    for (String field : fields) {
+                        runtimeMetadataEncoder.addNegativeFieldQueryMetadata(hostedType, field);
                     }
                 }
-            }
-        });
+            });
 
-        reflectionSupport.getNegativeConstructorQueries().forEach((analysisType, constructorSignatures) -> {
-            HostedType hostedType = hUniverse.optionalLookup(analysisType);
-            if (hostedType != null) {
-                for (AnalysisType[] analysisParameterTypes : constructorSignatures) {
-                    HostedType[] parameterTypes = hUniverse.optionalLookup(analysisParameterTypes);
-                    if (parameterTypes != null) {
-                        runtimeMetadataEncoder.addNegativeConstructorQueryMetadata(hostedType, parameterTypes);
+            reflectionSupport.getNegativeMethodQueries().forEach((analysisType, methodSignatures) -> {
+                HostedType hostedType = hUniverse.optionalLookup(analysisType);
+                if (hostedType != null) {
+                    for (AnalysisMethod.Signature methodSignature : methodSignatures) {
+                        HostedType[] parameterTypes = hUniverse.optionalLookup(methodSignature.parameterTypes());
+                        if (parameterTypes != null) {
+                            runtimeMetadataEncoder.addNegativeMethodQueryMetadata(hostedType, methodSignature.name(), parameterTypes);
+                        }
                     }
                 }
-            }
-        });
+            });
+
+            reflectionSupport.getNegativeConstructorQueries().forEach((analysisType, constructorSignatures) -> {
+                HostedType hostedType = hUniverse.optionalLookup(analysisType);
+                if (hostedType != null) {
+                    for (AnalysisType[] analysisParameterTypes : constructorSignatures) {
+                        HostedType[] parameterTypes = hUniverse.optionalLookup(analysisParameterTypes);
+                        if (parameterTypes != null) {
+                            runtimeMetadataEncoder.addNegativeConstructorQueryMetadata(hostedType, parameterTypes);
+                        }
+                    }
+                }
+            });
+        }
 
         if (NativeImageOptions.PrintMethodHistogram.getValue()) {
             System.out.println("encoded deopt entry points                 ; " + frameInfoCustomization.numDeoptEntryPoints);

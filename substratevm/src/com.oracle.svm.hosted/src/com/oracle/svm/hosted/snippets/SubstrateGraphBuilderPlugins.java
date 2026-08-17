@@ -503,7 +503,7 @@ public class SubstrateGraphBuilderPlugins {
                 if (proxyRegistrationRunnable != null) {
                     ResolvedJavaType callerClass = b.getMethod().getDeclaringClass();
                     ResolvedJavaModule callerModule = JVMCIReflectionUtil.getModule(callerClass);
-                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerModule.isNamed() ? callerModule.getName() : null,
+                    boolean callerInScope = MissingRegistrationSupport.singleton().prepareExactMetadata(callerModule.isNamed() ? callerModule.getName() : null,
                                     JVMCIReflectionUtil.getPackageName(callerClass), JVMCIReflectionUtil.getTypeName(callerClass));
                     if (callerInScope && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
                         b.add(ReachabilityCallbackNode.create(proxyRegistrationRunnable, reason));
