@@ -517,7 +517,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 } else {
                     String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
                     if (!ignoreUnrecognized && remainingArgs.length != 0) {
-                        if (!SubstrateOptions.LegacyJavaOptionMode.getValue()) {
+                        if (SubstrateOptions.StrictRuntimeJavaOptions.getValue()) {
                             Log.logStream().println("Error: Unrecognized option: " + remainingArgs[0]);
                             return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
                         } else {

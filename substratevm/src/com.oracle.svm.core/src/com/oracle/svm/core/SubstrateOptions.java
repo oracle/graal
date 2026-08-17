@@ -933,21 +933,23 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
 
     @Option(help = """
-                    Preserve legacy Java option handling at runtime.
+                    Enable strict handling of Java VM options at image run time.
 
-                    When true, only these Java options are consumed by the VM:
-                      - System properties with or without an explicit value (i.e. "-Dname=value" or "-Dname")
-                      - "-Xms", "-Xmx", "-Xmn" and "-Xss"
-                      - "-XX:"
-                    All other options are passed through to main or ignored for CreateJavaVM/graal_create_isolate.
+                    When disabled, the VM consumes only the historical options:
 
-                    When false, the VM parses all options passed via CreateJavaVM/graal_create_isolate.
-                    A recognized but unimplemented option reports an error and exits the VM.
-                    If the VM entry point is main, unrecognized options are passed through to main.
-                    Otherwise, an unrecognized option reports an error and exits the VM unless
-                    JNIJavaVMInitArgs.ignoreUnrecognized or graal_create_isolate_params_t.ignore_unrecognized_args
-                    is true in which case the unrecognized option is silently ignored.""", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> LegacyJavaOptionMode = new HostedOptionKey<>(true);
+                     * -Dname=value and -Dname
+                     * -Xms, -Xmx, -Xmn, -Xss
+                     * Native Image runtime -XX: options
+
+                    Furthermore:
+                     * Java-looking arguments are passed to application main, or
+                       silently ignored by JNI_CreateJavaVM / graal_create_isolate.
+                     * Direct -Djdk.module.* properties are treated as ordinary properties.
+
+                    When enabled, supported Java VM options are parsed, recognized but unsupported
+                    options are rejected, and `--` separates VM options from application arguments
+                    for Java main entry points.""", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> StrictRuntimeJavaOptions = new HostedOptionKey<>(false);
 
     @Option(help = "Enable wildcard expansion in command line arguments on Windows.")//
     public static final HostedOptionKey<Boolean> EnableWildcardExpansion = new HostedOptionKey<>(true);

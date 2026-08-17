@@ -180,12 +180,10 @@ public interface GuestStagingDependencyBridge {
      */
     boolean shouldParseRuntimeOptions();
 
-    /**
-     * Returns whether runtime Java options use the legacy compatibility mode.
-     * <p>
-     * Remove this method when {@code LegacyJavaOptionMode} moves to guest/staging.
-     */
-    boolean legacyJavaOptionMode();
+    /// Returns whether strict runtime Java option handling is enabled.
+    ///
+    /// Remove this method when `StrictRuntimeJavaOptions` moves to guest/staging.
+    boolean strictRuntimeJavaOptions();
 
     /**
      * Initializes a system property parsed from a runtime Java option.
