@@ -100,6 +100,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.sboutlining.OutlinedSBMethodHolder;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -924,6 +925,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
 
         registerSafeArenaAccessorClass(metaAccess, FactoryMethodHolder.class);
         registerSafeArenaAccessorClass(metaAccess, FactoryThrowMethodHolder.class);
+        registerSafeArenaAccessorClass(metaAccess, OutlinedSBMethodHolder.class);
         registerSafeArenaAccessorClass(metaAccess, LogUtils.class);
 
         /*

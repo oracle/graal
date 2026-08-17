@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CONSTRU
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
 
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -88,6 +90,7 @@ import com.oracle.svm.hosted.lambda.LambdaParser;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
+import com.oracle.svm.hosted.sboutlining.OutlinedSBMethodSupport;
 import com.oracle.svm.hosted.snapshot.c.CGlobalDataInfoData;
 import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.dynamichub.DynamicHubInfoData;
@@ -146,16 +149,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     private ImageLayerConstantLoader constantLoader;
 
     /** Maps from the previous layer element id to the linked elements in this layer. */
-    protected final Map<Integer, AnalysisType> types = new ConcurrentHashMap<>();
-    protected final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
-    protected final Map<Integer, AnalysisField> fields = new ConcurrentHashMap<>();
+    private final Map<Integer, AnalysisType> types = new ConcurrentHashMap<>();
+    private final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
+    private final Map<Integer, AnalysisField> fields = new ConcurrentHashMap<>();
 
     private final Map<Integer, BaseLayerType> baseLayerTypes = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> typeToHubIdentityHashCode = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerField> baseLayerFields = new ConcurrentHashMap<>();
 
-    protected final Set<DebugContextRunnable> futureBigbangTasks = ConcurrentHashMap.newKeySet();
+    private final Set<DebugContextRunnable> futureBigbangTasks = ConcurrentHashMap.newKeySet();
     private final Map<ResolvedJavaMethod, Boolean> methodHandleCallers = new ConcurrentHashMap<>();
 
     /** Map from {@link SVMImageLayerSnapshotUtil#getTypeDescriptor} to base layer type ids. */
@@ -164,9 +167,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     private EconomicMap<String, Integer> methodDescriptorToBaseLayerId;
     /** Map from base layer type ids to base layer method ids. */
     private EconomicMap<Integer, List<Integer>> declaringTypeIdToMethodIds;
-    protected AnalysisUniverse universe;
-    protected AnalysisMetaAccess metaAccess;
-    protected HostedValuesProvider hostedValuesProvider;
+    AnalysisUniverse universe;
+    AnalysisMetaAccess metaAccess;
+    HostedValuesProvider hostedValuesProvider;
     private final LayeredStaticFieldSupport layeredStaticFieldSupport = LayeredStaticFieldSupport.singleton();
 
     /**
@@ -316,7 +319,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     private void loadType(PersistedAnalysisTypeData.Loader typeData) {
         int tid = typeData.getId();
 
-        if (delegateLoadType(typeData)) {
+        if (loadWrappedType(typeData)) {
             return;
         }
 
@@ -345,7 +348,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         }
     }
 
-    protected boolean delegateLoadType(PersistedAnalysisTypeData.Loader typeData) {
+    private boolean loadWrappedType(PersistedAnalysisTypeData.Loader typeData) {
         WrappedType.Loader wrappedType = typeData.getWrappedType();
         if (wrappedType.isNone()) {
             return false;
@@ -421,7 +424,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
      * Tries to look up the base layer type in the current VM. Some types cannot be looked up by
      * name (for example $$Lambda types), so this method can return null.
      */
-    protected ResolvedJavaType lookupBaseLayerTypeInHostVM(String type) {
+    ResolvedJavaType lookupBaseLayerTypeInHostVM(String type) {
         int arrayType = 0;
         String componentType = type;
         /*
@@ -650,7 +653,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     private void loadMethod(PersistedAnalysisMethodData.Loader methodData) {
         int mid = methodData.getId();
 
-        if (delegateLoadMethod(methodData)) {
+        if (loadWrappedMethod(methodData)) {
             return;
         }
 
@@ -768,7 +771,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         }
     }
 
-    protected boolean delegateLoadMethod(PersistedAnalysisMethodData.Loader methodData) {
+    private boolean loadWrappedMethod(PersistedAnalysisMethodData.Loader methodData) {
         WrappedMethod.Loader wrappedMethod = methodData.getWrappedMethod();
         if (wrappedMethod.isNone()) {
             return false;
@@ -781,6 +784,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             }
             AnalysisType instantiatedType = getAnalysisTypeForBaseLayerId(fm.getInstantiatedTypeId());
             FactoryMethodSupport.singleton().lookup(metaAccess, analysisMethod, instantiatedType, fm.getThrowAllocatedObject());
+            return true;
+        } else if (wrappedMethod.isOutlinedSB()) {
+            WrappedMethod.OutlinedSB.Loader r = wrappedMethod.getOutlinedSB();
+            Class<?> returnType = OriginalClassProvider.getJavaClass(lookupBaseLayerTypeInHostVM(r.getMethodTypeReturn()));
+            Class<?>[] parameterTypes = StreamSupport.stream(r.getMethodTypeParameters().spliterator(), false)
+                            .map(a -> OriginalClassProvider.getJavaClass(lookupBaseLayerTypeInHostVM(a))).toArray(Class[]::new);
+            MethodType methodType = MethodType.methodType(returnType, parameterTypes);
+            OutlinedSBMethodSupport.singleton().lookup(metaAccess, methodType);
             return true;
         } else if (wrappedMethod.isCEntryPointCallStub()) {
             WrappedMethod.CEntryPointCallStub.Loader stub = wrappedMethod.getCEntryPointCallStub();
