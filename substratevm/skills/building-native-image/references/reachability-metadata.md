@@ -49,6 +49,12 @@ To limit exact reachability metadata to specific packages, pass a comma-separate
 ./application -XX:ExactReachabilityMetadataPackages=com.example,org.example
 ```
 
+Both are immutable runtime options: they are read once during startup, and an executable built without `--future-defaults=exact-reflection` rejects them.
+They can also be baked in as build-time defaults with `-R:+ExactReachabilityMetadata` or `-R:ExactReachabilityMetadataPackages=`, but only in a build that also passes `--future-defaults=exact-reflection`; any other build fails with
+`Error: The option 'ExactReachabilityMetadata' can only be set for an image built with '--future-defaults=exact-reflection'.`
+
+With `-XX:MissingRegistrationReportingMode=Warn`, and for callers outside the selected packages, a missing registration is only reported and the call continues with its legacy, non-exact behavior.
+
 ---
 
 ## 2. Where to Put Metadata Files

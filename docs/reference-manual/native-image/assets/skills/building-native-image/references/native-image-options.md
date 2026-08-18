@@ -59,6 +59,10 @@ native-image --future-defaults=exact-reflection <class>
 ./application -XX:ExactReachabilityMetadataPackages=com.example,org.example
 ```
 
+The `-XX:` options are runtime options of an executable built with `--future-defaults=exact-reflection`.
+Use `-R:+ExactReachabilityMetadata` to make one the default of such a build; without `--future-defaults=exact-reflection` in that same build, the build fails with
+`Error: The option 'ExactReachabilityMetadata' can only be set for an image built with '--future-defaults=exact-reflection'.`
+
 ## Output and binary type
 
 **If you want to rename the output binary:**

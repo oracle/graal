@@ -15,6 +15,10 @@ graalvmNative {
 }
 ```
 
+Keep the split: `--future-defaults=exact-reflection` selects exact reachability metadata at build time and belongs in `buildArgs`, while the `-XX:` options refine that mode at run time and belong in `runtimeArgs`.
+A `buildArgs.add('-R:+ExactReachabilityMetadata')` makes the runtime option the default of the executable, but only alongside `--future-defaults=exact-reflection`; without it the build fails with
+`Error: The option 'ExactReachabilityMetadata' can only be set for an image built with '--future-defaults=exact-reflection'.`
+
 ## Resolution Workflow
 
 ### Run the Tracing Agent
