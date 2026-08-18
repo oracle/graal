@@ -52,8 +52,8 @@ import com.oracle.svm.webimage.platform.WebImageWasmLMPlatform;
 public class WebImageWasmLMJavaMainSupport extends WebImageJavaMainSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public WebImageWasmLMJavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
-        super(javaMainMethod);
+    public WebImageWasmLMJavaMainSupport(Class<?> javaMainClass, Method javaMainMethod) throws IllegalAccessException {
+        super(javaMainClass, javaMainMethod);
     }
 
     /**

@@ -41,7 +41,7 @@ import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class, other = DisallowLayered.class)
 public class WebImageJSJavaMainSupport extends WebImageJavaMainSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public WebImageJSJavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
-        super(javaMainMethod);
+    public WebImageJSJavaMainSupport(Class<?> javaMainClass, Method javaMainMethod) throws IllegalAccessException {
+        super(javaMainClass, javaMainMethod);
     }
 }

@@ -43,8 +43,8 @@ import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = ApplicationLayerOnly.class, other = DisallowLayered.class)
 public class WebImageWasmGCJavaMainSupport extends WebImageJavaMainSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public WebImageWasmGCJavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
-        super(javaMainMethod);
+    public WebImageWasmGCJavaMainSupport(Class<?> javaMainClass, Method javaMainMethod) throws IllegalAccessException {
+        super(javaMainClass, javaMainMethod);
     }
 
     /**
