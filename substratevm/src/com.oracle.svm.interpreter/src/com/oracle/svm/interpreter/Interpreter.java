@@ -251,8 +251,10 @@ import java.util.Objects;
 
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.NeverInlineTrivial;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -4553,7 +4555,7 @@ public final class Interpreter {
         InterpreterToVM.ensureClassInitialized(field.getDeclaringClass());
 
         JavaKind kind = field.getJavaKind();
-        Object receiver = field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum());
+        Object receiver = getStaticStorage(field);
 
         switch (kind) {
             case Boolean -> {
@@ -4686,11 +4688,10 @@ public final class Interpreter {
         assert field.isStatic();
         InterpreterToVM.ensureClassInitialized(field.getDeclaringClass());
 
-        JavaKind kind = field.getJavaKind();
-        Object receiver = field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum());
+        Object receiver = getStaticStorage(field);
 
         // @formatter:off
-        switch (kind) {
+        switch (field.getJavaKind()) {
             case Boolean -> virtualStack.pushInt(state, InterpreterToVM.getFieldBoolean(receiver, field, true) ? 1 : 0);
             case Byte    -> virtualStack.pushInt(state, InterpreterToVM.getFieldByte(receiver, field, true));
             case Char    -> virtualStack.pushInt(state, InterpreterToVM.getFieldChar(receiver, field, true));
@@ -4703,6 +4704,20 @@ public final class Interpreter {
             default      -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
         // @formatter:on
+    }
+
+    @AlwaysInline("Keep static field storage lookup in the bytecode-handler stub")
+    private static Object getStaticStorage(InterpreterResolvedJavaField field) {
+        Object storage = field.getCachedStaticStorage();
+        if (ImageLayerBuildingSupport.buildingImageLayer() && GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, storage == null)) {
+            return getStaticStorageSlowPath(field);
+        }
+        return StaticFieldsSupport.staticFieldBaseProxy(storage);
+    }
+
+    @NeverInline("Future-layer static field storage fallback")
+    private static Object getStaticStorageSlowPath(InterpreterResolvedJavaField field) {
+        return field.getDeclaringClass().getStaticStorage(field.getJavaKind().isPrimitive(), field.getInstalledLayerNum());
     }
 
     /**

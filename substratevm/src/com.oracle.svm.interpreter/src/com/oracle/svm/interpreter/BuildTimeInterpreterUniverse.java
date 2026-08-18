@@ -51,8 +51,11 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -184,6 +187,13 @@ public final class BuildTimeInterpreterUniverse {
         resolvedJavaField.setOffset(hostedField.getOffset());
         if (hostedField.hasInstalledLayerNum()) {
             resolvedJavaField.setInstalledLayerNum(hostedField.getInstalledLayerNum());
+        }
+        boolean currentLayer = !ImageLayerBuildingSupport.buildingImageLayer() ||
+                        hostedField.hasInstalledLayerNum() && hostedField.getInstalledLayerNum() == DynamicImageLayerInfo.getCurrentLayerNumber();
+        if (resolvedJavaField.isStatic() && currentLayer) {
+            Object staticStorage = resolvedJavaField.getJavaKind().isPrimitive() ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields()
+                            : StaticFieldsSupport.getCurrentLayerStaticObjectFields();
+            resolvedJavaField.setCachedStaticStorage(staticStorage);
         }
         InterpreterResolvedJavaType fType = getType(hostedField.getType().getWrapped());
         if (fType != null) {

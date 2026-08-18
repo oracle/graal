@@ -50,6 +50,8 @@ import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -85,6 +87,8 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
     // Computed after analysis.
     private int offset;
     protected byte layerNum;
+
+    @UnknownObjectField(availability = AfterHostedUniverse.class, types = {Object[].class, byte[].class}, canBeNull = true) private Object staticStorage;
 
     private final InterpreterResolvedObjectType declaringClass;
     protected InterpreterResolvedJavaType resolvedType;
@@ -169,6 +173,7 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         InterpreterResolvedJavaField result = new InterpreterResolvedJavaField(nameSymbol, symbolicType, flags, resolvedType, declaringClass, offset, constant, isWordStorage);
         if (result.isStatic()) {
             result.layerNum = NumUtil.safeToByte(layerNum);
+            result.staticStorage = declaringClass.getStaticStorage(result.javaKind.isPrimitive(), layerNum);
         }
         return result;
     }
@@ -264,6 +269,18 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     public final int getInstalledLayerNum() {
         return layerNum;
+    }
+
+    public final Object getCachedStaticStorage() {
+        assert isStatic();
+        return staticStorage;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final void setCachedStaticStorage(Object storage) {
+        assert isStatic();
+        VMError.guarantee(staticStorage == null || staticStorage == storage, "Static field storage must not change.");
+        staticStorage = MetadataUtil.requireNonNull(storage);
     }
 
     @Override
