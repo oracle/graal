@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,20 @@ package jdk.graal.compiler.nodes.loop;
 
 import java.util.Collection;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.vm.ci.code.CodeUtil;
 
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 
@@ -102,29 +109,118 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s) {
-        // base.extremumNode will already perform any necessary conversion operation based on the
-        // stamp, thus we do not "redo" the same here, the caller decides upon the request result
-        // stamp bit width
-        return base.extremumNode(assumeLoopEntered, s);
+        return extremumNode(assumeLoopEntered, s, null);
     }
 
     /**
-     * @see #extremumNode(boolean, Stamp)
+     * Computes the base endpoint in the base IV's native stamp, reapplies this conversion, and then
+     * adapts the result to {@code requestedStamp}. Computing the base endpoint directly in
+     * {@code requestedStamp} can skip an intermediate conversion. For example, it can make a zero
+     * extension appear redundant after a narrowing and sign extension.
      */
     @Override
-    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s, ValueNode maxTripCount) {
-        return base.extremumNode(assumeLoopEntered, s, maxTripCount);
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp requestedStamp, ValueNode maxTripCount) {
+        Stamp baseStamp = base.valueNode().stamp(NodeView.DEFAULT);
+        ValueNode baseExtremum;
+        if (maxTripCount == null) {
+            baseExtremum = base.extremumNode(assumeLoopEntered, baseStamp);
+        } else {
+            baseExtremum = base.extremumNode(assumeLoopEntered, baseStamp, maxTripCount);
+        }
+        ValueNode converted = IntegerConvertNode.convert(baseExtremum, stamp, value instanceof ZeroExtendNode, graph(), NodeView.DEFAULT);
+        return IntegerConvertNode.convert(converted, requestedStamp, false, graph(), NodeView.DEFAULT);
+    }
+
+    /**
+     * Adds the condition under which a conversion introduces a discontinuity in the endpoint range.
+     * The endpoints are those of the base IV, before this conversion is applied. For example:
+     *
+     * <pre>
+     * baseInit = -2, baseExtremum = 2; baseRange = [-2, ..., 2]
+     * -> zeroExtension
+     * init = 0xFFFFFFFEL, extremum = 2L; range = [0xFFFFFFFEL, 0xFFFFFFFFL] U [0L,1L,2L]
+     * </pre>
+     *
+     * This discontinuity makes the IV range non-monotonic. The computed base endpoints' stamps are
+     * used, rather than checking if the {@link #valueNode()}'s stamp is positive or strictly
+     * negative - the conversion's input might use branch-local stamp refinements that make it not
+     * applicable to whole-loop endpoint proofs.
+     */
+    void collectRangeEndpointConditions(ValueNode baseInit, ValueNode baseExtremum, Collection<LogicNode> conditions) {
+        IntegerStamp initStamp = (IntegerStamp) baseInit.stamp(NodeView.DEFAULT);
+        IntegerStamp extremumStamp = (IntegerStamp) baseExtremum.stamp(NodeView.DEFAULT);
+        GraalError.guarantee(initStamp.isCompatible(extremumStamp),
+                        "Expected compatible conversion endpoints for %s: %s, %s", this, baseInit, baseExtremum);
+        if (value instanceof ZeroExtendNode) {
+            LogicNode signChange;
+            if (IntegerStamp.sameSign(initStamp, extremumStamp)) {
+                return;
+            } else if ((initStamp.isPositive() && extremumStamp.isStrictlyNegative()) ||
+                            (initStamp.isStrictlyNegative() && extremumStamp.isPositive())) {
+                signChange = LogicConstantNode.tautology();
+            } else {
+                ValueNode endpointsXor = graph().addOrUniqueWithInputs(XorNode.create(baseInit, baseExtremum, NodeView.DEFAULT));
+                ValueNode zero = ConstantNode.forIntegerStamp(initStamp, 0, graph());
+                // signChange = (init ^ extremum) < 0
+                signChange = graph().addOrUniqueWithInputs(IntegerLessThanNode.create(endpointsXor, zero, NodeView.DEFAULT));
+            }
+            if (!signChange.isContradiction()) {
+                conditions.add(graph().addOrUniqueWithInputs(signChange));
+            }
+        }
     }
 
     @Override
-    protected ValueNode collectLocalExtremumOverflowConditions(boolean assumeLoopEntered, Stamp extremumStamp, ValueNode effectiveMaxTripCount, ValueNode baseExtremum,
+    protected ValueNode collectLocalEndpointOverflowConditions(boolean assumeLoopEntered, Stamp endpointStamp, ValueNode effectiveMaxTripCount, ValueNode baseEndpoint,
                     Collection<LogicNode> conditions) {
-        GraalError.guarantee(baseExtremum != null, "Expected base extremum for %s", this);
+        GraalError.guarantee(baseEndpoint != null, "Expected base endpoint for %s", this);
         /*
-         * A pure integer conversion does not add new extremum arithmetic of its own. The base IV's
-         * overflow conditions already cover the computation whose result is being converted.
+         * An integer conversion does not add new endpoint arithmetic of its own. The base IV's
+         * overflow conditions already cover the computation whose result is being converted. Zero
+         * extensions are handled separately in #collectRangeEndpointConditions, while narrowing
+         * must check that converting the computed base endpoints is exact.
          */
-        return IntegerConvertNode.convert(baseExtremum, extremumStamp, value instanceof ZeroExtendNode, graph(), NodeView.DEFAULT);
+        if (value instanceof NarrowNode narrow) {
+            collectEndpointNarrowingConditions(narrow, baseEndpoint, conditions);
+        }
+        return IntegerConvertNode.convert(baseEndpoint, endpointStamp, value instanceof ZeroExtendNode, graph(), NodeView.DEFAULT);
+    }
+
+    /**
+     * Adds conditions that are true when narrowing {@code baseEndpoint} to the result width of
+     * {@code narrow} loses information.
+     * <p>
+     * This method is called separately for the initial and extremum endpoints. If either endpoint
+     * would wrap when narrowed, the range is not monotonic, so it is unsafe to apply whole-loop
+     * endpoint proofs. For example:
+     *
+     * <pre>
+     * baseInit = (long) Integer.MAX_VALUE + 10
+     * baseExtremum = (long) Integer.MAX_VALUE - 5
+     * -> narrow to int
+     * init = Integer.MIN_VALUE + 9
+     * extremum = Integer.MAX_VALUE - 5
+     * </pre>
+     *
+     * The initial endpoint wraps, creating a discontinuity.
+     * <p>
+     * Note that even if the underlying {@link NarrowNode} is lossless based on its input's stamp,
+     * the stamp might use branch-local refinements, but monotonicity proofs follow the underlying
+     * IV's whole range, so that alone cannot be used to prove safety.
+     */
+    private void collectEndpointNarrowingConditions(NarrowNode narrow, ValueNode baseEndpoint, Collection<LogicNode> conditions) {
+        int resultBits = narrow.getResultBits();
+        IntegerStamp sourceStamp = (IntegerStamp) baseEndpoint.stamp(NodeView.DEFAULT);
+        ValueNode min = ConstantNode.forIntegerStamp(sourceStamp, CodeUtil.minValue(resultBits), graph());
+        ValueNode max = ConstantNode.forIntegerStamp(sourceStamp, CodeUtil.maxValue(resultBits), graph());
+        LogicNode outOfRangeLow = IntegerLessThanNode.create(baseEndpoint, min, NodeView.DEFAULT);
+        LogicNode outOfRangeHigh = IntegerLessThanNode.create(max, baseEndpoint, NodeView.DEFAULT);
+        if (!outOfRangeLow.isContradiction()) {
+            conditions.add(graph().addOrUniqueWithInputs(outOfRangeLow));
+        }
+        if (!outOfRangeHigh.isContradiction()) {
+            conditions.add(graph().addOrUniqueWithInputs(outOfRangeHigh));
+        }
     }
 
     @Override

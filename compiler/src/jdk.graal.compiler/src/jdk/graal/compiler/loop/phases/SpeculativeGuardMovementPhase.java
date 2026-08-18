@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
  */
 package jdk.graal.compiler.loop.phases;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -67,6 +70,7 @@ import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
+import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
@@ -166,16 +170,50 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * guard((init(i) < bound) && (extremum(i) < (long) bound))
  * }</pre>
  *
- * Checking the initial value and the extremum is enough to prove that the comparison holds on every
- * iteration. For non-inverted loops, the phase also adds a loop-entry check so that the extremum
- * test is ignored when the loop has zero trips. If the new tests fold to a guard that always
- * deoptimizes, the phase leaves the original guard in the loop.
+ * Mathematically, checking the initial value and the extremum is enough to prove that the
+ * comparison holds on every iteration. For non-inverted loops, the phase also adds a loop-entry
+ * check so that the extremum test is ignored when the loop has zero trips. If the new tests fold to
+ * a guard that always deoptimizes, the phase leaves the original guard in the loop.
  * <p>
- * The IV extremum and the overflow conditions needed to compute it come from
- * {@link SpeculativeGuardMovement#buildExtremumComputation(InductionVariable, Stamp, ValueNode)}.
- * This phase adds overflow guards for IV extrema, because the computation must be safe in the IV's
- * original integer width, not just after the result has been widened to {@code long}. IV overflow
- * guards are also protected by speculations.
+ * To ensure the hoisting is safe, this phase must establish that the induction variable does not
+ * overflow and its range is continuous and monotonic. For example:
+ *
+ * <pre>{@code
+ * for (int i = init; i < limit; i += stride) {
+ *     // Simplest case: comparison with the limit-checked IV itself
+ *     guard(i < bound)
+ *
+ *     // Affine derived IV can introduce overflowing arithmetic
+ *     guard((i * scale) + offset < bound)
+ *
+ *     // Conversion IV can introduce a discontinuity
+ *     guard(zeroExtend(i) < bound)
+ *
+ *     // Unsigned comparison needs extra checks because the IV range is signed
+ *     guard(i |<| bound)
+ * }
+ * }</pre>
+ *
+ * The counted loop overflow checks (either the constant
+ * {@link CountedLoopInfo#counterNeverOverflows()}, or speculative
+ * {@link CountedLoopInfo#createOverFlowGuard()}) establish that {@code i} does not overflow. Every
+ * derived IV needs to be checked independently for any operations that could make the optimization
+ * invalid.
+ * <p>
+ * The IV endpoints and the safety conditions needed to compute them come from
+ * {@link SpeculativeGuardMovement#buildEndpointsComputation(InductionVariable, ValueNode, Stamp)}.
+ * This phase adds overflow guards for derived IV endpoint arithmetic because their computation must
+ * be safe in the IV's original integer width, not just after the result has been widened to
+ * {@code long}. Conversion IVs need guards too, to ensure they don't introduce discontinuities in
+ * their range.
+ * <p>
+ * IV ranges are always considered signed, so additional care must be taken with unsigned
+ * comparisons: a range like {@code [-10,10]} is continuous and monotonic in the signed domain but
+ * not in unsigned arithmetic. Therefore, unsigned comparisons add guards to ensure they are safe to
+ * hoist. Similarly, loops where the loop condition itself is unsigned are only optimized when it
+ * can be proven that it is equivalent to a signed comparison and therefore safe.
+ * <p>
+ * All the additional guards are also protected by speculations.
  */
 public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> implements FloatingGuardPhase, Speculative {
 
@@ -517,41 +555,97 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         /**
-         * Builds the init/extremum tests for the moved guard and creates any required IV overflow
-         * guards. Returns {@code null} if the extremum computation would always overflow or if the
-         * speculation log says a required overflow guard must not be created.
+         * Builds the init/extremum tests for the moved guard and creates any required IV endpoint
+         * safety guards. Both endpoint values explicitly depend on the combined additional guard.
+         * Returns {@code null} if an additional condition always deoptimizes or if the speculation
+         * log says a required guard must not be created.
+         * <p>
+         * The initial value is compared in the original comparison's integer width. For a signed
+         * comparison, the extremum and bound are compared in 64-bit arithmetic to avoid narrowing
+         * the computed extremum before testing it against the bound. For an unsigned comparison,
+         * the extremum test retains the original comparison width.
+         * <p>
+         * Before creating the tests, this method computes the induction variable endpoints and
+         * materializes the safety guards required to make usage of those endpoints valid. The
+         * safety guards' conditions always use the native integer width of each IV step.
+         * <p>
+         * For example, for a signed {@code int} comparison:
+         *
+         * <pre>{@code
+         * var = i * scale
+         * // Original guard:
+         * guard(var < bound)
+         *
+         * // Tests returned by this method:
+         * initTest     = init(var) < bound
+         * extremumTest = longExtremum(var) < (long) bound
+         * // These tests' nodes are guarded by:
+         * guard(!mulOverflow(init(i), scale))
+         * guard(!mulOverflow(extremum(i), scale))
+         * }</pre>
+         *
+         * For the equivalent {@code mirrored} comparison {@code bound < var}, the operands are also
+         * swapped in each of the returned tests. For an unsigned comparison:
+         *
+         * <pre>{@code
+         * // Original guard:
+         * guard(i |<| bound)
+         *
+         * // Created tests:
+         * initTest     = init(i) |<| bound
+         * extremumTest = extremum(i) |<| bound
+         * // Guarded by:
+         * guard(sameSign(init(i), extremum(i))) // This guard ensures monotonicity of the unsigned range
+         * }</pre>
+         *
+         * @param guard the candidate guard used to materialize endpoint-safety guards
+         * @param compare the comparison being optimized
+         * @param iv the induction variable used in this comparison
+         * @param bound the other, loop-invariant operand of the comparison
+         * @param mirrored whether {@code iv} is the right-hand operand of {@code compare}
+         * @return the initial-value and extremum tests, or {@code null} if the endpoint-safety
+         *         guards cannot be materialized
          */
         private OptimizedCompareTests computeNewCompareGuards(GuardNode guard, CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored) {
             return computeNewCompareGuards(guard, compare, iv, bound, mirrored, null);
         }
 
         private OptimizedCompareTests computeNewCompareGuards(GuardNode guard, CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, ValueNode maxTripCountNode) {
-            ExtremumOverflowData extremumOverflowData = computeExtremumOverflowData(guard, iv, maxTripCountNode);
-            if (extremumOverflowData.alwaysOverflows()) {
+            EndpointGuardData endpointGuardData = computeEndpointGuardData(guard, compare, iv, maxTripCountNode);
+            if (endpointGuardData.alwaysDeoptimizes()) {
                 return null;
             }
-            ValueNode guardedExtremum = graph.addOrUniqueWithInputs(GuardedValueNode.create(extremumOverflowData.extremum, extremumOverflowData.overflowGuard));
-            return computeNewCompareGuards(compare, iv, bound, mirrored, guardedExtremum);
+            ValueNode guardedInit = graph.addOrUniqueWithInputs(
+                            GuardedValueNode.create(endpointGuardData.init(), endpointGuardData.guard()));
+            ValueNode guardedExtremum = graph.addOrUniqueWithInputs(
+                            GuardedValueNode.create(endpointGuardData.extremum(), endpointGuardData.guard()));
+            return computeNewCompareGuards(compare, bound, mirrored, guardedInit, guardedExtremum);
         }
 
-        private OptimizedCompareTests computeNewCompareGuards(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, ValueNode guardedExtremum) {
-            final boolean zeroExtendBound = compare.condition().isUnsigned();
-            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), zeroExtendBound, graph, NodeView.DEFAULT);
-            // guardedExtremum |<| longBound && iv.initNode() |<| bound
-            ValueNode y1 = longBound;
+        private OptimizedCompareTests computeNewCompareGuards(CompareNode compare, ValueNode bound, boolean mirrored, ValueNode init, ValueNode guardedExtremum) {
+            boolean unsigned = compare instanceof IntegerBelowNode;
+            Stamp newCompareStamp;
+            if (unsigned) {
+                newCompareStamp = compare.getX().stamp(NodeView.DEFAULT);
+            } else {
+                newCompareStamp = StampFactory.forKind(JavaKind.Long);
+            }
+            ValueNode convertedBound = IntegerConvertNode.convert(bound, newCompareStamp, unsigned, graph, NodeView.DEFAULT);
+            // guardedExtremum |<| convertedBound && init |<| bound
+            ValueNode y1 = convertedBound;
             ValueNode y2 = bound;
             ValueNode x1 = guardedExtremum;
-            ValueNode x2 = iv.initNode();
+            ValueNode x2 = init;
             if (mirrored) {
-                // longBound |<| guardedExtremum && bound |<| iv.initNode()
-                x1 = longBound;
+                // convertedBound |<| guardedExtremum && bound |<| init
+                x1 = convertedBound;
                 y1 = guardedExtremum;
                 x2 = bound;
-                y2 = iv.initNode();
+                y2 = init;
             }
             LogicNode extremumTest;
             LogicNode initTest;
-            if (compare instanceof IntegerBelowNode) {
+            if (unsigned) {
                 extremumTest = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x1, y1, NodeView.DEFAULT));
                 initTest = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x2, y2, NodeView.DEFAULT));
             } else {
@@ -561,10 +655,12 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
             if (graph.getDebug().isDumpEnabledForMethod()) {
                 if (mirrored) {
-                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: longBound(%s) |<| guardedExtremum(%s) && bound(%s) |<| iv.initNode()(%s) =%s && %s", x1,
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph,
+                                    "Speculative guard movement: convertedBound(%s) |<| guardedExtremum(%s) && bound(%s) |<| init(%s) =%s && %s", x1,
                                     y1, x2, y2, extremumTest, initTest);
                 } else {
-                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: guardedExtremum(%s) |<| longBound(%s) && iv.initNode()(%s) |<| bound(%s)=%s && %s", x1,
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph,
+                                    "Speculative guard movement: guardedExtremum(%s) |<| convertedBound(%s) && init(%s) |<| bound(%s)=%s && %s", x1,
                                     y1, x2, y2, extremumTest, initTest);
                 }
             }
@@ -572,35 +668,109 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         /**
-         * Captures the extremum used for hoisting together with the overflow guards needed to make
-         * that extremum valid.
+         * Captures the endpoints used for hoisting together with the additional guards needed to
+         * make them valid.
          */
-        private record ExtremumOverflowData(ValueNode extremum, GuardingNode overflowGuard) {
-            private boolean alwaysOverflows() {
-                return overflowGuard instanceof GuardNode overflowGuardNode && OverflowGuardRegistry.isAlwaysOverflowingGuard(overflowGuardNode);
+        private record EndpointGuardData(ValueNode init, ValueNode extremum, GuardingNode guard) {
+            private boolean alwaysDeoptimizes() {
+                return guard instanceof GuardNode guardNode && OverflowGuardRegistry.isAlwaysOverflowingGuard(guardNode);
             }
         }
 
         /**
-         * Computes the extremum used for hoisting and the overflow guards needed to evaluate that
-         * extremum safely.
+         * Computes the endpoints used for hoisting and the additional guards needed to use them
+         * safely.
          * <p>
-         * Each IV step contributes its raw exact-overflow conditions, such as
-         * {@code IntegerAddExactOverflow(base, 27)} for the condition that becomes true iff
-         * evaluating {@code base + 27} in the IV arithmetic width overflows. The
-         * {@link OverflowGuardRegistry} handles canonicalization and sharing of guards.
+         * Each IV step contributes endpoint-safety conditions, including raw exact-overflow
+         * conditions such as {@code IntegerAddExactOverflow(base, 27)} and conversion-safety
+         * conditions such as a negative input to a zero-extension. The
+         * {@link OverflowGuardRegistry} handles canonicalization and sharing of exact-overflow
+         * guards, while materializing other conditions directly.
+         * <p>
+         * For an unsigned comparison, the signed endpoint checks are followed by a guard that
+         * rejects a range spanning the discontinuity in unsigned ordering, see
+         * {@link #createUnsignedRangeWrapCondition(InductionVariable, InductionVariable.Endpoints)}.
          */
-        private ExtremumOverflowData computeExtremumOverflowData(GuardNode hoistingCandidateGuard, InductionVariable iv, ValueNode maxTripCountNode) {
-            InductionVariable.Extremum extremumComputation = buildExtremumComputation(iv, StampFactory.forKind(JavaKind.Long), maxTripCountNode);
-            GuardingNode extremumOverflowGuard = null;
-            for (LogicNode overflowCondition : extremumComputation.overflowConditions()) {
+        private EndpointGuardData computeEndpointGuardData(GuardNode hoistingCandidateGuard, CompareNode compare, InductionVariable iv, ValueNode maxTripCountNode) {
+            ValueNode effectiveMaxTripCount = effectiveMaxTripCount(iv, maxTripCountNode);
+            InductionVariable.Endpoints endpoints = buildEndpointsComputation(iv, effectiveMaxTripCount, extremumStamp(compare));
+            GuardingNode endpointGuard = null;
+            List<LogicNode> conditions = new ArrayList<>(endpoints.overflowConditions());
+            if (compare.condition().isUnsigned()) {
+                LogicNode unsignedWrapCondition = createUnsignedRangeWrapCondition(iv, endpoints);
+                conditions.add(unsignedWrapCondition);
+            }
+            for (LogicNode overflowCondition : conditions) {
                 GuardNode ivOverflowGuard = overflowGuardRegistry.createOverflowGuard(hoistingCandidateGuard, iv, overflowCondition);
                 if (OverflowGuardRegistry.isAlwaysOverflowingGuard(ivOverflowGuard)) {
-                    return new ExtremumOverflowData(extremumComputation.extremum(), ivOverflowGuard);
+                    return new EndpointGuardData(endpoints.init(), endpoints.extremum(), ivOverflowGuard);
                 }
-                extremumOverflowGuard = MultiGuardNode.addGuard(extremumOverflowGuard, ivOverflowGuard);
+                endpointGuard = MultiGuardNode.addGuard(endpointGuard, ivOverflowGuard);
             }
-            return new ExtremumOverflowData(extremumComputation.extremum(), extremumOverflowGuard);
+            return new EndpointGuardData(endpoints.init(), endpoints.extremum(), endpointGuard);
+        }
+
+        /**
+         * Returns a condition that is true when a IV range has an unsigned wraparound. This is
+         * necessary because overflow guards can establish that checking only the endpoints is sound
+         * for signed comparisons, while being incorrect for unsigned comparisons.
+         * <p>
+         * For example, with an IV range of {@code -10..10}, and a comparison bound of 5:
+         *
+         * <pre>
+         *  endpoint checks:
+         *    -10 |<| 5 == false
+         *     10 |<| 5 == false
+         *  but:
+         *     0 |<| 5 == true
+         * </pre>
+         *
+         * If an upward IV starts nonnegative or a downward IV starts negative, the endpoint
+         * overflow checks establish signed monotonicity, so the IV cannot leave that signed region.
+         * In this fast path we return a {@code contradiction}.
+         * <p>
+         * Given signed monotonicity established by the endpoint overflow guards, the range crosses
+         * the signed/unsigned ordering discontinuity when the initial value and the extremum differ
+         * in their sign, meaning the IV crosses zero. The condition {@code (init ^ extremum) < 0}
+         * detects this independently of the runtime direction.
+         * <p>
+         * This method deliberately reasons only from the reconstructed endpoints and the IV
+         * direction. Stamps on the IV value may be branch-local and therefore not describe the
+         * range for the whole loop trajectory, so just checking
+         * {@code iv.stamp.isPositive|isStrictlyNegative()} is insufficient. For example:
+         *
+         * <pre>{@code
+         * for (int i = init; i < limit; i++) {
+         *     if (i >= 10) {
+         *         // This node could be refined with a positive stamp:
+         *         int positive = i - 10;
+         *         // But that doesn't prove moving this guard is safe:
+         *         guard(positive |<| bound);
+         *     }
+         * }
+         * }</pre>
+         *
+         * The original comparison is order-preserving, but the moved guard checks
+         * {@code init |<| bound}, and {@code init} might be negative.
+         */
+        private LogicNode createUnsignedRangeWrapCondition(InductionVariable iv, InductionVariable.Endpoints endpoints) {
+            Direction direction = iv.direction();
+            IntegerStamp initStamp = (IntegerStamp) endpoints.init().stamp(NodeView.DEFAULT);
+            if ((direction == Direction.Up && initStamp.isPositive()) || (direction == Direction.Down && initStamp.isStrictlyNegative())) {
+                /*
+                 * For example: for (i = 0; i < limit; i++) ... even if `limit` is not statically
+                 * known, the loop overflow checks ensure i is always >= 0, so this will never wrap.
+                 */
+                return LogicConstantNode.contradiction();
+            }
+            ValueNode init = endpoints.init();
+            ValueNode extremum = endpoints.extremum();
+            IntegerStamp endpointStamp = (IntegerStamp) init.stamp(NodeView.DEFAULT);
+            GraalError.guarantee(endpointStamp.isCompatible(extremum.stamp(NodeView.DEFAULT)),
+                            "Unsigned endpoint widths must match: %s, %s", init, extremum);
+            ValueNode endpointsXor = graph.addOrUniqueWithInputs(XorNode.create(init, extremum, NodeView.DEFAULT));
+            LogicNode wraps = IntegerLessThanNode.create(endpointsXor, ConstantNode.forIntegerStamp(endpointStamp, 0, graph), NodeView.DEFAULT);
+            return graph.addOrUniqueWithInputs(wraps);
         }
 
         /**
@@ -765,6 +935,11 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
 
             CountedLoopInfo countedLoop = loopEx.counted();
+            if (countedLoop.isUnsignedCheck()) {
+                if (!shouldOptimizeUnsignedCheckedLoop(guard, countedLoop, debug)) {
+                    return false;
+                }
+            }
 
             if (!(profilingInfo instanceof DefaultProfilingInfo)) {
                 double loopFreqThreshold = 1;
@@ -795,8 +970,6 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             if (l == null) {
                 return false;
             }
-            assert l != null : "Loop for guard anchor block must not be null:" + guardAnchorBlock.getBeginNode() + " loop " + iv.getLoop() + " inverted?" +
-                            isInverted(iv.getLoop());
             do {
                 if (!allowsSpeculativeGuardMovement(guard.getReason(), (LoopBeginNode) l.getHeader().getBeginNode(), true)) {
                     debug.log("shouldOptimizeCompare(%s):The guard would not hoist", guard);
@@ -824,7 +997,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             if (boundStamp instanceof IntegerStamp && ivStamp instanceof IntegerStamp) {
                 IntegerStamp integerBoundStamp = (IntegerStamp) boundStamp;
                 IntegerStamp integerIvStamp = (IntegerStamp) ivStamp;
-                if (fitsIn32Bit(integerBoundStamp) && fitsIn32Bit(integerIvStamp)) {
+                NumUtil.Signedness signedness = compare.condition().isUnsigned() ? NumUtil.Signedness.UNSIGNED : NumUtil.Signedness.SIGNED;
+                if (fitsIn32Bit(integerBoundStamp, signedness) && fitsIn32Bit(integerIvStamp, signedness)) {
                     fitsInInt = true;
                 }
             }
@@ -902,6 +1076,42 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
         }
 
+        /**
+         * Determine whether a counted loop with an unsigned limit check is safe to optimize. The
+         * same-sign case is safe and can arise when canonicalization changes a signed comparison to
+         * an unsigned one because the IV and limit are known to have the same sign. An arbitrary
+         * unsigned counted loop is unsafe with the endpoint assumptions of the signed comparisons.
+         * For example:
+         *
+         * <pre>
+         *   for (i = 1; i |<| -1; i++) {
+         *       if (i < 2) {
+         *           // true at the endpoints i=1 and i=-2, but false when i=2..MAX_VALUE
+         *       }
+         *   }
+         * </pre>
+         * <p>
+         * The loop visits {@code 1, 2, ..., MAX_VALUE, MIN_VALUE, ..., -2}, so checking only the
+         * signed endpoints would incorrectly assume that {@code i < 2} holds throughout.
+         */
+        private static boolean shouldOptimizeUnsignedCheckedLoop(GuardNode guard, CountedLoopInfo countedLoop, DebugContext debug) {
+            LogicNode limitCheck = countedLoop.getLimitTest().condition();
+            GraalError.guarantee(countedLoop.isUnsignedCheck(), "expected unsigned counted loop %s %s", countedLoop, limitCheck);
+            if (limitCheck instanceof IntegerEqualsNode) {
+                // guaranteed OK by Loop.detectCounted()
+                return true;
+            }
+            GraalError.guarantee(limitCheck instanceof IntegerBelowNode, "expected IntegerEqualsNode/BelowNode %s", limitCheck);
+            IntegerBelowNode compare = (IntegerBelowNode) limitCheck;
+            IntegerStamp xStamp = (IntegerStamp) compare.getX().stamp(NodeView.DEFAULT);
+            IntegerStamp yStamp = (IntegerStamp) compare.getY().stamp(NodeView.DEFAULT);
+            if (!IntegerStamp.sameSign(xStamp, yStamp)) {
+                debug.log("shouldOptimizeCompare(%s):unsigned counted-loop IV and limit may have different signs", guard);
+                return false;
+            }
+            return true;
+        }
+
         /*
          * We will create a guard test1 && test2, this means if one of the two is a boolean that is
          * negative the result is negative and then, depending on the negated flag the guard will
@@ -918,8 +1128,19 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return false;
         }
 
-        private static boolean fitsIn32Bit(IntegerStamp stamp) {
-            return NumUtil.isUInt(stamp.mayBeSet());
+        /**
+         * Returns {@code true} if the given stamp fits into a 32-bit range. If the stamp is larger
+         * than 32 bits, the bounds must be signed or unsigned according to {@code signedness}.
+         */
+        private static boolean fitsIn32Bit(IntegerStamp stamp, NumUtil.Signedness signedness) {
+            if (stamp.getBits() <= 32) {
+                return true;
+            }
+            if (signedness == NumUtil.Signedness.SIGNED) {
+                return NumUtil.isSignedNbit(32, stamp.lowerBound()) && NumUtil.isSignedNbit(32, stamp.upperBound());
+            } else {
+                return NumUtil.isUnsignedNbit(32, stamp.lowerBound()) && NumUtil.isUnsignedNbit(32, stamp.upperBound());
+            }
         }
 
         private CFGLoop<HIRBlock> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {
@@ -1122,37 +1343,65 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
         }
 
+        private static ValueNode effectiveMaxTripCount(InductionVariable iv, ValueNode maxTripCountNode) {
+            return maxTripCountNode == null ? iv.getLoop().counted().maxTripCountNode(true) : maxTripCountNode;
+        }
+
         /**
-         * Builds the IV extremum for use by the hoisted form of the comparison. The value is
-         * computed from the counted loop's max trip count and the IV definition. The caller must
-         * create IV extremum overflow guards from the overflow conditions returned as part of the
+         * Builds the IV endpoints for use by the hoisted form of the comparison. The initial value
+         * retains its original stamp, while the extremum is computed with {@code extremumStamp}.
+         * The caller must create guards from the endpoint-safety conditions returned as part of the
          * result.
          */
-        private static InductionVariable.Extremum buildExtremumComputation(InductionVariable iv, Stamp extremumStamp, ValueNode maxTripCountNode) {
-            GraalError.guarantee(extremumStamp instanceof IntegerStamp, "Expected integer stamp for %s but got %s", iv, extremumStamp);
+        private static InductionVariable.Endpoints buildEndpointsComputation(InductionVariable iv, ValueNode effectiveMaxTripCount, Stamp extremumStamp) {
             CountedLoopInfo countedLoop = iv.getLoop().counted();
-            ValueNode effectiveMaxTripCount = maxTripCountNode == null ? countedLoop.maxTripCountNode(true) : maxTripCountNode;
             InductionVariable limitCheckedIV = countedLoop.getLimitCheckedIV();
             InductionVariable bodyIV = countedLoop.getBodyIVEqualsLimitCheckedIV() ? limitCheckedIV : InductionVariableHelper.previousIteration(limitCheckedIV);
-            return iv.extremumComputation(true, extremumStamp, effectiveMaxTripCount, bodyIV, limitCheckedIV);
+            return iv.computeEndpoints(true, effectiveMaxTripCount, extremumStamp, bodyIV, limitCheckedIV);
+        }
+
+        /**
+         * Determines the stamp used to compute the induction variable extremum for a hoisted
+         * comparison. Unsigned comparisons retain their original integer width so that the extremum
+         * test uses the original unsigned ordering directly. Signed comparisons use a {@code long}
+         * stamp so that the computed extremum is not narrowed before it is compared with the
+         * sign-extended bound.
+         */
+        private static Stamp extremumStamp(CompareNode compare) {
+            IntegerStamp comparisonStamp = (IntegerStamp) compare.getX().stamp(NodeView.DEFAULT);
+            if (compare.condition().isUnsigned() && comparisonStamp.getBits() < Long.SIZE) {
+                return StampFactory.forInteger(comparisonStamp.getBits());
+            }
+            return StampFactory.forKind(JavaKind.Long);
         }
 
         /**
          * Determines whether the given guard's comparison can be hoisted out of the loop, including
-         * whether the required extremum computations can be guarded against overflow. Hoisting is
-         * not considered possible if the hoisted guard would unconditionally deopt.
+         * whether the required endpoint computations can be guarded against overflow and, for an
+         * unsigned comparison, against crossing the unsigned-order discontinuity. Hoisting is not
+         * considered possible if the hoisted guard would unconditionally deopt.
          * <p>
-         * This method does not modify the graph.
+         * This method does not materialize guards or rewrite the candidate guard. Building the
+         * endpoints and their conditions can add floating arithmetic and logic nodes, which are
+         * reused if the rewrite is subsequently materialized.
          */
         private boolean canComputeOptimizedTests(GuardNode guard, CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, ValueNode maxTripCountNode) {
-            InductionVariable.Extremum extremumComputation = buildExtremumComputation(iv, StampFactory.forKind(JavaKind.Long), maxTripCountNode);
-            for (LogicNode overflowCondition : extremumComputation.overflowConditions()) {
+            ValueNode effectiveMaxTripCount = effectiveMaxTripCount(iv, maxTripCountNode);
+            InductionVariable.Endpoints endpoints = buildEndpointsComputation(iv, effectiveMaxTripCount, extremumStamp(compare));
+            for (LogicNode overflowCondition : endpoints.overflowConditions()) {
                 if (!overflowGuardRegistry.canGuardOverflowCondition(guard.getReason(), iv, overflowCondition)) {
                     guard.getDebug().log("shouldOptimizeCompare(%s): guard would overflow", compare);
                     return false;
                 }
             }
-            OptimizedCompareTests optimizedCompareTests = computeNewCompareGuards(compare, iv, bound, mirrored, extremumComputation.extremum());
+            if (compare.condition().isUnsigned()) {
+                LogicNode unsignedOverflow = createUnsignedRangeWrapCondition(iv, endpoints);
+                if (!overflowGuardRegistry.canGuardOverflowCondition(guard.getReason(), iv, unsignedOverflow)) {
+                    guard.getDebug().log("shouldOptimizeCompare(%s): unsigned IV range may wrap-around", compare);
+                    return false;
+                }
+            }
+            OptimizedCompareTests optimizedCompareTests = computeNewCompareGuards(compare, bound, mirrored, endpoints.init(), endpoints.extremum());
             /*
              * Determine if, based on loop bounds and guard bounds the moved guard is always false,
              * i.e., deopts unconditionally. In such cases, avoid optimizing the compare.
