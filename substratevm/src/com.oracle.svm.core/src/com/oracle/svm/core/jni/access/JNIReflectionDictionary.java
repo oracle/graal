@@ -229,6 +229,21 @@ public final class JNIReflectionDictionary {
         return clazz != null && clazz.isNegative();
     }
 
+    /**
+     * Returns whether {@code name} is a registered negative query or its metadata was brought in
+     * by {@code -H:Preserve}. Native tracing must still emit such lookups, because the replay image
+     * has neither unless the trace carries them. Unlike {@link #getJniAccessibleClass}, this does
+     * not trace the lookup, so callers that perform the actual lookup elsewhere can still apply
+     * {@link MetadataTracer#shouldTraceMetadata(boolean, boolean)}.
+     */
+    public static boolean isNegativeOrPreservedClassLookup(CharSequence name) {
+        return isNegativeOrPreserved(lookupClassByName(name));
+    }
+
+    private static boolean isNegativeOrPreserved(JNIAccessibleClass clazz) {
+        return clazz != null && (clazz.isNegative() || clazz.isPreserved());
+    }
+
     @Platforms(HOSTED_ONLY.class)
     public void addLinkage(JNINativeLinkage linkage) {
         assert !isSealed() : "The JNIReflectionDictionary is already sealed";
@@ -266,7 +281,7 @@ public final class JNIReflectionDictionary {
     public static JNIAccessibleClass getJniAccessibleClass(CharSequence name) {
         JNIAccessibleClass result = lookupClassByName(name);
         boolean validJNIName = ClassNameSupport.isValidJNIName(name);
-        boolean metadataRegisteredForReplay = result != null && (result.isNegative() || result.isPreserved());
+        boolean metadataRegisteredForReplay = isNegativeOrPreserved(result);
         if (MetadataTracer.enabled() && validJNIName && MetadataTracer.shouldTraceMetadata(result == null, metadataRegisteredForReplay)) {
             // trace if class exists (positive query) or name is valid (negative query)
             MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name.toString()));
