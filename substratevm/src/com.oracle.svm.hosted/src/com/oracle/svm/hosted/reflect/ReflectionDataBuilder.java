@@ -132,6 +132,7 @@ import jdk.graal.compiler.annotation.EnumElement;
 import jdk.graal.compiler.annotation.MissingType;
 import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
@@ -521,6 +522,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 ClassAccess.checkPublicMethods(t);
                 for (var method : t.getDeclaredMethods(false)) {
                     if (method.isPublic()) {
+                        checkMethodSignature(method);
                         registerMethod(unconditional(), QUERIED, preserved, method);
                     }
                 }
@@ -538,6 +540,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             ClassAccess.checkDeclaredMethods(type);
             for (var method : type.getDeclaredMethods(false)) {
+                checkMethodSignature(method);
                 registerMethod(unconditional(), QUERIED, preserved, method);
             }
         } catch (LinkageError e) {
@@ -550,6 +553,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             ClassAccess.checkPublicConstructors(type);
             for (var constructor : type.getDeclaredConstructors(false)) {
                 if (constructor.isPublic()) {
+                    checkMethodSignature(constructor);
                     registerMethod(unconditional(), QUERIED, preserved, constructor);
                 }
             }
@@ -566,6 +570,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         try {
             ClassAccess.checkDeclaredConstructors(type);
             for (var constructor : type.getDeclaredConstructors(false)) {
+                checkMethodSignature(constructor);
                 registerMethod(unconditional(), QUERIED, preserved, constructor);
             }
         } catch (LinkageError e) {
@@ -705,6 +710,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 ClassAccess.checkPublicFields(t);
                 JVMCIReflectionUtil.getAllFields(t).forEach(field -> {
                     if (field.isPublic()) {
+                        checkFieldType(field);
                         registerField(unconditional(), accessibility, preserved, field);
                     }
                 });
@@ -721,9 +727,36 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerAllDeclaredFieldsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved, ConfigurationMemberAccessibility accessibility) {
         try {
             ClassAccess.checkDeclaredFields(type);
-            JVMCIReflectionUtil.getAllFields(type).forEach(field -> registerField(unconditional(), accessibility, preserved, field));
+            JVMCIReflectionUtil.getAllFields(type).forEach(field -> {
+                checkFieldType(field);
+                registerField(unconditional(), accessibility, preserved, field);
+            });
         } catch (LinkageError e) {
             registerLinkageError(type, type, activeTypeData, e, TypeData::registerDeclaredFieldLookupError);
+        }
+    }
+
+    private static void checkFieldType(ResolvedJavaField field) {
+        ResolvedJavaField resolvedField = field;
+        if (field instanceof AnalysisField analysisField) {
+            resolvedField = analysisField.getWrapped();
+        }
+        ResolvedJavaType accessingClass = OriginalClassProvider.getOriginalType(resolvedField.getDeclaringClass());
+        resolvedField.getType().resolve(accessingClass);
+    }
+
+    private void checkMethodSignature(ResolvedJavaMethod method) {
+        ResolvedJavaMethod resolvedMethod = method;
+        if (method instanceof AnalysisMethod analysisMethod) {
+            classAccess.getExceptionTypes(analysisMethod);
+            resolvedMethod = analysisMethod.getWrapped();
+        }
+        ResolvedJavaType accessingClass = OriginalClassProvider.getOriginalType(resolvedMethod.getDeclaringClass());
+        for (JavaType parameterType : resolvedMethod.getSignature().toParameterTypes(null)) {
+            parameterType.resolve(accessingClass);
+        }
+        if (!resolvedMethod.isConstructor()) {
+            resolvedMethod.getSignature().getReturnType(accessingClass).resolve(accessingClass);
         }
     }
 

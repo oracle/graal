@@ -1329,15 +1329,19 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 ]
 
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
+                monitoring_features = ['jvmstat', 'heapdump', 'jfr', 'threaddump']
+                if mx.is_windows():
+                    monitoring_features.remove('jvmstat')
                 build_args += [
                     '-R:+EnableSignalHandling',
                     '-R:+InstallSegfaultHandler',
-                    '--enable-monitoring=jvmstat,heapdump,jfr,threaddump',
+                    '--enable-monitoring=' + ','.join(monitoring_features),
                 ] + svm_experimental_options([
                     '-H:+InstallExitHandlers',
-                    '-H:+DumpRuntimeCompilationOnSignal',
                     '-H:+ReportExceptionStackTraces',
                 ])
+                if not mx.is_windows():
+                    build_args += svm_experimental_options(['-H:+DumpRuntimeCompilationOnSignal'])
 
             if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):
                 if image_config.is_sdk_launcher:
