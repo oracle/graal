@@ -537,17 +537,18 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         private OptimizedCompareTests computeNewCompareGuards(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, ValueNode guardedExtremum) {
             final boolean zeroExtendBound = compare.condition().isUnsigned();
             ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), zeroExtendBound, graph, NodeView.DEFAULT);
-            // guardedExtremum |<| longBound && iv.initNode() |<| bound
+            ValueNode longInit = IntegerConvertNode.convert(iv.initNode(), StampFactory.forKind(JavaKind.Long), false, graph, NodeView.DEFAULT);
+            // guardedExtremum |<| longBound && longInit |<| longBound
             ValueNode y1 = longBound;
-            ValueNode y2 = bound;
+            ValueNode y2 = longBound;
             ValueNode x1 = guardedExtremum;
-            ValueNode x2 = iv.initNode();
+            ValueNode x2 = longInit;
             if (mirrored) {
-                // longBound |<| guardedExtremum && bound |<| iv.initNode()
+                // longBound |<| guardedExtremum && longBound |<| longInit
                 x1 = longBound;
                 y1 = guardedExtremum;
-                x2 = bound;
-                y2 = iv.initNode();
+                x2 = longBound;
+                y2 = longInit;
             }
             LogicNode extremumTest;
             LogicNode initTest;
@@ -561,10 +562,10 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
             if (graph.getDebug().isDumpEnabledForMethod()) {
                 if (mirrored) {
-                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: longBound(%s) |<| guardedExtremum(%s) && bound(%s) |<| iv.initNode()(%s) =%s && %s", x1,
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: longBound(%s) |<| guardedExtremum(%s) && longBound(%s) |<| longInit(%s) =%s && %s", x1,
                                     y1, x2, y2, extremumTest, initTest);
                 } else {
-                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: guardedExtremum(%s) |<| longBound(%s) && iv.initNode()(%s) |<| bound(%s)=%s && %s", x1,
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: guardedExtremum(%s) |<| longBound(%s) && longInit(%s) |<| longBound(%s)=%s && %s", x1,
                                     y1, x2, y2, extremumTest, initTest);
                 }
             }
