@@ -1125,8 +1125,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining types should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, type);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(type)) {
+            return false;
         }
 
         return super.isSupportedOriginalType(bb, type);
@@ -1151,8 +1151,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining methods should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, method);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(method)) {
+            return false;
         }
 
         return super.isSupportedAnalysisMethod(bb, method);
@@ -1189,8 +1189,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining methods should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, method);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(method)) {
+            return false;
         }
 
         return super.isSupportedOriginalMethod(bb, method);
@@ -1315,8 +1315,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining fields should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, field);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(field)) {
+            return false;
         }
 
         return super.isSupportedAnalysisField(bb, field);
@@ -1360,8 +1360,8 @@ public class SVMHost extends HostVM {
         }
 
         /* Remaining fields should match the naming conventions. */
-        if (verifyNamingConventions) {
-            NamingConventionVerifier.checkName(bb, field);
+        if (verifyNamingConventions && !NamingConventionVerifier.isNameAllowed(field)) {
+            return false;
         }
 
         return super.isSupportedOriginalField(bb, field);

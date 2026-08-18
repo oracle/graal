@@ -40,9 +40,8 @@ import com.oracle.svm.shared.util.VMError;
 
 /**
  * An image singleton that provides a random number generator that is initialized at runtime with a
- * {@link SecureRandom} instance. (see {@link RuntimeRandomness#getRandom()}). This is the default
- * implementation if no other {@link RuntimeRandomness} is registered (see
- * {@link RuntimeRandomnessFeature}).
+ * {@link SecureRandom} instance. (see {@link RuntimeRandomness#getRandom()}). Runtime compilation
+ * registers this implementation if no other {@link RuntimeRandomness} is registered.
  */
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class SecureRandomRuntimeRandomness implements RuntimeRandomness {

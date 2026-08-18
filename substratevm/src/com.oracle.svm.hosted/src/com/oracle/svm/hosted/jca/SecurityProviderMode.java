@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.hosted.jca;
 
-package com.oracle.svm.core;
+import com.oracle.svm.core.FutureDefaultsOptions;
 
-import org.graalvm.nativeimage.ImageSingletons;
+/** The supported transition modes from §FS-002-security-providers.7. */
+public enum SecurityProviderMode {
+    LEGACY_BUILD_TIME,
+    LEGACY_RUN_TIME,
+    EXPLICIT_RUN_TIME;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-
-/**
- * Feature to register a default {@link RuntimeRandomness} instance. If another component has
- * already registered a {@link RuntimeRandomness} instance, this feature does nothing.
- */
-@AutomaticallyRegisteredFeature
-public class RuntimeRandomnessFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.firstImageBuild();
+    public static SecurityProviderMode current() {
+        if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+            assert FutureDefaultsOptions.securityProvidersInitializedAtRunTime();
+            return EXPLICIT_RUN_TIME;
+        }
+        return FutureDefaultsOptions.securityProvidersInitializedAtRunTime() ? LEGACY_RUN_TIME : LEGACY_BUILD_TIME;
     }
 
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(RuntimeRandomness.class)) {
-            ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
-        }
+    public boolean explicitRegistration() {
+        return this == EXPLICIT_RUN_TIME;
+    }
+
+    public boolean runtimeProviderList() {
+        return this != LEGACY_BUILD_TIME;
     }
 }

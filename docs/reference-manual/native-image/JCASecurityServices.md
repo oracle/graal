@@ -18,11 +18,29 @@ By default the `native-image` builder uses static analysis to discover which of 
 The automatic registration of security services can be disabled with `-H:-EnableSecurityServicesFeature`.
 Then a custom reflection configuration file or feature can be used to register the security services required by a specific application.
 Note that when automatic registration of security providers is disabled, all providers are, by default, filtered from special JDK caches that are necessary for security functionality.
-In this case, you must manually mark used providers with `-H:AdditionalSecurityProviders`.
+In this case, register the provider class and its nullary constructor for reflection in _reachability-metadata.json_, for example:
+
+```json
+{
+  "reflection": [
+    {
+      "type": "com.example.security.CustomProvider",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+Alternatively, collect the metadata by running your application on the JVM with the [Tracing Agent](AutomaticMetadataCollection.md).
 
 ## Security Services Automatic Registration
 
-The mechanism, implemented in the `com.oracle.svm.hosted.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
+The mechanism, implemented in the `com.oracle.svm.hosted.jca.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
 
 Each JCA provider registers concrete implementation classes for the algorithms it supports.
 Each of the service classes (`Signature`, `Cipher`, `Mac`, `KeyPair`, `KeyGenerator`, `KeyFactory`, `KeyStore`, etc.) declares a series of `getInstance(<algorithm>, <provider>` factory methods which provide a concrete service implementation.
@@ -30,6 +48,10 @@ When a specific algorithm is requested, the framework searches the registered pr
 The `native-image` builder uses static analysis to discover which of these services are used.
 It does so by registering reachability handlers for each of the `getInstance()` factory methods.
 When it determines that a `getInstance()` method is reachable at run time, it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
+Provider classes discovered as reachable subtypes of `java.security.Provider` are treated only as candidates for provider inclusion.
+The builder includes such a provider and all of its services only when the provider class is registered for reflection, either by type access, its declared nullary constructor, or its static `provider()` method.
+To apply this reflection requirement to providers selected by reachable service factories, use `--future-defaults=explicit-security-provider-registration`.
+With this future default, a factory does not make an unregistered provider or its services available.
 
 Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.
 The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
@@ -40,7 +62,8 @@ The report will detail all registered service classes, the API methods that trig
 
 Currently, security providers are initialized at build time.
 To move their initialization to run time, use the option `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk`.
-Provider verification will still occur at build time.
+Providers listed in the build-time `java.security` configuration are still verified at build time.
+Providers included only through reflection metadata are treated as explicitly configured, since run-time codebase verification is not available in Native Image.
 Run-time initialization of security providers helps reduce image heap size.
 
 ## Provider Registration
@@ -65,15 +88,24 @@ The same approach to manipulating providers can then be used.
 
 ## SecureRandom
 
-The `SecureRandom` implementations open the `/dev/random` and `/dev/urandom` files which are used as sources.
-These files are usually opened in class initializers.
-To avoid capturing state from the machine that runs the `native-image` builder, these classes need to be initialized at run time.
+Native Image initializes `NativePRNG`, its seed generators, and related entropy-holding classes at
+run time.
+This prevents `/dev/random`, `/dev/urandom`, and machine-specific seed state from being captured
+on the image builder.
+Class-initialization safety is separate from provider registration: a reachable `SecureRandom`
+acquisition also triggers registration of the complete configured-provider set that declares
+`SecureRandom` services.
 
 ## Custom Service Types
 
-By default, only services specified in the JCA framework are automatically registered. To automatically register custom service types, you can use the `-H:AdditionalSecurityServiceTypes` option.
-Note that for automatic registration to work, the service interface must have a `getInstance` method and have the same name as the service type.
-If relying on the third-party code that does not comply to the above requirements, a manual configuration will be required. In that case, providers for such services must explicitly be registered using the `-H:AdditionalSecurityProviders` option. Note that these options are only required in very specific cases and should not normally be needed.
+By default, Native Image automatically detects only service types specified in the JCA framework.
+The `-H:AdditionalSecurityServiceTypes` option is deprecated.
+Register the provider class and its supported construction path in _reachability-metadata.json_ so
+Native Image retains its complete service catalog, including custom service types.
+Alternatively, collect this metadata with the Tracing Agent.
+For compatibility with automatic service-driven registration, the service interface must have a
+`getInstance` method and the same name as the service type.
+If you rely on third-party code that does not comply with these requirements, manual configuration is required.
 
 ### Further Reading
 
