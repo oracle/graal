@@ -95,7 +95,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
         Assert.assertTrue(reason + "guard must be hoisted out of the innermost loop", hasHoistedTransferGuard);
     }
 
-    private OptionValues guardMovementOptions() {
+    private static OptionValues guardMovementOptions() {
         return new OptionValues(getInitialOptions(),
                         GraalOptions.LoopPredication, false,
                         GraalOptions.LoopPeeling, false,
