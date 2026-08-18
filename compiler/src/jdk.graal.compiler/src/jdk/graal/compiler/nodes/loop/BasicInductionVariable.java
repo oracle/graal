@@ -45,6 +45,7 @@ import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactOverflowNode;
+import jdk.vm.ci.code.CodeUtil;
 
 public class BasicInductionVariable extends InductionVariable {
 
@@ -153,7 +154,8 @@ public class BasicInductionVariable extends InductionVariable {
             return rawStride.asJavaConstant().asLong();
         }
         if (op instanceof SubNode) {
-            return -rawStride.asJavaConstant().asLong();
+            int bits = IntegerStamp.getBits(rawStride.stamp(NodeView.DEFAULT));
+            return CodeUtil.signExtend(-rawStride.asJavaConstant().asLong(), bits);
         }
         throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
     }
