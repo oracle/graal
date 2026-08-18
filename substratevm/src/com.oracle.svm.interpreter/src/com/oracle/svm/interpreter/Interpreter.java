@@ -4554,10 +4554,9 @@ public final class Interpreter {
         assert !field.isUnmaterializedConstant();
         InterpreterToVM.ensureClassInitialized(field.getDeclaringClass());
 
-        JavaKind kind = field.getJavaKind();
         Object receiver = getStaticStorage(field);
 
-        switch (kind) {
+        switch (field.getJavaKind()) {
             case Boolean -> {
                 InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
                 virtualStack.pop1(state, false);
@@ -4692,15 +4691,15 @@ public final class Interpreter {
 
         // @formatter:off
         switch (field.getJavaKind()) {
-            case Boolean -> virtualStack.pushInt(state, InterpreterToVM.getFieldBoolean(receiver, field, true) ? 1 : 0);
-            case Byte    -> virtualStack.pushInt(state, InterpreterToVM.getFieldByte(receiver, field, true));
-            case Char    -> virtualStack.pushInt(state, InterpreterToVM.getFieldChar(receiver, field, true));
-            case Short   -> virtualStack.pushInt(state, InterpreterToVM.getFieldShort(receiver, field, true));
-            case Int     -> virtualStack.pushInt(state, InterpreterToVM.getFieldInt(receiver, field, true));
-            case Double  -> virtualStack.pushDouble(state, InterpreterToVM.getFieldDouble(receiver, field, true));
-            case Float   -> virtualStack.pushFloat(state, InterpreterToVM.getFieldFloat(receiver, field, true));
-            case Long    -> virtualStack.pushLong(state, InterpreterToVM.getFieldLong(receiver, field, true));
-            case Object  -> virtualStack.pushObject(state, InterpreterToVM.getFieldObject(receiver, field, true));
+            case Boolean -> virtualStack.pushInt(state, InterpreterToVM.getFieldBoolean(receiver, GraalDirectives.anchorValue(field), true) ? 1 : 0);
+            case Byte    -> virtualStack.pushInt(state, InterpreterToVM.getFieldByte(receiver, GraalDirectives.anchorValue(field), true));
+            case Char    -> virtualStack.pushInt(state, InterpreterToVM.getFieldChar(receiver, GraalDirectives.anchorValue(field), true));
+            case Short   -> virtualStack.pushInt(state, InterpreterToVM.getFieldShort(receiver, GraalDirectives.anchorValue(field), true));
+            case Int     -> virtualStack.pushInt(state, InterpreterToVM.getFieldInt(receiver, GraalDirectives.anchorValue(field), true));
+            case Double  -> virtualStack.pushDouble(state, InterpreterToVM.getFieldDouble(receiver, GraalDirectives.anchorValue(field), true));
+            case Float   -> virtualStack.pushFloat(state, InterpreterToVM.getFieldFloat(receiver, GraalDirectives.anchorValue(field), true));
+            case Long    -> virtualStack.pushLong(state, InterpreterToVM.getFieldLong(receiver, GraalDirectives.anchorValue(field), true));
+            case Object  -> virtualStack.pushObject(state, InterpreterToVM.getFieldObject(receiver, GraalDirectives.anchorValue(field), true));
             default      -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
         // @formatter:on
