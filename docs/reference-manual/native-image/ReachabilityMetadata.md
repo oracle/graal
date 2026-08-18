@@ -42,7 +42,7 @@ You can provide reachability metadata to the `native-image` builder using the fo
 
 * [Computing Metadata in Code](#computing-metadata-in-code)
 * [Specifying Metadata with JSON](#specifying-metadata-with-json)
-* [Reachability Metadata JSON Format Reference](#reachability-metadata-json-format-reference)
+* [Metadata JSON Format Reference](#metadata-json-format-reference)
 * [Metadata Types](#metadata-types)
 * [Reflection](#reflection)
 * [Java Native Interface](#java-native-interface)
@@ -127,8 +127,9 @@ Computing metadata in code can be achieved in two ways:
 
 ## Specifying Metadata with JSON
 
-All metadata specified in the _reachability-metadata.json_ file that is located in any of the classpath entries at _META-INF/native-image/\<group.Id>\/\<artifactId>\/_.
-The JSON schema for the reachability metadata is defined in [_reachability-metadata-schema-v1.2.0.json_](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.2.0.json).
+You can provide metadata configuration in JSON.
+Native Image reads all metadata specified in _reachability-metadata.json_ files located in classpath entries under _META-INF/native-image/&lt;groupId&gt;/&lt;artifactId&gt;/_.
+See the [JSON Schema Reference](#json-schema-reference) for current and earlier schema configurations.
 
 A sample _reachability-metadata.json_ file can be found [in the sample section](#sample-reachability-metadata).
 The _reachability-metadata.json_ configuration contains a single object with one field for each type of metadata. Each field in the top-level object contains an array of *metadata entries*:
@@ -207,9 +208,26 @@ This entry affects the image size, and it will be available at run time only whe
 
 You can find more examples of the metadata files in the [GraalVM Reachability Metadata repository](https://github.com/oracle/graalvm-reachability-metadata).
 
-## Reachability Metadata JSON Format Reference
+## Metadata JSON Format Reference
+
+### JSON Schema Reference
+
+You can configure dynamic features, including reflection, JNI, resources, serialization, proxies, and foreign-function access, in the JSON-formatted _reachability-metadata.json_ file.
+Validate your configuration with [reachability-metadata-schema-v1.2.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.2.0.json).
+
+Use _predefined-classes-config.json_ to configure predefined classes.
+Validate it with [predefined-classes-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json).
+
+To validate configuration for an earlier Native Image release, use the corresponding schema in the [Native Image assets directory](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets).
+
+#### Agent Filters
+
+The tracing agent uses the same JSON format for caller-filter and access-filter files.
+See [Custom Caller Filters](AutomaticMetadataCollection.md#caller-based-filters) and [Access Filters](AutomaticMetadataCollection.md#access-filters) for the file format and option names.
 
 The _reachability-metadata.json_ file contains three main sections: `reflection`, `jni`, and `resources`. Each section contains arrays of metadata entries with specific field configurations.
+The following tables provide a readable overview of the most commonly used fields.
+Use the applicable schema from the [JSON Schema Reference](#json-schema-reference) to validate a complete configuration.
 
 ### Common Fields
 
