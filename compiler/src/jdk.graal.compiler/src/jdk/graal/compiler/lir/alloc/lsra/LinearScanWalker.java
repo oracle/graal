@@ -651,12 +651,14 @@ class LinearScanWalker extends IntervalWalker {
     }
 
     /**
-     * Keeps the recovered interval in a register at every later live block that is hotter than the
-     * block which caused the spill. A live-through interval is required at both block boundaries
-     * so that it cannot be spilled inside the hotter block merely because of linear-scan order.
+     * Prefers keeping the recovered interval in a register at every later live block that is hotter
+     * than the block which caused the spill. A live-through interval is preferred at both block
+     * boundaries so that linear-scan order does not move a spill into the hotter block when a
+     * register is available. The preference must remain spillable because several recovered
+     * intervals can otherwise impose more simultaneous hard requirements than there are registers.
      */
-    private void addHotterBlockRegisterUses(Interval recovered, BasicBlock<?> spillBlock, int firstRecoveryPos) {
-        recovered.addUsePosSorted(firstRecoveryPos, RegisterPriority.MustHaveRegister);
+    private void addHotterBlockRegisterPreferences(Interval recovered, BasicBlock<?> spillBlock, int firstRecoveryPos) {
+        recovered.addUsePosSorted(firstRecoveryPos, RegisterPriority.ShouldHaveRegister);
         int operandNumber = recovered.splitParent().operandNumber;
         for (int i = spillBlock.getLinearScanNumber() + 1; i < allocator.blockCount(); i++) {
             BasicBlock<?> block = allocator.blockAt(i);
@@ -666,9 +668,9 @@ class LinearScanWalker extends IntervalWalker {
             }
             if (blockFrom >= firstRecoveryPos && block.getRelativeFrequency() > spillBlock.getRelativeFrequency() &&
                             !recovered.hasHoleBetween(blockFrom, blockFrom + 1)) {
-                recovered.addUsePosSorted(blockFrom, RegisterPriority.MustHaveRegister);
+                recovered.addUsePosSorted(blockFrom, RegisterPriority.ShouldHaveRegister);
                 if (allocator.getBlockData(block).liveOut.get(operandNumber)) {
-                    recovered.addUsePosSorted(allocator.getLastLirInstructionId(block), RegisterPriority.MustHaveRegister);
+                    recovered.addUsePosSorted(allocator.getLastLirInstructionId(block), RegisterPriority.ShouldHaveRegister);
                 }
             }
         }
@@ -708,7 +710,7 @@ class LinearScanWalker extends IntervalWalker {
         try (Indent indent = debug.logAndIndent("splitting pressure spill %s before unrelated path at %d", interval, splitPos)) {
             Interval recovered = splitBeforeUsage(interval, splitPos, splitPos);
             assert recovered != null : "live interval must continue beyond recovery block";
-            addHotterBlockRegisterUses(recovered, allocator.blockForId(currentPosition), splitPos);
+            addHotterBlockRegisterPreferences(recovered, allocator.blockForId(currentPosition), splitPos);
             if (interval.spillState() != SpillState.StartInMemory) {
                 /*
                  * Spill state is shared by all children of a split parent. The recovered child is
