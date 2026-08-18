@@ -114,6 +114,18 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return UNSAFE.getReference(cachedEntries, objectArrayOffset(cpi));
     }
 
+    public Object[] uncheckedCachedEntries() {
+        return cachedEntries;
+    }
+
+    public byte[] uncheckedTags() {
+        return tags;
+    }
+
+    public int[] uncheckedEntries() {
+        return entries;
+    }
+
     public Tag uncheckedTagAt(int cpi) {
         Tag tag = Tag.fromValue(UNSAFE.getByte(tags, byteArrayOffset(cpi)));
         assert tag != null;

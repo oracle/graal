@@ -27,12 +27,15 @@ package com.oracle.svm.interpreter;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
  * Holds interpreter state that is shared across outlined bytecode handlers without full
@@ -46,6 +49,9 @@ final class InterpreterState {
     final long[] primitives;
     final Object[] references;
     final InterpreterResolvedJavaMethod method;
+    final Object[] cachedEntries;
+    final byte[] constantPoolTags;
+    final int[] constantPoolEntries;
     final MethodProfile methodProfile;
     final boolean forceStayInInterpreter;
     int debuggerEventFlags;
@@ -58,6 +64,10 @@ final class InterpreterState {
         this.primitives = frame.getPrimitives();
         this.references = frame.getReferences();
         this.method = method;
+        InterpreterConstantPool constantPool = method.getConstantPool();
+        this.cachedEntries = constantPool.uncheckedCachedEntries();
+        this.constantPoolTags = constantPool.uncheckedTags();
+        this.constantPoolEntries = constantPool.uncheckedEntries();
         this.methodProfile = methodProfile;
         this.forceStayInInterpreter = forceStayInInterpreter;
         this.debuggerEventFlags = debuggerEventFlags;
@@ -332,6 +342,58 @@ final class InterpreterState {
         return UNSAFE.getReference(references, referenceOffset(slot, slotOffset));
     }
 
+    Object uncheckedCachedEntryAt(long cpi) {
+        return UNSAFE.getReference(cachedEntries, referenceOffset(cpi, 0));
+    }
+
+    byte uncheckedTagValueAt(long cpi) {
+        return UNSAFE.getByte(constantPoolTags, byteOffset(cpi));
+    }
+
+    int uncheckedIntAt(long cpi) {
+        Object entry = uncheckedCachedEntryAt(cpi);
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Int;
+            return primitiveConstant.asInt();
+        }
+        return UNSAFE.getInt(constantPoolEntries, intOffset(cpi));
+    }
+
+    float uncheckedFloatAt(long cpi) {
+        Object entry = uncheckedCachedEntryAt(cpi);
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Float;
+            return primitiveConstant.asFloat();
+        }
+        return Float.intBitsToFloat(UNSAFE.getInt(constantPoolEntries, intOffset(cpi)));
+    }
+
+    long uncheckedLongAt(long cpi) {
+        Object entry = uncheckedCachedEntryAt(cpi);
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Long;
+            return primitiveConstant.asLong();
+        }
+        long hiBytes = UNSAFE.getInt(constantPoolEntries, intOffset(cpi));
+        long loBytes = UNSAFE.getInt(constantPoolEntries, intOffset(cpi + 1));
+        return (hiBytes << 32) | (loBytes & 0xFFFFFFFFL);
+    }
+
+    double uncheckedDoubleAt(long cpi) {
+        Object entry = uncheckedCachedEntryAt(cpi);
+        assert entry == null || entry instanceof PrimitiveConstant;
+        if (entry instanceof PrimitiveConstant primitiveConstant) {
+            assert primitiveConstant.getJavaKind() == JavaKind.Double;
+            return primitiveConstant.asDouble();
+        }
+        long hiBytes = UNSAFE.getInt(constantPoolEntries, intOffset(cpi));
+        long loBytes = UNSAFE.getInt(constantPoolEntries, intOffset(cpi + 1));
+        return Double.longBitsToDouble((hiBytes << 32) | (loBytes & 0xFFFFFFFFL));
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void setReferenceStatic(long slot, long slotOffset, Object value) {
         UNSAFE.putReference(references, referenceOffset(slot, slotOffset), value);
@@ -345,6 +407,14 @@ final class InterpreterState {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long referenceOffset(long slot, long slotOffset) {
         return Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((slot + slotOffset) * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+    }
+
+    private static long byteOffset(long index) {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE;
+    }
+
+    private static long intOffset(long index) {
+        return Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE;
     }
 
     public long readCPI1(long bci) {

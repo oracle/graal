@@ -104,7 +104,7 @@ public final class SemanticJavaException extends RuntimeException {
     static SemanticJavaException raiseClassCastException(long bci, long top, InterpreterState state) {
         Object instance = state.peekObject(top, -1);
         long cpi = state.readCPI2(bci);
-        InterpreterResolvedJavaType type = (InterpreterResolvedJavaType) state.method.getConstantPool().uncheckedCachedEntryAt(cpi);
+        InterpreterResolvedJavaType type = (InterpreterResolvedJavaType) state.uncheckedCachedEntryAt(cpi);
         Class<?> clazz = type.getJavaClass();
         throw raiseInlined(new ClassCastException(cannotCastMsg(instance, clazz)));
     }

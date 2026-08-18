@@ -1570,21 +1570,18 @@ public final class Interpreter {
         @AlwaysInline("Keep resolved constant fast paths in bytecode-handler stubs")
         private static void loadConstant(InterpreterState state, long cpi, int opcode, InterpreterVirtualStack virtualStack) {
             assert opcode == LDC || opcode == LDC_W;
-            InterpreterConstantPool pool = getConstantPool(state.method);
-            byte numericTag = pool.uncheckedTagValueAt(cpi);
+            byte numericTag = state.uncheckedTagValueAt(cpi);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
                             numericTag == ConstantPool.CONSTANT_Float)) {
                 virtualStack.avoidHoistingTop();
-                InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
-                virtualStack.pushFloat(state, branchPool.uncheckedFloatAt(cpi));
+                virtualStack.pushFloat(state, state.uncheckedFloatAt(cpi));
             } else if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY,
                             numericTag == ConstantPool.CONSTANT_Integer)) {
                 virtualStack.avoidHoistingTop();
-                InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
-                virtualStack.pushInt(state, branchPool.uncheckedIntAt(cpi));
+                virtualStack.pushInt(state, state.uncheckedIntAt(cpi));
             } else {
                 long top = virtualStack.beginOutlinedCall(state);
-                resolveConstantAtSlowPath(state, top, cpi, opcode, pool);
+                resolveConstantAtSlowPath(state, top, cpi, opcode, getConstantPool(state.method));
                 virtualStack.endOutlinedCall(1);
             }
         }
@@ -1595,21 +1592,20 @@ public final class Interpreter {
             virtualStack.killUnusedFields();
             long cpi = state.readCPI2(curBCI);
             InterpreterUtil.guarantee(cpi != 0);
-            InterpreterConstantPool pool = getConstantPool(state.method);
-            byte numericTag = pool.uncheckedTagValueAt(cpi);
+            byte numericTag = state.uncheckedTagValueAt(cpi);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY,
                             numericTag == ConstantPool.CONSTANT_Double)) {
                 virtualStack.avoidHoistingTop();
-                InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
-                virtualStack.pushDouble(state, branchPool.uncheckedDoubleAt(cpi));
+                InterpreterState branchState = GraalDirectives.anchorValue(state);
+                virtualStack.pushDouble(state, branchState.uncheckedDoubleAt(cpi));
             } else if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY,
                             numericTag == ConstantPool.CONSTANT_Long)) {
                 virtualStack.avoidHoistingTop();
-                InterpreterConstantPool branchPool = GraalDirectives.anchorValue(pool);
-                virtualStack.pushLong(state, branchPool.uncheckedLongAt(cpi));
+                InterpreterState branchState = GraalDirectives.anchorValue(state);
+                virtualStack.pushLong(state, branchState.uncheckedLongAt(cpi));
             } else {
                 long top = virtualStack.beginOutlinedCall(state);
-                resolveConstantAtSlowPath(state, top, cpi, LDC2_W, pool);
+                resolveConstantAtSlowPath(state, top, cpi, LDC2_W, getConstantPool(state.method));
                 virtualStack.endOutlinedCall(2);
             }
             long nextBCI = GraalDirectives.anchorValue(curBCI) + ConstantBytecodes.lengthOf(LDC2_W);
@@ -4329,7 +4325,7 @@ public final class Interpreter {
             throw noClassDefFoundError(opcode, null);
         }
         try {
-            Object cachedEntry = getConstantPool(state.method).uncheckedCachedEntryAt(cpi);
+            Object cachedEntry = state.uncheckedCachedEntryAt(cpi);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY,
                             cachedEntry instanceof InterpreterResolvedJavaType)) {
                 return (InterpreterResolvedJavaType) cachedEntry;
@@ -4454,7 +4450,7 @@ public final class Interpreter {
         assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
         try {
             // The first execution cached the resolved field after applying opcode-specific access checks.
-            return (InterpreterResolvedJavaField) getConstantPool(state.method).uncheckedCachedEntryAt(cpi);
+            return (InterpreterResolvedJavaField) state.uncheckedCachedEntryAt(cpi);
         } catch (Throwable t) {
             throw InterpreterUtil.shouldNotReachHere("Quickened field access must use an already resolved field entry", t);
         }
