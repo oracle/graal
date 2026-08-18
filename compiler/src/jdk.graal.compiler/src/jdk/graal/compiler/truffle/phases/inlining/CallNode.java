@@ -41,22 +41,34 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.NodeSuccessorList;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil.InlineeReturnAction;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
+import jdk.graal.compiler.truffle.ConstantArgumentInfo;
+import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
 import jdk.graal.compiler.truffle.TruffleTierContext;
+import jdk.graal.compiler.truffle.nodes.frame.NewFrameNode;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.Signature;
 
 @NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node implements Comparable<CallNode> {
@@ -277,12 +289,86 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
+    public static boolean isArgumentArrayMutated(ValueNode array, Node ignored) {
+        for (Node usage : array.usages()) {
+            if (usage == ignored) {
+                continue;
+            }
+            if (usage instanceof PiNode piNode) {
+                if (isArgumentArrayMutated(piNode, ignored)) {
+                    return true;
+                } else {
+                    continue;
+                }
+            }
+            if (usage instanceof FrameState) {
+                continue;
+            }
+            if (usage instanceof LoadIndexedNode) {
+                continue;
+            }
+            if (usage instanceof ArrayLengthNode) {
+                continue;
+            }
+            if (usage instanceof NewFrameNode) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isCallTargetCallSignature(Signature s) {
+        KnownTruffleTypes types = getCallTree().getGraphManager().rootContext().types();
+        return s.getParameterCount(false) == 2 &&
+                        s.getParameterType(0, types.Node).equals(types.Node) &&
+                        s.getParameterType(1, types.Node).equals(types.Object_Array) &&
+                        s.getReturnType(types.Node).equals(types.java_lang_Object);
+    }
+
+    public ConstantArgumentInfo[] findConstantGuestArguments() {
+        ConstantArgumentInfo[] result = null;
+        NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
+        assert isCallTargetCallSignature(invoke.getTargetMethod().getSignature());
+        if (arguments.get(2) instanceof AllocatedObjectNode allocatedArgsArray) {
+            if (isArgumentArrayMutated(allocatedArgsArray, invoke.callTarget())) {
+                return null;
+            }
+            CommitAllocationNode alloc = allocatedArgsArray.getCommit();
+            VirtualObjectNode argsArrayVirtualObject = allocatedArgsArray.getVirtualObject();
+            int valueOffset = 0;
+            for (VirtualObjectNode virtualObject : alloc.getVirtualObjects()) {
+                if (virtualObject == argsArrayVirtualObject) {
+                    break;
+                }
+                valueOffset += virtualObject.entryCount();
+            }
+            int argsArrayLen = argsArrayVirtualObject.entryCount();
+            List<ValueNode> arrElements = alloc.getValues().subList(valueOffset, valueOffset + argsArrayLen);
+            for (int i = 0; i < argsArrayLen; i++) {
+                ValueNode argument = arrElements.get(i);
+                ConstantArgumentInfo constantArgument = ConstantArgumentInfo.create(argument);
+                if (constantArgument != null) {
+                    if (result == null) {
+                        result = new ConstantArgumentInfo[argsArrayLen];
+                    }
+                    result[i] = constantArgument;
+                }
+            }
+        }
+        return result;
+    }
+
     public void expand() {
         if (state == State.Expanded) {
             /*
              * The CallNode may be already expanded for trivial call nodes which are expanded in the
              * afterExpand method.
              */
+            return;
+        }
+        if (!invoke.isAlive()) {
+            remove();
             return;
         }
         if (getDirectCallTarget() != null && !getDirectCallTarget().canBeInlined()) {
