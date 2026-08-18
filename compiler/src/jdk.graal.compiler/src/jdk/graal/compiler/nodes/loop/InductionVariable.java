@@ -43,12 +43,15 @@ public abstract class InductionVariable {
     /**
      * Captures the initial and extremum values of an induction variable, together with the
      * conditions needed to use the computed endpoints safely. For example:
+     *
      * <pre>
      * for (int base = start; base &lt; limit; base += stride) {
      *     int derived = base * scale + offset;
      * }
      * </pre>
+     *
      * The endpoints for the IVs here are:
+     *
      * <pre>
      * baseInit = start
      * baseExtremum = start + stride * (tripCount - 1)
@@ -57,8 +60,8 @@ public abstract class InductionVariable {
      * derivedExtremum = baseExtremum * scale + offset
      * </pre>
      *
-     * The corresponding overflow conditions that must be guarded in order to use those
-     * endpoints are:
+     * The corresponding overflow conditions that must be guarded in order to use those endpoints
+     * are:
      *
      * <pre>
      * multiplyOverflows(baseInit, scale)
@@ -69,18 +72,18 @@ public abstract class InductionVariable {
      * </pre>
      *
      * Since {@code base} is the loop's limit-checked IV, the loop overflow guard guarantees that
-     * computing {@code basicExtremum} does not overflow, so no overflow conditions are needed
-     * for its endpoints.
+     * computing {@code basicExtremum} does not overflow, so no overflow conditions are needed for
+     * its endpoints.
      *
      * <p>
      * {@link #init()} is the value from the first loop iteration. {@link #extremum()} is the value
      * from the last iteration.
      *
      * <p>
-     * {@link #overflowConditions()} contains conditions that are true when the IV cannot
-     * be treated as a monotonic range bounded by these endpoints, such as arithmetic overflow,
-     * a narrowing conversion that wraps, or a zero extension that crosses the sign boundary.
-     * The computed endpoints can only be used safely when all conditions are false.
+     * {@link #overflowConditions()} contains conditions that are true when the IV cannot be treated
+     * as a monotonic range bounded by these endpoints, such as arithmetic overflow, a narrowing
+     * conversion that wraps, or a zero extension that crosses the sign boundary. The computed
+     * endpoints can only be used safely when all conditions are false.
      */
     public record Endpoints(ValueNode init, ValueNode extremum, List<LogicNode> overflowConditions) {
         public Endpoints {
@@ -117,8 +120,8 @@ public abstract class InductionVariable {
     }
 
     /**
-     * Returns the direction of the induction variable, or {@code null} when it cannot be
-     * statically determined (such as when the stride is a runtime variable).
+     * Returns the direction of the induction variable, or {@code null} when it cannot be statically
+     * determined (such as when the stride is a runtime variable).
      */
     public abstract Direction direction();
 
@@ -180,28 +183,31 @@ public abstract class InductionVariable {
     public abstract ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount);
 
     /**
-     * Computes the initial value and extremum values of this IV, together with the conditions required to use
-     * them safely. The initial value is computed in the IV's stamp, and the extremum in {@code extremumStamp},
+     * Computes the initial value and extremum values of this IV, together with the conditions
+     * required to use them safely. The initial value is computed in the IV's stamp, and the
+     * extremum in {@code extremumStamp},
      * <p>
-     * Each overflow condition is emitted in the native arithmetic width of the IV step that can overflow,
-     * so the condition matches that step's real overflow semantics. Both endpoints need checks,
-     * because derived IV operations may overflow while producing the initial value, or the extremum
-     * value, or both.
+     * Each overflow condition is emitted in the native arithmetic width of the IV step that can
+     * overflow, so the condition matches that step's real overflow semantics. Both endpoints need
+     * checks, because derived IV operations may overflow while producing the initial value, or the
+     * extremum value, or both.
      * <p>
      * For example, for the derived IV in this loop:
+     *
      * <pre>
      * for (int i = start; i < limit; i++) {
      *     int iv = i * 8;
      * }
      * </pre>
+     *
      * The returned init value is the {@code int} expression {@code start * 8}, but with a requested
      * {@code extremumStamp = long}, the extremum is the {@code long} expression
-     * {@code (((long) limit) - 1L) * 8L}.
-     * The returned overflow conditions check both {@code start * 8} and {@code (limit - 1) * 8}
-     * in {@code int} arithmetic.
+     * {@code (((long) limit) - 1L) * 8L}. The returned overflow conditions check both
+     * {@code start * 8} and {@code (limit - 1) * 8} in {@code int} arithmetic.
      *
      * @param assumeLoopEntered if the caller guarantees that the loop executes at least once
-     * @param effectiveMaxTripCount maximum trip count to use when computing the last-iteration value
+     * @param effectiveMaxTripCount maximum trip count to use when computing the last-iteration
+     *            value
      * @param extremumStamp stamp to use for the returned extremum expression
      * @param bodyIV counted loop's body IV, used to identify the protected basic counter
      * @param limitCheckedIV counted loop's limit checked IV, used to identify the protected basic
@@ -259,11 +265,11 @@ public abstract class InductionVariable {
                     converted.collectRangeEndpointConditions(init, currentIvExtremum, overflowConditions);
                 }
                 /*
-                 * Checking both init and extremum for overflow can be unnecessary. For example, for an ascending
-                 * base IV, checking only `init - 50` and not `extremum - 50` is sufficient, but which of the two
-                 * conditions is redundant in the general offset IV case depends on the sign of the offset and
-                 * the IV direction.
-                 * TODO skip these redundant conditions when possible
+                 * Checking both init and extremum for overflow can be unnecessary. For example, for
+                 * an ascending base IV, checking only `init - 50` and not `extremum - 50` is
+                 * sufficient, but which of the two conditions is redundant in the general offset IV
+                 * case depends on the sign of the offset and the IV direction. TODO skip these
+                 * redundant conditions when possible
                  */
                 init = derived.collectLocalEndpointOverflowConditions(assumeLoopEntered, derivedIVStamp, effectiveMaxTripCount, init, overflowConditions);
                 if (extremumOverflowCoveredByCountedLoop(derived, bodyIV, limitCheckedIV)) {
@@ -278,16 +284,15 @@ public abstract class InductionVariable {
     }
 
     /**
-     * Returns whether the counted loop's no-overflow guarantee covers the extremum
-     * computation for {@code iv}. It directly covers a basic body or limit-checked IV. It also
-     * covers body/limit-checked offset IVs, because it preserves the base stride: after the
-     * initial operation has been checked for overflow, a later overflow would imply that the
-     * loop counter itself wraps.
+     * Returns whether the counted loop's no-overflow guarantee covers the extremum computation for
+     * {@code iv}. It directly covers a basic body or limit-checked IV. It also covers
+     * body/limit-checked offset IVs, because it preserves the base stride: after the initial
+     * operation has been checked for overflow, a later overflow would imply that the loop counter
+     * itself wraps.
      * <p>
      * This does not cover the initial endpoint. A derived IV can overflow while producing its
-     * initial value even though the resulting counter advances without overflow. It
-     * also excludes {@code offset - base} and scaled IVs, since negation or multiplication can
-     * overflow.
+     * initial value even though the resulting counter advances without overflow. It also excludes
+     * {@code offset - base} and scaled IVs, since negation or multiplication can overflow.
      *
      * @param iv IV whose extremum is being computed
      * @param bodyIV counted loop's body IV
@@ -307,10 +312,10 @@ public abstract class InductionVariable {
     }
 
     /**
-     * Produces one endpoint and adds the safety conditions contributed by this induction
-     * variable's local arithmetic and conversions. If any added condition evaluates to {@code true},
-     * the corresponding endpoint computation cannot be used safely. This method is used for both
-     * the initial and extremum (last-iteration) endpoints.
+     * Produces one endpoint and adds the safety conditions contributed by this induction variable's
+     * local arithmetic and conversions. If any added condition evaluates to {@code true}, the
+     * corresponding endpoint computation cannot be used safely. This method is used for both the
+     * initial and extremum (last-iteration) endpoints.
      * <p>
      * The supplied {@code stamp} is the stamp that the resulting endpoint value should have.
      * <p>

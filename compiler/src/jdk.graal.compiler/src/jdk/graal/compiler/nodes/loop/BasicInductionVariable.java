@@ -199,8 +199,8 @@ public class BasicInductionVariable extends InductionVariable {
         int ivStampBits = ((IntegerStamp) stamp).getBits();
         if (maxTripCountStamp.getBits() >= ivStampBits) {
             /*
-             * The exact overflow checks use signed arithmetic, so the unsigned maxTripCount must not be
-             * above the (signed) maximum of the IV's native width.
+             * The exact overflow checks use signed arithmetic, so the unsigned maxTripCount must
+             * not be above the (signed) maximum of the IV's native width.
              */
             ValueNode signedMax = ConstantNode.forIntegerStamp(maxTripCountStamp, NumUtil.maxValue(ivStampBits), graph());
             LogicNode maxTripCountTooBig = IntegerBelowNode.create(signedMax, effectiveMaxTripCount, NodeView.DEFAULT);

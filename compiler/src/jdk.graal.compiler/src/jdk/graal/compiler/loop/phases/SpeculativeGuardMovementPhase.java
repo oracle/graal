@@ -172,8 +172,8 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  *
  * Mathematically, checking the initial value and the extremum is enough to prove that the
  * comparison holds on every iteration. For non-inverted loops, the phase also adds a loop-entry
- * check so that the extremum test is ignored when the loop has zero trips. If the new tests fold
- * to a guard that always deoptimizes, the phase leaves the original guard in the loop.
+ * check so that the extremum test is ignored when the loop has zero trips. If the new tests fold to
+ * a guard that always deoptimizes, the phase leaves the original guard in the loop.
  * <p>
  * To ensure the hoisting is safe, this phase must establish that the induction variable does not
  * overflow and its range is continuous and monotonic. For example:
@@ -194,10 +194,11 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * }
  * }</pre>
  *
- * The counted loop overflow checks (either the constant {@link CountedLoopInfo#counterNeverOverflows()},
- * or speculative {@link CountedLoopInfo#createOverFlowGuard()}) establish that {@code i} does
- * not overflow. Every derived IV needs to be checked independently for any operations that could
- * make the optimization invalid.
+ * The counted loop overflow checks (either the constant
+ * {@link CountedLoopInfo#counterNeverOverflows()}, or speculative
+ * {@link CountedLoopInfo#createOverFlowGuard()}) establish that {@code i} does not overflow. Every
+ * derived IV needs to be checked independently for any operations that could make the optimization
+ * invalid.
  * <p>
  * The IV endpoints and the safety conditions needed to compute them come from
  * {@link SpeculativeGuardMovement#buildEndpointsComputation(InductionVariable, ValueNode, Stamp)}.
@@ -209,8 +210,8 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * IV ranges are always considered signed, so additional care must be taken with unsigned
  * comparisons: a range like {@code [-10,10]} is continuous and monotonic in the signed domain but
  * not in unsigned arithmetic. Therefore, unsigned comparisons add guards to ensure they are safe to
- * hoist. Similarly, loops where the loop condition itself is unsigned are only optimized when
- * it can be proven that it is equivalent to a signed comparison and therefore safe.
+ * hoist. Similarly, loops where the loop condition itself is unsigned are only optimized when it
+ * can be proven that it is equivalent to a signed comparison and therefore safe.
  * <p>
  * All the additional guards are also protected by speculations.
  */
@@ -555,9 +556,9 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
         /**
          * Builds the init/extremum tests for the moved guard and creates any required IV endpoint
-         * safety guards. Both endpoint values explicitly depend on the combined
-         * additional guard. Returns {@code null} if an additional condition always deoptimizes or
-         * if the speculation log says a required guard must not be created.
+         * safety guards. Both endpoint values explicitly depend on the combined additional guard.
+         * Returns {@code null} if an additional condition always deoptimizes or if the speculation
+         * log says a required guard must not be created.
          * <p>
          * The initial value is compared in the original comparison's integer width. For a signed
          * comparison, the extremum and bound are compared in 64-bit arithmetic to avoid narrowing
@@ -583,8 +584,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          * guard(!mulOverflow(extremum(i), scale))
          * }</pre>
          *
-         * For the equivalent {@code mirrored} comparison {@code bound < var}, the operands are also swapped
-         * in each of the returned tests. For an unsigned comparison:
+         * For the equivalent {@code mirrored} comparison {@code bound < var}, the operands are also
+         * swapped in each of the returned tests. For an unsigned comparison:
          *
          * <pre>{@code
          * // Original guard:
@@ -667,8 +668,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         /**
-         * Captures the endpoints used for hoisting together with the additional guards needed to make
-         * them valid.
+         * Captures the endpoints used for hoisting together with the additional guards needed to
+         * make them valid.
          */
         private record EndpointGuardData(ValueNode init, ValueNode extremum, GuardingNode guard) {
             private boolean alwaysDeoptimizes() {
@@ -715,6 +716,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          * for signed comparisons, while being incorrect for unsigned comparisons.
          * <p>
          * For example, with an IV range of {@code -10..10}, and a comparison bound of 5:
+         *
          * <pre>
          *  endpoint checks:
          *    -10 |<| 5 == false
@@ -722,19 +724,21 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          *  but:
          *     0 |<| 5 == true
          * </pre>
-         * If an upward IV starts nonnegative or a downward IV starts negative, the endpoint overflow
-         * checks establish signed monotonicity, so the IV cannot leave that signed region.
+         *
+         * If an upward IV starts nonnegative or a downward IV starts negative, the endpoint
+         * overflow checks establish signed monotonicity, so the IV cannot leave that signed region.
          * In this fast path we return a {@code contradiction}.
          * <p>
          * Given signed monotonicity established by the endpoint overflow guards, the range crosses
-         * the signed/unsigned ordering discontinuity when the initial value and the extremum
-         * differ in their sign, meaning the IV crosses zero. The condition
-         * {@code (init ^ extremum) < 0} detects this independently of the runtime direction.
+         * the signed/unsigned ordering discontinuity when the initial value and the extremum differ
+         * in their sign, meaning the IV crosses zero. The condition {@code (init ^ extremum) < 0}
+         * detects this independently of the runtime direction.
          * <p>
          * This method deliberately reasons only from the reconstructed endpoints and the IV
-         * direction. Stamps on the IV value may be branch-local and therefore not describe
-         * the range for the whole loop trajectory, so just checking
+         * direction. Stamps on the IV value may be branch-local and therefore not describe the
+         * range for the whole loop trajectory, so just checking
          * {@code iv.stamp.isPositive|isStrictlyNegative()} is insufficient. For example:
+         *
          * <pre>{@code
          * for (int i = init; i < limit; i++) {
          *     if (i >= 10) {
@@ -745,6 +749,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          *     }
          * }
          * }</pre>
+         *
          * The original comparison is order-preserving, but the moved guard checks
          * {@code init |<| bound}, and {@code init} might be negative.
          */
@@ -753,10 +758,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             IntegerStamp initStamp = (IntegerStamp) endpoints.init().stamp(NodeView.DEFAULT);
             if ((direction == Direction.Up && initStamp.isPositive()) || (direction == Direction.Down && initStamp.isStrictlyNegative())) {
                 /*
-                 * For example:
-                 *   for (i = 0; i < limit; i++) ...
-                 * even if `limit` is not statically known, the loop overflow checks
-                 * ensure i is always >= 0, so this will never wrap.
+                 * For example: for (i = 0; i < limit; i++) ... even if `limit` is not statically
+                 * known, the loop overflow checks ensure i is always >= 0, so this will never wrap.
                  */
                 return LogicConstantNode.contradiction();
             }
@@ -1074,11 +1077,11 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         /**
-         * Determine whether a counted loop with an unsigned limit check is safe to optimize.
-         * The same-sign case is safe and can arise when canonicalization changes a
-         * signed comparison to an unsigned one because the IV and limit are known to
-         * have the same sign. An arbitrary unsigned counted loop is unsafe with the endpoint
-         * assumptions of the signed comparisons. For example:
+         * Determine whether a counted loop with an unsigned limit check is safe to optimize. The
+         * same-sign case is safe and can arise when canonicalization changes a signed comparison to
+         * an unsigned one because the IV and limit are known to have the same sign. An arbitrary
+         * unsigned counted loop is unsafe with the endpoint assumptions of the signed comparisons.
+         * For example:
          *
          * <pre>
          *   for (i = 1; i |<| -1; i++) {
@@ -1088,8 +1091,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          *   }
          * </pre>
          * <p>
-         * The loop visits {@code 1, 2, ..., MAX_VALUE, MIN_VALUE, ..., -2}, so checking only
-         * the signed endpoints would incorrectly assume that {@code i < 2} holds throughout.
+         * The loop visits {@code 1, 2, ..., MAX_VALUE, MIN_VALUE, ..., -2}, so checking only the
+         * signed endpoints would incorrectly assume that {@code i < 2} holds throughout.
          */
         private static boolean shouldOptimizeUnsignedCheckedLoop(GuardNode guard, CountedLoopInfo countedLoop, DebugContext debug) {
             LogicNode limitCheck = countedLoop.getLimitTest().condition();
@@ -1347,8 +1350,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         /**
          * Builds the IV endpoints for use by the hoisted form of the comparison. The initial value
          * retains its original stamp, while the extremum is computed with {@code extremumStamp}.
-         * The caller must create guards from the endpoint-safety conditions returned as part of
-         * the result.
+         * The caller must create guards from the endpoint-safety conditions returned as part of the
+         * result.
          */
         private static InductionVariable.Endpoints buildEndpointsComputation(InductionVariable iv, ValueNode effectiveMaxTripCount, Stamp extremumStamp) {
             CountedLoopInfo countedLoop = iv.getLoop().counted();
@@ -1359,10 +1362,10 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
         /**
          * Determines the stamp used to compute the induction variable extremum for a hoisted
-         * comparison. Unsigned comparisons retain their original integer width so that the
-         * extremum test uses the original unsigned ordering directly. Signed comparisons use a
-         * {@code long} stamp so that the computed extremum is not narrowed before it is compared
-         * with the sign-extended bound.
+         * comparison. Unsigned comparisons retain their original integer width so that the extremum
+         * test uses the original unsigned ordering directly. Signed comparisons use a {@code long}
+         * stamp so that the computed extremum is not narrowed before it is compared with the
+         * sign-extended bound.
          */
         private static Stamp extremumStamp(CompareNode compare) {
             IntegerStamp comparisonStamp = (IntegerStamp) compare.getX().stamp(NodeView.DEFAULT);
