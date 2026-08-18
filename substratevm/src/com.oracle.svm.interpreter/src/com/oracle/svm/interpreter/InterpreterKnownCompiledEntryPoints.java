@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter;
 
-import com.oracle.svm.core.graal.code.StubCallingConvention;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,6 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.espresso.shared.meta.ErrorType;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -61,6 +61,9 @@ import jdk.vm.ci.meta.JavaType;
  * <li>a sentinel handler used when an AOT method was not compiled, and
  * <li>throwing stubs used as dispatch targets for method-selection failures that must raise a JVM
  * linkage error.
+ * <li>simple stubs that simply returns {@code true} or {@code false}, for replacing various AOT
+ * methods that are marked to always fold, when called from the interpreter, for example
+ * {@link ImageSingletons#contains(Class)}.
  * </ul>
  * The stubs are registered as image roots during analysis so the interpreter can reference their
  * {@link MethodRefHolder}s at run time.
@@ -74,6 +77,9 @@ public class InterpreterKnownCompiledEntryPoints {
     private final MethodRefHolder throwIllegalAccessError;
     private final MethodRefHolder throwIncompatibleClassChangeError;
     private final MethodRefHolder throwAbstractMethodError;
+    private final PreparedSignature booleanStubSignature;
+    private final MethodRefHolder returnsTrue;
+    private final MethodRefHolder returnsFalse;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     InterpreterKnownCompiledEntryPoints(FeatureImpl.BeforeAnalysisAccessImpl access, AnalysisMetaAccess metaAccess) {
@@ -83,17 +89,27 @@ public class InterpreterKnownCompiledEntryPoints {
         AnalysisMethod iaeStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "throwIllegalAccessErrorStub"));
         AnalysisMethod icceStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "throwIncompatibleClassChangeErrorStub"));
         AnalysisMethod ameStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "throwAbstractMethodErrorStub"));
+        AnalysisMethod trueStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "returnsTrueStub"));
+        AnalysisMethod falseStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "returnsFalseStub"));
 
         throwIllegalAccessError = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(iaeStub));
         throwIncompatibleClassChangeError = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(icceStub));
         throwAbstractMethodError = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(ameStub));
+        returnsTrue = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(trueStub));
+        returnsFalse = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(falseStub));
 
         access.registerAsRoot(iaeStub, false, "Needed for interpreting non-public method selection for invokeinterface");
         access.registerAsRoot(icceStub, false, "Needed for interpreting resolution failure");
         access.registerAsRoot(ameStub, false, "Needed for interpreting abstract methods.");
+        access.registerAsRoot(trueStub, false, "Needed for interpreting some folded AOT methods.");
+        access.registerAsRoot(falseStub, false, "Needed for interpreting some folded AOT methods.");
 
         this.stubSignature = InterpreterSupportImpl.singleton().prepareSignature(
                         InterpreterUnresolvedSignature.create(InterpreterResolvedPrimitiveType.fromKind(JavaKind.Void), new JavaType[0]),
+                        false,
+                        /*- Should not need resolution */ null);
+        this.booleanStubSignature = InterpreterSupportImpl.singleton().prepareSignature(
+                        InterpreterUnresolvedSignature.create(InterpreterResolvedPrimitiveType.fromKind(JavaKind.Boolean), new JavaType[0]),
                         false,
                         /*- Should not need resolution */ null);
     }
@@ -121,6 +137,13 @@ public class InterpreterKnownCompiledEntryPoints {
     }
 
     /**
+     * The common no-argument, void-return signature used by the throwing stubs in this class.
+     */
+    public static PreparedSignature getBooleanStubSignature() {
+        return singleton().booleanStubSignature;
+    }
+
+    /**
      * Entry point that throws {@link IllegalAccessError}. Used for interface dispatch-table entries whose
      * method selection succeeds symbolically but selects a non-public method.
      */
@@ -130,7 +153,8 @@ public class InterpreterKnownCompiledEntryPoints {
 
     /**
      * Entry point that throws {@link IncompatibleClassChangeError}. Used for dispatch-table entries
-     * that represent incompatible method-selection results, ie: entries for which there were multiple maximally-specific interface methods.
+     * that represent incompatible method-selection results, ie: entries for which there were
+     * multiple maximally-specific interface methods.
      */
     public static MethodRefHolder getThrowIncompatibleClassChangeErrorStub() {
         return singleton().throwIncompatibleClassChangeError;
@@ -142,6 +166,20 @@ public class InterpreterKnownCompiledEntryPoints {
      */
     public static MethodRefHolder getThrowAbstractMethodErrorStub() {
         return singleton().throwAbstractMethodError;
+    }
+
+    /**
+     * Entry point that simply returns {@code true}.
+     */
+    public static MethodRefHolder getReturnsTrueStub() {
+        return singleton().returnsTrue;
+    }
+
+    /**
+     * Entry point that simply returns {@code false}.
+     */
+    public static MethodRefHolder getReturnsFalseStub() {
+        return singleton().returnsFalse;
     }
 
     /**
@@ -172,5 +210,17 @@ public class InterpreterKnownCompiledEntryPoints {
     @StubCallingConvention
     private static void throwAbstractMethodErrorStub() {
         throw new AbstractMethodError();
+    }
+
+    @SuppressWarnings("unused")
+    @StubCallingConvention
+    private static boolean returnsTrueStub() {
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    @StubCallingConvention
+    private static boolean returnsFalseStub() {
+        return false;
     }
 }
