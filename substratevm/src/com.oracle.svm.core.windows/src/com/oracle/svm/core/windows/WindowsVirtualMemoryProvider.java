@@ -26,6 +26,9 @@ package com.oracle.svm.core.windows;
 
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
+import java.util.random.RandomGenerator;
+
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -41,27 +44,34 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
+import com.oracle.svm.core.RuntimeRandomness;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.core.windows.WindowsUtils.CFunctionPointerPointer;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 @AutomaticallyRegisteredImageSingleton(VirtualMemoryProvider.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
+
+    // Keep mappings in the lower half of the smallest commonly supported address range.
+    private static final int RANDOM_ADDRESS_BITS = Platform.includedIn(Platform.AARCH64.class) ? 38 : 47;
+    private static final long MAX_RANDOM_ADDRESS = 1L << RANDOM_ADDRESS_BITS;
+    private static final int MAX_RANDOMIZATION_ATTEMPTS = 10;
 
     private static final CGlobalData<WordPointer> CACHED_PAGE_SIZE = CGlobalDataFactory.createWord();
     private static final CGlobalData<WordPointer> CACHED_ALLOC_GRAN = CGlobalDataFactory.createWord();
@@ -361,11 +371,33 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
             return Word.nullPointer();
         }
 
+        int pageProtection = accessAsProt(access);
+        if (start.isNull() && (access & Access.FUTURE_EXECUTE) != 0 &&
+                        SubstrateOptions.RandomizeRuntimeCodeCache.getValue()) {
+            UnsignedWord alignment = getAllocationGranularity();
+            long slotCount = (MAX_RANDOM_ADDRESS - nbytes.rawValue()) / alignment.rawValue();
+            if (slotCount <= 1) {
+                return Word.nullPointer();
+            }
+
+            RandomGenerator random = RuntimeRandomness.instance().getNonBlockingRandom();
+            int allocationType = MemoryAPI.MEM_RESERVE() | MemoryAPI.MEM_COMMIT();
+            for (int attempts = 0; attempts < MAX_RANDOMIZATION_ATTEMPTS; attempts++) {
+                long slot = Long.remainderUnsigned(random.nextLong(), slotCount - 1) + 1;
+                Pointer requested = Word.pointer(slot * alignment.rawValue());
+                Pointer allocated = MemoryAPI.VirtualAlloc(requested, nbytes, allocationType, pageProtection);
+                if (allocated.isNonNull()) {
+                    assert allocated.equal(requested);
+                    return allocated;
+                }
+            }
+        }
+
         /*
          * VirtualAlloc only guarantees the zeroing for freshly committed pages (i.e., the content
          * of pages that were already committed earlier won't be touched).
          */
-        return MemoryAPI.VirtualAlloc(start, nbytes, MemoryAPI.MEM_COMMIT(), accessAsProt(access));
+        return MemoryAPI.VirtualAlloc(start, nbytes, MemoryAPI.MEM_COMMIT(), pageProtection);
     }
 
     @Override

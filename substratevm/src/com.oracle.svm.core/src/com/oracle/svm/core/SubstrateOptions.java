@@ -1154,6 +1154,20 @@ public class SubstrateOptions {
         return SubstrateTarget.getArchitecture() instanceof AMD64 ? 32 : 16;
     }
 
+    private static void validateCodeAlignment(HostedOptionKey<Integer> optionKey) {
+        /*
+         * Executable memory can be committed directly, and therefore placed at a randomized
+         * address, whenever the virtual-memory granularity is a multiple of the requested
+         * alignment. Every supported runtime page size is a multiple of MINIMUM_PAGE_SIZE, so
+         * any divisor of it is compatible with randomized mappings on all supported systems.
+         */
+        if (RandomizeRuntimeCodeCache.getValue() && MINIMUM_PAGE_SIZE % runtimeCodeAlignment() != 0) {
+            throw UserError.invalidOptionValue(optionKey, optionKey.getValue(),
+                            String.format("Runtime code alignment must evenly divide the minimum supported runtime page size (%d bytes) when %s is enabled. Use a compatible alignment or disable runtime code cache randomization",
+                                            MINIMUM_PAGE_SIZE, SubstrateOptionsParser.commandArgument(RandomizeRuntimeCodeCache, "+")));
+        }
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static int buildTimeCodeAlignment(OptionValues options) {
         int value = ConcealedOptions.CodeAlignment.getValue(options);
@@ -1332,7 +1346,7 @@ public class SubstrateOptions {
          */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Alignment of AOT and JIT compiled code in bytes. The default of 0 automatically selects a suitable value.")//
-        public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0);
+        public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(0, SubstrateOptions::validateCodeAlignment);
 
         @OptionMigrationMessage("Use the '-o' option instead.")//
         @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
@@ -1864,4 +1878,7 @@ public class SubstrateOptions {
 
     @Option(help = "Emit fast path in monitor snippets", type = Expert) //
     public static final HostedOptionKey<Boolean> UseMonitorFastPath = new HostedOptionKey<>(true);
+
+    @Option(help = "Map the runtime code cache at pseudo-random addresses. This fragments the virtual address space, which can make subsequent reservations of very large contiguous ranges harder to satisfy.", type = Expert) //
+    public static final HostedOptionKey<Boolean> RandomizeRuntimeCodeCache = new HostedOptionKey<>(true);
 }

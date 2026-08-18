@@ -14,6 +14,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-73199) When native executables are built with `-H:-LegacyJavaOptionMode`, VM options are parsed only before the first `--` argument. Arguments after `--` are passed unchanged to the application main method. The legacy behavior remains unchanged.
 * (GR-78832) Renamed `LegacyJavaOptionMode` to `StrictRuntimeJavaOptions` and inverted its polarity. The default remains permissive; use `-H:+StrictRuntimeJavaOptions` to enable strict runtime Java option handling.
 * (GR-77977) Added control flow integrity options, available via `-H:CFI`. Indirect branches on AMD64 can be guarded with software-based checks that ensure that they land on valid targets. On AArch64, PAC is supported to protect return addresses on the stack.
+* (GR-77766) Executable anonymous memory mapping locations are randomized by default. This can be disabled with -H:-RandomizeRuntimeCodeCache.
 
 ## GraalVM 25.2 (Internal Version 25.2.4)
 * (GR-77358) Introduced compressed (32-bit) references, enabled by default. This generally improves memory usage and performance, but limits heap memory to 32 GB. Disable with `-H:-UseCompressedReferences`.

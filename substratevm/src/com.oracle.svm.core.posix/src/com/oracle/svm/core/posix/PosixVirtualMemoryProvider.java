@@ -39,6 +39,8 @@ import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mprotect;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.munmap;
 import static org.graalvm.word.impl.Word.nullPointer;
 
+import java.util.random.RandomGenerator;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -48,20 +50,22 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.RuntimeRandomness;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 @AutomaticallyRegisteredFeature
 class PosixVirtualMemoryProviderFeature implements InternalFeature {
@@ -82,6 +86,12 @@ class PosixVirtualMemoryProviderFeature implements InternalFeature {
 public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     protected static final int NO_FD = -1;
     protected static final int NO_FD_OFFSET = 0;
+
+    // Keep mappings in the lower half of the smallest commonly supported address range.
+    private static final int RANDOM_ADDRESS_BITS = Platform.includedIn(Platform.AARCH64.class) || Platform.includedIn(Platform.RISCV64.class) ? 38 : 47;
+    private static final long MAX_RANDOM_ADDRESS = 1L << RANDOM_ADDRESS_BITS;
+    // Limit randomization attempts for executable mappings.
+    private static final int MAX_RANDOMIZATION_ATTEMPTS = 10;
 
     private static final CGlobalData<WordPointer> CACHED_PAGE_SIZE = CGlobalDataFactory.createWord();
 
@@ -185,8 +195,32 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         if (Platform.includedIn(Platform.MACOS_AARCH64.class) && (access & Access.FUTURE_EXECUTE) != 0) {
             flags |= MAP_JIT();
         }
+        Pointer result;
+        if (start.isNull() && (access & Access.FUTURE_EXECUTE) != 0 &&
+                        SubstrateOptions.RandomizeRuntimeCodeCache.getValue()) {
+            UnsignedWord granularity = getGranularity();
+            long slotCount = (MAX_RANDOM_ADDRESS - nbytes.rawValue()) / granularity.rawValue();
+            if (slotCount <= 1) {
+                return nullPointer();
+            }
+            RandomGenerator random = RuntimeRandomness.instance().getNonBlockingRandom();
+            for (int attempts = 0;; attempts++) {
+                long slot = Long.remainderUnsigned(random.nextLong(), slotCount - 1) + 1;
+                Pointer requested = Word.pointer(slot * granularity.rawValue());
+                result = mmap(requested, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
+                if (result.equal(requested) || result.equal(MAP_FAILED()) || attempts >= MAX_RANDOMIZATION_ATTEMPTS - 1) {
+                    /* Mapping succeeded and we got our slot, or it failed and we didn't get it,
+                       or we ran out of attempts - in any case stop trying */
+                    break;
+                }
+
+                /* Mapping succeeded, but we did not get the requested slot. Free the mapping and retry. */
+                munmap(result, nbytes);
+            }
+        } else {
+            result = mmap(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
+        }
         /* The memory returned by mmap is guaranteed to be zeroed. */
-        final Pointer result = mmap(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
         return result.notEqual(MAP_FAILED()) ? result : nullPointer();
     }
 
