@@ -493,6 +493,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
          */
         coloredNodes.put(loopExitNode.loopBegin(), loopBodyBranch);
 
+        /* Additional condition usages must be attributable to a branch so they can be specialized. */
+        for (Node usage : ifNode.condition().usages()) {
+            if (usage != ifNode) {
+                NodeColor color = colorUsage(coloredNodes, usage, merge, ifNode.trueSuccessor(), ifNode.falseSuccessor());
+                if (color != NodeColor.TRUE_BRANCH && color != NodeColor.FALSE_BRANCH) {
+                    return false;
+                }
+            }
+        }
+
         EconomicMap<ValuePhiNode, ValueNode> phiReplacements = EconomicMap.create(merge.phis().count());
 
         for (PhiNode existingPhi : merge.phis()) {
@@ -507,6 +517,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         // Start modifying the graph
+        specializeConditionUsages(ifNode, coloredNodes);
         ifNode.graph().removeSplit(ifNode, survivingSuccessor);
 
         for (ValuePhiNode existingPhi : phiReplacements.getKeys()) {
@@ -525,6 +536,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         cleanupMerge(merge);
         return true;
+    }
+
+    /**
+     * Replaces additional usages of the split condition with its result on their branch.
+     */
+    private static void specializeConditionUsages(IfNode ifNode, EconomicMap<Node, NodeColor> coloredNodes) {
+        LogicNode condition = ifNode.condition();
+        LogicConstantNode trueValue = LogicConstantNode.tautology(ifNode.graph());
+        LogicConstantNode falseValue = LogicConstantNode.contradiction(ifNode.graph());
+        for (Node usage : condition.usages().snapshot()) {
+            if (usage == ifNode) {
+                continue;
+            }
+            NodeColor color = coloredNodes.get(usage);
+            GraalError.guarantee(color == NodeColor.TRUE_BRANCH || color == NodeColor.FALSE_BRANCH, "Unexpected color %s for %s", color, usage);
+            usage.replaceAllInputs(condition, color == NodeColor.TRUE_BRANCH ? trueValue : falseValue);
+        }
     }
 
     /**
