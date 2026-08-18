@@ -500,8 +500,9 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
     @Test
     public void testDerivedLimitCheckedIVInitialOverflow() throws Exception {
         InstalledCode code = getGuardMovementCode("derivedLimitCheckedIVInitialOverflowSnippet", DeoptimizationReason.TransferToInterpreter);
-        /* The overflowing offset maps i = -10..-2 to value = MAX_VALUE-9..MAX_VALUE-1.
-         * The inner comparison is initially false and becomes true at MAX_VALUE-5.
+        /*
+         * The overflowing offset maps i = -10..-2 to value = MAX_VALUE-9..MAX_VALUE-1. The inner
+         * comparison is initially false and becomes true at MAX_VALUE-5.
          */
         Object result = code.executeVarargs(-10, Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE - 5);
         Assert.assertEquals("An overflowing derived limit-checked IV must not hide a later comparison failure", -1, result);
@@ -571,8 +572,10 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
     public void testHugeTripCount() throws Exception {
         InstalledCode code = getGuardMovementCode("hugeTripCountSnippet", DeoptimizationReason.TransferToInterpreter);
         Assert.assertTrue(code.isValid());
-        /* limit - 1 is 2^32. The original guard is false for bound == 0, and execution exits
-         * during the first iteration. */
+        /*
+         * limit - 1 is 2^32. The original guard is false for bound == 0, and execution exits during
+         * the first iteration.
+         */
         Object result = code.executeVarargs(0x1_0000_0001L, 0L, 0);
         Assert.assertEquals("A >32bit trip count must not be wrapped", 7, result);
         Assert.assertFalse("The huge trip count guard must have deoptimized", code.isValid());
@@ -644,9 +647,10 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
     @Test
     public void testScaledIVWrapsInternallyBeforeEndpoint() throws Exception {
         InstalledCode code = getGuardMovementCode("scaledIVWrapsInternallySnippet", DeoptimizationReason.TransferToInterpreter);
-        /* The affine IV increases from 0x01000000 to 0xe2000000 without unsigned wraparound.
-         * Scaling by four wraps the derived IV repeatedly; at affineIV == 0x40000000 its value is zero,
-         * while its initial and last values are both unsigned-above 0x01000000.
+        /*
+         * The affine IV increases from 0x01000000 to 0xe2000000 without unsigned wraparound.
+         * Scaling by four wraps the derived IV repeatedly; at affineIV == 0x40000000 its value is
+         * zero, while its initial and last values are both unsigned-above 0x01000000.
          */
         Object result = code.executeVarargs(0x01000000, 26, 0x09000000);
         Assert.assertEquals("Scaled IV must not miss an internal unsigned wrap", -1, result);

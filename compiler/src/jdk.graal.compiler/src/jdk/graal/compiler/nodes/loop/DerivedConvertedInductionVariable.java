@@ -115,8 +115,8 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     /**
      * Computes the base endpoint in the base IV's native stamp, reapplies this conversion, and then
      * adapts the result to {@code requestedStamp}. Computing the base endpoint directly in
-     * {@code requestedStamp} can skip an intermediate conversion. For example, it can make a
-     * zero extension appear redundant after a narrowing and sign extension.
+     * {@code requestedStamp} can skip an intermediate conversion. For example, it can make a zero
+     * extension appear redundant after a narrowing and sign extension.
      */
     @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp requestedStamp, ValueNode maxTripCount) {
@@ -132,18 +132,19 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     /**
-     * Adds the condition under which a conversion introduces a discontinuity in the endpoint
-     * range. The endpoints are those of the base IV, before this conversion is applied.
-     * For example:
+     * Adds the condition under which a conversion introduces a discontinuity in the endpoint range.
+     * The endpoints are those of the base IV, before this conversion is applied. For example:
+     *
      * <pre>
      * baseInit = -2, baseExtremum = 2; baseRange = [-2, ..., 2]
      * -> zeroExtension
      * init = 0xFFFFFFFEL, extremum = 2L; range = [0xFFFFFFFEL, 0xFFFFFFFFL] U [0L,1L,2L]
      * </pre>
-     * This discontinuity makes the IV range non-monotonic. The computed base endpoints' stamps
-     * are used, rather than checking if the {@link #valueNode()}'s stamp is positive or strictly
-     * negative - the conversion's input might use branch-local stamp refinements that make it
-     * not applicable to whole-loop endpoint proofs.
+     *
+     * This discontinuity makes the IV range non-monotonic. The computed base endpoints' stamps are
+     * used, rather than checking if the {@link #valueNode()}'s stamp is positive or strictly
+     * negative - the conversion's input might use branch-local stamp refinements that make it not
+     * applicable to whole-loop endpoint proofs.
      */
     void collectRangeEndpointConditions(ValueNode baseInit, ValueNode baseExtremum, Collection<LogicNode> conditions) {
         IntegerStamp initStamp = (IntegerStamp) baseInit.stamp(NodeView.DEFAULT);
@@ -175,9 +176,9 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
         GraalError.guarantee(baseEndpoint != null, "Expected base endpoint for %s", this);
         /*
          * An integer conversion does not add new endpoint arithmetic of its own. The base IV's
-         * overflow conditions already cover the computation whose result is being converted.
-         * Zero extensions are handled separately in #collectRangeEndpointConditions, while
-         * narrowing must check that converting the computed base endpoints is exact.
+         * overflow conditions already cover the computation whose result is being converted. Zero
+         * extensions are handled separately in #collectRangeEndpointConditions, while narrowing
+         * must check that converting the computed base endpoints is exact.
          */
         if (value instanceof NarrowNode narrow) {
             collectEndpointNarrowingConditions(narrow, baseEndpoint, conditions);
@@ -189,9 +190,10 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
      * Adds conditions that are true when narrowing {@code baseEndpoint} to the result width of
      * {@code narrow} loses information.
      * <p>
-     * This method is called separately for the initial and extremum endpoints. If either endpoint would
-     * wrap when narrowed, the range is not monotonic, so it is unsafe to apply whole-loop endpoint proofs.
-     * For example:
+     * This method is called separately for the initial and extremum endpoints. If either endpoint
+     * would wrap when narrowed, the range is not monotonic, so it is unsafe to apply whole-loop
+     * endpoint proofs. For example:
+     *
      * <pre>
      * baseInit = (long) Integer.MAX_VALUE + 10
      * baseExtremum = (long) Integer.MAX_VALUE - 5
@@ -199,11 +201,12 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
      * init = Integer.MIN_VALUE + 9
      * extremum = Integer.MAX_VALUE - 5
      * </pre>
+     *
      * The initial endpoint wraps, creating a discontinuity.
      * <p>
-     * Note that even if the underlying {@link NarrowNode} is lossless based on
-     * its input's stamp, the stamp might use branch-local refinements, but monotonicity proofs
-     * follow the underlying IV's whole range, so that alone cannot be used to prove safety.
+     * Note that even if the underlying {@link NarrowNode} is lossless based on its input's stamp,
+     * the stamp might use branch-local refinements, but monotonicity proofs follow the underlying
+     * IV's whole range, so that alone cannot be used to prove safety.
      */
     private void collectEndpointNarrowingConditions(NarrowNode narrow, ValueNode baseEndpoint, Collection<LogicNode> conditions) {
         int resultBits = narrow.getResultBits();
