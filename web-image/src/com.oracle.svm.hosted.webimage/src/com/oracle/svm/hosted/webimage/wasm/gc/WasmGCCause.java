@@ -29,9 +29,9 @@ import com.oracle.svm.core.heap.GCCause;
 
 public class WasmGCCause extends GCCause {
 
-    public static final GCCause OnAllocation = new WasmGCCause("CollectOnAllocation", 20);
+    public static final GCCause OnAllocation = new WasmGCCause("CollectOnAllocation", 20, false);
 
-    protected WasmGCCause(String name, int id) {
-        super(name, id);
+    protected WasmGCCause(String name, int id, boolean completeCollection) {
+        super(name, id, completeCollection);
     }
 }

@@ -58,7 +58,7 @@ import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 @CContext(value = G1LibraryDependencies.class)
 public class G1Library {
     // GraalVM major, GraalVM minor, interface revision
-    public static final int VERSION = 250301;
+    public static final int VERSION = 250302;
 
     @CFunction(value = "svm_g1gc_parse_options", transition = Transition.NO_TRANSITION)
     public static native void parseOptions(int nativeImageVersion, int argc, CCharPointerPointer argv, CCharPointer imageBuildHostedArguments, CCharPointer imageBuildRuntimeArguments,

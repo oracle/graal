@@ -55,6 +55,7 @@ import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -823,6 +824,8 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private void gc() {
-        G1Library.collect(GCCause.JavaLangSystemGC.getId());
+        if (!SubstrateGCOptions.DisableExplicitGC.getValue()) {
+            G1Library.collect(GCCause.JavaLangSystemGC.getId());
+        }
     }
 }

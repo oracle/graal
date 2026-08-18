@@ -208,12 +208,7 @@ public class WasmLMGC implements GC {
 
     @Override
     public void collect(GCCause cause) {
-        collect(cause, false);
-    }
-
-    @Override
-    public void collectCompletely(GCCause cause) {
-        collect(cause, true);
+        collect(cause, cause.collectsCompletely());
     }
 
     @Override
@@ -725,7 +720,7 @@ final class Target_java_lang_Runtime {
 
     @Substitute
     private void gc() {
-        WasmLMGC.getGC().collectCompletely(GCCause.JavaLangSystemGC);
+        WasmLMGC.getGC().collect(GCCause.JavaLangSystemGC);
     }
 
     @Substitute

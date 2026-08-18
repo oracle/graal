@@ -218,7 +218,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
         protected void operate(NativeVMOperationData d) {
             HeapDumpVMOperationData data = (HeapDumpVMOperationData) d;
             if (data.getGCBefore()) {
-                Heap.getHeap().getGC().collectCompletely(GCCause.HeapDump);
+                Heap.getHeap().getGC().collect(GCCause.HeapDump);
             }
             dumpHeap(data);
         }
