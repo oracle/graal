@@ -4610,63 +4610,74 @@ public final class Interpreter {
         assert !field.isStatic();
         assert !field.isUnmaterializedConstant();
 
-        JavaKind kind = field.getJavaKind();
-        switch (kind) {
+        switch (field.getJavaKind()) {
             case Boolean -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
             }
             case Byte -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
             }
             case Char -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
             }
             case Short -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
             }
             case Int -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, field, true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
             }
             case Float -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, field, true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
             }
             case Long -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -3));
                 InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, field, true);
                 virtualStack.pop2(state, false);
                 virtualStack.pop1(state);
             }
             case Double -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -3));
                 InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
                 virtualStack.pop2(state, false);
                 virtualStack.pop1(state);
             }
             case Object -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, field, true);
                 virtualStack.pop1(state);
                 virtualStack.pop1(state);
             }
-            default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
+            default -> {
+                GraalDirectives.injectSwitchCaseProbability(0.0);
+                throw InterpreterUtil.shouldNotReachHereAtRuntime();
+            }
         }
     }
 

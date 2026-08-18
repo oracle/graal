@@ -940,6 +940,15 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      * Marks blocks whose LIR should avoid spill optimizations that add fast-path memory traffic.
      */
     public void markFastPathBlocks() {
+        boolean bytecodeHandlerStub = false;
+        for (HIRBlock block : reversePostOrder) {
+            bytecodeHandlerStub |= isStubFastPathBlock(block);
+        }
+        if (bytecodeHandlerStub) {
+            for (HIRBlock block : reversePostOrder) {
+                block.markBytecodeHandlerStubBlock();
+            }
+        }
         for (HIRBlock block : reversePostOrder) {
             if (isThreadedSwitchBlock(block)) {
                 block.markFastPathBlock();

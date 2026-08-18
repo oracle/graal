@@ -117,8 +117,6 @@ public class LinearScan {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
         public static final OptionKey<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionKey(LIRPhase.Options.LIROptimization, true);
-        @Option(help = "Force pressure spills to split before unrelated paths outside fast-path blocks", type = OptionType.Debug)
-        public static final OptionKey<Boolean> LIROptLSRAForceSpillSplitAtSlowPath = new OptionKey<>(false);
         @Option(help = "Use binary search if interval is longer than this limit", type = OptionType.Debug)
         public static final OptionKey<Integer> IntervalBinarySearchLimit = new OptionKey<>(100);
         // @formatter:on

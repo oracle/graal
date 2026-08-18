@@ -38,13 +38,13 @@ import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
-import jdk.graal.compiler.lir.alloc.lsra.LinearScan;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import jdk.graal.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
@@ -72,6 +72,8 @@ public class ForceSpillSplitAtSlowPathTest extends LIRTest {
     private int totalSpillReloads;
     private String lowPressurePathBlock;
     private String entryBlock;
+    private boolean markBytecodeHandlerStubBlocks;
+    private boolean sawBytecodeHandlerStubBlock;
 
     private static final class HighPressureSpec extends LIRTestSpecification {
         @Override
@@ -239,16 +241,18 @@ public class ForceSpillSplitAtSlowPathTest extends LIRTest {
         totalSpillReloads = 0;
         lowPressurePathBlock = null;
         entryBlock = null;
+        markBytecodeHandlerStubBlocks = true;
+        sawBytecodeHandlerStubBlock = false;
     }
 
     private void compileAndInspect(String methodName) {
-        OptionValues options = new OptionValues(getInitialOptions(), LinearScan.Options.LIROptLSRAForceSpillSplitAtSlowPath, true);
-        compile(getResolvedJavaMethod(methodName), null, options);
+        compile(getResolvedJavaMethod(methodName), null, getInitialOptions());
     }
 
     @Test
     public void testSpillsStayOnHighPressurePath() {
         compileAndInspect("testControlFlow");
+        Assert.assertTrue("expected a bytecode-handler stub block", sawBytecodeHandlerStubBlock);
         Assert.assertTrue("expected a low-pressure path marker", sawLowPressurePathMarker);
         Assert.assertTrue("expected a high-pressure operation", sawHighPressure);
         Assert.assertTrue("expected the high-pressure path to require stack traffic", totalSpillStores > 0 || totalSpillReloads > 0);
@@ -283,6 +287,13 @@ public class ForceSpillSplitAtSlowPathTest extends LIRTest {
     }
 
     @Test
+    public void testUnmarkedCompilationKeepsOriginalPlacement() {
+        markBytecodeHandlerStubBlocks = false;
+        compileAndInspect("testControlFlow");
+        Assert.assertFalse("ordinary compilation was marked as a bytecode-handler stub", sawBytecodeHandlerStubBlock);
+    }
+
+    @Test
     public void testExecution() {
         runTest("testControlFlow", 7L, false);
         runTest("testControlFlow", 7L, true);
@@ -301,14 +312,27 @@ public class ForceSpillSplitAtSlowPathTest extends LIRTest {
     @Override
     protected LIRSuites createLIRSuites(OptionValues options) {
         LIRSuites suites = super.createLIRSuites(options);
+        suites.getPreAllocationOptimizationStage().prependPhase(new MarkBytecodeHandlerStubBlocksPhase());
         suites.getPostAllocationOptimizationStage().prependPhase(new CheckAllocationPhase());
         return suites;
+    }
+
+    private final class MarkBytecodeHandlerStubBlocksPhase extends LIRPhase<PreAllocationOptimizationContext> {
+        @Override
+        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
+            if (markBytecodeHandlerStubBlocks) {
+                for (var block : lirGenRes.getLIR().getControlFlowGraph().getBlocks()) {
+                    block.markBytecodeHandlerStubBlock();
+                }
+            }
+        }
     }
 
     private final class CheckAllocationPhase extends LIRPhase<PostAllocationOptimizationContext> {
         @Override
         protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
             for (var block : lirGenRes.getLIR().getControlFlowGraph().getBlocks()) {
+                sawBytecodeHandlerStubBlock |= block.isBytecodeHandlerStubBlock();
                 boolean entry = block.getPredecessorCount() == 0;
                 boolean lowPressurePathBlockMarker = false;
                 boolean highPressurePathBlockMarker = false;
