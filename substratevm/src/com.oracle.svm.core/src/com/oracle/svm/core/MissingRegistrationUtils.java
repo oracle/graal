@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.SubstrateOptions.ThrowMissingRegistrationErrors;
-
 import java.io.IOException;
 import java.io.Serial;
 import java.io.StringWriter;
@@ -51,6 +49,7 @@ import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.StringUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonPrintable;
@@ -58,8 +57,32 @@ import jdk.graal.compiler.util.json.JsonWriter;
 
 public class MissingRegistrationUtils {
 
-    public static boolean throwMissingRegistrationErrors() {
-        return ThrowMissingRegistrationErrors.hasBeenSet();
+    public static boolean exactReflection() {
+        return FutureDefaultsOptions.exactReflection() || exactReachabilityMetadata();
+    }
+
+    /**
+     * The runtime options only refine an image that was built with exact reachability metadata; in
+     * any other image this folds to {@code false} and the reporting paths are unreachable.
+     */
+    public static boolean exactReachabilityMetadata() {
+        /* Build-time selection, see FS-001-native-image-semantics.3.4. */
+        return exactReachabilityMetadataSupported() &&
+                        (globalExactReachabilityMetadata() || !exactReachabilityMetadataPackages().isEmpty() || MissingRegistrationSupport.singleton().legacyExactMetadata());
+    }
+
+    /** Whether the image was built with {@code --future-defaults=exact-reflection} or a legacy alias. */
+    @Fold
+    public static boolean exactReachabilityMetadataSupported() {
+        return MissingRegistrationSupport.singleton().exactMetadataSupported();
+    }
+
+    public static boolean globalExactReachabilityMetadata() {
+        return SubstrateOptions.ConcealedOptions.ExactReachabilityMetadata.getValue();
+    }
+
+    public static String exactReachabilityMetadataPackages() {
+        return SubstrateOptions.ConcealedOptions.ExactReachabilityMetadataPackages.getValue();
     }
 
     public static SubstrateOptions.ReportingMode missingRegistrationReportingMode() {
@@ -68,8 +91,16 @@ public class MissingRegistrationUtils {
 
     private static final AtomicReference<Set<String>> seenOutputs = new AtomicReference<>(null);
 
+    /**
+     * Reports a missing registration error according to {@link #missingRegistrationReportingMode()}.
+     * Only the {@code Throw} and {@code ExitTest} modes throw; in {@code Warn} mode (or when the
+     * caller is out of scope) this method returns normally and the caller must fall back to its
+     * legacy, non-exact behavior.
+     */
     public static void report(Error exception, StackTraceElement responsibleClass) {
-        if (missingRegistrationErrorsSuspended.get() || (responsibleClass != null && !MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(responsibleClass))) {
+        MissingRegistrationSupport support = MissingRegistrationSupport.singleton();
+        boolean callerInScope = responsibleClass != null ? support.reportMissingRegistrationErrors(responsibleClass) : support.reportMissingRegistrationErrorsWithoutResponsibleClass();
+        if (missingRegistrationErrorsSuspended.get() || !callerInScope) {
             return;
         }
         switch (missingRegistrationReportingMode()) {

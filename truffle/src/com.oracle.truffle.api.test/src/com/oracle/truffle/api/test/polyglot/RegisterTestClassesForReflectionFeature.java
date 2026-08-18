@@ -46,6 +46,7 @@ import java.util.List;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.tck.tests.ValueAssert;
 
 /**
@@ -93,6 +94,7 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
     }
 
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        RuntimeReflection.register(TruffleFile.class.getDeclaredMethods());
         for (Class<?> testClass : TEST_CLASSES) {
             for (Class<?> innerClass : testClass.getDeclaredClasses()) {
                 registerClass(innerClass);

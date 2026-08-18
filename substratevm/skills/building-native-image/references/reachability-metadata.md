@@ -36,12 +36,24 @@ Use `Exit` mode during testing to catch errors hidden inside `catch (Throwable t
 ```shell
 java -XX:MissingRegistrationReportingMode=Exit -jar your-app.jar
 ```
-Enable strict metadata mode at build time:
+Build with `--future-defaults=exact-reflection` and enable exact reachability metadata when starting the executable:
+
 ```shell
-native-image --exact-reachability-metadata ...
-# Or for specific packages only:
-native-image --exact-reachability-metadata=com.example.mypackage ...
+native-image --future-defaults=exact-reflection -jar your-app.jar
+./application -XX:+ExactReachabilityMetadata
 ```
+
+To limit exact reachability metadata to specific packages, pass a comma-separated package list:
+
+```shell
+./application -XX:ExactReachabilityMetadataPackages=com.example,org.example
+```
+
+Both are immutable runtime options: they are read once during startup, and an executable built without `--future-defaults=exact-reflection` rejects them.
+They can also be baked in as build-time defaults with `-R:+ExactReachabilityMetadata` or `-R:ExactReachabilityMetadataPackages=`, but only in a build that also passes `--future-defaults=exact-reflection`; any other build fails with
+`Error: The option 'ExactReachabilityMetadata' can only be set for an image built with '--future-defaults=exact-reflection'.`
+
+With `-XX:MissingRegistrationReportingMode=Warn`, and for callers outside the selected packages, a missing registration is only reported and the call continues with its legacy, non-exact behavior.
 
 ---
 
@@ -188,7 +200,7 @@ For `Unsafe.allocateInstance(MyClass.class)`:
 
 Used when native C/C++ code calls back into Java via JNI. Fixes `MissingJNIRegistrationError`.
 
-> Most JNI libraries don't handle Java exceptions gracefully - always use `--exact-reachability-metadata` with `-XX:MissingRegistrationReportingMode=Warn` to see what's missing.
+> Most JNI libraries don't handle Java exceptions gracefully - use exact reachability metadata with `-XX:MissingRegistrationReportingMode=Warn` to see what's missing.
 
 **Register a JNI-accessible type:**
 ```json

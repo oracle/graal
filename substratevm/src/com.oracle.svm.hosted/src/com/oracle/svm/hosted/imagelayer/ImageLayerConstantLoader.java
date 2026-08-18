@@ -349,6 +349,10 @@ final class ImageLayerConstantLoader {
      * underlying host VM, found by querying the parent object that made this constant reachable.
      */
     private ImageHeapConstant getOrCreateConstant(int id, JavaConstant parentReachableHostedObjectCandidate) {
+        return getOrCreateConstant(id, parentReachableHostedObjectCandidate, false);
+    }
+
+    private ImageHeapConstant getOrCreateConstant(int id, JavaConstant parentReachableHostedObjectCandidate, boolean allowHostedStringDifference) {
         if (constants.containsKey(id)) {
             return constants.get(id);
         }
@@ -407,7 +411,11 @@ final class ImageLayerConstantLoader {
                         SnapshotStructList.Loader<ConstantReferenceData.Loader> instanceData = baseLayerConstant.getObject().getData();
                         JavaConstant foundHostedObject = lookupHostedObject(baseLayerConstant, type);
                         if (foundHostedObject != null && parentReachableHostedObject != null) {
-                            guarantee(foundHostedObject.equals(parentReachableHostedObject), "Found discrepancy between recipe-found hosted value %s and parent-reachable hosted value %s.",
+                            boolean hostedObjectsMatch = foundHostedObject.equals(parentReachableHostedObject);
+                            /* Incomplete types have an analysis-only suffix in their hosted hub name. */
+                            boolean expectedHostedStringDifference = allowHostedStringDifference && type.getJavaClass().equals(String.class);
+                            guarantee(hostedObjectsMatch || expectedHostedStringDifference,
+                                            "Found discrepancy between recipe-found hosted value %s and parent-reachable hosted value %s.",
                                             foundHostedObject, parentReachableHostedObject);
                         }
 
@@ -465,7 +473,7 @@ final class ImageLayerConstantLoader {
                         ensureHubInitialized(parentConstant);
 
                         JavaConstant hostedConstant = relink ? getReachableHostedValue(parentConstant, finalPosition) : null;
-                        ImageHeapConstant baseLayerConstant = getOrCreateConstant(constantId, hostedConstant);
+                        ImageHeapConstant baseLayerConstant = getOrCreateConstant(constantId, hostedConstant, isIncompleteBaseLayerHub(parentConstant));
                         ensureHubInitialized(baseLayerConstant);
 
                         if (hostedConstant != null) {
@@ -491,6 +499,14 @@ final class ImageLayerConstantLoader {
             };
         }
         return values;
+    }
+
+    private boolean isIncompleteBaseLayerHub(ImageHeapConstant constant) {
+        if (!loader.metaAccess.isInstanceOf(constant, DynamicHub.class)) {
+            return false;
+        }
+        AnalysisType type = (AnalysisType) loader.universe.getBigbang().getConstantReflectionProvider().asJavaType(constant);
+        return type != null && type.getWrapped() instanceof BaseLayerType;
     }
 
     private static AnalysisFuture<?> unsupportedReferencedConstant(String message, ImageHeapConstant parentConstant, int finalPosition) {
@@ -692,10 +708,25 @@ final class ImageLayerConstantLoader {
              */
             PersistedAnalysisTypeData.Loader typeData = findType(getBaseLayerTypeId(type));
             if (typeData != null && typeData.getHasArrayType()) {
-                AnalysisType arrayClass = type.getArrayClass();
+                AnalysisType arrayClass = getArrayClass(type, typeData);
                 ensureHubInitialized(arrayClass);
             }
         }
+    }
+
+    private AnalysisType getArrayClass(AnalysisType componentType, PersistedAnalysisTypeData.Loader componentTypeData) {
+        if (!(componentType.getWrapped() instanceof BaseLayerType)) {
+            return componentType.getArrayClass();
+        }
+        SnapshotStructList.Loader<PersistedAnalysisTypeData.Loader> persistedTypes = snapshot.getTypes();
+        int componentTypeId = componentTypeData.getId();
+        for (int i = 0; i < persistedTypes.size(); i++) {
+            PersistedAnalysisTypeData.Loader persistedType = persistedTypes.get(i);
+            if (persistedType.getComponentTypeId() == componentTypeId) {
+                return loader.getAnalysisTypeForBaseLayerId(persistedType.getId());
+            }
+        }
+        throw AnalysisError.shouldNotReachHere("Array type for incomplete base-layer type is missing from the snapshot: " + componentType);
     }
 
     private static void ensureHubInitialized(AnalysisType type) {

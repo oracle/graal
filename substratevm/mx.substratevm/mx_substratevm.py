@@ -448,6 +448,42 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     clinittest(extra_image_args)
 
 
+def exact_reachability_metadata_options_task(extra_image_args=None):
+    """
+    FS-001-native-image-semantics.3.4: the exact reachability metadata runtime options are only
+    accepted by executables built with `--future-defaults=exact-reflection` and rejected otherwise.
+    """
+    extra_image_args = extra_image_args or []
+    expected_error = "requires an executable built with '--future-defaults=exact-reflection'"
+    env = os.environ.copy()
+    env['HELLO_WORLD_MESSAGE'] = 'Hello from native-image!'
+
+    def run_helloworld(binary, option):
+        out = mx.LinesOutputCapture()
+        err = mx.LinesOutputCapture()
+        exit_code = mx.run([binary, option], out=out, err=err, env=env, nonZeroIsFatal=False)
+        return exit_code, '\n'.join(out.lines + err.lines)
+
+    legacy_dir = join(svmbuild_dir(), 'exact-metadata-legacy')
+    helloworld(['--output-path', legacy_dir, '--build-only'] + extra_image_args + ['--future-defaults=none'])
+    legacy_binary = join(legacy_dir, 'helloworld')
+    for option in ['-XX:+ExactReachabilityMetadata', '-XX:ExactReachabilityMetadataPackages=com.example']:
+        exit_code, output = run_helloworld(legacy_binary, option)
+        if exit_code == 0 or expected_error not in output:
+            mx.abort(f"Expected '{option}' to be rejected by an executable built without exact reachability metadata (exit code {exit_code}):\n{output}")
+    exit_code, output = run_helloworld(legacy_binary, '-XX:-ExactReachabilityMetadata')
+    if exit_code != 0:
+        mx.abort(f"Expected the default value of ExactReachabilityMetadata to be accepted (exit code {exit_code}):\n{output}")
+
+    exact_dir = join(svmbuild_dir(), 'exact-metadata-future-default')
+    helloworld(['--output-path', exact_dir, '--build-only'] + extra_image_args + ['--future-defaults=none', '--future-defaults=exact-reflection'])
+    exact_binary = join(exact_dir, 'helloworld')
+    for option in ['-XX:+ExactReachabilityMetadata', '-XX:ExactReachabilityMetadataPackages=com.example']:
+        exit_code, output = run_helloworld(exact_binary, option)
+        if exit_code != 0 or 'Hello from native-image!' not in output:
+            mx.abort(f"Expected '{option}' to be accepted by an executable built with --future-defaults=exact-reflection (exit code {exit_code}):\n{output}")
+
+
 def truffle_args(extra_build_args):
     assert isinstance(extra_build_args, list)
     build_args = [
@@ -514,6 +550,7 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(args.extra_image_builder_arguments)
                 helloworld(svm_experimental_options(['-H:+RunMainInNewThread']) + args.extra_image_builder_arguments)
+                exact_reachability_metadata_options_task(args.extra_image_builder_arguments)
 
     with Task('terminus helloworld', tasks, tags=[GraalTags.terminus]) as t:
         if t: _run_terminus_gate(args)

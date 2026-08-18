@@ -48,6 +48,7 @@ import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -88,6 +89,8 @@ public class FutureDefaultsOptions {
     private static final String RUN_TIME_INITIALIZE_RESOURCE_BUNDLES = "run-time-initialize-resource-bundles";
     private static final String CLASS_FOR_NAME_RESPECTS_CLASS_LOADER = "class-for-name-respects-class-loader";
     private static final String EXACT_REFLECTION = "exact-reflection";
+    /** The command-line argument that selects exact reachability metadata at build time. */
+    public static final String EXACT_REFLECTION_ARGUMENT = "--" + OPTION_NAME + "=" + EXACT_REFLECTION;
     public static final String EXPLICIT_FEATURE_SINGLETON_REGISTRATION = "explicit-feature-singleton-registration";
     private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, EXACT_REFLECTION, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS,
                     RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES, EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
@@ -262,6 +265,7 @@ public class FutureDefaultsOptions {
     /**
      * @see FutureDefaultsOptions#FutureDefaults
      */
+    @Fold
     public static boolean exactReflection() {
         return getFutureDefaults().contains(EXACT_REFLECTION);
     }

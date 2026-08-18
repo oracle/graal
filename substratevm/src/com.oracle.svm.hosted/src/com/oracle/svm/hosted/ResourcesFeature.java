@@ -726,8 +726,8 @@ public class ResourcesFeature implements InternalFeature {
          * GR-58701: The SVM core is currently not included in the base layer of a Layered Image.
          * Those specific types can be reachable from Resources#resourcesTrieRoot, but they can be
          * missed by the analysis because the GlobTrieNode#children field is only available after
-         * analysis and the only reference to those types is with ThrowMissingRegistrationErrors
-         * enabled. Until a clear SVM core separation is created and included in the base layer,
+         * analysis and the only reference to those types is from exact reachability metadata.
+         * Until a clear SVM core separation is created and included in the base layer,
          * those types should be manually registered as instantiated before the analysis.
          */
         if (HostedImageLayerBuildingSupport.buildingImageLayer()) {
@@ -746,10 +746,10 @@ public class ResourcesFeature implements InternalFeature {
 
         ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns);
         /*
-         * register all included patterns in Resources singleton (if we are throwing
-         * MissingRegistrationErrors), so they can be queried at runtime to detect missing entries
+         * Register all included patterns in the Resources singleton when the image is built with
+         * exact reachability metadata, so they can be queried at run time to detect missing entries.
          */
-        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+        if (MissingRegistrationUtils.exactReachabilityMetadataSupported()) {
             includePatterns.forEach(resourcePattern -> collector.registerIncludePattern(resourcePattern.condition, resourcePattern.compiledPattern.moduleName(),
                             resourcePattern.compiledPattern.pattern.pattern()));
         }

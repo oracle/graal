@@ -4,17 +4,22 @@ Use this guide to resolve native-image build failures caused by missing reachabi
 
 ## Detect Missing Metadata
 
-Add these options to your Maven plugin configuration to enable metadata checks and warnings:
+Add the build option and these runtime options to your Maven plugin configuration to enable metadata checks and warnings:
 ```xml
 <configuration>
   <buildArgs>
-    <buildArg>--exact-reachability-metadata</buildArg>
+    <buildArg>--future-defaults=exact-reflection</buildArg>
   </buildArgs>
   <runtimeArgs>
+    <runtimeArg>-XX:+ExactReachabilityMetadata</runtimeArg>
     <runtimeArg>-XX:MissingRegistrationReportingMode=Warn</runtimeArg>
   </runtimeArgs>
 </configuration>
 ```
+
+Keep the split: `--future-defaults=exact-reflection` selects exact reachability metadata at build time and belongs in `<buildArgs>`, while the `-XX:` options refine that mode at run time and belong in `<runtimeArgs>`.
+A `<buildArg>-R:+ExactReachabilityMetadata</buildArg>` makes the runtime option the default of the executable, but only alongside `--future-defaults=exact-reflection`; without it the build fails with
+`Error: The option 'ExactReachabilityMetadata' can only be set for an image built with '--future-defaults=exact-reflection'.`
 
 ## Resolution Workflow
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadataSupported;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInput;
 
@@ -524,7 +524,7 @@ public abstract class NativeImageCodeCache {
         configurationFields.forEach((_, classFields) -> classFields.forEach((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
-                runtimeMetadataEncoder.addReflectionFieldMetadata(hostedField, reflectField);
+                runtimeMetadataEncoder.addReflectionFieldMetadata(hostedField, reflectField, reflectionSupport.isLegacyFieldAccess(analysisField));
             }
         }));
 
@@ -577,7 +577,7 @@ public abstract class NativeImageCodeCache {
             }
         }
 
-        if (throwMissingRegistrationErrors()) {
+        if (exactReachabilityMetadataSupported()) {
             reflectionSupport.getNegativeFieldQueries().forEach((analysisType, fields) -> {
                 HostedType hostedType = hUniverse.optionalLookup(analysisType);
                 if (hostedType != null) {
@@ -959,7 +959,7 @@ public abstract class NativeImageCodeCache {
     public interface RuntimeMetadataEncoder {
         void addClassMetadata(HostedType type, Class<?>[] reflectionClasses);
 
-        void addReflectionFieldMetadata(HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);
+        void addReflectionFieldMetadata(HostedField sharedField, ConditionalRuntimeValue<Field> reflectField, boolean legacyAccess);
 
         void addReflectionExecutableMetadata(HostedMethod sharedMethod, ConditionalRuntimeValue<Executable> reflectMethod, Object accessor);
 

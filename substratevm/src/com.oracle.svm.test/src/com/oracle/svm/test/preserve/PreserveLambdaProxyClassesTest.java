@@ -58,7 +58,8 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:Preserve=package=com.oracle.svm.test.preserve",
                 "-H:-UnlockExperimentalVMOptions",
-                "--exact-reachability-metadata=com.oracle.svm.test.preserve"
+                "--future-defaults=exact-reflection",
+                "-R:+ExactReachabilityMetadata"
 })
 public class PreserveLambdaProxyClassesTest {
     private static final String EXPECTED = "preserved lambda";
