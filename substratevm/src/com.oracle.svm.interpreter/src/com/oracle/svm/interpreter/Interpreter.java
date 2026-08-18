@@ -3394,8 +3394,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_GETSTATIC)
         private static long quickGetstaticHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long cpi = state.readCPI2(curBCI);
-            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETSTATIC, cpi);
+            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state, curBCI, GETSTATIC);
             getStaticField(state, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_GETSTATIC, state, virtualStack);
         }
@@ -3404,8 +3403,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_GETFIELD)
         private static long quickGetfieldHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long cpi = state.readCPI2(curBCI);
-            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state.method, GETFIELD, cpi);
+            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(state, curBCI, GETFIELD);
             getInstanceField(state, resolvedJavaField, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_GETFIELD, state, virtualStack);
         }
@@ -3432,8 +3430,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_PUTSTATIC)
         private static long quickPutstaticHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long cpi = state.readCPI2(curBCI);
-            InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTSTATIC, cpi);
+            InterpreterResolvedJavaField field = resolveQuickenedField(state, curBCI, PUTSTATIC);
             putStaticField(state, field, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_PUTSTATIC, state, virtualStack);
         }
@@ -3442,8 +3439,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_PUTFIELD)
         private static long quickPutfieldHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            long cpi = state.readCPI2(curBCI);
-            InterpreterResolvedJavaField field = resolveQuickenedField(state.method, PUTFIELD, cpi);
+            InterpreterResolvedJavaField field = resolveQuickenedField(state, curBCI, PUTFIELD);
             putInstanceField(state, field, virtualStack);
             return advanceToNextBytecode(curBCI, QUICK_PUTFIELD, state, virtualStack);
         }
@@ -4452,12 +4448,13 @@ public final class Interpreter {
         }
     }
 
-    private static InterpreterResolvedJavaField resolveQuickenedField(InterpreterResolvedJavaMethod method, int opcode, long cpi) {
+    private static InterpreterResolvedJavaField resolveQuickenedField(InterpreterState state, long bci, int opcode) {
+        long cpi = state.readCPI2(bci);
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : Bytecodes.nameOf(opcode);
         assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
         try {
             // The first execution cached the resolved field after applying opcode-specific access checks.
-            return (InterpreterResolvedJavaField) getConstantPool(method).uncheckedCachedEntryAt(cpi);
+            return (InterpreterResolvedJavaField) getConstantPool(state.method).uncheckedCachedEntryAt(cpi);
         } catch (Throwable t) {
             throw InterpreterUtil.shouldNotReachHere("Quickened field access must use an already resolved field entry", t);
         }
@@ -4561,40 +4558,39 @@ public final class Interpreter {
 
         JavaKind kind = field.getJavaKind();
         Object receiver = field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum());
-        long top = virtualStack.top;
 
         switch (kind) {
             case Boolean -> {
                 InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
-                virtualStack.popPrimitive1();
+                virtualStack.pop1(state, false);
             }
             case Byte -> {
                 InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.popPrimitive1();
+                virtualStack.pop1(state, false);
             }
             case Char -> {
                 InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.popPrimitive1();
+                virtualStack.pop1(state, false);
             }
             case Short -> {
                 InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.popPrimitive1();
+                virtualStack.pop1(state, false);
             }
             case Int -> {
                 InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.popPrimitive1();
-            }
-            case Double -> {
-                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
-                virtualStack.popPrimitive2();
+                virtualStack.pop1(state, false);
             }
             case Float -> {
                 InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, field, true);
-                virtualStack.popPrimitive1();
+                virtualStack.pop1(state, false);
             }
             case Long -> {
                 InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, field, true);
-                virtualStack.popPrimitive2();
+                virtualStack.pop2(state, false);
+            }
+            case Double -> {
+                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
+                virtualStack.pop2(state, false);
             }
             case Object -> {
                 InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, field, true);
@@ -4615,74 +4611,60 @@ public final class Interpreter {
         assert !field.isUnmaterializedConstant();
 
         JavaKind kind = field.getJavaKind();
-        long top = virtualStack.top;
-        long logicalTop = top + virtualStack.tosLevel;
         switch (kind) {
             case Boolean -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -2);
-                virtualStack.popPrimitive2();
+                virtualStack.pop1(state, false);
+                virtualStack.pop1(state);
             }
             case Byte -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -2);
-                virtualStack.popPrimitive2();
+                virtualStack.pop1(state, false);
+                virtualStack.pop1(state);
             }
             case Char -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -2);
-                virtualStack.popPrimitive2();
+                virtualStack.pop1(state, false);
+                virtualStack.pop1(state);
             }
             case Short -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -2);
-                virtualStack.popPrimitive2();
+                virtualStack.pop1(state, false);
+                virtualStack.pop1(state);
             }
             case Int -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -2);
-                virtualStack.popPrimitive2();
-            }
-            case Double -> {
-                Object receiver = nullCheck(virtualStack.peekObject(state, -3));
-                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -3);
-                virtualStack.popPrimitive2();
-                virtualStack.popPrimitive1();
+                virtualStack.pop1(state, false);
+                virtualStack.pop1(state);
             }
             case Float -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -2);
-                virtualStack.popPrimitive2();
+                virtualStack.pop1(state, false);
+                virtualStack.pop1(state);
             }
             case Long -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -3));
                 InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -3);
-                virtualStack.popPrimitive2();
-                virtualStack.popPrimitive1();
+                virtualStack.pop2(state, false);
+                virtualStack.pop1(state);
+            }
+            case Double -> {
+                Object receiver = nullCheck(virtualStack.peekObject(state, -3));
+                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
+                virtualStack.pop2(state, false);
+                virtualStack.pop1(state);
             }
             case Object -> {
                 Object receiver = nullCheck(virtualStack.peekObject(state, -2));
                 InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, field, true);
-                virtualStack.clear();
-                state.clearReference(logicalTop, -2);
-                state.clearReference(logicalTop, -1);
-                virtualStack.popPrimitive2();
+                virtualStack.pop1(state);
+                virtualStack.pop1(state);
             }
             default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
@@ -4725,46 +4707,56 @@ public final class Interpreter {
     private static void getInstanceField(InterpreterState state, InterpreterResolvedJavaField field, InterpreterVirtualStack virtualStack) {
         assert !field.isStatic();
 
-        long top = virtualStack.top;
-        long logicalTop = top + virtualStack.tosLevel;
         Object receiver = nullCheck(virtualStack.peekObject(state, -1));
 
         JavaKind kind = field.getJavaKind();
         // @formatter:off
         switch (kind) {
             case Boolean -> {
-                virtualStack.replaceTopWithInt(1, InterpreterToVM.getFieldBoolean(receiver, field, true) ? 1 : 0);
-                state.clearReference(logicalTop, -1);
+                int value = InterpreterToVM.getFieldBoolean(receiver, field, true) ? 1 : 0;
+                virtualStack.pop1(state);
+                virtualStack.pushInt(state, value);
             }
             case Byte -> {
-                virtualStack.replaceTopWithInt(1, InterpreterToVM.getFieldByte(receiver, field, true));
-                state.clearReference(logicalTop, -1);
+                int value = InterpreterToVM.getFieldByte(receiver, field, true);
+                virtualStack.pop1(state);
+                virtualStack.pushInt(state, value);
             }
             case Char -> {
-                virtualStack.replaceTopWithInt(1, InterpreterToVM.getFieldChar(receiver, field, true));
-                state.clearReference(logicalTop, -1);
+                int value = InterpreterToVM.getFieldChar(receiver, field, true);
+                virtualStack.pop1(state);
+                virtualStack.pushInt(state, value);
             }
             case Short -> {
-                virtualStack.replaceTopWithInt(1, InterpreterToVM.getFieldShort(receiver, field, true));
-                state.clearReference(logicalTop, -1);
+                int value = InterpreterToVM.getFieldShort(receiver, field, true);
+                virtualStack.pop1(state);
+                virtualStack.pushInt(state, value);
             }
             case Int -> {
-                virtualStack.replaceTopWithInt(1, InterpreterToVM.getFieldInt(receiver, field, true));
-                state.clearReference(logicalTop, -1);
-            }
-            case Double -> {
-                virtualStack.replaceTopWithDouble(state, 1, InterpreterToVM.getFieldDouble(receiver, field, true));
-                state.clearReference(logicalTop, -1);
+                int value = InterpreterToVM.getFieldInt(receiver, field, true);
+                virtualStack.pop1(state);
+                virtualStack.pushInt(state, value);
             }
             case Float -> {
-                virtualStack.replaceTopWithFloat(1, InterpreterToVM.getFieldFloat(receiver, field, true));
-                state.clearReference(logicalTop, -1);
+                float value = InterpreterToVM.getFieldFloat(receiver, field, true);
+                virtualStack.pop1(state);
+                virtualStack.pushFloat(state, value);
             }
             case Long -> {
-                virtualStack.replaceTopWithLong(state, 1, InterpreterToVM.getFieldLong(receiver, field, true));
-                state.clearReference(logicalTop, -1);
+                long value = InterpreterToVM.getFieldLong(receiver, field, true);
+                virtualStack.pop1(state);
+                virtualStack.pushLong(state, value);
             }
-            case Object  -> virtualStack.replaceTopWithObject(state, 1, InterpreterToVM.getFieldObject(receiver, field, true));
+            case Double -> {
+                double value = InterpreterToVM.getFieldDouble(receiver, field, true);
+                virtualStack.pop1(state);
+                virtualStack.pushDouble(state, value);
+            }
+            case Object  -> {
+                Object value =  InterpreterToVM.getFieldObject(receiver, field, true);
+                virtualStack.pop1(state, false);
+                virtualStack.pushObject(state, value);
+            }
             default      -> throw VMError.shouldNotReachHereAtRuntime();
         }
         // @formatter:on
