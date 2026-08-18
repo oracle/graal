@@ -505,9 +505,9 @@ def svm_gate_body(args, tasks):
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
             hellomodule(args.extra_image_builder_arguments)
-            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:-LegacyJavaOptionMode']))
-            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+ClassForNameRespectsClassLoader', '-H:-LegacyJavaOptionMode']))
-            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+RuntimeClassLoading', '-H:+AllowJRTFileSystem', '-H:-LegacyJavaOptionMode']))
+            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+StrictRuntimeJavaOptions']))
+            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+ClassForNameRespectsClassLoader', '-H:+StrictRuntimeJavaOptions']))
+            hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+RuntimeClassLoading', '-H:+AllowJRTFileSystem', '-H:+StrictRuntimeJavaOptions']))
 
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
@@ -2907,7 +2907,7 @@ def hellomodule(args):
             runtime_module_path_args.append('-Djava.home=' + _vm_home(None))
             runtime_module_path_args.append('--module-path=' + module_path_sep.join(runtime_module_path))
             mx.run(runtime_module_path_args)
-        elif not _bool_option_value('LegacyJavaOptionMode', boolean_option_defaults):
+        elif _bool_option_value('StrictRuntimeJavaOptions', boolean_option_defaults):
             # Verify that Crema-only runtime options fail clearly in a non-Crema image.
             _assert_runtime_option_rejected(built_image, '--module-path=unused')
             _assert_runtime_option_rejected(built_image, '-Xbootclasspath/a:unused')

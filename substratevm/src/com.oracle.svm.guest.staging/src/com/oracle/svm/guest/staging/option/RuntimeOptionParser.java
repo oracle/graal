@@ -210,7 +210,7 @@ public final class RuntimeOptionParser {
         String[] args = parseJavaVMOptions(initialArgs, context);
         args = consumeCompatibilityOptions(args);
         args = singleton().parse(args, ignoreUnrecognized);
-        if (!GuestStagingDependencyBridge.singleton().legacyJavaOptionMode()) {
+        if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
             rejectRecognizedUnimplementedJavaOptions(args);
         }
         configureLogFile(context.logFile);
@@ -220,7 +220,7 @@ public final class RuntimeOptionParser {
 
     /** Parses runtime options for a Java main image and returns the application main arguments. */
     public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        if (GuestStagingDependencyBridge.singleton().legacyJavaOptionMode()) {
+        if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
             return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
         }
 
@@ -366,7 +366,7 @@ public final class RuntimeOptionParser {
                 continue;
             }
             if (parseProperty(arg, context) ||
-                            (!GuestStagingDependencyBridge.singleton().legacyJavaOptionMode() && (parseModuleOption(arg, context) ||
+                            (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
                                             parseXBootClasspathAppendOption(arg, context) ||
                                             parseRecognizedJavaOption(arg, context)))) {
@@ -399,7 +399,7 @@ public final class RuntimeOptionParser {
         if (!arg.startsWith(PROPERTY_PREFIX) || hasPrefix(arg, GRAAL_OPTION_PREFIX) || hasPrefix(arg, LEGACY_GRAAL_OPTION_PREFIX)) {
             return false;
         }
-        if (!GuestStagingDependencyBridge.singleton().legacyJavaOptionMode() && isReservedInternalModuleProperty(arg)) {
+        if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && isReservedInternalModuleProperty(arg)) {
             if (!context.warnedInternalModuleProperty) {
                 Log.log().string("Substrate VM warning: ").string(RESERVED_INTERNAL_MODULE_PROPERTY_WARNING).newline();
                 context.warnedInternalModuleProperty = true;

@@ -154,8 +154,8 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public boolean legacyJavaOptionMode() {
-        return SubstrateOptions.LegacyJavaOptionMode.getValue();
+    public boolean strictRuntimeJavaOptions() {
+        return SubstrateOptions.StrictRuntimeJavaOptions.getValue();
     }
 
     @Override

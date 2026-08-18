@@ -318,7 +318,7 @@ public class IsolateArgumentParser {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int isolateArgumentParseLimit(CEntryPointCreateIsolateParameters parameters, IsolateArguments arguments) {
-        if (SubstrateOptions.LegacyJavaOptionMode.getValue() || parameters.isNull() || parameters.version() < 4 || !parameters.getForJavaMainCall()) {
+        if (!SubstrateOptions.StrictRuntimeJavaOptions.getValue() || parameters.isNull() || parameters.version() < 4 || !parameters.getForJavaMainCall()) {
             return arguments.getArgc();
         }
 

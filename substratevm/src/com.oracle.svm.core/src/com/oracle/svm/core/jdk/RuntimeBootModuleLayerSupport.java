@@ -98,7 +98,7 @@ final class RuntimeBootModuleLayerFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!SubstrateOptions.LegacyJavaOptionMode.getValue()) {
+        if (SubstrateOptions.StrictRuntimeJavaOptions.getValue()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new RuntimeBootModuleLayerStartupHook());
         }
     }

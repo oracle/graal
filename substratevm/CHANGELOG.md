@@ -12,6 +12,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-72095) Refactored the Native Image runtime bytecode interpreter to enable tail-call threading among outlined bytecode handlers, significantly improving interpreter performance.
 * (GR-77670) Chunk up digest generation for Native Image Layers, to allow for large layer files to be checked. This makes older layer files potentially incompabile with layers created after this change.
 * (GR-73199) When native executables are built with `-H:-LegacyJavaOptionMode`, VM options are parsed only before the first `--` argument. Arguments after `--` are passed unchanged to the application main method. The legacy behavior remains unchanged.
+* (GR-78832) Renamed `LegacyJavaOptionMode` to `StrictRuntimeJavaOptions` and inverted its polarity. The default remains permissive; use `-H:+StrictRuntimeJavaOptions` to enable strict runtime Java option handling.
 * (GR-77977) Added control flow integrity options, available via `-H:CFI`. Indirect branches on AMD64 can be guarded with software-based checks that ensure that they land on valid targets. On AArch64, PAC is supported to protect return addresses on the stack.
 
 ## GraalVM 25.2 (Internal Version 25.2.4)

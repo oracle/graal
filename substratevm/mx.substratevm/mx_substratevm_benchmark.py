@@ -1064,7 +1064,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_sdk_benchmark.SpecJvm2008Benchmark
 
     def extra_image_build_argument(self, benchmark, args):
         # The reason to add `-H:CompilationExpirationPeriod` is that we encounter non-deterministic compiler crash due to expiration (GR-50701).
-        return super().extra_image_build_argument(benchmark, args) + ['-H:CompilationExpirationPeriod=600', '-H:-LegacyJavaOptionMode']
+        return super().extra_image_build_argument(benchmark, args) + ['-H:CompilationExpirationPeriod=600', '-H:+StrictRuntimeJavaOptions']
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         image_run_args = super().extra_run_arg(benchmark, args, image_run_args)
