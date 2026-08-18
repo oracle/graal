@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,13 @@
 package com.oracle.svm.core.reflect.target;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -37,12 +39,21 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.hub.ConstantPoolProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.espresso.classfile.ConstantPool.Tag;
 import com.oracle.svm.espresso.classfile.attributes.MethodParametersAttribute;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.SubstrateUtil;
+
+import jdk.internal.reflect.ConstantPool;
+import sun.reflect.annotation.AnnotationParser;
 
 @TargetClass(value = Executable.class)
 public final class Target_java_lang_reflect_Executable {
@@ -63,6 +74,49 @@ public final class Target_java_lang_reflect_Executable {
      */
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = RawParametersComputer.class)//
     Object parameterMetadata;
+
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerIdComputer.class)//
+    public int layerId;
+
+    @Alias
+    native byte[] getAnnotationBytes();
+
+    /**
+     * The JDK implementation obtains the constant pool from the declaring class. Reflection
+     * metadata for a base-layer executable can be added by a later layer, so its annotation bytes
+     * must instead be decoded using the executable's layer.
+     */
+    @Substitute
+    @TargetElement(onlyWith = BuildingImageLayerPredicate.class)
+    private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
+        Map<Class<? extends Annotation>, Annotation> result = declaredAnnotations;
+        if (result == null) {
+            synchronized (this) {
+                result = declaredAnnotations;
+                if (result == null) {
+                    AccessibleObject root = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).getRoot();
+                    if (root != null) {
+                        result = SubstrateUtil.cast(root, Target_java_lang_reflect_Executable.class).declaredAnnotations();
+                    } else {
+                        Executable executable = SubstrateUtil.cast(this, Executable.class);
+                        Class<?> declaringClass = executable.getDeclaringClass();
+                        DynamicHub declaringHub = DynamicHub.fromClass(declaringClass);
+                        Target_jdk_internal_reflect_ConstantPool constantPool;
+                        if (declaringHub.isRuntimeLoaded()) {
+                            constantPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringHub);
+                        } else if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                            constantPool = ConstantPoolProvider.singletons()[layerId].getConstantPool();
+                        } else {
+                            constantPool = null;
+                        }
+                        result = AnnotationParser.parseAnnotations(getAnnotationBytes(), SubstrateUtil.cast(constantPool, ConstantPool.class), declaringClass);
+                    }
+                    declaredAnnotations = result;
+                }
+            }
+        }
+        return result;
+    }
 
     @Substitute
     private Parameter[] getParameters0() {
@@ -91,6 +145,16 @@ public final class Target_java_lang_reflect_Executable {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getReflectParametersEncoding((Executable) receiver);
+        }
+    }
+
+    static class LayerIdComputer implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                return DynamicImageLayerInfo.getCurrentLayerNumber();
+            }
+            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,6 +81,7 @@ public final class Target_java_lang_reflect_ReflectAccess {
 class Util_java_lang_reflect_ReflectAccess {
     static void copyExecutable(Target_java_lang_reflect_Executable copy, Target_java_lang_reflect_Executable executable) {
         copy.parameterMetadata = executable.parameterMetadata;
+        copy.layerId = executable.layerId;
         copyAccessibleObject(SubstrateUtil.cast(copy, Target_java_lang_reflect_AccessibleObject.class),
                         SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class));
     }

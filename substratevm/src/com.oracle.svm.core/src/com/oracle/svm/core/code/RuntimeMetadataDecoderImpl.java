@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,9 +49,9 @@ import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Executable;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.espresso.classfile.Constants;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -612,7 +612,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 } else {
                     executable = ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, executable.getParameterTypes(), null, modifiers | NEGATIVE_FLAG_MASK, null, null, null,
                                     null, null,
-                                    null);
+                                    null, layerId);
                 }
             }
             if (reflectOnly) {
@@ -660,7 +660,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 if (!reflectOnly) {
                     return new ConstructorDescriptor(declaringClass, (String[]) parameterTypes);
                 }
-                return ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, (Class<?>[]) parameterTypes, null, modifiers, null, null, null, null, null, null);
+                return ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, (Class<?>[]) parameterTypes, null, modifiers, null, null, null, null, null, null, layerId);
             }
         }
         Class<?>[] exceptionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
@@ -685,7 +685,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
             executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
         } else {
             Constructor<?> constructor = ReflectionObjectFactory.newConstructor(dynamicAccessMetadata, declaringClass, (Class<?>[]) parameterTypes, exceptionTypes,
-                            modifiers, signature, annotations, parameterAnnotations, accessor, reflectParameters, typeAnnotations);
+                            modifiers, signature, annotations, parameterAnnotations, accessor, reflectParameters, typeAnnotations, layerId);
             if (!reflectOnly) {
                 return new ConstructorDescriptor(constructor);
             }
