@@ -45,11 +45,13 @@ import org.graalvm.word.impl.Word;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
+import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.graal.code.PreparedSignature.ArgumentAdaptation;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
@@ -62,6 +64,8 @@ import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignDowncallPlan;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.JNIObjectHandles;
@@ -69,20 +73,18 @@ import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.memory.NativeMemory;
-import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
@@ -97,6 +99,10 @@ import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -245,11 +251,8 @@ public abstract class InterpreterStubSection {
     @SuppressWarnings("rawtypes") //
     public static final FastThreadLocalObject<ThreadLocalHandles> TL_HANDLES = FastThreadLocalFactory.createObject(ThreadLocalHandles.class, "Interpreter handles for enter stub");
 
-    /*
-     * Maximum number of parameters that can be passed according to 4.3.3 in the JVM spec. Could be
-     * optimized, see GR-71907.
-     */
-    public static final int MAX_ARGUMENT_HANDLES = 255;
+    private static final FastThreadLocalBytes<Pointer> TL_LEAVE_STACK_BUFFER = FastThreadLocalFactory.createBytes(InterpreterAccessStubData::getStackBufferSize,
+                    "Interpreter leave stub stack buffer");
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -618,7 +621,7 @@ public abstract class InterpreterStubSection {
 
         ThreadLocalHandles<ThreadLocalInterpreterHandle> handles = tlsHandles();
         VMError.guarantee(handles.getHandleCount() == 0);
-        int handleFrameId = handles.pushFrameUninterruptible(MAX_ARGUMENT_HANDLES - 1);
+        int handleFrameId = handles.pushFrameUninterruptible(InterpreterAccessStubData.MAX_ARGUMENT_HANDLES - 1);
 
         int gpIdx = 0;
         int handleCount = 0;
@@ -843,45 +846,64 @@ public abstract class InterpreterStubSection {
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
         Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
 
-        int stackSize = getStackSize(compiledSignature);
-        assert stackSize > 0 : "Stack size should include deopt slot.";
-        Pointer stackBuffer = allocateStackBuffer(accessHelper, leaveData, stackSize, true);
-        try {
-            // GR-55022: Stack overflow check should be done here
-            return leaveInterpreter0(compiledEntryPoint, args, compiledSignature, accessHelper, leaveData, stackSize);
-        } finally {
-            freeStackBuffer(stackBuffer, stackSize);
-        }
+        writeStackBufferToLeaveData(accessHelper, leaveData);
+        // GR-55022: Stack overflow check should be done here
+        return leaveInterpreter0(compiledEntryPoint, args, compiledSignature, accessHelper, leaveData);
     }
 
-    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int getStackSize(PreparedSignature compiledSignature) {
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
         return NumUtil.roundUp(compiledSignature.getStackSize(), stubSection.target.stackAlignment);
     }
 
-    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
-    private static Pointer allocateStackBuffer(InterpreterAccessStubData accessHelper, Pointer leaveData, int stackSize, boolean saveStackSizeInDeoptSlot) {
-        Pointer stackBuffer = Word.nullPointer();
-        if (stackSize > 0) {
-            stackBuffer = NullableNativeMemory.malloc(Word.unsigned(stackSize), NmtCategory.Interpreter);
-            VMError.guarantee(stackBuffer.isNonNull(), "Out-of-memory while allocating interpreter-internal data.");
-            accessHelper.setSp(leaveData, stackSize, stackBuffer, saveStackSizeInDeoptSlot);
-        }
-        return stackBuffer;
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void writeStackBufferToLeaveData(InterpreterAccessStubData accessHelper, Pointer leaveData) {
+        accessHelper.setSp(leaveData, TL_LEAVE_STACK_BUFFER.getAddress());
     }
 
-    @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
-    private static void freeStackBuffer(Pointer stackBuffer, int stackSize) {
-        if (stackSize > 0) {
-            VMError.guarantee(stackBuffer.isNonNull());
-            NativeMemory.free(stackBuffer);
-        }
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int writeStackSizeToLeaveData(InterpreterAccessStubData accessHelper, Pointer leaveData, PreparedSignature signature, boolean saveStackSizeInDeoptSlot) {
+        int stackSize = getStackSize(signature);
+        VMError.guarantee(stackSize <= InterpreterAccessStubData.getStackBufferSize(), "Interpreter stack buffer capacity exceeded.");
+        accessHelper.setStackSize(leaveData, stackSize, saveStackSizeInDeoptSlot);
+        return stackSize;
+    }
+
+    private enum ObjectReturnKind {
+        NONE,
+        HANDLE,
+        OOP
+    }
+
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static Object decodeReturnValue(JavaKind returnKind, long rawReturnValue, ObjectReturnKind objectKind) {
+        return switch (returnKind) {
+            case Boolean -> (rawReturnValue & 0xff) != 0;
+            case Byte -> (byte) rawReturnValue;
+            case Short -> (short) rawReturnValue;
+            case Char -> (char) rawReturnValue;
+            case Int -> (int) rawReturnValue;
+            case Long -> rawReturnValue;
+            case Float -> Float.intBitsToFloat((int) rawReturnValue);
+            case Double -> Double.longBitsToDouble(rawReturnValue);
+            case Object ->
+                switch (objectKind) {
+                    case HANDLE -> JNIMethodSupport.unboxHandle(Word.pointer(rawReturnValue));
+                    case OOP -> ((Pointer) Word.pointer(rawReturnValue)).toObject();
+                    default -> throw VMError.shouldNotReachHereAtRuntime();
+                };
+            case Void -> null;
+            default -> throw VMError.shouldNotReachHereAtRuntime();
+        };
     }
 
     @Uninterruptible(reason = "References are put on the stack which the GC is unaware of.")
-    private static Object leaveInterpreter0(CFunctionPointer compiledEntryPoint, Object[] args, PreparedSignature compiledSignature, InterpreterAccessStubData accessHelper, Pointer leaveData,
-                    int stackSize) {
+    private static Object leaveInterpreter0(CFunctionPointer compiledEntryPoint, Object[] args, PreparedSignature compiledSignature, InterpreterAccessStubData accessHelper, Pointer leaveData) {
         int[] argumentTypes = compiledSignature.getArgumentTypes();
         int gpIdx = 0;
         int fpIdx = 0;
@@ -938,6 +960,8 @@ public abstract class InterpreterStubSection {
             }
         }
 
+        int stackSize = writeStackSizeToLeaveData(accessHelper, leaveData, compiledSignature, true);
+        assert stackSize > 0 : "Stack size should include deopt slot.";
         VMError.guarantee(compiledEntryPoint.isNonNull());
         JavaKind returnKind = compiledSignature.getReturnKind();
         boolean returnInFpRegister = returnKind == JavaKind.Float || returnKind == JavaKind.Double;
@@ -948,34 +972,33 @@ public abstract class InterpreterStubSection {
          */
         long rawReturnValue = leaveInterpreterStub(compiledEntryPoint, leaveData, stackSize, returnInFpRegister);
 
-        // @formatter:off
-        return switch (compiledSignature.getReturnKind()) {
-            case Boolean -> (rawReturnValue & 0xff) != 0;
-            case Byte    -> (byte) rawReturnValue;
-            case Short   -> (short) rawReturnValue;
-            case Char    -> (char) rawReturnValue;
-            case Int     -> (int) rawReturnValue;
-            case Long    -> rawReturnValue;
-            case Float   -> Float.intBitsToFloat((int) rawReturnValue);
-            case Double  -> Double.longBitsToDouble(rawReturnValue);
-            case Object  -> ((Pointer) Word.pointer(rawReturnValue)).toObject();
-            case Void    -> null;
-            default      -> throw VMError.shouldNotReachHereAtRuntime();
-        };
-        // @formatter:on
+        return decodeReturnValue(compiledSignature.getReturnKind(), rawReturnValue, ObjectReturnKind.OOP);
     }
 
-    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterJNIDowncallStub)
+    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterNativeDowncallStub)
     @NeverInline("needs ABI boundary")
     @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
     @SuppressWarnings("unused")
-    public static long leaveInterpreterForJNIDowncallStub(CFunctionPointer entryPoint, Pointer leaveData, long stackSize, boolean returnInFpRegister) {
+    public static long leaveInterpreterForNativeDowncallStub(CFunctionPointer entryPoint, Pointer leaveData, long stackSize, byte returnFlags) {
         /*
          * The backend overwrites this value and makes the stub return the raw result of invoking
          * entryPoint instead. Nevertheless, it relies on entryPoint.rawValue() being in the integer
          * return register, so this Java method must not return a different value.
          */
         return entryPoint.rawValue();
+    }
+
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static byte getNativeDowncallReturnFlags(JavaKind returnKind, boolean returnsInBuffer) {
+        byte returnFlags = 0;
+        if (returnKind == JavaKind.Float || returnKind == JavaKind.Double) {
+            returnFlags |= InterpreterSupport.NATIVE_DOWNCALL_RETURNS_IN_FP_REGISTER;
+        }
+        if (returnsInBuffer) {
+            returnFlags |= InterpreterSupport.NATIVE_DOWNCALL_RETURNS_IN_BUFFER;
+        }
+        return returnFlags;
     }
 
     public static Object leaveInterpreterForJNIDowncall(InterpreterResolvedJavaMethod seedMethod, Object[] args) throws Throwable {
@@ -999,16 +1022,10 @@ public abstract class InterpreterStubSection {
         try {
             int handleFrame = JNIMethodSupport.nativeCallPrologue();
             try {
-                Pointer stackBuffer = Word.nullPointer();
                 InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
                 Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
-                int stackSize = getStackSize(jniSignature);
-                try {
-                    stackBuffer = allocateStackBuffer(accessHelper, leaveData, stackSize, false);
-                    result = leaveInterpreterForJNIDowncall(nativeEntryPoint, args, jniSignature, accessHelper, leaveData, receiverOrClass, target.hasReceiver(), JNIMethodSupport.environment());
-                } finally {
-                    freeStackBuffer(stackBuffer, stackSize);
-                }
+                writeStackBufferToLeaveData(accessHelper, leaveData);
+                result = leaveInterpreterForJNIDowncall(nativeEntryPoint, args, jniSignature, accessHelper, leaveData, receiverOrClass, target.hasReceiver(), JNIMethodSupport.environment());
             } finally {
                 JNIMethodSupport.nativeCallEpilogue(handleFrame);
             }
@@ -1022,12 +1039,14 @@ public abstract class InterpreterStubSection {
     }
 
     @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
-    public static Object leaveInterpreterForJNIDowncall(CFunctionPointer nativeEntryPoint, Object[] args, PreparedSignature jniSignature, InterpreterAccessStubData accessHelper, Pointer leaveData,
+    public static Object leaveInterpreterForJNIDowncall(CFunctionPointer nativeEntryPoint, Object[] args, PreparedSignature jniSignature, InterpreterAccessStubData accessHelper,
+                    Pointer leaveDataOnEntry,
                     Object receiverOrClass, boolean hasReceiver, JNIEnvironment jniEnvironment) {
+        Pointer leaveData = leaveDataOnEntry;
         int[] argumentTypes = jniSignature.getArgumentTypes();
         int gpPos = 0;
-        accessHelper.setGpArgumentAtOutgoingJNI(argumentTypes[0], leaveData, gpPos++, jniEnvironment.rawValue());
-        accessHelper.setGpArgumentAtOutgoingJNI(argumentTypes[1], leaveData, gpPos++, JNIMethodSupport.boxObjectInLocalHandle(receiverOrClass).rawValue());
+        accessHelper.setGpArgumentAtOutgoingNative(argumentTypes[0], leaveData, gpPos++, jniEnvironment.rawValue());
+        accessHelper.setGpArgumentAtOutgoingNative(argumentTypes[1], leaveData, gpPos++, JNIMethodSupport.boxObjectInLocalHandle(receiverOrClass).rawValue());
         int fpPos = 0;
         int argCount = argumentTypes.length;
         int argsIndex = hasReceiver ? 1 : 0;
@@ -1045,39 +1064,39 @@ public abstract class InterpreterStubSection {
             JavaKind argKind = PreparedSignature.getKind(cArgType);
             switch (argKind) {
                 case Boolean:
-                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (boolean) arg ? 1 : 0);
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (boolean) arg ? 1 : 0);
                     gpPos++;
                     break;
                 case Byte:
-                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (byte) arg);
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (byte) arg);
                     gpPos++;
                     break;
                 case Short:
-                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (short) arg);
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (short) arg);
                     gpPos++;
                     break;
                 case Char:
-                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (char) arg);
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (char) arg);
                     gpPos++;
                     break;
                 case Int:
-                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (int) arg);
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (int) arg);
                     gpPos++;
                     break;
                 case Long:
-                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, (long) arg);
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (long) arg);
                     gpPos++;
                     break;
                 case Object:
-                    accessHelper.setGpArgumentAtOutgoingJNI(cArgType, leaveData, gpPos, JNIMethodSupport.boxObjectInLocalHandle(arg).rawValue());
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, JNIMethodSupport.boxObjectInLocalHandle(arg).rawValue());
                     gpPos++;
                     break;
                 case Float:
-                    accessHelper.setFpArgumentAtJNI(cArgType, leaveData, fpPos, Float.floatToRawIntBits((float) arg));
+                    accessHelper.setFpArgumentAtNative(cArgType, leaveData, fpPos, Float.floatToRawIntBits((float) arg));
                     fpPos++;
                     break;
                 case Double:
-                    accessHelper.setFpArgumentAtJNI(cArgType, leaveData, fpPos, Double.doubleToRawLongBits((double) arg));
+                    accessHelper.setFpArgumentAtNative(cArgType, leaveData, fpPos, Double.doubleToRawLongBits((double) arg));
                     fpPos++;
                     break;
 
@@ -1086,32 +1105,206 @@ public abstract class InterpreterStubSection {
             }
         }
 
+        int stackSize = writeStackSizeToLeaveData(accessHelper, leaveData, jniSignature, false);
         VMError.guarantee(nativeEntryPoint.isNonNull());
         JavaKind returnKind = jniSignature.getReturnKind();
-        boolean returnInFpRegister = returnKind == JavaKind.Float || returnKind == JavaKind.Double;
-        int stackSize = getStackSize(jniSignature);
-        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        byte returnFlags = getNativeDowncallReturnFlags(returnKind, false);
+        Pointer leaveDataArgument = leaveData;
         /*
          * leaveData should no longer be accessed by accessHelper after the stub call. This is
          * because leaveData is a pointer to the stack which may become invalid when virtual threads
          * are used.
          */
-        long rawReturnValue = leaveInterpreterForJNIDowncallStub(nativeEntryPoint, leaveData, stackSize, returnInFpRegister);
+        leaveData = Word.nullPointer();
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        long rawReturnValue = leaveInterpreterForNativeDowncallStub(nativeEntryPoint, leaveDataArgument, stackSize, returnFlags);
         CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
 
-        return switch (returnKind) {
-            case Boolean -> (rawReturnValue & 0xff) != 0;
-            case Byte -> (byte) rawReturnValue;
-            case Short -> (short) rawReturnValue;
-            case Char -> (char) rawReturnValue;
-            case Int -> (int) rawReturnValue;
-            case Long -> rawReturnValue;
-            case Float -> Float.intBitsToFloat((int) rawReturnValue);
-            case Double -> Double.longBitsToDouble(rawReturnValue);
-            case Object -> JNIMethodSupport.unboxHandle(Word.pointer(rawReturnValue));
-            case Void -> null;
+        return decodeReturnValue(returnKind, rawReturnValue, ObjectReturnKind.HANDLE);
+    }
+
+    public static Object leaveInterpreterForForeignDowncall(ForeignDowncallPlan plan, Object[] arguments, int captureMask) {
+        PreparedSignature signature = plan.signature();
+        VMError.guarantee(signature.getArgumentTypes().length == arguments.length - 1,
+                        "The trailing NativeEntryPoint argument is not represented in the prepared signature");
+        InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
+        Pointer leaveData = StackValue.get(accessHelper.allocateStubDataSize());
+        writeStackBufferToLeaveData(accessHelper, leaveData);
+        return leaveInterpreterForForeignDowncall0(plan, arguments, captureMask, signature, accessHelper, leaveData);
+    }
+
+    /**
+     * Runtime counterpart of {@code DowncallStub.createCFunctionCallWithCapture}. Heap references
+     * become raw pointers only after entering this uninterruptible method. The prepared signature
+     * maps original method-handle arguments to their ABI locations.
+     */
+    @Uninterruptible(reason = SWITCH_TO_UNINTERRUPTIBLE)
+    private static Object leaveInterpreterForForeignDowncall0(ForeignDowncallPlan plan,
+                    Object[] args, int captureMask, PreparedSignature signature,
+                    InterpreterAccessStubData accessHelper, Pointer leaveDataOnEntry) {
+
+        Pointer leaveData = leaveDataOnEntry;
+        CFunctionPointer nativeEntryPoint = Word.nullPointer();
+        Pointer returnBuffer = Word.nullPointer();
+        boolean capturesCallState = false;
+        long captureAddress = 0;
+        int[] argumentTypes = signature.getArgumentTypes();
+        for (int i = 0; i < argumentTypes.length; i++) {
+            int argumentType = argumentTypes[i];
+            if (PreparedSignature.isStubLocation(argumentType)) {
+                int stubLocation = PreparedSignature.getStubLocation(argumentType);
+                ArgumentAdaptation adaptation = PreparedSignature.getArgumentAdaptation(argumentType);
+                if (stubLocation == PreparedSignature.STUB_LOCATION_TARGET_ADDRESS) {
+                    VMError.guarantee(adaptation == ArgumentAdaptation.NONE && nativeEntryPoint.isNull());
+                    nativeEntryPoint = Word.pointer((long) args[i]);
+                } else if (stubLocation == PreparedSignature.STUB_LOCATION_RETURN_BUFFER) {
+                    VMError.guarantee(adaptation == ArgumentAdaptation.NONE && returnBuffer.isNull());
+                    returnBuffer = Word.pointer((long) args[i]);
+                } else if (stubLocation == PreparedSignature.STUB_LOCATION_CAPTURED_STATE_BUFFER) {
+                    VMError.guarantee(!capturesCallState);
+                    capturesCallState = true;
+                    if (adaptation == ArgumentAdaptation.HEAP_ADDRESS) {
+                        captureAddress = Word.objectToUntrackedPointer(args[i]).rawValue() + (long) args[i + 1];
+                    } else {
+                        VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                        captureAddress = (long) args[i];
+                    }
+                } else {
+                    throw VMError.shouldNotReachHereAtRuntime();
+                }
+            } else if (PreparedSignature.getKind(argumentType) != JavaKind.Void) {
+                writeForeignDowncallArgumentToLeaveData(args, i, argumentType, accessHelper, leaveData);
+            }
+        }
+
+        VMError.guarantee(nativeEntryPoint.isNonNull());
+        JavaKind returnKind = signature.getReturnKind();
+        boolean needsReturnBuffer = plan.needsReturnBuffer();
+        VMError.guarantee(needsReturnBuffer == returnBuffer.isNonNull());
+        byte returnFlags = getNativeDowncallReturnFlags(returnKind, needsReturnBuffer);
+        int stackSize = writeStackSizeToLeaveData(accessHelper, leaveData, signature, false);
+
+        Pointer currentSp = KnownIntrinsics.readStackPointer();
+        VMError.guarantee(leaveData.aboveOrEqual(currentSp));
+        int leaveDataOffset = NumUtil.safeToInt(leaveData.subtract(currentSp).rawValue());
+        Pointer leaveDataArgument = leaveData;
+        /*
+         * leaveData should no longer be accessed by accessHelper after the stub call. This is
+         * because leaveData is a pointer to the stack which may become invalid when virtual threads
+         * are used.
+         */
+        leaveData = Word.nullPointer();
+
+        long rawReturnValue;
+        if (plan.skipsTransition()) {
+            rawReturnValue = leaveInterpreterForForeignDowncallWithoutTransition(nativeEntryPoint, leaveDataArgument, stackSize, returnFlags, capturesCallState, captureMask, captureAddress);
+        } else {
+            rawReturnValue = leaveInterpreterForForeignDowncallWithTransition(nativeEntryPoint, leaveDataArgument, stackSize, returnFlags, capturesCallState, captureMask, captureAddress);
+        }
+
+        leaveData = KnownIntrinsics.readStackPointer().add(leaveDataOffset);
+        if (needsReturnBuffer) {
+            copyForeignDowncallReturnValuesToReturnBuffer(plan.preparedReturns(), returnBuffer, accessHelper, leaveData);
+            return null;
+        }
+
+        return decodeReturnValue(returnKind, rawReturnValue, ObjectReturnKind.NONE);
+    }
+
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void writeForeignDowncallArgumentToLeaveData(Object[] args, int argumentIndex, int argumentType,
+                    InterpreterAccessStubData accessHelper, Pointer leaveData) {
+        JavaKind kind = PreparedSignature.getKind(argumentType);
+        Object arg = args[argumentIndex];
+        ArgumentAdaptation adaptation = PreparedSignature.getArgumentAdaptation(argumentType);
+        int registerIndex = PreparedSignature.isRegister(argumentType) ? PreparedSignature.getRegister(argumentType) : -1;
+        switch (kind) {
+            case Boolean -> {
+                VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (boolean) arg ? 1 : 0);
+            }
+            case Byte -> {
+                VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (byte) arg);
+            }
+            case Short -> {
+                VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (short) arg);
+            }
+            case Char -> {
+                VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (char) arg);
+            }
+            case Int -> {
+                VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (int) arg);
+            }
+            case Long -> {
+                long value = switch (adaptation) {
+                    case NONE -> (long) arg;
+                    case FLOAT_TO_LONG -> Float.floatToRawIntBits((float) arg) & 0xffff_ffffL;
+                    case DOUBLE_TO_LONG -> Double.doubleToRawLongBits((double) arg);
+                    case HEAP_ADDRESS -> Word.objectToUntrackedPointer(arg).rawValue() + (long) args[argumentIndex + 1];
+                    default -> throw VMError.shouldNotReachHereAtRuntime();
+                };
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, value);
+            }
+            case Float -> {
+                VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                accessHelper.setFpArgumentAtNative(argumentType, leaveData, registerIndex, Float.floatToRawIntBits((float) arg));
+            }
+            case Double -> {
+                VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
+                accessHelper.setFpArgumentAtNative(argumentType, leaveData, registerIndex, Double.doubleToRawLongBits((double) arg));
+            }
             default -> throw VMError.shouldNotReachHereAtRuntime();
-        };
+        }
+    }
+
+    /**
+     * This is the interpreter equivalent of the stores emitted after CFunctionCall in
+     * {@code DowncallStub.createCFunctionCall}. The leave stub has saved the ABI return
+     * registers in the leaveData.
+     */
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void copyForeignDowncallReturnValuesToReturnBuffer(int[] preparedReturns, Pointer buffer,
+                    InterpreterAccessStubData accessHelper, Pointer leaveData) {
+        VMError.guarantee(buffer.isNonNull());
+        for (int i = 0; i < preparedReturns.length; i++) {
+            int preparedReturn = preparedReturns[i];
+            VMError.guarantee(PreparedSignature.isRegister(preparedReturn));
+            JavaKind kind = PreparedSignature.getKind(preparedReturn);
+            int registerIndex = PreparedSignature.getRegister(preparedReturn);
+            long value = switch (kind) {
+                case Long -> accessHelper.getGpResultAt(leaveData, registerIndex);
+                case Double -> accessHelper.getFpResultAt(leaveData, registerIndex);
+                default -> throw VMError.shouldNotReachHereAtRuntime();
+            };
+            buffer.writeLong(i * Long.BYTES, value);
+        }
+    }
+
+    @NeverInline("Can have only a single invoke between CFunctionPrologueNode and CFunctionEpilogueNode.")
+    @Uninterruptible(reason = REASON_REFERENCES_ON_STACK)
+    private static long leaveInterpreterForForeignDowncallWithoutTransition(CFunctionPointer nativeEntryPoint, Pointer leaveData, int stackSize, byte returnFlags, boolean capturesCallState,
+                    int captureMask, long captureAddress) {
+        long result = leaveInterpreterForNativeDowncallStub(nativeEntryPoint, leaveData, stackSize, returnFlags);
+        if (capturesCallState) {
+            ForeignSupport.singleton().captureCallStateFromInterpreter(captureMask, Word.pointer(captureAddress));
+        }
+        return result;
+    }
+
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static long leaveInterpreterForForeignDowncallWithTransition(CFunctionPointer nativeEntryPoint, Pointer leaveData, int stackSize, byte returnFlags, boolean capturesCallState,
+                    int captureMask, long captureAddress) {
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        long result = leaveInterpreterForForeignDowncallWithoutTransition(nativeEntryPoint, leaveData, stackSize, returnFlags, capturesCallState, captureMask, captureAddress);
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
+        return result;
     }
 
     public static class TestingBackdoor {
@@ -1200,5 +1393,14 @@ public abstract class InterpreterStubSection {
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> RuntimeException uncheckedThrow(Throwable t) throws T {
         throw (T) t;
+    }
+}
+
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
+@InternalVMMethod
+final class InterpreterForeignFunctionsSupportImpl implements InterpreterForeignFunctionsSupport {
+    @Override
+    public Object linkToNative(ForeignDowncallPlan plan, Object[] arguments, int captureMask) {
+        return InterpreterStubSection.leaveInterpreterForForeignDowncall(plan, arguments, captureMask);
     }
 }

@@ -48,6 +48,7 @@ import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -102,6 +103,7 @@ public class CremaFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(CremaSupport.class, new CremaSupportImpl());
         VMError.guarantee(!RuntimeClassLoading.isSupported() || ClassRegistries.respectClassLoader());
+        ImageSingletons.add(InterpreterForeignFunctionsSupport.class, new InterpreterForeignFunctionsSupportImpl());
     }
 
     @Override

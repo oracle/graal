@@ -796,9 +796,9 @@ public final class Deoptimizer {
         InterpreterLeaveStub,
 
         /**
-         * Like {@link #InterpreterLeaveStub}, but calls a JNI native entry point.
+         * Like {@link #InterpreterLeaveStub}, but calls a native entry point.
          */
-        InterpreterJNIDowncallStub,
+        InterpreterNativeDowncallStub,
 
         /**
          * Custom prologue: move gp return register to first argument register.
@@ -806,7 +806,7 @@ public final class Deoptimizer {
         InterpreterDeoptEntryPointStub;
 
         public boolean isInterpreterStub() {
-            return equals(InterpreterEnterStub) || equals(InterpreterJNIUpcallStub) || equals(InterpreterLeaveStub) || equals(InterpreterJNIDowncallStub);
+            return equals(InterpreterEnterStub) || equals(InterpreterJNIUpcallStub) || equals(InterpreterLeaveStub) || equals(InterpreterNativeDowncallStub);
         }
     }
 

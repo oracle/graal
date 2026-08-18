@@ -35,6 +35,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.MemorySegment.Scope;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Locale;
@@ -60,24 +61,29 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.foreign.AbiUtils.TrampolineTemplate;
 import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
+import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.graal.code.PreparedSignature.ArgumentAdaptation;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignDowncallPlan;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_BoundMethodHandle;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -89,11 +95,13 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -240,11 +248,18 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     }
 
     public CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
+        return getDowncallStubPointer(nep, true);
+    }
+
+    public CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep, boolean reportMissingDowncalls) {
         FunctionPointerHolder holder = downcallStubs.get(nep);
-        if (holder == null) {
+        if (holder != null) {
+            return holder.functionPointer;
+        }
+        if (reportMissingDowncalls) {
             throw reportMissingDowncall(nep);
         }
-        return holder.functionPointer;
+        return Word.nullPointer();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -502,10 +517,103 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
     @Override
     public Object linkToNative(Object... args) throws Throwable {
         Target_jdk_internal_foreign_abi_NativeEntryPoint nep = (Target_jdk_internal_foreign_abi_NativeEntryPoint) args[args.length - 1];
+        if (InterpreterForeignFunctionsSupport.isAvailable()) {
+            ForeignDowncallPlan plan = nep.interpreterDowncallPlan;
+            if (plan != null) {
+                VMError.guarantee(args.length == nep.type().parameterCount() + 1,
+                                "The trailing NativeEntryPoint argument is not part of the downcall method type");
+                return InterpreterForeignFunctionsSupport.singleton().linkToNative(plan, args, nep.captureMask);
+            }
+        }
         StubInvokerPointer invoker = (StubInvokerPointer) nep.downcallInvokerPointer;
         CFunctionPointer stub = nep.downcallStubPointer;
         /* The nep argument will be dropped in the invoked downcall stub */
         return invoker.invoke(stub, args);
+    }
+
+    ForeignDowncallPlan createInterpreterDowncallPlan(NativeEntryPointInfo nep) {
+        AbiUtils abi = abiUtils;
+        var storages = nep.parametersAssignment();
+        VMError.guarantee(storages.length == nep.methodType().parameterCount());
+        int[] preparedArgumentTypes = new int[storages.length];
+        Arrays.fill(preparedArgumentTypes, PreparedSignature.SKIPPED_ARGUMENT_TYPE);
+
+        boolean hasReturnBuffer = false;
+        boolean hasCallTarget = false;
+        boolean hasCaptureAddress = false;
+        int stackSize = abi.outgoingStackArgumentBaseOffset();
+        int i = 0;
+        while (i < storages.length) {
+            var storage = storages[i];
+            VMError.guarantee(storage != null, "Unexpected unconsumed null storage in foreign downcall ABI");
+            int argumentSource = i;
+            ArgumentAdaptation argumentAdaptation = ArgumentAdaptation.NONE;
+            JavaKind sourceKind = JavaKind.fromJavaClass(nep.methodType().parameterType(i));
+            JavaKind locationKind = sourceKind;
+
+            /*
+             * A null storage is the offset half of the Object + long segment pair. The
+             * pair becomes one address-valued argument and both arguments are consumed.
+             */
+            if (i + 1 < storages.length && storages[i + 1] == null) {
+                VMError.guarantee(nep.allowHeapAccess() && sourceKind == JavaKind.Object &&
+                                JavaKind.fromJavaClass(nep.methodType().parameterType(i + 1)) == JavaKind.Long);
+                argumentAdaptation = ArgumentAdaptation.HEAP_ADDRESS;
+                locationKind = JavaKind.Long;
+                i += 2;
+            } else {
+                i++;
+            }
+
+            int preparedType = abi.toPreparedSignatureLocation(storage, locationKind, false, argumentAdaptation);
+            if (PreparedSignature.isStubLocation(preparedType)) {
+                int stubLocation = PreparedSignature.getStubLocation(preparedType);
+                if (stubLocation == PreparedSignature.STUB_LOCATION_TARGET_ADDRESS) {
+                    VMError.guarantee(argumentAdaptation == ArgumentAdaptation.NONE && !hasCallTarget);
+                    hasCallTarget = true;
+                } else if (stubLocation == PreparedSignature.STUB_LOCATION_RETURN_BUFFER) {
+                    VMError.guarantee(argumentAdaptation == ArgumentAdaptation.NONE && !hasReturnBuffer);
+                    hasReturnBuffer = true;
+                } else if (stubLocation == PreparedSignature.STUB_LOCATION_CAPTURED_STATE_BUFFER) {
+                    VMError.guarantee(!hasCaptureAddress);
+                    VMError.guarantee(nep.allowHeapAccess() == (argumentAdaptation == ArgumentAdaptation.HEAP_ADDRESS),
+                                    "Unexpected foreign downcall captured-state buffer representation");
+                    hasCaptureAddress = true;
+                } else {
+                    throw VMError.shouldNotReachHere("Unexpected foreign downcall stub location");
+                }
+            } else if (PreparedSignature.isStackSlot(preparedType)) {
+                stackSize = Math.max(stackSize, PreparedSignature.getStackOffset(preparedType) + Long.BYTES);
+            }
+            preparedArgumentTypes[argumentSource] = preparedType;
+        }
+
+        VMError.guarantee(hasCallTarget, "Missing foreign downcall target address");
+        VMError.guarantee(nep.needsReturnBuffer() == hasReturnBuffer, "Unexpected foreign downcall return buffer");
+        VMError.guarantee(nep.capturesCallState() == hasCaptureAddress, "Unexpected foreign downcall captured-state buffer");
+
+        stackSize = NumUtil.roundUp(stackSize, SubstrateTarget.singleton().stackAlignment);
+        PreparedSignature signature = new PreparedSignature(JavaKind.fromJavaClass(nep.methodType().returnType()),
+                        preparedArgumentTypes, stackSize);
+
+        int[] preparedReturns = computePreparedReturns(abi, nep);
+        return new ForeignDowncallPlan(signature, preparedReturns, nep.skipsTransition());
+    }
+
+    private static int[] computePreparedReturns(AbiUtils abi, NativeEntryPointInfo nep) {
+        if (!nep.needsReturnBuffer()) {
+            return null;
+        }
+        var returnStorages = nep.returnsAssignment();
+        VMError.guarantee(returnStorages.length > 1);
+        int[] preparedReturns = new int[returnStorages.length];
+        for (int i = 0; i < returnStorages.length; i++) {
+            int preparedReturn = abi.toPreparedSignatureLocation(returnStorages[i], JavaKind.Void, true, ArgumentAdaptation.NONE);
+            VMError.guarantee(preparedReturn >= 0 && PreparedSignature.isRegister(preparedReturn),
+                            "A buffered return must be assigned to registers");
+            preparedReturns[i] = preparedReturn;
+        }
+        return preparedReturns;
     }
 
     @Override
@@ -560,6 +668,12 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         return OS.WINDOWS.isCurrent();
     }
 
+    @Override
+    @Uninterruptible(reason = ForeignSupport.CAPTURE_CALL_STATE_REASON)
+    public void captureCallStateFromInterpreter(int statesToCapture, CIntPointer captureBuffer) {
+        captureCallState(statesToCapture, captureBuffer);
+    }
+
     /**
      * Note that the states must be captured in the same order as in the JDK: GET_LAST_ERROR,
      * WSA_GET_LAST_ERROR, ERRNO.
@@ -568,7 +682,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
      * {@link AbiUtils#checkLibrarySupport()}, which is called in
      * {@link Target_jdk_internal_foreign_abi_NativeEntryPoint#make}.
      */
-    @Uninterruptible(reason = "Interruptions might change call state.")
+    @Uninterruptible(reason = ForeignSupport.CAPTURE_CALL_STATE_REASON)
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+22/src/hotspot/share/prims/downcallLinker.cpp")
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
