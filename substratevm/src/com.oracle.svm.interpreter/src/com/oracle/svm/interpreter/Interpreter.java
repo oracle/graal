@@ -4558,39 +4558,39 @@ public final class Interpreter {
 
         switch (field.getJavaKind()) {
             case Boolean -> {
-                InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, field, true);
+                InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
             }
             case Byte -> {
-                InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
             }
             case Char -> {
-                InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
             }
             case Short -> {
-                InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
             }
             case Int -> {
-                InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
             }
             case Float -> {
-                InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
             }
             case Long -> {
-                InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop2(state, false);
             }
             case Double -> {
-                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop2(state, false);
             }
             case Object -> {
-                InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, field, true);
+                InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
             }
             default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
