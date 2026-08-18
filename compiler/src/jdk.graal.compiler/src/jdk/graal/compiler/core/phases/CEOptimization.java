@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
+import jdk.graal.compiler.phases.common.OptimizeDivPhase;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
@@ -207,6 +208,14 @@ public enum CEOptimization {
      * This phase is unconditionally enabled.
      */
     LockElimination(null, LockEliminationPhase.class),
+
+    /**
+     * {@link OptimizeDivPhase} tries to simplify expensive division operations.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link GraalOptions#OptimizeDiv}.
+     */
+    DivisionOptimization(GraalOptions.OptimizeDiv, OptimizeDivPhase.class),
 
     /**
      * {@link LoopSafepointEliminationPhase} tries to reduce the number of safepoint checks in the
