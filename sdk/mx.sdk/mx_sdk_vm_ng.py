@@ -591,6 +591,7 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         self.relative_extracted_lib_paths = {k: v.replace('/', os.sep) for k, v in kw_args.pop('relative_extracted_lib_paths', {}).items()}
         self.liblang_relpath = _pop_path(kw_args, 'relative_liblang_path', None)
         self.setup_relative_resources = kw_args.pop('setup_relative_resources', None)
+        self.windows_manifest = join(_suite.dir, 'src', 'org.graalvm.launcher.native', 'manifest', 'launcher.manifest')
 
         if not kw_args.get('multitarget'):
             # We use our LLVM toolchain on Linux by default because we want to statically link the C++ standard library,
@@ -758,6 +759,8 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
     @property
     def ldflags(self):
         _dynamic_ldflags = []
+        if mx.is_windows():
+            _dynamic_ldflags += ['/MANIFEST:EMBED', '/MANIFESTINPUT:' + self.windows_manifest]
         if not mx.is_windows():
             _dynamic_ldflags += ['-pthread']
         if self.uses_musl_swcfi_toolchain:
