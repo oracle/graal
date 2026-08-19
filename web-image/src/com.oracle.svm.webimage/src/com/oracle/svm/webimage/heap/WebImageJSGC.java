@@ -37,11 +37,6 @@ public class WebImageJSGC implements GC {
     }
 
     @Override
-    public void collectCompletely(GCCause cause) {
-
-    }
-
-    @Override
     public void collectionHint(boolean fullGC) {
         /* Ignore collection hints. */
     }

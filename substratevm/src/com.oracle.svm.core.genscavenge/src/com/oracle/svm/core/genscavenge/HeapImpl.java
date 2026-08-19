@@ -1036,7 +1036,7 @@ final class Target_java_lang_Runtime {
     private void gc() {
         if (!SubstrateGCOptions.DisableExplicitGC.getValue()) {
             long startTicks = JfrTicks.elapsedTicks();
-            GCImpl.getGCImpl().collectCompletely(GCCause.JavaLangSystemGC);
+            GCImpl.getGCImpl().collect(GCCause.JavaLangSystemGC);
             SystemGCEvent.emit(startTicks, false);
         }
     }

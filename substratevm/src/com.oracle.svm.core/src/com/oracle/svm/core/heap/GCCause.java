@@ -60,21 +60,24 @@ import jdk.graal.compiler.debug.Assertions;
  */
 public class GCCause {
 
-    @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
-    @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("Forced GC in unit test", 1);
-    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("Test GC in deoptimizer", 2);
-    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hinted GC", 3);
-    @DuplicatedInNativeCode public static final GCCause JvmtiForceGC = new GCCause("JvmtiEnv ForceGarbageCollection", 4);
-    @DuplicatedInNativeCode public static final GCCause HeapDump = new GCCause("Heap Dump Initiated GC", 5);
-    @DuplicatedInNativeCode public static final GCCause DiagnosticCommand = new GCCause("Diagnostic Command", 6);
+    @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0, true);
+    @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("Test GC in deoptimizer", 2, false);
+    @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hinted GC", 3, false);
+    @DuplicatedInNativeCode public static final GCCause JvmtiForceGC = new GCCause("JvmtiEnv ForceGarbageCollection", 4, true);
+    @DuplicatedInNativeCode public static final GCCause HeapDump = new GCCause("Heap Dump Initiated GC", 5, true);
+    @DuplicatedInNativeCode public static final GCCause DiagnosticCommand = new GCCause("Diagnostic Command", 6, true);
+    @DuplicatedInNativeCode public static final GCCause WhiteBoxTestYoungGC = new GCCause("WhiteBox Initiated Young GC", 7, false);
+    @DuplicatedInNativeCode public static final GCCause WhiteBoxTestFullGC = new GCCause("WhiteBox Initiated Full GC", 8, true);
 
     private final int id;
     private final String name;
+    private final boolean completeCollection;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected GCCause(String name, int id) {
+    protected GCCause(String name, int id, boolean completeCollection) {
         this.id = id;
         this.name = name;
+        this.completeCollection = completeCollection;
     }
 
     public String getName() {
@@ -84,6 +87,11 @@ public class GCCause {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getId() {
         return id;
+    }
+
+    /** Returns whether this cause triggers a complete collection. */
+    public boolean collectsCompletely() {
+        return completeCollection;
     }
 
     public static GCCause fromId(int causeId) {
@@ -160,12 +168,13 @@ class GCCauseFeature implements InternalFeature {
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                 GCCauseSupport support = ImageSingletons.lookup(GCCauseSupport.class);
                 support.installGCCause(GCCause.JavaLangSystemGC);
-                support.installGCCause(GCCause.UnitTest);
                 support.installGCCause(GCCause.TestGCInDeoptimizer);
                 support.installGCCause(GCCause.HintedGC);
                 support.installGCCause(GCCause.JvmtiForceGC);
                 support.installGCCause(GCCause.HeapDump);
                 support.installGCCause(GCCause.DiagnosticCommand);
+                support.installGCCause(GCCause.WhiteBoxTestYoungGC);
+                support.installGCCause(GCCause.WhiteBoxTestFullGC);
 
                 var gcCauseList = GCCause.getGCCauses();
                 idToGCCauseName = (idx) -> gcCauseList.get(idx).getName();

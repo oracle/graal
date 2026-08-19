@@ -28,11 +28,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 public interface GC {
-    /** Cause a collection of the Heap's choosing. */
+    /**
+     * Performs a garbage collection for {@code cause}. The cause determines whether the collector
+     * performs a complete or partial collection.
+     */
     void collect(GCCause cause);
-
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
 
     /**
      * Notify the GC that it might be a good time to do a collection. The final decision is up to

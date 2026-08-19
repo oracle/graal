@@ -181,7 +181,7 @@ public final class GCImpl implements GC {
 
     @Override
     public void collect(GCCause cause) {
-        collect(cause, false);
+        collect(cause, cause.collectsCompletely());
     }
 
     public void maybeCollectOnAllocation(UnsignedWord allocationSize) {
@@ -538,11 +538,6 @@ public final class GCImpl implements GC {
         GCImpl gcImpl = HeapImpl.getGCImpl();
         assert gcImpl != null;
         return gcImpl;
-    }
-
-    @Override
-    public void collectCompletely(GCCause cause) {
-        collect(cause, true);
     }
 
     @AlwaysInline("GC performance")

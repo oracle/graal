@@ -496,7 +496,7 @@ public final class JvmtiFunctions {
     @CEntryPoint(include = JvmtiEnabled.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int ForceGarbageCollection(JvmtiExternalEnv externalEnv) {
-        Heap.getHeap().getGC().collectCompletely(GCCause.JvmtiForceGC);
+        Heap.getHeap().getGC().collect(GCCause.JvmtiForceGC);
         return JVMTI_ERROR_NONE.getCValue();
     }
 

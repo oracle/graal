@@ -1129,7 +1129,7 @@ public abstract class InterpreterStubSection {
 
         public static void stressEnterStub() {
             if (InterpreterOptions.InterpreterBackdoor.getValue() && stressEnterStub) {
-                Heap.getHeap().getGC().collectCompletely(GCCause.UnitTest);
+                Heap.getHeap().getGC().collect(GCCause.WhiteBoxTestFullGC);
             }
         }
 

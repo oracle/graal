@@ -570,14 +570,14 @@ public final class WhiteBoxEntryPoints {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_youngGC", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void youngGC(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
-        Heap.getHeap().getGC().collect(GCCause.UnitTest);
+        Heap.getHeap().getGC().collect(GCCause.WhiteBoxTestYoungGC);
     }
 
     /// Requests the SVM garbage collector to perform a complete collection.
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, name = "Java_jdk_test_whitebox_WhiteBox_fullGC", publishAs = Publish.NotPublished, include = WhiteBoxIncluded.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void fullGC(@SuppressWarnings("unused") JNIEnvironment env, @SuppressWarnings("unused") JNIObjectHandle self) {
-        Heap.getHeap().getGC().collectCompletely(GCCause.UnitTest);
+        Heap.getHeap().getGC().collect(GCCause.WhiteBoxTestFullGC);
     }
 
     /// Reports whether C2 or JVMCI support is included in the VM.

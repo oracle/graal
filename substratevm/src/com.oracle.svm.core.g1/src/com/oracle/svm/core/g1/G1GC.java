@@ -43,11 +43,6 @@ public class G1GC implements GC {
     }
 
     @Override
-    public void collectCompletely(GCCause cause) {
-        G1Library.collect(cause.getId());
-    }
-
-    @Override
     public void collectionHint(boolean fullGC) {
         /* Ignore collection hints. */
     }
