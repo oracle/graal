@@ -27,17 +27,22 @@ package com.oracle.svm.interpreter;
 import com.oracle.svm.shared.AlwaysInline;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Owns the materialized operand-stack pointer and caches up to two primitive operand-stack
  * slots. A category-2 value occupies both slots, with its payload in
  * {@link #tosPrimitive1}; {@link #tosPrimitive0} is still materialized because a level of
- * two can also represent two category-1 values. Each stack operation updates {@link #top}
- * while compensating for changes in {@link #tosLevel}, so the materialized stack pointer
- * changes only when values enter or leave memory.
+ * two can also represent two category-1 values. A category-2 value can straddle the cache
+ * and memory, with its first slot materialized and its payload in {@link #tosPrimitive0}.
+ * Each stack operation updates {@link #top} while compensating for changes in
+ * {@link #tosLevel}, so the materialized stack pointer changes only when values enter or
+ * leave memory.
  */
 final class InterpreterVirtualStack {
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
     /** First stack slot above the materialized operand stack. */
     long top;
     private long tosPrimitive0;
@@ -87,6 +92,7 @@ final class InterpreterVirtualStack {
             top += 2;
             tosLevel = 0;
         }
+        killUnusedFields();
     }
 
     @AlwaysInline("Materialize before an outlined stack operation without passing InterpreterVirtualStack")
@@ -214,7 +220,9 @@ final class InterpreterVirtualStack {
             top -= 2;
             return value;
         } else if (tosLevel == 1) {
-            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+            top--;
+            tosLevel = 0;
+            return tosPrimitive0;
         } else {
             tosLevel = 0;
             return tosPrimitive1;
@@ -337,6 +345,8 @@ final class InterpreterVirtualStack {
             if (offset == -2) {
                 return tosPrimitive0;
             }
+        } else if (tosLevel == 1 && offset == -1) {
+            return tosPrimitive0;
         }
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
@@ -353,6 +363,8 @@ final class InterpreterVirtualStack {
             if (offset == -2) {
                 return Double.longBitsToDouble(tosPrimitive0);
             }
+        } else if (tosLevel == 1 && offset == -1) {
+            return Double.longBitsToDouble(tosPrimitive0);
         }
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
@@ -517,24 +529,34 @@ final class InterpreterVirtualStack {
     void popArguments(InterpreterState state, JavaKind[] argKinds, Object[] args, Object appendix) {
         int index = args.length - 1;
         if (appendix != null) {
-            assert argKinds[index] == JavaKind.Object;
-            args[index] = appendix;
+            assert uncheckedKindAt(argKinds, index) == JavaKind.Object;
+            uncheckedPutArgument(args, index, appendix);
             index--;
         }
         if (tosLevel > 0 && index >= 0) {
-            args[index] = popKind(state, argKinds[index]);
+            uncheckedPutArgument(args, index, popKind(state, uncheckedKindAt(argKinds, index)));
             index--;
         }
         if (tosLevel > 0 && index >= 0) {
-            args[index] = popKind(state, argKinds[index]);
+            uncheckedPutArgument(args, index, popKind(state, uncheckedKindAt(argKinds, index)));
             index--;
         }
         materialize(state);
 
         for (; index >= 0; index--) {
-            args[index] = popKind(state, argKinds[index]);
+            uncheckedPutArgument(args, index, popKind(state, uncheckedKindAt(argKinds, index)));
         }
         discardCachedValues();
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    private static JavaKind uncheckedKindAt(JavaKind[] argKinds, int index) {
+        return (JavaKind) UNSAFE.getReference(argKinds, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    private static void uncheckedPutArgument(Object[] args, int index, Object value) {
+        UNSAFE.putReference(args, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
