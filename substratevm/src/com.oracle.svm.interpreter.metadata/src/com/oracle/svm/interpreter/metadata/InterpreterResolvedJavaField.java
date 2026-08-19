@@ -276,7 +276,6 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         return staticStorage;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public final void setCachedStaticStorage(Object storage) {
         assert isStatic();
         VMError.guarantee(staticStorage == null || staticStorage == storage, "Static field storage must not change.");
