@@ -127,6 +127,16 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements Canonica
             // x ^ ~x |-> -1
             return BinaryArithmeticNode.createIntegerConstant(forX.stamp(NodeView.DEFAULT), -1L);
         }
+        if (forY instanceof XorNode innerXor && (innerXor.getX() == forX || innerXor.getY() == forX)) {
+            // x ^ (x ^ y) |-> y
+            // x ^ (y ^ x) |-> y
+            return innerXor.getX() == forX ? innerXor.getY() : innerXor.getX();
+        }
+        if (forX instanceof XorNode innerXor && (innerXor.getX() == forY || innerXor.getY() == forY)) {
+            // (y ^ x) ^ y |-> x
+            // (x ^ y) ^ y |-> x
+            return innerXor.getX() == forY ? innerXor.getY() : innerXor.getX();
+        }
         return self != null ? self : new XorNode(forX, forY).maybeCommuteInputs();
     }
 

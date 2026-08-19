@@ -25,9 +25,10 @@
 
 package jdk.graal.compiler.nodes.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import org.junit.Test;
 
 public class OrNodeCanonicalizationTest extends GraalCompilerTest {
 
@@ -83,6 +84,68 @@ public class OrNodeCanonicalizationTest extends GraalCompilerTest {
         testAgainstReference("orSelfNegationLongReferenceSnippet", "orSelfNegationRightLongSnippet");
         test("orSelfNegationLeftLongSnippet", 42L);
         test("orSelfNegationRightLongSnippet", 42L);
+    }
+
+    public static int orRepeatedReferenceSnippet(int x, int y) {
+        return y | x;
+    }
+
+    public static int orRepeatedXFirstLeftAssocSnippet(int x, int y) {
+        // duplicates removed during bytecode parsing
+        return ((x | x) | x) | y;
+    }
+
+    @Test
+    public void orRepeatedXFirstLeftAssoc() {
+        testAgainstReference("orRepeatedReferenceSnippet", "orRepeatedXFirstLeftAssocSnippet");
+    }
+
+    public static int orRepeatedXFirstRightAssocSnippet(int x, int y) {
+        return x | (x | (x | y));
+    }
+
+    @Test
+    public void orRepeatedXFirstRightAssoc() {
+        testAgainstReference("orRepeatedReferenceSnippet", "orRepeatedXFirstRightAssocSnippet");
+    }
+
+    public static int orRepeatedYFirstLeftAssocSnippet(int x, int y) {
+        // reassociated to right-associative form during bytecode parsing
+        return ((y | x) | x) | x;
+    }
+
+    @Test
+    public void orRepeatedYFirstLeftAssoc() {
+        testAgainstReference("orRepeatedReferenceSnippet", "orRepeatedYFirstLeftAssocSnippet");
+    }
+
+    public static int orRepeatedYFirstRightAssocSnippet(int x, int y) {
+        // duplicates removed during bytecode parsing
+        return y | (x | (x | x));
+    }
+
+    @Test
+    public void orRepeatedYFirstRightAssoc() {
+        testAgainstReference("orRepeatedReferenceSnippet", "orRepeatedYFirstRightAssocSnippet");
+    }
+
+    public static int orRepeatedMixedLeftAssocSnippet(int x, int y) {
+        // reassociated to right-associative form during bytecode parsing
+        return ((x | y) | x) | y;
+    }
+
+    @Test
+    public void orRepeatedMixedLeftAssoc() {
+        testAgainstReference("orRepeatedReferenceSnippet", "orRepeatedMixedLeftAssocSnippet");
+    }
+
+    public static int orRepeatedMixedRightAssocSnippet(int x, int y) {
+        return x | (y | (x | y));
+    }
+
+    @Test
+    public void orRepeatedMixedRightAssoc() {
+        testAgainstReference("orRepeatedReferenceSnippet", "orRepeatedMixedRightAssocSnippet");
     }
 
     private void testAgainstReference(String referenceSnippet, String testSnippet) {

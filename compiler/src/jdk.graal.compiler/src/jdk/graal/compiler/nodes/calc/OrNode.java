@@ -120,6 +120,16 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements Canonicali
             // x | ~x |-> -1
             return BinaryArithmeticNode.createIntegerConstant(rawXStamp, -1L);
         }
+        if (forY instanceof OrNode innerOr && (innerOr.getX() == forX || innerOr.getY() == forX)) {
+            // x | (x | y) |-> x | y
+            // x | (y | x) |-> y | x
+            return innerOr;
+        }
+        if (forX instanceof OrNode innerOr && (innerOr.getX() == forY || innerOr.getY() == forY)) {
+            // (y | x) | y |-> y | x
+            // (x | y) | y |-> x | y
+            return innerOr;
+        }
         return self != null ? self : new OrNode(forX, forY).maybeCommuteInputs();
     }
 
