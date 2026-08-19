@@ -561,6 +561,16 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
                     "working_dir": "/",
                     "fd_limit": 4096,
                 }
+                # Quarkus Tika loads JDK shared libraries at run time. They are
+                # emitted next to the application image and must be included in
+                # GraalHost's verified set. They are not needed by the other
+                # Barista benchmarks.
+                if suite.benchmarkName() == "quarkus-tika":
+                    graalhost_config["env"] = {"LD_LIBRARY_PATH": str(output_dir)}
+                    graalhost_config["fsmappings"].extend(
+                        {"concrete": str(library), "virt": str(library), "verif": True}
+                        for library in sorted(output_dir.glob("lib*.so"))
+                    )
                 json.dump(graalhost_config, graalhost_config_handle, indent=4)
 
             graalhost_cmd = ["graalhost", "--enable_resolving_env_refs", f"--run_config=@{graalhost_config_file}", "--log_to=syslog", "--run"]
