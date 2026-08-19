@@ -454,6 +454,10 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return null;
     }
 
+    public static boolean isLinkedInvokeCacheEntry(Object entry) {
+        return entry instanceof LinkedInvokeCacheEntry;
+    }
+
     public Object peekInvokeAppendix(int cpi, int opcode) {
         assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
         Object entry = cachedEntries[cpi];

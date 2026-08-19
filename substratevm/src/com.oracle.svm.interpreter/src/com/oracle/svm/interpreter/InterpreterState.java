@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -396,7 +396,12 @@ final class InterpreterState {
     }
 
     LinkedInvoke getPeekLinkedInvoke(long cpi, int opcode) {
-        return InterpreterConstantPool.getPeekLinkedInvoke(uncheckedCachedEntryAt(cpi), opcode);
+        Object entry = uncheckedCachedEntryAt(cpi);
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY,
+                        InterpreterConstantPool.isLinkedInvokeCacheEntry(entry))) {
+            return InterpreterConstantPool.getPeekLinkedInvoke(entry, opcode);
+        }
+        return null;
     }
 
     byte uncheckedTagValueAt(long cpi) {
