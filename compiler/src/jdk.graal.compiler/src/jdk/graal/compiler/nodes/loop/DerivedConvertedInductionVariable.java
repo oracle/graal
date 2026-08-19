@@ -33,14 +33,39 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.vm.ci.code.CodeUtil;
 
+/**
+ * A derived induction variable that represents an integer conversion or stamp refinement. It can
+ * hold these {@link ValueNode}s:
+ * <ul>
+ * <li>{@link SignExtendNode}
+ * <li>{@link ZeroExtendNode}
+ * <li>{@link NarrowNode}
+ * <li>{@link PiNode}
+ * </ul>
+ * They are useful in order to be able to optimize loops such as:
+ * <pre>
+ * for (long i = 0; i &lt; length; i++) {
+ *     access array[(int) i]
+ * }
+ * </pre>
+ * Note that integer conversions are not affine the way arithmetic induction variable operations
+ * are, even when the original conversions are value-preserving. For example:
+ * <pre>
+ * SignExtend(a + b) != SignExtend(a) + SignExtend(b)
+ * </pre>
+ * Therefore, care must be taken when optimizing converted IVs: arithmetic cannot in general
+ * be moved across the conversion, and original overflow semantics have to be preserved.
+ */
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 
     protected final Stamp stamp;
@@ -229,6 +254,13 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     public void deleteUnusedNodes() {
     }
 
+    /**
+     * Applies the induction variable's integer conversion to {@code v}. A zero extension is
+     * used only when the IV is a {@link ZeroExtendNode} and {@code allowZeroExtend} is {@code true}.
+     * <p>
+     * When the induction variable is a {@link PiNode}, this method does not
+     * reproduce the Pi, it only performs the conversion to the IV's {@code stamp}.
+     */
     public ValueNode op(ValueNode v, boolean allowZeroExtend) {
         return op(v, allowZeroExtend, true);
     }
