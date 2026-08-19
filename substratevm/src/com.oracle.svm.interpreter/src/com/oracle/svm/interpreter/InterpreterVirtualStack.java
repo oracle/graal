@@ -52,18 +52,6 @@ final class InterpreterVirtualStack {
         top = GraalDirectives.opaque(top);
     }
 
-    /** Gives updated stack fields path-local identities and pins them before threaded dispatch. */
-    @AlwaysInline("Prepare updated stack values before threaded dispatch")
-    void anchorUpdatedValues() {
-        top = GraalDirectives.anchorValue(GraalDirectives.opaque(top));
-        if (tosLevel >= 1) {
-            tosPrimitive0 = GraalDirectives.anchorValue(GraalDirectives.opaque(tosPrimitive0));
-        }
-        if (tosLevel >= 2) {
-            tosPrimitive1 = GraalDirectives.anchorValue(GraalDirectives.opaque(tosPrimitive1));
-        }
-    }
-
     @AlwaysInline("Kill dependencies on unused cached primitive returns")
     void killUnusedFields() {
         if (tosLevel == 0) {
@@ -481,93 +469,7 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private void replaceTopWithPrimitive(int consumedSlots, long value) {
-        int oldTosLevel = tosLevel;
-        int survivors = Math.max(0, tosLevel - consumedSlots);
-        assert survivors <= 1;
-        if (survivors == 0) {
-            tosPrimitive0 = value;
-            tosLevel = 1;
-        } else {
-            tosPrimitive1 = value;
-            tosLevel = 2;
-        }
-        top += oldTosLevel - tosLevel + 1 - consumedSlots;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private void materializeSurvivors(InterpreterState state, int consumedSlots) {
-        int oldTosLevel = tosLevel;
-        long logicalTop = top + tosLevel;
-        int survivors = Math.max(0, tosLevel - consumedSlots);
-        if (survivors == 2) {
-            state.setLongStatic(logicalTop - 2, tosPrimitive0);
-            state.setLongStatic(logicalTop - 1, tosPrimitive1);
-        } else if (survivors == 1) {
-            state.setLongStatic(logicalTop - tosLevel, tosPrimitive0);
-        }
-        tosLevel = 0;
-        top += oldTosLevel;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void popPrimitive1() {
-        int oldTosLevel = tosLevel;
-        if (tosLevel == 2) {
-            tosLevel = 1;
-        } else if (tosLevel == 1) {
-            tosLevel = 0;
-        }
-        top += oldTosLevel - tosLevel - 1;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void popPrimitive2() {
-        int oldTosLevel = tosLevel;
-        tosLevel = 0;
-        top += oldTosLevel - tosLevel - 2;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithInt(int consumedSlots, int value) {
-        replaceTopWithPrimitive(consumedSlots, value);
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithFloat(int consumedSlots, float value) {
-        replaceTopWithPrimitive(consumedSlots, Float.floatToRawIntBits(value));
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithLong(InterpreterState state, int consumedSlots, long value) {
-        materializeSurvivors(state, consumedSlots);
-        pushLong(state, value);
-        top -= consumedSlots;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithDouble(InterpreterState state, int consumedSlots, double value) {
-        materializeSurvivors(state, consumedSlots);
-        pushLong(state, Double.doubleToRawLongBits(value));
-        top -= consumedSlots;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void replaceTopWithObject(InterpreterState state, int consumedSlots, Object value) {
-        long logicalTop = top + tosLevel;
-        materializeSurvivors(state, consumedSlots);
-        state.putObject(logicalTop - consumedSlots, value);
-        top += 1 - consumedSlots;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void discardCachedValues() {
-        tosLevel = 0;
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void clear() {
-        top += tosLevel;
         tosLevel = 0;
     }
 }
