@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,28 +48,17 @@ public class CallNode {
     private final int bytecodeOffset;
     private final int functionIndex;
     private final boolean isIndirectCall;
-    private final boolean isReturnCall;
 
     public CallNode(int bytecodeOffset, int functionIndex) {
-        this(bytecodeOffset, functionIndex, false);
-    }
-
-    public CallNode(int bytecodeOffset, int functionIndex, boolean isReturnCall) {
         this.bytecodeOffset = bytecodeOffset;
         this.functionIndex = functionIndex;
         this.isIndirectCall = false;
-        this.isReturnCall = isReturnCall;
     }
 
     public CallNode(int bytecodeOffset) {
-        this(bytecodeOffset, false);
-    }
-
-    public CallNode(int bytecodeOffset, boolean isReturnCall) {
         this.bytecodeOffset = bytecodeOffset;
         this.functionIndex = -1;
         this.isIndirectCall = true;
-        this.isReturnCall = isReturnCall;
     }
 
     public int getBytecodeOffset() {
@@ -82,9 +71,5 @@ public class CallNode {
 
     public boolean isIndirectCall() {
         return isIndirectCall;
-    }
-
-    public boolean isReturnCall() {
-        return isReturnCall;
     }
 }

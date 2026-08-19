@@ -40,6 +40,9 @@
  */
 package org.graalvm.wasm.nodes;
 
+import org.graalvm.wasm.WasmConstant;
+import org.graalvm.wasm.WasmLanguage;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -47,27 +50,21 @@ import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DenyReplace;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnadoptableNode;
 
 @GenerateInline(false)
-public abstract class WasmReturnCallNode extends WasmCallNode {
+public abstract class WasmReturnCallNode extends Node {
     static final int INLINE_CACHE_LIMIT = 5;
 
-    private final CallTarget directTarget;
-
-    protected WasmReturnCallNode(CallTarget directTarget, int bytecodeOffset) {
-        super(bytecodeOffset);
-        this.directTarget = directTarget;
+    protected WasmReturnCallNode() {
     }
 
-    public CallTarget directTarget() {
-        return directTarget;
-    }
-
-    public abstract Object execute(CallTarget target, Object[] args);
+    protected abstract Object execute(CallTarget target, Object[] args);
 
     @Specialization(guards = "target == cachedTarget", limit = "INLINE_CACHE_LIMIT")
-    final Object doCached(@SuppressWarnings("unused") CallTarget target, Object[] args, @Cached("target") CallTarget cachedTarget) {
+    final Object doCached(@SuppressWarnings("unused") CallTarget target, Object[] args,
+                    @Cached("target") CallTarget cachedTarget) {
         return cachedTarget.call(this, args);
     }
 
@@ -76,33 +73,41 @@ public abstract class WasmReturnCallNode extends WasmCallNode {
         return target.call(this, args);
     }
 
-    @NeverDefault
-    public static WasmReturnCallNode createDirect(CallTarget directTarget, int bytecodeOffset) {
-        return WasmReturnCallNodeGen.create(directTarget, bytecodeOffset);
+    public final Object call() {
+        Object result;
+        final WasmLanguage.ReturnCallData data = WasmLanguage.get(this).returnCallData();
+        try {
+            do {
+                result = execute(data.target, data.args);
+            } while (result == WasmConstant.RETURN_CALL_VALUE);
+        } finally {
+            data.target = null;
+            data.args = null;
+        }
+        return result;
     }
 
     @NeverDefault
-    public static WasmReturnCallNode createIndirect(int bytecodeOffset) {
-        return createDirect(null, bytecodeOffset);
+    public static WasmReturnCallNode create() {
+        return WasmReturnCallNodeGen.create();
     }
 
     @NeverDefault
     public static WasmReturnCallNode getUncached() {
-        return Uncached.UNCACHED;
+        return WasmReturnCallNode.Uncached.UNCACHED;
     }
 
     @GenerateCached(false)
     @DenyReplace
     private static final class Uncached extends WasmReturnCallNode implements UnadoptableNode {
-        static final Uncached UNCACHED = new Uncached();
+        static final WasmReturnCallNode.Uncached UNCACHED = new WasmReturnCallNode.Uncached();
 
         private Uncached() {
-            super(null, NO_BYTECODE_INDEX);
         }
 
         @Override
-        public Object execute(CallTarget target, Object[] args) {
-            return doIndirect(target, args);
+        public Object execute(CallTarget arg0Value, Object[] arg1Value) {
+            return doIndirect(arg0Value, arg1Value);
         }
     }
 }

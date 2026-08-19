@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,19 +44,13 @@ import org.graalvm.wasm.WasmFunction;
 
 public final class WasmCallStubNode extends WasmCallNode {
     private final WasmFunction function;
-    private final boolean isReturnCall;
 
-    public WasmCallStubNode(int bytecodeOffset, WasmFunction function, boolean isReturnCall) {
+    public WasmCallStubNode(int bytecodeOffset, WasmFunction function) {
         super(bytecodeOffset);
         this.function = function;
-        this.isReturnCall = isReturnCall;
     }
 
     public WasmFunction function() {
         return function;
-    }
-
-    public boolean isReturnCall() {
-        return isReturnCall;
     }
 }

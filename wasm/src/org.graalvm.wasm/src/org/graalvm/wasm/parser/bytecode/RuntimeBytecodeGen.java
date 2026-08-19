@@ -692,62 +692,53 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a reference return-call instruction to the bytecode. If the nodeIndex and typeIndex both fit
-     * into a u8 value, a return_call_ref_u8 and two u8 values are added. Otherwise, a return_call_ref_i32 and two
-     * i32 values are added.
+     * Adds a reference return-call instruction to the bytecode. If typeIndex fits into a u8 value,
+     * a return_call_ref_u8 and a u8 value are added. Otherwise, a return_call_ref_i32 and a
+     * i32 value are added.
      *
-     * @param nodeIndex The node index of the reference call
      * @param typeIndex The type index of the reference call
      */
-    public void addRefReturnCall(int nodeIndex, int typeIndex) {
-        if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(typeIndex)) {
+    public void addRefReturnCall(int typeIndex) {
+        if (fitsIntoUnsignedByte(typeIndex)) {
             add1(Bytecode.RETURN_CALL_REF_U8);
-            add1(nodeIndex);
             add1(typeIndex);
         } else {
             add1(Bytecode.RETURN_CALL_REF_I32);
-            add4(nodeIndex);
             add4(typeIndex);
         }
     }
 
     /**
-     * Adds a return-call instruction to the bytecode. If the nodeIndex and functionIndex both fit into a u8 value,
-     * a return_call_u8 and two u8 values are added. Otherwise, a return_call_i32 and two i32 values are added.
+     * Adds a return-call instruction to the bytecode. If the functionIndex fits into a u8 value,
+     * a return_call_u8 and a u8 value are added. Otherwise, a return_call_i32 and a i32 value are added.
      *
-     * @param nodeIndex The node index of the call
      * @param functionIndex The function index of the return call
      */
-    public void addReturnCall(int nodeIndex, int functionIndex) {
-        if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(functionIndex)) {
+    public void addReturnCall(int functionIndex) {
+        if (fitsIntoUnsignedByte(functionIndex)) {
             add1(Bytecode.RETURN_CALL_U8);
-            add1(nodeIndex);
             add1(functionIndex);
         } else {
             add1(Bytecode.RETURN_CALL_I32);
-            add4(nodeIndex);
             add4(functionIndex);
         }
     }
 
     /**
-     * Adds an indirect return-call instruction to the bytecode. If the nodeIndex, typeIndex,
-     * and tableIndex all fit into a u8 value, a return_call_indirect_u8 and three u8 values are added.
-     * Otherwise, a return_call_indirect_i32 and three i32 values are added.
+     * Adds an indirect return-call instruction to the bytecode. If the typeIndex
+     * and tableIndex both fit into a u8 value, a return_call_indirect_u8 and two u8 values are added.
+     * Otherwise, a return_call_indirect_i32 and two i32 values are added.
      *
-     * @param nodeIndex The node index of the indirect call
      * @param typeIndex The type index of the indirect tail call
      * @param tableIndex The table index of the indirect tail call
      */
-    public void addIndirectReturnCall(int nodeIndex, int typeIndex, int tableIndex) {
-        if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(typeIndex) && fitsIntoUnsignedByte(tableIndex)) {
+    public void addIndirectReturnCall(int typeIndex, int tableIndex) {
+        if (fitsIntoUnsignedByte(typeIndex) && fitsIntoUnsignedByte(tableIndex)) {
             add1(Bytecode.RETURN_CALL_INDIRECT_U8);
-            add1(nodeIndex);
             add1(typeIndex);
             add1(tableIndex);
         } else {
             add1(Bytecode.RETURN_CALL_INDIRECT_I32);
-            add4(nodeIndex);
             add4(typeIndex);
             add4(tableIndex);
         }

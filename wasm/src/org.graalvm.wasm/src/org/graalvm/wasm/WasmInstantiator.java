@@ -58,7 +58,6 @@ import org.graalvm.wasm.nodes.WasmFixedMemoryImplFunctionNode;
 import org.graalvm.wasm.nodes.WasmFunctionRootNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmMemoryOverheadModeFunctionRootNode;
-import org.graalvm.wasm.nodes.WasmReturnCallNode;
 import org.graalvm.wasm.parser.bytecode.BytecodeParser;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
@@ -554,26 +553,18 @@ public class WasmInstantiator {
             final WasmCallNode child;
             final int bytecodeIndex = callNode.getBytecodeOffset();
             if (callNode.isIndirectCall()) {
-                if (callNode.isReturnCall()) {
-                    child = WasmReturnCallNode.createIndirect(bytecodeIndex);
-                } else {
-                    child = WasmIndirectCallNode.create(bytecodeIndex);
-                }
+                child = WasmIndirectCallNode.create(bytecodeIndex);
             } else {
                 final WasmFunction resolvedFunction = module.function(callNode.getFunctionIndex());
                 if (resolvedFunction.isImported()) {
                     // The call target is resolved during linking and then passed by the call site.
                     // No link actions required.
-                    if (callNode.isReturnCall()) {
-                        child = WasmReturnCallNode.createIndirect(bytecodeIndex);
-                    } else {
-                        child = WasmIndirectCallNode.create(bytecodeIndex);
-                    }
+                    child = WasmIndirectCallNode.create(bytecodeIndex);
                 } else {
                     // Will be replaced with a direct call node after all the module's code entries
                     // have been instantiated and their call targets are available. No link actions
                     // required since the call target resolution happens already before linking.
-                    child = new WasmCallStubNode(bytecodeIndex, resolvedFunction, callNode.isReturnCall());
+                    child = new WasmCallStubNode(bytecodeIndex, resolvedFunction);
                 }
             }
             callNodes[childIndex++] = child;
@@ -584,11 +575,7 @@ public class WasmInstantiator {
     private static void resolveCallNodes(WasmInstance instance, Node[] callNodes) {
         for (int i = 0; i < callNodes.length; i++) {
             if (callNodes[i] instanceof WasmCallStubNode callStubNode) {
-                if (callStubNode.isReturnCall()) {
-                    callNodes[i] = WasmReturnCallNode.createDirect(instance.target(callStubNode.function().index()), callStubNode.getBytecodeOffset());
-                } else {
-                    callNodes[i] = WasmDirectCallNode.create(instance.target(callStubNode.function().index()), callStubNode.getBytecodeOffset());
-                }
+                callNodes[i] = WasmDirectCallNode.create(instance.target(callStubNode.function().index()), callStubNode.getBytecodeOffset());
             }
         }
     }

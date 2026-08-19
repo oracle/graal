@@ -104,7 +104,8 @@ public final class WasmContextOptions {
         this.typedFunctionReferences = readBooleanOption(WasmOptions.TypedFunctionReferences);
         this.gc = readBooleanOption(WasmOptions.GC);
         this.tailCalls = readBooleanOption(WasmOptions.TailCalls);
-        this.tailCallLoops = readBooleanOption(WasmOptions.TailCallLoops);
+        // If tail calls are not enabled, disable tail call loops
+        this.tailCallLoops = this.tailCalls && readBooleanOption(WasmOptions.TailCallLoops);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
@@ -121,9 +122,6 @@ public final class WasmContextOptions {
         }
         if (gc && !typedFunctionReferences) {
             failDependencyCheck("GC", "TypedFunctionReferences");
-        }
-        if (tailCallLoops && !tailCalls) {
-            failDependencyCheck("TailCallLoops", "TailCalls");
         }
     }
 

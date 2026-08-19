@@ -477,35 +477,35 @@ public abstract class BytecodeParser {
             final int originalOffset = offset;
             offset++;
             switch (opcode) {
-                case Bytecode.CALL_U8, Bytecode.RETURN_CALL_U8: {
+                case Bytecode.CALL_U8: {
                     final int functionIndex = rawPeekU8(bytecode, offset + 1);
-                    callNodes.add(new CallNode(originalOffset, functionIndex, opcode == Bytecode.RETURN_CALL_U8));
+                    callNodes.add(new CallNode(originalOffset, functionIndex));
                     offset += 2;
                     break;
                 }
-                case Bytecode.CALL_I32, Bytecode.RETURN_CALL_I32: {
+                case Bytecode.CALL_I32: {
                     final int functionIndex = rawPeekI32(bytecode, offset + 4);
-                    callNodes.add(new CallNode(originalOffset, functionIndex, opcode == Bytecode.RETURN_CALL_I32));
+                    callNodes.add(new CallNode(originalOffset, functionIndex));
                     offset += 8;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_U8, Bytecode.RETURN_CALL_INDIRECT_U8: {
-                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_INDIRECT_U8));
+                case Bytecode.CALL_INDIRECT_U8: {
+                    callNodes.add(new CallNode(originalOffset));
                     offset += 3;
                     break;
                 }
-                case Bytecode.CALL_INDIRECT_I32, Bytecode.RETURN_CALL_INDIRECT_I32: {
-                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_INDIRECT_I32));
+                case Bytecode.CALL_INDIRECT_I32: {
+                    callNodes.add(new CallNode(originalOffset));
                     offset += 12;
                     break;
                 }
-                case Bytecode.CALL_REF_U8, Bytecode.RETURN_CALL_REF_U8: {
-                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_REF_U8));
+                case Bytecode.CALL_REF_U8: {
+                    callNodes.add(new CallNode(originalOffset));
                     offset += 2;
                     break;
                 }
-                case Bytecode.CALL_REF_I32, Bytecode.RETURN_CALL_REF_I32: {
-                    callNodes.add(new CallNode(originalOffset, opcode == Bytecode.RETURN_CALL_REF_I32));
+                case Bytecode.CALL_REF_I32: {
+                    callNodes.add(new CallNode(originalOffset));
                     offset += 8;
                     break;
                 }
@@ -694,11 +694,14 @@ public abstract class BytecodeParser {
                     offset++;
                     break;
                 }
-                case Bytecode.BR_U8: {
+                case Bytecode.BR_U8:
+                case Bytecode.RETURN_CALL_U8:
+                case Bytecode.RETURN_CALL_REF_U8: {
                     offset += 1;
                     break;
                 }
                 case Bytecode.LABEL_U16:
+                case Bytecode.RETURN_CALL_INDIRECT_U8:
                     offset += 2;
                     break;
                 case Bytecode.BR_IF_U8: {
@@ -734,17 +737,22 @@ public abstract class BytecodeParser {
                 case Bytecode.I64_STORE_32_I32:
                 case Bytecode.I32_CONST_I32:
                 case Bytecode.F32_CONST:
-                case Bytecode.REF_FUNC, Bytecode.BR_I32: {
+                case Bytecode.REF_FUNC:
+                case Bytecode.BR_I32:
+                case Bytecode.RETURN_CALL_I32:
+                case Bytecode.RETURN_CALL_REF_I32: {
                     offset += 4;
                     break;
                 }
-                case Bytecode.IF, Bytecode.BR_IF_I32: {
+                case Bytecode.IF:
+                case Bytecode.BR_IF_I32: {
                     offset += 6;
                     break;
                 }
                 case Bytecode.I64_CONST_I64:
                 case Bytecode.F64_CONST:
                 case Bytecode.NOTIFY:
+                case Bytecode.RETURN_CALL_INDIRECT_I32:
                     offset += 8;
                     break;
                 case Bytecode.LABEL_I32:

@@ -961,15 +961,15 @@ public class BinaryParser extends BinaryStreamParser {
                     if (tailCallLoops && callFunctionIndex == functionIndex) {
                         state.addReturnCallBranch();
                     } else {
-                        state.addReturnCall(callNodes.size(), callFunctionIndex);
-                        callNodes.add(new CallNode(bytecode.location(), callFunctionIndex, true));
+                        state.addReturnCall(callFunctionIndex);
+                        module.function(functionIndex).reportReturnCall();
                     }
                     state.setUnreachable();
                     break;
                 }
                 case Instructions.RETURN_CALL_INDIRECT: {
                     checkTailCallSupport(opcode);
-                    final int expectedFunctionTypeIndex = readUnsignedInt32();
+                    final int expectedFunctionTypeIndex = readFunctionTypeIndex();
                     final int tableIndex = readTableIndex();
                     // Pop the function index to call
                     state.popChecked(module.tableHasIndexType64(tableIndex) ? I64_TYPE : I32_TYPE);
@@ -991,8 +991,10 @@ public class BinaryParser extends BinaryStreamParser {
                     assertIntEqual(callResultTypes.length, resultTypes.length, Failure.TYPE_MISMATCH);
                     state.pushAll(callResultTypes);
                     state.popAll(resultTypes);
-                    state.addIndirectReturnCall(callNodes.size(), expectedFunctionTypeIndex, tableIndex);
-                    callNodes.add(new CallNode(bytecode.location(), true));
+
+                    state.addIndirectReturnCall(expectedFunctionTypeIndex, tableIndex);
+                    module.function(functionIndex).reportReturnCall();
+
                     state.setUnreachable();
                     break;
                 }
@@ -1391,8 +1393,10 @@ public class BinaryParser extends BinaryStreamParser {
                     assertIntEqual(callResultTypes.length, resultTypes.length, Failure.TYPE_MISMATCH);
                     state.pushAll(callResultTypes);
                     state.popAll(resultTypes);
-                    state.addRefReturnCall(callNodes.size(), expectedFunctionTypeIndex);
-                    callNodes.add(new CallNode(bytecode.location(), true));
+
+                    state.addRefReturnCall(expectedFunctionTypeIndex);
+                    module.function(functionIndex).reportReturnCall();
+
                     state.setUnreachable();
                     break;
                 }

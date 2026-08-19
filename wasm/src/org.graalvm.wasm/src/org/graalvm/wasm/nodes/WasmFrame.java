@@ -40,14 +40,15 @@
  */
 package org.graalvm.wasm.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.vector.Vector128Ops;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class WasmFrame {
 

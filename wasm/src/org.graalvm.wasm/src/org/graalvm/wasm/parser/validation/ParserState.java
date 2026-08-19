@@ -670,34 +670,31 @@ public class ParserState {
      * Adds a reference return-call instruction to the bytecode, along with its immediate argument and the
      * call node index.
      *
-     * @param nodeIndex The index of the call node associated with this call instruction.
      * @param typeIndex The index of the defined function type.
      */
-    public void addRefReturnCall(int nodeIndex, int typeIndex) {
-        bytecode.addRefReturnCall(nodeIndex, typeIndex);
+    public void addRefReturnCall(int typeIndex) {
+        bytecode.addRefReturnCall(typeIndex);
     }
 
     /**
      * Adds an indirect return-call instruction to the bytecode, along with its immediate arguments
      * and the call node index.
      *
-     * @param nodeIndex The index of the call node associated with this call instruction.
      * @param typeIndex The index of the defined function type.
      * @param tableIndex The index of the table in which the function will be looked up.
      */
-    public void addIndirectReturnCall(int nodeIndex, int typeIndex, int tableIndex) {
-        bytecode.addIndirectReturnCall(nodeIndex, typeIndex, tableIndex);
+    public void addIndirectReturnCall(int typeIndex, int tableIndex) {
+        bytecode.addIndirectReturnCall(typeIndex, tableIndex);
     }
 
     /**
      * Adds a direct return-call instruction to the bytecode, along with its immediate argument
      * and the call node index.
      *
-     * @param nodeIndex The index of the call node associated with this call instruction.
      * @param functionIndex The index of the defined function.
      */
-    public void addReturnCall(int nodeIndex, int functionIndex) {
-        bytecode.addReturnCall(nodeIndex, functionIndex);
+    public void addReturnCall(int functionIndex) {
+        bytecode.addReturnCall(functionIndex);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,9 @@ package org.graalvm.wasm;
 
 public final class WasmArguments {
 
-    public static final int RUNTIME_ARGUMENT_COUNT = 2;
+    public static final int RUNTIME_ARGUMENT_COUNT = 1;
 
     private static final int MODULE_INSTANCE_ARGUMENT_INDEX = 0;
-    private static final int RETURN_CALL_MARKER_ARGUMENT_INDEX = 1;
 
     private WasmArguments() {
     }
@@ -90,14 +89,6 @@ public final class WasmArguments {
 
     public static void setModuleInstance(Object[] arguments, WasmInstance instance) {
         arguments[MODULE_INSTANCE_ARGUMENT_INDEX] = instance;
-    }
-
-    public static boolean getReturnCallMarker(Object[] arguments) {
-        return arguments[RETURN_CALL_MARKER_ARGUMENT_INDEX] == WasmConstant.RETURN_CALL_VALUE;
-    }
-
-    public static void setReturnCallMarker(Object[] arguments) {
-        arguments[RETURN_CALL_MARKER_ARGUMENT_INDEX] = WasmConstant.RETURN_CALL_VALUE;
     }
 
     public static boolean isValid(Object[] arguments) {

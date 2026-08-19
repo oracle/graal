@@ -323,6 +323,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             this.language = WasmLanguage.get(thiz);
             this.memoryLibs = thiz.memoryLibs;
             this.notifyFunction = thiz.notifyFunction;
+            this.startActiveLegacyCatchCount = activeLegacyCatchCount;
             this.activeLegacyCatchCount = activeLegacyCatchCount;
         }
 
@@ -340,6 +341,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final WasmLanguage language;
         final WasmMemoryLibrary[] memoryLibs;
         final WasmNotifyFunction notifyFunction;
+        final int startActiveLegacyCatchCount;
         int activeLegacyCatchCount;
     }
 
@@ -1528,9 +1530,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     @EarlyInline
-    @SuppressWarnings("unused")
-    @BytecodeInterpreterHandler(value = {Bytecode.LOOP}, safepoint = true)
-    private static int loopHandler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+    private static void updateBackEdgeCounterAndTryOSR(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
         if (CompilerDirectives.hasNextTier()) {
             int count = CompilerDirectives.inCompiledCode() ? ++state.backEdgeCounter.count : ++state.interpreterBackEdgeCounter;
             if (CompilerDirectives.injectBranchProbability(0.001, count >= REPORT_LOOP_STRIDE)) {
@@ -1550,6 +1550,13 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 }
             }
         }
+    }
+
+    @EarlyInline
+    @SuppressWarnings("unused")
+    @BytecodeInterpreterHandler(value = {Bytecode.LOOP}, safepoint = true)
+    private static int loopHandler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+        updateBackEdgeCounterAndTryOSR(offset, state, virtualState, frame);
         return offset + 1;
     }
 
@@ -1792,44 +1799,40 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
     @EarlyInline
     private static Object returnCallU8(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        final int callNodeIndex = rawPeekU8(state.bytecode, offset + 1);
-        final int functionIndex = rawPeekU8(state.bytecode, offset + 2);
-        WasmFunction function = state.module.symbolTable().function(functionIndex);
-        int paramCount = function.paramCount();
-        Object[] args = state.thiz.createArgumentsForCall(frame, function.typeIndex(), paramCount, virtualState.stackPointer);
-        return state.thiz.executeDirectReturnCall(frame, state.instance, callNodeIndex, function, args);
+        final int functionIndex = rawPeekU8(state.bytecode, offset + 1);
+        final WasmFunction function = state.module.symbolTable().function(functionIndex);
+        final int paramCount = function.paramCount();
+        final Object[] args = state.thiz.createArgumentsForCall(frame, function.typeIndex(), paramCount, virtualState.stackPointer);
+        return state.thiz.executeDirectReturnCall(state.instance, function, args);
     }
 
     @EarlyInline
     private static Object returnCallI32(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        final int callNodeIndex = rawPeekI32(state.bytecode, offset + 1);
-        final int functionIndex = rawPeekI32(state.bytecode, offset + 5);
-        WasmFunction function = state.module.symbolTable().function(functionIndex);
-        int paramCount = function.paramCount();
-        Object[] args = state.thiz.createArgumentsForCall(frame, function.typeIndex(), paramCount, virtualState.stackPointer);
-        return state.thiz.executeDirectReturnCall(frame, state.instance, callNodeIndex, function, args);
+        final int functionIndex = rawPeekI32(state.bytecode, offset + 1);
+        final WasmFunction function = state.module.symbolTable().function(functionIndex);
+        final int paramCount = function.paramCount();
+        final Object[] args = state.thiz.createArgumentsForCall(frame, function.typeIndex(), paramCount, virtualState.stackPointer);
+        return state.thiz.executeDirectReturnCall(state.instance, function, args);
     }
 
     @EarlyInline
     private static Object returnCallIndirectU8(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        final int callNodeIndex = rawPeekU8(state.bytecode, offset + 1);
-        final int expectedFunctionTypeIndex = rawPeekU8(state.bytecode, offset + 2);
-        final int tableIndex = rawPeekU8(state.bytecode, offset + 3);
+        final int expectedFunctionTypeIndex = rawPeekU8(state.bytecode, offset + 1);
+        final int tableIndex = rawPeekU8(state.bytecode, offset + 2);
         final WasmFunctionInstance functionInstance = state.thiz.loadIndirectCallFunctionInstance(frame, --virtualState.stackPointer, state.instance, tableIndex, expectedFunctionTypeIndex);
         final int paramCount = state.module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
         final Object[] args = state.thiz.createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, virtualState.stackPointer);
-        return state.thiz.executeIndirectReturnCall(frame, functionInstance, callNodeIndex, args);
+        return state.thiz.executeIndirectReturnCall(functionInstance, args);
     }
 
     @EarlyInline
     private static Object returnCallIndirectI32(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        final int callNodeIndex = rawPeekI32(state.bytecode, offset + 1);
-        final int expectedFunctionTypeIndex = rawPeekI32(state.bytecode, offset + 5);
-        final int tableIndex = rawPeekI32(state.bytecode, offset + 9);
+        final int expectedFunctionTypeIndex = rawPeekI32(state.bytecode, offset + 1);
+        final int tableIndex = rawPeekI32(state.bytecode, offset + 5);
         final WasmFunctionInstance functionInstance = state.thiz.loadIndirectCallFunctionInstance(frame, --virtualState.stackPointer, state.instance, tableIndex, expectedFunctionTypeIndex);
         final int paramCount = state.module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
         final Object[] args = state.thiz.createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, virtualState.stackPointer);
-        return state.thiz.executeIndirectReturnCall(frame, functionInstance, callNodeIndex, args);
+        return state.thiz.executeIndirectReturnCall(functionInstance, args);
     }
 
     private WasmFunctionInstance loadRefCallFunctionInstance(VirtualFrame frame, int stackPointer) {
@@ -1844,24 +1847,22 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
     @EarlyInline
     private static Object returnCallRefU8(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        final int callNodeIndex = rawPeekU8(state.bytecode, offset + 1);
-        final int expectedFunctionTypeIndex = rawPeekU8(state.bytecode, offset + 2);
+        final int expectedFunctionTypeIndex = rawPeekU8(state.bytecode, offset + 1);
         final WasmFunctionInstance functionInstance = state.thiz.loadRefCallFunctionInstance(frame, --virtualState.stackPointer);
         // Invoke the resolved function.
-        int paramCount = state.module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
-        Object[] args = state.thiz.createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, virtualState.stackPointer);
-        return state.thiz.executeIndirectReturnCall(frame, functionInstance, callNodeIndex, args);
+        final int paramCount = state.module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
+        final Object[] args = state.thiz.createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, virtualState.stackPointer);
+        return state.thiz.executeIndirectReturnCall(functionInstance, args);
     }
 
     @EarlyInline
     private static Object returnCallRefI32(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        final int callNodeIndex = rawPeekU8(state.bytecode, offset + 1);
-        final int expectedFunctionTypeIndex = rawPeekU8(state.bytecode, offset + 5);
+        final int expectedFunctionTypeIndex = rawPeekI32(state.bytecode, offset + 1);
         final WasmFunctionInstance functionInstance = state.thiz.loadRefCallFunctionInstance(frame, --virtualState.stackPointer);
         // Invoke the resolved function.
-        int paramCount = state.module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
-        Object[] args = state.thiz.createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, virtualState.stackPointer);
-        return state.thiz.executeIndirectReturnCall(frame, functionInstance, callNodeIndex, args);
+        final int paramCount = state.module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
+        final Object[] args = state.thiz.createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, virtualState.stackPointer);
+        return state.thiz.executeIndirectReturnCall(functionInstance, args);
     }
 
     @EarlyInline
@@ -4653,28 +4654,22 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 break;
             }
             case Bytecode.BR_RETURN_CALL: {
-                int paramCount = state.module.symbolTable().functionTypeParamCount(state.thiz.codeEntry.functionIndex());
+                final int paramCount = state.thiz.codeEntry.function().paramCount();
+                // move arguments to locals
                 unwindStack(frame, virtualState.stackPointer, 0, paramCount);
-                dropStack(frame, virtualState.stackPointer, virtualState.stackPointer - paramCount);
-                nextOffset = state.thiz.bytecodeStartOffset;
-                virtualState.stackPointer = state.thiz.codeEntry.stackBase();
+                // clear the entire stack (including legacy catch slots), except for the parameters
+                dropStack(frame, virtualState.stackPointer, paramCount);
+                // reinitialize all remaining locals
                 WasmFrame.initializeLocals(frame, paramCount, state.thiz.codeEntry);
+
+                nextOffset = state.thiz.bytecodeStartOffset;
+                virtualState.stackPointer = state.stackBase;
+                state.activeLegacyCatchCount = state.startActiveLegacyCatchCount;
                 /*
                  * As this return call forms a loop without explicit header,
                  * we report the loop count here.
                  */
-                if (CompilerDirectives.hasNextTier()) {
-                    int count = CompilerDirectives.inCompiledCode() ? ++state.backEdgeCounter.count : ++state.interpreterBackEdgeCounter;
-                    if (CompilerDirectives.injectBranchProbability(0.001, count >= REPORT_LOOP_STRIDE)) {
-                        TruffleSafepoint.poll(state.thiz);
-                        LoopNode.reportLoopCount(state.thiz, REPORT_LOOP_STRIDE);
-                        if (CompilerDirectives.inInterpreter()) {
-                            state.interpreterBackEdgeCounter = 0;
-                        } else {
-                            state.backEdgeCounter.count = 0;
-                        }
-                    }
-                }
+                updateBackEdgeCounterAndTryOSR(offset, state, virtualState, frame);
                 break;
             }
             default: {
@@ -4807,7 +4802,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         } else {
             WasmDirectCallNode directCallNode = (WasmDirectCallNode) callNode;
             WasmArguments.setModuleInstance(args, instance);
-            result = directCallNode.execute(args);
+            result = directCallNode.execute(args, function.containsReturnCalls());
         }
         return pushDirectCallResult(frame, stackPointer, function, result, WasmLanguage.get(this));
     }
@@ -4833,69 +4828,29 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         return callNode.execute(target, args);
     }
 
-    private Object executeDirectReturnCall(VirtualFrame frame, WasmInstance instance, int callNodeIndex, WasmFunction function, Object[] args) {
+    private Object executeDirectReturnCall(WasmInstance instance, WasmFunction function, Object[] args) {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
-        assert assertDirectReturnCall(instance, function, callNodeIndex);
-        CallTarget target;
+        final WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
+        final CallTarget target = instance.target(function.index());
         if (imported) {
-            WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
             WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
-            target = instance.target(function.index());
         } else {
-            WasmReturnCallNode callNode = (WasmReturnCallNode) callNodes[callNodeIndex];
             WasmArguments.setModuleInstance(args, instance);
-            target = callNode.directTarget();
         }
-        return executeReturnCall(frame, target, callNodeIndex, args, WasmLanguage.get(this));
+        return executeReturnCall(target, args);
     }
 
-    private boolean assertDirectReturnCall(WasmInstance instance, WasmFunction function, int callNodeIndex) {
-        WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
-        // functionInstance may be null for calls between functions of the same module.
-        if (functionInstance == null) {
-            assert !function.isImported();
-            return true;
-        }
-        assert functionInstance.context() == WasmContext.get(null);
-        if (callNodes[callNodeIndex] instanceof WasmReturnCallNode callNode) {
-            if (function.isImported()) {
-                assert callNode.directTarget() == null;
-            } else {
-                assert callNode.directTarget() != null;
-                assert functionInstance.target() == callNode.directTarget();
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private Object executeIndirectReturnCall(VirtualFrame frame, WasmFunctionInstance functionInstance, int callNodeIndex, Object[] args) {
+    private Object executeIndirectReturnCall(WasmFunctionInstance functionInstance, Object[] args) {
         WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
-        return executeReturnCall(frame, functionInstance.target(), callNodeIndex, args, WasmLanguage.get(this));
+        return executeReturnCall(functionInstance.target(), args);
     }
 
-    private Object executeReturnCall(VirtualFrame frame, CallTarget target, int callNodeIndex, Object[] args, WasmLanguage language) {
-        WasmArguments.setReturnCallMarker(args);
-        if (WasmArguments.getReturnCallMarker(frame.getArguments())) {
-            final WasmLanguage.ReturnCallData data = language.returnCallData();
-            data.target = target;
-            data.args = args;
-            return WasmConstant.RETURN_CALL_VALUE;
-        } else {
-            WasmReturnCallNode callNode = (WasmReturnCallNode) callNodes[callNodeIndex];
-            Object result = callNode.execute(target, args);
-            if (result == WasmConstant.RETURN_CALL_VALUE) {
-                // We only load and clean up the thread local when we start a tail-call chain.
-                final WasmLanguage.ReturnCallData data = language.returnCallData();
-                do {
-                    result = callNode.execute(data.target, data.args);
-                } while (result == WasmConstant.RETURN_CALL_VALUE);
-                data.target = null;
-                data.args = null;
-            }
-            return result;
-        }
+    private Object executeReturnCall(CallTarget target, Object[] args) {
+        final WasmLanguage.ReturnCallData data = WasmLanguage.get(this).returnCallData();
+        data.target = target;
+        data.args = args;
+        return WasmConstant.RETURN_CALL_VALUE;
     }
 
     /**
