@@ -13,7 +13,7 @@
   local PR_bench_libgraal_gate = c.tier3 + {
     # A single representative DaCapo workload keeps this below an hour while
     # still exercising the LibGraal PR-bench execution path.
-    job_prefix:: "gate-compiler-pr-bench-smoke",
+    job_prefix:: "gate-compiler-smoke",
     should_upload_results:: false,
     targets: ['tier3'],
     run: [
