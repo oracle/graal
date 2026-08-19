@@ -188,7 +188,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
         if (RuntimeClassLoading.isSupported() && RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
             Heap.getHeap().visitLoadedClasses((cls) -> {
                 DynamicHub hub = DynamicHub.fromClass(cls);
-                if (!hub.isArray()) {
+                if (!hub.isArray() && !hub.isPrimitive()) {
                     Log.log().string(AbstractRuntimeClassRegistry.traceMessage(hub.getName(), hub.getClassLoader(), null, "load", "image")).newline();
                 }
             });
