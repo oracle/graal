@@ -324,7 +324,6 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 @InternalVMMethod
 public final class Interpreter {
     static final String FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP = "Trying to load constant that is not part of the Native Image heap";
-    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
     private Interpreter() {
         throw VMError.shouldNotReachHere("private constructor");
@@ -3475,34 +3474,33 @@ public final class Interpreter {
 
         @AlwaysInline("Fold invoke opcode in individual handlers")
         private static long invokeBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
+            LinkedInvoke linkedInvoke = getOrLinkInvoke(state, curBCI, curOpcode);
+            Object[] calleeArgs = InterpreterToVM.createNewObjectArray(linkedInvoke.argumentKinds.length);
+            Object appendix = curOpcode == INVOKEVIRTUAL ? linkedInvoke.appendix : null;
+            virtualStack.popArguments(state, linkedInvoke.argumentKinds, calleeArgs, appendix);
+
+            if (curOpcode != INVOKESTATIC && linkedInvoke.hasReceiver) {
+                Object receiver = calleeArgs[0];
+                profileType(state, curBCI, receiver);
+                if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, receiver == null)) {
+                    throw SemanticJavaException.raiseNullPointerException();
+                }
+
+                if (GraalDirectives.injectBranchProbability(GraalDirectives.UNLIKELY_PROBABILITY, linkedInvoke.requiresSymbolicTypeCheck)) {
+                    ResolvedJavaType receiverType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+                    InterpreterResolvedJavaType symbolicHolder = linkedInvoke.symbolicHolder;
+                    if (symbolicHolder != null && !symbolicHolder.isAssignableFrom(receiverType)) {
+                        throw incompatibleInvokeReceiver(receiverType, symbolicHolder);
+                    }
+                }
+            }
+
             boolean preferStayInInterpreter = state.forceStayInInterpreter;
             if (debuggerEventsSupported()) {
                 preferStayInInterpreter |= state.beforeInvoke();
             }
 
             try {
-                LinkedInvoke linkedInvoke = getOrLinkInvoke(state, (int) curBCI, curOpcode);
-                int argumentCount = linkedInvoke.argumentKinds.length;
-                Object[] calleeArgs = GraalDirectives.injectBranchProbability(UNLIKELY_PROBABILITY, argumentCount == 0) ? EMPTY_ARGUMENTS : new Object[argumentCount];
-                virtualStack.popArguments(state, linkedInvoke.argumentKinds, calleeArgs, linkedInvoke.appendix);
-
-                if (curOpcode != INVOKESTATIC && linkedInvoke.hasReceiver) {
-                    Object receiver = calleeArgs[0];
-                    profileType(state, (int) curBCI, receiver);
-                    if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, receiver == null)) {
-                        throw SemanticJavaException.raiseNullPointerException();
-                    }
-
-                    if (GraalDirectives.injectBranchProbability(GraalDirectives.UNLIKELY_PROBABILITY, linkedInvoke.requiresSymbolicTypeCheck)) {
-                        ResolvedJavaType receiverType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
-
-                        InterpreterResolvedJavaType symbolicHolder = linkedInvoke.symbolicHolder;
-                        if (symbolicHolder != null && !symbolicHolder.isAssignableFrom(receiverType)) {
-                            throw incompatibleInvokeReceiver(receiverType, symbolicHolder);
-                        }
-                    }
-                }
-
                 Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, state.forceStayInInterpreter, preferStayInInterpreter, false);
                 if (linkedInvoke.returnKind != JavaKind.Void) {
                     virtualStack.pushKind(state, linkedInvoke.returnKind, retObj);
@@ -4200,7 +4198,7 @@ public final class Interpreter {
         return VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC constant: " + indyEntry);
     }
 
-    private static LinkedInvoke getOrLinkInvoke(InterpreterState state, int curBCI, int opcode) {
+    private static LinkedInvoke getOrLinkInvoke(InterpreterState state, long curBCI, int opcode) {
         char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
         assert opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL || opcode == INVOKESTATIC || opcode == INVOKEINTERFACE : Bytecodes.nameOf(opcode);
         LinkedInvoke linkedInvoke = state.getPeekLinkedInvoke(cpi, opcode);

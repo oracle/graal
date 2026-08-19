@@ -840,6 +840,13 @@ public final class InterpreterToVM {
         return createNewReferenceArrayImpl(componentType, length);
     }
 
+    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
+
+    @AlwaysInline("Keep invocation argument allocation in bytecode-handler stubs")
+    public static Object[] createNewObjectArray(int length) {
+        return GraalDirectives.injectBranchProbability(GraalDirectives.UNLIKELY_PROBABILITY, length == 0) ? EMPTY_ARGUMENTS : new Object[length];
+    }
+
     @NeverInline("Keep reference-array allocation and class-loading scope out of bytecode-handler stubs")
     private static Object createNewReferenceArrayImpl(InterpreterResolvedJavaType componentType, int length) throws SemanticJavaException {
         try (var _ = ClassLoading.allowArbitraryClassLoading(RuntimeClassLoading.isSupported())) {
