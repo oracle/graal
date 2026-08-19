@@ -116,6 +116,10 @@ public enum CPUTypeAMD64 implements CPUType {
     private final CPUTypeAMD64 parent;
     private final EnumSet<CPUFeature> specificFeatures;
 
+    private static final int GNU_PROPERTY_X86_ISA_1_V2 = 1 << 1;
+    private static final int GNU_PROPERTY_X86_ISA_1_V3 = 1 << 2;
+    private static final int GNU_PROPERTY_X86_ISA_1_V4 = 1 << 3;
+
     CPUTypeAMD64(String cpuTypeName, CPUFeature... features) {
         this(cpuTypeName, null, features);
     }
@@ -169,6 +173,19 @@ public enum CPUTypeAMD64 implements CPUType {
             value = getDefaultName(true);
         }
         return getCPUFeaturesForArch(value);
+    }
+
+    public static int getSelectedFeaturesGNUPropertyValue() {
+        EnumSet<CPUFeature> features = getSelectedFeatures();
+        if (features.containsAll(X86_64_V4.getFeatures())) {
+            return GNU_PROPERTY_X86_ISA_1_V4;
+        } else if (features.containsAll(X86_64_V3.getFeatures())) {
+            return GNU_PROPERTY_X86_ISA_1_V3;
+        } else if (features.containsAll(X86_64_V2.getFeatures())) {
+            return GNU_PROPERTY_X86_ISA_1_V2;
+        } else {
+            return 0;
+        }
     }
 
     public static EnumSet<CPUFeature> getCPUFeaturesForArch(String marchValue) {
