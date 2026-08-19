@@ -244,6 +244,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.TABLESWITCH;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 import static com.oracle.svm.interpreter.metadata.CremaTypeAccess.symbolToJvmciKind;
 import static jdk.graal.compiler.api.directives.GraalDirectives.FASTPATH_PROBABILITY;
+import static jdk.graal.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static jdk.graal.compiler.api.directives.GraalDirectives.uncheckedCast;
 
 import java.lang.invoke.MethodHandle;
@@ -323,6 +324,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 @InternalVMMethod
 public final class Interpreter {
     static final String FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP = "Trying to load constant that is not part of the Native Image heap";
+    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
     private Interpreter() {
         throw VMError.shouldNotReachHere("private constructor");
@@ -3480,7 +3482,8 @@ public final class Interpreter {
 
             try {
                 LinkedInvoke linkedInvoke = getOrLinkInvoke(state, (int) curBCI, curOpcode);
-                Object[] calleeArgs = state.allocateArguments(linkedInvoke.argumentKinds.length);
+                int argumentCount = linkedInvoke.argumentKinds.length;
+                Object[] calleeArgs = GraalDirectives.injectBranchProbability(UNLIKELY_PROBABILITY, argumentCount == 0) ? EMPTY_ARGUMENTS : new Object[argumentCount];
                 virtualStack.popArguments(state, linkedInvoke.argumentKinds, calleeArgs, linkedInvoke.appendix);
 
                 if (curOpcode != INVOKESTATIC && linkedInvoke.hasReceiver) {

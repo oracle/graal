@@ -399,11 +399,6 @@ final class InterpreterState {
         return InterpreterConstantPool.getPeekLinkedInvoke(uncheckedCachedEntryAt(cpi), opcode);
     }
 
-    @NeverInline("Keep invocation argument allocation out of bytecode-handler stubs")
-    Object[] allocateArguments(int length) {
-        return new Object[length];
-    }
-
     byte uncheckedTagValueAt(long cpi) {
         return UNSAFE.getByte(constantPoolTags, byteOffset(cpi));
     }
