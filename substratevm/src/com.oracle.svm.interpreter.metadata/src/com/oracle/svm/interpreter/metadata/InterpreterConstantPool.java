@@ -37,7 +37,6 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -51,6 +50,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.shared.NeverInline;
@@ -446,9 +446,8 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return null;
     }
 
-    public LinkedInvoke uncheckedPeekLinkedInvoke(int cpi, int opcode) {
+    public static LinkedInvoke getPeekLinkedInvoke(Object entry, int opcode) {
         assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
-        Object entry = uncheckedCachedEntryAt(cpi);
         if (entry instanceof LinkedInvokeCacheEntry linkedInvokeCacheEntry) {
             return linkedInvokeCacheEntry.get(opcode);
         }
@@ -518,22 +517,35 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
          * cached invoke path can use the published LinkedInvoke without re-querying stable method
          * and signature metadata on every execution.
          */
-        public final InterpreterUnresolvedSignature signature;
         public final JavaKind returnKind;
-        public final int parameterSlots;
         public final boolean hasReceiver;
         public final boolean requiresSymbolicTypeCheck;
+
+        public final JavaKind[] argumentKinds;
 
         public LinkedInvoke(InterpreterResolvedJavaType symbolicHolder, InterpreterResolvedJavaMethod seedMethod, CallKind callKind, Object appendix, boolean requiresInterfaceReceiverCheck) {
             this.symbolicHolder = symbolicHolder;
             this.seedMethod = seedMethod;
             this.callKind = callKind;
             this.appendix = appendix;
-            this.signature = seedMethod.getSignature();
+            InterpreterUnresolvedSignature signature = seedMethod.getSignature();
             this.returnKind = signature.getReturnKind();
             this.hasReceiver = !seedMethod.isStatic();
-            this.parameterSlots = signature.slotsForParameters(hasReceiver);
             this.requiresSymbolicTypeCheck = requiresInterfaceReceiverCheck;
+
+            int argumentCount = signature.getParameterCount(hasReceiver);
+            this.argumentKinds = new JavaKind[argumentCount];
+
+            if (hasReceiver) {
+                argumentKinds[0] = JavaKind.Object;
+                for (int i = 0; i < signature.getParameterCount(false); i++) {
+                    argumentKinds[i + 1] = signature.getParameterKind(i);
+                }
+            } else {
+                for (int i = 0; i < argumentCount; i++) {
+                    argumentKinds[i] = signature.getParameterKind(i);
+                }
+            }
         }
     }
 

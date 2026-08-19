@@ -320,14 +320,19 @@ public final class InterpreterFrameUtil {
     }
 
     @NeverInline("Keep argument array allocation and filling out of bytecode-handler stubs")
-    public static Object[] popArguments(InterpreterFrame frame, long top, boolean hasReceiver, InterpreterUnresolvedSignature signature) {
+    public static Object[] popArgumentsWithAppendix(InterpreterFrame frame, long top, boolean hasReceiver, InterpreterUnresolvedSignature signature, Object appendix) {
         int argCount = signature.getParameterCount(false);
 
         int extraParam = hasReceiver ? 1 : 0;
         final Object[] args = new Object[argCount + extraParam];
 
+        int lastStackArgument = argCount - 1;
+        assert argCount > 0 && signature.getParameterKind(lastStackArgument) == JavaKind.Object;
+        args[lastStackArgument + extraParam] = appendix;
+        lastStackArgument--;
+
         long argAt = top - 1;
-        for (int i = argCount - 1; i >= 0; --i) {
+        for (int i = lastStackArgument; i >= 0; --i) {
             JavaKind argKind = signature.getParameterKind(i);
             // @formatter:off
             switch (argKind) {

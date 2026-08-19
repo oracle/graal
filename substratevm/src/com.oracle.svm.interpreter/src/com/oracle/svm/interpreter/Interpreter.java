@@ -243,6 +243,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.SWAP;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.TABLESWITCH;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 import static com.oracle.svm.interpreter.metadata.CremaTypeAccess.symbolToJvmciKind;
+import static jdk.graal.compiler.api.directives.GraalDirectives.FASTPATH_PROBABILITY;
 import static jdk.graal.compiler.api.directives.GraalDirectives.uncheckedCast;
 
 import java.lang.invoke.MethodHandle;
@@ -3442,54 +3443,6 @@ public final class Interpreter {
             return advanceToNextBytecode(curBCI, QUICK_PUTFIELD, state, virtualStack);
         }
 
-        @AlwaysInline("Fold invoke opcode in individual handlers")
-        private static long invokeBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
-            boolean preferStayInInterpreter = state.forceStayInInterpreter;
-            SteppingControl steppingControl = null;
-            boolean stepEventDisabled = false;
-            if (debuggerEventsSupported()) {
-                Thread currentThread = Thread.currentThread();
-                if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
-                    // Disable stepping for inner frames, except for step into, where we must force
-                    // interpreter execution.
-                    steppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
-                    if (steppingControl != null) {
-                        steppingControl.pushFrame();
-                        if (!steppingControl.isActiveAtCurrentFrameDepth()) {
-                            DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, false);
-                            stepEventDisabled = true;
-                        }
-                        if (steppingControl.getDepth() == SteppingControl.STEP_INTO) {
-                            // For now force the callee to stay in interpreter.
-                            preferStayInInterpreter = true;
-                        }
-                    }
-                }
-            }
-
-            try {
-                long materializedTop = virtualStack.beginOutlinedCall(state);
-                int slotDelta = invoke(state, materializedTop, (int) curBCI, curOpcode, preferStayInInterpreter);
-                virtualStack.endOutlinedCall(slotDelta);
-            } finally {
-                if (debuggerEventsSupported()) {
-                    Thread currentThread = Thread.currentThread();
-                    SteppingControl newSteppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
-                    if (newSteppingControl != null) {
-                        if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
-                            newSteppingControl.popFrame();
-                        } else if (steppingControl == newSteppingControl && stepEventDisabled) {
-                            // Re-enable stepping events that could have been disabled by step
-                            // outer/out into inner frames.
-                            DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, true);
-                            newSteppingControl.popFrame();
-                        }
-                    }
-                }
-            }
-            return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
-        }
-
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEVIRTUAL)
         private static long invokevirtualHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
@@ -3518,11 +3471,148 @@ public final class Interpreter {
             return invokeBytecode(curBCI, state, INVOKEINTERFACE, virtualStack);
         }
 
+        @AlwaysInline("Fold invoke opcode in individual handlers")
+        private static long invokeBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
+            boolean preferStayInInterpreter = state.forceStayInInterpreter;
+            if (debuggerEventsSupported()) {
+                preferStayInInterpreter |= state.beforeInvoke();
+            }
+
+            try {
+                LinkedInvoke linkedInvoke = getOrLinkInvoke(state, (int) curBCI, curOpcode);
+                Object[] calleeArgs = state.allocateArguments(linkedInvoke.argumentKinds.length);
+                virtualStack.popArguments(state, linkedInvoke.argumentKinds, calleeArgs, linkedInvoke.appendix);
+
+                if (curOpcode != INVOKESTATIC && linkedInvoke.hasReceiver) {
+                    Object receiver = calleeArgs[0];
+                    profileType(state, (int) curBCI, receiver);
+                    if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, receiver == null)) {
+                        throw SemanticJavaException.raiseNullPointerException();
+                    }
+
+                    if (GraalDirectives.injectBranchProbability(GraalDirectives.UNLIKELY_PROBABILITY, linkedInvoke.requiresSymbolicTypeCheck)) {
+                        ResolvedJavaType receiverType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+
+                        InterpreterResolvedJavaType symbolicHolder = linkedInvoke.symbolicHolder;
+                        if (symbolicHolder != null && !symbolicHolder.isAssignableFrom(receiverType)) {
+                            throw incompatibleInvokeReceiver(receiverType, symbolicHolder);
+                        }
+                    }
+                }
+
+                Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, state.forceStayInInterpreter, preferStayInInterpreter, false);
+                if (linkedInvoke.returnKind != JavaKind.Void) {
+                    virtualStack.pushKind(state, linkedInvoke.returnKind, retObj);
+                }
+            } finally {
+                if (debuggerEventsSupported()) {
+                    state.afterInvoke();
+                }
+            }
+            return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+        }
+
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEDYNAMIC)
         private static long invokedynamicHandler(long curBCI, InterpreterState state, InterpreterVirtualStack virtualStack) {
             virtualStack.killUnusedFields();
-            return invokeBytecode(curBCI, state, INVOKEDYNAMIC, virtualStack);
+            boolean preferStayInInterpreter = state.forceStayInInterpreter;
+            if (debuggerEventsSupported()) {
+                preferStayInInterpreter |= state.beforeInvoke();
+            }
+
+            try {
+                long materializedTop = virtualStack.beginOutlinedCall(state);
+                int slotDelta = invokeDynamicBytecode(state, materializedTop, (int) curBCI, preferStayInInterpreter);
+                virtualStack.endOutlinedCall(slotDelta);
+            } finally {
+                if (debuggerEventsSupported()) {
+                    state.afterInvoke();
+                }
+            }
+            return advanceToNextBytecode(curBCI, INVOKEDYNAMIC, state, virtualStack);
+        }
+
+        @NeverInline("Keep stack-consuming INVOKEDYNAMIC invocation out of bytecode-handler stubs")
+        private static int invokeDynamicBytecode(InterpreterState state, long top, int curBCI, boolean preferStayInInterpreter) {
+            int fullCPI = BytecodeStream.uncheckedReadCPI4(state.code, curBCI);
+            if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, fullCPI == 0)) {
+                // This can happen for the debugger
+                throw noSuchMethodError(INVOKEDYNAMIC, null);
+            }
+
+            Object appendix;
+            InterpreterResolvedJavaMethod seedMethod;
+
+            int indyCPI = fullCPI >>> 16;
+            int extraCPI = fullCPI & 0xFFFF;
+            InterpreterResolvedJavaMethod method = state.method;
+            Object indyEntry = method.getConstantPool().uncheckedResolvedAt(indyCPI, method.getDeclaringClass());
+            if (indyEntry instanceof ResolvedInvokeDynamicConstant invokeDynamicConstant) {
+                // runtime-loaded case
+                if (extraCPI == 0) {
+                    extraCPI = linkInvokeDynamicCallSite(invokeDynamicConstant, method, state.code, curBCI, indyCPI);
+                }
+                CallSiteLink link = invokeDynamicConstant.getCallSiteLink(method, state.code, curBCI, extraCPI);
+                if (link instanceof SuccessfulCallSiteLink successfulCallSiteLink) {
+                    appendix = successfulCallSiteLink.getUnboxedAppendix();
+                    seedMethod = successfulCallSiteLink.getInvoker();
+                } else {
+                    throw SemanticJavaException.raise(((FailedCallSiteLink) link).getFailure());
+                }
+            } else if (indyEntry instanceof InterpreterResolvedJavaMethod entryMethod) {
+                // AOT case
+                seedMethod = entryMethod;
+                Object appendixEntry = method.getConstantPool().uncheckedResolvedAt(extraCPI, method.getDeclaringClass());
+                if (JavaConstant.NULL_POINTER.equals(appendixEntry)) {
+                    // The appendix is deliberately null.
+                    appendix = null;
+                } else if (appendixEntry instanceof ReferenceConstant<?> referenceConstant) {
+                    appendix = referenceConstant.getReferent();
+                    if (appendix == null) {
+                        throw SemanticJavaException.raiseIncompatibleClassChangeError("INVOKEDYNAMIC appendix was not included in the image heap");
+                    }
+                } else {
+                    throw unexpectedInvokeDynamicAppendixConstant(appendixEntry);
+                }
+            } else {
+                throw unexpectedInvokeDynamicConstant(indyEntry);
+            }
+
+            InterpreterFrame callerFrame = state.frame;
+            InterpreterUnresolvedSignature seedSignature = seedMethod.getSignature();
+            boolean hasReceiver = !seedMethod.isStatic();
+
+            // The synthetic appendix is passed directly and does not occupy an operand-stack slot.
+            int parameterSlots = seedSignature.slotsForParameters(hasReceiver) - 1;
+            long resultAt = top - parameterSlots;
+            int slotDelta = (int) (resultAt - top);
+
+            Object[] calleeArgs = InterpreterFrameUtil.popArgumentsWithAppendix(callerFrame, top, hasReceiver, seedSignature, appendix);
+            if (hasReceiver) {
+                Object receiver = calleeArgs[0];
+                profileType(state, curBCI, receiver);
+                receiver = nullCheck(receiver);
+                calleeArgs[0] = receiver;
+            }
+
+            Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, CallKind.DIRECT, state.forceStayInInterpreter, preferStayInInterpreter, false);
+            slotDelta += InterpreterFrameUtil.putKind(callerFrame, resultAt, retObj, seedSignature.getReturnKind());
+            return slotDelta;
+        }
+
+        private static int linkInvokeDynamicCallSite(ResolvedInvokeDynamicConstant invokeDynamicConstant, InterpreterResolvedJavaMethod method, byte[] code, int curBCI, int indyCPI) {
+            int extraCPI;
+            try {
+                extraCPI = invokeDynamicConstant.link((RuntimeInterpreterConstantPool) method.getConstantPool(), method.getDeclaringClass().getJavaClass(), method, curBCI);
+                assert extraCPI != 0;
+            } catch (Throwable e) {
+                throw SemanticJavaException.raiseInlined(e);
+            }
+            method.patchInvokeDynamicExtraCPI(curBCI, extraCPI);
+            assert BytecodeStream.readIndyExtraCPIVolatile(code, curBCI) == extraCPI;
+            assert BytecodeStream.uncheckedReadCPI2(code, curBCI) == indyCPI;
+            return extraCPI;
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
@@ -3804,7 +3894,7 @@ public final class Interpreter {
         JavaKind returnType = method.getSignature().getReturnKind();
         // @formatter:off
         return switch (returnType) {
-            case Boolean -> stackIntToBoolean(virtualStack.peekInt( state, -1));
+            case Boolean -> stackIntToBoolean(virtualStack.peekInt(state, -1));
             case Byte    -> (byte) virtualStack.peekInt(state, -1);
             case Short   -> (short) virtualStack.peekInt(state, -1);
             case Char    -> (char) virtualStack.peekInt(state, -1);
@@ -4097,127 +4187,6 @@ public final class Interpreter {
         return method.getConstantPool();
     }
 
-    @NeverInline("Keep stack-consuming invocation out of bytecode-handler stubs")
-    private static int invoke(InterpreterState state, long top, int curBCI, int opcode, boolean preferStayInInterpreter) {
-        InterpreterFrame callerFrame = state.frame;
-        InterpreterResolvedJavaMethod method = state.method;
-        byte[] code = state.code;
-        boolean forceStayInInterpreter = state.forceStayInInterpreter;
-        long invokeTop = top;
-
-        InterpreterResolvedJavaType symbolicHolder = null;
-        InterpreterResolvedJavaMethod seedMethod;
-        InterpreterUnresolvedSignature seedSignature;
-        CallKind callKind;
-        JavaKind returnKind;
-        int parameterSlots;
-        boolean hasReceiver;
-        boolean requiresSymbolicTypeCheck = false;
-
-        if (opcode == INVOKEDYNAMIC) {
-            int fullCPI = BytecodeStream.uncheckedReadCPI4(code, curBCI);
-            if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, fullCPI == 0)) {
-                // This can happen for the debugger
-                throw noSuchMethodError(opcode, null);
-            }
-            int indyCPI = fullCPI >>> 16;
-            int extraCPI = fullCPI & 0xFFFF;
-            Object indyEntry = method.getConstantPool().uncheckedResolvedAt(indyCPI, method.getDeclaringClass());
-            Object appendix;
-            if (indyEntry instanceof ResolvedInvokeDynamicConstant invokeDynamicConstant) {
-                // runtime-loaded case
-                if (extraCPI == 0) {
-                    extraCPI = linkInvokeDynamicCallSite(invokeDynamicConstant, method, code, curBCI, indyCPI);
-                }
-                CallSiteLink link = invokeDynamicConstant.getCallSiteLink(method, code, curBCI, extraCPI);
-                if (link instanceof SuccessfulCallSiteLink successfulCallSiteLink) {
-                    appendix = successfulCallSiteLink.getUnboxedAppendix();
-                    seedMethod = successfulCallSiteLink.getInvoker();
-                } else {
-                    throw SemanticJavaException.raise(((FailedCallSiteLink) link).getFailure());
-                }
-            } else if (indyEntry instanceof InterpreterResolvedJavaMethod entryMethod) {
-                // AOT case
-                seedMethod = entryMethod;
-                Object appendixEntry = method.getConstantPool().uncheckedResolvedAt(extraCPI, method.getDeclaringClass());
-                if (JavaConstant.NULL_POINTER.equals(appendixEntry)) {
-                    // The appendix is deliberately null.
-                    appendix = null;
-                } else if (appendixEntry instanceof ReferenceConstant<?> referenceConstant) {
-                    appendix = referenceConstant.getReferent();
-                    if (appendix == null) {
-                        throw SemanticJavaException.raiseIncompatibleClassChangeError("INVOKEDYNAMIC appendix was not included in the image heap");
-                    }
-                } else {
-                    throw unexpectedInvokeDynamicAppendixConstant(appendixEntry);
-                }
-            } else {
-                throw unexpectedInvokeDynamicConstant(indyEntry);
-            }
-            InterpreterFrameUtil.putObject(callerFrame, top, appendix);
-            invokeTop = top + 1;
-            callKind = CallKind.DIRECT;
-            seedSignature = seedMethod.getSignature();
-            returnKind = seedSignature.getReturnKind();
-            hasReceiver = !seedMethod.isStatic();
-            parameterSlots = seedSignature.slotsForParameters(hasReceiver);
-            requiresSymbolicTypeCheck = false;
-        } else {
-            LinkedInvoke linkedInvoke = getOrLinkInvoke(method, code, curBCI, opcode);
-            symbolicHolder = linkedInvoke.symbolicHolder;
-            seedMethod = linkedInvoke.seedMethod;
-            callKind = linkedInvoke.callKind;
-            seedSignature = linkedInvoke.signature;
-            returnKind = linkedInvoke.returnKind;
-            hasReceiver = opcode != INVOKESTATIC && linkedInvoke.hasReceiver;
-            parameterSlots = linkedInvoke.parameterSlots;
-            requiresSymbolicTypeCheck = linkedInvoke.requiresSymbolicTypeCheck;
-            if (linkedInvoke.appendix != null) {
-                InterpreterFrameUtil.putObject(callerFrame, top, linkedInvoke.appendix);
-                invokeTop = top + 1;
-            }
-        }
-
-        long resultAt = invokeTop - parameterSlots;
-        // The slot delta is relative to the original top-of-stack.
-        int slotDelta = (int) (resultAt - top);
-
-        Object[] calleeArgs = InterpreterFrameUtil.popArguments(callerFrame, invokeTop, hasReceiver, seedSignature);
-        if (hasReceiver) {
-            Object receiver = calleeArgs[0];
-            profileType(state, curBCI, receiver);
-            receiver = nullCheck(receiver);
-            calleeArgs[0] = receiver;
-            if (requiresSymbolicTypeCheck) {
-                ResolvedJavaType receiverType = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
-                if (symbolicHolder != null && !symbolicHolder.isAssignableFrom(receiverType)) {
-                    throw incompatibleInvokeReceiver(receiverType, symbolicHolder);
-                }
-            }
-        }
-
-        Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, callKind, forceStayInInterpreter, preferStayInInterpreter, false);
-
-        slotDelta += InterpreterFrameUtil.putKind(callerFrame, resultAt, retObj, returnKind);
-
-        return slotDelta;
-    }
-
-    @NeverInline("Keep INVOKEDYNAMIC first-link work out of the bytecode-handler stub")
-    private static int linkInvokeDynamicCallSite(ResolvedInvokeDynamicConstant invokeDynamicConstant, InterpreterResolvedJavaMethod method, byte[] code, int curBCI, int indyCPI) {
-        int extraCPI;
-        try {
-            extraCPI = invokeDynamicConstant.link((RuntimeInterpreterConstantPool) method.getConstantPool(), method.getDeclaringClass().getJavaClass(), method, curBCI);
-            assert extraCPI != 0;
-        } catch (Throwable e) {
-            throw SemanticJavaException.raiseInlined(e);
-        }
-        method.patchInvokeDynamicExtraCPI(curBCI, extraCPI);
-        assert BytecodeStream.readIndyExtraCPIVolatile(code, curBCI) == extraCPI;
-        assert BytecodeStream.uncheckedReadCPI2(code, curBCI) == indyCPI;
-        return extraCPI;
-    }
-
     @NeverInline("Keep unexpected INVOKEDYNAMIC appendix diagnostics out of the bytecode-handler stub")
     private static RuntimeException unexpectedInvokeDynamicAppendixConstant(Object appendixEntry) {
         return VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC appendix constant: " + appendixEntry);
@@ -4228,15 +4197,14 @@ public final class Interpreter {
         return VMError.shouldNotReachHere("Unexpected INVOKEDYNAMIC constant: " + indyEntry);
     }
 
-    private static LinkedInvoke getOrLinkInvoke(InterpreterResolvedJavaMethod method, byte[] code, int curBCI, int opcode) {
-        char cpi = BytecodeStream.uncheckedReadCPI2(code, curBCI);
+    private static LinkedInvoke getOrLinkInvoke(InterpreterState state, int curBCI, int opcode) {
+        char cpi = BytecodeStream.uncheckedReadCPI2(state.code, curBCI);
         assert opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL || opcode == INVOKESTATIC || opcode == INVOKEINTERFACE : Bytecodes.nameOf(opcode);
-        InterpreterConstantPool constantPool = getConstantPool(method);
-        LinkedInvoke linkedInvoke = constantPool.uncheckedPeekLinkedInvoke(cpi, opcode);
-        if (linkedInvoke != null) {
+        LinkedInvoke linkedInvoke = state.getPeekLinkedInvoke(cpi, opcode);
+        if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, linkedInvoke != null)) {
             return linkedInvoke;
         }
-        return linkInvoke(method, opcode, cpi);
+        return linkInvoke(state.method, opcode, cpi);
     }
 
     @NeverInline("Keep invoke resolution out of bytecode-handler stubs")

@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter;
 import com.oracle.svm.shared.AlwaysInline;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Owns the materialized operand-stack pointer and caches up to two primitive operand-stack
@@ -141,6 +142,22 @@ final class InterpreterVirtualStack {
         top++;
     }
 
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    void pushKind(InterpreterState state, JavaKind kind, Object value) {
+        switch (kind) {
+            case Boolean -> pushInt(state, ((Boolean) value) ? 1 : 0);
+            case Byte -> pushInt(state, (Byte) value);
+            case Short -> pushInt(state, (Short) value);
+            case Char -> pushInt(state, (Character) value);
+            case Int -> pushInt(state, (Integer) value);
+            case Float -> pushFloat(state, (Float) value);
+            case Long -> pushLong(state, (Long) value);
+            case Double -> pushDouble(state, (Double) value);
+            case Object -> pushObject(state, value);
+            default -> throw InterpreterUtil.shouldNotReachHere("%s", kind);
+        }
+    }
+
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
     void pushReturnAddress(InterpreterState state, int targetBCI) {
         materialize(state);
@@ -206,6 +223,22 @@ final class InterpreterVirtualStack {
         } else {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    private Object popKind(InterpreterState state, JavaKind kind) {
+        return switch (kind) {
+            case Boolean -> (popInt(state) & 1) != 0;
+            case Byte -> (byte) popInt(state);
+            case Short -> (short) popInt(state);
+            case Char -> (char) popInt(state);
+            case Int -> popInt(state);
+            case Float -> popFloat(state);
+            case Long -> popLong(state);
+            case Double -> popDouble(state);
+            case Object -> popObject(state);
+            default -> throw InterpreterUtil.shouldNotReachHere("%s", kind);
+        };
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
@@ -466,6 +499,29 @@ final class InterpreterVirtualStack {
     private void overwriteSlot(InterpreterState state, long offset, long value) {
         state.clearReference(top, offset);
         fillSlot(state, offset, value);
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    void popArguments(InterpreterState state, JavaKind[] argKinds, Object[] args, Object appendix) {
+        int index = args.length - 1;
+        if (appendix != null) {
+            assert argKinds[index] == JavaKind.Object;
+            args[index] = appendix;
+            index--;
+        }
+        if (tosLevel > 0 && index >= 0) {
+            args[index] = popKind(state, argKinds[index]);
+            index--;
+        }
+        if (tosLevel > 0 && index >= 0) {
+            args[index] = popKind(state, argKinds[index]);
+            index--;
+        }
+        materialize(state);
+
+        for (; index >= 0; index--) {
+            args[index] = popKind(state, argKinds[index]);
+        }
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")

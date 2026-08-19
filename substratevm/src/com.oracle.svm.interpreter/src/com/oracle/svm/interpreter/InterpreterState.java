@@ -26,10 +26,15 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.interpreter.debug.DebuggerEvents;
+import com.oracle.svm.interpreter.debug.EventKind;
+import com.oracle.svm.interpreter.debug.SteppingControl;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -54,6 +59,8 @@ final class InterpreterState {
     final int[] constantPoolEntries;
     final MethodProfile methodProfile;
     final boolean forceStayInInterpreter;
+    private SteppingControl steppingControl;
+    private boolean stepEventDisabled;
     int debuggerEventFlags;
     int opcode;
     final int indent;
@@ -73,6 +80,48 @@ final class InterpreterState {
         this.debuggerEventFlags = debuggerEventFlags;
         this.indent = indent;
         this.opcode = -1;
+    }
+
+    @NeverInline("Keep debugger stepping setup out of bytecode-handler stubs")
+    boolean beforeInvoke() {
+        steppingControl = null;
+        stepEventDisabled = false;
+
+        boolean preferStayInInterpreter = false;
+        Thread currentThread = Thread.currentThread();
+        if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+            // Disable stepping for inner frames, except for step into, where we must force
+            // interpreter execution.
+            steppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
+            if (steppingControl != null) {
+                steppingControl.pushFrame();
+                if (!steppingControl.isActiveAtCurrentFrameDepth()) {
+                    DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, false);
+                    stepEventDisabled = true;
+                }
+                if (steppingControl.getDepth() == SteppingControl.STEP_INTO) {
+                    // For now force the callee to stay in interpreter.
+                    preferStayInInterpreter = true;
+                }
+            }
+        }
+        return preferStayInInterpreter;
+    }
+
+    @NeverInline("Keep debugger stepping cleanup out of bytecode-handler stubs")
+    void afterInvoke() {
+        Thread currentThread = Thread.currentThread();
+        SteppingControl newSteppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
+        if (newSteppingControl != null) {
+            if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+                newSteppingControl.popFrame();
+            } else if (steppingControl == newSteppingControl && stepEventDisabled) {
+                // Re-enable stepping events that could have been disabled by step outer/out into
+                // inner frames.
+                DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, true);
+                newSteppingControl.popFrame();
+            }
+        }
     }
 
     int getIntStatic(long slot) {
@@ -344,6 +393,15 @@ final class InterpreterState {
 
     Object uncheckedCachedEntryAt(long cpi) {
         return UNSAFE.getReference(cachedEntries, referenceOffset(cpi, 0));
+    }
+
+    LinkedInvoke getPeekLinkedInvoke(long cpi, int opcode) {
+        return InterpreterConstantPool.getPeekLinkedInvoke(uncheckedCachedEntryAt(cpi), opcode);
+    }
+
+    @NeverInline("Keep invocation argument allocation out of bytecode-handler stubs")
+    Object[] allocateArguments(int length) {
+        return new Object[length];
     }
 
     byte uncheckedTagValueAt(long cpi) {
