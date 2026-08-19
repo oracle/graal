@@ -4533,54 +4533,63 @@ public final class Interpreter {
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Byte -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Char -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Short -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Int -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Float -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Long -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop2(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Double -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop2(state, false);
+                virtualStack.anchorUpdatedValues();
             }
             case Object -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             default -> {
                 GraalDirectives.injectSwitchCaseProbability(0.0);
@@ -4607,6 +4616,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(state, -1)), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Byte -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4615,6 +4625,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Char -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4623,6 +4634,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldChar((char) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Short -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4631,6 +4643,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldShort((short) virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Int -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4639,6 +4652,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldInt(virtualStack.peekInt(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Float -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4647,6 +4661,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldFloat(virtualStack.peekFloat(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Long -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4655,6 +4670,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldLong(virtualStack.peekLong(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop2(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Double -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4663,6 +4679,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldDouble(virtualStack.peekDouble(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop2(state, false);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             case Object -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4671,6 +4688,7 @@ public final class Interpreter {
                 InterpreterToVM.setFieldObject(virtualStack.peekObject(state, -1), receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pop1(state);
+                virtualStack.anchorUpdatedValues();
             }
             default -> {
                 GraalDirectives.injectSwitchCaseProbability(0.0);
@@ -4695,46 +4713,55 @@ public final class Interpreter {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldBoolean(receiver, GraalDirectives.anchorValue(field), true) ? 1 : 0);
+                virtualStack.anchorUpdatedValues();
             }
             case Byte -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldByte(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Char -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldChar(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Short -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldShort(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Int -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldInt(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Double -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushDouble(state, InterpreterToVM.getFieldDouble(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Float -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushFloat(state, InterpreterToVM.getFieldFloat(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Long -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushLong(state, InterpreterToVM.getFieldLong(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Object -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushObject(state, InterpreterToVM.getFieldObject(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             default -> {
                 GraalDirectives.injectSwitchCaseProbability(0.0);
@@ -4775,6 +4802,7 @@ public final class Interpreter {
                 int value = InterpreterToVM.getFieldBoolean(receiver, GraalDirectives.anchorValue(field), true) ? 1 : 0;
                 virtualStack.pop1(state);
                 virtualStack.pushInt(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Byte -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4782,6 +4810,7 @@ public final class Interpreter {
                 int value = InterpreterToVM.getFieldByte(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pushInt(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Char -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4789,6 +4818,7 @@ public final class Interpreter {
                 int value = InterpreterToVM.getFieldChar(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pushInt(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Short -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4796,6 +4826,7 @@ public final class Interpreter {
                 int value = InterpreterToVM.getFieldShort(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pushInt(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Int -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4803,6 +4834,7 @@ public final class Interpreter {
                 int value = InterpreterToVM.getFieldInt(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pushInt(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Float -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4810,6 +4842,7 @@ public final class Interpreter {
                 float value = InterpreterToVM.getFieldFloat(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pushFloat(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Long -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4817,6 +4850,7 @@ public final class Interpreter {
                 long value = InterpreterToVM.getFieldLong(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pushLong(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Double -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4824,6 +4858,7 @@ public final class Interpreter {
                 double value = InterpreterToVM.getFieldDouble(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state);
                 virtualStack.pushDouble(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             case Object -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
@@ -4831,6 +4866,7 @@ public final class Interpreter {
                 Object value = InterpreterToVM.getFieldObject(receiver, GraalDirectives.anchorValue(field), true);
                 virtualStack.pop1(state, false);
                 virtualStack.pushObject(state, value);
+                virtualStack.anchorUpdatedValues();
             }
             default -> {
                 GraalDirectives.injectSwitchCaseProbability(0.0);
