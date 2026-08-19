@@ -48,6 +48,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.BuilderUtil;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -79,8 +80,8 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -280,10 +281,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      * Returns the original types explicitly marked with a class-level {@link Delete}.
      */
     public List<ResolvedJavaType> getDeletedTypes() {
-        return deleteAnnotations.keySet().stream()
-                        .filter(ResolvedJavaType.class::isInstance)
-                        .map(ResolvedJavaType.class::cast)
-                        .toList();
+        return deleteAnnotations.keySet().stream().filter(ResolvedJavaType.class::isInstance).map(ResolvedJavaType.class::cast).toList();
     }
 
     /**
@@ -291,10 +289,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      * both the original target method and the annotated deletion declaration.
      */
     public List<ResolvedJavaMethod> getDeletedMethods() {
-        return deleteAnnotations.keySet().stream()
-                        .filter(ResolvedJavaMethod.class::isInstance)
-                        .map(ResolvedJavaMethod.class::cast)
-                        .toList();
+        return deleteAnnotations.keySet().stream().filter(ResolvedJavaMethod.class::isInstance).map(ResolvedJavaMethod.class::cast).toList();
     }
 
     public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {
@@ -589,7 +584,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private void handleFieldInAliasClass(ResolvedJavaField annotated, ResolvedJavaType originalType) {
-        if (skipExcludedPlatform(annotated) || annotated.isSynthetic()) {
+        /* Assertion status fields must be mapped so runtime-initialized alias classes can retain their assertion code. */
+        boolean assertionStatusField = annotated.isSynthetic() && annotated.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME);
+        if (skipExcludedPlatform(annotated) || (annotated.isSynthetic() && !assertionStatusField)) {
             return;
         }
 
@@ -599,10 +596,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (aliasAnnotation != null ? 1 : 0) + (injectAnnotation != null ? 1 : 0);
         if (numAnnotations == 0) {
-            guarantee(annotated.getName().equals("$assertionsDisabled"), "One of @Delete, @Alias, or @Inject must be used: %s", annotated);
+            guarantee(annotated.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME), "One of @Delete, @Alias, or @Inject must be used: %s", annotated);
             /*
              * The field $assertionsDisabled can be present in the original class, but does not have
-             * to. We treat it like an optional @Alias fields without field value recomputation.
+             * to be. We treat it like an optional @Alias field without field value recomputation.
              */
             ResolvedJavaField original = findOriginalField(annotated, originalType, true);
             if (original != null) {

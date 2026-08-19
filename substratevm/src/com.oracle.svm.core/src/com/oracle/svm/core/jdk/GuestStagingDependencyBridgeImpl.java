@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
@@ -180,6 +181,16 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public void updateRuntimeAssertionStatus(String classOrPackage, boolean enable) {
+        AssertionsSupport.singleton().updateRuntimeAssertionStatus(classOrPackage, enable);
+    }
+
+    @Override
+    public void updateRuntimeSystemAssertionStatus(boolean enable) {
+        AssertionsSupport.singleton().updateRuntimeSystemAssertionStatus(enable);
+    }
+
+    @Override
     public void endOfParsing() {
         maybeReportImageClasses();
     }
@@ -188,7 +199,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
         if (RuntimeClassLoading.isSupported() && RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
             Heap.getHeap().visitLoadedClasses((cls) -> {
                 DynamicHub hub = DynamicHub.fromClass(cls);
-                if (!hub.isArray()) {
+                if (!hub.isArray() && !hub.isPrimitive()) {
                     Log.log().string(AbstractRuntimeClassRegistry.traceMessage(hub.getName(), hub.getClassLoader(), null, "load", "image")).newline();
                 }
             });

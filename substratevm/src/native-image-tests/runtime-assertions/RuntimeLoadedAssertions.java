@@ -22,33 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.reflect;
+package runtimeassertions;
 
-import org.junit.Assert;
-import org.junit.Test;
+/// Provides assertion testing for a runtime loaded class.
+public final class RuntimeLoadedAssertions {
 
-import com.oracle.svm.test.AddExports;
-import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
-
-@AddExports("java.base/jdk.internal.reflect")
-public class SubstrateConstructorAccessorTest {
-
-    static final class DeclaringClass {
+    private RuntimeLoadedAssertions() {
     }
 
-    @Test
-    public void checkReceiverRejectsWrongReceiverType() {
-        IllegalArgumentException exception = Assert.assertThrows(IllegalArgumentException.class, () -> SubstrateConstructorAccessor.checkReceiver(DeclaringClass.class, ""));
-        Assert.assertTrue(exception.getMessage().contains(DeclaringClass.class.getTypeName()));
-    }
-
-    @Test
-    public void checkReceiverRejectsNullReceiver() {
-        Assert.assertThrows(NullPointerException.class, () -> SubstrateConstructorAccessor.checkReceiver(DeclaringClass.class, null));
-    }
-
-    @Test
-    public void checkReceiverAcceptsDeclaringClassReceiver() {
-        SubstrateConstructorAccessor.checkReceiver(DeclaringClass.class, new DeclaringClass());
+    /// Reports whether assertions are enabled for this runtime loaded class.
+    public static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert (enabled = true) == true;
+        return enabled;
     }
 }

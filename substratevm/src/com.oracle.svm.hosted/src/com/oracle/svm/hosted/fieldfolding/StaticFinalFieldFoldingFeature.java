@@ -41,11 +41,10 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -58,6 +57,8 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
@@ -256,7 +257,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
             if (singleton.baseLayerFieldFoldingInfos.containsKey(key.getId())) {
                 boolean priorLayerStatus = singleton.baseLayerFieldFoldingInfos.get(key.getId()).initializationStatus();
                 boolean currentLayerStatus = singleton.fieldInitializationStatus[entry.getValue()];
-                assert priorLayerStatus == currentLayerStatus : "Field %s initialization status was %s in the base layer, but is %s in the application"
+                assert priorLayerStatus == currentLayerStatus : "Field %s initialization status was %s in the base layer, but is %s in the application" //
                                 .formatted(key, priorLayerStatus, currentLayerStatus);
             }
         }
@@ -351,7 +352,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
      * normal way how static final fields are initialized.
      */
     private static void analyzeStoreInClassInitializer(StoreFieldNode node, AnalysisField field, Map<AnalysisField, JavaConstant> optimizableFields, EconomicSet<AnalysisField> ineligibleFields) {
-        if (field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
+        if (field.isSynthetic() && field.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
             /*
              * Loads of assertion status fields are constant folded using a different mechanism, so
              * no need to handle them here.
@@ -521,7 +522,7 @@ class StaticFinalFieldFoldingSingleton {
                     var fieldCheckIndexesBuilder = staticFinalFieldFoldingSingleton.initFieldCheckIndexes(fieldCheckIndexes.size());
                     var fieldInitializationStatusListBuilder = staticFinalFieldFoldingSingleton.initFieldInitializationStatusList(fieldInitializationStatusList.size());
                     var bytecodeParsedFoldedFieldValuesListBuilder = staticFinalFieldFoldingSingleton.initBytecodeParsedFoldedFieldValues(bytecodeParsedFoldedFieldValuesList.size());
-                    var afterParsingHooksDoneFoldedFieldValuesListBuilder = staticFinalFieldFoldingSingleton
+                    var afterParsingHooksDoneFoldedFieldValuesListBuilder = staticFinalFieldFoldingSingleton //
                                     .initAfterParsingHooksDoneFoldedFieldValues(afterParsingHooksDoneFoldedFieldValuesList.size());
                     for (int i = 0; i < fields.size(); ++i) {
                         fieldsBuilder.set(i, fields.get(i));

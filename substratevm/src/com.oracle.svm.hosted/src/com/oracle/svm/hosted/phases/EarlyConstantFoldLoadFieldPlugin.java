@@ -27,13 +27,11 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
-
-import com.oracle.svm.util.OriginalClassProvider;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -48,8 +46,6 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
     private final Map<ResolvedJavaType, ResolvedJavaType> primitiveTypes;
 
-    private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
-
     public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess) {
 
         primitiveTypes = new HashMap<>();
@@ -62,15 +58,9 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
     @Override
     public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
-        if (field.isSynthetic() && field.getName().startsWith(SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
-            /*
-             * Intercept assertion status: the value of the field during image generation does not
-             * matter at all (because it is the hosted assertion status), we instead return the
-             * appropriate runtime assertion status.
-             */
-            Class<?> javaClass = OriginalClassProvider.getJavaClass(field.getDeclaringClass());
-            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
-            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!assertionsEnabled));
+        Boolean enabled = ClassInitializationSupport.foldedAssertionStatus(field);
+        if (enabled != null) {
+            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!enabled));
             return true;
         }
 
@@ -88,4 +78,5 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
         return false;
     }
+
 }

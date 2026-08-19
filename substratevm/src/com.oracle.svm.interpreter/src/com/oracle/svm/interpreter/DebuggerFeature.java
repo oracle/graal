@@ -70,10 +70,10 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -153,7 +153,6 @@ public class DebuggerFeature implements InternalFeature {
     private final List<ResolvedJavaType> classesUsedByInterpreter = new ArrayList<>();
     private Set<AnalysisMethod> methodsProcessedDuringAnalysis;
     private InvocationPlugins invocationPlugins;
-    private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -452,15 +451,15 @@ public class DebuggerFeature implements InternalFeature {
                     if (staticField instanceof AnalysisField analysisStaticField && !analysisStaticField.isWritten()) {
                         /*
                          * Assertions are implemented by generating a boolean $assertionsDisabled
-                         * static field, but native-image substitutes the field reads by a constant,
-                         * making the field unreachable sometimes. The interpreter must artificially
+                         * static field, but native-image can substitute the field reads by a constant,
+                         * making the field unreachable. The interpreter must artificially
                          * preserve the metadata without making it reachable to the analysis. In
-                         * some cases, $assertionsDisabled is written in not-yet-executed static
-                         * initializers, it can't be made read-only always.
+                         * some cases, $assertionsDisabled is written in a not-yet-executed static
+                         * initializer; it can't always be made read-only.
                          */
-                        if (staticField.isStatic() && staticField.isSynthetic() && staticField.getName().startsWith(SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
+                        if (staticField.isStatic() && staticField.isSynthetic() && staticField.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
                             Class<?> declaringClass = aType.getJavaClass();
-                            boolean value = !RuntimeAssertionsSupport.singleton().desiredAssertionStatus(declaringClass);
+                            boolean value = !AssertionsSupport.singleton().desiredAssertionStatus(declaringClass);
                             InterpreterResolvedJavaField field = iUniverse.getOrCreateField(analysisStaticField);
                             JavaConstant javaConstant = iUniverse.constant(JavaConstant.forBoolean(value));
                             BuildTimeInterpreterUniverse.setUnmaterializedConstantValue(field, javaConstant);

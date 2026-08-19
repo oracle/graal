@@ -159,8 +159,13 @@ This can also improve latency in some cases.
 Use the `-R:MaxHeapSize` option when building with Native Image to preconfigure the maximum heap size.
 
 #### <a name="glossary-image-assertions"></a>Assertions in the Generated Image
-This shows whether Java assertions and system assertions are enabled in the generated image.
-Enabling them can help identifying and debugging problems in the Java code built into the image.
+This shows the hosted Java assertion defaults configured in the generated image.
+Build-time-initialized classes always use these defaults.
+When you build with `-H:-StrictRuntimeJavaOptions`, runtime-initialized image classes also use the build-time options
+and runtime-loaded classes have assertions disabled unconditionally.
+When you build with `-H:+StrictRuntimeJavaOptions`, runtime-initialized image classes and
+runtime-loaded classes have their assertion status set by runtime `-ea`, `-da`, `-esa`, and `-dsa` options.
+Enabling assertions can help identify and debug problems in the Java code built into the image.
 
 #### <a name="glossary-experimental-options"></a>Experimental Options
 A list of all active experimental options, including their origin and possible API option alternatives if available.

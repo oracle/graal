@@ -53,6 +53,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.UserError;
@@ -75,6 +76,7 @@ import jdk.graal.compiler.core.common.ContextClassLoaderScope;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -181,6 +183,22 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         this.loader = loader;
     }
 
+    /// Gets the assertion status for the declaring class of `field` if `field` is the synthetic field
+    /// injected by javac to implement assertions (i.e. `static final boolean $assertionsDisabled`)
+    /// and the assertion status is a build-time constant (i.e., cannot change at runtime).
+    ///
+    /// @return the fixed assertion status for the declaring class of `field` (`true` if enabled, `false` if disabled)
+    /// or `null` if it is not build-time constant
+    public static Boolean foldedAssertionStatus(ResolvedJavaField field) {
+        if (field.isFinal() && field.isStatic() && field.isSynthetic() && field.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
+            if (singleton().shouldFoldAssertionStatus(field.getDeclaringClass())) {
+                Class<?> javaClass = OriginalClassProvider.getJavaClass(field.getDeclaringClass());
+                return AssertionsSupport.singleton().desiredAssertionStatus(javaClass);
+            }
+        }
+        return null;
+    }
+
     /**
      * Seal the configuration, blocking if another thread is trying to seal the configuration or an
      * unsealed-configuration window is currently open in another thread.
@@ -196,8 +214,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
             ReportUtils.report("class initialization configuration", SubstrateOptions.reportsPath(), "class_initialization_configuration", "csv", writer -> {
                 writer.println("Class or Package Name, Initialization Kind, Reasons");
                 for (ClassOrPackageConfig config : allConfigs) {
-                    writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ")
-                                    .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
+                    writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ").append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
                 }
             });
         }
@@ -258,10 +275,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * Returns all classes of a single {@link InitKind}.
      */
     Set<Class<?>> classesWithKind(InitKind kind) {
-        return classInitKinds.entrySet().stream()
-                        .filter(e -> e.getValue() == kind)
-                        .map(Map.Entry::getKey)
-                        .collect(Collectors.toSet());
+        return classInitKinds.entrySet().stream().filter(e -> e.getValue() == kind).map(Map.Entry::getKey).collect(Collectors.toSet());
     }
 
     /**
@@ -287,6 +301,21 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      */
     public boolean maybeInitializeAtBuildTime(Class<?> clazz) {
         return computeInitKindAndMaybeInitializeClass(clazz) == InitKind.BUILD_TIME;
+    }
+
+    /// Returns whether the assertion status for `type` can be fixed during image building.
+    public boolean shouldFoldAssertionStatus(ResolvedJavaType type) {
+        /*
+         * A class whose initializer is not folded retains the JDK assertion-status lookup, which
+         * prevents class-initializer simulation. Consequently, this predicate agrees with the
+         * runtime ClassInitializationInfo build-time flag used by DynamicHub.
+         */
+        return !SubstrateOptions.StrictRuntimeJavaOptions.getValue() || maybeInitializeAtBuildTime(type);
+    }
+
+    /// Returns whether the assertion status for `clazz` can be fixed during image building.
+    public boolean shouldFoldAssertionStatus(Class<?> clazz) {
+        return !SubstrateOptions.StrictRuntimeJavaOptions.getValue() || maybeInitializeAtBuildTime(clazz);
     }
 
     /**
