@@ -4694,38 +4694,47 @@ public final class Interpreter {
             case Boolean -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldBoolean(receiver, GraalDirectives.anchorValue(field), true) ? 1 : 0);
+                virtualStack.anchorUpdatedValues();
             }
             case Byte -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldByte(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Char -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldChar(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Short -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldShort(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Int -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushInt(state, InterpreterToVM.getFieldInt(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Double -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushDouble(state, InterpreterToVM.getFieldDouble(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Float -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushFloat(state, InterpreterToVM.getFieldFloat(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Long -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushLong(state, InterpreterToVM.getFieldLong(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             case Object -> {
                 virtualStack.avoidHoistingTop();
                 virtualStack.pushObject(state, InterpreterToVM.getFieldObject(receiver, GraalDirectives.anchorValue(field), true));
+                virtualStack.anchorUpdatedValues();
             }
             default      -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }

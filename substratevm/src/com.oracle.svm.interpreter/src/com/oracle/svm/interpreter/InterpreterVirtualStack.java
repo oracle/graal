@@ -52,6 +52,18 @@ final class InterpreterVirtualStack {
         top = GraalDirectives.opaque(top);
     }
 
+    /** Gives updated stack fields path-local identities and pins them before threaded dispatch. */
+    @AlwaysInline("Prepare updated stack values before threaded dispatch")
+    void anchorUpdatedValues() {
+        top = GraalDirectives.anchorValue(GraalDirectives.opaque(top));
+        if (tosLevel >= 1) {
+            tosPrimitive0 = GraalDirectives.anchorValue(GraalDirectives.opaque(tosPrimitive0));
+        }
+        if (tosLevel >= 2) {
+            tosPrimitive1 = GraalDirectives.anchorValue(GraalDirectives.opaque(tosPrimitive1));
+        }
+    }
+
     @AlwaysInline("Kill dependencies on unused cached primitive returns")
     void killUnusedFields() {
         if (tosLevel == 0) {
