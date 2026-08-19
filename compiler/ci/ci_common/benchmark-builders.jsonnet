@@ -39,7 +39,7 @@
 
   local gate_builds = std.flattenArrays([
     [
-    hw.x52 + jdk + cc.libgraal + bench.dacapo + PR_bench_libgraal_gate,
+    c.linux_amd64 + jdk + cc.libgraal + bench.dacapo + PR_bench_libgraal_gate,
     ]
   for jdk in cc.product_jdks
   ]),
