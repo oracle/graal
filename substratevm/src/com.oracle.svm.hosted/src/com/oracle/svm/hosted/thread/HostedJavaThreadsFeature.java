@@ -28,7 +28,8 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
@@ -89,6 +90,44 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
         }
     }
 
+    private final class NGroupsFieldValueTransformer implements FieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
+        // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
+
+        /*
+         * We must wait until reachableThreadGroups stabilizes after analysis to replace this
+         * value.
+         */
+        @Override
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            ThreadGroup group = (ThreadGroup) receiver;
+            return reachableThreadGroups.get(group).ngroups;
+        }
+    }
+
+    private final class GroupsFieldValueTransformer implements FieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
+        // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
+
+        /*
+         * We must wait until reachableThreadGroups stabilizes after analysis to replace this
+         * value.
+         */
+        @Override
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isHostedUniverseBuilt();
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            ThreadGroup group = (ThreadGroup) receiver;
+            return reachableThreadGroups.get(group).groups;
+        }
+    }
+
     /**
      * All {@link Thread} objects that are reachable in the image heap. Only unstarted threads,
      * i.e., threads in state NEW, are allowed.
@@ -112,50 +151,14 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
          * This currently only means that we don't support setting custom values for
          * java.lang.ScopedValue.cacheSize at runtime.
          */
-        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
-        rci.initializeAtBuildTime("java.lang.ScopedValue");
-        rci.initializeAtBuildTime("java.lang.ScopedValue$Cache");
+        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue");
+        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue$Cache");
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-        a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "ngroups"), new FieldValueTransformerWithAvailability() {
-            // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
-
-            /*
-             * We must wait until reachableThreadGroups stabilizes after analysis to replace this
-             * value.
-             */
-            @Override
-            public boolean isAvailable() {
-                return BuildPhaseProvider.isHostedUniverseBuilt();
-            }
-
-            @Override
-            public Object transform(Object receiver, Object originalValue) {
-                ThreadGroup group = (ThreadGroup) receiver;
-                return reachableThreadGroups.get(group).ngroups;
-            }
-        });
-
-        a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "groups"), new FieldValueTransformerWithAvailability() {
-            // JVMCI migration blocked by GR-72587: Migrate (virtual) thread support for terminus
-
-            /*
-             * We must wait until reachableThreadGroups stabilizes after analysis to replace this
-             * value.
-             */
-            @Override
-            public boolean isAvailable() {
-                return BuildPhaseProvider.isHostedUniverseBuilt();
-            }
-
-            @Override
-            public Object transform(Object receiver, Object originalValue) {
-                ThreadGroup group = (ThreadGroup) receiver;
-                return reachableThreadGroups.get(group).groups;
-            }
-        });
+        a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "ngroups"), new NGroupsFieldValueTransformer());
+        a.registerFieldValueTransformer(ReflectionUtil.lookupField(ThreadGroup.class, "groups"), new GroupsFieldValueTransformer());
 
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractOwnableSynchronizer", "exclusiveOwnerThread");

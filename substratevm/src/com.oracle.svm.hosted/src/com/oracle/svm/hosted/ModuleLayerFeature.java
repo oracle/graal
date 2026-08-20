@@ -99,6 +99,7 @@ import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HeapObjectReplacer;
 import com.oracle.svm.util.HostedModuleSupport;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -168,7 +169,27 @@ public class ModuleLayerFeature implements InternalFeature {
          * Register an object replacer that will ensure all references to hosted module instances
          * are replaced with the appropriate runtime module instance.
          */
-        access.registerObjectReplacer(source -> replaceHostedModules(source, accessImpl));
+        access.registerObjectReplacer(new ModuleLayerObjectReplacer(accessImpl));
+    }
+
+    private final class ModuleLayerObjectReplacer extends HeapObjectReplacer {
+        private final AnalysisAccessBase access;
+
+        private ModuleLayerObjectReplacer(AnalysisAccessBase access) {
+            this.access = access;
+        }
+
+        @Override
+        public Object replaceObject(Object source, boolean reachable) {
+            if (!reachable) {
+                if (source instanceof Module module) {
+                    return CANNOT_REPLACE_MARKER;
+                }
+                return source;
+            }
+
+            return replaceHostedModules(source, access);
+        }
     }
 
     private Object replaceHostedModules(Object source, AnalysisAccessBase access) {
