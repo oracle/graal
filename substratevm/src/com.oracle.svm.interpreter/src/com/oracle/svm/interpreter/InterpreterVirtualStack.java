@@ -247,17 +247,77 @@ final class InterpreterVirtualStack {
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
     private Object popKind(InterpreterState state, JavaKind kind) {
+        if (GraalDirectives.injectBranchProbability(0.0, kind == null)) {
+            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+        }
         return switch (kind) {
-            case Boolean -> (popInt(state) & 1) != 0;
-            case Byte -> (byte) popInt(state);
-            case Short -> (short) popInt(state);
-            case Char -> (char) popInt(state);
-            case Int -> popInt(state);
-            case Float -> popFloat(state);
-            case Long -> popLong(state);
-            case Double -> popDouble(state);
-            case Object -> popObject(state);
-            default -> throw InterpreterUtil.shouldNotReachHere("%s", kind);
+            case Boolean -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                boolean value = (popInt(state) & 1) != 0;
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Byte -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                byte value = (byte) popInt(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Short -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                short value = (short) popInt(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Char -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                char value = (char) popInt(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Int -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                int value = popInt(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Float -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                float value = popFloat(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Long -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                long value = popLong(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Double -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                double value = popDouble(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            case Object -> {
+                GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
+                avoidHoistingTop();
+                Object value = popObject(state);
+                anchorUpdatedValues();
+                yield value;
+            }
+            default -> {
+                GraalDirectives.injectSwitchCaseProbability(0.0);
+                throw InterpreterUtil.shouldNotReachHereAtRuntime();
+            }
         };
     }
 
@@ -527,7 +587,7 @@ final class InterpreterVirtualStack {
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
     void popArguments(InterpreterState state, JavaKind[] argKinds, Object[] args, Object appendix) {
-        int index = args.length - 1;
+        long index = args.length - 1;
         if (appendix != null) {
             assert uncheckedKindAt(argKinds, index) == JavaKind.Object;
             uncheckedPutArgument(args, index, appendix);
@@ -550,13 +610,13 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    private static JavaKind uncheckedKindAt(JavaKind[] argKinds, int index) {
-        return (JavaKind) UNSAFE.getReference(argKinds, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+    private static JavaKind uncheckedKindAt(JavaKind[] argKinds, long index) {
+        return (JavaKind) UNSAFE.getReference(argKinds, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    private static void uncheckedPutArgument(Object[] args, int index, Object value) {
-        UNSAFE.putReference(args, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) index * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
+    private static void uncheckedPutArgument(Object[] args, long index, Object value) {
+        UNSAFE.putReference(args, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
