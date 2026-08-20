@@ -3476,9 +3476,10 @@ public final class Interpreter {
         private static long invokeBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
             LinkedInvoke linkedInvoke = getOrLinkInvoke(state, curBCI, curOpcode);
             GraalDirectives.killFieldReadCache(state, "code");
-            Object[] calleeArgs = InterpreterToVM.createNewObjectArray(linkedInvoke.argumentKinds.length);
+            Object[] calleeArgs = InterpreterToVM.createNewObjectArray(linkedInvoke.argumentCount);
             Object appendix = curOpcode == INVOKEVIRTUAL ? linkedInvoke.appendix : null;
-            virtualStack.popArguments(state, linkedInvoke.argumentKinds, calleeArgs, appendix);
+            int[] argumentKinds = uncheckedCast(linkedInvoke.argumentKinds, int[].class);
+            virtualStack.popArguments(state, argumentKinds, calleeArgs, appendix);
 
             if (curOpcode != INVOKESTATIC && linkedInvoke.hasReceiver) {
                 Object receiver = calleeArgs[0];
@@ -4206,7 +4207,11 @@ public final class Interpreter {
         if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, linkedInvoke != null)) {
             return linkedInvoke;
         }
-        return linkInvoke(state.method, opcode, cpi);
+        linkedInvoke = linkInvoke(state.method, opcode, cpi);
+        if (linkedInvoke == null) {
+            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+        }
+        return linkedInvoke;
     }
 
     @NeverInline("Keep invoke resolution out of bytecode-handler stubs")

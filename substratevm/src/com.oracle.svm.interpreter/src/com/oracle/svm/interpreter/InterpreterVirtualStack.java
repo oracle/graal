@@ -43,6 +43,16 @@ import jdk.vm.ci.meta.JavaKind;
 final class InterpreterVirtualStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    private static final int T_BOOLEAN = 4;
+    private static final int T_CHAR = 5;
+    private static final int T_FLOAT = 6;
+    private static final int T_DOUBLE = 7;
+    private static final int T_BYTE = 8;
+    private static final int T_SHORT = 9;
+    private static final int T_INT = 10;
+    private static final int T_LONG = 11;
+    private static final int T_OBJECT = 12;
+
     /** First stack slot above the materialized operand stack. */
     long top;
     private long tosPrimitive0;
@@ -246,68 +256,65 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    private Object popKind(InterpreterState state, JavaKind kind) {
-        if (GraalDirectives.injectBranchProbability(0.0, kind == null)) {
-            throw InterpreterUtil.shouldNotReachHereAtRuntime();
-        }
-        return switch (kind) {
-            case Boolean -> {
+    private Object popKind(InterpreterState state, int basicType) {
+        return switch (basicType) {
+            case T_BOOLEAN -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 boolean value = (popInt(state) & 1) != 0;
                 anchorUpdatedValues();
                 yield value;
             }
-            case Byte -> {
+            case T_BYTE -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 byte value = (byte) popInt(state);
                 anchorUpdatedValues();
                 yield value;
             }
-            case Short -> {
+            case T_SHORT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 short value = (short) popInt(state);
                 anchorUpdatedValues();
                 yield value;
             }
-            case Char -> {
+            case T_CHAR -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 char value = (char) popInt(state);
                 anchorUpdatedValues();
                 yield value;
             }
-            case Int -> {
+            case T_INT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 int value = popInt(state);
                 anchorUpdatedValues();
                 yield value;
             }
-            case Float -> {
+            case T_FLOAT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 float value = popFloat(state);
                 anchorUpdatedValues();
                 yield value;
             }
-            case Long -> {
+            case T_LONG -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 long value = popLong(state);
                 anchorUpdatedValues();
                 yield value;
             }
-            case Double -> {
+            case T_DOUBLE -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 double value = popDouble(state);
                 anchorUpdatedValues();
                 yield value;
             }
-            case Object -> {
+            case T_OBJECT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
                 Object value = popObject(state);
@@ -586,32 +593,37 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    void popArguments(InterpreterState state, JavaKind[] argKinds, Object[] args, Object appendix) {
+    void popArguments(InterpreterState state, int[] argKinds, Object[] args, Object appendix) {
         long index = args.length - 1;
         if (appendix != null) {
-            assert uncheckedKindAt(argKinds, index) == JavaKind.Object;
+            assert uncheckedBasicTypeAt(argKinds, index) == T_OBJECT;
             uncheckedPutArgument(args, index, appendix);
             index--;
         }
         if (tosLevel > 0 && index >= 0) {
-            uncheckedPutArgument(args, index, popKind(state, uncheckedKindAt(argKinds, index)));
+            uncheckedPutArgument(args, index, popKind(state, uncheckedBasicTypeAt(argKinds, index)));
             index--;
         }
         if (tosLevel > 0 && index >= 0) {
-            uncheckedPutArgument(args, index, popKind(state, uncheckedKindAt(argKinds, index)));
+            uncheckedPutArgument(args, index, popKind(state, uncheckedBasicTypeAt(argKinds, index)));
             index--;
         }
         materialize(state);
 
-        for (; index >= 0; index--) {
-            uncheckedPutArgument(args, index, popKind(state, uncheckedKindAt(argKinds, index)));
+        /*
+         * Keep the branchy argument-pop loop colder than its entry. A higher loop weight makes
+         * linear scan introduce fast-path spills around the loop. If this probability changes,
+         * recheck the loop entry and backedge in invokestaticHandler0.
+         */
+        for (; GraalDirectives.injectBranchProbability(0.3, index >= 0); index--) {
+            uncheckedPutArgument(args, index, popKind(state, uncheckedBasicTypeAt(argKinds, index)));
         }
         discardCachedValues();
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    private static JavaKind uncheckedKindAt(JavaKind[] argKinds, long index) {
-        return (JavaKind) UNSAFE.getReference(argKinds, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+    private static int uncheckedBasicTypeAt(int[] argKinds, long index) {
+        return UNSAFE.getInt(argKinds, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE);
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")

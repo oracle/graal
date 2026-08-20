@@ -525,7 +525,8 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         public final boolean hasReceiver;
         public final boolean requiresSymbolicTypeCheck;
 
-        public final JavaKind[] argumentKinds;
+        public final int argumentCount;
+        public final int[] argumentKinds;
 
         public LinkedInvoke(InterpreterResolvedJavaType symbolicHolder, InterpreterResolvedJavaMethod seedMethod, CallKind callKind, Object appendix, boolean requiresInterfaceReceiverCheck) {
             this.symbolicHolder = symbolicHolder;
@@ -537,17 +538,17 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             this.hasReceiver = !seedMethod.isStatic();
             this.requiresSymbolicTypeCheck = requiresInterfaceReceiverCheck;
 
-            int argumentCount = signature.getParameterCount(hasReceiver);
-            this.argumentKinds = new JavaKind[argumentCount];
+            this.argumentCount = signature.getParameterCount(hasReceiver);
+            this.argumentKinds = new int[argumentCount];
 
             if (hasReceiver) {
-                argumentKinds[0] = JavaKind.Object;
+                argumentKinds[0] = JavaKind.Object.getBasicType();
                 for (int i = 0; i < signature.getParameterCount(false); i++) {
-                    argumentKinds[i + 1] = signature.getParameterKind(i);
+                    argumentKinds[i + 1] = signature.getParameterKind(i).getBasicType();
                 }
             } else {
                 for (int i = 0; i < argumentCount; i++) {
-                    argumentKinds[i] = signature.getParameterKind(i);
+                    argumentKinds[i] = signature.getParameterKind(i).getBasicType();
                 }
             }
         }
