@@ -90,6 +90,9 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         if (FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
             rci.initializeAtRunTime("java.text.BreakIterator", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
             rci.initializeAtRunTime("java.text.BreakIterator$BreakIteratorCache", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
+
+            /* PBTI will find its static fields when resource bundles are initialized at run-time */
+            // rci.initializeAtRunTime("com.oracle.svm.core.jdk.localization.substitutions.Util_java_text_BreakIterator", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
         }
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
         // see HijrahChronologyFeature for more details
@@ -188,6 +191,12 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
+        rci.initializeAtRunTime("sun.awt.X11.XDragAndDropProtocols", "Initializes X11 peer state");
+        rci.initializeAtRunTime("sun.awt.X11.XRootWindow$LazyHolder", "Initializes the X11 root window");
+        rci.initializeAtRunTime("sun.awt.screencast.ScreencastHelper", "Loads native libraries and initializes AWT");
+        rci.initializeAtRunTime("sun.awt.screencast.ScreencastHelper$TimerHolder", "Starts a timer thread");
+        rci.initializeAtRunTime("sun.awt.screencast.TokenStorage", "Creates a file watcher and captures host-specific token storage");
+        rci.initializeAtRunTime("sun.font.HBShaper", "Contains native memory segments");
 
         /* FileSystemProviders related */
         if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {

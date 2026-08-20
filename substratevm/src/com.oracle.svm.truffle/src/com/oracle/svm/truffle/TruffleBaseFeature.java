@@ -73,6 +73,8 @@ import org.graalvm.home.Version;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -1076,6 +1078,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static final class StaticObjectSupport {
         private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
 

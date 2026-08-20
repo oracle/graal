@@ -996,6 +996,7 @@ innr public abstract interface static AfterImageWriteAccess
 innr public abstract interface static AfterRegistrationAccess
 innr public abstract interface static BeforeAnalysisAccess
 innr public abstract interface static BeforeCompilationAccess
+innr public abstract interface static BeforeFieldValueAccess
 innr public abstract interface static BeforeHeapLayoutAccess
 innr public abstract interface static BeforeImageWriteAccess
 innr public abstract interface static BeforeUniverseBuildingAccess
@@ -1054,6 +1055,7 @@ meth public abstract org.graalvm.nativeimage.dynamicaccess.ResourceAccess getRes
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess
  outer org.graalvm.nativeimage.hosted.Feature
+intf org.graalvm.nativeimage.hosted.Feature$BeforeFieldValueAccess
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 meth public abstract !varargs void registerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Object[])
 meth public abstract void registerAsAccessed(java.lang.reflect.Field)
@@ -1061,14 +1063,18 @@ meth public abstract void registerAsInHeap(java.lang.Class<?>)
 meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsUnsafeAllocated(java.lang.Class<?>)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
+meth public abstract void registerBeforeFieldValueAccessHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$BeforeFieldValueAccess,java.lang.Class<?>>,java.lang.Class<?>)
 meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
-meth public abstract void registerFieldValueTransformer(java.lang.reflect.Field,org.graalvm.nativeimage.hosted.FieldValueTransformer)
 meth public abstract void registerMethodOverrideReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.reflect.Executable>,java.lang.reflect.Executable)
 meth public abstract void registerSubtypeReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.Class<?>>,java.lang.Class<?>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$CompilationAccess
+
+CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeFieldValueAccess
+ outer org.graalvm.nativeimage.hosted.Feature
+meth public abstract void registerFieldValueTransformer(java.lang.reflect.Field,org.graalvm.nativeimage.hosted.FieldValueTransformer)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeHeapLayoutAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -1134,6 +1140,8 @@ meth public abstract java.util.Set<java.lang.reflect.Executable> reachableMethod
 CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransformer
 meth public abstract java.lang.Object transform(java.lang.Object,java.lang.Object)
 meth public boolean isAvailable()
+
+CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeClassInitialization
 meth public !varargs static void initializeAtBuildTime(java.lang.Class<?>[])

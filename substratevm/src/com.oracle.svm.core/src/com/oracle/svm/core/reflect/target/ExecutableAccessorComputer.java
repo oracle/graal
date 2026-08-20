@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Executable;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
+
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.util.GuestAccess;
@@ -39,7 +41,7 @@ import jdk.vm.ci.meta.JavaConstant;
  *
  * @see RecomputeFieldValue
  */
-public final class ExecutableAccessorComputer implements JVMCIFieldValueTransformer {
+public final class ExecutableAccessorComputer implements JVMCIFieldValueTransformer, FieldValueTransformerRequiresUniverse {
     @Override
     public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
         GuestAccess access = GuestAccess.get();

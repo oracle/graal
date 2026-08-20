@@ -224,6 +224,7 @@ import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
+import com.oracle.svm.hosted.classinitialization.pbti.PredictableBuildTimeInitializationFeature;
 import com.oracle.svm.hosted.diagnostic.HostedHeapDumpHandler;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
@@ -789,6 +790,11 @@ public class NativeImageGenerator {
                 BuildPhaseProviderImpl.markCompilationFinished();
                 /* Runtime metadata and feature callbacks no longer need the compile queue maps. */
                 compileQueue.purge();
+
+                // if (FutureDefaultsOptions.predictableBuildTimeInitialization()) {
+                /* Handle values available after compilation finishes, before the heap verifier. */
+                ImageSingletons.lookup(PredictableBuildTimeInitializationFeature.class).afterCompilationFinishes();
+                // }
             }
 
             /* Re-run shadow heap verification after compilation. */
@@ -958,6 +964,11 @@ public class NativeImageGenerator {
                 bb.getHostVM().checkWellKnownStableFieldsBeforeAnalysis(bb);
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().sealConfiguration();
+                FieldValueInterceptionSupport.singleton().sealHandlerRegistration();
+                // if (FutureDefaultsOptions.predictableBuildTimeInitialization()) {
+                /* At this point, class initialization configuration is sealed. */
+                ImageSingletons.lookup(PredictableBuildTimeInitializationFeature.class).afterBeforeAnalysis();
+                // }
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
                     ImageSingletons.lookup(AccessImageSingletonFeature.class).processRegisteredSingletons(aUniverse);
                     if (ImageLayerBuildingSupport.buildingSharedLayer()) {
