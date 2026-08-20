@@ -79,6 +79,7 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
     private ResolvedJavaType resourceAccessType;
     private ResolvedJavaType jniAccessType;
     private ResolvedJavaType foreignAccessType;
+    private ResolvedJavaType beforeFieldValueAccessType;
     private ResolvedJavaType beforeAnalysisAccessType;
     private ResolvedJavaType duringSetupAccessType;
     private ResolvedJavaType duringAnalysisAccessType;
@@ -89,6 +90,7 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
     private ResolvedJavaMethod invokeReachabilityHandler;
     private ResolvedJavaMethod invokeMethodOverrideReachabilityHandler;
     private ResolvedJavaMethod invokeSubtypeReachabilityHandler;
+    private ResolvedJavaMethod invokeBeforeFieldValueAccessHandler;
     private ResolvedJavaMethod afterRegistrationForEachFeature;
     private ResolvedJavaMethod duringSetupForEachFeature;
     private ResolvedJavaMethod beforeAnalysisForEachFeature;
@@ -161,6 +163,7 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
         ResolvedJavaType biConsumerType = guestAccess.lookupType(BiConsumer.class);
         ResolvedJavaType executableType = guestAccess.lookupType(Executable.class);
         ResolvedJavaType classType = guestAccess.lookupType(Class.class);
+        beforeFieldValueAccessType = guestAccess.lookupType(Feature.BeforeFieldValueAccess.class);
         beforeAnalysisAccessType = guestAccess.lookupType(Feature.BeforeAnalysisAccess.class);
         duringSetupAccessType = guestAccess.lookupType(Feature.DuringSetupAccess.class);
         duringAnalysisAccessType = guestAccess.lookupType(Feature.DuringAnalysisAccess.class);
@@ -185,6 +188,8 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
         invokeMethodOverrideReachabilityHandler = JVMCIReflectionUtil.getUniqueDeclaredMethod(handlerType, "invokeMethodOverrideReachabilityHandler", biConsumerType, duringAnalysisAccessType,
                         executableType);
         invokeSubtypeReachabilityHandler = JVMCIReflectionUtil.getUniqueDeclaredMethod(handlerType, "invokeSubtypeReachabilityHandler", biConsumerType, duringAnalysisAccessType, classType);
+        invokeBeforeFieldValueAccessHandler = JVMCIReflectionUtil.getUniqueDeclaredMethod(handlerType, "invokeBeforeFieldValueAccessHandler", biConsumerType, beforeFieldValueAccessType,
+                        classType);
         afterRegistrationForEachFeature = JVMCIReflectionUtil.getUniqueDeclaredMethod(handlerType, "afterRegistrationForEachFeature", reflectiveAccessType, resourceAccessType, jniAccessType,
                         foreignAccessType);
         duringSetupForEachFeature = JVMCIReflectionUtil.getUniqueDeclaredMethod(handlerType, "duringSetupForEachFeature", duringSetupAccessType);
@@ -247,6 +252,19 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
         JavaConstant duringAnalysisAccess = guestAccess.createHostProxy(access, duringAnalysisAccessType, duringAnalysisMappings);
         try {
             guestAccess.invokeStatic(invokeSubtypeReachabilityHandler, callback, duringAnalysisAccess, guestClass);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
+    }
+
+    void invokeGuestBeforeFieldValueAccessHandler(JavaConstant callback, Feature.BeforeFieldValueAccess access, ResolvedJavaType type) {
+        JavaConstant guestClass = guestAccess.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+        if (guestClass == null || guestClass.isNull()) {
+            return;
+        }
+        JavaConstant beforeFieldValueAccess = guestAccess.createHostProxy(access, beforeFieldValueAccessType);
+        try {
+            guestAccess.invokeStatic(invokeBeforeFieldValueAccessHandler, callback, beforeFieldValueAccess, guestClass);
         } catch (InvocationException invocationException) {
             throw handleFeatureError(invocationException);
         }

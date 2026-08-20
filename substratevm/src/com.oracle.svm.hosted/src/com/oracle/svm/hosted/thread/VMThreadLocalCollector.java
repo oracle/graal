@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
@@ -47,6 +46,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HeapObjectReplacer;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.nodes.PiNode;
@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Collects all {@link FastThreadLocal} instances that are actually used by the application.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
-public class VMThreadLocalCollector implements Function<Object, Object>, VMThreadLocalOffsetProvider {
+public class VMThreadLocalCollector extends HeapObjectReplacer implements VMThreadLocalOffsetProvider {
 
     private static final int LARGE_ENTRY_SIZE = 16;
 
@@ -115,8 +115,8 @@ public class VMThreadLocalCollector implements Function<Object, Object>, VMThrea
     }
 
     @Override
-    public Object apply(Object source) {
-        if (source instanceof FastThreadLocal fastThreadLocal) {
+    public Object replaceObject(Object source, boolean reachable) {
+        if (reachable && source instanceof FastThreadLocal fastThreadLocal) {
             forFastThreadLocal(fastThreadLocal);
         }
         /*

@@ -65,23 +65,27 @@ public final class ImageHeapCollectionSupport {
      * a collection that was never captured is treated as an invariant violation.
      */
     @BuilderInvoked
-    public Object replaceHostedWithRuntime(Object obj) {
+    public Object replaceHostedWithRuntime(Object obj, boolean reachable) {
         if (obj instanceof HostedImageHeapMap) {
             HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
-            if (BuildPhaseProvider.isAnalysisFinished()) {
-                VMError.guarantee(allMaps.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
-            } else {
-                allMaps.add(hostedImageHeapMap);
-                if (hostedImageHeapMap.getRuntimeMap() instanceof LayeredImageHeapMap<Object, Object> layeredImageHeapMap) {
-                    LayeredHostedImageHeapMapCollector.singleton().registerReachableHostedImageHeapMap(layeredImageHeapMap);
+            if (reachable) {
+                if (BuildPhaseProvider.isAnalysisFinished()) {
+                    VMError.guarantee(allMaps.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
+                } else {
+                    allMaps.add(hostedImageHeapMap);
+                    if (hostedImageHeapMap.getRuntimeMap() instanceof LayeredImageHeapMap<Object, Object> layeredImageHeapMap) {
+                        LayeredHostedImageHeapMapCollector.singleton().registerReachableHostedImageHeapMap(layeredImageHeapMap);
+                    }
                 }
             }
             return hostedImageHeapMap.getRuntimeMap();
         } else if (obj instanceof HostedImageHeapList<?> hostedImageHeapList) {
-            if (BuildPhaseProvider.isAnalysisFinished()) {
-                VMError.guarantee(allLists.contains(hostedImageHeapList), "ImageHeapList reachable after analysis that was not seen during analysis");
-            } else {
-                allLists.add(hostedImageHeapList);
+            if (reachable) {
+                if (BuildPhaseProvider.isAnalysisFinished()) {
+                    VMError.guarantee(allLists.contains(hostedImageHeapList), "ImageHeapList reachable after analysis that was not seen during analysis");
+                } else {
+                    allLists.add(hostedImageHeapList);
+                }
             }
             return hostedImageHeapList.getRuntimeList();
         }
