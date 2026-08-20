@@ -383,6 +383,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     pkg("com.oracle.svm.guest", GUEST_CONTEXT_ONLY),
                     method("com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport", "validateSingletonRegistration", NI_HOSTED_IMPLEMENTATION),
                     clazz("com.oracle.svm.hosted.ModuleLayerFeature", TERMINUS_OBSOLETED),
+                    clazz("com.oracle.svm.interpreter.CremaSubstitutions", NI_HOSTED_IMPLEMENTATION),
                     clazz("com.oracle.svm.interpreter.metadata.AccessChecks", CREMA_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.interpreter.metadata.CremaMethodAccess", CREMA_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.jdwp.bridge.JDWPJNIConfig$EnumMarshaller", JDWP_RUN_TIME_ONLY),
