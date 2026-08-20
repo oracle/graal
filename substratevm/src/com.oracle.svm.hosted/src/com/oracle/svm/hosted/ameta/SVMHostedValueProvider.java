@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.InterceptedField;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRef;
@@ -66,6 +67,14 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
      */
     @Override
     public ValueSupplier<JavaConstant> readFieldValue(AnalysisField field, JavaConstant receiver) {
+        return readFieldValue((InterceptedField) field, receiver);
+    }
+
+    /**
+     * Read value of a field which implements the {@link InterceptedField interception interface}.
+     * In general, this is the {@link AnalysisField} or {@code PredictableBuildTimeInitializationField}.
+     */
+    public ValueSupplier<JavaConstant> readFieldValue(InterceptedField field, JavaConstant receiver) {
         if (fieldValueInterceptionSupport.isValueAvailable(field, receiver)) {
             /* Materialize and return the value. */
             return ValueSupplier.eagerValue(doReadValue(field, receiver));
@@ -86,7 +95,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         return replaceObject(doReadValue(field, receiver));
     }
 
-    private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
+    private JavaConstant doReadValue(InterceptedField field, JavaConstant receiver) {
         VMError.guarantee(!(receiver instanceof SubstrateObjectConstant));
         return interceptHosted(fieldValueInterceptionSupport.readFieldValue(field, receiver));
     }

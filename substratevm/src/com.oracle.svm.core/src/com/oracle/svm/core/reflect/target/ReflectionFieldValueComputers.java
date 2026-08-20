@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.reflect.target;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
+
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -41,7 +43,7 @@ public final class ReflectionFieldValueComputers {
     private ReflectionFieldValueComputers() {
     }
 
-    public static final class FieldDeletionReasonComputer implements JVMCIFieldValueTransformerWithAvailability {
+    public static final class FieldDeletionReasonComputer implements JVMCIFieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -55,7 +57,7 @@ public final class ReflectionFieldValueComputers {
         }
     }
 
-    public static final class FieldOffsetComputer implements JVMCIFieldValueTransformerWithAvailability {
+    public static final class FieldOffsetComputer implements JVMCIFieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -68,7 +70,7 @@ public final class ReflectionFieldValueComputers {
         }
     }
 
-    public static final class LayerNumberComputer implements JVMCIFieldValueTransformerWithAvailability {
+    public static final class LayerNumberComputer implements JVMCIFieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();

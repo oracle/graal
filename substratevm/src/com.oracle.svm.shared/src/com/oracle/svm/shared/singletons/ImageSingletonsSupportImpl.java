@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,8 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
@@ -298,7 +300,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
     /**
      * Management of the {@link ImageSingletons} registry during image generation.
+     *
+     * <p>
+     * The {@code PredictableBuildTimeInitializationFeature} can find
+     * a violation inside this class, marking it as HOSTED_ONLY skips it.
+     * </p>
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static final class HostedManagement {
 
         /**

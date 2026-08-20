@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.graal.hosted.runtimecompilation;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Function;
 
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
@@ -71,6 +70,7 @@ import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HeapObjectReplacer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -105,7 +105,7 @@ import jdk.vm.ci.runtime.JVMCIRuntime;
  *
  * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
  */
-public class GraalGraphObjectReplacer implements Function<Object, Object> {
+public class GraalGraphObjectReplacer extends HeapObjectReplacer {
     public static class Options {
         @Option(help = "Ensure all created SubstrateTypes are linked")//
         public static final HostedOptionKey<Boolean> GuaranteeSubstrateTypesLinked = new HostedOptionKey<>(false);
@@ -149,9 +149,18 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         this.beforeAnalysisAccess = beforeAnalysisAccess;
     }
 
+    /**
+     * Replaces Graal related objects during analysis in the universe.
+     * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
+     *
+     * @param source Source object to be replaced
+     * @param reachable If true, then the universe can be affected (new type created, image heap constant scan, etc.),
+     *                  otherwise the universe is untouched.
+     * @return Replacement object
+     */
     @SuppressWarnings("unchecked")
     @Override
-    public Object apply(Object source) {
+    public Object replaceObject(Object source, boolean reachable) {
 
         if (source == null) {
             return null;
@@ -170,13 +179,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         if (source instanceof MetaAccessProvider) {
             dest = sProviders.getMetaAccessProvider();
         } else if (source instanceof JVMCIRuntime) {
-            throw new UnsupportedFeatureException("JVMCIRuntime should not appear in the image: " + source);
+            return unsupportedFeature(reachable, "JVMCIRuntime should not appear in the image: " + source);
         } else if (source instanceof GraalHotSpotVMConfig) {
-            throw new UnsupportedFeatureException("GraalHotSpotVMConfig should not appear in the image: " + source);
+            return unsupportedFeature(reachable, "GraalHotSpotVMConfig should not appear in the image: " + source);
         } else if (source instanceof HotSpotBackendFactory factory) {
             Architecture hostArch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
             if (!factory.getArchitecture().equals(hostArch.getName())) {
-                throw new UnsupportedFeatureException("Non-host architecture HotSpotBackendFactory should not appear in the image: " + source);
+                return unsupportedFeature(reachable, "Non-host architecture HotSpotBackendFactory should not appear in the image: " + source);
             }
         } else if (source instanceof GraalRuntime) {
             dest = sGraalRuntime;
@@ -195,27 +204,39 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
         } else if (source instanceof ResolvedJavaMethod) {
             if (source instanceof OriginalMethodProvider) {
-                dest = createMethod((ResolvedJavaMethod) source);
+                if (reachable) {
+                    dest = createMethod((ResolvedJavaMethod) source);
+                } else {
+                    return CANNOT_REPLACE_MARKER;
+                }
             } else if (source instanceof SubstrateMetadata) {
                 // do nothing, metadata needed by the compiler at runtime
             } else if (!(source instanceof SharedRuntimeMethod)) {
-                throw new UnsupportedFeatureException("ResolvedJavaMethod that is not a subtype of SharedRuntimeMethod is not allowed at runtime, method=" + source);
+                return unsupportedFeature(reachable, "ResolvedJavaMethod that is not a subtype of SharedRuntimeMethod is not allowed at runtime, method=" + source);
             }
         } else if (source instanceof ResolvedJavaField) {
             if (source instanceof OriginalFieldProvider) {
-                dest = createField((ResolvedJavaField) source);
+                if (reachable) {
+                    dest = createField((ResolvedJavaField) source);
+                } else {
+                    return CANNOT_REPLACE_MARKER;
+                }
             } else if (source instanceof SubstrateMetadata) {
                 // do nothing, metadata needed by the compiler at runtime
             } else if (!(source instanceof SubstrateField)) {
-                throw new UnsupportedFeatureException("ResolvedJavaField that is not a subtype of SubstrateField is not allowed at runtime, method=" + source);
+                return unsupportedFeature(reachable, "ResolvedJavaField that is not a subtype of SubstrateField is not allowed at runtime, method=" + source);
             }
         } else if (source instanceof ResolvedJavaType) {
             if (source instanceof OriginalClassProvider) {
-                dest = createType((ResolvedJavaType) source);
+                if (reachable) {
+                    dest = createType((ResolvedJavaType) source);
+                } else {
+                    return CANNOT_REPLACE_MARKER;
+                }
             } else if (source instanceof SubstrateMetadata) {
                 // do nothing, metadata needed by the compiler at runtime
             } else if (!(source instanceof SubstrateType)) {
-                throw new UnsupportedFeatureException("ResolvedJavaType that is not a subtype of SubstrateType is not allowed at runtime, method=" + source);
+                return unsupportedFeature(reachable, "ResolvedJavaType that is not a subtype of SubstrateType is not allowed at runtime, method=" + source);
             }
         } else if (source instanceof Signature) {
             if (source instanceof ResolvedSignature) {
@@ -223,7 +244,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             } else if (source instanceof SubstrateMetadata) {
                 // do nothing, metadata needed by the compiler at runtime
             } else if (!(source instanceof SubstrateSignature)) {
-                throw new UnsupportedFeatureException(source.toString());
+                return unsupportedFeature(reachable, source.toString());
             }
         } else if (source instanceof JavaConstant cst) {
             if (source instanceof ImageHeapConstant heapConstant) {
@@ -231,24 +252,38 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             } else if (source instanceof SubstrateMetadata) {
                 // do nothing, the interpreter runtime needs this meta data at runtime
             } else if (cst.getJavaKind().isObject() && !cst.isDefaultForKind() && !(cst instanceof SubstrateObjectConstant)) {
-                throw new UnsupportedFeatureException("Unknown subtype of JavaConstant for inclusion in runtime heap " + source);
+                return unsupportedFeature(reachable, "Unknown subtype of JavaConstant for inclusion in runtime heap " + source);
             }
         } else if (source instanceof FieldLocationIdentity && !(source instanceof SubstrateFieldLocationIdentity)) {
-            dest = createFieldLocationIdentity((FieldLocationIdentity) source);
+            if (reachable) {
+                dest = createFieldLocationIdentity((FieldLocationIdentity) source);
+            } else {
+                return CANNOT_REPLACE_MARKER;
+            }
         }
 
         assert dest != null;
         Class<?> destClass = dest.getClass();
         if (jvmciCleanerClass.isAssignableFrom(destClass)) {
-            throw new UnsupportedFeatureException(jvmciCleanerClass.getName() + " objects should not appear in the image: " + source);
+            return unsupportedFeature(reachable, jvmciCleanerClass.getName() + " objects should not appear in the image: " + source);
         }
         String className = destClass.getName();
-        assert !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
-        assert !className.contains(".graal.reachability") : "Analysis meta object in image " + className;
-        assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;
-        assert !className.contains(".hosted.meta.") : "Hosted meta object in image " + className;
+
+        if (reachable) {
+            assert !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
+            assert !className.contains(".graal.reachability") : "Analysis meta object in image " + className;
+            assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;
+            assert !className.contains(".hosted.meta.") : "Hosted meta object in image " + className;
+        }
 
         return dest;
+    }
+
+    private static Object unsupportedFeature(boolean reachable, String message) {
+        if (reachable) {
+            throw new UnsupportedFeatureException(message);
+        }
+        return CANNOT_REPLACE_MARKER;
     }
 
     public synchronized SubstrateMethod createMethod(ResolvedJavaMethod original) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,8 +96,9 @@ public class FutureDefaultsOptions {
     private static final String CLASS_FOR_NAME_RESPECTS_CLASS_LOADER = "class-for-name-respects-class-loader";
     private static final String EXACT_REFLECTION = "exact-reflection";
     public static final String EXPLICIT_FEATURE_SINGLETON_REGISTRATION = "explicit-feature-singleton-registration";
+    public static final String PREDICTABLE_BUILD_TIME_INITIALIZATION = "predictable-build-time-initialization";
     private static final List<String> ALL_FUTURE_DEFAULTS = List.of(CLASS_FOR_NAME_RESPECTS_CLASS_LOADER, EXACT_REFLECTION, RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS,
-                    RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES, EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
+                    RUN_TIME_INITIALIZE_SECURITY_PROVIDERS, RUN_TIME_INITIALIZE_RESOURCE_BUNDLES, EXPLICIT_FEATURE_SINGLETON_REGISTRATION, PREDICTABLE_BUILD_TIME_INITIALIZATION);
 
     private static final String COMPLETE_REFLECTION_TYPES = "complete-reflection-types";
     private static final List<String> RETIRED_FUTURE_DEFAULTS = List.of(COMPLETE_REFLECTION_TYPES);
@@ -281,6 +282,10 @@ public class FutureDefaultsOptions {
         return getFutureDefaults().contains(EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
     }
 
+    public static boolean predictableBuildTimeInitialization() {
+        return getFutureDefaults().contains(PREDICTABLE_BUILD_TIME_INITIALIZATION);
+    }
+
     /** Keep in sync with the static query methods from {@link #allFutureDefaults()} to the end of this class. */
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -322,6 +327,11 @@ public class FutureDefaultsOptions {
         @Override
         public boolean explicitFeatureSingletonRegistration() {
             return FutureDefaultsOptions.explicitFeatureSingletonRegistration();
+        }
+
+        @Override
+        public boolean predictableBuildTimeInitialization() {
+            return FutureDefaultsOptions.predictableBuildTimeInitialization();
         }
     }
 }

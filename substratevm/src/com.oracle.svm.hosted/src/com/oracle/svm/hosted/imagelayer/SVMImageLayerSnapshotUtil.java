@@ -285,7 +285,7 @@ public class SVMImageLayerSnapshotUtil {
         externalValues = ObjectCopier.Encoder.gatherExternalValues(externalValueFields);
     }
 
-    public String getTypeDescriptor(AnalysisType type) {
+    public String getTypeDescriptor(ResolvedJavaType type) {
         if (type.isArray()) {
             /* Array names can contain an unstable generated name instead of its substitution. */
             return getTypeDescriptor(type.getComponentType()) + "[]";
@@ -356,7 +356,7 @@ public class SVMImageLayerSnapshotUtil {
      * stable in a multi threading context. To ensure the correct one is matched in the extension
      * image, the constructor accessors table from SerializationSupport is accessed.
      */
-    private static String getGeneratedSerializationName(AnalysisType type) {
+    private static String getGeneratedSerializationName(ResolvedJavaType type) {
         Class<?> constructorAccessor = OriginalClassProvider.getJavaClass(type);
         SerializationSupport serializationRegistry = SerializationSupport.currentLayer();
         SerializationSupport.SerializationLookupKey serializationLookupKey = serializationRegistry.getKeyFromConstructorAccessorClass(constructorAccessor);

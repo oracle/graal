@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,14 +38,14 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -110,6 +110,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * scale and array index shift unsafe computations.
  */
 public class AutomaticUnsafeTransformationSupport {
+    /**
+     * Field that was accessed by the initializer.
+     *
+     * @param targetField Field that was unsafely accessed during initialization
+     * @param reason Field that stores result of the unsafe access
+     */
+    public record AccessedField(ResolvedJavaField targetField, ResolvedJavaField reason) {
+    }
 
     private static final int BASIC_LEVEL = 1;
     private static final int INFO_LEVEL = 2;
@@ -138,6 +146,12 @@ public class AutomaticUnsafeTransformationSupport {
 
     private final EconomicSet<ResolvedJavaMethod> neverInlineSet = EconomicSet.create();
     private final EconomicSet<ResolvedJavaMethod> noCheckedExceptionsSet = EconomicSet.create();
+
+    /**
+     * Map of unsafe transformations being computed asynchronously.
+     * The result is a list of fields that were accessed unsafely.
+     */
+    private final ConcurrentHashMap<ResolvedJavaType, AnalysisFuture<List<AccessedField>>> transformationTasks = new ConcurrentHashMap<>();
 
     private final Plugins plugins;
 
@@ -268,10 +282,25 @@ public class AutomaticUnsafeTransformationSupport {
         suppressWarnings = List.of(originalMetaAccess.lookupJavaType(ReflectionUtil.lookupClass(false, "sun.security.provider.ByteArrayAccess")));
     }
 
-    public void computeTransformations(BigBang bb, SVMHost hostVM, ResolvedJavaType hostType) {
+    /**
+     * Returns the task that installs automatic field value transformers for {@code hostType}.
+     *
+     * @return Fields that were unsafely accessed by the initializer.
+     */
+    public AnalysisFuture<List<AccessedField>> getOrComputeTransformations(SVMHost hostVM, ResolvedJavaType hostType) {
+        return transformationTasks.computeIfAbsent(hostType,
+                        type -> new AnalysisFuture<>(() -> computeTransformations(hostVM, type)));
+    }
+
+    /**
+     * Computes field transformations based on the initializer and returns a list of
+     * fields that were unsafely accessed.
+     */
+    private List<AccessedField> computeTransformations(SVMHost hostVM, ResolvedJavaType hostType) {
         if (hostType.isArray()) {
-            return;
+            return List.of();
         }
+
         if (!hostVM.getClassInitializationSupport().maybeInitializeAtBuildTime(hostType)) {
             /*
              * The class initializer of this type is executed at run time. The methods in Unsafe are
@@ -285,14 +314,16 @@ public class AutomaticUnsafeTransformationSupport {
              * perform the unsafe access registration. And if not, the user needs to provide a
              * proper manual configuration file.
              */
-            return;
+            return List.of();
         }
 
         if (annotationSubstitutions.findFullSubstitution(hostType).isPresent()) {
             /* If the class is substituted clinit will be eliminated, so bail early. */
             reportSkippedTransformation(hostType);
-            return;
+            return List.of();
         }
+
+        List<AccessedField> accessedFields = new ArrayList<>();
 
         /* Detect field offset computation in static initializers. */
         ResolvedJavaMethod clinit = hostType.getClassInitializer();
@@ -309,16 +340,16 @@ public class AutomaticUnsafeTransformationSupport {
                 for (Invoke invoke : clinitGraph.getInvokes()) {
                     if (invoke.callTarget() instanceof MethodCallTargetNode) {
                         if (isInvokeTo(invoke, unsafeStaticFieldBaseMethod)) {
-                            processUnsafeFieldComputation(bb, hostType, invoke, StaticFieldBase);
+                            processUnsafeFieldComputation(hostType, invoke, StaticFieldBase, accessedFields);
                         } else if (isInvokeTo(invoke, unsafeObjectFieldOffsetFieldMethod) || isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod) ||
                                         isInvokeTo(invoke, unsafeStaticFieldOffsetMethod)) {
-                            processUnsafeFieldComputation(bb, hostType, invoke, FieldOffset);
+                            processUnsafeFieldComputation(hostType, invoke, FieldOffset, accessedFields);
                         } else if (isInvokeTo(invoke, unsafeObjectFieldOffsetClassStringMethod)) {
-                            processUnsafeObjectFieldOffsetClassStringInvoke(bb, hostType, invoke);
+                            processUnsafeObjectFieldOffsetClassStringInvoke(hostType, invoke, accessedFields);
                         } else if (isInvokeTo(invoke, unsafeArrayBaseOffsetMethod)) {
-                            processUnsafeArrayBaseOffsetInvoke(bb, hostType, invoke);
+                            processUnsafeArrayBaseOffsetInvoke(hostType, invoke);
                         } else if (isInvokeTo(invoke, unsafeArrayIndexScaleMethod)) {
-                            processUnsafeArrayIndexScaleInvoke(bb, hostType, invoke, clinitGraph);
+                            processUnsafeArrayIndexScaleInvoke(hostType, invoke, clinitGraph);
                         }
                     }
                 }
@@ -328,6 +359,7 @@ public class AutomaticUnsafeTransformationSupport {
             }
         }
 
+        return accessedFields;
     }
 
     /**
@@ -341,7 +373,7 @@ public class AutomaticUnsafeTransformationSupport {
      * <p>
      * <code> static final long fieldOffset = Unsafe.getUnsafe().staticFieldBase(X.class.getDeclaredField("f")); </code>
      */
-    private void processUnsafeFieldComputation(BigBang bb, ResolvedJavaType type, Invoke invoke, Kind kind) {
+    private void processUnsafeFieldComputation(ResolvedJavaType type, Invoke invoke, Kind kind, List<AccessedField> accessedFields) {
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         ResolvedJavaField targetField = null;
@@ -357,7 +389,7 @@ public class AutomaticUnsafeTransformationSupport {
         } else {
             unsuccessfulReasons.add(() -> "The argument of " + methodFormat + " is not a constant value or a field load that can be constant-folded.");
         }
-        processUnsafeFieldComputation(bb, type, invoke, kind, unsuccessfulReasons, targetField);
+        processUnsafeFieldComputation(type, invoke, kind, unsuccessfulReasons, targetField, accessedFields);
     }
 
     /**
@@ -417,7 +449,7 @@ public class AutomaticUnsafeTransformationSupport {
      *
      * <code> static final long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(X.class, "f"); </code>
      */
-    private void processUnsafeObjectFieldOffsetClassStringInvoke(BigBang bb, ResolvedJavaType type, Invoke unsafeObjectFieldOffsetInvoke) {
+    private void processUnsafeObjectFieldOffsetClassStringInvoke(ResolvedJavaType type, Invoke unsafeObjectFieldOffsetInvoke, List<AccessedField> accessedFields) {
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         ResolvedJavaType targetFieldHolder = null;
@@ -452,10 +484,11 @@ public class AutomaticUnsafeTransformationSupport {
                 unsuccessfulReasons.add(() -> "The arguments of Unsafe.objectFieldOffset(Class, String) do not reference an existing field.");
             }
         }
-        processUnsafeFieldComputation(bb, type, unsafeObjectFieldOffsetInvoke, FieldOffset, unsuccessfulReasons, targetField);
+        processUnsafeFieldComputation(type, unsafeObjectFieldOffsetInvoke, FieldOffset, unsuccessfulReasons, targetField, accessedFields);
     }
 
-    private void processUnsafeFieldComputation(BigBang bb, ResolvedJavaType type, Invoke invoke, Kind kind, List<Supplier<String>> unsuccessfulReasons, ResolvedJavaField targetField) {
+    private void processUnsafeFieldComputation(ResolvedJavaType type, Invoke invoke, Kind kind, List<Supplier<String>> unsuccessfulReasons, ResolvedJavaField targetField,
+                    List<AccessedField> accessedFields) {
         assert kind == FieldOffset || kind == StaticFieldBase;
         /*
          * If the value returned by the call to Unsafe.objectFieldOffset() is stored into a field
@@ -474,7 +507,11 @@ public class AutomaticUnsafeTransformationSupport {
          * transformation.
          */
         if (targetField != null && valueStoreField != null) {
-            if (tryAutomaticTransformation(bb, valueStoreField, kind, null, targetField)) {
+            if (tryAutomaticTransformation(valueStoreField, kind, null, targetField)) {
+                if (kind == FieldOffset) {
+                    accessedFields.add(new AccessedField(targetField, valueStoreField));
+                }
+
                 reportSuccessfulAutomaticRecomputation(kind, valueStoreField, targetField.getDeclaringClass().getName() + "." + targetField.getName());
             }
         } else {
@@ -488,7 +525,7 @@ public class AutomaticUnsafeTransformationSupport {
      *
      * <code> static final long arrayBaseOffsets = Unsafe.getUnsafe().arrayBaseOffset(byte[].class); </code>
      */
-    private void processUnsafeArrayBaseOffsetInvoke(BigBang bb, ResolvedJavaType type, Invoke unsafeArrayBaseOffsetInvoke) {
+    private void processUnsafeArrayBaseOffsetInvoke(ResolvedJavaType type, Invoke unsafeArrayBaseOffsetInvoke) {
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         ResolvedJavaType arrayType = null;
@@ -509,7 +546,7 @@ public class AutomaticUnsafeTransformationSupport {
         ResolvedJavaField offsetField = result.valueStoreField;
         if (arrayType != null && offsetField != null) {
             ResolvedJavaType finalArrayType = arrayType;
-            if (tryAutomaticTransformation(bb, offsetField, ArrayBaseOffset, finalArrayType, null)) {
+            if (tryAutomaticTransformation(offsetField, ArrayBaseOffset, finalArrayType, null)) {
                 reportSuccessfulAutomaticRecomputation(ArrayBaseOffset, offsetField, arrayType.toClassName());
             }
         } else {
@@ -526,7 +563,7 @@ public class AutomaticUnsafeTransformationSupport {
      *
      * <code> static final long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class); </code>
      */
-    private void processUnsafeArrayIndexScaleInvoke(BigBang bb, ResolvedJavaType type, Invoke unsafeArrayIndexScale, StructuredGraph clinitGraph) {
+    private void processUnsafeArrayIndexScaleInvoke(ResolvedJavaType type, Invoke unsafeArrayIndexScale, StructuredGraph clinitGraph) {
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         ResolvedJavaType arrayType = null;
@@ -550,18 +587,18 @@ public class AutomaticUnsafeTransformationSupport {
 
         if (arrayType != null) {
             if (indexScaleField != null) {
-                if (tryAutomaticTransformation(bb, indexScaleField, ArrayIndexScale, arrayType, null)) {
+                if (tryAutomaticTransformation(indexScaleField, ArrayIndexScale, arrayType, null)) {
                     reportSuccessfulAutomaticRecomputation(ArrayIndexScale, indexScaleField, arrayType.toClassName());
                     indexScaleComputed = true;
                     /* Try transformation for the array index shift computation if present. */
-                    indexShiftComputed = processArrayIndexShiftFromField(bb, type, indexScaleField, arrayType, clinitGraph);
+                    indexShiftComputed = processArrayIndexShiftFromField(type, indexScaleField, arrayType, clinitGraph);
                 }
             } else {
                 /*
                  * The index scale is not stored into a field, it might be used to compute the index
                  * shift.
                  */
-                indexShiftComputed = processArrayIndexShiftFromLocal(bb, type, unsafeArrayIndexScale, arrayType);
+                indexShiftComputed = processArrayIndexShiftFromLocal(type, unsafeArrayIndexScale, arrayType);
             }
         }
         if (!indexScaleComputed && !indexShiftComputed) {
@@ -591,7 +628,7 @@ public class AutomaticUnsafeTransformationSupport {
      * It is important that constant folding is not enabled for the byteArrayIndexScale load because
      * it would break the link between the scale and shift computations.
      */
-    private boolean processArrayIndexShiftFromField(BigBang bb, ResolvedJavaType type, ResolvedJavaField indexScaleField, ResolvedJavaType arrayType, StructuredGraph clinitGraph) {
+    private boolean processArrayIndexShiftFromField(ResolvedJavaType type, ResolvedJavaField indexScaleField, ResolvedJavaType arrayType, StructuredGraph clinitGraph) {
         for (LoadFieldNode load : clinitGraph.getNodes().filter(LoadFieldNode.class)) {
             if (load.field().equals(indexScaleField)) {
                 /*
@@ -599,7 +636,7 @@ public class AutomaticUnsafeTransformationSupport {
                  * field was already found. The case where both scale and shift are computed is
                  * uncommon.
                  */
-                if (processArrayIndexShift(bb, type, arrayType, load, true)) {
+                if (processArrayIndexShift(type, arrayType, load, true)) {
                     /*
                      * Return true as soon as an index shift computed from the index scale field is
                      * found. It is very unlikely that there are multiple shift computations from
@@ -628,15 +665,15 @@ public class AutomaticUnsafeTransformationSupport {
      *      }
      * </code>
      */
-    private boolean processArrayIndexShiftFromLocal(BigBang bb, ResolvedJavaType type, Invoke unsafeArrayIndexScale, ResolvedJavaType arrayType) {
+    private boolean processArrayIndexShiftFromLocal(ResolvedJavaType type, Invoke unsafeArrayIndexScale, ResolvedJavaType arrayType) {
         /* Try to compute index shift. Report errors since the index scale field was not found. */
-        return processArrayIndexShift(bb, type, arrayType, unsafeArrayIndexScale.asNode(), false);
+        return processArrayIndexShift(type, arrayType, unsafeArrayIndexScale.asNode(), false);
     }
 
     /**
      * Try to compute the arrayIndexShift. Return true if successful, false otherwise.
      */
-    private boolean processArrayIndexShift(BigBang bb, ResolvedJavaType type, ResolvedJavaType arrayType, ValueNode indexScaleValue, boolean silentFailure) {
+    private boolean processArrayIndexShift(ResolvedJavaType type, ResolvedJavaType arrayType, ValueNode indexScaleValue, boolean silentFailure) {
         NodeIterable<MethodCallTargetNode> loadMethodCallTargetUsages = indexScaleValue.usages().filter(MethodCallTargetNode.class);
         for (MethodCallTargetNode methodCallTarget : loadMethodCallTargetUsages) {
             /* Iterate over all the calls that use the index scale value. */
@@ -669,7 +706,7 @@ public class AutomaticUnsafeTransformationSupport {
                 }
 
                 if (indexShiftField != null) {
-                    if (tryAutomaticTransformation(bb, indexShiftField, ArrayIndexShift, arrayType, null)) {
+                    if (tryAutomaticTransformation(indexShiftField, ArrayIndexShift, arrayType, null)) {
                         reportSuccessfulAutomaticRecomputation(ArrayIndexShift, indexShiftField, arrayType.toClassName());
                         return true;
                     }
@@ -880,7 +917,7 @@ public class AutomaticUnsafeTransformationSupport {
      * Try to register the automatic transformation for a field. Bail if the field was deleted or a
      * conflicting substitution is detected.
      */
-    private boolean tryAutomaticTransformation(BigBang bb, ResolvedJavaField field, RecomputeFieldValue.Kind kind, ResolvedJavaType targetType, ResolvedJavaField targetField) {
+    private boolean tryAutomaticTransformation(ResolvedJavaField field, RecomputeFieldValue.Kind kind, ResolvedJavaType targetType, ResolvedJavaField targetField) {
         if (annotationSubstitutions.isDeleted(field)) {
             String conflictingSubstitution = "The field " + field.format("%H.%n") + " is marked as deleted. ";
             reportConflictingSubstitution(field, kind, conflictingSubstitution);
@@ -931,17 +968,9 @@ public class AutomaticUnsafeTransformationSupport {
                 }
             }
 
-            if (kind == FieldOffset) {
-                bb.postTask(_ -> toAnalysisField(bb, targetField).registerAsUnsafeAccessed(field));
-            }
             singleton().registerFieldValueTransformer(field, newTransformer);
             return true;
         }
-    }
-
-    private static AnalysisField toAnalysisField(BigBang bb, ResolvedJavaField targetField) {
-        VMError.guarantee(!(targetField instanceof AnalysisField), "AnalysisField not allowed: %s", targetField);
-        return bb.getUniverse().lookup(targetField);
     }
 
     private static void reportSkippedTransformation(ResolvedJavaType type) {

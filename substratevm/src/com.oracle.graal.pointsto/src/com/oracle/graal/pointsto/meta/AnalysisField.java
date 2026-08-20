@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.util.InterceptedField;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 
@@ -48,7 +49,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider {
+public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider, InterceptedField {
 
     static final AnalysisField[] EMPTY_ARRAY = new AnalysisField[0];
 
@@ -203,6 +204,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return id;
     }
 
+    @Override
     public JavaKind getStorageKind() {
         return fieldType.getStorageKind();
 
@@ -396,10 +398,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         AnalysisError.guarantee(!getUniverse().sealed(), "Field %s was marked as tracked after the universe was sealed", this);
     }
 
+    @Override
     public Object getFieldValueInterceptor() {
         return fieldValueInterceptor;
     }
 
+    @Override
     public void setFieldValueInterceptor(Object fieldValueInterceptor) {
         this.fieldValueInterceptor = fieldValueInterceptor;
     }
@@ -476,11 +480,13 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     /**
-     * Ensure that all reachability handlers that were present at the time the declaring type was
-     * marked as reachable are executed before accessing field values. This allows a field value
-     * transformer to be installed reliably in a reachability handler.
+     * Mark the declaring class and its super types as reachable.
+     * This was the default behavior when reading a field, but
+     * registration of field value transformers in reachability
+     * handlers, under "--future-defaults=predictable-build-time-initialization"
+     * is forbidden to not affect the universe.
      */
-    public void beforeFieldValueAccess() {
+    public void markDeclaringClassAsReachable() {
         declaringClass.registerAsReachable(this);
 
         declaringClass.forAllSuperTypes(type -> {
@@ -497,5 +503,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                 type.scheduledTypeReachableNotifications = null;
             }
         });
+    }
+
+    @Override
+    public void beforeFieldValueAccess() {
+        getUniverse().hostVM().beforeFieldValueAccess(declaringClass);
     }
 }

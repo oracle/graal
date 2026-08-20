@@ -253,6 +253,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.hosted.jdk.localization.CharsetSubstitutionsFeature"),
                     clazz("com.oracle.svm.hosted.jdk.localization.LocalizationFeature"),
                     clazz("com.oracle.svm.hosted.jdk.VarHandleFeature"),
+                    clazz("com.oracle.svm.hosted.jfr.JfrEventFeature"),
                     clazz("com.oracle.svm.hosted.jfr.JfrEventSubstitution"),
                     clazz("com.oracle.svm.hosted.jni.JNIAccessFeature"),
                     clazz("com.oracle.svm.hosted.jni.JNIAccessFeature$JNIRuntimeAccessibilitySupportImpl"),
