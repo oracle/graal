@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.fieldvaluetransformer;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
+
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -40,7 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * Implements the field value transformation semantics of {@link Kind#FieldOffset}.
  */
-public record FieldOffsetFieldValueTransformer(ResolvedJavaField targetField, JavaKind returnKind) implements JVMCIFieldValueTransformerWithAvailability {
+public record FieldOffsetFieldValueTransformer(ResolvedJavaField targetField, JavaKind returnKind) implements JVMCIFieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
 
     @Override
     public boolean isAvailable() {

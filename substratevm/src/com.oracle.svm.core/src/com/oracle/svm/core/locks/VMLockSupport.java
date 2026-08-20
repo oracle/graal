@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,11 +74,11 @@ public class VMLockSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerObjectReplacers(InternalFeature.DuringSetupAccess access) {
-        mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class, mutexes, this::replaceVMMutex);
+        mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class, this::replaceVMMutex, mutexes::add);
 
         access.registerObjectReplacer(mutexReplacer);
-        access.registerObjectReplacer(new ClassInstanceReplacer<>(VMCondition.class, conditions, this::replaceVMCondition));
-        access.registerObjectReplacer(new ClassInstanceReplacer<>(VMSemaphore.class, semaphores, this::replaceSemaphore));
+        access.registerObjectReplacer(new ClassInstanceReplacer<>(VMCondition.class, this::replaceVMCondition, this::onVMConditionReachable));
+        access.registerObjectReplacer(new ClassInstanceReplacer<>(VMSemaphore.class, this::replaceSemaphore, semaphores::add));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -88,12 +88,18 @@ public class VMLockSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private VMCondition replaceVMCondition(VMCondition source) {
-        return new RuntimeVMCondition((RuntimeVMMutex) mutexReplacer.apply(source.getMutex()), source.getName());
+        return new RuntimeVMCondition((RuntimeVMMutex) mutexReplacer.getOrCreateReplacement(source.getMutex()), source.getName());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private VMSemaphore replaceSemaphore(VMSemaphore source) {
         return new RuntimeVMSemaphore(source.getName());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void onVMConditionReachable(VMCondition condition) {
+        conditions.add(condition);
+        mutexReplacer.onObjectReachable(condition.getMutex());
     }
 
     /**

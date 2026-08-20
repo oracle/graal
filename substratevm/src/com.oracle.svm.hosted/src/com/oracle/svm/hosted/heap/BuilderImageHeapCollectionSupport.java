@@ -25,13 +25,13 @@
 package com.oracle.svm.hosted.heap;
 
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapCollectionSupport;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.HeapObjectConstantReplacer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -51,17 +51,20 @@ final class BuilderImageHeapCollectionSupport {
         GuestImageSingletonSupport.add(type, support);
     }
 
-    static Function<JavaConstant, JavaConstant> createObjectReplacer() {
+    static HeapObjectConstantReplacer createObjectReplacer() {
         GuestAccess guest = GuestAccess.get();
         ResolvedJavaType type = guest.lookupType(ImageHeapCollectionSupport.class);
         JavaConstant support = GuestImageSingletonSupport.lookup(type);
-        ResolvedJavaMethod replaceMethod = guest.lookupMethod(type, "replaceHostedWithRuntime", Object.class);
+        ResolvedJavaMethod replaceMethod = guest.lookupMethod(type, "replaceHostedWithRuntime", Object.class, boolean.class);
 
-        return constant -> {
-            if (constant instanceof PatchedWordConstant) {
-                return constant;
+        return new HeapObjectConstantReplacer() {
+            @Override
+            public JavaConstant replaceConstant(JavaConstant constant, boolean reachable) {
+                if (constant instanceof PatchedWordConstant) {
+                    return constant;
+                }
+                return guest.invoke(replaceMethod, support, constant, JavaConstant.forBoolean(reachable));
             }
-            return guest.invoke(replaceMethod, support, constant);
         };
     }
 

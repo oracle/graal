@@ -282,7 +282,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * Returns the computed init kind for {@code type}, which can differ from the configured init
      * kind returned by {@link #specifiedInitKindFor(ResolvedJavaType)}.
      */
-    InitKind computedInitKindFor(ResolvedJavaType type) {
+    public InitKind computedInitKindFor(ResolvedJavaType type) {
         return classInitKinds.get(normalizeType(type));
     }
 
@@ -298,8 +298,11 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     }
 
     /** Returns all types of a single {@link InitKind}. */
-    Set<ResolvedJavaType> classesWithKind(InitKind kind) {
-        return classInitKinds.entrySet().stream().filter(e -> e.getValue() == kind).map(Map.Entry::getKey).collect(Collectors.toSet());
+    public Set<ResolvedJavaType> classesWithKind(InitKind kind) {
+        return classInitKinds.entrySet().stream()
+                        .filter(e -> e.getValue() == kind)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
     }
 
     /**
@@ -335,6 +338,15 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      */
     public boolean shouldInitializeAtBuildTime(ResolvedJavaType type) {
         return specifiedInitKindFor(type) == InitKind.BUILD_TIME;
+    }
+
+    /**
+     * Returns {@code true} if the provided type and all of its class-initialization dependencies
+     * can be initialized at image build time. An unsuccessful computation is not memoized, so this
+     * query does not assign run-time initialization to unspecified dependencies.
+     */
+    public boolean canInitializeAtBuildTime(ResolvedJavaType type) {
+        return computeInitKindAndMaybeInitializeClass(normalizeType(type), false) == InitKind.BUILD_TIME;
     }
 
     /**
@@ -637,7 +649,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         return result;
     }
 
-    String reasonForClass(ResolvedJavaType type) {
+    public String reasonForClass(ResolvedJavaType type) {
         ResolvedJavaType guestType = normalizeType(type);
         InitKind initKind = classInitKinds.get(guestType);
         String reason = classInitializationConfiguration.lookupReason(JVMCIReflectionUtil.getTypeName(guestType));

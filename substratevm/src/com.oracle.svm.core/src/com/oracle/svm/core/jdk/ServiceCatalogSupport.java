@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
@@ -67,9 +68,10 @@ public class ServiceCatalogSupport {
         omittedServiceProviders.put(serviceProvider, services);
     }
 
-    @SuppressWarnings("unchecked")
-    public void enableServiceCatalogMapTransformer(Feature.BeforeAnalysisAccess access) {
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ServicesCatalog.class, "map"), (_, original) -> {
+    class ServiceCatalogMapFieldValueTransformer implements FieldValueTransformer {
+        @Override
+        @SuppressWarnings("unchecked")
+        public Object transform(Object receiver, Object original) {
             VMError.guarantee(sealed);
             ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>> map = (ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>>) original;
             final ConcurrentHashMap<String, List<ServicesCatalog.ServiceProvider>> res = new ConcurrentHashMap<>();
@@ -83,8 +85,19 @@ public class ServiceCatalogSupport {
                 }
             });
             return res;
-        });
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ModuleDescriptor.Provides.class, "providers"), (receiver, original) -> {
+        }
+
+        @Override
+        public boolean isAvailable() {
+            /* Available after it is sealed, because it can be read before analysis by PBTI */
+            return sealed;
+        }
+    }
+
+    class ModuleDescriptorProvidersFieldValueTransformer implements FieldValueTransformer {
+        @Override
+        @SuppressWarnings("unchecked")
+        public Object transform(Object receiver, Object original) {
             VMError.guarantee(sealed, "Service provider detector must be registered before the analysis starts");
             List<String> providers = (List<String>) original;
             String service = ((ModuleDescriptor.Provides) receiver).service();
@@ -94,7 +107,17 @@ public class ServiceCatalogSupport {
             }
             SymbolEncoder encoder = SymbolEncoder.singleton();
             return providers.stream().map(encoder::encodeClass).toList();
-        });
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return sealed;
+        }
+    }
+
+    public void enableServiceCatalogMapTransformer(Feature.BeforeAnalysisAccess access) {
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ServicesCatalog.class, "map"), new ServiceCatalogMapFieldValueTransformer());
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ModuleDescriptor.Provides.class, "providers"), new ModuleDescriptorProvidersFieldValueTransformer());
         registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "requires");
         registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "exports");
         registerModuleDescriptorSetTransformer(access, ModuleDescriptor.class, "opens");

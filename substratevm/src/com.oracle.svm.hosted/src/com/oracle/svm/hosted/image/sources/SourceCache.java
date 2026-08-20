@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -40,6 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -62,8 +64,17 @@ import jdk.graal.compiler.options.Option;
  * the local cache or cached when not already present. Subclasses are responsible for providing
  * behaviours that identify an original source for addition to the cache and for verifying that a
  * cached file is not out of date with respect to its original.
+ *
+ * <p>
+ * Marked as HOSTED_ONLY so
+ * {@link com.oracle.svm.hosted.classinitialization.pbti.PredictableBuildTimeInitializationFeature}
+ * does not mark it as a failure that can appear in the generated image. In particular, the
+ * SourceRoots can contain {@code sun.nio.ch.FileChannelImpl}, which is initialized at run-time, and
+ * available from {@code SourceCache$SourceRoots.srcRoots.elementData[0].path.zfs.ch}, held
+ * by {@code jdk.nio.zipfs.ZipFileSystem}.
+ * </p>
  */
-
+@Platforms(Platform.HOSTED_ONLY.class)
 public class SourceCache {
 
     private static final class SourceRoots {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.util.HeapObjectReplacer;
 
 @AutomaticallyRegisteredFeature
 public class HostedDynamicHubFeature implements InternalFeature {
@@ -42,11 +44,29 @@ public class HostedDynamicHubFeature implements InternalFeature {
         hostVM = access.getHostVM();
 
         // Replace all instances of Class with the corresponding DynamicHub obtained from SVMHost
-        access.registerObjectReplacer(source -> {
-            if (source instanceof Class<?> clazz) {
-                return hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
+        access.registerObjectReplacer(new HeapObjectReplacer() {
+            @Override
+            public Object replaceObject(Object source, boolean reachable) {
+                if (source instanceof Class<?> clazz) {
+                    if (reachable) {
+                        return hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
+                    }
+
+                    try {
+                        /* Only provide hub when available for PBTI, fail before image heap. */
+                        var type = metaAccess.optionalLookupJavaType(clazz);
+
+                        if (type.isEmpty()) {
+                            return CANNOT_REPLACE_MARKER;
+                        }
+
+                        return hostVM.dynamicHub(type.get());
+                    } catch (DeletedElementException e) {
+                        return CANNOT_REPLACE_MARKER;
+                    }
+                }
+                return source;
             }
-            return source;
         });
     }
 }

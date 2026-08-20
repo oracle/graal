@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
 
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -128,7 +129,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static final class DowncallAddressTransformer implements FieldValueTransformer {
+    static final class DowncallAddressTransformer implements FieldValueTransformer, FieldValueTransformerRequiresUniverse {
         private final ForeignFunctionsRuntime foreignFunctionsRuntime = ForeignFunctionsRuntime.singleton();
 
         @Override
@@ -155,7 +156,7 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static final class DowncallInvokerAddressTransformer implements FieldValueTransformer {
+    static final class DowncallInvokerAddressTransformer implements FieldValueTransformer, FieldValueTransformerRequiresUniverse {
         private final ForeignFunctionsRuntime foreignFunctionsRuntime = ForeignFunctionsRuntime.singleton();
 
         @Override
