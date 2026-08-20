@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.SignatureUtil;
@@ -48,11 +47,9 @@ import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.ConstantPoolProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.internal.reflect.ConstantPool;
@@ -120,10 +117,6 @@ public final class Target_java_lang_reflect_Method {
     @RecomputeFieldValue(kind = Kind.Reset) //
     public Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
 
-    @Inject //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerIdComputer.class) //
-    public int layerId;
-
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
     @SuppressWarnings("hiding")
@@ -159,6 +152,7 @@ public final class Target_java_lang_reflect_Method {
             return null;
         }
         Class<?> memberType = AnnotationType.invocationHandlerReturnType(getReturnType());
+        int layerId = SubstrateUtil.cast(this, Target_java_lang_reflect_Executable.class).layerId;
         Target_jdk_internal_reflect_ConstantPool constPool;
         DynamicHub declaringHub = DynamicHub.fromClass(getDeclaringClass());
         if (declaringHub.isRuntimeLoaded()) {
@@ -198,8 +192,6 @@ public final class Target_java_lang_reflect_Method {
         // Propagate shared states
         res.methodAccessor = methodAccessor;
         res.genericInfo = genericInfo;
-        /* Copy the layer id too */
-        res.layerId = layerId;
         return res;
     }
 
@@ -226,16 +218,6 @@ public final class Target_java_lang_reflect_Method {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getAnnotationDefaultEncoding((Method) receiver);
-        }
-    }
-
-    static class LayerIdComputer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                return DynamicImageLayerInfo.getCurrentLayerNumber();
-            }
-            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
     }
 }

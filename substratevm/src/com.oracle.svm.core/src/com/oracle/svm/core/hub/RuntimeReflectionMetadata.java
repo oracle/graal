@@ -171,7 +171,8 @@ public final class RuntimeReflectionMetadata implements ReflectionMetadata {
                         resolvedConstructor.getRawParameterAnnotations(),
                         resolvedConstructor.getAccessor(receiverType, parameterTypes),
                         resolvedConstructor.getParametersAttribute(),
-                        resolvedConstructor.getRawTypeAnnotations());
+                        resolvedConstructor.getRawTypeAnnotations(),
+                        declaringClass.getLayerId());
     }
 
     @Override

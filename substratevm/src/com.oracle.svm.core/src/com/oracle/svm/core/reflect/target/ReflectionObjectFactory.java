@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,21 +65,24 @@ public final class ReflectionObjectFactory {
         Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
         method.constructor(declaringClass, name, parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
         method.methodAccessorFromMetadata = (Target_jdk_internal_reflect_MethodAccessor) accessor;
-        SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).parameterMetadata = parameterMetadata;
+        Target_java_lang_reflect_Executable executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
+        executable.parameterMetadata = parameterMetadata;
+        executable.layerId = layerId;
         Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class);
         accessibleObject.typeAnnotations = typeAnnotations;
         accessibleObject.dynamicAccessMetadata = dynamicAccessMetadata;
-        method.layerId = layerId;
         return SubstrateUtil.cast(method, Method.class);
     }
 
     public static Constructor<?> newConstructor(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?> declaringClass, Class<?>[] parameterTypes, Class<?>[] exceptionTypes, int modifiers,
                     String signature,
-                    byte[] annotations, byte[] parameterAnnotations, Object accessor, Object parameterMetadata, byte[] typeAnnotations) {
+                    byte[] annotations, byte[] parameterAnnotations, Object accessor, Object parameterMetadata, byte[] typeAnnotations, int layerId) {
         Target_java_lang_reflect_Constructor ctor = new Target_java_lang_reflect_Constructor();
         ctor.constructor(declaringClass, parameterTypes, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations);
         ctor.constructorAccessorFromMetadata = (Target_jdk_internal_reflect_ConstructorAccessor) accessor;
-        SubstrateUtil.cast(ctor, Target_java_lang_reflect_Executable.class).parameterMetadata = parameterMetadata;
+        Target_java_lang_reflect_Executable executable = SubstrateUtil.cast(ctor, Target_java_lang_reflect_Executable.class);
+        executable.parameterMetadata = parameterMetadata;
+        executable.layerId = layerId;
         Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(ctor, Target_java_lang_reflect_AccessibleObject.class);
         accessibleObject.typeAnnotations = typeAnnotations;
         accessibleObject.dynamicAccessMetadata = dynamicAccessMetadata;
