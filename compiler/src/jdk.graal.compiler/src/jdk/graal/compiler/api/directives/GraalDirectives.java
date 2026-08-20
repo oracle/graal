@@ -629,6 +629,14 @@ public final class GraalDirectives {
     }
 
     /**
+     * Invalidates the compiler's cached value for the named final instance field. Dominated field
+     * reads use a new opaque value loaded at this directive instead of a value cached before it.
+     * The receiver must be non-null and {@code fieldName} must be a compile-time constant.
+     */
+    public static void killFieldReadCache(Object receiver, String fieldName) {
+    }
+
+    /**
      * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
      * until the specified {@link StageFlag} has been applied.
      *

@@ -3475,6 +3475,7 @@ public final class Interpreter {
         @AlwaysInline("Fold invoke opcode in individual handlers")
         private static long invokeBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
             LinkedInvoke linkedInvoke = getOrLinkInvoke(state, curBCI, curOpcode);
+            GraalDirectives.killFieldReadCache(state, "code");
             Object[] calleeArgs = InterpreterToVM.createNewObjectArray(linkedInvoke.argumentKinds.length);
             Object appendix = curOpcode == INVOKEVIRTUAL ? linkedInvoke.appendix : null;
             virtualStack.popArguments(state, linkedInvoke.argumentKinds, calleeArgs, appendix);

@@ -54,6 +54,7 @@ import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
+import jdk.graal.compiler.nodes.virtual.PartiallyOpaqueLoadFieldNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.graal.compiler.replacements.GraphKit;
@@ -182,9 +183,9 @@ public final class BytecodeHandlerStubHelper {
     }
 
     /**
-     * Produces the current stub ABI values at a control-flow point. Mutable expanded fields are read
-     * from their owner object, while immutable values can reuse their incoming stub parameters. When
-     * called for an exception edge, {@code handlerResult} is {@code null}; a
+     * Produces the current stub ABI values at a control-flow point. Expanded fields are expressed as
+     * field reads so that field aliases and cache kills are applied after the handler is inlined.
+     * When called for an exception edge, {@code handlerResult} is {@code null}; a
      * {@code copyFromReturn} slot therefore keeps its incoming stub parameter, because the throwing
      * call produced no return value. Backend-specific unwind handling can then publish this current
      * stub ABI snapshot before the stub rethrows.
@@ -193,10 +194,10 @@ public final class BytecodeHandlerStubHelper {
         ValueNode[] values = new ValueNode[handlerConfig.getCalleeParameterInfos().size()];
         for (ArgumentInfo argumentInfo : handlerConfig.getCalleeParameterInfos()) {
             if (argumentInfo.isExpanded()) {
+                ValueNode owner = handlerArguments[argumentInfo.originalIndex()];
                 if (argumentInfo.isImmutable()) {
-                    values[argumentInfo.index()] = stubParameters[argumentInfo.index()];
+                    values[argumentInfo.index()] = kit.append(new PartiallyOpaqueLoadFieldNode(kit.getAssumptions(), owner, argumentInfo.field(), stubParameters[argumentInfo.index()]));
                 } else {
-                    ValueNode owner = handlerArguments[argumentInfo.originalIndex()];
                     values[argumentInfo.index()] = kit.append(LoadFieldNode.create(kit.getAssumptions(), owner, argumentInfo.field()));
                 }
             } else if (argumentInfo.copyFromReturn() && handlerResult != null) {

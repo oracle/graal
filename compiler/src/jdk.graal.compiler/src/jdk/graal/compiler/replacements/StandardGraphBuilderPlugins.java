@@ -199,6 +199,7 @@ import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
 import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
+import jdk.graal.compiler.nodes.virtual.FieldReadCacheKillNode;
 import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
@@ -1950,6 +1951,25 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.append(new SafepointNode());
+                return true;
+            }
+        });
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("killFieldReadCache", Object.class, String.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode fieldNameNode) {
+                GraalError.guarantee(fieldNameNode.isJavaConstant(), "Field name must be a compile-time constant");
+                String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
+                GraalError.guarantee(fieldName != null, "Field name must not be null");
+                ValueNode nonNullObject = b.nullCheckedValue(object);
+                ResolvedJavaType type = StampTool.typeOrNull(nonNullObject);
+                GraalError.guarantee(type != null, "Receiver type must be known for field read cache kill");
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ResolvedJavaField field = helper.getField(type, fieldName);
+                    GraalError.guarantee(!field.isStatic(), "Field read cache kill requires an instance field: %s", field);
+                    GraalError.guarantee(field.isFinal(), "Field read cache kill currently requires a final field: %s", field);
+                    b.add(new FieldReadCacheKillNode(b.getAssumptions(), nonNullObject, field));
+                }
                 return true;
             }
         });

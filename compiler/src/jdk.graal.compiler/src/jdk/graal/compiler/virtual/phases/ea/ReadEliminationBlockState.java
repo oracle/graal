@@ -32,7 +32,9 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * This class maintains a set of known values, identified by base object, locations and offset.
@@ -190,6 +192,16 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
     public ValueNode getCacheEntry(CacheEntry<?> identifier) {
         return readCache.get(identifier);
+    }
+
+    public void killReadCache(ValueNode object, ResolvedJavaField field) {
+        Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
+        while (iterator.hasNext()) {
+            CacheEntry<?> entry = iterator.next();
+            if (entry.object == object && entry.getIdentity() instanceof FieldLocationIdentity fieldIdentity && fieldIdentity.getField().equals(field)) {
+                iterator.remove();
+            }
+        }
     }
 
     /**
