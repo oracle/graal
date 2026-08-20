@@ -83,6 +83,8 @@ public class ClassInitializationFeature implements InternalFeature {
     }
 
     private static final String NATIVE_IMAGE_CLASS_REASON = "Native Image classes are always initialized at build time";
+    private static final String SHADOWED_CLASS_REASON = "Shadowed dependencies are initialized according to the policy of the component that imports them";
+    private static final String COMPILER_TEST_CLASS_REASON = "Compiler test classes can contain image-heap-incompatible static state";
 
     private ClassInitializationSupport classInitializationSupport;
 
@@ -137,11 +139,35 @@ public class ClassInitializationFeature implements InternalFeature {
 
     private static void initializeNativeImagePackagesAtBuildTime(ClassInitializationSupport initializationSupport) {
         initializationSupport.initializeAtBuildTime("com.oracle.svm", NATIVE_IMAGE_CLASS_REASON);
+        /*
+         * Do not eagerly initialize shadowed dependencies at build time by default. Their class
+         * initialization policy belongs to the component that imports the shadowed JAR.
+         */
+        initializationSupport.initializeAtRunTime("com.oracle.svm.shadowed", SHADOWED_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("com.oracle.graal", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("com.oracle.objectfile", NATIVE_IMAGE_CLASS_REASON);
 
         initializationSupport.initializeAtBuildTime("org.graalvm.collections", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("jdk.graal.compiler", NATIVE_IMAGE_CLASS_REASON);
+        /*
+         * These compiler test classes share the compiler namespace, but their static state contains
+         * objects that cannot be persisted safely in the image heap.
+         */
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.core.test.ReassociateAndCanonicalTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.core.test.ReassociationTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.disassembler.PanamaDisassemblerVisitor", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.hotspot.test.BigIntegerIntrinsicsTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.jtt.optimize.Conditional01", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.truffle.test.HostInliningTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.annotation.test.Universe", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.hotspot.test.HotSpotStackIntrospectionTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.hotspot.test.GraalOSRTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.jtt.bytecode.BC_getfield", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.jtt.jdk.Unsafe_compareAndSwap", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.jtt.threads.SynchronizedParserInlineTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.replacements.test.UnsafeReplacementsTest", COMPILER_TEST_CLASS_REASON);
+        initializationSupport.initializeAtRunTime("jdk.graal.compiler.core.test.VolatileAccessReadEliminationTest", COMPILER_TEST_CLASS_REASON);
+
         initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage.libgraal", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.word", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", NATIVE_IMAGE_CLASS_REASON);

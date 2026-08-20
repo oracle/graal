@@ -36,7 +36,6 @@ import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -56,10 +55,12 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.HeapConstantToConstantReplacer;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.internal.loader.ClassLoaders;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * This class stores information about which packages need to be stored within each ClassLoader.
@@ -227,8 +228,11 @@ public class HostedClassLoaderPackageManagement {
         }
     }
 
-    public ImageHeapConstant replaceWithPriorLayerPackage(Object obj) {
+    public JavaConstant replaceWithPriorLayerPackage(Object obj, boolean reachable) {
         if (obj instanceof Package hostedPackage) {
+            if (!reachable) {
+                return HeapConstantToConstantReplacer.CANNOT_REPLACE_MARKER;
+            }
             /*
              * Determine the package's ClassLoader
              */
@@ -236,7 +240,7 @@ public class HostedClassLoaderPackageManagement {
             ClassLoader classLoader = module.getClassLoader() == null ? bootClassLoader : ClassLoaderFeature.getRuntimeClassLoader(module.getClassLoader());
             var keyName = generateKeyName(classLoader, hostedPackage.getName());
             if (registry.constantExists(keyName)) {
-                return (ImageHeapConstant) registry.getConstant(keyName);
+                return registry.getConstant(keyName);
             }
         }
 
