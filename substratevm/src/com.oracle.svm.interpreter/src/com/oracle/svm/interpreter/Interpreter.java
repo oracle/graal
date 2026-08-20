@@ -801,6 +801,7 @@ public final class Interpreter {
      */
     @InternalVMMethod
     public static final class Root {
+        private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
         @NeverInline("needed for stack walking")
         @BytecodeInterpreterHandlerConfig(maximumOperationCode = QUICK_PUTFIELD, arguments = {
@@ -3492,7 +3493,7 @@ public final class Interpreter {
         private static long invokeBytecode(long curBCI, InterpreterState state, int curOpcode, InterpreterVirtualStack virtualStack) {
             LinkedInvoke linkedInvoke = getOrLinkInvoke(state, curBCI, curOpcode);
             GraalDirectives.killFieldReadCache(state, "code");
-            Object[] calleeArgs = InterpreterToVM.createNewObjectArray(linkedInvoke.argumentCount);
+            Object[] calleeArgs = GraalDirectives.injectBranchProbability(UNLIKELY_PROBABILITY, linkedInvoke.argumentCount == 0) ? EMPTY_ARGUMENTS : new Object[linkedInvoke.argumentCount];
             linkedInvoke = GraalDirectives.anchorValue(linkedInvoke);
             Object appendix = curOpcode == INVOKEVIRTUAL ? linkedInvoke.appendix : null;
             int[] argumentKinds = uncheckedCast(linkedInvoke.argumentKinds, int[].class);

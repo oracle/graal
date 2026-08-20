@@ -616,7 +616,7 @@ final class InterpreterVirtualStack {
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
     void popArguments(long[] primitives, Object[] references, int[] argKinds, Object[] args, Object appendix) {
-        long index = args.length - 1;
+        long index = GraalDirectives.opaque((long) args.length - 1);
         if (appendix != null) {
             assert uncheckedBasicTypeAt(argKinds, index) == T_OBJECT;
             uncheckedPutArgument(args, index, appendix);
