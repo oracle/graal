@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
+
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.meta.JavaConstant;
@@ -36,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * Implements the field value transformation semantics of {@link Kind#StaticFieldBase}.
  */
-public record StaticFieldBaseFieldValueTransformer(ResolvedJavaField targetField) implements JVMCIFieldValueTransformerWithAvailability {
+public record StaticFieldBaseFieldValueTransformer(ResolvedJavaField targetField) implements JVMCIFieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
 
     @Override
     public boolean isAvailable() {

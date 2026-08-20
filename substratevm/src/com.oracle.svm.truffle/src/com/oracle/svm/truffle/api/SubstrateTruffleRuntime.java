@@ -118,7 +118,13 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
-    private KnownMethods hostedCallMethods;
+    /**
+     * Can be found via com.oracle.truffle.api.Truffle.RUNTIME.hostedCallMethods
+     * in pbti and an exception thrown via {@link com.oracle.svm.graal.hosted.runtimecompilation.GraalGraphObjectReplacer}:
+     * "ResolvedJavaMethod that is not a subtype of SharedRuntimeMethod is not allowed at runtime".
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) private KnownMethods hostedCallMethods;
+
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
     private volatile Boolean profilingEnabled;

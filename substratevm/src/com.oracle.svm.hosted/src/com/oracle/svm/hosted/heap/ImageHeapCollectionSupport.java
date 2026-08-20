@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.heap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.util.HeapObjectReplacer;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
@@ -54,38 +55,46 @@ final class ImageHeapCollectionSupport {
     private final Set<HostedImageHeapMap<?, ?>> allMaps = ConcurrentHashMap.newKeySet();
     private final Set<HostedImageHeapList<?>> allLists = ConcurrentHashMap.newKeySet();
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + ImageHeapCollectionSupport.class);
+    final Replacer replacer = new Replacer();
 
     static ImageHeapCollectionSupport singleton() {
         return ImageSingletons.lookup(ImageHeapCollectionSupport.class);
     }
 
-    /**
-     * Rewrites hosted image-heap collections to their runtime storage objects and records the
-     * hosted collections that need later update propagation. During analysis, first reachability of
-     * a collection registers it for subsequent update/rescan handling; after analysis, encountering
-     * a collection that was never captured is treated as an invariant violation.
-     */
-    Object replaceHostedWithRuntime(Object obj) {
-        if (obj instanceof HostedImageHeapMap) {
-            HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
-            if (BuildPhaseProvider.isAnalysisFinished()) {
-                VMError.guarantee(allMaps.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
-            } else {
-                allMaps.add(hostedImageHeapMap);
-                if (hostedImageHeapMap.getRuntimeMap() instanceof LayeredImageHeapMap<Object, Object> layeredImageHeapMap) {
-                    LayeredHostedImageHeapMapCollector.singleton().registerReachableHostedImageHeapMap(layeredImageHeapMap);
+    final class Replacer extends HeapObjectReplacer {
+        /**
+         * Rewrites hosted image-heap collections to their runtime storage objects and records the
+         * hosted collections that need later update propagation. During analysis, first reachability of
+         * a collection registers it for subsequent update/rescan handling; after analysis, encountering
+         * a collection that was never captured is treated as an invariant violation.
+         */
+        @Override
+        public Object replaceObject(Object obj, boolean reachable) {
+            if (obj instanceof HostedImageHeapMap) {
+                HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
+                if (reachable) {
+                    if (BuildPhaseProvider.isAnalysisFinished()) {
+                        VMError.guarantee(allMaps.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
+                    } else {
+                        allMaps.add(hostedImageHeapMap);
+                        if (hostedImageHeapMap.getRuntimeMap() instanceof LayeredImageHeapMap<Object, Object> layeredImageHeapMap) {
+                            LayeredHostedImageHeapMapCollector.singleton().registerReachableHostedImageHeapMap(layeredImageHeapMap);
+                        }
+                    }
                 }
+                return hostedImageHeapMap.getRuntimeMap();
+            } else if (obj instanceof HostedImageHeapList<?> hostedImageHeapList) {
+                if (reachable) {
+                    if (BuildPhaseProvider.isAnalysisFinished()) {
+                        VMError.guarantee(allLists.contains(hostedImageHeapList), "ImageHeapList reachable after analysis that was not seen during analysis");
+                    } else {
+                        allLists.add(hostedImageHeapList);
+                    }
+                }
+                return hostedImageHeapList.getRuntimeList();
             }
-            return hostedImageHeapMap.getRuntimeMap();
-        } else if (obj instanceof HostedImageHeapList<?> hostedImageHeapList) {
-            if (BuildPhaseProvider.isAnalysisFinished()) {
-                VMError.guarantee(allLists.contains(hostedImageHeapList), "ImageHeapList reachable after analysis that was not seen during analysis");
-            } else {
-                allLists.add(hostedImageHeapList);
-            }
-            return hostedImageHeapList.getRuntimeList();
+            return obj;
         }
-        return obj;
     }
 
     /**

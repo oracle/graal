@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.hosted.UnknownPrimitiveFieldGuestValue;
 import com.oracle.svm.hosted.UnknownObjectFieldGuestValue;
 import com.oracle.svm.hosted.LayeredFieldValueGuestValue;
@@ -33,20 +34,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature.BeforeFieldValueAccess;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.util.InterceptedField;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.feature.JVMCIFeatureAccess;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
@@ -64,6 +71,7 @@ import com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
+import com.oracle.svm.hosted.substitute.ValueNeverAvailableFieldValueTransformer;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -72,6 +80,7 @@ import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.util.GuestInvoked;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -108,12 +117,43 @@ public final class FieldValueInterceptionSupport {
     private final Map<ResolvedJavaField, Object> fieldValueInterceptors = new ConcurrentHashMap<>();
     private final LayeredFieldValueTransformerSupport layeredSupport = HostedImageLayerBuildingSupport.buildingImageLayer() ? LayeredFieldValueTransformerSupport.singleton() : null;
 
+    /**
+     * Callbacks for types before their field is read.
+     * This is used for on-demand field value transformer registration.
+     */
+    private final Map<ResolvedJavaType, List<BiConsumer<JVMCIFeatureAccess.BeforeFieldValueAccess, ResolvedJavaType>>> notifications = new ConcurrentHashMap<>();
+    private boolean handlerRegistrationSealed;
+
+    /**
+     * Map of original types that were already accessed, the future represents
+     * operations that have to happen before a field is accessed.
+     */
+    private final Map<ResolvedJavaType, AnalysisFuture<Void>> accessed = new ConcurrentHashMap<>();
+    private final JVMCIFeatureAccess.BeforeFieldValueAccess access = new BeforeFieldValueAccessImpl();
+
     public static FieldValueInterceptionSupport singleton() {
         return ImageSingletons.lookup(FieldValueInterceptionSupport.class);
     }
 
     public FieldValueInterceptionSupport(AnnotationSubstitutionProcessor annotationSubstitutions) {
         this.annotationSubstitutions = annotationSubstitutions;
+    }
+
+    /**
+     * Registration of before-field-value-access handlers must be done in a {@code beforeAnalysis} callback
+     * at the latest. Otherwise, an exception will be thrown.
+     *
+     * <p>
+     * These before-field-value-access handlers are a replacement for the dynamic registration of transformers in a
+     * reachability handler. These reachability handlers can no longer be used, because
+     * {@code PredictableBuildTimeInitializationFeature} would not have access to their results
+     * without marking the declaring class of a field as reachable. Therefore, it is also
+     * not desirable to allow before-field-value-access handlers to be registered dynamically,
+     * during analysis.
+     * </p>
+     */
+    public void sealHandlerRegistration() {
+        handlerRegistrationSealed = true;
     }
 
     /**
@@ -158,6 +198,10 @@ public final class FieldValueInterceptionSupport {
 
         private WrappedFieldValueTransformer(JavaConstant fieldValueTransformer) {
             this.fieldValueTransformer = Objects.requireNonNull(fieldValueTransformer);
+        }
+
+        public FieldValueTransformer getFieldValueTransformer() {
+            return GuestAccess.get().getSnippetReflection().asObject(FieldValueTransformer.class, fieldValueTransformer);
         }
 
         @Override
@@ -247,7 +291,7 @@ public final class FieldValueInterceptionSupport {
         registerFieldValueTransformer(oField, OriginalClassProvider.getOriginalType(oField.getType()), layeredSupport.createTransformer(aField, transformer));
     }
 
-    Object lookupFieldValueInterceptor(AnalysisField field) {
+    Object lookupFieldValueInterceptor(InterceptedField field) {
         var result = field.getFieldValueInterceptor();
         if (result == null) {
             result = computeAndCacheFieldValueInterceptor(field);
@@ -255,13 +299,18 @@ public final class FieldValueInterceptionSupport {
         return result == INTERCEPTOR_ACCESSED_MARKER ? null : result;
     }
 
-    private Object computeAndCacheFieldValueInterceptor(AnalysisField field) {
+    private Object computeAndCacheFieldValueInterceptor(InterceptedField field) {
         /*
          * Trigger computation of automatic substitutions. There might be an automatic substitution
          * for the current field, and we must register it before checking if a field value
          * transformer exists.
          */
-        field.beforeFieldValueAccess();
+        if (field instanceof AnalysisField aField && !FutureDefaultsOptions.predictableBuildTimeInitialization()) {
+            /* Preserve legacy registration from reachability handlers. */
+            aField.markDeclaringClassAsReachable();
+        }
+
+        beforeFieldValueAccess(field);
 
         ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(field);
         Object result = null;
@@ -325,15 +374,69 @@ public final class FieldValueInterceptionSupport {
     }
 
     /**
+     * Whether the field value transformer requires the analysis.
+     * A layered transformer cannot be installed without an AnalysisField, or
+     * executing the transformer requires universe elements or internal operations that expand
+     * the analysis/hosted universe or image heap, as described in {@link FieldValueTransformerRequiresUniverse}.
+     */
+    public boolean requiresAnalysis(InterceptedField field) {
+        if (layeredSupport != null && GuestAnnotationAccess.getAnnotation(field, LayeredFieldValue.class) != null) {
+            /* Check for the annotation before the field value transformer can be installed. */
+            return true;
+        }
+
+        Object interceptor = lookupFieldValueInterceptor(field);
+        if (interceptor instanceof FieldValueTransformation transformation) {
+            interceptor = transformation.getFieldValueTransformer();
+        }
+
+        if (interceptor instanceof WrappedFieldValueTransformer wrappedFieldValueTransformer) {
+            interceptor = wrappedFieldValueTransformer.getFieldValueTransformer();
+        }
+
+        if (interceptor instanceof LayeredFieldValueTransformerImpl) {
+            return true;
+        }
+
+        return interceptor instanceof FieldValueTransformerRequiresUniverse;
+    }
+
+    /**
+     * Check if a field value is intentionally never available
+     * when {@link ValueNeverAvailableFieldValueTransformer} is used.
+     */
+    public boolean isValueNeverAvailable(InterceptedField field) {
+        Object interceptor = lookupFieldValueInterceptor(field);
+        if (interceptor instanceof FieldValueTransformation transformation) {
+            interceptor = transformation.getFieldValueTransformer();
+        }
+        return interceptor instanceof ValueNeverAvailableFieldValueTransformer;
+    }
+
+    /**
+     * Returns whether the field uses a layered field value transformer.
+     */
+    public boolean isLayeredFieldValue(InterceptedField field) {
+        Object interceptor = lookupFieldValueInterceptor(field);
+        if (interceptor instanceof FieldValueTransformation transformation) {
+            interceptor = transformation.getFieldValueTransformer();
+        }
+        if (interceptor instanceof WrappedFieldValueTransformer wrappedFieldValueTransformer) {
+            interceptor = wrappedFieldValueTransformer.getFieldValueTransformer();
+        }
+        return interceptor instanceof LayeredFieldValueTransformerImpl;
+    }
+
+    /**
      * Check if the value of the provided field is currently available. This does not register a
      * notification or retry. After this method has been called, it is not possible to install a
      * transformer anymore.
      */
-    public boolean isValueAvailable(AnalysisField field, JavaConstant receiver) {
+    public boolean isValueAvailable(InterceptedField field, JavaConstant receiver) {
         return isValueAvailable(field, receiver, false);
     }
 
-    boolean isValueAvailable(AnalysisField field, JavaConstant receiver, boolean unknownReceiver) {
+    boolean isValueAvailable(InterceptedField field, JavaConstant receiver, boolean unknownReceiver) {
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
             var transformer = transformation.getFieldValueTransformer();
@@ -357,10 +460,16 @@ public final class FieldValueInterceptionSupport {
     /**
      * Returns true if a field value interceptor ({@link FieldValueTransformation} or
      * {@link FieldValueComputer}) has been registered for this field. Unlike
-     * {@link #hasFieldValueTransformer(AnalysisField)}, calling this method is side effect free.
+     * {@link #hasFieldValueTransformer(InterceptedField)}, calling this method is side effect free.
      */
-    public static boolean hasFieldValueInterceptor(AnalysisField field) {
+    public static boolean hasFieldValueInterceptor(InterceptedField field) {
         var interceptor = field.getFieldValueInterceptor();
+        if (interceptor == null) {
+            /* The interceptor might not be cached on the field. */
+            var oField = OriginalFieldProvider.getOriginalField(field);
+            interceptor = singleton().fieldValueInterceptors.get(oField);
+        }
+
         if (interceptor != null && interceptor != INTERCEPTOR_ACCESSED_MARKER) {
             VMError.guarantee(interceptor instanceof FieldValueTransformation || interceptor instanceof FieldValueComputer);
             return true;
@@ -372,7 +481,7 @@ public final class FieldValueInterceptionSupport {
      * Returns true if a field value transformer has been registered for this field. After this
      * method has been called, it is not possible to install a transformer anymore.
      */
-    public boolean hasFieldValueTransformer(AnalysisField field) {
+    public boolean hasFieldValueTransformer(InterceptedField field) {
         return lookupFieldValueInterceptor(field) instanceof FieldValueTransformation;
     }
 
@@ -411,8 +520,10 @@ public final class FieldValueInterceptionSupport {
         return transformerWithAvailability.intrinsify(providers, receiver);
     }
 
-    JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
+    JavaConstant readFieldValue(InterceptedField field, JavaConstant receiver) {
         assert isValueAvailable(field, receiver) : field;
+        /* Cannot read a value that requires analysis, without an analysis field */
+        assert !requiresAnalysis(field) || field instanceof AnalysisField;
         JavaConstant value;
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
@@ -457,7 +568,7 @@ public final class FieldValueInterceptionSupport {
         return interceptValue(field, value);
     }
 
-    private static JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
+    private static JavaConstant interceptValue(InterceptedField field, JavaConstant value) {
         JavaConstant result = value;
         if (result != null) {
             result = filterInjectedAccessor(field, result);
@@ -472,9 +583,9 @@ public final class FieldValueInterceptionSupport {
      * image. Ideally they should never be read, but there are corner cases where this happens. We
      * intercept the value and return 0 / null.
      */
-    private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
+    private static JavaConstant filterInjectedAccessor(InterceptedField field, JavaConstant value) {
         if (GuestAnnotationAccess.isAnnotationPresent(field, InjectAccessors.class)) {
-            assert !field.isAccessed();
+            assert !(field instanceof AnalysisField aField) || !aField.isAccessed();
             return JavaConstant.defaultForKind(value.getJavaKind());
         }
         return value;
@@ -487,7 +598,7 @@ public final class FieldValueInterceptionSupport {
      * {@link com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin}, but we could still see
      * such a field here if user code, e.g., accesses it via reflection.
      */
-    private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
+    private static JavaConstant interceptAssertionStatus(InterceptedField field, JavaConstant value) {
         Boolean enabled = ClassInitializationSupport.foldedAssertionStatus(field);
         if (enabled != null) {
             return JavaConstant.forBoolean(!enabled);
@@ -499,23 +610,25 @@ public final class FieldValueInterceptionSupport {
      * Intercept {@link Word} fields. {@link Word} values are boxed objects in the hosted world, but
      * primitive values in the runtime world, so the default value of {@link Word} fields is 0.
      */
-    private static JavaConstant interceptWordField(AnalysisField field, JavaConstant value) {
+    private static JavaConstant interceptWordField(InterceptedField field, JavaConstant value) {
         if (value.getJavaKind() == JavaKind.Object && value.isNull() && field.getType().isWordType()) {
             return JavaConstant.forIntegerKind(SubstrateTarget.getWordKind(), 0);
         }
         return value;
     }
 
-    private FieldValueTransformation createLayeredFieldValueTransformation(ResolvedJavaField oField, AnalysisField aField) {
-        LayeredFieldValueGuestValue layeredFieldValue = LayeredFieldValueGuestValue.get(aField);
+    private FieldValueTransformation createLayeredFieldValueTransformation(ResolvedJavaField oField, InterceptedField field) {
+        LayeredFieldValueGuestValue layeredFieldValue = LayeredFieldValueGuestValue.get(oField);
         if (layeredFieldValue != null) {
-            var transformer = layeredSupport.createTransformer(aField, layeredFieldValue);
+            assert field instanceof AnalysisField : "Cannot create layered field value transformer without analysis field";
+
+            var transformer = layeredSupport.createTransformer((AnalysisField) field, layeredFieldValue);
             return new FieldValueTransformation(OriginalClassProvider.getOriginalType(oField.getType()), transformer);
         }
         return null;
     }
 
-    private static FieldValueComputer createFieldValueComputer(AnalysisField field) {
+    private static FieldValueComputer createFieldValueComputer(InterceptedField field) {
         UnknownObjectFieldGuestValue unknownObjectField = UnknownObjectFieldGuestValue.get(field);
         if (unknownObjectField != null) {
             checkMisplacedAnnotation(field.getStorageKind().isObject(), field);
@@ -541,7 +654,7 @@ public final class FieldValueInterceptionSupport {
      * developers if the annotation is misplaced, e.g. {@link UnknownObjectField} is used on a
      * primitive field and vice versa.
      */
-    private static void checkMisplacedAnnotation(boolean condition, AnalysisField field) {
+    private static void checkMisplacedAnnotation(boolean condition, InterceptedField field) {
         if (!condition) {
             String fieldType;
             Class<? extends Annotation> expectedAnnotationType;
@@ -560,7 +673,7 @@ public final class FieldValueInterceptionSupport {
         }
     }
 
-    private static List<ResolvedJavaType> extractAnnotationTypes(AnalysisField field, List<ResolvedJavaType> types, List<String> fullyQualifiedTypes) {
+    private static List<ResolvedJavaType> extractAnnotationTypes(InterceptedField field, List<ResolvedJavaType> types, List<String> fullyQualifiedTypes) {
         List<ResolvedJavaType> annotationTypes = new ArrayList<>(types);
         for (String annotationTypeName : fullyQualifiedTypes) {
             ResolvedJavaType annotationType = GuestAccess.get().lookupType(annotationTypeName);
@@ -570,11 +683,99 @@ public final class FieldValueInterceptionSupport {
 
         if (annotationTypes.isEmpty()) {
             /* If no types are specified, fall back to the field declared type. */
-            AnalysisType fieldType = field.getType();
-            UserError.guarantee(CustomTypeFieldHandler.isConcreteType(fieldType), "Illegal use of @UnknownObjectField annotation on field %s. " +
+            var fieldType = field.getType();
+            UserError.guarantee(fieldType.isConcreteType(), "Illegal use of @UnknownObjectField annotation on field %s. " +
                             "The field type must be concrete or the annotation must declare a concrete type.", field);
-            annotationTypes.add(fieldType);
+            /*
+             * CustomTypeFieldHandler.transformTypes could mix different
+             * InterceptedFieldType implementations, so original has to be used here.
+             */
+            annotationTypes.add(OriginalClassProvider.getOriginalType(fieldType));
         }
         return annotationTypes;
+    }
+
+    private final class BeforeFieldValueAccessImpl implements BeforeFieldValueAccess, JVMCIFeatureAccess.BeforeFieldValueAccess {
+        FieldValueInterceptionSupport support = FieldValueInterceptionSupport.this;
+
+        @Override
+        public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
+            support.registerLegacyFieldValueTransformer(field, transformer);
+        }
+
+        /**
+         * Guest-invoked method for on-demand field value transformer registration.
+         *
+         * @param field a JVMCI field representing the guest {@link Field} to transform
+         * @param transformer a {@link JavaConstant} representing the guest {@link FieldValueTransformer}
+         * @see BeforeFieldValueAccess#registerFieldValueTransformer(Field, FieldValueTransformer)
+         */
+        @GuestInvoked
+        public void registerFieldValueTransformer(ResolvedJavaField field, JavaConstant transformer) {
+            registerFieldValueTransformer(field, WrappedFieldValueTransformer.create(transformer));
+        }
+
+        @Override
+        public void registerFieldValueTransformer(ResolvedJavaField field, JVMCIFieldValueTransformer transformer) {
+            ResolvedJavaField originalField = OriginalFieldProvider.getOriginalField(field);
+            VMError.guarantee(originalField != null, "Cannot register a field value transformer for synthetic field %s", field);
+            support.registerFieldValueTransformer(originalField, transformer);
+        }
+    }
+
+    /**
+     * Register a before field value access handler to allow on-demand registration
+     * of field value transformers. If a subtype was already accessed before, then
+     * the callback is called for it.
+     *
+     * @param callback Callback for field value transformer on-demand registration
+     * @param baseType Base type for which the callback is called for
+     */
+    public void registerBeforeFieldValueAccessHandler(BiConsumer<JVMCIFeatureAccess.BeforeFieldValueAccess, ResolvedJavaType> callback, ResolvedJavaType baseType) {
+        ResolvedJavaType originalBaseType = OriginalClassProvider.getOriginalType(baseType);
+
+        UserError.guarantee(!handlerRegistrationSealed, "Handlers for beforeFieldValueAccess must be registered before analysis.");
+        /*
+         * Registration is only expected to happen synchronously in beforeAnalysis callback and
+         * beforeAnalysis callbacks are also called synchronously.
+         */
+        notifications.computeIfAbsent(originalBaseType, _ -> new ArrayList<>()).add(callback);
+
+        /* Run the callback for already seen types */
+        accessed.forEach((originalType, _) -> {
+            if (originalBaseType.isAssignableFrom(originalType)) {
+                callback.accept(access, originalType);
+            }
+        });
+    }
+
+    /**
+     * Register all field value transformer before a field value is accessed.
+     * Including callbacks from notifications and automatic transformer registration
+     * {@link AutomaticUnsafeTransformationSupport}.
+     *
+     * @param field Field that is being read
+     */
+    public void beforeFieldValueAccess(InterceptedField field) {
+        var type = field.getDeclaringClass();
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+
+        Callable<Void> task = () -> {
+            field.beforeFieldValueAccess();
+
+            notifications.forEach((baseType, typeNotifications) -> {
+                if (!baseType.isAssignableFrom(originalType)) {
+                    return;
+                }
+
+                typeNotifications.forEach(callback -> {
+                    callback.accept(access, originalType);
+                });
+            });
+
+            return null;
+        };
+
+        accessed.computeIfAbsent(originalType, _ -> new AnalysisFuture<>(task)).ensureDone();
     }
 }

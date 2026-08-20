@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,11 @@ package com.oracle.svm.hosted;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
+
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
@@ -37,9 +38,11 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.HeapConstantToConstantReplacer;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
@@ -87,8 +90,11 @@ public class ClassLoaderFeature implements InternalFeature {
         return replaceCandidate;
     }
 
-    JavaConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
+    JavaConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object, boolean reachable) {
         if (object instanceof ClassLoader loader) {
+            if (!reachable) {
+                return HeapConstantToConstantReplacer.CANNOT_REPLACE_MARKER;
+            }
             if (replaceWithAppClassLoader(loader) || loader == appClassLoader) {
                 return registry.getConstant(ResourceLoaderKeys.APP);
             } else if (loader == platformClassLoader) {
@@ -130,12 +136,21 @@ public class ClassLoaderFeature implements InternalFeature {
             }
         } else {
             var hostedValuesProvider = accessImpl.getUniverse().getHostedValuesProvider();
-            // JVMCI migration blocked by GR-72593: Migrate ClassLoaderFeature to terminus
-            accessImpl.registerJVMCIObjectToConstantReplacer(constant -> (ImageHeapConstant) replaceClassLoadersWithLayerConstant(registry,
-                            hostedValuesProvider.asObject(Object.class, constant)));
+            accessImpl.registerJVMCIObjectToConstantReplacer(new HeapConstantToConstantReplacer<ImageHeapConstant>() {
+                @Override
+                public JavaConstant replaceConstant(JavaConstant constant, boolean reachable) {
+                    Object object = hostedValuesProvider.asObject(Object.class, constant);
+                    return replaceClassLoadersWithLayerConstant(registry, object, reachable);
+                }
+            });
             // relink packages defined in the prior layers
-            accessImpl.registerJVMCIObjectToConstantReplacer(constant -> packageManager.replaceWithPriorLayerPackage(
-                            hostedValuesProvider.asObject(Object.class, constant)));
+            accessImpl.registerJVMCIObjectToConstantReplacer(new HeapConstantToConstantReplacer<ImageHeapConstant>() {
+                @Override
+                public JavaConstant replaceConstant(JavaConstant constant, boolean reachable) {
+                    Object object = hostedValuesProvider.asObject(Object.class, constant);
+                    return packageManager.replaceWithPriorLayerPackage(object, reachable);
+                }
+            });
         }
     }
 
@@ -230,7 +245,7 @@ public class ClassLoaderFeature implements InternalFeature {
         }
     }
 
-    static class ExtensionLayerPackageMapTransformer implements JVMCIFieldValueTransformer {
+    static class ExtensionLayerPackageMapTransformer implements JVMCIFieldValueTransformer, FieldValueTransformerRequiresUniverse {
 
         @Override
         public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {

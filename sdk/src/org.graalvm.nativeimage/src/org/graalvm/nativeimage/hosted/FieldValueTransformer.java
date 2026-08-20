@@ -44,9 +44,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 
+import java.util.function.BiConsumer;
+
 /**
  * A transformer for a field value that can be registered using
- * {@link BeforeAnalysisAccess#registerFieldValueTransformer}.
+ * {@link BeforeAnalysisAccess#registerFieldValueTransformer} or in a
+ * {@link BeforeAnalysisAccess#registerBeforeFieldValueAccessHandler(BiConsumer, Class) before-field-value-access handler}.
  * <p>
  * At image build time, the field value transformer provides the value of the field for the image
  * heap. Without a transformer, the value of the field in the image heap is the same as the hosted
@@ -70,6 +73,12 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
  * reachability handler} for the declaring class of the field, or a
  * {@link BeforeAnalysisAccess#registerSubtypeReachabilityHandler subtype reachability handler} for
  * a super-type of the declaring class of the field.
+ * <p>
+ * Under {@code --future-defaults=predictable-build-time-initialization},
+ * registration of transformers will only be possible before static analysis starts
+ * or in a {@link BeforeAnalysisAccess#registerBeforeFieldValueAccessHandler(BiConsumer, Class) before-field-value-access handler}.
+ * The handler is triggered for each subclass, including the base class, before its first field
+ * value is accessed.
  *
  * @since 22.3
  */
