@@ -627,11 +627,18 @@ class LinearScanWalker extends IntervalWalker {
         return allLivePredecessorsCarrySpill;
     }
 
+    private boolean hasMandatoryRegisterUse(Interval interval, BasicBlock<?> block) {
+        int blockFrom = allocator.getFirstLirInstructionId(block);
+        int usePos = interval.nextUsage(RegisterPriority.MustHaveRegister, blockFrom);
+        return usePos <= allocator.getLastLirInstructionId(block);
+    }
+
     /**
      * Finds the first live block after {@link #currentPosition} that should recover from
      * {@code interval}'s spill location. A block must recover if it inherited the spill merely
-     * because it follows the pressure path in linear-scan order or if it is hotter than the block
-     * that caused the spill.
+     * because it follows the pressure path in linear-scan order. A hotter block only needs to
+     * recover a live-through value when it actually uses the value in a register; otherwise the
+     * value can remain in its spill slot until its next use.
      */
     private int firstBlockRequiringRegisterRecovery(Interval interval) {
         BasicBlock<?> currentBlock = allocator.blockForId(currentPosition);
@@ -643,7 +650,8 @@ class LinearScanWalker extends IntervalWalker {
             }
 
             if (!interval.hasHoleBetween(blockFrom, blockFrom + 1) &&
-                            (block.getRelativeFrequency() > currentBlock.getRelativeFrequency() || !spillFlowsIntoBlock(interval, block))) {
+                            (!spillFlowsIntoBlock(interval, block) ||
+                                            (block.getRelativeFrequency() > currentBlock.getRelativeFrequency() && hasMandatoryRegisterUse(interval, block)))) {
                 return blockFrom;
             }
         }

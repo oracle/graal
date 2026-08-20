@@ -91,14 +91,14 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void materialize(InterpreterState state) {
+    void materialize(long[] primitives) {
         if (tosLevel == 1) {
-            state.setLongStatic(top, tosPrimitive0);
+            setPrimitive(primitives, top, 0, tosPrimitive0);
             top++;
             tosLevel = 0;
         } else if (tosLevel == 2) {
-            state.setLongStatic(top, tosPrimitive0);
-            state.setLongStatic(top + 1, tosPrimitive1);
+            setPrimitive(primitives, top, 0, tosPrimitive0);
+            setPrimitive(primitives, top + 1, 0, tosPrimitive1);
             top += 2;
             tosLevel = 0;
         }
@@ -106,8 +106,8 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Materialize before an outlined stack operation without passing InterpreterVirtualStack")
-    long beginOutlinedCall(InterpreterState state) {
-        materialize(state);
+    long beginOutlinedCall(long[] primitives) {
+        materialize(primitives);
         return top;
     }
 
@@ -118,7 +118,7 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pushInt(InterpreterState state, int value) {
+    void pushInt(long[] primitives, int value) {
         if (tosLevel == 0) {
             tosPrimitive0 = value;
             tosLevel = 1;
@@ -126,7 +126,7 @@ final class InterpreterVirtualStack {
             tosPrimitive1 = value;
             tosLevel = 2;
         } else {
-            state.setLongStatic(top, tosPrimitive0);
+            setPrimitive(primitives, top, 0, tosPrimitive0);
             tosPrimitive0 = tosPrimitive1;
             tosPrimitive1 = value;
             top++;
@@ -134,69 +134,53 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pushFloat(InterpreterState state, float value) {
-        pushInt(state, Float.floatToRawIntBits(value));
+    void pushFloat(long[] primitives, float value) {
+        pushInt(primitives, Float.floatToRawIntBits(value));
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pushLong(InterpreterState state, long value) {
+    void pushLong(long[] primitives, long value) {
         if (tosLevel == 0) {
             tosPrimitive0 = GraalDirectives.arbitraryValue(tosPrimitive0);
             tosPrimitive1 = value;
             tosLevel = 2;
         } else if (tosLevel == 1) {
-            state.setLongStatic(top, tosPrimitive0);
+            setPrimitive(primitives, top, 0, tosPrimitive0);
             tosPrimitive1 = value;
             top++;
             tosLevel = 2;
         } else {
             // We cannot distinguish whether we saved one long or two ints.
-            state.setLongStatic(top, tosPrimitive0);
-            state.setLongStatic(top + 1, tosPrimitive1);
+            setPrimitive(primitives, top, 0, tosPrimitive0);
+            setPrimitive(primitives, top + 1, 0, tosPrimitive1);
             tosPrimitive1 = value;
             top += 2;
         }
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pushDouble(InterpreterState state, double value) {
-        pushLong(state, Double.doubleToRawLongBits(value));
+    void pushDouble(long[] primitives, double value) {
+        pushLong(primitives, Double.doubleToRawLongBits(value));
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pushObject(InterpreterState state, Object value) {
-        materialize(state);
-        state.putObject(top, value);
-        top++;
-    }
-
-    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    void pushKind(InterpreterState state, JavaKind kind, Object value) {
-        switch (kind) {
-            case Boolean -> pushInt(state, ((Boolean) value) ? 1 : 0);
-            case Byte -> pushInt(state, (Byte) value);
-            case Short -> pushInt(state, (Short) value);
-            case Char -> pushInt(state, (Character) value);
-            case Int -> pushInt(state, (Integer) value);
-            case Float -> pushFloat(state, (Float) value);
-            case Long -> pushLong(state, (Long) value);
-            case Double -> pushDouble(state, (Double) value);
-            case Object -> pushObject(state, value);
-            default -> throw InterpreterUtil.shouldNotReachHere("%s", kind);
-        }
-    }
-
-    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pushReturnAddress(InterpreterState state, int targetBCI) {
-        materialize(state);
-        state.putReturnAddress(top, targetBCI);
+    void pushObject(long[] primitives, Object[] references, Object value) {
+        materialize(primitives);
+        setReference(references, top, 0, value);
         top++;
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    int popInt(InterpreterState state) {
+    void pushReturnAddress(long[] primitives, Object[] references, int targetBCI) {
+        materialize(primitives);
+        setReference(references, top, 0, ReturnAddress.create(targetBCI));
+        top++;
+    }
+
+    @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
+    int popInt(long[] primitives) {
         if (tosLevel == 0) {
-            int value = state.popInt(top, -1);
+            int value = (int) getPrimitive(primitives, top, -1);
             top--;
             return value;
         } else if (tosLevel == 1) {
@@ -209,9 +193,9 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    float popFloat(InterpreterState state) {
+    float popFloat(long[] primitives) {
         if (tosLevel == 0) {
-            float value = state.popFloat(top, -1);
+            float value = Float.intBitsToFloat((int) getPrimitive(primitives, top, -1));
             top--;
             return value;
         } else if (tosLevel == 1) {
@@ -224,9 +208,9 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    long popLong(InterpreterState state) {
+    long popLong(long[] primitives) {
         if (tosLevel == 0) {
-            long value = state.popLong(top, -1);
+            long value = getPrimitive(primitives, top, -1);
             top -= 2;
             return value;
         } else if (tosLevel == 1) {
@@ -240,14 +224,15 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    double popDouble(InterpreterState state) {
-        return Double.longBitsToDouble(popLong(state));
+    double popDouble(long[] primitives) {
+        return Double.longBitsToDouble(popLong(primitives));
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    Object popObject(InterpreterState state) {
+    Object popObject(Object[] references) {
         if (tosLevel == 0) {
-            Object value = state.popObject(top, -1);
+            Object value = getReference(references, top, -1);
+            setReference(references, top, -1, null);
             top--;
             return value;
         } else {
@@ -256,68 +241,68 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    private Object popKind(InterpreterState state, int basicType) {
+    private Object popKind(long[] primitives, Object[] references, int basicType) {
         return switch (basicType) {
             case T_BOOLEAN -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                boolean value = (popInt(state) & 1) != 0;
+                boolean value = (popInt(primitives) & 1) != 0;
                 anchorUpdatedValues();
                 yield value;
             }
             case T_BYTE -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                byte value = (byte) popInt(state);
+                byte value = (byte) popInt(primitives);
                 anchorUpdatedValues();
                 yield value;
             }
             case T_SHORT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                short value = (short) popInt(state);
+                short value = (short) popInt(primitives);
                 anchorUpdatedValues();
                 yield value;
             }
             case T_CHAR -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                char value = (char) popInt(state);
+                char value = (char) popInt(primitives);
                 anchorUpdatedValues();
                 yield value;
             }
             case T_INT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                int value = popInt(state);
+                int value = popInt(primitives);
                 anchorUpdatedValues();
                 yield value;
             }
             case T_FLOAT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                float value = popFloat(state);
+                float value = popFloat(primitives);
                 anchorUpdatedValues();
                 yield value;
             }
             case T_LONG -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                long value = popLong(state);
+                long value = popLong(primitives);
                 anchorUpdatedValues();
                 yield value;
             }
             case T_DOUBLE -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                double value = popDouble(state);
+                double value = popDouble(primitives);
                 anchorUpdatedValues();
                 yield value;
             }
             case T_OBJECT -> {
                 GraalDirectives.injectSwitchCaseProbability(1.0 / 9.0);
                 avoidHoistingTop();
-                Object value = popObject(state);
+                Object value = popObject(references);
                 anchorUpdatedValues();
                 yield value;
             }
@@ -329,15 +314,15 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pop1(InterpreterState state) {
-        pop1(state, true);
+    void pop1(Object[] references) {
+        pop1(references, true);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pop1(InterpreterState state, boolean clear) {
+    void pop1(Object[] references, boolean clear) {
         if (tosLevel == 0) {
             if (clear) {
-                state.clearReference(top, -1);
+                setReference(references, top, -1, null);
             }
             top--;
         } else if (tosLevel == 1) {
@@ -348,21 +333,21 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pop2(InterpreterState state) {
-        pop2(state, true);
+    void pop2(Object[] references) {
+        pop2(references, true);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void pop2(InterpreterState state, boolean clear) {
+    void pop2(Object[] references, boolean clear) {
         if (tosLevel == 0) {
             if (clear) {
-                state.clearReference(top, -1);
-                state.clearReference(top, -2);
+                setReference(references, top, -1, null);
+                setReference(references, top, -2, null);
             }
             top -= 2;
         } else if (tosLevel == 1) {
             if (clear) {
-                state.clearReference(top, -1);
+                setReference(references, top, -1, null);
             }
             top--;
             tosLevel = 0;
@@ -372,7 +357,7 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    int peekInt(InterpreterState state, long offset) {
+    int peekInt(long[] primitives, long offset) {
         if (tosLevel == 2) {
             if (offset == -1) {
                 return GraalDirectives.assumeInt(tosPrimitive1);
@@ -384,11 +369,11 @@ final class InterpreterVirtualStack {
             return GraalDirectives.assumeInt(tosPrimitive0);
         }
         assert offset < -tosLevel;
-        return state.getIntStatic(top, offset + tosLevel);
+        return (int) getPrimitive(primitives, top, offset + tosLevel);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    float peekFloat(InterpreterState state, long offset) {
+    float peekFloat(long[] primitives, long offset) {
         if (tosLevel == 2) {
             if (offset == -1) {
                 return GraalDirectives.assumeFloat(tosPrimitive1);
@@ -400,11 +385,11 @@ final class InterpreterVirtualStack {
             return GraalDirectives.assumeFloat(tosPrimitive0);
         }
         assert offset < -tosLevel;
-        return state.getFloatStatic(top, offset + tosLevel);
+        return Float.intBitsToFloat((int) getPrimitive(primitives, top, offset + tosLevel));
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    long peekLong(InterpreterState state, long offset) {
+    long peekLong(long[] primitives, long offset) {
         if (tosLevel == 2) {
             if (offset == -1) {
                 return tosPrimitive1;
@@ -418,11 +403,11 @@ final class InterpreterVirtualStack {
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
-        return state.popLong(top, offset + tosLevel);
+        return getPrimitive(primitives, top, offset + tosLevel);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    double peekDouble(InterpreterState state, long offset) {
+    double peekDouble(long[] primitives, long offset) {
         if (tosLevel == 2) {
             if (offset == -1) {
                 return Double.longBitsToDouble(tosPrimitive1);
@@ -436,132 +421,132 @@ final class InterpreterVirtualStack {
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
-        return state.popDouble(top, offset + tosLevel);
+        return Double.longBitsToDouble(getPrimitive(primitives, top, offset + tosLevel));
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    Object peekObject(InterpreterState state, long offset) {
+    Object peekObject(Object[] references, long offset) {
         if (offset >= -tosLevel) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
-        return state.peekObject(top, offset + tosLevel);
+        return getReference(references, top, offset + tosLevel);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void dup1(InterpreterState state) {
+    void dup1(long[] primitives, Object[] references) {
         if (tosLevel == 0) {
-            copySlot(state, -1, 0);
+            copySlot(primitives, references, -1, 0);
             top++;
         } else if (tosLevel == 1) {
             tosPrimitive1 = tosPrimitive0;
             tosLevel = 2;
         } else {
-            fillSlot(state, 0, tosPrimitive0);
+            fillSlot(primitives, 0, tosPrimitive0);
             tosPrimitive0 = tosPrimitive1;
             top++;
         }
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void dupx1(InterpreterState state) {
+    void dupx1(long[] primitives, Object[] references) {
         if (tosLevel == 0) {
-            copySlot(state, -1, 0);
-            copySlot(state, -2, -1);
-            copySlot(state, 0, -2);
+            copySlot(primitives, references, -1, 0);
+            copySlot(primitives, references, -2, -1);
+            copySlot(primitives, references, 0, -2);
         } else if (tosLevel == 1) {
-            copySlot(state, -1, 0);
-            overwriteSlot(state, -1, tosPrimitive0);
+            copySlot(primitives, references, -1, 0);
+            overwriteSlot(primitives, references, -1, tosPrimitive0);
         } else {
-            fillSlot(state, 0, tosPrimitive1);
+            fillSlot(primitives, 0, tosPrimitive1);
         }
         top++;
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void dupx2(InterpreterState state) {
+    void dupx2(long[] primitives, Object[] references) {
         if (tosLevel == 0) {
-            copySlot(state, -1, 0);
-            copySlot(state, -2, -1);
-            copySlot(state, -3, -2);
-            copySlot(state, 0, -3);
+            copySlot(primitives, references, -1, 0);
+            copySlot(primitives, references, -2, -1);
+            copySlot(primitives, references, -3, -2);
+            copySlot(primitives, references, 0, -3);
         } else if (tosLevel == 1) {
-            copySlot(state, -1, 0);
-            copySlot(state, -2, -1);
-            overwriteSlot(state, -2, tosPrimitive0);
+            copySlot(primitives, references, -1, 0);
+            copySlot(primitives, references, -2, -1);
+            overwriteSlot(primitives, references, -2, tosPrimitive0);
         } else {
-            copySlot(state, -1, 0);
-            overwriteSlot(state, -1, tosPrimitive1);
+            copySlot(primitives, references, -1, 0);
+            overwriteSlot(primitives, references, -1, tosPrimitive1);
         }
         top++;
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void dup2(InterpreterState state) {
+    void dup2(long[] primitives, Object[] references) {
         if (tosLevel == 0) {
-            copySlot(state, -2, 0);
-            copySlot(state, -1, 1);
+            copySlot(primitives, references, -2, 0);
+            copySlot(primitives, references, -1, 1);
         } else if (tosLevel == 1) {
-            fillSlot(state, 0, tosPrimitive0);
-            copySlot(state, -1, 1);
+            fillSlot(primitives, 0, tosPrimitive0);
+            copySlot(primitives, references, -1, 1);
         } else {
-            fillSlot(state, 0, tosPrimitive0);
-            fillSlot(state, 1, tosPrimitive1);
+            fillSlot(primitives, 0, tosPrimitive0);
+            fillSlot(primitives, 1, tosPrimitive1);
         }
         top += 2;
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void dup2x1(InterpreterState state) {
+    void dup2x1(long[] primitives, Object[] references) {
         if (tosLevel == 0) {
-            copySlot(state, -2, 0);
-            copySlot(state, -1, 1);
-            copySlot(state, -3, -1);
-            copySlot(state, 0, -3);
-            copySlot(state, 1, -2);
+            copySlot(primitives, references, -2, 0);
+            copySlot(primitives, references, -1, 1);
+            copySlot(primitives, references, -3, -1);
+            copySlot(primitives, references, 0, -3);
+            copySlot(primitives, references, 1, -2);
         } else if (tosLevel == 1) {
-            copySlot(state, -1, 1);
-            copySlot(state, -2, 0);
-            copySlot(state, -1, -2);
-            overwriteSlot(state, -1, tosPrimitive0);
+            copySlot(primitives, references, -1, 1);
+            copySlot(primitives, references, -2, 0);
+            copySlot(primitives, references, -1, -2);
+            overwriteSlot(primitives, references, -1, tosPrimitive0);
         } else {
-            copySlot(state, -1, 1);
-            overwriteSlot(state, -1, tosPrimitive0);
-            overwriteSlot(state, 0, tosPrimitive1);
+            copySlot(primitives, references, -1, 1);
+            overwriteSlot(primitives, references, -1, tosPrimitive0);
+            overwriteSlot(primitives, references, 0, tosPrimitive1);
         }
         top += 2;
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void dup2x2(InterpreterState state) {
+    void dup2x2(long[] primitives, Object[] references) {
         if (tosLevel == 0) {
-            copySlot(state, -1, 1);
-            copySlot(state, -2, 0);
-            copySlot(state, -3, -1);
-            copySlot(state, -4, -2);
-            copySlot(state, 0, -4);
-            copySlot(state, 1, -3);
+            copySlot(primitives, references, -1, 1);
+            copySlot(primitives, references, -2, 0);
+            copySlot(primitives, references, -3, -1);
+            copySlot(primitives, references, -4, -2);
+            copySlot(primitives, references, 0, -4);
+            copySlot(primitives, references, 1, -3);
         } else if (tosLevel == 1) {
-            copySlot(state, -1, 1);
-            copySlot(state, -2, 0);
-            copySlot(state, -3, -1);
-            copySlot(state, 1, -3);
-            overwriteSlot(state, -2, tosPrimitive0);
+            copySlot(primitives, references, -1, 1);
+            copySlot(primitives, references, -2, 0);
+            copySlot(primitives, references, -3, -1);
+            copySlot(primitives, references, 1, -3);
+            overwriteSlot(primitives, references, -2, tosPrimitive0);
         } else {
-            copySlot(state, -1, 1);
-            copySlot(state, -2, 0);
-            overwriteSlot(state, -2, tosPrimitive0);
-            overwriteSlot(state, -1, tosPrimitive1);
+            copySlot(primitives, references, -1, 1);
+            copySlot(primitives, references, -2, 0);
+            overwriteSlot(primitives, references, -2, tosPrimitive0);
+            overwriteSlot(primitives, references, -1, tosPrimitive1);
         }
         top += 2;
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    void swap(InterpreterState state) {
+    void swap(long[] primitives, Object[] references) {
         if (tosLevel == 0) {
-            swapSlot(state, -1, -2);
+            swapSlot(primitives, references, -1, -2);
         } else if (tosLevel == 1) {
-            copySlot(state, -1, 0);
-            overwriteSlot(state, -1, tosPrimitive0);
+            copySlot(primitives, references, -1, 0);
+            overwriteSlot(primitives, references, -1, tosPrimitive0);
             top++;
             tosLevel = 0;
         } else {
@@ -572,28 +557,65 @@ final class InterpreterVirtualStack {
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private void copySlot(InterpreterState state, long srcOffset, long dstOffset) {
-        state.copyStatic(top, srcOffset, top, dstOffset);
+    private void copySlot(long[] primitives, Object[] references, long srcOffset, long dstOffset) {
+        setPrimitive(primitives, top, dstOffset, getPrimitive(primitives, top, srcOffset));
+        setReference(references, top, dstOffset, getReference(references, top, srcOffset));
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private void swapSlot(InterpreterState state, long srcOffset, long dstOffset) {
-        state.swapStatic(top, srcOffset, top, dstOffset);
+    private void swapSlot(long[] primitives, Object[] references, long srcOffset, long dstOffset) {
+        long primitive = getPrimitive(primitives, top, srcOffset);
+        setPrimitive(primitives, top, srcOffset, getPrimitive(primitives, top, dstOffset));
+        setPrimitive(primitives, top, dstOffset, primitive);
+
+        Object reference = getReference(references, top, srcOffset);
+        setReference(references, top, srcOffset, getReference(references, top, dstOffset));
+        setReference(references, top, dstOffset, reference);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private void fillSlot(InterpreterState state, long offset, long value) {
-        state.setLongStatic(top, offset, value);
+    private void fillSlot(long[] primitives, long offset, long value) {
+        setPrimitive(primitives, top, offset, value);
     }
 
     @AlwaysInline("Keep InterpreterVirtualStack virtual-expanded")
-    private void overwriteSlot(InterpreterState state, long offset, long value) {
-        state.clearReference(top, offset);
-        fillSlot(state, offset, value);
+    private void overwriteSlot(long[] primitives, Object[] references, long offset, long value) {
+        setReference(references, top, offset, null);
+        fillSlot(primitives, offset, value);
+    }
+
+    @AlwaysInline("Keep operand-stack access in bytecode-handler stubs")
+    private static long getPrimitive(long[] primitives, long slot, long slotOffset) {
+        return UNSAFE.getLong(primitives, primitiveOffset(slot, slotOffset));
+    }
+
+    @AlwaysInline("Keep operand-stack access in bytecode-handler stubs")
+    private static void setPrimitive(long[] primitives, long slot, long slotOffset, long value) {
+        UNSAFE.putLong(primitives, primitiveOffset(slot, slotOffset), value);
+    }
+
+    @AlwaysInline("Keep operand-stack access in bytecode-handler stubs")
+    private static Object getReference(Object[] references, long slot, long slotOffset) {
+        return UNSAFE.getReference(references, referenceOffset(slot, slotOffset));
+    }
+
+    @AlwaysInline("Keep operand-stack access in bytecode-handler stubs")
+    private static void setReference(Object[] references, long slot, long slotOffset, Object value) {
+        UNSAFE.putReference(references, referenceOffset(slot, slotOffset), value);
+    }
+
+    @AlwaysInline("Keep operand-stack access in bytecode-handler stubs")
+    private static long primitiveOffset(long slot, long slotOffset) {
+        return Unsafe.ARRAY_LONG_BASE_OFFSET + ((slot + slotOffset) * Unsafe.ARRAY_LONG_INDEX_SCALE);
+    }
+
+    @AlwaysInline("Keep operand-stack access in bytecode-handler stubs")
+    private static long referenceOffset(long slot, long slotOffset) {
+        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + ((slot + slotOffset) * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    void popArguments(InterpreterState state, int[] argKinds, Object[] args, Object appendix) {
+    void popArguments(long[] primitives, Object[] references, int[] argKinds, Object[] args, Object appendix) {
         long index = args.length - 1;
         if (appendix != null) {
             assert uncheckedBasicTypeAt(argKinds, index) == T_OBJECT;
@@ -601,14 +623,14 @@ final class InterpreterVirtualStack {
             index--;
         }
         if (tosLevel > 0 && index >= 0) {
-            uncheckedPutArgument(args, index, popKind(state, uncheckedBasicTypeAt(argKinds, index)));
+            uncheckedPutArgument(args, index, popKind(primitives, references, uncheckedBasicTypeAt(argKinds, index)));
             index--;
         }
         if (tosLevel > 0 && index >= 0) {
-            uncheckedPutArgument(args, index, popKind(state, uncheckedBasicTypeAt(argKinds, index)));
+            uncheckedPutArgument(args, index, popKind(primitives, references, uncheckedBasicTypeAt(argKinds, index)));
             index--;
         }
-        materialize(state);
+        materialize(primitives);
 
         /*
          * Keep the branchy argument-pop loop colder than its entry. A higher loop weight makes
@@ -616,7 +638,7 @@ final class InterpreterVirtualStack {
          * recheck the loop entry and backedge in invokestaticHandler0.
          */
         for (; GraalDirectives.injectBranchProbability(0.3, index >= 0); index--) {
-            uncheckedPutArgument(args, index, popKind(state, uncheckedBasicTypeAt(argKinds, index)));
+            uncheckedPutArgument(args, index, popKind(primitives, references, uncheckedBasicTypeAt(argKinds, index)));
         }
         discardCachedValues();
     }

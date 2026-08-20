@@ -227,21 +227,6 @@ final class InterpreterState {
         setPrimitiveStatic(slot, slotOffset, 0);
     }
 
-    void swapStatic(long src, long srcOffset, long dst, long dstOffset) {
-        long primitive = getPrimitiveStatic(src, srcOffset);
-        setPrimitiveStatic(src, srcOffset, getPrimitiveStatic(dst, dstOffset));
-        setPrimitiveStatic(dst, dstOffset, primitive);
-
-        Object reference = getReferenceStatic(src, srcOffset);
-        setReferenceStatic(src, srcOffset, getReferenceStatic(dst, dstOffset));
-        setReferenceStatic(dst, dstOffset, reference);
-    }
-
-    void copyStatic(long src, long srcOffset, long dst, long dstOffset) {
-        setPrimitiveStatic(dst, dstOffset, getPrimitiveStatic(src, srcOffset));
-        setReferenceStatic(dst, dstOffset, getReferenceStatic(src, srcOffset));
-    }
-
     int popInt(long slot, long slotOffset) {
         return getIntStatic(slot, slotOffset);
     }
@@ -270,10 +255,6 @@ final class InterpreterState {
 
     double popDouble(long slot, long slotOffset) {
         return getDoubleStatic(slot, slotOffset);
-    }
-
-    void putReturnAddress(long slot, int targetBCI) {
-        setObjectStatic(slot, ReturnAddress.create(targetBCI));
     }
 
     void putObject(long slot, Object value) {
