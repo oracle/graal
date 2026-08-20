@@ -93,7 +93,14 @@ local common_json = import "../common.json";
     local no_labsjdk = _labsjdk.name != "labsjdk";
     # Skip the check if we are using labsjdk with build number equal zero
     local labsjdk_with_build_zero = std.findSubstr('+0-jvmci-', _lv) != [];
-    assert no_labsjdk || std.startsWith(_lv, _ov) || labsjdk_with_build_zero: "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
+    local oraclejdk_base_version = std.split(_ov, "+")[0];
+    local labsjdk_base_version = std.split(_lv, "+")[0];
+    # Labs JDK can include 5 digits in its base version.
+    # Skip the check when Labsjdk latest is dervied from Oracle JDK latest base-version.
+    local labsjdk_with_extra_base_version_component =
+      std.length(std.split(labsjdk_base_version, ".")) == std.length(std.split(oraclejdk_base_version, ".")) + 1 &&
+      std.startsWith(labsjdk_base_version, oraclejdk_base_version + ".");
+    assert no_labsjdk || std.startsWith(_lv, _ov) || labsjdk_with_build_zero || labsjdk_with_extra_base_version_component: "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
     true,
   # Verify labsjdk-ce-latest and labsjdk-ee-latest JVMCI build numbers match
   assert
