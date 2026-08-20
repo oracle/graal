@@ -293,8 +293,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             writer.indents().appendln("{");
             writer.indent();
             writer.indents().appendln("int is_unsigned;");
-            writer.indents().appendln(uInt64 + " all_bits_set = -1;");
-            writer.indents().appendln(pointerToInfo.getName() + " fieldHolder = all_bits_set;");
+            writer.indents().appendln(uInt64 + " all_bits_set = (" + uInt64 + ") -1;");
+            writer.indents().appendln(pointerToInfo.getName() + " fieldHolder = (" + pointerToInfo.getName() + ") all_bits_set;");
             writer.indents().appendln("is_unsigned = fieldHolder > 0;");
             printIsUnsigned(pointerToInfo.getSignednessInfo(), "is_unsigned");
             writer.outdent();
