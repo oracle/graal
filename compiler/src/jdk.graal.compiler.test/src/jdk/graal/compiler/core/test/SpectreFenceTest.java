@@ -125,15 +125,8 @@ public class SpectreFenceTest extends GraalCompilerTest {
     }
 
     private void assertNumberOfFences(String snip, int fences) {
-        int computedFences = 0;
         StructuredGraph g = getFinalGraph(getResolvedJavaMethod(snip), getFenceOptions());
-        for (AbstractBeginNode beginNode : g.getNodes(AbstractBeginNode.TYPE)) {
-            if (beginNode.hasSpeculationFence()) {
-                computedFences++;
-            }
-            GraalDirectives.controlFlowAnchor();
-        }
-        Assert.assertEquals("Expected fences", fences, computedFences);
+        Assert.assertEquals("Expected fences", fences, g.getNodes().filter(SpeculationFenceNode.class).count());
     }
 
     /**
@@ -165,16 +158,22 @@ public class SpectreFenceTest extends GraalCompilerTest {
         int computedFences = 0;
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(snip), options);
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
-            if (beginNode.hasSpeculationFence() && isBoundsCheckGuard(beginNode)) {
+            if (beginNode.next() instanceof SpeculationFenceNode && isBoundsCheckGuard(beginNode)) {
                 computedFences++;
             }
         }
         return computedFences;
     }
 
-    private int countExplicitSpeculationFences(String snip, OptionValues options) {
+    private int countOtherSpeculationFences(String snip, OptionValues options) {
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(snip), options);
-        return Math.toIntExact(graph.getNodes().filter(SpeculationFenceNode.class).count());
+        int computedFences = 0;
+        for (SpeculationFenceNode fence : graph.getNodes().filter(SpeculationFenceNode.class)) {
+            if (!(fence.predecessor() instanceof AbstractBeginNode beginNode && isBoundsCheckGuard(beginNode))) {
+                computedFences++;
+            }
+        }
+        return computedFences;
     }
 
     private boolean graphContainsNode(String snip, OptionValues options, Class<? extends Node> nodeType) {
@@ -205,7 +204,7 @@ public class SpectreFenceTest extends GraalCompilerTest {
         OptionValues options = getFenceOptions(true);
         test(options, "maskedLoadSnippet", new int[]{1, 2, 3}, 1);
         Assert.assertEquals(1, countBoundsCheckGuards("maskedLoadSnippet", options));
-        Assert.assertEquals(0, countBoundsCheckGuardFences("maskedLoadSnippet", options) + countExplicitSpeculationFences("maskedLoadSnippet", options));
+        Assert.assertEquals(0, countBoundsCheckGuardFences("maskedLoadSnippet", options) + countOtherSpeculationFences("maskedLoadSnippet", options));
         Assert.assertTrue("masked load should feed its address through proxyIndex", graphContainsNode("maskedLoadSnippet", options, RightShiftNode.class));
     }
 
@@ -214,7 +213,7 @@ public class SpectreFenceTest extends GraalCompilerTest {
         OptionValues options = getFenceOptions(true);
         test(options, "maskedStoreSnippet", new int[]{1, 2, 3}, 1, 42);
         Assert.assertEquals(1, countBoundsCheckGuards("maskedStoreSnippet", options));
-        Assert.assertEquals(0, countBoundsCheckGuardFences("maskedStoreSnippet", options) + countExplicitSpeculationFences("maskedStoreSnippet", options));
+        Assert.assertEquals(0, countBoundsCheckGuardFences("maskedStoreSnippet", options) + countOtherSpeculationFences("maskedStoreSnippet", options));
         Assert.assertTrue("masked store should feed its address through proxyIndex", graphContainsNode("maskedStoreSnippet", options, RightShiftNode.class));
     }
 
