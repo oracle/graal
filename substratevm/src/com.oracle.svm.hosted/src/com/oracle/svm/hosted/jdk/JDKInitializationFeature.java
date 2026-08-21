@@ -41,7 +41,6 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -395,8 +394,6 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
 
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             a.registerReachabilityHandler(JDKInitializationFeature::registerInflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
-            a.registerReachabilityHandler(_ -> NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("zip"),
-                            method(a, "java.util.zip.ZipUtils", "loadLibrary"));
         }
     }
 
