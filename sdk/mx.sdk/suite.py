@@ -224,12 +224,12 @@ suite = {
       "os_arch": {
         "linux": {
           "amd64": {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.1-linux-amd64.tar.gz"],
-            "digest" : "sha512:a4be5d7f0a0857e30992079b39b0b7a00b80b4f255a0dddf8e4208d53c0a2a79ad26dbcb3e7b4018bfc1ef5751cf2bf7180c64d6b13dd4c80ed2dd0335945736",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.2-linux-amd64.tar.gz"],
+            "digest" : "sha512:1740d965ce08e581ef05b46748b562e05054bc4c267bfa1149ad6d80c305efa7368a2fd3f8a9b5d5ba95c86a011e7b494aa2b6fd8bc1ec50c89f5fd91b24a9c4",
           },
           "aarch64": {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.1-linux-aarch64.tar.gz"],
-            "digest" : "sha512:7f645bceaad864e6a0cf3289ca234e76819f7bfc06abf0c82b59e51e152191235b65c3b7f4e9baa2f2c2982459ffec2c284d99cc28bf7923eb9022eef03ad72d",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/toolchain-gcc-musl/toolchain-gcc-10.3.0-zlib-1.2.13-musl-1.2.5.2-linux-aarch64.tar.gz"],
+            "digest" : "sha512:08fcae53cff523db3e2383052231d6e64848f63c65e65434e14a1a99ee4939d8a026e8e96e932e0486244f2b6f7fbec0e06ed414b02bb3cfc0768a429999024d",
           },
           "<others>": {
             "optional": True,
