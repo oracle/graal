@@ -521,8 +521,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
-        // We statically link sunmscapi, so we classify it as a built-in library.
-        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("sunmscapi");
         /* Library sunmscapi depends on ncrypt and crypt32 */
         nativeLibraries.addDynamicNonJniLibrary("ncrypt");
         nativeLibraries.addDynamicNonJniLibrary("crypt32");
