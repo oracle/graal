@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.core.jni;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
@@ -69,20 +68,11 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
         return symbol.startsWith(JNI_ONLOAD + "_");
     }
 
-    public boolean fillCGlobalDataMap(Collection<String> staticLibNames) {
-        List<String> libsWithOnLoad = Arrays.asList("net", "java", "nio", "zip", "sunec", "jaas", "sctp", "extnet",
-                        "j2gss", "j2pkcs11", "j2pcsc", "prefs", "verify", "awt", "awt_xawt", "awt_headless", "awt_lwawt",
-                        "lcms", "fontmanager", "javajpeg", "mlib_image", "osxapp", "attach");
-        // TODO: This check should be removed when all static libs will have JNI_OnLoad function
-        ArrayList<String> localStaticLibNames = new ArrayList<>(staticLibNames);
-        localStaticLibNames.retainAll(libsWithOnLoad);
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            /* libextnet on Windows (introduced in Java 19) does not contain an OnLoad method. */
-            localStaticLibNames.remove("extnet");
-        }
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean fillCGlobalDataMap(Collection<String> staticLibNames, Predicate<String> shouldReferenceOnLoad) {
         boolean mapIsChanged = false;
-        for (String libName : localStaticLibNames) {
-            if (!onLoadCGlobalDataMap.containsKey(libName)) {
+        for (String libName : staticLibNames) {
+            if (!onLoadCGlobalDataMap.containsKey(libName) && shouldReferenceOnLoad.test(libName)) {
                 CGlobalData<PointerBase> onLoadCGlobalData = CGlobalDataFactory.forSymbol(getOnLoadName(libName, true), true);
                 onLoadCGlobalDataMap.put(libName, onLoadCGlobalData);
                 mapIsChanged = true;

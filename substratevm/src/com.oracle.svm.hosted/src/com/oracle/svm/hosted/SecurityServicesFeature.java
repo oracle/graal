@@ -97,8 +97,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.core.util.UserError;
@@ -393,16 +391,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (isPosix()) {
             Optional<ResolvedJavaMethod> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
             optMethodGetUnixInfo.ifPresent(m -> {
-                access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, m);
-                /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-                PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("com_sun_security_auth_module_UnixSystem");
+                access.registerReachabilityHandler(analysisAccess -> linkJaas(analysisAccess), m);
             });
         }
 
         if (isMscapiModulePresent) {
-            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, type(access, "sun.security.mscapi.SunMSCAPI"));
-            /* Resolve calls to sun_security_mscapi* as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_mscapi");
+            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig,
+                            type(access, "sun.security.mscapi.SunMSCAPI"));
         }
 
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
@@ -526,10 +521,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We statically link sunmscapi thus we classify it as builtIn library */
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
-
-        nativeLibraries.addStaticJniLibrary("sunmscapi");
         /* Library sunmscapi depends on ncrypt and crypt32 */
         nativeLibraries.addDynamicNonJniLibrary("ncrypt");
         nativeLibraries.addDynamicNonJniLibrary("crypt32");
@@ -578,11 +569,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private static void linkJaas(DuringAnalysisAccess a) {
         JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
-
-        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We can statically link jaas, thus we classify it as builtIn library */
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("jaas");
-        nativeLibraries.addStaticJniLibrary("jaas");
     }
 
     private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {

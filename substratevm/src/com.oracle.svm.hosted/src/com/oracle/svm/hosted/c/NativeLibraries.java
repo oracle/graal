@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.MuslLibC;
+import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.GuestTypes;
@@ -94,6 +96,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -103,6 +106,8 @@ import jdk.vm.ci.meta.annotation.Annotated;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public final class NativeLibraries {
+
+    private static final String STATIC_LIBRARY_DEPENDENCY_PREFIX = "dependency:";
 
     private final MetaAccessProvider metaAccess;
     private final WordTypes wordTypes;
@@ -127,7 +132,6 @@ public final class NativeLibraries {
     private final List<String> libraries;
     private final DependencyGraph dependencyGraph;
     private final List<String> jniStaticLibraries;
-    private final Set<String> jniStaticLibrariesAndDependencies;
     private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
@@ -137,6 +141,10 @@ public final class NativeLibraries {
 
     public final Path tempDirectory;
     public final DebugContext debug;
+
+    @Stable //
+    private Map<String, PotentialBuiltinJNILibrary> potentialBuiltinJNILibraryMap;
+    private boolean jvmBuiltinNativesRegistered = false;
 
     public static final class DependencyGraph {
 
@@ -272,7 +280,6 @@ public final class NativeLibraries {
         libraries = Collections.synchronizedList(new ArrayList<>());
         dependencyGraph = new DependencyGraph();
         jniStaticLibraries = Collections.synchronizedList(new ArrayList<>());
-        jniStaticLibrariesAndDependencies = ConcurrentHashMap.newKeySet();
 
         libraryPaths = initCLibraryPath();
 
@@ -354,7 +361,8 @@ public final class NativeLibraries {
                 for (Path clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
                     Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(clibPathComponent.resolve(getStaticLibraryName(s)));
                     if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
-                        return libraryPaths;
+                        staticLibsDir = clibPathComponent;
+                        break;
                     }
                 }
             }
@@ -394,6 +402,12 @@ public final class NativeLibraries {
                 }
             }
         }
+        /*
+         * The native-image driver provides the SVM libraries through CLibraryPath. They must be
+         * visible before Feature.duringSetup so a library such as SVM's libjvm can override the
+         * same-named JDK static library for built-in symbol registration.
+         */
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         return libraryPaths;
     }
 
@@ -464,18 +478,103 @@ public final class NativeLibraries {
         }
     }
 
-    public void addStaticJniLibrary(String library, String... dependencies) {
+    public void addStaticJniLibrary(String library, List<String> dependencies) {
         jniStaticLibraries.add(library);
-        List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
-        /* "jvm" is a basic dependence for static JNI libs */
-        allDeps.add("jvm");
-        if (library.equals("nio")) {
-            /* "nio" implicitly depends on "net" */
-            allDeps.add("net");
+        dependencyGraph.add(library, dependencies);
+    }
+
+    public List<String> getLibraryDependencies(String library) {
+        Path libraryPath = getStaticLibraryPath(getAllStaticLibs(), library);
+        if (libraryPath != null) {
+            return readStaticLibraryManifest(libraryPath).dependencies();
         }
-        jniStaticLibrariesAndDependencies.add(library);
-        jniStaticLibrariesAndDependencies.addAll(allDeps);
-        dependencyGraph.add(library, allDeps);
+        return List.of();
+    }
+
+    public void initializePotentialBuiltinLibraries() {
+        this.potentialBuiltinJNILibraryMap = Arrays.stream(JNIPlatformNativeLibrarySupport.potentialBuiltinLibraries).collect(Collectors.toMap(lib -> lib, PotentialBuiltinJNILibrary::create));
+    }
+
+    public boolean isPotentialBuiltinJNILibrary(String library) {
+        return potentialBuiltinJNILibraryMap.containsKey(library);
+    }
+
+    public void markPotentialBuiltinJNILibraryReachable(String library) {
+        assert potentialBuiltinJNILibraryMap.containsKey(library);
+        VMError.guarantee(!potentialBuiltinJNILibraryMap.get(library).isReachable(), library);
+        potentialBuiltinJNILibraryMap.get(library).markReachable();
+    }
+
+    public List<PotentialBuiltinJNILibrary> getReachableBuiltinLibraries() {
+        return potentialBuiltinJNILibraryMap.values().stream().filter(lib -> lib.isReachable() && lib.isBuiltin()).toList();
+    }
+
+    public List<String> getReachableBuiltinLibraryNames() {
+        return getReachableBuiltinLibraries().stream().map(PotentialBuiltinJNILibrary::getLibrary).toList();
+    }
+
+    public void linkReachableBuiltinLibraries() {
+        getReachableBuiltinLibraries().forEach(PotentialBuiltinJNILibrary::linkLibrary);
+    }
+
+    /**
+     * Keeps the name and dependencies of a prepared JNI library together across feature phases.
+     */
+    public static final class PotentialBuiltinJNILibrary {
+        private final String library;
+        private final List<String> dependencies;
+        private boolean isReachable = false;
+
+        private PotentialBuiltinJNILibrary(String library, List<String> dependencies) {
+            this.library = library;
+            this.dependencies = dependencies;
+        }
+
+        public String getLibrary() {
+            return library;
+        }
+
+        /**
+         * Registers the symbols of a JNI library early and returns a handle for the operations that can
+         * remain conditional. Calling this method does not preregister the library as built-in or add its static
+         * archive to the linker command.
+         */
+        public static PotentialBuiltinJNILibrary create(String library) {
+            addBuiltinNatives(library);
+            /*
+             * JNI libraries can reference Java_* entry points implemented by Native Image's
+             * libjvm replacement, which is linked but never loaded explicitly as a JNI library.
+             */
+            if (!singleton().jvmBuiltinNativesRegistered) {
+                addBuiltinNatives("jvm");
+                singleton().jvmBuiltinNativesRegistered = true;
+            }
+
+            List<String> allDeps = singleton().getLibraryDependencies(library);
+            return new PotentialBuiltinJNILibrary(library, allDeps);
+        }
+
+        private static void addBuiltinNatives(String library) {
+            PlatformNativeLibrarySupport.singleton().addBuiltinNatives(singleton().getStaticLibrarySymbols(library));
+        }
+
+        public void linkLibrary() {
+            NativeLibrarySupport.singleton().addBuiltinLibrary(library);
+            singleton().addStaticJniLibrary(library, dependencies);
+        }
+
+        @SuppressWarnings("static-method")
+        public boolean isBuiltin() {
+            return true;
+        }
+
+        public boolean isReachable() {
+            return isReachable;
+        }
+
+        public void markReachable() {
+            this.isReachable = true;
+        }
     }
 
     public void addDynamicNonJniLibrary(String library) {
@@ -514,15 +613,31 @@ public final class NativeLibraries {
         if (libraryPath == null) {
             return List.of();
         }
+        return readStaticLibraryManifest(libraryPath).symbols();
+    }
+
+    private record StaticLibraryManifest(List<String> symbols, List<String> dependencies) {
+    }
+
+    private static StaticLibraryManifest readStaticLibraryManifest(Path libraryPath) {
         Path symbolsPath = Paths.get(libraryPath + ".symbols");
         if (!Files.isRegularFile(symbolsPath)) {
-            return List.of();
+            return new StaticLibraryManifest(List.of(), List.of());
         }
         try {
-            return Files.readAllLines(symbolsPath).stream()
-                            .map(String::trim)
-                            .filter(line -> !line.isEmpty())
-                            .toList();
+            List<String> symbols = new ArrayList<>();
+            List<String> dependencies = new ArrayList<>();
+            for (String rawLine : Files.readAllLines(symbolsPath)) {
+                String line = rawLine.trim();
+                if (line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX)) {
+                    String dependency = line.substring(STATIC_LIBRARY_DEPENDENCY_PREFIX.length());
+                    VMError.guarantee(!dependency.isEmpty(), "Malformed static library manifest: %s", symbolsPath);
+                    dependencies.add(dependency);
+                } else if (!line.isEmpty()) {
+                    symbols.add(line);
+                }
+            }
+            return new StaticLibraryManifest(List.copyOf(symbols), List.copyOf(dependencies));
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -638,7 +753,6 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
@@ -720,9 +834,5 @@ public final class NativeLibraries {
 
     public List<String> getJniStaticLibraries() {
         return jniStaticLibraries;
-    }
-
-    public Collection<String> getJniStaticLibrariesAndDependencies() {
-        return jniStaticLibrariesAndDependencies;
     }
 }
