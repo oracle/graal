@@ -501,6 +501,7 @@ public final class NativeLibraries {
 
     public void markPotentialBuiltinJNILibraryReachable(String library) {
         assert potentialBuiltinJNILibraryMap.containsKey(library);
+        VMError.guarantee(!potentialBuiltinJNILibraryMap.get(library).isReachable(), library);
         potentialBuiltinJNILibraryMap.get(library).markReachable();
     }
 
