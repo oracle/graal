@@ -110,4 +110,19 @@ public abstract class WasmReturnCallNode extends Node {
             return doIndirect(arg0Value, arg1Value);
         }
     }
+
+    public static void maybeCallStatic(Object initialResult) {
+        if (initialResult == WasmConstant.RETURN_CALL_VALUE) {
+            Object result;
+            final WasmLanguage.ReturnCallData data = WasmLanguage.get(null).returnCallData();
+            try {
+                do {
+                    result = data.target.call(data.args);
+                } while (result == WasmConstant.RETURN_CALL_VALUE);
+            } finally {
+                data.target = null;
+                data.args = null;
+            }
+        }
+    }
 }

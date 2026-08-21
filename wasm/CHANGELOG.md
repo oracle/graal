@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 25.4.4
+
+* Implemented the [Tail Call](https://github.com/WebAssembly/tail-call) proposal. This feature is enabled by default and can be disabled with the experimental option `--wasm.TailCalls=false`. The feature comes with an optimization that transforms direct recursive calls (functions calling themselves) into loops. This optimization is enabled by default and can be disabled with the experimental option `--wasm.TailCallLoops=false`.
+
 ## Version 25.3.4
 
 * Implemented the `table64` part of the [Memory64](https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md) proposal. This feature can be enabled with the option `--wasm.Memory64`.

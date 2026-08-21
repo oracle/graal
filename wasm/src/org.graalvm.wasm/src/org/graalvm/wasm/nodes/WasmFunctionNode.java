@@ -323,7 +323,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             this.language = WasmLanguage.get(thiz);
             this.memoryLibs = thiz.memoryLibs;
             this.notifyFunction = thiz.notifyFunction;
-            this.startActiveLegacyCatchCount = activeLegacyCatchCount;
             this.activeLegacyCatchCount = activeLegacyCatchCount;
         }
 
@@ -341,7 +340,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         final WasmLanguage language;
         final WasmMemoryLibrary[] memoryLibs;
         final WasmNotifyFunction notifyFunction;
-        final int startActiveLegacyCatchCount;
         int activeLegacyCatchCount;
     }
 
@@ -4614,43 +4612,43 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 break;
             }
             case Bytecode.LOCAL_GET_I32: {
-                final int index = rawPeekI32(state.bytecode, offset + 1);
+                final int index = rawPeekI32(state.bytecode, offset + 2);
                 local_get(frame, virtualState.stackPointer, index);
                 virtualState.stackPointer++;
-                nextOffset = offset + 5;
+                nextOffset = offset + 6;
                 break;
             }
             case Bytecode.LOCAL_GET_OBJ_I32: {
-                final int index = rawPeekI32(state.bytecode, offset + 1);
+                final int index = rawPeekI32(state.bytecode, offset + 2);
                 local_get_obj(frame, virtualState.stackPointer, index);
                 virtualState.stackPointer++;
-                nextOffset = offset + 5;
+                nextOffset = offset + 6;
                 break;
             }
             case Bytecode.LOCAL_SET_I32: {
-                final int index = rawPeekI32(state.bytecode, offset + 1);
+                final int index = rawPeekI32(state.bytecode, offset + 2);
                 virtualState.stackPointer--;
                 local_set(frame, virtualState.stackPointer, index);
-                nextOffset = offset + 5;
+                nextOffset = offset + 6;
                 break;
             }
             case Bytecode.LOCAL_SET_OBJ_I32: {
-                final int index = rawPeekI32(state.bytecode, offset + 1);
+                final int index = rawPeekI32(state.bytecode, offset + 2);
                 virtualState.stackPointer--;
                 local_set_obj(frame, virtualState.stackPointer, index);
-                nextOffset = offset + 5;
+                nextOffset = offset + 6;
                 break;
             }
             case Bytecode.LOCAL_TEE_I32: {
-                final int index = rawPeekI32(state.bytecode, offset + 1);
+                final int index = rawPeekI32(state.bytecode, offset + 2);
                 local_tee(frame, virtualState.stackPointer - 1, index);
-                nextOffset = offset + 5;
+                nextOffset = offset + 6;
                 break;
             }
             case Bytecode.LOCAL_TEE_OBJ_I32: {
-                final int index = rawPeekI32(state.bytecode, offset + 1);
+                final int index = rawPeekI32(state.bytecode, offset + 2);
                 local_tee_obj(frame, virtualState.stackPointer - 1, index);
-                nextOffset = offset + 5;
+                nextOffset = offset + 6;
                 break;
             }
             case Bytecode.BR_RETURN_CALL: {
@@ -4664,7 +4662,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
 
                 nextOffset = state.thiz.bytecodeStartOffset;
                 virtualState.stackPointer = state.stackBase;
-                state.activeLegacyCatchCount = state.startActiveLegacyCatchCount;
+                // the active legacy catch count is always zero at the start of the function.
+                state.activeLegacyCatchCount = 0;
                 /*
                  * As this return call forms a loop without explicit header,
                  * we report the loop count here.
