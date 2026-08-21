@@ -35,6 +35,8 @@ import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.Virtualizable;
+import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -43,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * synthetic write while the high-tier optimizations run, but lowers to only a field read.
  */
 @NodeInfo(nameTemplate = "KillFieldReadCache#{p#field/s}")
-public final class FieldReadCacheKillNode extends AccessFieldNode implements SingleMemoryKill, IterableNodeType {
+public final class FieldReadCacheKillNode extends AccessFieldNode implements SingleMemoryKill, IterableNodeType, Virtualizable {
 
     public static final NodeClass<FieldReadCacheKillNode> TYPE = NodeClass.create(FieldReadCacheKillNode.class);
 
@@ -56,6 +58,16 @@ public final class FieldReadCacheKillNode extends AccessFieldNode implements Sin
     @Override
     public FieldLocationIdentity getKilledLocationIdentity() {
         return getLocationIdentity();
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        if (tool.getAlias(object()) instanceof VirtualInstanceNode virtualObject) {
+            int fieldIndex = virtualObject.fieldIndex(field());
+            if (fieldIndex != -1) {
+                tool.setVirtualEntry(virtualObject, fieldIndex, this);
+            }
+        }
     }
 
     @Override

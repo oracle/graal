@@ -35,6 +35,16 @@ import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupp
 import static com.oracle.svm.interpreter.InterpreterToVM.nullCheck;
 import static com.oracle.svm.interpreter.InterpreterUtil.invalidOpcode;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_BOOLEAN;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_BYTE;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_CHAR;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_DOUBLE;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_FLOAT;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_INT;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_LONG;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_OBJECT;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_SHORT;
+import static com.oracle.svm.interpreter.InterpreterVirtualStack.T_VOID;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.AALOAD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.AASTORE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.ACONST_NULL;
@@ -3474,18 +3484,18 @@ public final class Interpreter {
         }
 
         @AlwaysInline("Keep invocation return stack transitions in bytecode-handler stubs")
-        private static void pushKind(InterpreterState state, InterpreterVirtualStack virtualStack, JavaKind kind, Object value) {
+        private static void pushKind(InterpreterState state, InterpreterVirtualStack virtualStack, int kind, Object value) {
             switch (kind) {
-                case Boolean -> virtualStack.pushInt(state.primitives, ((Boolean) value) ? 1 : 0);
-                case Byte -> virtualStack.pushInt(state.primitives, (Byte) value);
-                case Short -> virtualStack.pushInt(state.primitives, (Short) value);
-                case Char -> virtualStack.pushInt(state.primitives, (Character) value);
-                case Int -> virtualStack.pushInt(state.primitives, (Integer) value);
-                case Float -> virtualStack.pushFloat(state.primitives, (Float) value);
-                case Long -> virtualStack.pushLong(state.primitives, (Long) value);
-                case Double -> virtualStack.pushDouble(state.primitives, (Double) value);
-                case Object -> virtualStack.pushObject(state.primitives, state.references, value);
-                default -> throw InterpreterUtil.shouldNotReachHere("%s", kind);
+                case T_BOOLEAN -> virtualStack.pushInt(state.primitives, ((Boolean) value) ? 1 : 0);
+                case T_BYTE -> virtualStack.pushInt(state.primitives, (Byte) value);
+                case T_SHORT -> virtualStack.pushInt(state.primitives, (Short) value);
+                case T_CHAR -> virtualStack.pushInt(state.primitives, (Character) value);
+                case T_INT -> virtualStack.pushInt(state.primitives, (Integer) value);
+                case T_FLOAT -> virtualStack.pushFloat(state.primitives, (Float) value);
+                case T_LONG -> virtualStack.pushLong(state.primitives, (Long) value);
+                case T_DOUBLE -> virtualStack.pushDouble(state.primitives, (Double) value);
+                case T_OBJECT -> virtualStack.pushObject(state.primitives, state.references, value);
+                default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
             }
         }
 
@@ -3499,6 +3509,8 @@ public final class Interpreter {
             int[] argumentKinds = uncheckedCast(linkedInvoke.argumentKinds, int[].class);
             virtualStack.popArguments(state.primitives, state.references, argumentKinds, calleeArgs, appendix);
 
+            GraalDirectives.killFieldReadCache(state, "references");
+            GraalDirectives.killFieldReadCache(state, "primitives");
             if (curOpcode != INVOKESTATIC && linkedInvoke.hasReceiver) {
                 Object receiver = calleeArgs[0];
                 profileType(state, curBCI, receiver);
@@ -3515,19 +3527,60 @@ public final class Interpreter {
                 }
             }
 
-            boolean preferStayInInterpreter = state.forceStayInInterpreter;
             if (debuggerEventsSupported()) {
-                preferStayInInterpreter |= state.beforeInvoke();
-            }
+                boolean preferStayInInterpreter = state.beforeInvoke() || state.forceStayInInterpreter;
 
-            try {
-                Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, state.forceStayInInterpreter, preferStayInInterpreter, false);
-                if (linkedInvoke.returnKind != JavaKind.Void) {
-                    pushKind(state, virtualStack, linkedInvoke.returnKind, retObj);
-                }
-            } finally {
-                if (debuggerEventsSupported()) {
+                try {
+                    Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, state.forceStayInInterpreter, preferStayInInterpreter, false);
+                    if (linkedInvoke.returnKind != T_VOID) {
+                        pushKind(state, virtualStack, linkedInvoke.returnKind, retObj);
+                    }
+                } finally {
                     state.afterInvoke();
+                }
+            } else {
+                Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, state.forceStayInInterpreter, state.forceStayInInterpreter, false);
+                switch (linkedInvoke.returnKind) {
+                    case T_BOOLEAN -> {
+                        virtualStack.pushInt(state.primitives, ((Boolean) retObj) ? 1 : 0);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_BYTE -> {
+                        virtualStack.pushInt(state.primitives, (Byte) retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_SHORT -> {
+                        virtualStack.pushInt(state.primitives, (Short) retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_CHAR -> {
+                        virtualStack.pushInt(state.primitives, (Character) retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_INT -> {
+                        virtualStack.pushInt(state.primitives, (Integer) retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_FLOAT -> {
+                        virtualStack.pushFloat(state.primitives, (Float) retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_LONG -> {
+                        virtualStack.pushLong(state.primitives, (Long) retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_DOUBLE -> {
+                        virtualStack.pushDouble(state.primitives, (Double) retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_OBJECT -> {
+                        virtualStack.pushObject(state.primitives, state.references, retObj);
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    case T_VOID -> {
+                        return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);
+                    }
+                    default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
                 }
             }
             return advanceToNextBytecode(curBCI, curOpcode, state, virtualStack);

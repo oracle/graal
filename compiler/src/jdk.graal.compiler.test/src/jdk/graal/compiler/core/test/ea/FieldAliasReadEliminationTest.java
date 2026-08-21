@@ -36,6 +36,7 @@ import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
@@ -69,6 +70,19 @@ public class FieldAliasReadEliminationTest extends GraalCompilerTest {
         GraalDirectives.killFieldReadCache(state, "references");
         Object[] after = state.references;
         return before == after ? before : after;
+    }
+
+    public static Object[] readVirtualPostponedFieldAfterCacheKill(Object[] references) {
+        State state = new State(references);
+        GraalDirectives.killFieldReadCache(state, "references");
+        return state.references;
+    }
+
+    public static Object[] readAfterConditionalCacheKill(State state, boolean kill) {
+        if (kill) {
+            GraalDirectives.killFieldReadCache(state, "references");
+        }
+        return state.references;
     }
 
     @Test
@@ -123,19 +137,54 @@ public class FieldAliasReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testPostponedFieldReadFoldsToAliasAfterInlining() throws NoSuchFieldException {
         StructuredGraph graph = graphWithPostponedLoad(false);
-        createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
         Assert.assertEquals(1, graph.getNodes().filter(PartiallyOpaqueLoadFieldNode.class).count());
         graph.getGraphState().setAfterStage(StageFlag.LOOP_OVERFLOWS_CHECKED);
-        createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
+        new ReadEliminationPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
         Assert.assertSame(graph.getParameter(1), graph.getNodes().filter(ReturnNode.class).first().result());
     }
 
     @Test
-    public void testPostponedFieldReadSurvivesMatchingCacheKill() throws NoSuchFieldException {
+    public void testPostponedFieldReadUsesMatchingCacheKill() throws NoSuchFieldException {
         StructuredGraph graph = graphWithPostponedLoad(true);
         graph.getGraphState().setAfterStage(StageFlag.LOOP_OVERFLOWS_CHECKED);
-        createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
-        Assert.assertTrue(graph.getNodes().filter(ReturnNode.class).first().result() instanceof PartiallyOpaqueLoadFieldNode);
+        FieldReadCacheKillNode cacheKill = graph.getNodes().filter(FieldReadCacheKillNode.class).first();
+        new ReadEliminationPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+        Assert.assertSame(cacheKill, graph.getNodes().filter(ReturnNode.class).first().result());
+    }
+
+    @Test
+    public void testVirtualPostponedFieldReadUsesCacheKill() throws NoSuchFieldException {
+        StructuredGraph graph = parseEager(getResolvedJavaMethod("readVirtualPostponedFieldAfterCacheKill"), AllowAssumptions.NO);
+        ResolvedJavaField referencesField = getMetaAccess().lookupJavaField(State.class.getDeclaredField("references"));
+        LoadFieldNode load = graph.getNodes().filter(LoadFieldNode.class).first();
+        PartiallyOpaqueLoadFieldNode postponedLoad = graph.add(new PartiallyOpaqueLoadFieldNode(graph.getAssumptions(), load.object(), referencesField, graph.getParameter(0)));
+        graph.addBeforeFixed(load, postponedLoad);
+        load.replaceAtUsages(postponedLoad);
+        GraphUtil.removeFixedWithUnusedInputs(load);
+        graph.getGraphState().setAfterStage(StageFlag.LOOP_OVERFLOWS_CHECKED);
+        FieldReadCacheKillNode cacheKill = graph.getNodes().filter(FieldReadCacheKillNode.class).first();
+        new PartialEscapePhase(false, true, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, getDefaultHighTierContext());
+        Assert.assertSame(cacheKill, graph.getNodes().filter(ReturnNode.class).first().result());
+    }
+
+    @Test
+    public void testPostponedFieldReadMergesAliasAndCacheKill() throws NoSuchFieldException {
+        StructuredGraph graph = parseEager(getResolvedJavaMethod("readAfterConditionalCacheKill"), AllowAssumptions.NO);
+        ResolvedJavaField referencesField = getMetaAccess().lookupJavaField(State.class.getDeclaredField("references"));
+        LoadFieldNode load = graph.getNodes().filter(LoadFieldNode.class).first();
+        ParameterNode aliasParameter = graph.addWithoutUnique(new ParameterNode(2, StampPair.createSingle(load.stamp(NodeView.DEFAULT))));
+        FieldAliasNode alias = graph.add(new FieldAliasNode(graph.getParameter(0), referencesField, aliasParameter, true));
+        graph.addAfterFixed(graph.start(), alias);
+        PartiallyOpaqueLoadFieldNode postponedLoad = graph.add(new PartiallyOpaqueLoadFieldNode(graph.getAssumptions(), graph.getParameter(0), referencesField, aliasParameter));
+        graph.addBeforeFixed(load, postponedLoad);
+        load.replaceAtUsages(postponedLoad);
+        GraphUtil.removeFixedWithUnusedInputs(load);
+        graph.getGraphState().setAfterStage(StageFlag.LOOP_OVERFLOWS_CHECKED);
+        FieldReadCacheKillNode cacheKill = graph.getNodes().filter(FieldReadCacheKillNode.class).first();
+        new ReadEliminationPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+        ValuePhiNode result = (ValuePhiNode) graph.getNodes().filter(ReturnNode.class).first().result();
+        Assert.assertTrue(result.values().contains(aliasParameter));
+        Assert.assertTrue(result.values().contains(cacheKill));
     }
 
     private StructuredGraph graphWithFieldAlias(boolean immutable) throws NoSuchFieldException {

@@ -43,15 +43,16 @@ import jdk.vm.ci.meta.JavaKind;
 final class InterpreterVirtualStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    private static final int T_BOOLEAN = 4;
-    private static final int T_CHAR = 5;
-    private static final int T_FLOAT = 6;
-    private static final int T_DOUBLE = 7;
-    private static final int T_BYTE = 8;
-    private static final int T_SHORT = 9;
-    private static final int T_INT = 10;
-    private static final int T_LONG = 11;
-    private static final int T_OBJECT = 12;
+    static final int T_BOOLEAN = 4;
+    static final int T_CHAR = 5;
+    static final int T_FLOAT = 6;
+    static final int T_DOUBLE = 7;
+    static final int T_BYTE = 8;
+    static final int T_SHORT = 9;
+    static final int T_INT = 10;
+    static final int T_LONG = 11;
+    static final int T_OBJECT = 12;
+    static final int T_VOID = 14;
 
     /** First stack slot above the materialized operand stack. */
     long top;

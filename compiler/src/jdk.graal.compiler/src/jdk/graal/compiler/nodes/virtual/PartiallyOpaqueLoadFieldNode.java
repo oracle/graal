@@ -30,17 +30,13 @@ import static jdk.graal.compiler.nodes.GraphState.StageFlag.LOOP_OVERFLOWS_CHECK
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.IterableNodeType;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -49,12 +45,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * handler inlining has completed.
  */
 @NodeInfo(nameTemplate = "PartiallyOpaqueLoadField#{p#field/s}")
-public final class PartiallyOpaqueLoadFieldNode extends AccessFieldNode implements Canonicalizable, IterableNodeType, Lowerable {
+public final class PartiallyOpaqueLoadFieldNode extends AccessFieldNode implements IterableNodeType, Lowerable {
 
     public static final NodeClass<PartiallyOpaqueLoadFieldNode> TYPE = NodeClass.create(PartiallyOpaqueLoadFieldNode.class);
 
     @Input private ValueNode aliasValue;
-    private boolean forceLoad;
 
     public PartiallyOpaqueLoadFieldNode(Assumptions assumptions, ValueNode object, ResolvedJavaField field, ValueNode aliasValue) {
         super(TYPE, StampFactory.forDeclaredType(assumptions, field.getType(), false).getTrustedStamp(), object, field, MemoryOrderMode.PLAIN, false);
@@ -63,34 +58,12 @@ public final class PartiallyOpaqueLoadFieldNode extends AccessFieldNode implemen
         this.aliasValue = aliasValue;
     }
 
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (graph() == null || graph().isBeforeStage(LOOP_OVERFLOWS_CHECKED) && graph().isBeforeStage(HIGH_TIER_LOWERING)) {
-            return this;
-        }
-        if (hasMatchingCacheKill()) {
-            forceLoad = true;
-            return this;
-        }
-        return aliasValue;
-    }
-
-    private boolean hasMatchingCacheKill() {
-        ValueNode receiver = GraphUtil.unproxify(object());
-        for (FieldReadCacheKillNode cacheKill : graph().getNodes(FieldReadCacheKillNode.TYPE)) {
-            if (cacheKill.field().equals(field()) && GraphUtil.unproxify(cacheKill.object()) == receiver) {
-                return true;
-            }
-        }
-        return false;
+    public boolean canResolve() {
+        return graph() != null && (!graph().isBeforeStage(LOOP_OVERFLOWS_CHECKED) || !graph().isBeforeStage(HIGH_TIER_LOWERING));
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        if (!forceLoad && !hasMatchingCacheKill()) {
-            graph().replaceFixedWithFloating(this, aliasValue);
-            return;
-        }
         LoadFieldNode load = graph().add(LoadFieldNode.createOverrideImmutable(LoadFieldNode.create(graph().getAssumptions(), object(), field())));
         graph().replaceFixedWithFixed(this, load);
         tool.getLowerer().lower(load, tool);

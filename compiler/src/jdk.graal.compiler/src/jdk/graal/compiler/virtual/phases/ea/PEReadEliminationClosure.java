@@ -73,6 +73,7 @@ import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
 import jdk.graal.compiler.nodes.virtual.FieldReadCacheKillNode;
+import jdk.graal.compiler.nodes.virtual.PartiallyOpaqueLoadFieldNode;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
@@ -103,7 +104,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
 
     @Override
     protected boolean processNode(Node node, PEReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
-        if (super.processNode(node, state, effects, lastFixedNode)) {
+        if (super.processNode(node, state, effects, lastFixedNode) && !(node instanceof FieldReadCacheKillNode)) {
             return true;
         }
 
@@ -118,6 +119,8 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         boolean deleted = false;
         if (node instanceof FieldReadCacheKillNode fieldReadCacheKillNode) {
             deleted = processFieldReadCacheKill(fieldReadCacheKillNode, state);
+        } else if (node instanceof PartiallyOpaqueLoadFieldNode postponedLoad && postponedLoad.canResolve()) {
+            deleted = processLoad(postponedLoad, postponedLoad.object(), new FieldLocationIdentity(postponedLoad.field(), true), -1, postponedLoad.field().getJavaKind(), state, effects);
         } else if (node instanceof LoadFieldNode loadFieldNode) {
             deleted = processLoadField(loadFieldNode, state, effects);
         } else if (node instanceof FieldAliasNode fieldAliasNode) {

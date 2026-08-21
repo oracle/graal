@@ -72,6 +72,7 @@ import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
 import jdk.graal.compiler.nodes.virtual.FieldReadCacheKillNode;
+import jdk.graal.compiler.nodes.virtual.PartiallyOpaqueLoadFieldNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
@@ -99,7 +100,18 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     @Override
     protected boolean processNode(Node node, ReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         boolean deleted = false;
-        if (node instanceof FieldReadCacheKillNode fieldReadCacheKillNode) {
+        if (node instanceof PartiallyOpaqueLoadFieldNode postponedLoad && postponedLoad.canResolve()) {
+            ValueNode object = GraphUtil.unproxify(postponedLoad.object());
+            LoadCacheEntry identifier = new LoadCacheEntry(object, new FieldLocationIdentity(postponedLoad.field(), true));
+            ValueNode cachedValue = state.getCacheEntry(identifier);
+            if (cachedValue != null) {
+                effects.replaceAtUsages(postponedLoad, cachedValue, postponedLoad);
+                addScalarAlias(postponedLoad, cachedValue);
+                deleted = true;
+            } else {
+                state.addCacheEntry(identifier, postponedLoad);
+            }
+        } else if (node instanceof FieldReadCacheKillNode fieldReadCacheKillNode) {
             ValueNode object = GraphUtil.unproxify(fieldReadCacheKillNode.object());
             state.killReadCache(object, fieldReadCacheKillNode.field());
             state.addCacheEntry(new LoadCacheEntry(object, new FieldLocationIdentity(fieldReadCacheKillNode.field(), true)), fieldReadCacheKillNode);

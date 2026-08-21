@@ -521,7 +521,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
          * cached invoke path can use the published LinkedInvoke without re-querying stable method
          * and signature metadata on every execution.
          */
-        public final JavaKind returnKind;
+        public final int returnKind;
         public final boolean hasReceiver;
         public final boolean requiresSymbolicTypeCheck;
 
@@ -534,7 +534,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             this.callKind = callKind;
             this.appendix = appendix;
             InterpreterUnresolvedSignature signature = seedMethod.getSignature();
-            this.returnKind = signature.getReturnKind();
+            this.returnKind = signature.getReturnKind().getBasicType();
             this.hasReceiver = !seedMethod.isStatic();
             this.requiresSymbolicTypeCheck = requiresInterfaceReceiverCheck;
 
