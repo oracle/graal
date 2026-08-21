@@ -571,9 +571,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private static void linkJaas(DuringAnalysisAccess a) {
         JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
-
-        // We can statically link jaas, so we classify it as a built-in library.
-        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("jaas");
     }
 
     private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
