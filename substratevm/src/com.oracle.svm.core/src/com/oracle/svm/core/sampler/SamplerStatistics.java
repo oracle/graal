@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -52,7 +53,7 @@ public final class SamplerStatistics {
         this.unparseableSamples = new UninterruptibleUtils.AtomicLong(0);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static SamplerStatistics singleton() {
         return ImageSingletons.lookup(SamplerStatistics.class);
     }

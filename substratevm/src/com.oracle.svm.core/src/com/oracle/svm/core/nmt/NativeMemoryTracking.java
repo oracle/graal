@@ -38,15 +38,16 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.os.ImageHeapProvider;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -92,7 +93,7 @@ public class NativeMemoryTracking {
         }
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static NativeMemoryTracking singleton() {
         return ImageSingletons.lookup(NativeMemoryTracking.class);
     }

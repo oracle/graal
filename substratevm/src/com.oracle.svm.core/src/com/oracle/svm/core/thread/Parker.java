@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.thread;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.shared.Uninterruptible;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Per-thread blocking support. An instance is owned by at most one thread at a time for blocking
@@ -52,7 +54,7 @@ import com.oracle.svm.shared.Uninterruptible;
 public abstract class Parker {
 
     public interface ParkerFactory {
-        @Fold
+        @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
         static ParkerFactory singleton() {
             return ImageSingletons.lookup(ParkerFactory.class);
         }

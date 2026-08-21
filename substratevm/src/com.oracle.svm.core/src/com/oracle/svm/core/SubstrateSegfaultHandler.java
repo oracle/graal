@@ -42,20 +42,15 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.SubstrateSegfaultHandler.SingleIsolateSegfaultSetup;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
-import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.log.CoreLogSupport;
-import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -65,6 +60,12 @@ import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -156,7 +157,7 @@ public abstract class SubstrateSegfaultHandler {
     static long offsetOfStaticFieldWithWellKnownValue;
     @SuppressWarnings("unused") private static long staticFieldWithWellKnownValue = MARKER_VALUE;
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static SubstrateSegfaultHandler singleton() {
         return ImageSingletons.lookup(SubstrateSegfaultHandler.class);
     }
@@ -344,7 +345,7 @@ public abstract class SubstrateSegfaultHandler {
          */
         private static final CGlobalData<Pointer> baseIsolate = CGlobalDataFactory.createWord();
 
-        @Fold
+        @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
         public static SingleIsolateSegfaultSetup singleton() {
             return ImageSingletons.lookup(SingleIsolateSegfaultSetup.class);
         }

@@ -55,9 +55,9 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
@@ -65,19 +65,13 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicWord;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.locks.VMLockSupport;
-import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -88,14 +82,20 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.guest.staging.JavaMainSupport;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
-import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
-import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -103,6 +103,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -130,7 +131,7 @@ public class SubstrateDiagnostics {
         return threadOnlyAttachedForCrashHandler.get(thread);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static FatalErrorState fatalErrorState() {
         return ImageSingletons.lookup(FatalErrorState.class);
     }
@@ -1309,7 +1310,7 @@ public class SubstrateDiagnostics {
         private final AbstractImageHeapList<DiagnosticThunk> thunks = ImageHeapList.create(DiagnosticThunk.class);
         private int[] initialInvocationCount;
 
-        @Fold
+        @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
         public static synchronized DiagnosticThunkRegistry singleton() {
             /* The registry is already used very early during the image build. */
             if (!ImageSingletons.contains(DiagnosticThunkRegistry.class) && ImageLayerBuildingSupport.firstImageBuild()) {
@@ -1385,7 +1386,7 @@ public class SubstrateDiagnostics {
             throw VMError.shouldNotReachHere("Could not find diagnostic thunk " + clazz);
         }
 
-        @Fold
+        @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
         int size() {
             return thunks.size();
         }

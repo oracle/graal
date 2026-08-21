@@ -28,8 +28,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.impl.Word;
+
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -60,7 +62,7 @@ public interface VirtualMemoryProvider {
         int FUTURE_EXECUTE = (1 << 3);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static VirtualMemoryProvider get() {
         return ImageSingletons.lookup(VirtualMemoryProvider.class);
     }

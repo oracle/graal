@@ -24,19 +24,22 @@
  */
 package com.oracle.svm.core.os;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
 public interface MemoryProtectionProvider {
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static MemoryProtectionProvider singleton() {
         return ImageSingletons.lookup(MemoryProtectionProvider.class);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static boolean isAvailable() {
         return ImageSingletons.contains(MemoryProtectionProvider.class);
     }

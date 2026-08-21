@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -161,7 +162,7 @@ public interface RuntimeMetadataDecoder {
     }
 
     interface MetadataAccessor {
-        @Fold
+        @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
         static MetadataAccessor singleton() {
             return ImageSingletons.lookup(MetadataAccessor.class);
         }

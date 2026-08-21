@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.shared.Uninterruptible;
@@ -88,7 +89,7 @@ public interface StackOverflowCheck {
      * this direction.
      */
     interface PlatformSupport {
-        @Fold
+        @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
         static PlatformSupport singleton() {
             return ImageSingletons.lookup(PlatformSupport.class);
         }
@@ -111,7 +112,7 @@ public interface StackOverflowCheck {
         boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static StackOverflowCheck singleton() {
         return ImageSingletons.lookup(StackOverflowCheck.class);
     }
