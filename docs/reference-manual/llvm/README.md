@@ -20,10 +20,10 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
 1. Download the LLVM standalone for your operating system:
 
    - Native standalone
-      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-25.1.3-linux-amd64.tar.gz)
-      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.1.3-linux-aarch64.tar.gz)
-      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.1.3-macos-aarch64.tar.gz)
-      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-25.1.3-windows-amd64.zip)
+      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-25.3.4.1-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.3.4.1-linux-aarch64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-25.3.4.1-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-25.3.4.1-windows-amd64.zip)
 
 2. Unzip the archive:
 
