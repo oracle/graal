@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.zip.ZipFile;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -60,12 +61,16 @@ public class ClassPathJarResourceAgentTest {
     private static final String RESOURCE_CONTENTS = "agent resource lookup";
     private static final String BUILT_IN_CLASSPATH_JAR_RESOURCE_NAME = "org/junit/Test.class";
     private static final String JDK_MODULE_RESOURCE_NAME = "java/lang/Object.class";
+    static final String CLASS_PATH_ZIP_RESOURCE_NAME = "runtime-class-path-resource.txt";
+    static final String MISSING_CLASS_PATH_ZIP_RESOURCE_NAME = "missing-native-image-agent-resource.txt";
+    static final String STREAMED_CLASS_PATH_ZIP_RESOURCE_NAME = "systemjava_debugtest.h";
 
     @Test
     public void accessBuiltInClassPathJarResource() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
                         Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
         accessBuiltInClassPathJarResourceInternal();
+        accessClassPathZipEntries();
     }
 
     @Test
@@ -98,6 +103,17 @@ public class ClassPathJarResourceAgentTest {
 
         accessJDKModuleResourceInternal();
         accessExplicitJrtURL();
+    }
+
+    private static void accessClassPathZipEntries() throws Exception {
+        Path testJar = Path.of(ClassPathJarResourceAgentTest.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        Assert.assertTrue("Expected the test class path entry to be a JAR: " + testJar, Files.isRegularFile(testJar));
+        try (ZipFile zipFile = new ZipFile(testJar.toFile())) {
+            Assert.assertNull(zipFile.getEntry(MISSING_CLASS_PATH_ZIP_RESOURCE_NAME));
+            Assert.assertNotNull(zipFile.getEntry(CLASS_PATH_ZIP_RESOURCE_NAME));
+            Assert.assertTrue(zipFile.stream().anyMatch(entry -> STREAMED_CLASS_PATH_ZIP_RESOURCE_NAME.equals(entry.getName())));
+        }
+        Assert.assertSame(ReflectiveProbe.class, Class.forName(ReflectiveProbe.class.getName()));
     }
 
     private static void accessBuiltInClassPathJarResourceInternal() throws Exception {
