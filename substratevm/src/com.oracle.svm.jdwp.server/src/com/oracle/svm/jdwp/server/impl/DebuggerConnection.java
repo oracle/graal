@@ -93,7 +93,7 @@ public final class DebuggerConnection {
             if (Thread.currentThread().isInterrupted()) {
                 throw new ConnectionClosedException();
             }
-            throw new IOException("Packet .length and size mis-match");
+            throw new IOException("Packet .length and size mismatch");
         }
     }
 

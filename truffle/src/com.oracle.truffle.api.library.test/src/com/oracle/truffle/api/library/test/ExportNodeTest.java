@@ -499,7 +499,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage
         public String m0(String argument,
                         @ExpectError("Variable 'this' is reserved for library receiver values in methods annotated with @ExportMessage. " +
-                                        "If the intention was to access the encapsulting Node for inlined nodes or profiles, you may use '$node' as expression instead.") @Bind("this") Node node) {
+                                        "If the intention was to access the encapsulating Node for inlined nodes or profiles, you may use '$node' as expression instead.") @Bind("this") Node node) {
             throw new AssertionError();
         }
 

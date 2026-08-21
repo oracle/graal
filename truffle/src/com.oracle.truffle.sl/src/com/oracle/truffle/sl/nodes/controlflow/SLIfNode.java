@@ -50,7 +50,7 @@ import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
 
-@NodeInfo(shortName = "if", description = "The node implementing a condional statement")
+@NodeInfo(shortName = "if", description = "The node implementing a conditional statement")
 public final class SLIfNode extends SLStatementNode {
 
     /**

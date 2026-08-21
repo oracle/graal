@@ -164,7 +164,7 @@ public class HeapObjectTest {
             invokeDump(heap, 1, new Event[]{
                             new StackEvent(new StackElement[]{new StackElement(null, null)})
             });
-            fail("Expeting failure");
+            fail("Expecting failure");
         } catch (PolyglotException ex) {
             assertMessage(ex, "Expecting non-null 'at' ", "'at' should be defined");
         }

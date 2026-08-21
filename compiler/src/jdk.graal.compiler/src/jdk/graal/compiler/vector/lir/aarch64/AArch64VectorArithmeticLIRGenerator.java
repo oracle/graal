@@ -605,7 +605,7 @@ public class AArch64VectorArithmeticLIRGenerator extends AArch64ArithmeticLIRGen
     }
 
     private Variable emitVectorPackedComparison(Condition condition, Value vectorA, Value vectorB, boolean unorderedIsTrue) {
-        assert isVectorKind(vectorA) : "A must be a vactor graph " + vectorA;
+        assert isVectorKind(vectorA) : "A must be a vector graph " + vectorA;
 
         Variable result = getVectorComparisonResult(vectorA);
         /* First try to emit a comparison against zero. */
