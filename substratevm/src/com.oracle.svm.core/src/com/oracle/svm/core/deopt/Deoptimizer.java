@@ -1215,8 +1215,16 @@ public final class Deoptimizer {
                         : DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer();
     }
 
+    public static boolean canEagerlyDeoptimize(FrameInfoQueryResult frameInfo, CodePointer pc) {
+        /*
+         * Eager deoptimization needs either complete AOT deopt target metadata or a Ristretto
+         * interpreter deopt target for installed code.
+         */
+        return hasAOTDeoptTargetMethod(frameInfo) || hasInstalledCodeInterpreterDeoptTarget(pc);
+    }
+
     private DeoptimizedFrame deoptSourceFrameEagerly(CodePointer pc, boolean ignoreNonDeoptimizable) {
-        if (!hasAOTDeoptTargetMethod(sourceChunk.getFrameInfo()) && !hasInstalledCodeInterpreterDeoptTarget(pc)) {
+        if (!canEagerlyDeoptimize(sourceChunk.getFrameInfo(), pc)) {
             if (ignoreNonDeoptimizable) {
                 return null;
             } else {
