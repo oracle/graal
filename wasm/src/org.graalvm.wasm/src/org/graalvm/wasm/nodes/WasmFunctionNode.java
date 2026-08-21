@@ -1528,7 +1528,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     @EarlyInline
-    private static void updateBackEdgeCounterAndTryOSR(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+    private static void updateBackEdgeCounterAndTryOSR(int resumeOffset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
         if (CompilerDirectives.hasNextTier()) {
             int count = CompilerDirectives.inCompiledCode() ? ++state.backEdgeCounter.count : ++state.interpreterBackEdgeCounter;
             if (CompilerDirectives.injectBranchProbability(0.001, count >= REPORT_LOOP_STRIDE)) {
@@ -1536,7 +1536,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 LoopNode.reportLoopCount(state.thiz, REPORT_LOOP_STRIDE);
                 if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(state.thiz, REPORT_LOOP_STRIDE)) {
                     OSRInterpreterState osrInterpreterState = new OSRInterpreterState(state.lineIndex, state.activeLegacyCatchCount);
-                    Object result = BytecodeOSRNode.tryOSR(state.thiz, offset + 1 | ((long) virtualState.stackPointer << 32), osrInterpreterState, null, frame);
+                    Object result = BytecodeOSRNode.tryOSR(state.thiz, resumeOffset | ((long) virtualState.stackPointer << 32), osrInterpreterState, null, frame);
                     if (result != null) {
                         throw new WasmOSRException(result);
                     }
@@ -1554,7 +1554,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     @SuppressWarnings("unused")
     @BytecodeInterpreterHandler(value = {Bytecode.LOOP}, safepoint = true)
     private static int loopHandler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        updateBackEdgeCounterAndTryOSR(offset, state, virtualState, frame);
+        updateBackEdgeCounterAndTryOSR(offset + 1, state, virtualState, frame);
         return offset + 1;
     }
 
@@ -4668,7 +4668,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                  * As this return call forms a loop without explicit header,
                  * we report the loop count here.
                  */
-                updateBackEdgeCounterAndTryOSR(offset, state, virtualState, frame);
+                updateBackEdgeCounterAndTryOSR(nextOffset, state, virtualState, frame);
                 break;
             }
             default: {
