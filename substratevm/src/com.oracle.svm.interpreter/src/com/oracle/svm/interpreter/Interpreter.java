@@ -3506,8 +3506,7 @@ public final class Interpreter {
             Object[] calleeArgs = GraalDirectives.injectBranchProbability(UNLIKELY_PROBABILITY, linkedInvoke.argumentCount == 0) ? EMPTY_ARGUMENTS : new Object[linkedInvoke.argumentCount];
             linkedInvoke = GraalDirectives.anchorValue(linkedInvoke);
             Object appendix = curOpcode == INVOKEVIRTUAL ? linkedInvoke.appendix : null;
-            int[] argumentKinds = uncheckedCast(linkedInvoke.argumentKinds, int[].class);
-            virtualStack.popArguments(state.primitives, state.references, argumentKinds, calleeArgs, appendix);
+            virtualStack.popArguments(state.primitives, state.references, uncheckedCast(linkedInvoke.argumentKinds, int[].class), calleeArgs, appendix);
 
             GraalDirectives.killFieldReadCache(state, "references");
             GraalDirectives.killFieldReadCache(state, "primitives");
