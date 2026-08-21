@@ -52,6 +52,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.collection.IntArrayList;
 
@@ -120,15 +121,24 @@ public abstract class AbstractBinarySuite {
                 int[] results = resultEntries.get(i);
                 b.addUnsignedInt32(params.length);
                 for (int param : params) {
-                    b.addSignedInt32(param);
+                    addValueType(b, param);
                 }
                 b.addUnsignedInt32(results.length);
                 for (int result : results) {
-                    b.addSignedInt32(result);
+                    addValueType(b, result);
                 }
             }
             b.set(1, (byte) (b.size() - 2));
             return b.toArray();
+        }
+
+        private static void addValueType(ByteArrayList b, int type) {
+            if (WasmType.isReferenceType(type) && (!WasmType.isNullable(type) || WasmType.isConcreteReferenceType(type))) {
+                b.addSignedInt32(WasmType.isNullable(type) ? WasmType.REF_NULL_TYPE_HEADER : WasmType.REF_TYPE_HEADER);
+                b.addSignedInt32(WasmType.getHeapType(type));
+            } else {
+                b.addSignedInt32(type);
+            }
         }
     }
 
