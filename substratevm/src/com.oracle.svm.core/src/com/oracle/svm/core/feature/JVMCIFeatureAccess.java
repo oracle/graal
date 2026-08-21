@@ -33,6 +33,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIReflectiveAccess;
@@ -126,6 +127,18 @@ public final class JVMCIFeatureAccess {
          * {@link org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerObjectReachabilityHandler(Consumer, Class)}.
          */
         void registerObjectReachabilityHandler(Consumer<JavaConstant> callback, ResolvedJavaType type);
+
+        /**
+         * JVMCI-based counterpart of
+         * {@link org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerBuildTimeIndyIncludeList(java.lang.reflect.Executable)}.
+         */
+        void registerBuildTimeIndyIncludeList(ResolvedJavaMethod method);
+
+        /**
+         * JVMCI-based counterpart of
+         * {@link org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerBuildTimeCondyIncludeList(java.lang.reflect.Executable)}.
+         */
+        void registerBuildTimeCondyIncludeList(ResolvedJavaMethod method);
     }
 
     /**
