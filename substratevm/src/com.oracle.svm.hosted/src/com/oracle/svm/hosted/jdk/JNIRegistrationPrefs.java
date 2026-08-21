@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostModuleUtil;
@@ -96,7 +95,6 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
     }
 
     private static void handlePreferencesClassReachable(DuringAnalysisAccess access) {
-        NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable("prefs");
         if (isDarwin()) {
             /* Darwin allocates a string array from native code */
             RuntimeJNIAccess.register(String[].class);
