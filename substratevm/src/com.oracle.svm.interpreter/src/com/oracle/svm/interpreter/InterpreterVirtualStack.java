@@ -623,14 +623,24 @@ final class InterpreterVirtualStack {
             uncheckedPutArgument(args, index, appendix);
             index--;
         }
-        if (tosLevel > 0 && index >= 0) {
-            uncheckedPutArgument(args, index, popKind(primitives, references, uncheckedBasicTypeAt(argKinds, index)));
-            index--;
+        if (tosLevel == 2) {
+            if (index >= 0) {
+                int argType = uncheckedBasicTypeAt(argKinds, index);
+                uncheckedPutArgument(args, index, popKind(primitives, references, argType));
+                index--;
+
+                if (index >= 0 && argType != T_LONG && argType != T_DOUBLE) {
+                    uncheckedPutArgument(args, index, popKind(primitives, references, uncheckedBasicTypeAt(argKinds, index)));
+                    index--;
+                }
+            }
+        } else if (tosLevel == 1) {
+            if (index >= 0) {
+                uncheckedPutArgument(args, index, popKind(primitives, references, uncheckedBasicTypeAt(argKinds, index)));
+                index--;
+            }
         }
-        if (tosLevel > 0 && index >= 0) {
-            uncheckedPutArgument(args, index, popKind(primitives, references, uncheckedBasicTypeAt(argKinds, index)));
-            index--;
-        }
+
         materialize(primitives);
 
         /*
