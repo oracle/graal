@@ -1058,6 +1058,7 @@ def java_desktop_integration_task(native_image, extra_build_args=None):
 
 def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
+    run_agent_field_access_config_test(agent_path)
     run_agent_jar_url_protocol_config_test(agent_path)
     conditional_config_filter_path = join(svmbuild_dir(), 'conditional-config-filter.json')
     with open(conditional_config_filter_path, 'w', encoding='utf-8') as conditional_config_filter:
@@ -1070,6 +1071,27 @@ def conditional_config_task(native_image):
 ''')
     run_agent_conditional_config_test(agent_path, conditional_config_filter_path)
     run_nic_conditional_config_test(agent_path, conditional_config_filter_path)
+
+
+def run_agent_field_access_config_test(agent_path):
+    config_dir = join(svmbuild_dir(), 'field-access-agent-test-config')
+    if exists(config_dir):
+        mx.rmtree(config_dir)
+    trace_path = join(svmbuild_dir(), 'field-access-agent-test-trace.json')
+    if exists(trace_path):
+        os.remove(trace_path)
+
+    generator_class = 'com.oracle.svm.configure.test.config.FieldAccessAgentTest'
+    verifier_class = 'com.oracle.svm.configure.test.config.FieldAccessAgentVerifierTest'
+    generator_args = ['-D' + generator_class + '.generator.enabled=true'] + _configure_test_jvmci_exports() + [generator_class + '#accessFields']
+
+    jvm_unittest(['-agentpath:' + agent_path + '=config-output-dir=' + config_dir] + generator_args)
+    jvm_unittest(['-agentpath:' + agent_path + '=trace-output=' + trace_path] + generator_args)
+    jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
+                  '-D' + verifier_class + '.configpath=' + config_dir,
+                  '-D' + verifier_class + '.tracepath=' + trace_path] +
+                 _configure_test_jvmci_exports() +
+                 [verifier_class + '#verifyFieldAccessMetadataAndTrace'])
 
 
 def run_agent_jar_url_protocol_config_test(agent_path):
