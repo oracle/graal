@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
@@ -77,6 +78,8 @@ import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavi
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Native-image Java launcher entry point and runtime control flow.
@@ -244,11 +247,42 @@ public class JavaMainWrapper {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     public static int run(int argc, CCharPointerPointer argv) {
-        if (SubstrateOptions.RunMainInNewThread.getValue()) {
+        if (SubstrateOptions.DarwinParkMainInCFRunLoop.getValue()) {
+            return doRunWithDarwinCFRunLoop(argc, argv);
+        } else if (SubstrateOptions.RunMainInNewThread.getValue()) {
             return doRunInNewThread(argc, argv);
         } else {
             return doRun(argc, argv);
         }
+    }
+
+    /**
+     * Darwin headed AWT/Swing: run Java on a side thread and park the process main thread in a
+     * CFRunLoop so AppKit/Metal {@code performSelector:waitUntilDone:} can complete. Matches
+     * OpenJDK libjli and Graal {@code launcher.cc} {@code ParkEventLoop}. See
+     * <a href="https://github.com/oracle/graal/issues/13994">oracle/graal#13994</a>.
+     */
+    @Uninterruptible(reason = "Thread state not setup yet.")
+    private static int doRunWithDarwinCFRunLoop(int argc, CCharPointerPointer argv) {
+        try {
+            Isolate isolate = createMainIsolate(argc, argv);
+            long javaStackSize = getJavaStackSize();
+            /*
+             * The launcher parks in CFRunLoop (no-transition), so detach it before the runner can
+             * request VM operations.
+             */
+            detachCurrentThread();
+            startMainRunnerUnmanaged(isolate, javaStackSize);
+            darwinMainCFRunLoopSupport().parkEventLoop();
+            throw VMError.shouldNotReachHere("Darwin CFRunLoop park returned; expected LibC.exit from the Java main runner");
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    @Fold
+    static DarwinMainCFRunLoopSupport darwinMainCFRunLoopSupport() {
+        return ImageSingletons.lookup(DarwinMainCFRunLoopSupport.class);
     }
 
     /** SVM start-up logic should be pinned to the initial layer. */
@@ -337,6 +371,27 @@ public class JavaMainWrapper {
         }
     }
 
+    /**
+     * Starts the main runner without joining. Used with {@link SubstrateOptions#DarwinParkMainInCFRunLoop}:
+     * the launcher parks in CFRunLoop and the runner calls {@link LibC#exit} after shutdown.
+     */
+    @Uninterruptible(reason = "Thread state detached.")
+    private static void startMainRunnerUnmanaged(Isolate isolate, long javaStackSize) {
+        CFunctionPointer runMainRoutine = RUN_MAIN_ROUTINE.getFunctionPointer();
+        startMainRunnerUnmanaged0(isolate, javaStackSize, runMainRoutine);
+    }
+
+    @Uninterruptible(reason = "Thread state detached.")
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    private static void startMainRunnerUnmanaged0(Isolate isolate, long javaStackSize, CFunctionPointer runMainRoutine) {
+        OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(runMainRoutine, isolate, javaStackSize, true);
+        if (osThreadHandle.isNull()) {
+            CEntryPointActions.failFatally(1, START_THREAD_UNMANAGED_ERROR_MESSAGE.get());
+        }
+        /* Joinable handle is intentionally not joined; process exits via LibC.exit from the runner. */
+        PlatformThreads.singleton().closeOSThreadHandle(osThreadHandle);
+    }
+
     @Uninterruptible(reason = "Thread state not setup yet.")
     @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     private static Isolate createMainIsolate(int argc, CCharPointerPointer argv) {
@@ -364,7 +419,7 @@ public class JavaMainWrapper {
             if (!ImageSingletons.contains(JavaMainSupport.class)) {
                 return false;
             }
-            return SubstrateOptions.RunMainInNewThread.getValue();
+            return SubstrateOptions.RunMainInNewThread.getValue() || SubstrateOptions.DarwinParkMainInCFRunLoop.getValue();
         }
     }
 
@@ -390,6 +445,16 @@ public class JavaMainWrapper {
         try {
             reassignMainThreadObject();
             int exitStatus = runCore();
+            if (SubstrateOptions.DarwinParkMainInCFRunLoop.getValue()) {
+                /*
+                 * Wait for non-daemon threads and run isolate shutdown while the process main
+                 * thread remains parked in CFRunLoop (DestroyJavaVM on the HotSpot/libjli side
+                 * thread). Then terminate the process — matching Graal launcher.cc which calls
+                 * exit() after the JVM main thread returns on Darwin.
+                 */
+                runShutdown();
+                LibC.exit(exitStatus);
+            }
             CEntryPointSetup.LeaveDetachThreadEpilogue.leave();
             return Word.signed(exitStatus);
         } catch (Throwable e) {
