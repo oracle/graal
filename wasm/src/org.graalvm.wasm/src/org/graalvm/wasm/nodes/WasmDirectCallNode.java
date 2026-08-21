@@ -47,7 +47,6 @@ import org.graalvm.wasm.WasmConstant;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
@@ -58,7 +57,6 @@ public final class WasmDirectCallNode extends WasmCallNode {
 
     private final CallTarget target;
 
-    @CompilationFinal private boolean returnCall;
     @Child private WasmReturnCallNode returnCallNode;
 
     WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
@@ -81,10 +79,9 @@ public final class WasmDirectCallNode extends WasmCallNode {
     }
 
     private Object executeReturnCall() {
-        if (!returnCall) {
+        if (returnCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             returnCallNode = insert(WasmReturnCallNode.create());
-            returnCall = true;
         }
         return returnCallNode.call();
     }
