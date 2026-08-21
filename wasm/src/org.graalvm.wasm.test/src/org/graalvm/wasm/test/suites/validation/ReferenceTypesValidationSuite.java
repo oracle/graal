@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -580,6 +580,21 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
         // (table 1 1 externref)
         // (table 1 1 exnref)
         final byte[] binary = newBuilder().addTable(1, 1, WasmType.FUNCREF_TYPE).addTable(1, 1, WasmType.EXTERNREF_TYPE).addTable(1, 1, WasmType.EXNREF_TYPE).build();
+        runParserTest(binary, options -> options.option("wasm.Exceptions", "true"), Context::eval);
+    }
+
+    @Test
+    public void testCatchRefHandlersProduceNonNullReferences() throws IOException {
+        final int nonNullExnRef = WasmType.withNullable(false, WasmType.EXN_HEAPTYPE);
+        final BinaryBuilder builder = newBuilder();
+        builder.addType(EMPTY_INTS, new int[]{nonNullExnRef});
+        builder.addType(EMPTY_INTS, EMPTY_INTS);
+        builder.addTag((byte) 0, (byte) 1);
+        // block (result (ref exn)) { try_table (catch_ref 0 0) { throw 0 } }
+        builder.addFunction(0, EMPTY_INTS, "02 64 69 1F 40 01 01 00 00 08 00 0B 00 0B 0B");
+        // block (result (ref exn)) { try_table (catch_all_ref 0) { throw 0 } }
+        builder.addFunction(0, EMPTY_INTS, "02 64 69 1F 40 01 03 00 08 00 0B 00 0B 0B");
+        final byte[] binary = builder.build();
         runParserTest(binary, options -> options.option("wasm.Exceptions", "true"), Context::eval);
     }
 

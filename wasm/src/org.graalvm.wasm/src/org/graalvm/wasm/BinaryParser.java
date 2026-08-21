@@ -3287,7 +3287,7 @@ public class BinaryParser extends BinaryStreamParser {
                     final int[] paramTypes = module.functionTypeParamTypesAsArray(typeIndex);
                     handlers[i] = state.enterCatchClause(opcode, tag, label);
                     state.pushAll(paramTypes);
-                    state.push(EXNREF_TYPE);
+                    state.push(WasmType.withNullable(false, EXN_HEAPTYPE));
                 }
                 case ExceptionHandlerType.CATCH_ALL -> {
                     final int label = readUnsignedInt32();
@@ -3296,7 +3296,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case ExceptionHandlerType.CATCH_ALL_REF -> {
                     final int label = readUnsignedInt32();
                     handlers[i] = state.enterCatchClause(opcode, -1, label);
-                    state.push(EXNREF_TYPE);
+                    state.push(WasmType.withNullable(false, EXN_HEAPTYPE));
                 }
                 default -> Assert.fail(Failure.MALFORMED_CATCH, String.format("Invalid catch clause type: 0x%02X", opcode));
             }
