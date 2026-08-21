@@ -96,6 +96,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @CompilationFinal private volatile WasmContextOptions contextOptions;
 
     private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = locals.createContextThreadLocal(((context, thread) -> new MultiValueStack()));
+    private final ContextThreadLocal<ReturnCallData> returnCallDataContextThreadLocal = locals.createContextThreadLocal(((context, thread) -> new ReturnCallData()));
 
     private final Map<BuiltinModule, WasmModule> builtinModules = new ConcurrentHashMap<>();
 
@@ -383,5 +384,14 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
                 size = expectedSize;
             }
         }
+    }
+
+    public ReturnCallData returnCallData() {
+        return returnCallDataContextThreadLocal.get();
+    }
+
+    public static final class ReturnCallData {
+        public CallTarget target = null;
+        public Object[] args = null;
     }
 }

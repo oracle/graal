@@ -72,7 +72,10 @@ public final class Instructions {
     public static final int RETURN = 0x0F;
     public static final int CALL = 0x10;
     public static final int CALL_INDIRECT = 0x11;
+    public static final int RETURN_CALL = 0x12;
+    public static final int RETURN_CALL_INDIRECT = 0x13;
     public static final int CALL_REF = 0x14;
+    public static final int RETURN_CALL_REF = 0x15;
 
     public static final int DELEGATE = 0x18; // legacy exception handling
     public static final int CATCH_ALL = 0x19; // legacy exception handling

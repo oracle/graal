@@ -1,0 +1,2 @@
+wasm.TailCalls=true
+wasm.Exceptions=true

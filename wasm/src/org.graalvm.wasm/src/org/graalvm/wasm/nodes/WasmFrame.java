@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,15 @@
  */
 package org.graalvm.wasm.nodes;
 
+import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmConstant;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.vector.Vector128;
+import org.graalvm.wasm.vector.Vector128Ops;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.vector.Vector128Ops;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class WasmFrame {
 
@@ -156,5 +162,24 @@ public abstract class WasmFrame {
 
     public static void pushReference(VirtualFrame frame, int slot, Object value) {
         frame.setObjectStatic(slot, value);
+    }
+
+    @ExplodeLoop
+    public static void initializeLocals(VirtualFrame frame, int paramCount, WasmCodeEntry codeEntry) {
+        final int localCount = codeEntry.localCount();
+        for (int i = paramCount; i != localCount; ++i) {
+            int type = codeEntry.localType(i);
+            switch (type) {
+                case WasmType.I32_TYPE -> pushInt(frame, i, 0);
+                case WasmType.I64_TYPE -> pushLong(frame, i, 0L);
+                case WasmType.F32_TYPE -> pushFloat(frame, i, 0F);
+                case WasmType.F64_TYPE -> pushDouble(frame, i, 0D);
+                case WasmType.V128_TYPE -> pushVector128(frame, i, Vector128Ops.SINGLETON_IMPLEMENTATION.fromVector128(Vector128.ZERO));
+                default -> {
+                    WasmType.isReferenceType(type);
+                    pushReference(frame, i, WasmConstant.NULL);
+                }
+            }
+        }
     }
 }

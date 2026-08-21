@@ -71,7 +71,8 @@ public class WasmBinaryTools {
         MULTI_MEMORY,
         THREADS,
         EXCEPTIONS,
-        FUNCTION_REFERENCES
+        FUNCTION_REFERENCES,
+        TAIL_CALLS
     }
 
     private interface OutputSupplier {
@@ -154,6 +155,7 @@ public class WasmBinaryTools {
                 case THREADS -> commandLine.add("--enable-threads");
                 case EXCEPTIONS -> commandLine.add("--enable-exceptions");
                 case FUNCTION_REFERENCES -> commandLine.add("--enable-function-references");
+                case TAIL_CALLS -> commandLine.add("--enable-tail-call");
             }
         }
         return commandLine;

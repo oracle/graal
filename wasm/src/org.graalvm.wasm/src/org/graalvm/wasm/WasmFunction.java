@@ -40,10 +40,11 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.types.DefinedType;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.wasm.types.DefinedType;
 
 public final class WasmFunction {
     private final SymbolTable symbolTable;
@@ -55,6 +56,7 @@ public final class WasmFunction {
     @CompilationFinal private CallTarget callTarget;
     /** Interop call adapter for argument and return value validation and conversion. */
     @CompilationFinal private volatile CallTarget interopCallAdapter;
+    @CompilationFinal private boolean returnCalls;
 
     /**
      * Represents a WebAssembly function.
@@ -168,6 +170,14 @@ public final class WasmFunction {
     void setImportedFunctionCallTarget(CallTarget callTarget) {
         assert isImported() : this;
         this.callTarget = callTarget;
+    }
+
+    public void reportReturnCall() {
+        returnCalls = true;
+    }
+
+    public boolean containsReturnCalls() {
+        return returnCalls;
     }
 
     public CallTarget getInteropCallAdapter() {

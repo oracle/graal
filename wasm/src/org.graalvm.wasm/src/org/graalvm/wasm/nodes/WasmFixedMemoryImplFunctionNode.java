@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,17 +91,17 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     }
 
     @Specialization(guards = {"memoryCount() == 1"}, limit = "3")
-    protected void doFixedMemoryImpl(VirtualFrame frame, WasmInstance instance,
+    protected Object doFixedMemoryImpl(VirtualFrame frame, WasmInstance instance,
                     @CachedLibrary(value = "instance.memory(0)") @SuppressWarnings("unused") WasmMemoryLibrary cachedMemoryLib0,
                     @Cached("createMemoryLibs1(cachedMemoryLib0)") @SuppressWarnings("unused") WasmMemoryLibrary[] cachedMemoryLibs,
                     @Cached(value = "createSpecializedFunctionNode(cachedMemoryLibs)", adopt = false) WasmFunctionBaseNode specializedFunctionNode) {
-        specializedFunctionNode.execute(frame, instance);
+        return specializedFunctionNode.execute(frame, instance);
     }
 
     @Specialization(replaces = "doFixedMemoryImpl")
-    protected void doDispatched(VirtualFrame frame, WasmInstance instance,
+    protected Object doDispatched(VirtualFrame frame, WasmInstance instance,
                     @Cached(value = "createDispatchedFunctionNode()", adopt = false) WasmFunctionBaseNode dispatchedFunctionNode) {
-        dispatchedFunctionNode.execute(frame, instance);
+        return dispatchedFunctionNode.execute(frame, instance);
     }
 
     @NeverDefault
@@ -139,7 +139,7 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
         return baseNode;
     }
 
-    public abstract void execute(VirtualFrame frame, WasmInstance instance);
+    public abstract Object execute(VirtualFrame frame, WasmInstance instance);
 
     final Node[] getCallNodes() {
         return callNodes;

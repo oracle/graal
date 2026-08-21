@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,10 @@
  */
 package org.graalvm.wasm.nodes;
 
+import org.graalvm.wasm.WasmConstant;
+
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -54,6 +57,8 @@ public abstract class WasmIndirectCallNode extends WasmCallNode {
 
     static final int INLINE_CACHE_LIMIT = 5;
 
+    @Child private WasmReturnCallNode returnCallNode;
+
     protected WasmIndirectCallNode(int bytecodeOffset) {
         super(bytecodeOffset);
     }
@@ -63,12 +68,28 @@ public abstract class WasmIndirectCallNode extends WasmCallNode {
     @Specialization(guards = "target == cachedTarget", limit = "INLINE_CACHE_LIMIT")
     final Object doCached(@SuppressWarnings("unused") CallTarget target, Object[] args,
                     @Cached("target") CallTarget cachedTarget) {
-        return cachedTarget.call(this, args);
+        final Object result = cachedTarget.call(this, args);
+        if (result == WasmConstant.RETURN_CALL_VALUE) {
+            return executeReturnCall();
+        }
+        return result;
     }
 
     @Specialization(replaces = "doCached")
     final Object doIndirect(CallTarget target, Object[] args) {
-        return target.call(this, args);
+        final Object result = target.call(this, args);
+        if (result == WasmConstant.RETURN_CALL_VALUE) {
+            return executeReturnCall();
+        }
+        return result;
+    }
+
+    private Object executeReturnCall() {
+        if (returnCallNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            returnCallNode = insert(WasmReturnCallNode.create());
+        }
+        return returnCallNode.call();
     }
 
     @NeverDefault

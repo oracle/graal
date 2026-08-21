@@ -65,6 +65,8 @@ public final class WasmContextOptions {
     @CompilationFinal private boolean legacyExceptions;
     @CompilationFinal private boolean typedFunctionReferences;
     @CompilationFinal private boolean gc;
+    @CompilationFinal private boolean tailCalls;
+    @CompilationFinal private boolean tailCallLoops;
 
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
@@ -101,6 +103,9 @@ public final class WasmContextOptions {
         this.legacyExceptions = readBooleanOption(WasmOptions.LegacyExceptions);
         this.typedFunctionReferences = readBooleanOption(WasmOptions.TypedFunctionReferences);
         this.gc = readBooleanOption(WasmOptions.GC);
+        this.tailCalls = readBooleanOption(WasmOptions.TailCalls);
+        // If tail calls are not enabled, disable tail call loops
+        this.tailCallLoops = this.tailCalls && readBooleanOption(WasmOptions.TailCallLoops);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
@@ -192,6 +197,14 @@ public final class WasmContextOptions {
         return gc;
     }
 
+    public boolean supportTailCalls() {
+        return tailCalls;
+    }
+
+    public boolean supportTailCallLoops() {
+        return tailCallLoops;
+    }
+
     public boolean memoryOverheadMode() {
         return memoryOverheadMode;
     }
@@ -230,6 +243,8 @@ public final class WasmContextOptions {
         hash = 53 * hash + (this.legacyExceptions ? 1 : 0);
         hash = 53 * hash + (this.typedFunctionReferences ? 1 : 0);
         hash = 53 * hash + (this.gc ? 1 : 0);
+        hash = 53 * hash + (this.tailCalls ? 1 : 0);
+        hash = 53 * hash + (this.tailCallLoops ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
@@ -292,6 +307,12 @@ public final class WasmContextOptions {
             return false;
         }
         if (this.gc != other.gc) {
+            return false;
+        }
+        if (this.tailCalls != other.tailCalls) {
+            return false;
+        }
+        if (this.tailCallLoops != other.tailCallLoops) {
             return false;
         }
         if (this.memoryOverheadMode != other.memoryOverheadMode) {

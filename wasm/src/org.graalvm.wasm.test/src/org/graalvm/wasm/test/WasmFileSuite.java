@@ -414,6 +414,14 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if ("true".equals(exceptionsOption) || "true".equals(legacyExceptionsOption)) {
                 options.add(WasmBinaryTools.WabtOption.EXCEPTIONS);
             }
+            String typedFunctionReferencesOption = testCase.options().getProperty("wasm.TypedFunctionReferences");
+            if ("true".equals(typedFunctionReferencesOption)) {
+                options.add(WasmBinaryTools.WabtOption.FUNCTION_REFERENCES);
+            }
+            String tailCallsOption = testCase.options().getProperty("wasm.TailCalls");
+            if ("true".equals(tailCallsOption)) {
+                options.add(WasmBinaryTools.WabtOption.TAIL_CALLS);
+            }
             ArrayList<Source> sources = testCase.getSources(options);
 
             runInContexts(testCase, contextBuilder, sources, sharedEngine, testOut);

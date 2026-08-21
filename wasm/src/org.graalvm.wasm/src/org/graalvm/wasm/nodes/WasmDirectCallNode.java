@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,11 @@ package org.graalvm.wasm.nodes;
 
 import java.util.Objects;
 
+import org.graalvm.wasm.WasmConstant;
+
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
@@ -53,6 +57,8 @@ public final class WasmDirectCallNode extends WasmCallNode {
 
     private final CallTarget target;
 
+    @Child private WasmReturnCallNode returnCallNode;
+
     WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
         super(bytecodeOffset);
         this.target = Objects.requireNonNull(target);
@@ -62,8 +68,22 @@ public final class WasmDirectCallNode extends WasmCallNode {
         return target;
     }
 
-    public Object execute(Object[] args) {
-        return target.call(this, args);
+    public Object execute(Object[] args, boolean targetContainsReturnCalls) {
+        final Object result = target.call(this, args);
+        CompilerAsserts.partialEvaluationConstant(targetContainsReturnCalls);
+        if (targetContainsReturnCalls && result == WasmConstant.RETURN_CALL_VALUE) {
+            return executeReturnCall();
+        }
+        assert result != WasmConstant.RETURN_CALL_VALUE : "target should not contain tail calls";
+        return result;
+    }
+
+    private Object executeReturnCall() {
+        if (returnCallNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            returnCallNode = insert(WasmReturnCallNode.create());
+        }
+        return returnCallNode.call();
     }
 
     @NeverDefault

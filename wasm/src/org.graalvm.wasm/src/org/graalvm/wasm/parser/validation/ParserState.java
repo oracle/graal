@@ -674,6 +674,44 @@ public class ParserState {
     }
 
     /**
+     * Adds a reference return-call instruction to the bytecode, along with its immediate argument and the
+     * call node index.
+     *
+     * @param typeIndex The index of the defined function type.
+     */
+    public void addRefReturnCall(int typeIndex) {
+        bytecode.addRefReturnCall(typeIndex);
+    }
+
+    /**
+     * Adds an indirect return-call instruction to the bytecode, along with its immediate arguments
+     * and the call node index.
+     *
+     * @param typeIndex The index of the defined function type.
+     * @param tableIndex The index of the table in which the function will be looked up.
+     */
+    public void addIndirectReturnCall(int typeIndex, int tableIndex) {
+        bytecode.addIndirectReturnCall(typeIndex, tableIndex);
+    }
+
+    /**
+     * Adds a direct return-call instruction to the bytecode, along with its immediate argument
+     * and the call node index.
+     *
+     * @param functionIndex The index of the defined function.
+     */
+    public void addReturnCall(int functionIndex) {
+        bytecode.addReturnCall(functionIndex);
+    }
+
+    /**
+     * Adds a return-call branch instruction targeting the function entry point to the bytecode.
+     */
+    public void addReturnCallBranch() {
+        bytecode.addReturnCallBranch();
+    }
+
+    /**
      * Adds the aggregate flag to the bytecode.
      */
     public void addAggregateFlag() {
@@ -776,6 +814,17 @@ public class ParserState {
      */
     public void addUnsignedInstruction(int instruction, int value) {
         bytecode.addUnsigned(instruction, instruction + 1, value);
+    }
+
+    /**
+     * Adds the u8 or i32-with-misc version of the given instruction to the bytecode based on the give immediate value.
+     * If the value fits into a u8 value, the u8 instruction and a u8 value are added.
+     * Otherwise, the misc flag, the i32 instruction, and an i32 value are added.
+     * @param instruction The u8 version of the instruction (must be equivalent to the i32 version)
+     * @param value The immediate value.
+     */
+    public void addUnsignedInstructionWithMisc(int instruction, int value) {
+        bytecode.addUnsignedWithMisc(instruction, value);
     }
 
     /**

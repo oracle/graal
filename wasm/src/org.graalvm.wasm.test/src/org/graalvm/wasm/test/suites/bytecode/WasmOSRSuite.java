@@ -43,6 +43,7 @@ package org.graalvm.wasm.test.suites.bytecode;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -50,6 +51,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -98,6 +100,46 @@ public class WasmOSRSuite {
                     Assert.assertEquals(0, mainFun.execute().asInt());
                 }
             }
+        }
+    }
+
+    @Test
+    public void testTailCallLoopOSR() throws IOException, InterruptedException {
+        final ByteSequence binary = ByteSequence.create(compileWat("main", """
+                        (module
+                            (func $loop (param $i i32) (result i32)
+                                local.get $i
+                                i32.eqz
+                                if (result i32)
+                                    i32.const 42
+                                else
+                                    local.get $i
+                                    i32.const 1
+                                    i32.sub
+                                    return_call $loop
+                                end
+                            )
+                            (func (export "_main") (result i32)
+                                i32.const 2048
+                                return_call $loop
+                            )
+                        )
+                        """, EnumSet.of(WasmBinaryTools.WabtOption.TAIL_CALLS)));
+        final Source source = Source.newBuilder(WasmLanguage.ID, binary, "main").build();
+
+        var engineBuilder = Engine.newBuilder().allowExperimentalOptions(true);
+        engineBuilder.option("wasm.TailCalls", "true");
+        engineBuilder.option("wasm.TailCallLoops", "true");
+        engineBuilder.option("engine.OSR", "true");
+        engineBuilder.option("engine.OSRCompilationThreshold", "1");
+        engineBuilder.option("engine.FirstTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.LastTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.BackgroundCompilation", "false");
+
+        try (Engine engine = engineBuilder.build();
+                        Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
+            Value exports = context.eval(source).newInstance().getMember("exports");
+            Assert.assertEquals(42, exports.getMember("_main").execute().asInt());
         }
     }
 }

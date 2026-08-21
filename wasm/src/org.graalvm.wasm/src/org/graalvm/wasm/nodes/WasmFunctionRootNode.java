@@ -40,12 +40,6 @@
  */
 package org.graalvm.wasm.nodes;
 
-import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
-import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
-import static org.graalvm.wasm.nodes.WasmFrame.popInt;
-import static org.graalvm.wasm.nodes.WasmFrame.popLong;
-import static org.graalvm.wasm.nodes.WasmFrame.popReference;
-import static org.graalvm.wasm.nodes.WasmFrame.popVector128;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
@@ -58,7 +52,6 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -94,24 +87,12 @@ public class WasmFunctionRootNode extends WasmRootNode {
         this.codeEntry = codeEntry;
     }
 
-    int localCount() {
-        return codeEntry.localCount();
-    }
-
     int resultCount() {
         return codeEntry.resultCount();
     }
 
-    int stackBase() {
-        return codeEntry.stackBase();
-    }
-
     void enterErrorBranch() {
         codeEntry.errorBranch();
-    }
-
-    int resultType(int index) {
-        return codeEntry.resultType(index);
     }
 
     int paramCount() {
@@ -140,7 +121,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
         // function invocation. For more information, check the specification:
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-        initializeLocals(frame);
+        WasmFrame.initializeLocals(frame, paramCount(), codeEntry);
 
         final int resultCount = resultCount();
         CompilerAsserts.partialEvaluationConstant(resultCount);
@@ -149,54 +130,10 @@ public class WasmFunctionRootNode extends WasmRootNode {
         }
 
         try {
-            functionNode.execute(frame, instance);
+            return functionNode.execute(frame, instance);
         } catch (StackOverflowError e) {
             enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
-        }
-        if (resultCount == 0) {
-            return WasmConstant.VOID;
-        } else if (resultCount == 1) {
-            final int resultType = resultType(0);
-            final int stackBase = stackBase();
-            CompilerAsserts.partialEvaluationConstant(resultType);
-            return switch (resultType) {
-                case WasmType.I32_TYPE -> popInt(frame, stackBase);
-                case WasmType.I64_TYPE -> popLong(frame, stackBase);
-                case WasmType.F32_TYPE -> popFloat(frame, stackBase);
-                case WasmType.F64_TYPE -> popDouble(frame, stackBase);
-                case WasmType.V128_TYPE -> Vector128Ops.SINGLETON_IMPLEMENTATION.toVector128(popVector128(frame, stackBase));
-                default -> {
-                    assert WasmType.isReferenceType(resultType);
-                    yield popReference(frame, stackBase);
-                }
-            };
-        } else {
-            moveResultValuesToMultiValueStack(frame, resultCount, stackBase());
-            return WasmConstant.MULTI_VALUE;
-        }
-    }
-
-    @ExplodeLoop
-    private void moveResultValuesToMultiValueStack(VirtualFrame frame, int resultCount, int stackBase) {
-        CompilerAsserts.partialEvaluationConstant(resultCount);
-        final var multiValueStack = WasmLanguage.get(this).multiValueStack();
-        final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
-        final Object[] objectMultiValueStack = multiValueStack.objectStack();
-        for (int i = 0; i < resultCount; i++) {
-            final int resultType = resultType(i);
-            CompilerAsserts.partialEvaluationConstant(resultType);
-            switch (resultType) {
-                case WasmType.I32_TYPE -> primitiveMultiValueStack[i] = popInt(frame, stackBase + i);
-                case WasmType.I64_TYPE -> primitiveMultiValueStack[i] = popLong(frame, stackBase + i);
-                case WasmType.F32_TYPE -> primitiveMultiValueStack[i] = Float.floatToRawIntBits(popFloat(frame, stackBase + i));
-                case WasmType.F64_TYPE -> primitiveMultiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, stackBase + i));
-                case WasmType.V128_TYPE -> objectMultiValueStack[i] = Vector128Ops.SINGLETON_IMPLEMENTATION.toVector128(popVector128(frame, stackBase + i));
-                default -> {
-                    assert WasmType.isReferenceType(resultType);
-                    objectMultiValueStack[i] = popReference(frame, stackBase + i);
-                }
-            }
         }
     }
 
@@ -217,25 +154,6 @@ public class WasmFunctionRootNode extends WasmRootNode {
                 default -> {
                     assert WasmType.isReferenceType(type);
                     pushReference(frame, i, arg);
-                }
-            }
-        }
-    }
-
-    @ExplodeLoop
-    private void initializeLocals(VirtualFrame frame) {
-        int paramCount = paramCount();
-        for (int i = paramCount; i != localCount(); ++i) {
-            int type = localType(i);
-            switch (type) {
-                case WasmType.I32_TYPE -> pushInt(frame, i, 0);
-                case WasmType.I64_TYPE -> pushLong(frame, i, 0L);
-                case WasmType.F32_TYPE -> pushFloat(frame, i, 0F);
-                case WasmType.F64_TYPE -> pushDouble(frame, i, 0D);
-                case WasmType.V128_TYPE -> pushVector128(frame, i, Vector128Ops.SINGLETON_IMPLEMENTATION.fromVector128(Vector128.ZERO));
-                default -> {
-                    WasmType.isReferenceType(type);
-                    pushReference(frame, i, WasmConstant.NULL);
                 }
             }
         }

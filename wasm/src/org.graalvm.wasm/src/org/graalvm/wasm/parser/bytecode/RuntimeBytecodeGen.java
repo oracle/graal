@@ -242,6 +242,26 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
+     * Adds an opcode and an immediate value to the bytecode. If the value fits into a u8 value, the
+     * opcode and a u8 value are added. Otherwise, the misc flag, the opcode, and an i32 value are added.
+     * The u8 opcode and i32 opcode must be identical. See {@link Bytecode} for a list of opcode.
+     *
+     * @param opcode The opcode
+     * @param value The immediate value
+     */
+    public void addUnsignedWithMisc(int opcode, int value) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        if (fitsIntoUnsignedByte(value)) {
+            add1(opcode);
+            add1(value);
+        } else {
+            add1(Bytecode.MISC);
+            add1(opcode);
+            add4(value);
+        }
+    }
+
+    /**
      * Adds a memory access instruction to the bytecode. If the value fits into a u8 value and
      * indexType64 is false, the u8 opcode and a u8 value are added. If the value fits into a i32
      * value and indexType64 is false, the i32 opcode and an i32 value are added. Otherwise, the
@@ -706,6 +726,67 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add4(nodeIndex);
             add4(typeIndex);
         }
+    }
+
+    /**
+     * Adds a reference return-call instruction to the bytecode. If typeIndex fits into a u8 value,
+     * a return_call_ref_u8 and a u8 value are added. Otherwise, a return_call_ref_i32 and a
+     * i32 value are added.
+     *
+     * @param typeIndex The type index of the reference call
+     */
+    public void addRefReturnCall(int typeIndex) {
+        if (fitsIntoUnsignedByte(typeIndex)) {
+            add1(Bytecode.RETURN_CALL_REF_U8);
+            add1(typeIndex);
+        } else {
+            add1(Bytecode.RETURN_CALL_REF_I32);
+            add4(typeIndex);
+        }
+    }
+
+    /**
+     * Adds a return-call instruction to the bytecode. If the functionIndex fits into a u8 value,
+     * a return_call_u8 and a u8 value are added. Otherwise, a return_call_i32 and a i32 value are added.
+     *
+     * @param functionIndex The function index of the return call
+     */
+    public void addReturnCall(int functionIndex) {
+        if (fitsIntoUnsignedByte(functionIndex)) {
+            add1(Bytecode.RETURN_CALL_U8);
+            add1(functionIndex);
+        } else {
+            add1(Bytecode.RETURN_CALL_I32);
+            add4(functionIndex);
+        }
+    }
+
+    /**
+     * Adds an indirect return-call instruction to the bytecode. If the typeIndex
+     * and tableIndex both fit into a u8 value, a return_call_indirect_u8 and two u8 values are added.
+     * Otherwise, a return_call_indirect_i32 and two i32 values are added.
+     *
+     * @param typeIndex The type index of the indirect tail call
+     * @param tableIndex The table index of the indirect tail call
+     */
+    public void addIndirectReturnCall(int typeIndex, int tableIndex) {
+        if (fitsIntoUnsignedByte(typeIndex) && fitsIntoUnsignedByte(tableIndex)) {
+            add1(Bytecode.RETURN_CALL_INDIRECT_U8);
+            add1(typeIndex);
+            add1(tableIndex);
+        } else {
+            add1(Bytecode.RETURN_CALL_INDIRECT_I32);
+            add4(typeIndex);
+            add4(tableIndex);
+        }
+    }
+
+    /**
+     * Adds a return-call branch instruction targeting the function entry point to the bytecode.
+     */
+    public void addReturnCallBranch() {
+        add1(Bytecode.MISC);
+        add1(Bytecode.BR_RETURN_CALL);
     }
 
     public void addSelect(int instruction) {

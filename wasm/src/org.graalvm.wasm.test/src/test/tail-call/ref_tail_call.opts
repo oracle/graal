@@ -1,0 +1,3 @@
+wasm.TailCalls=true
+wasm.TailCallLoops=false
+wasm.TypedFunctionReferences=true
