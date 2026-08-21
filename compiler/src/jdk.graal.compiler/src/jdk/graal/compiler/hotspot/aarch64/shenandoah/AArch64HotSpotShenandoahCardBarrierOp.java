@@ -100,7 +100,8 @@ public class AArch64HotSpotShenandoahCardBarrierOp extends AArch64LIRInstruction
             if (HotSpotReplacementsUtil.useCondCardMark(config)) {
                 Label alreadyDirty = new Label();
                 masm.ldr(8, rscratch2, cardAddr);
-                masm.cbz(8, rscratch2, alreadyDirty);
+                // cbz only has 32-bit and 64-bit forms; the byte loaded above is zero extended.
+                masm.cbz(32, rscratch2, alreadyDirty);
                 masm.str(8, zr, cardAddr);
                 masm.bind(alreadyDirty);
             } else {
