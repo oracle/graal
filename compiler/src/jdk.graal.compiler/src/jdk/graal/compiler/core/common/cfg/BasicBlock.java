@@ -40,6 +40,8 @@ import jdk.graal.compiler.debug.Assertions;
  */
 public abstract class BasicBlock<T extends BasicBlock<T>> {
 
+    private boolean bytecodeHandlerStubBlock;
+
     /**
      * Id of this basic block. The id is concurrently used as a unique identifier for the block as
      * well as its index into the @{@link #getBlocks()} array of the associated
@@ -285,6 +287,20 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
      * Returns whether this block is part of a fast path that should avoid unnecessary spilling.
      */
     public abstract boolean isFastPathBlock();
+
+    /**
+     * Returns whether this block belongs to a bytecode-handler stub compilation.
+     */
+    public final boolean isBytecodeHandlerStubBlock() {
+        return bytecodeHandlerStubBlock;
+    }
+
+    /**
+     * Marks this block as belonging to a bytecode-handler stub compilation.
+     */
+    public final void markBytecodeHandlerStubBlock() {
+        bytecodeHandlerStubBlock = true;
+    }
 
     /**
      * If this block {@linkplain #isLoopHeader() is a loop header}, returns the number of the loop's

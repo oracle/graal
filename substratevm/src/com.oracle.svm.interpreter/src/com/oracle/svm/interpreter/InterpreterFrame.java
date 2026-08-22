@@ -89,6 +89,14 @@ public final class InterpreterFrame {
         return arguments;
     }
 
+    long[] getPrimitives() {
+        return primitives;
+    }
+
+    Object[] getReferences() {
+        return references;
+    }
+
     void publishDebuggerEventBCI(int bci) {
         assert debuggerEventBCI == BytecodeFrame.UNKNOWN_BCI;
         debuggerEventBCI = bci;
@@ -161,6 +169,17 @@ public final class InterpreterFrame {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void setIntStatic(long slot, long slotOffset, int value) {
         setPrimitiveStatic(slot, slotOffset, value);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    void incrementIntStatic(long slot, int increment) {
+        /*
+         * Only the low 32 bits of a verified int slot are observable; a later category-2 store
+         * overwrites the whole slot. Keep this as a 32-bit read-modify-write so the backend can
+         * update memory directly.
+         */
+        long offset = Unsafe.ARRAY_LONG_BASE_OFFSET + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE);
+        UNSAFE.putInt(primitives, offset, UNSAFE.getInt(primitives, offset) + increment);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

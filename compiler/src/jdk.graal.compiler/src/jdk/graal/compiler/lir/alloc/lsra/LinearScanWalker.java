@@ -548,7 +548,7 @@ class LinearScanWalker extends IntervalWalker {
     // 1) the left part has already a location assigned
     // 2) the right part is sorted into to the unhandled-list
     @SuppressWarnings("try")
-    void splitBeforeUsage(Interval interval, int minSplitPos, int maxSplitPos) {
+    Interval splitBeforeUsage(Interval interval, int minSplitPos, int maxSplitPos) {
         DebugContext debug = allocator.getDebug();
         try (Indent indent = debug.logAndIndent("splitting interval %s between %d and %d", interval, minSplitPos, maxSplitPos)) {
 
@@ -569,7 +569,7 @@ class LinearScanWalker extends IntervalWalker {
                 if (debug.isLogEnabled()) {
                     debug.log("no split necessary because optimal split position is at end of interval");
                 }
-                return;
+                return null;
             }
 
             // must calculate this before the actual split is performed and before split position is
@@ -599,6 +599,133 @@ class LinearScanWalker extends IntervalWalker {
             if (debug.isLogEnabled()) {
                 debug.log("left interval  %s: %s", moveNecessary ? "      " : "", interval.logString(allocator));
                 debug.log("right interval %s: %s", moveNecessary ? "(move)" : "", splitPart.logString(allocator));
+            }
+            return splitPart;
+        }
+    }
+
+    private boolean spillFlowsIntoBlock(Interval interval, BasicBlock<?> block) {
+        int operandNumber = interval.splitParent().operandNumber;
+        boolean hasLivePredecessor = false;
+        boolean allLivePredecessorsCarrySpill = true;
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            BasicBlock<?> predecessor = block.getPredecessorAt(i);
+            if (!allocator.getBlockData(predecessor).liveOut.get(operandNumber)) {
+                continue;
+            }
+
+            hasLivePredecessor = true;
+            int predecessorEnd = allocator.getLastLirInstructionId(predecessor) + 1;
+            Interval incoming = allocator.splitChildAtOpId(interval.splitParent(), predecessorEnd, LIRInstruction.OperandMode.DEF);
+            if (incoming.location() == null) {
+                // An unknown backedge location is treated conservatively.
+                return true;
+            }
+            allLivePredecessorsCarrySpill &= incoming.location().equals(interval.location());
+        }
+        assert hasLivePredecessor : "live interval enters block without a live predecessor";
+        return allLivePredecessorsCarrySpill;
+    }
+
+    private boolean hasMandatoryRegisterUse(Interval interval, BasicBlock<?> block) {
+        int blockFrom = allocator.getFirstLirInstructionId(block);
+        int usePos = interval.nextUsage(RegisterPriority.MustHaveRegister, blockFrom);
+        return usePos <= allocator.getLastLirInstructionId(block);
+    }
+
+    /**
+     * Finds the first live block after {@link #currentPosition} that should recover from
+     * {@code interval}'s spill location. A block must recover if it inherited the spill merely
+     * because it follows the pressure path in linear-scan order. A hotter block only needs to
+     * recover a live-through value when it actually uses the value in a register; otherwise the
+     * value can remain in its spill slot until its next use.
+     */
+    private int firstBlockRequiringRegisterRecovery(Interval interval) {
+        BasicBlock<?> currentBlock = allocator.blockForId(currentPosition);
+        for (int i = currentBlock.getLinearScanNumber() + 1; i < allocator.blockCount(); i++) {
+            BasicBlock<?> block = allocator.blockAt(i);
+            int blockFrom = allocator.getFirstLirInstructionId(block);
+            if (blockFrom >= interval.to()) {
+                return -1;
+            }
+
+            if (!interval.hasHoleBetween(blockFrom, blockFrom + 1) &&
+                            (!spillFlowsIntoBlock(interval, block) ||
+                                            (block.getRelativeFrequency() > currentBlock.getRelativeFrequency() && hasMandatoryRegisterUse(interval, block)))) {
+                return blockFrom;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Prefers keeping the recovered interval in a register at every later live block that is hotter
+     * than the block which caused the spill. A live-through interval is preferred at both block
+     * boundaries so that linear-scan order does not move a spill into the hotter block when a
+     * register is available. The preference must remain spillable because several recovered
+     * intervals can otherwise impose more simultaneous hard requirements than there are registers.
+     */
+    private void addHotterBlockRegisterPreferences(Interval recovered, BasicBlock<?> spillBlock, int firstRecoveryPos) {
+        recovered.addUsePosSorted(firstRecoveryPos, RegisterPriority.ShouldHaveRegister);
+        int operandNumber = recovered.splitParent().operandNumber;
+        for (int i = spillBlock.getLinearScanNumber() + 1; i < allocator.blockCount(); i++) {
+            BasicBlock<?> block = allocator.blockAt(i);
+            int blockFrom = allocator.getFirstLirInstructionId(block);
+            if (blockFrom >= recovered.to()) {
+                break;
+            }
+            if (blockFrom >= firstRecoveryPos && block.getRelativeFrequency() > spillBlock.getRelativeFrequency() &&
+                            !recovered.hasHoleBetween(blockFrom, blockFrom + 1)) {
+                recovered.addUsePosSorted(blockFrom, RegisterPriority.ShouldHaveRegister);
+                if (allocator.getBlockData(block).liveOut.get(operandNumber)) {
+                    recovered.addUsePosSorted(allocator.getLastLirInstructionId(block), RegisterPriority.ShouldHaveRegister);
+                }
+            }
+        }
+    }
+
+    private boolean coversFastPathBlock(Interval interval) {
+        Interval.RangeIterator range = new Interval.RangeIterator(interval);
+        while (!range.isAtEnd()) {
+            int firstBlock = allocator.blockForId(range.from()).getLinearScanNumber();
+            int lastBlock = allocator.blockForId(range.to() - 1).getLinearScanNumber();
+            for (int i = firstBlock; i <= lastBlock; i++) {
+                if (allocator.blockAt(i).isFastPathBlock()) {
+                    return true;
+                }
+            }
+            range.next();
+        }
+        return false;
+    }
+
+    @SuppressWarnings("try")
+    private void splitPressureSpillBeforeUnrelatedPath(Interval interval) {
+        if (interval.canMaterialize()) {
+            return;
+        }
+        if (!allocator.blockForId(currentPosition).isBytecodeHandlerStubBlock()) {
+            return;
+        }
+        assert LIRValueUtil.isStackSlotValue(interval.location()) : "not a spilled interval: " + interval;
+
+        int splitPos = firstBlockRequiringRegisterRecovery(interval);
+        if (splitPos == -1) {
+            return;
+        }
+
+        DebugContext debug = allocator.getDebug();
+        try (Indent indent = debug.logAndIndent("splitting pressure spill %s before unrelated path at %d", interval, splitPos)) {
+            Interval recovered = splitBeforeUsage(interval, splitPos, splitPos);
+            assert recovered != null : "live interval must continue beyond recovery block";
+            addHotterBlockRegisterPreferences(recovered, allocator.blockForId(currentPosition), splitPos);
+            if (interval.spillState() != SpillState.StartInMemory) {
+                /*
+                 * Spill state is shared by all children of a split parent. The recovered child is
+                 * reached through different control flow, so combining its future spills with the
+                 * current spill would hoist a store onto paths that do not need a stack copy.
+                 */
+                interval.setSpillState(SpillState.NoOptimization);
             }
         }
     }
@@ -667,6 +794,7 @@ class LinearScanWalker extends IntervalWalker {
                             }
                         }
                     }
+                    splitPressureSpillBeforeUnrelatedPath(interval);
                 }
 
             } else {
@@ -703,6 +831,7 @@ class LinearScanWalker extends IntervalWalker {
                     // the currentSplitChild is needed later when moves are inserted for reloading
                     assert spilledPart.currentSplitChild() == interval : "overwriting wrong currentSplitChild";
                     spilledPart.makeCurrentSplitChild();
+                    splitPressureSpillBeforeUnrelatedPath(spilledPart);
 
                     if (debug.isLogEnabled()) {
                         debug.log("left interval: %s", interval.logString(allocator));
@@ -728,6 +857,9 @@ class LinearScanWalker extends IntervalWalker {
                     if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(allocator.getOptions())) {
                         // find best spill position in dominator the tree
                         interval.setSpillState(SpillState.SpillInDominator);
+                    } else if (coversFastPathBlock(interval)) {
+                        // Keep the spill local instead of adding a store to a fast path.
+                        interval.setSpillState(SpillState.NoOptimization);
                     } else {
                         // store at definition of the interval
                         interval.setSpillState(SpillState.StoreAtDefinition);
@@ -750,6 +882,9 @@ class LinearScanWalker extends IntervalWalker {
                     if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(allocator.getOptions())) {
                         // the interval is spilled more then once
                         interval.setSpillState(SpillState.SpillInDominator);
+                    } else if (coversFastPathBlock(interval)) {
+                        // Keep the spills local instead of adding a store to a fast path.
+                        interval.setSpillState(SpillState.NoOptimization);
                     } else {
                         // It is better to store it to memory at the definition.
                         interval.setSpillState(SpillState.StoreAtDefinition);

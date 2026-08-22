@@ -41,6 +41,7 @@ import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.StandardOp.ArbitraryValueOp;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -188,15 +189,31 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
      */
     void emitReturn(JavaKind javaKind, Value input, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns);
 
-    default void emitMultiReturns(JavaKind returnResultKind, Value returnResult, Value[] additionalReturnResults, Value tailCallTarget) {
+    /**
+     * Returns the location used for an indexed multi-return result. By default, multi-return values
+     * reuse argument locations. Calling conventions with additional result-only locations can
+     * override this mapping.
+     */
+    default AllocatableValue getAdditionalReturnLocation(CallingConvention callingConvention, int index) {
+        return callingConvention.getArgument(index);
+    }
+
+    default void emitMultiReturns(JavaKind returnResultKind, Value returnResult, Value[] additionalReturnResults, boolean[] arbitraryAdditionalReturns, Value tailCallTarget) {
         CallingConvention cc = getResult().getCallingConvention();
+        GraalError.guarantee(additionalReturnResults.length == arbitraryAdditionalReturns.length, "mismatched additional return metadata");
         Value updatedReturnResult = returnResult;
         AllocatableValue[] additionalReturns = new AllocatableValue[additionalReturnResults.length];
         // Move additionalReturnResults back to the parameter locations
         for (int i = 0; i < additionalReturnResults.length; i++) {
             Value additionalReturnResult = additionalReturnResults[i];
-            AllocatableValue operand = cc.getArgument(i);
-            if (operand instanceof RegisterValue registerValue) {
+            AllocatableValue operand = getAdditionalReturnLocation(cc, i);
+            if (arbitraryAdditionalReturns[i]) {
+                GraalError.guarantee(operand instanceof RegisterValue, "arbitrary additional return must use a register: %s", operand);
+                RegisterValue registerValue = (RegisterValue) operand;
+                if (!registerValue.equals(cc.getReturn())) {
+                    append(new ArbitraryValueOp(registerValue));
+                }
+            } else if (operand instanceof RegisterValue registerValue) {
                 emitMove(registerValue, additionalReturnResult);
                 if (returnResult.equals(additionalReturnResult) || registerValue.equals(cc.getReturn())) {
                     // The calling convention uses the same register for both default return result

@@ -24,10 +24,17 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
-public interface SubstrateLIRGenerator {
+public interface SubstrateLIRGenerator extends LIRGeneratorTool {
+
+    @Override
+    default AllocatableValue getAdditionalReturnLocation(CallingConvention callingConvention, int index) {
+        return ((SubstrateCallingConvention) callingConvention).getAdditionalReturnLocation(index);
+    }
 
     void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
 

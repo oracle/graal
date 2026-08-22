@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.interpreter;
+package jdk.graal.compiler.nodes.calc;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import com.oracle.svm.interpreter.metadata.Bytecodes;
-import com.oracle.svm.shared.util.VMError;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
-final class ConstantBytecodes {
+/**
+ * Produces a value with unrestricted bits and no data dependency on another value.
+ */
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+public final class ArbitraryValueNode extends FloatingNode implements LIRLowerable {
 
-    private ConstantBytecodes() {
-        throw VMError.shouldNotReachHereAtRuntime();
+    public static final NodeClass<ArbitraryValueNode> TYPE = NodeClass.create(ArbitraryValueNode.class);
+
+    public ArbitraryValueNode() {
+        super(TYPE, StampFactory.forKind(JavaKind.Long));
     }
 
-    /**
-     * Version of {@link Bytecodes#lengthOf(int)} that returns a constant. The opcode must be a
-     * compile-time constant.
-     *
-     * @see Bytecodes#lengthOf(int)
-     */
-    @Fold
-    public static int lengthOf(int opcode) {
-        return Bytecodes.lengthOf(opcode);
+    @Override
+    public void generate(NodeLIRBuilderTool builder) {
+        builder.setResult(this, builder.getLIRGeneratorTool().emitJavaConstant(JavaConstant.LONG_0));
     }
 }

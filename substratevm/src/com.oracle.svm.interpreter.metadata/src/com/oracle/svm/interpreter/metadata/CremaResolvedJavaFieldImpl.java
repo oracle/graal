@@ -65,6 +65,9 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
                         /*- constantValue */ null,
                         /*- isWordStorage */ false);
         this.layerNum = NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID);
+        if (isStatic()) {
+            setCachedStaticStorage(declaringClass.getStaticStorage(getJavaKind().isPrimitive(), layerNum));
+        }
         this.attributes = filterAttributes(f.getAttributes());
     }
 

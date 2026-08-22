@@ -74,7 +74,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class BytecodeHandlerFeature implements InternalFeature {
 
     public static class Options {
-        @Option(help = "Enable tail call threading on bytecode interpreter handlers.", stability = EXPERIMENTAL) //
+        @Option(help = "Enable tail call threading and template specialization on bytecode interpreter handlers.", stability = EXPERIMENTAL) //
         public static final HostedOptionKey<Boolean> BytecodeInterpreterTailCallThreading = new HostedOptionKey<>(true);
 
         @Option(help = "Fill and rewrite bytecode-handler pending-state slots with debug sentinels. Defaults to enabled when assertions are enabled.", //
@@ -93,7 +93,7 @@ public final class BytecodeHandlerFeature implements InternalFeature {
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + BytecodeHandlerFeature.class);
 
     private EconomicSet<ResolvedJavaMethod> bytecodeHandlers;
-    private final AtomicInteger maxHandlerAbiArity = new AtomicInteger();
+    private final AtomicInteger maxPendingStateSlots = new AtomicInteger();
 
     public static BytecodeHandlerFeature singleton() {
         return ImageSingletons.lookup(BytecodeHandlerFeature.class);
@@ -132,13 +132,13 @@ public final class BytecodeHandlerFeature implements InternalFeature {
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         plugins.appendNodePlugin(new BytecodeHandlerInvokePlugin(registeredBytecodeHandlers, stubHelper, isTailCallThreadingEnabled(),
-                        arity -> maxHandlerAbiArity.updateAndGet(current -> Math.max(current, arity))));
+                        slotCount -> maxPendingStateSlots.updateAndGet(current -> Math.max(current, slotCount))));
     }
 
     @Override
     public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {
         if (hosted && suites.getHighTier() instanceof HighTier) {
-            suites.getHighTier().prependPhase(new SubstrateOutlineBytecodeHandlerPhase(registeredBytecodeHandlers));
+            suites.getHighTier().prependPhase(new SubstrateOutlineBytecodeHandlerPhase(registeredBytecodeHandlers, stubHelper));
         }
     }
 
@@ -158,7 +158,7 @@ public final class BytecodeHandlerFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         if (ImageSingletons.contains(VMThreadLocalOffsetProvider.class)) {
-            PendingExceptionStateSupport.singleton().setMaxSlots(maxHandlerAbiArity.get());
+            PendingExceptionStateSupport.singleton().setMaxSlots(maxPendingStateSlots.get());
             PendingExceptionStateSupport.singleton().setUseSlotSentinel(Options.BytecodeHandlerSlotSentinel.getValue());
             PendingExceptionStateSupport.singleton().initializeThreadLocalOffset();
         }

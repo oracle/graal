@@ -154,7 +154,11 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
 
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        nodeValueMap.setResult(this, gen.emitSignExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits()));
+        if (getValue() instanceof AssumeIntNode assumeInt && getInputBits() == Integer.SIZE && getResultBits() == Long.SIZE) {
+            nodeValueMap.setResult(this, nodeValueMap.operand(assumeInt.getValue()));
+        } else {
+            nodeValueMap.setResult(this, gen.emitSignExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits()));
+        }
     }
 
     @Override

@@ -31,11 +31,18 @@ import jdk.vm.ci.meta.JavaKind;
 public class SubstrateCallingConvention extends CallingConvention {
     private final Type type;
     private final JavaKind[] kinds;
+    private final AllocatableValue[] additionalReturnLocations;
 
     public SubstrateCallingConvention(Type type, JavaKind[] kinds, int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
+        this(type, kinds, stackSize, returnLocation, AllocatableValue.NONE, argumentLocations);
+    }
+
+    public SubstrateCallingConvention(Type type, JavaKind[] kinds, int stackSize, AllocatableValue returnLocation, AllocatableValue[] additionalReturnLocations,
+                    AllocatableValue... argumentLocations) {
         super(stackSize, returnLocation, argumentLocations);
         this.type = type;
         this.kinds = kinds;
+        this.additionalReturnLocations = additionalReturnLocations;
     }
 
     public Type getType() {
@@ -44,5 +51,16 @@ public class SubstrateCallingConvention extends CallingConvention {
 
     public JavaKind[] getArgumentStorageKinds() {
         return kinds;
+    }
+
+    public AllocatableValue getAdditionalReturnLocation(int index) {
+        if (index < getArgumentCount()) {
+            return getArgument(index);
+        }
+        return additionalReturnLocations[index - getArgumentCount()];
+    }
+
+    public AllocatableValue[] getAdditionalReturnLocations() {
+        return additionalReturnLocations;
     }
 }
