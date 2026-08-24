@@ -159,9 +159,11 @@ import sun.security.x509.OIDMap;
 ///
 /// `SecurityProviderRegistrationPlanner` converts reflection registrations and the transition-only
 /// compatibility signal into either a complete or verification-only plan.
-/// The deprecated additional-provider option registers reflection metadata and also requests the
-/// same complete plan directly so its historical inclusion effect survives in every transition
-/// mode. That bridge is confined to `LegacySecurityProviderCompatibility` and realizes
+/// The deprecated additional-provider option registers reflection metadata in every mode. In
+/// explicit registration mode, it also requests the same complete plan directly. In legacy modes,
+/// the compatibility signal preserves JDK construction eligibility without requiring successful
+/// provider construction during the image build solely because the option names the provider. That
+/// bridge is confined to `LegacySecurityProviderCompatibility` and realizes
 /// §FS-002-security-providers.7.5.
 /// `SecurityProviderCatalogRegistrar.writeProviderManifest` is the sole production chokepoint that
 /// writes JDK-managed provider eligibility or an application-supplied verification outcome to
@@ -173,8 +175,10 @@ import sun.security.x509.OIDMap;
 /// Every hosted-list filter, run-time-list decision, and direct JDK construction passes through
 /// `SecurityProviderRuntimeAccess.passesJdkAcquisitionFilter`. Run-time callers resolve eligibility
 /// from the layered manifest through `isJdkAcquirable`; the hosted list supplies the completed
-/// catalog plan. The boundary rejects every provider for which the chokepoint did not record a
-/// complete, JDK-constructible plan. This structurally discharges
+/// catalog plan. In explicit registration mode, the boundary rejects every provider for which the
+/// chokepoint did not record a complete, JDK-constructible plan. A transition-only legacy entry may
+/// instead expose the independently retained services of a provider named by the deprecated option.
+/// This structurally discharges
 /// §FS-002-security-providers.8.9.2.
 ///
 /// ## 3. Hosted Registration Components

@@ -67,7 +67,7 @@ import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeRandomness;
-import com.oracle.svm.core.SecureRandomRuntimeRandomness;
+import com.oracle.svm.core.RuntimeRandomnessSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.RuntimeCompilation;
@@ -425,7 +425,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
          */
         // §FS-002-security-providers.2.4
         if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(RuntimeRandomness.class)) {
-            ImageSingletons.add(RuntimeRandomness.class, new SecureRandomRuntimeRandomness());
+            ImageSingletons.add(RuntimeRandomness.class, new RuntimeRandomnessSupport());
         }
         ImageSingletons.add(RuntimeCompilationSupport.class, new RuntimeCompilationSupport());
         /*
