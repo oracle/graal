@@ -150,18 +150,6 @@ public final class GuestAnnotationAccess {
     }
 
     /**
-     * Converts an {@link Annotation} to an {@link AnnotationValue}.
-     * <p>
-     * This is a compatibility bridge for callers that still carry builder annotation instances
-     * while handling guest metadata. New code should retain or construct {@link AnnotationValue}
-     * directly. GR-78020 tracks migrating existing callers and removing this method.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static AnnotationValue asAnnotationValue(Annotation annotation) {
-        return HostAnnotationValueConverter.toAnnotationValue(annotation, GuestAccess.get()::lookupType);
-    }
-
-    /**
      * Gets the declared annotations of {@code annotated}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)

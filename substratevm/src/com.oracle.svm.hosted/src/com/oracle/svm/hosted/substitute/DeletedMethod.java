@@ -30,13 +30,11 @@ import java.util.List;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -62,10 +60,6 @@ public class DeletedMethod extends CustomSubstitutionMethod {
         VMError.guarantee(GuestAccess.get().elements.Delete.equals(deleteAnnotation.getAnnotationType()));
         this.message = deleteAnnotation.getString("value");
         this.injectedAnnotations = List.of(deleteAnnotation);
-    }
-
-    public DeletedMethod(ResolvedJavaMethod original, Delete deleteAnnotation) {
-        this(original, GuestAnnotationAccess.asAnnotationValue(deleteAnnotation));
     }
 
     @Override
