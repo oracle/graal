@@ -92,7 +92,7 @@ public final class SecurityProviderRuntimeAccess {
 
     // §FS-002-security-providers.7.1
     /** Load an already-resolved ServiceLoader provider directly. */
-    public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName, String constructionClassName) {
+    public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName, String constructionClassName, String argument) {
         Provider candidate;
         /* §FS-002-security-providers.6.1: A filtered lookup must not trace providers constructed
          * while materializing the full provider list. The acquisition boundary traces the selected
@@ -100,10 +100,17 @@ public final class SecurityProviderRuntimeAccess {
         try (var _ = MetadataTracer.disableTracing("security provider list construction")) {
             Class<?> constructionClass = Class.forName(constructionClassName, true, ClassLoader.getSystemClassLoader());
             candidate = constructProvider(constructionClass);
-        } catch (ReflectiveOperationException | SecurityException | LinkageError ex) {
-            throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName, "could not be constructed", ex);
+            candidate = configureProvider(candidate, argument);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ex) {
+            throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName, "could not be constructed or configured", ex);
         }
         return validateConfiguredProvider(providerName, providerClassName, constructionClassName, candidate);
+    }
+
+    // §FS-002-security-providers.1.3
+    /** Apply a configured entry's argument and retain the returned provider instance. */
+    static Provider configureProvider(Provider candidate, String argument) {
+        return candidate != null && !argument.isEmpty() ? candidate.configure(argument) : candidate;
     }
 
     static Provider validateConfiguredProvider(String providerName, String providerClassName, String constructionClassName, Provider candidate) {
@@ -184,30 +191,21 @@ public final class SecurityProviderRuntimeAccess {
                         "Add qualifying metadata and rebuild with --future-defaults=explicit-security-provider-registration.";
     }
 
-    /** §FS-002-security-providers.6.1: Existing provider instances trace type access. */
-    public static Provider traceLookup(Provider provider) {
-        if (provider != null && MetadataTracer.enabled()) {
-            MetadataTracer.singleton().traceReflectionType(provider.getClass());
-        }
-        return provider;
-    }
-
     // §FS-002-security-providers.6.1
-    /** Successful service selection traces its provider and SPI. */
-    public static void traceServiceSelection(Provider.Service service, Class<?> serviceClass) {
+    /** Successful service selection traces its JDK-managed provider and SPI. */
+    public static void traceServiceSelection(Provider provider, Class<?> serviceClass) {
         if (MetadataTracer.enabled()) {
-            Provider provider = service.getProvider();
-            MetadataTracer tracer = MetadataTracer.singleton();
-            tracer.traceReflectionType(provider.getClass());
+            traceJdkProviderLookup(provider);
             if (serviceClass != null) {
-                tracer.traceReflectionType(serviceClass);
+                MetadataTracer.singleton().traceReflectionType(serviceClass);
             }
         }
     }
 
     /** §FS-002-security-providers.6.1: JDK-managed provider lookups retain construction. */
     public static Provider traceJdkProviderLookup(Provider provider) {
-        if (provider != null && MetadataTracer.enabled()) {
+        SecurityProviderRuntimeState.ProviderInfo providerInfo = provider == null ? null : SecurityProviderRuntimeState.getProviderInfo(provider);
+        if (providerInfo != null && providerInfo.acquisitionKind() == SecurityProviderRuntimeState.AcquisitionKind.JDK_CONSTRUCTIBLE && MetadataTracer.enabled()) {
             Class<? extends Provider> providerClass = provider.getClass();
             MetadataTracer tracer = MetadataTracer.singleton();
             tracer.traceReflectionType(providerClass);

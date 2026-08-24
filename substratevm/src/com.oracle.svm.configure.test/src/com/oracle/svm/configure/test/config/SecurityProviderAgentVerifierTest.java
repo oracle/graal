@@ -73,13 +73,15 @@ public class SecurityProviderAgentVerifierTest {
     }
 
     @Test
-    public void verifyMutationRecordedOnlySuppliedProvider() throws Exception {
+    public void verifyMutationDidNotRecordProviders() throws Exception {
         assumeTrue("Test must be explicitly enabled because it verifies a previous agent run",
                         Boolean.getBoolean(VERIFIER_ENABLED_PROPERTY));
 
         TypeConfiguration reflectionConfiguration = loadActualConfig().getReflectionConfiguration();
         assertRecorded(reflectionConfiguration, SecurityProviderAgentTest.ReflectiveProbe.class.getName());
-        assertRecorded(reflectionConfiguration, SecurityProviderAgentTest.ProgrammaticallyAddedProvider.class.getName());
+        Assert.assertNull("Provider-list mutation unexpectedly recorded the supplied provider",
+                        reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                                        NamedConfigurationTypeDescriptor.fromReflectionName(SecurityProviderAgentTest.ProgrammaticallyAddedProvider.class.getName())));
         for (Provider provider : Security.getProviders()) {
             String providerClassName = provider.getClass().getName();
             Assert.assertNull("Provider-list mutation unexpectedly recorded configured provider " + providerClassName,

@@ -1,7 +1,7 @@
 # Functional Decisions
 
-This directory contains product behavior decisions and tradeoffs for Native Image functional
-specifications.
+This directory contains product behavior decisions and tradeoffs shared by Native Image functional
+specifications, together with decisions for individual specifications.
 
-- [Register Security Providers Through Ordinary Reflection Metadata](security-provider-registration.md)
+- [Match HotSpot Without Additional Flags](hotspot-compatible-semantics-by-default.md)
 - [Keep Run-Time Semantics Independent of Reachability](reachability-independent-runtime-semantics.md)
