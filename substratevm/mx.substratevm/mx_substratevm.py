@@ -1094,8 +1094,8 @@ def run_agent_security_provider_config_test(agent_path):
     verifier_class = 'com.oracle.svm.configure.test.config.SecurityProviderAgentVerifierTest'
     cases = [
         ('enumeration', 'enumerateSecurityProviders', 'verifyEnumeratedProvidersWereRecorded'),
-        ('mutation', 'programmaticProviderMutationDoesNotTraceConfiguredProviders',
-         'verifyMutationRecordedOnlySuppliedProvider'),
+        ('mutation', 'programmaticProviderMutationDoesNotTraceProviders',
+         'verifyMutationDidNotRecordProviders'),
         ('service-construction', 'providerServiceHelpersRetainConstructorMetadata',
          'verifyProviderServiceConstructorWasRecorded'),
         ('service-selection', 'jceServiceSelectionRetainsConstructorMetadata',

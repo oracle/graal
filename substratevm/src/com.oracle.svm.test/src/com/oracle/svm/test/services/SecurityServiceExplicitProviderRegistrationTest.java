@@ -34,7 +34,6 @@ import java.security.Signature;
 import javax.crypto.Mac;
 
 import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -119,24 +118,26 @@ public class SecurityServiceExplicitProviderRegistrationTest {
         }
     }
 
-    /** §FS-002-security-providers.5.3: Tests class-based verification identity. */
+    /** Tests §AR-002-security-providers.3 and §FS-002-security-providers.5.3. */
     @Test
-    public void testUnregisteredProviderCannotReuseVerificationByName() {
+    public void testInstantiatedProviderVerificationIsKeyedByClass() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
         SecurityProviderRuntimeState.ProviderInfo registered = SecurityProviderRuntimeState.getProviderInfo(new SecurityServiceTest.ReflectionMetadataProvider());
         Assert.assertNotNull(registered);
         Assert.assertNull(registered.verificationFailure());
-        Assert.assertNull(SecurityProviderRuntimeState.getProviderInfo(new SameNameUnregisteredProvider()));
+        Assert.assertEquals(SecurityProviderRuntimeState.AcquisitionKind.JDK_CONSTRUCTIBLE, registered.acquisitionKind());
+
+        SecurityProviderRuntimeState.ProviderInfo supplied = SecurityProviderRuntimeState.getProviderInfo(new SameNameUnregisteredProvider());
+        Assert.assertNotNull(supplied);
+        Assert.assertNull(supplied.verificationFailure());
+        Assert.assertEquals(SecurityProviderRuntimeState.AcquisitionKind.APPLICATION_SUPPLIED_ONLY, supplied.acquisitionKind());
     }
 
-    /** §FS-002-security-providers.4.3: Tests the explicit-mode diagnostic. */
+    /** Tests §FS-002-security-providers.5.1 and §FS-002-security-providers.5.3. */
     @Test
-    public void testUnregisteredProviderReportsExplicitMetadataRemediation() {
+    public void testInstantiatedJceProviderUsesRetainedServiceInExplicitMode() throws Exception {
         Provider provider = new SecurityServiceTest.UnregisteredMacProvider();
-        MissingReflectionRegistrationError error = Assert.assertThrows(MissingReflectionRegistrationError.class,
-                        () -> Mac.getInstance("unregistered-mac", provider));
-        Assert.assertTrue(error.getMessage().contains(SecurityServiceTest.UnregisteredMacProvider.class.getName()));
-        Assert.assertTrue(error.getMessage().contains("reachability-metadata.json"));
+        Assert.assertSame(provider, Mac.getInstance("unregistered-mac", provider).getProvider());
     }
 
     public static final class SameNameUnregisteredProvider extends Provider {

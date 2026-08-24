@@ -184,6 +184,11 @@ final class BreakpointInterceptor {
     /* Classes from these class loaders are assumed to not be dynamically loaded. */
     private static JNIObjectHandle[] builtinClassLoaders;
 
+    /** Existing provider objects supplied through application APIs must not become metadata. */
+    private static final ReentrantLock applicationSuppliedSecurityProvidersLock = new ReentrantLock();
+    private static JNIObjectHandle[] applicationSuppliedSecurityProviders;
+    private static int applicationSuppliedSecurityProviderCount;
+
     private static void traceReflectBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
                     JNIMethodId[] stackTrace, Object... args) {
         traceBreakpoint(env, "reflect", clazz, declaringClass, callerClass, function, result, stackTrace, args);
@@ -740,27 +745,68 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private static boolean addStaticSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle provider = getObjectArgument(thread, 0);
-        traceSecurityProvider(jni, provider, provider.notEqual(nullHandle()), state.getDirectCallerClass(), state);
+    /** §FS-002-security-providers.6.1: Remember an existing provider without tracing it. */
+    private static boolean addApplicationSuppliedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp,
+                    @SuppressWarnings("unused") InterceptedState state) {
+        rememberApplicationSuppliedSecurityProvider(jni, getObjectArgument(thread, 0));
         return true;
     }
 
-    /** §FS-002-security-providers.6.2: Observe an explicit-provider lookup without invoking it. */
-    private static boolean getSecurityServiceForProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle provider = getObjectArgument(thread, 2);
-        /*
-         * Do not invoke GetInstance.getService from its entry breakpoint. Doing so can initialize
-         * and cache the service while recursive tracing is suppressed, preventing the real call
-         * from recording its implementation metadata and resource accesses.
-         */
-        JNIObjectHandle callerClass = findExternalSecurityCaller(jni, state, 1);
-        traceSecurityProvider(jni, provider, provider.notEqual(nullHandle()),
-                        callerClass.notEqual(nullHandle()) ? callerClass : state.getDirectCallerClass(), state);
+    /** §FS-002-security-providers.6.1: Provider-object factories receive an existing instance. */
+    private static boolean getSecurityServiceForApplicationSuppliedProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp,
+                    @SuppressWarnings("unused") InterceptedState state) {
+        rememberApplicationSuppliedSecurityProvider(jni, getObjectArgument(thread, 2));
         return true;
     }
 
-    /** §FS-002-security-providers.6.1: Trace the provider selected for service instantiation. */
+    private static void rememberApplicationSuppliedSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider) {
+        if (provider.equal(nullHandle())) {
+            return;
+        }
+        JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
+        if (clearException(jni)) {
+            return;
+        }
+        String providerClassName = getClassNameOrNull(jni, providerClass);
+        if (providerClassName == null || SecurityProviderCatalog.getProviderClassName(providerClassName) != null) {
+            /* A provider-object overload is also an internal step of name-based JDK factories. */
+            return;
+        }
+        applicationSuppliedSecurityProvidersLock.lock();
+        try {
+            for (int i = 0; i < applicationSuppliedSecurityProviderCount; i++) {
+                if (jniFunctions().getIsSameObject().invoke(jni, provider, applicationSuppliedSecurityProviders[i])) {
+                    return;
+                }
+            }
+            if (applicationSuppliedSecurityProviderCount == applicationSuppliedSecurityProviders.length) {
+                JNIObjectHandle[] expanded = new JNIObjectHandle[applicationSuppliedSecurityProviders.length * 2];
+                System.arraycopy(applicationSuppliedSecurityProviders, 0, expanded, 0, applicationSuppliedSecurityProviders.length);
+                applicationSuppliedSecurityProviders = expanded;
+            }
+            applicationSuppliedSecurityProviders[applicationSuppliedSecurityProviderCount++] = agent.handles().newTrackedGlobalRef(jni, provider);
+        } finally {
+            applicationSuppliedSecurityProvidersLock.unlock();
+        }
+    }
+
+    private static boolean isApplicationSuppliedSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider) {
+        applicationSuppliedSecurityProvidersLock.lock();
+        try {
+            for (int i = 0; i < applicationSuppliedSecurityProviderCount; i++) {
+                if (jniFunctions().getIsSameObject().invoke(jni, provider, applicationSuppliedSecurityProviders[i])) {
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            applicationSuppliedSecurityProvidersLock.unlock();
+        }
+    }
+
+    /**
+     * §FS-002-security-providers.6.1: Trace the provider and service selected for instantiation.
+     */
     private static boolean newSecurityServiceInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle service = getReceiver(thread);
         JNIObjectHandle callerClass = findExternalSecurityCaller(jni, state, 1);
@@ -768,7 +814,10 @@ final class BreakpointInterceptor {
         traceCachedSecurityServiceImplementation(jni, thread, service, effectiveCallerClass, state);
         JNIObjectHandle provider = Support.callObjectMethod(jni, service, agent.handles().javaSecurityProviderServiceGetProvider);
         boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
-        traceSecurityProvider(jni, provider, validResult, effectiveCallerClass, state);
+        if (validResult && !isApplicationSuppliedSecurityProvider(jni, provider)) {
+            traceJdkConstructibleSecurityProvider(jni, provider, effectiveCallerClass, state);
+            traceSecurityProvider(jni, provider, true, effectiveCallerClass, state);
+        }
         return true;
     }
 
@@ -1052,7 +1101,7 @@ final class BreakpointInterceptor {
     }
 
     // §FS-002-security-providers.6.1
-    /** Provider insertion and lookup trace provider type access. */
+    /** JDK-managed provider lookup traces provider type access. */
     private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
         if (!validResult) {
             return;
@@ -1878,6 +1927,8 @@ final class BreakpointInterceptor {
         BreakpointInterceptor.experimentalClassDefineSupport = exptlClassDefineSupport;
         BreakpointInterceptor.experimentalUnsafeAllocationSupport = exptlUnsafeAllocationSupport;
         BreakpointInterceptor.trackReflectionMetadata = trackReflectionData;
+        BreakpointInterceptor.applicationSuppliedSecurityProviders = new JNIObjectHandle[16];
+        BreakpointInterceptor.applicationSuppliedSecurityProviderCount = 0;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
@@ -2122,6 +2173,8 @@ final class BreakpointInterceptor {
         installedBreakpoints = null;
         nativeBreakpoints = null;
         observedExplicitLoadClassCallSites = null;
+        applicationSuppliedSecurityProviders = null;
+        applicationSuppliedSecurityProviderCount = 0;
         tracer = null;
     }
 
@@ -2175,10 +2228,10 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
 
-                    brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addStaticSecurityProvider),
-                    brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addStaticSecurityProvider),
+                    brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addApplicationSuppliedSecurityProvider),
+                    brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addApplicationSuppliedSecurityProvider),
                     optionalBrk("sun/security/jca/GetInstance", "getService", "(Ljava/lang/String;Ljava/lang/String;Ljava/security/Provider;)Ljava/security/Provider$Service;",
-                                    BreakpointInterceptor::getSecurityServiceForProvider),
+                                    BreakpointInterceptor::getSecurityServiceForApplicationSuppliedProvider),
                     brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
                                     BreakpointInterceptor::newSecurityServiceInstance),
                     brk("java/security/Provider$Service", "getProvider", "()Ljava/security/Provider;",

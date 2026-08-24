@@ -101,6 +101,8 @@ public class SecurityServiceTest {
                 RuntimeClassInitialization.initializeAtBuildTime(NoOpProviderTwo.class);
                 RuntimeClassInitialization.initializeAtBuildTime(LegacyConstructorProvider.class);
             }
+            RuntimeClassInitialization.initializeAtBuildTime(ImageHeapProvider.class);
+            RuntimeClassInitialization.initializeAtBuildTime(ImageHeapProviderHolder.class);
             // register the service implementation for reflection explicitly,
             // non-standard services are not processed automatically
             RuntimeReflection.register(NoOpImpl.class);
@@ -182,10 +184,13 @@ public class SecurityServiceTest {
                         () -> Mac.getInstance(FAILED_VERIFICATION_PROVIDER_MAC_ALGORITHM, provider));
     }
 
-    /** §FS-002-security-providers.4.1: Tests omission without registration metadata. */
+    /** Tests §AR-002-security-providers.3 and §FS-002-security-providers.4.1. */
     @Test
-    public void testReachableProviderWithoutMetadataDoesNotRegisterServices() {
+    public void testInstantiatedProviderWithoutMetadataIsValidatedButDoesNotRegisterServices() {
+        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
+
         Provider provider = new ReachableProviderWithoutMetadata();
+        assertApplicationSuppliedProviderWasValidated(provider);
         int position = Security.addProvider(provider);
         try {
             Assert.assertTrue("Provider should be registered.", position > 0);
@@ -195,21 +200,28 @@ public class SecurityServiceTest {
         }
     }
 
-    /** §FS-002-security-providers.4.3: Tests the non-exact diagnostic. */
+    /** §AR-002-security-providers.3: An image-heap provider instance is validated. */
     @Test
-    public void testUnregisteredJceProviderReportsActionableDiagnostic() {
+    public void testImageHeapProviderWithoutMetadataIsValidated() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-        Assume.assumeFalse("tests the compatibility-mode fallback", FutureDefaultsOptions.explicitSecurityProviderRegistration());
+        assertApplicationSuppliedProviderWasValidated(ImageHeapProviderHolder.PROVIDER);
+    }
+
+    private static void assertApplicationSuppliedProviderWasValidated(Provider provider) {
+        SecurityProviderRuntimeState.ProviderInfo info = SecurityProviderRuntimeState.getProviderInfo(provider);
+        Assert.assertNotNull("An instantiated provider must have a build-time validation outcome.", info);
+        Assert.assertEquals(SecurityProviderRuntimeState.AcquisitionKind.APPLICATION_SUPPLIED_ONLY, info.acquisitionKind());
+        Assert.assertNull("The test provider should pass build-time validation.", info.verificationFailure());
+    }
+
+    /** Tests §FS-002-security-providers.5.1 and §FS-002-security-providers.5.3. */
+    @Test
+    public void testInstantiatedJceProviderWithoutMetadataUsesRetainedService() throws Exception {
+        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
 
         Provider provider = new UnregisteredMacProvider();
-        SecurityException error = Assert.assertThrows(SecurityException.class,
-                        () -> Mac.getInstance("unregistered-mac", provider));
-        Assert.assertTrue("The diagnostic must identify the provider type",
-                        error.getMessage().contains(UnregisteredMacProvider.class.getName()));
-        Assert.assertTrue("The compatibility-mode diagnostic must explain that metadata is inert for services.",
-                        error.getMessage().contains("does not enable provider construction or services in compatibility mode"));
-        Assert.assertTrue("The diagnostic must name the explicit registration migration.",
-                        error.getMessage().contains("--future-defaults=explicit-security-provider-registration"));
+        assertApplicationSuppliedProviderWasValidated(provider);
+        Assert.assertSame(provider, Mac.getInstance("unregistered-mac", provider).getProvider());
     }
 
     @Delete
@@ -335,6 +347,19 @@ public class SecurityServiceTest {
             super(REACHABLE_PROVIDER_WITHOUT_METADATA_NAME, 1.0, "Reachable provider without reflection metadata");
             putService(new Service(this, "JCACompliantNoOpService", REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM,
                             ReachableNoOpServiceImpl.class.getName(), null, null));
+        }
+    }
+
+    static final class ImageHeapProviderHolder {
+        static final Provider PROVIDER = new ImageHeapProvider();
+    }
+
+    public static final class ImageHeapProvider extends Provider {
+        static final long serialVersionUID = 1234L;
+
+        @SuppressWarnings("deprecation")
+        public ImageHeapProvider() {
+            super("image-heap-provider-without-metadata", 1.0, "Image-heap provider without reflection metadata");
         }
     }
 

@@ -138,9 +138,12 @@ import sun.security.x509.OIDMap;
 /// AR-002-security-providers: Security Provider Architecture
 ///
 /// The security-provider implementation separates build-time policy from run-time enforcement.
-/// Reflection metadata is the authoritative source of permanent provider-registration intent.
-/// Platform rules and deprecated provider options express that intent by registering reflective
-/// access; only transition-only service-driven inclusion feeds the planner directly. This
+/// Reflection metadata is the authoritative source of permanent JDK-managed provider-registration
+/// intent. Platform rules and deprecated provider options express that intent by registering
+/// reflective access; only transition-only service-driven inclusion feeds the planner directly.
+/// Application-supplied providers use a separate verification-only signal derived from
+/// instantiation reachability and never need provider-class reflection metadata solely because an
+/// existing instance is passed to a provider-object factory or provider-list mutation. This
 /// architecture implements §FS-002-security-providers.
 ///
 /// ## 1. Supported Transition Modes
@@ -156,24 +159,34 @@ import sun.security.x509.OIDMap;
 ///
 /// `SecurityProviderRegistrationPlanner` converts reflection registrations and the transition-only
 /// compatibility signal into either a complete or verification-only plan.
+/// The deprecated additional-provider option registers reflection metadata and also requests the
+/// same complete plan directly so its historical inclusion effect survives in every transition
+/// mode. That bridge is confined to `LegacySecurityProviderCompatibility` and realizes
+/// §FS-002-security-providers.7.5.
 /// `SecurityProviderCatalogRegistrar.writeProviderManifest` is the sole production chokepoint that
-/// writes provider eligibility to `SecurityProviderRuntimeState`. Registration metadata emitted
-/// while realizing a plan is an output and is not reinterpreted as a new application signal. A
-/// feature that adds a permanent signal must register reflective access and must not write the
-/// manifest directly. This structurally discharges §REQ-002-security-providers.9.1.
+/// writes JDK-managed provider eligibility or an application-supplied verification outcome to
+/// `SecurityProviderRuntimeState`. Registration metadata emitted while realizing a complete plan is
+/// an output and is not reinterpreted as a new application signal. A feature that adds a permanent
+/// JDK-managed acquisition signal must register reflective access and must not write the manifest
+/// directly. This structurally discharges §FS-002-security-providers.8.9.1.
 ///
 /// Every hosted-list filter, run-time-list decision, and direct JDK construction passes through
 /// `SecurityProviderRuntimeAccess.passesJdkAcquisitionFilter`. Run-time callers resolve eligibility
 /// from the layered manifest through `isJdkAcquirable`; the hosted list supplies the completed
 /// catalog plan. The boundary rejects every provider for which the chokepoint did not record a
 /// complete, JDK-constructible plan. This structurally discharges
-/// §REQ-002-security-providers.9.2.
+/// §FS-002-security-providers.8.9.2.
 ///
 /// ## 3. Hosted Registration Components
 ///
 /// `SecurityServicesFeature` coordinates the feature lifecycle. The registration planner owns
 /// provider intent and iteration-safe candidate processing. The catalog registrar constructs
 /// eligible providers, registers their service catalogs, and owns every production manifest write.
+/// **Requirement.** For every concrete `Provider` subtype that analysis marks instantiated, whether
+/// through reachable allocation or an image-heap instance, the feature must perform JCE validation
+/// during image generation and record the outcome by provider class. The resulting
+/// `APPLICATION_SUPPLIED_ONLY` entry must not register reflective construction, make the provider
+/// JDK-constructible, or retain services that no independent signal retains.
 /// `LegacySecurityProviderCompatibility` owns deprecated options and service-driven inclusion.
 /// Provider code accesses reflection registrations through a narrow query rather than the concrete
 /// metadata builder.
@@ -183,9 +196,10 @@ import sun.security.x509.OIDMap;
 /// `SecurityProviderRuntimeState` owns the layered, typed manifest written by hosted registration.
 /// Its read operations merge all layer singletons, and reflection-registration queries likewise
 /// include metadata persisted by earlier layers. Each entry combines whether the JDK may construct
-/// the provider with the preserved JCE verification outcome. An application-supplied provider can
-/// carry verification information without being marked as JDK-constructible. The manifest is keyed
-/// by provider class name, as required by §FS-002-security-providers.5.3.
+/// the provider with the preserved JCE verification outcome. An application-supplied provider
+/// carries verification information derived from instantiation reachability without being marked as
+/// JDK-constructible or reflection-registered. The manifest is keyed by provider class name, as
+/// required by §FS-002-security-providers.5.3.
 ///
 /// ## 5. Run-Time Access Services
 ///
@@ -194,6 +208,10 @@ import sun.security.x509.OIDMap;
 /// and missing-registration diagnostics, and `JceProviderVerificationSupport` translates manifest
 /// outcomes to the JDK contract. Build-time-list filtering and run-time-list construction both
 /// consume eligibility produced by the same catalog-registration chokepoint.
+/// Run-time configured-list construction passes each `ProviderConfig` argument to
+/// `Provider.configure` and retains the returned instance, preserving independent same-class
+/// entries. A successful factory selection traces both its service construction and the selected
+/// JDK-managed provider construction, without relying on an earlier provider-list observation.
 ///
 /// ## 6. Service Descriptors
 ///
@@ -203,8 +221,10 @@ import sun.security.x509.OIDMap;
 ///
 /// ## 7. Concurrent Analysis
 ///
-/// Provider subtype callbacks add candidates to concurrent collections. A serialized feature pass
-/// consumes signals, realizes plans, and requests additional analysis iterations. Callbacks do not
+/// Provider subtype callbacks collect reflection-registration candidates and attach an analysis
+/// instantiation callback to each candidate. The instantiation callback covers both reachable
+/// allocations and image-heap instances. A serialized feature pass realizes plans or
+/// verification-only outcomes and requests additional analysis iterations. Callbacks do not
 /// schedule iterations directly.
 ///
 /// ## 8. Retirement Boundary
@@ -243,10 +263,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     public static class Options {
         private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP = "Deprecated. Register the providers that implement the custom service type for reflection instead.";
-        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. Security providers are now detected automatically (use the tracing agent, register the provider class " +
-                        "for reflection, or build with -H:Preserve=all).";
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. With explicit security-provider registration, use the tracing agent, register the provider class " +
+                        "for reflection, or build with -H:Preserve=all.";
         private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register each security provider class for reflection in reachability-metadata.json using " +
-                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\"}]}; the Tracing Agent generates this metadata automatically.";
+                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\"}]} and enable --future-defaults=explicit-security-provider-registration; " +
+                        "the Tracing Agent generates this metadata automatically. The deprecated option remains supported in compatibility mode";
         private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE = "Register each provider that implements the custom service type and its supported construction path " +
                         "in reachability-metadata.json, or collect the metadata with the Tracing Agent.";
 
@@ -481,11 +502,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         initializeServiceRegistrationData();
         preserveAll = access.getImageClassLoader().classLoaderSupport.isPreserveAll();
         reflectionRegistrationView = ReflectionRegistrationView.singleton();
-        access.registerSubtypeReachabilityHandler((_, providerClass) -> addCandidateProviderClass(providerClass), Provider.class);
+        access.registerSubtypeReachabilityHandler((duringAccess, providerClass) -> {
+            addCandidateProviderClass(providerClass);
+            DuringAnalysisAccessImpl duringAccessImpl = (DuringAnalysisAccessImpl) duringAccess;
+            duringAccessImpl.getMetaAccess().lookupJavaType(providerClass).registerInstantiatedCallback(_ -> addInstantiatedProviderClass(providerClass));
+        }, Provider.class);
         registerServiceProviderCandidates(access);
         LegacySecurityProviderCompatibility.registerAdditionalProviders(access, providerClass -> {
             if (shouldRegisterProviderClassForReflection(access, providerClass)) {
                 registerProviderClassForReflection(providerClass);
+                // §FS-002-security-providers.7.5: The deprecated option remains a complete
+                // registration signal in every transition mode.
+                providerPlanner.requestCompleteProvider(providerClass);
             }
         });
         if (Options.EnableSecurityServicesFeature.getValue()) {
@@ -788,6 +816,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private void addCandidateProviderClass(Class<?> providerClass) {
         providerPlanner.addCandidate(providerClass);
+    }
+
+    private void addInstantiatedProviderClass(Class<?> providerClass) {
+        providerPlanner.addInstantiatedCandidate(providerClass);
     }
 
     private void registerServices(DuringAnalysisAccess access, Object trigger, Class<?> serviceClass) {
