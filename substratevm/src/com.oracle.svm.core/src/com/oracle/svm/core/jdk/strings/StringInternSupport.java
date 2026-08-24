@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk.strings;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,10 +39,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.RuntimeRandomness;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
@@ -55,6 +58,8 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
+
+import jdk.internal.vm.annotation.Stable;
 
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = StringInternSupport.LayeredCallbacks.class)
@@ -144,28 +149,17 @@ public final class StringInternSupport {
     }
 
     public static String intern(String str) {
-        String result = RuntimeInternedStrings.getInternedStrings().get(str);
-        if (result != null) {
-            return result;
-        } else {
-            return doIntern(str);
-        }
+        return RuntimeInternedStrings.singleton().intern(str);
     }
 
-    private static String doIntern(String str) {
-        String result = str;
+    static String findImageInternedString(String str) {
         for (ImageInternedStrings layer : MultiLayeredImageSingleton.getAllLayers(ImageInternedStrings.class)) {
             String found = layer.find(str);
             if (found != null) {
-                result = found;
-                break;
+                return found;
             }
         }
-        String oldValue = RuntimeInternedStrings.getInternedStrings().putIfAbsent(result, result);
-        if (oldValue != null) {
-            result = oldValue;
-        }
-        return result;
+        return null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -206,15 +200,148 @@ public final class StringInternSupport {
     }
 }
 
+/**
+ * Implements {@link String#intern} at run time. It first searches the strings interned in the image
+ * layers through {@link StringInternSupport#findImageInternedString}. Image strings are returned
+ * directly and are not added to the runtime set. Other strings are stored as weak references in a
+ * concurrent set and can be garbage collected. A keyed content hash prevents predictable hash
+ * collisions. Stale entries are removed when another string is interned.
+ * <p>
+ * This implementation has a lot of potential for future optimizations, see GR-78935.
+ */
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-class RuntimeInternedStrings {
+final class RuntimeInternedStrings {
+    final ConcurrentHashMap<Key, WeakKey> internedStrings = new ConcurrentHashMap<>();
+    private final ReferenceQueue<String> queue = new ReferenceQueue<>();
+    @Stable private long hashSeed;
 
-    /** The String intern table at run time. */
-    final ConcurrentHashMap<String, String> internedStrings = new ConcurrentHashMap<>(16, 0.75f, 1);
+    static RuntimeInternedStrings singleton() {
+        return ImageSingletons.lookup(RuntimeInternedStrings.class);
+    }
 
-    static ConcurrentHashMap<String, String> getInternedStrings() {
-        return ImageSingletons.lookup(RuntimeInternedStrings.class).internedStrings;
+    String intern(String value) {
+        assert value != null;
+        removeStaleEntries();
+
+        /* Check if there is a matching string in the image heap. */
+        String imageInterned = StringInternSupport.findImageInternedString(value);
+        if (imageInterned != null) {
+            return imageInterned;
+        }
+
+        /* Check if there is a matching string in the runtime map. */
+        int hash = hash(value);
+        WeakKey existing = internedStrings.get(new StrongKey(value, hash));
+        String interned = existing == null ? null : existing.get();
+        if (interned != null) {
+            return interned;
+        }
+
+        /* Try to store the string in the runtime map. */
+        WeakKey candidate = new WeakKey(value, queue, hash);
+        while (true) {
+            existing = internedStrings.putIfAbsent(candidate, candidate);
+            if (existing == null) {
+                return value;
+            }
+
+            interned = existing.get();
+            if (interned != null) {
+                candidate.clear();
+                return interned;
+            }
+        }
+    }
+
+    private void removeStaleEntries() {
+        WeakKey stale;
+        while ((stale = (WeakKey) queue.poll()) != null) {
+            internedStrings.remove(stale, stale);
+        }
+    }
+
+    private int hash(String value) {
+        long seed = getHashSeed();
+        return HalfSipHash.hash(seed, value);
+    }
+
+    private long getHashSeed() {
+        if (hashSeed != 0) {
+            return hashSeed;
+        }
+        return initializeHashSeed();
+    }
+
+    private synchronized long initializeHashSeed() {
+        if (hashSeed == 0) {
+            long seed = RuntimeRandomness.instance().getNonBlockingRandom().nextLong();
+            hashSeed = seed != 0 ? seed : 1;
+        }
+        return hashSeed;
+    }
+
+    private static boolean keyEquals(Key key, Object other) {
+        if (key == other) {
+            return true;
+        }
+        if (other instanceof Key otherKey) {
+            String value = key.get();
+            return value != null && value.equals(otherKey.get());
+        }
+        return false;
+    }
+
+    private interface Key {
+        String get();
+    }
+
+    private static final class WeakKey extends WeakReference<String> implements Key {
+        private final int hashCode;
+
+        WeakKey(String value, ReferenceQueue<String> queue, int hashCode) {
+            super(value, queue);
+            this.hashCode = hashCode;
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return keyEquals(this, other);
+        }
+    }
+
+    /**
+     * A temporary strong key used to look up an existing weak entry without creating a weak
+     * reference.
+     */
+    private static final class StrongKey implements Key {
+        private final String value;
+        private final int hashCode;
+
+        StrongKey(String value, int hashCode) {
+            this.value = value;
+            this.hashCode = hashCode;
+        }
+
+        @Override
+        public String get() {
+            return value;
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return keyEquals(this, other);
+        }
     }
 }
 
