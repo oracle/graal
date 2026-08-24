@@ -203,6 +203,18 @@ public final class GuestAnnotationAccess {
     }
 
     /**
+     * Gets the annotation of type {@code annotationType} from {@code element} and immediately
+     * applies {@code factory} to its {@link AnnotationValue}. The factory receives {@code null}
+     * when the annotation is not present. Generated guest-value factories eagerly read every
+     * annotation member, so malformed member values fail during this call rather than when an
+     * individual record component is accessed.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static <T extends Annotation, U> U getAnnotationValue(Annotated element, Class<T> annotationType, Function<AnnotationValue, U> factory) {
+        return factory.apply(getAnnotationValue(element, annotationType));
+    }
+
+    /**
      * Gets the annotation represented by {@code annotationType}.
      *
      * @param declaredOnly whether inherited annotations must be ignored
