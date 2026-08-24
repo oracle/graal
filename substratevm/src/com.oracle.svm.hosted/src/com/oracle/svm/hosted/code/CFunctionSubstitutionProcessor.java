@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.core.CFunctionGuestValue;
 import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -65,7 +66,7 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
             return StatusSupport.getNewThreadStatus(cFunctionOptions.transition());
         }
 
-        CFunction cFunctionAnnotation = GuestAnnotationAccess.getAnnotation(method, CFunction.class);
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.get(method);
         if (cFunctionAnnotation != null) {
             return StatusSupport.getNewThreadStatus(cFunctionAnnotation.transition());
         }

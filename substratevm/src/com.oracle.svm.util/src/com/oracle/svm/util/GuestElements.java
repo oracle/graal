@@ -181,6 +181,7 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType Delete = lookupType(Delete.class);
     public final ResolvedJavaType CEntryPoint_IsolateContext = lookupType(CEntryPoint.IsolateContext.class);
     public final ResolvedJavaType CEntryPoint_IsolateThreadContext = lookupType(CEntryPoint.IsolateThreadContext.class);
+    public final ResolvedJavaType CEntryPointOptions_NoCallerEpilogue = lookupType("com.oracle.svm.guest.staging.c.function.CEntryPointOptions$NoCallerEpilogue");
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");

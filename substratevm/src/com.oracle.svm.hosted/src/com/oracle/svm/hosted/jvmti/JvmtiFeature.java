@@ -52,12 +52,13 @@ import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.code.CEntryPointGuestValue;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -131,8 +132,8 @@ public class JvmtiFeature implements InternalFeature {
     }
 
     private static boolean isIncluded(HostedMethod method) {
-        CEntryPoint entryPoint = GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class);
-        return ReflectionUtil.newInstance(entryPoint.include()).getAsBoolean();
+        CEntryPointGuestValue entryPoint = CEntryPointGuestValue.get(method);
+        return GuestAccess.get().callBooleanSupplier(entryPoint.include());
     }
 
     private static CFunctionPointer getStubFunctionPointer(CompilationAccessImpl access, HostedMethod method) {

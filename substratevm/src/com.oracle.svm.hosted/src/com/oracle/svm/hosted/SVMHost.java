@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
@@ -117,6 +116,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
+import com.oracle.svm.hosted.code.CEntryPointGuestValue;
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
@@ -1284,8 +1284,8 @@ public class SVMHost extends HostVM {
         }
 
         /* CEntryPoint methods should not be included according to their predicate. */
-        CEntryPoint cEntryPoint = GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class);
-        return cEntryPoint == null || ReflectionUtil.newInstance(cEntryPoint.include()).getAsBoolean();
+        CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.get(method);
+        return cEntryPoint == null || GuestAccess.get().callBooleanSupplier(cEntryPoint.include());
     }
 
     /**

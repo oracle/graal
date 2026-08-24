@@ -34,10 +34,10 @@ import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.InvokeCFunctionPointerGuestValue;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -56,7 +56,8 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
     static CFunctionPointerCallStubMethod create(AnalysisMethod aMethod) {
         assert !aMethod.isSynthetic() : "Creating a stub for a stub? " + aMethod;
         ResolvedJavaMethod method = aMethod.getWrapped();
-        int newThreadStatus = StatusSupport.getNewThreadStatus(GuestAnnotationAccess.getAnnotation(aMethod, InvokeCFunctionPointer.class).transition());
+        InvokeCFunctionPointerGuestValue annotation = InvokeCFunctionPointerGuestValue.get(aMethod);
+        int newThreadStatus = StatusSupport.getNewThreadStatus(annotation.transition());
         return new CFunctionPointerCallStubMethod(method, newThreadStatus);
     }
 

@@ -28,10 +28,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.CFunctionGuestValue;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.guest.staging.c.CGlobalData;
@@ -80,7 +80,7 @@ public final class CFunctionLinkages {
     }
 
     private static String getLinkageNameFromAnnotation(ResolvedJavaMethod method) {
-        CFunction cFunctionAnnotation = GuestAnnotationAccess.getAnnotation(method, CFunction.class);
+        CFunctionGuestValue cFunctionAnnotation = CFunctionGuestValue.get(method);
         if (cFunctionAnnotation != null) {
             return cFunctionAnnotation.value();
         }
