@@ -47,15 +47,13 @@ final class Target_java_security_Security_ProviderLookup {
 
 }
 
-/** Keeps provider mutation tracing active in both provider-list initialization modes. */
+/** Keeps provider mutation behavior unchanged while native tracing is enabled. */
 @TargetClass(java.security.Security.class)
 final class Target_java_security_Security_ProviderMutation {
-    /** §FS-002-security-providers.6.1: Mutation traces only the supplied provider. */
+    /** §FS-002-security-providers.6.1: An existing provider object is not reflection metadata. */
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/java/security/Security.java#L469-L478")
     public static synchronized int insertProviderAt(Provider provider, int position) {
-        SecurityProviderRuntimeAccess.traceLookup(provider);
-
         sun.security.jca.ProviderList providers = sun.security.jca.Providers.getFullProviderList();
         sun.security.jca.ProviderList updatedProviders = sun.security.jca.ProviderList.insertAt(providers, provider, position - 1);
         if (providers == updatedProviders) {
@@ -127,7 +125,7 @@ final class Target_sun_security_jca_GetInstance_Tracing {
                             service.getClassName() + " not a " + service.getType());
             // Checkstyle: disallow inconsistent exceptions and errors
         }
-        SecurityProviderRuntimeAccess.traceServiceSelection(service, superClass);
+        SecurityProviderRuntimeAccess.traceServiceSelection(service.getProvider(), superClass);
     }
 }
 
