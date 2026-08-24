@@ -26,6 +26,7 @@
 package com.oracle.svm.hosted.webimage.codegen;
 
 import com.oracle.svm.hosted.webimage.CodeGuestValue;
+import com.oracle.svm.hosted.webimage.IncludeGuestValue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.CharacterCodingException;
@@ -271,8 +272,9 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
         HashSet<String> includedPaths = new HashSet<>();
         codeBuffer.emitNewLine();
         for (HostedType type : getProviders().typeControl().emittedTypes()) {
-            var includes = GuestAnnotationAccess.getAnnotationsByType(type, JS.Code.Include.class, JS.Code.Include.Group.class, JS.Code.Include.Group::value);
-            for (JS.Code.Include include : includes) {
+            var includes = GuestAnnotationAccess.getAnnotationValuesByType(type, JS.Code.Include.class, JS.Code.Include.Group.class);
+            for (var annotationValue : includes) {
+                IncludeGuestValue include = IncludeGuestValue.from(annotationValue);
                 String path = include.value();
                 if (includedPaths.contains(path)) {
                     continue;

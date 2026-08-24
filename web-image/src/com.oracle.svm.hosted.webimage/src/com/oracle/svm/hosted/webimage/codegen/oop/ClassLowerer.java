@@ -42,6 +42,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.webimage.JSResourceGuestValue;
 import com.oracle.svm.hosted.webimage.Labeler;
 import com.oracle.svm.hosted.webimage.codegen.JSCodeGenTool;
 import com.oracle.svm.hosted.webimage.codegen.WebImageTypeControl;
@@ -302,19 +303,15 @@ public class ClassLowerer {
      * Emits a static method on the given type for initializing JS resource, if any are present.
      */
     private static void lowerJSResources(HostedType type, JSCodeGenTool loweringTool) {
-        var requiredJSResources = GuestAnnotationAccess.getAnnotationsByType(type, JSResource.class, JSResource.Group.class, JSResource.Group::value);
+        var requiredJSResources = GuestAnnotationAccess.getAnnotationValuesByType(type, JSResource.class, JSResource.Group.class);
 
-        /*
-         * JavaScriptResource is annotated as @Repeatable(JavaScriptResource.Group.class).
-         * getDeclaredAnnotationsByType() must detect @Repeatable and thus also look for
-         * JavaScriptResource.Group.
-         */
+        /* The metadata lookup must include annotations nested in JSResource.Group. */
         assert !requiredJSResources.isEmpty() ||
-                        !GuestAnnotationAccess.isAnnotationPresent(type, JSResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
+                        !GuestAnnotationAccess.isAnnotationPresent(type, JSResource.Group.class) : "Repeated annotation not detected by metadata lookup";
 
         List<String> resourceNames = new ArrayList<>(requiredJSResources.size());
 
-        requiredJSResources.stream().map(JSResource::value).forEachOrdered(resourceNames::add);
+        requiredJSResources.stream().map(JSResourceGuestValue::from).map(JSResourceGuestValue::value).forEachOrdered(resourceNames::add);
         for (Function<ResolvedJavaType, String[]> resourceProvider : resourceProviders) {
             String[] resources = resourceProvider.apply(type);
             resourceNames.addAll(List.of(resources));

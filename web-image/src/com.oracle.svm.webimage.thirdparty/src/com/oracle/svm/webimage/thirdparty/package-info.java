@@ -25,9 +25,11 @@
 
 @GenerateAnnotationWrapper({
                 JavaScriptBody.class,
+                JavaScriptResource.class,
 })
 package com.oracle.svm.webimage.thirdparty;
 
 import net.java.html.js.JavaScriptBody;
+import net.java.html.js.JavaScriptResource;
 
 import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;

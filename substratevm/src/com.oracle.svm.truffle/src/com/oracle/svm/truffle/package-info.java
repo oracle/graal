@@ -24,9 +24,11 @@
  */
 
 @GenerateAnnotationWrapper({
+                ExportLibrary.class,
                 TruffleBoundary.class,
 })
 package com.oracle.svm.truffle;
 
 import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.library.ExportLibrary;

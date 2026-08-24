@@ -26,13 +26,16 @@
 @GenerateAnnotationWrapper({
                 JS.class,
                 JS.Code.class,
+                JS.Code.Include.class,
                 JS.Import.class,
+                JSResource.class,
                 StackifierVerification.class,
                 WasmExport.class,
 })
 package com.oracle.svm.hosted.webimage;
 
 import org.graalvm.webimage.api.JS;
+import org.graalvm.webimage.api.JSResource;
 
 import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;
 import com.oracle.svm.webimage.annotation.StackifierVerification;

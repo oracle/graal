@@ -100,6 +100,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Double_valueOf = lookupMethod(java_lang_Double, "valueOf", double.class);
     public final ResolvedJavaMethod java_lang_Double_doubleValue = lookupMethod(java_lang_Double, "doubleValue");
 
+    public final ResolvedJavaType java_lang_Void = lookupType(Void.class);
+
     public final ResolvedJavaType java_lang_Enum = lookupType(Enum.class);
     public final ResolvedJavaMethod java_lang_Enum_name = lookupMethod(java_lang_Enum, "name");
 
