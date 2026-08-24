@@ -312,6 +312,32 @@ public final class HostCompilerDirectives {
                  * primitive fields.
                  */
                 boolean nonNull() default true;
+
+                /**
+                 * Marks this field as template state for threaded bytecode handlers. A value of
+                 * {@code N >= 2} creates one handler variant for each field value in the range
+                 * {@code [0, N)}. A value of {@code 0} disables template specialization for this
+                 * field, and {@code 1} is invalid.
+                 * <p>
+                 * Each variant starts with the corresponding field value. Before control transfers
+                 * to the next threaded handler, every control-flow path must assign a known valid
+                 * value or retain the current value. If multiple template fields are updated, their
+                 * values must be resolved through the same control-flow merge.
+                 * <p>
+                 * When threading ends, the current field value is written back to the original
+                 * argument. When template mode is disabled, the field behaves like an ordinary
+                 * expanded field.
+                 * <p>
+                 * The field must be an {@code int} field of a {@link ExpansionKind#VIRTUAL}
+                 * argument.
+                 * <p>
+                 * See the <a href=
+                 * "https://github.com/oracle/graal/blob/master/truffle/docs/OneCompilationPerBytecodeHandler.md#template">
+                 * template handler documentation</a> for examples and additional restrictions.
+                 *
+                 * @since 25.4
+                 */
+                int templateVariable() default 0;
             }
 
             /**

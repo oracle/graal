@@ -64,6 +64,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.PreserveFrameStateNode;
 import jdk.graal.compiler.phases.util.BytecodeHandlerConfig;
 import jdk.graal.compiler.phases.util.BytecodeHandlerConfig.ArgumentInfo;
 import jdk.graal.compiler.phases.util.BytecodeHandlerStubHelper;
@@ -100,6 +101,7 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
     /** True for the default fallback stub that returns to the interpreter dispatch loop. */
     private final boolean isDefault;
     private final ResolvedJavaMethod nextOpcodeMethod;
+    private final int templateIndex;
     /** Declaring type that owns the interpreter. */
     private final ResolvedJavaType interpreterHolder;
     /** Handler configuration that defines the argument expansion. */
@@ -109,13 +111,14 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
 
     public SubstrateBytecodeHandlerStub(SubstrateBytecodeHandlerStubHelper stubHolder, ResolvedJavaType declaringClass, String stubName,
                     ResolvedJavaType interpreterHolder, BytecodeHandlerConfig config, boolean threading, ResolvedJavaMethod nextOpcodeMethod, boolean needSafepoint, boolean isDefault,
-                    ResolvedJavaMethod targetMethod) {
-        super(stubName, true, declaringClass, ResolvedSignature.fromList(config.getArgumentTypes(),
+                    ResolvedJavaMethod targetMethod, int templateIndex) {
+        super(stubName, true, declaringClass, ResolvedSignature.fromList(config.getCalleeParameterTypes(),
                         config.getReturnType()), declaringClass.getDeclaredConstructors(false)[0].getConstantPool());
         this.stubHolder = stubHolder;
         this.threading = threading;
         this.isDefault = isDefault;
         this.nextOpcodeMethod = nextOpcodeMethod;
+        this.templateIndex = templateIndex;
         this.needSafepoint = needSafepoint;
         this.interpreterHolder = interpreterHolder;
         this.config = config;
@@ -128,14 +131,18 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         if (isDefault) {
             Register fallbackReturnRegister = config.hasCopyFromReturnArgument() ? null : getReturnRegister(getRegisterConfig());
-            return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister);
+            return BytecodeHandlerStubHelper.createEmptyStub(kit, config, fallbackReturnRegister, templateIndex);
         }
         StructuredGraph graph = BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod,
-                        () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
+                        index -> stubHolder.getBytecodeHandlers(interpreterHolder, config, index), config, targetMethod, templateIndex,
                         SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
         if (needSafepoint) {
             for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
-                graph.addBeforeFixed(returnNode, graph.add(new SafepointNode()));
+                SafepointNode safepointNode = graph.add(new SafepointNode());
+                graph.addBeforeFixed(returnNode, safepointNode);
+                PreserveFrameStateNode preserveFrameStateNode = graph.add(new PreserveFrameStateNode());
+                preserveFrameStateNode.setStateAfter(graph.start().stateAfter().duplicate());
+                graph.addBeforeFixed(safepointNode, preserveFrameStateNode);
             }
         }
         return graph;
@@ -298,26 +305,39 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         }
     }
 
-    private AssignedLocation[] allocateArgumentLocations(RegisterConfig registerConfig, Register reservedReturnRegister) {
-        List<ArgumentInfo> argumentInfos = config.getArgumentInfos();
-        AssignedLocation[] argumentLocations = new AssignedLocation[argumentInfos.size()];
+    private record StubLocations(AssignedLocation[] calleeParameters, AssignedLocation[] additionalReturns, JavaKind[] additionalReturnKinds) {
+    }
+
+    private StubLocations allocateLocations(RegisterConfig registerConfig, Register reservedReturnRegister) {
+        List<ArgumentInfo> calleeParameterInfos = config.getCalleeParameterInfos();
+        AssignedLocation[] calleeParameters = new AssignedLocation[calleeParameterInfos.size()];
         AllocatableRegisters allocatableRegisters = AllocatableRegisters.create(registerConfig, config.hasPendingExceptionState(), reservedReturnRegister);
 
         /*
          * Values published as pending exception state must remain available at the throwing call.
          * Allocate them first so they receive the target architecture's preferred locations.
          */
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : calleeParameterInfos) {
             if (argumentInfo.needsPendingExceptionState()) {
-                argumentLocations[argumentInfo.index()] = allocatableRegisters.allocate(argumentInfo.type().getJavaKind());
+                calleeParameters[argumentInfo.index()] = allocatableRegisters.allocate(argumentInfo.type().getJavaKind());
             }
         }
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : calleeParameterInfos) {
             if (!argumentInfo.needsPendingExceptionState()) {
-                argumentLocations[argumentInfo.index()] = allocatableRegisters.allocate(argumentInfo.type().getJavaKind());
+                calleeParameters[argumentInfo.index()] = allocatableRegisters.allocate(argumentInfo.type().getJavaKind());
             }
         }
-        return argumentLocations;
+
+        List<ArgumentInfo> callerReturnInfos = config.getCallerReturnInfos();
+        int additionalReturnCount = callerReturnInfos.size() - calleeParameterInfos.size();
+        AssignedLocation[] additionalReturns = new AssignedLocation[additionalReturnCount];
+        JavaKind[] additionalReturnKinds = new JavaKind[additionalReturnCount];
+        for (int i = 0; i < additionalReturnCount; i++) {
+            JavaKind kind = callerReturnInfos.get(calleeParameterInfos.size() + i).type().getJavaKind();
+            additionalReturns[i] = allocatableRegisters.allocate(kind);
+            additionalReturnKinds[i] = kind;
+        }
+        return new StubLocations(calleeParameters, additionalReturns, additionalReturnKinds);
     }
 
     @Override
@@ -330,13 +350,26 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
          * Without copyFromReturn, the normal platform return register is independent from all
          * bytecode-handler arguments and must not be allocated to one of them.
          */
-        AssignedLocation[] parameters = allocateArgumentLocations(registerConfig, fallbackReturnRegister);
+        StubLocations locations = allocateLocations(registerConfig, fallbackReturnRegister);
+        AssignedLocation[] parameters = locations.calleeParameters();
+        if (!config.getTemplateArgumentInfos().isEmpty()) {
+            Register exceptionRegister = registerConfig.getReturnRegister(JavaKind.Object);
+            for (AssignedLocation parameter : parameters) {
+                GraalError.guarantee(!parameter.assignsToRegister() || !parameter.register().equals(exceptionRegister),
+                                "Template bytecode-handler argument uses exception register %s", exceptionRegister);
+            }
+            for (AssignedLocation additionalReturn : locations.additionalReturns()) {
+                GraalError.guarantee(!additionalReturn.assignsToRegister() || !additionalReturn.register().equals(exceptionRegister),
+                                "Template bytecode-handler return uses exception register %s", exceptionRegister);
+            }
+        }
 
+        List<ArgumentInfo> calleeParameterInfos = config.getCalleeParameterInfos();
         SubstrateCallingConventionArgumentKind[] parameterKinds = new SubstrateCallingConventionArgumentKind[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             // BytecodeHandlerCallSite either preserves the value or returns the updated
             // value in the same argument location
-            parameterKinds[i] = config.isArgumentImmutable(i) ? IMMUTABLE : VALUE_REFERENCE;
+            parameterKinds[i] = calleeParameterInfos.get(i).isImmutable() ? IMMUTABLE : VALUE_REFERENCE;
         }
 
         AssignedLocation[] returnLocations = AssignedLocation.EMPTY_ARRAY;
@@ -350,7 +383,8 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
             }
         }
 
-        return SubstrateCallingConventionType.makeCustom(false, parameters, returnLocations, parameterKinds, false, false);
+        return SubstrateCallingConventionType.makeCustom(false, parameters, returnLocations, parameterKinds,
+                        locations.additionalReturns(), locations.additionalReturnKinds(), false, false, false);
     }
 
     private static final List<AnnotationValue> INJECTED_ANNOTATIONS = List.of(

@@ -72,6 +72,8 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
+import jdk.graal.compiler.nodes.virtual.FieldReadCacheKillNode;
+import jdk.graal.compiler.nodes.virtual.PartiallyOpaqueLoadFieldNode;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
@@ -102,7 +104,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
 
     @Override
     protected boolean processNode(Node node, PEReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
-        if (super.processNode(node, state, effects, lastFixedNode)) {
+        if (super.processNode(node, state, effects, lastFixedNode) && !(node instanceof FieldReadCacheKillNode)) {
             return true;
         }
 
@@ -115,7 +117,11 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         }
 
         boolean deleted = false;
-        if (node instanceof LoadFieldNode loadFieldNode) {
+        if (node instanceof FieldReadCacheKillNode fieldReadCacheKillNode) {
+            deleted = processFieldReadCacheKill(fieldReadCacheKillNode, state);
+        } else if (node instanceof PartiallyOpaqueLoadFieldNode postponedLoad && postponedLoad.canResolve()) {
+            deleted = processLoad(postponedLoad, postponedLoad.object(), new FieldLocationIdentity(postponedLoad.field(), true), -1, postponedLoad.field().getJavaKind(), state, effects);
+        } else if (node instanceof LoadFieldNode loadFieldNode) {
             deleted = processLoadField(loadFieldNode, state, effects);
         } else if (node instanceof FieldAliasNode fieldAliasNode) {
             deleted = processFieldAlias(fieldAliasNode, state);
@@ -275,6 +281,15 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             state.killReadCache();
             return false;
         }
+        if (load.field().isFinal()) {
+            ValueNode receiver = GraphUtil.unproxify(getAlias(load.object()));
+            ValueNode immutableAlias = state.getReadCache(receiver, new FieldLocationIdentity(load.field(), true), -1, load.field().getJavaKind(), this);
+            if (immutableAlias != null) {
+                effects.replaceAtUsages(load, immutableAlias, load);
+                addScalarAlias(load, immutableAlias);
+                return true;
+            }
+        }
         return processLoad(load, load.object(), new FieldLocationIdentity(load.field()), -1, load.field().getJavaKind(), state, effects);
     }
 
@@ -283,10 +298,17 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
      */
     private boolean processFieldAlias(FieldAliasNode fieldAliasNode, PEReadEliminationBlockState state) {
         ValueNode receiver = GraphUtil.unproxify(fieldAliasNode.getReceiver());
-        FieldLocationIdentity locationIdentity = new FieldLocationIdentity(fieldAliasNode.getField());
+        LocationIdentity locationIdentity = fieldAliasNode.getLocationIdentity();
         ValueNode cachedValue = state.getReadCache(receiver, locationIdentity, -1, fieldAliasNode.getField().getJavaKind(), this);
         GraalError.guarantee(cachedValue == null, "FieldAliasNode %s should be inserted at the beginning of the method but there is an existing cached value %s", fieldAliasNode, cachedValue);
         state.addReadCache(receiver, locationIdentity, -1, fieldAliasNode.getField().getJavaKind(), false, fieldAliasNode.getAlias(), this);
+        return false;
+    }
+
+    private boolean processFieldReadCacheKill(FieldReadCacheKillNode node, PEReadEliminationBlockState state) {
+        ValueNode receiver = GraphUtil.unproxify(node.object());
+        state.killReadCache(receiver, node.field());
+        state.addReadCache(receiver, new FieldLocationIdentity(node.field(), true), -1, node.field().getJavaKind(), false, node, this);
         return false;
     }
 

@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.function.Function;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.ReservedRegisters;
@@ -33,8 +34,8 @@ import com.oracle.svm.core.graal.code.PendingExceptionStateHolder;
 import com.oracle.svm.core.graal.code.PendingExceptionStateSupport;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegisterFloatingNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -78,19 +79,19 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Maintains bytecode-handler argument state for generated threaded stubs that unwind by throwing.
- * Threaded stubs pass the next handler arguments through the stub ABI. A normal return lets the
- * caller materialize those updates from the stub's multi-return payload, but an unwind bypasses that
- * path. The caller's exception edge still has to observe the arguments that were current at the
- * throwing handler call.
+ * Maintains bytecode-handler state when generated threaded stubs unwind to Java. On a normal return,
+ * the caller materializes ordinary and template updates from the stub's multi-return payload. An
+ * unwind uses per-thread storage for both kinds of state because it bypasses the normal multi-return
+ * path.
  * <p>
- * The callee side publishes the current stub ABI values, indexed by ABI argument slot, into a
- * per-thread {@link PendingExceptionStateHolder} immediately before rethrowing. The caller side
- * consumes that holder only on exception paths: direct generated-stub exception edges write back
- * mutable virtual-expanded fields, and parser-inserted {@link PendingExceptionStateValueNode}s
- * represent {@code copyFromReturn} local updates until the outline phase can decide whether a
- * particular throwing predecessor is a generated stub. Object slots are cleared after consumption so
- * the thread-local holder does not retain object graphs beyond the exception edge that needed them.
+ * The callee side publishes state into a per-thread {@link PendingExceptionStateHolder}. Ordinary
+ * values and template variables use one logical argument index space, with threaded arguments in the
+ * prefix and template arguments in the suffix. Direct generated-stub exception edges write back
+ * mutable virtual-expanded fields, and parser-inserted
+ * {@link PendingExceptionStateValueNode}s represent {@code copyFromReturn} local updates until the
+ * outline phase can decide whether a particular throwing predecessor is a generated stub. Object
+ * slots are cleared after consumption so the thread-local holder does not retain object graphs
+ * beyond the edge that needed them.
  * <pre>{@code
  * // Callee-side generated stub.
  * try {
@@ -140,8 +141,8 @@ final class SubstrateBytecodeHandlerUnwindPath {
      * snapshot values by stub ABI argument index so caller-side exception edges can recover them
      * without depending on a Java return from the throwing handler.
      */
-    static void writeOnCallee(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] exceptionPathValues) {
-        if (!handlerConfig.hasPendingExceptionState()) {
+    static void writeOnCallee(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode[] exceptionPathValues, ValueNode[] templateValues) {
+        if (!handlerConfig.hasPendingExceptionState() && templateValues.length == 0) {
             return;
         }
         kit.append(new SlowPathBeginNode());
@@ -162,7 +163,7 @@ final class SubstrateBytecodeHandlerUnwindPath {
         ValueNode objectSlots = null;
         ValueNode primitiveSlots = null;
         /* Publish only slots that caller-side exception dispatch may observe after an unwind. */
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : handlerConfig.getCalleeParameterInfos()) {
             if (!argumentInfo.needsPendingExceptionState()) {
                 continue;
             }
@@ -200,6 +201,35 @@ final class SubstrateBytecodeHandlerUnwindPath {
                 store.setStateAfter(stateAfter);
             }
         }
+        if (templateValues.length != 0) {
+            if (primitiveSlots == null) {
+                primitiveSlots = kit.append(LoadFieldNode.create(kit.getAssumptions(), holder, primitiveSlotsField));
+            }
+            writeTemplateValues(handlerConfig, kit, primitiveSlots, templateValues, stateAfter);
+        }
+    }
+
+    private static void writeTemplateValues(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode primitiveSlots, ValueNode[] templateValues, FrameState stateAfter) {
+        GraalError.guarantee(templateValues.length == handlerConfig.getTemplateArgumentInfos().size(), "Invalid template state value count");
+        StructuredGraph graph = kit.getGraph();
+        MetaAccessProvider metaAccess = kit.getMetaAccess();
+        long primitiveArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Long);
+        int primitiveArrayIndexScale = metaAccess.getArrayIndexScale(JavaKind.Long);
+        for (int i = 0; i < templateValues.length; i++) {
+            int slotIndex = handlerConfig.getTemplateArgumentInfos().get(i).index();
+            JavaWriteNode store = new JavaWriteNode(JavaKind.Long,
+                            elementAddress(graph, primitiveSlots, primitiveArrayBaseOffset + (long) slotIndex * primitiveArrayIndexScale),
+                            NamedLocationIdentity.getArrayLocation(JavaKind.Long),
+                            encodePrimitiveValue(graph, templateValues[i], JavaKind.Int),
+                            BarrierType.NONE,
+                            false,
+                            true,
+                            MemoryOrderMode.PLAIN);
+            kit.append(store);
+            if (stateAfter != null) {
+                store.setStateAfter(stateAfter);
+            }
+        }
     }
 
     /**
@@ -208,8 +238,9 @@ final class SubstrateBytecodeHandlerUnwindPath {
      * payload. {@code copyFromReturn} locals are handled separately by processing
      * {@link PendingExceptionStateValueNode}s inserted while parsing exception dispatch.
      */
-    static void readOnCaller(MetaAccessProvider metaAccess, BytecodeHandlerConfig handlerConfig, InvokeWithExceptionNode invoke, ValueNode[] arguments) {
-        if (!handlerConfig.hasPendingExceptionState()) {
+    static void readOnCaller(MetaAccessProvider metaAccess, BytecodeHandlerConfig handlerConfig, InvokeWithExceptionNode invoke, ValueNode[] arguments,
+                    ValueNode[] originalArguments, Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
+        if (!handlerConfig.hasPendingExceptionState() && handlerConfig.getTemplateArgumentInfos().isEmpty()) {
             return;
         }
 
@@ -224,7 +255,7 @@ final class SubstrateBytecodeHandlerUnwindPath {
         ValueNode objectSlots = null;
         ValueNode primitiveSlots = null;
         /* Recover published values and write mutable expanded fields back on the exception edge. */
-        for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : handlerConfig.getCalleeParameterInfos()) {
             if (!argumentInfo.needsPendingExceptionState()) {
                 continue;
             }
@@ -268,6 +299,31 @@ final class SubstrateBytecodeHandlerUnwindPath {
             graph.addAfterFixed(insertAfter, writeBack);
             writeBack.setStateAfter(stateAfter);
             insertAfter = writeBack;
+        }
+        if (!handlerConfig.getTemplateArgumentInfos().isEmpty()) {
+            if (holder == null) {
+                ValueNode threadNode = graph.addOrUniqueWithInputs(new ReadReservedRegisterFloatingNode(ReservedRegisters.singleton().getThreadRegister()));
+                holder = graph.add(createLoadPendingExceptionStateHolder(metaAccess, threadNode));
+                graph.addAfterFixed(insertAfter, holder);
+                insertAfter = holder;
+            }
+            if (primitiveSlots == null) {
+                LoadFieldNode loadPrimitiveSlots = graph.add(LoadFieldNode.create(graph.getAssumptions(), holder, primitiveSlotsField));
+                graph.addAfterFixed(insertAfter, loadPrimitiveSlots);
+                insertAfter = loadPrimitiveSlots;
+                primitiveSlots = loadPrimitiveSlots;
+            }
+            for (int i = 0; i < handlerConfig.getTemplateArgumentInfos().size(); i++) {
+                ArgumentInfo templateVariable = handlerConfig.getTemplateArgumentInfos().get(i);
+                PendingStateRead read = readPrimitivePendingStateSlot(metaAccess, graph, insertAfter, primitiveSlots,
+                                templateVariable.index(), JavaKind.Int, stateAfter);
+                insertAfter = read.last();
+                ValueNode owner = originalArguments[templateVariable.originalIndex()];
+                StoreFieldNode writeBack = graph.add(new StoreFieldNode(owner, fieldMap.apply(templateVariable.field()), read.value()));
+                graph.addAfterFixed(insertAfter, writeBack);
+                writeBack.setStateAfter(stateAfter);
+                insertAfter = writeBack;
+            }
         }
     }
 
@@ -446,14 +502,11 @@ final class SubstrateBytecodeHandlerUnwindPath {
                         true));
         graph.addAfterFixed(insertAfter, read);
         /*
-         * Object pending-state slots are thread-local roots. Clear consumed references so they do not
-         * keep object graphs live until a later exception overwrites this slot.
+         * Object pending-state slots are thread-local roots. Replace consumed references with the
+         * debug sentinel or null so they do not keep object graphs live until a later exception
+         * overwrites this slot.
          */
-        JavaWriteNode clear = graph.add(createClearObjectSlotWrite(metaAccess, graph, slotAddress));
-        graph.addAfterFixed(read, clear);
-        if (stateAfter != null) {
-            clear.setStateAfter(stateAfter);
-        }
+        FixedWithNextNode clear = appendClearObjectSlotWrite(metaAccess, graph, read, slotAddress, stateAfter);
         return new PendingStateRead(read, clear);
     }
 
@@ -507,24 +560,31 @@ final class SubstrateBytecodeHandlerUnwindPath {
         long objectArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Object);
         int objectArrayIndexScale = metaAccess.getArrayIndexScale(JavaKind.Object);
         AddressNode slotAddress = elementAddress(graph, objectSlots, objectArrayBaseOffset + (long) slotIndex * objectArrayIndexScale);
-        JavaWriteNode clear = graph.add(createClearObjectSlotWrite(metaAccess, graph, slotAddress));
-        graph.addAfterFixed(last, clear);
+        appendClearObjectSlotWrite(metaAccess, graph, last, slotAddress, null);
     }
 
-    private static JavaWriteNode createClearObjectSlotWrite(MetaAccessProvider metaAccess, StructuredGraph graph, AddressNode slotAddress) {
-        return new JavaWriteNode(JavaKind.Object,
+    private static FixedWithNextNode appendClearObjectSlotWrite(MetaAccessProvider metaAccess, StructuredGraph graph, FixedWithNextNode insertAfter,
+                    AddressNode slotAddress, FrameState stateAfter) {
+        JavaWriteNode clear = graph.add(new JavaWriteNode(JavaKind.Object,
                         slotAddress,
                         NamedLocationIdentity.getArrayLocation(JavaKind.Object),
                         clearObjectSlotValue(metaAccess, graph),
                         BarrierType.ARRAY,
                         true,
                         true,
-                        MemoryOrderMode.PLAIN);
+                        MemoryOrderMode.PLAIN));
+        graph.addAfterFixed(insertAfter, clear);
+        if (stateAfter != null) {
+            clear.setStateAfter(stateAfter);
+        }
+        return clear;
     }
 
     private static ValueNode clearObjectSlotValue(MetaAccessProvider metaAccess, StructuredGraph graph) {
         if (useSlotDebugSentinel()) {
-            return ConstantNode.forConstant(SubstrateObjectConstant.forObject(PendingExceptionStateSupport.OBJECT_SLOT_SENTINEL), metaAccess, graph);
+            HostedMetaAccess hostedMetaAccess = (HostedMetaAccess) metaAccess;
+            return ConstantNode.forConstant(hostedMetaAccess.getUniverse().getSnippetReflection().forObject(PendingExceptionStateSupport.OBJECT_SLOT_SENTINEL),
+                            metaAccess, graph);
         }
         return ConstantNode.defaultForKind(JavaKind.Object, graph);
     }

@@ -111,6 +111,8 @@ import jdk.graal.compiler.nodes.calc.IntegerMulHighNode;
 import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.ArbitraryValueNode;
+import jdk.graal.compiler.nodes.calc.AssumeIntNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
@@ -139,6 +141,7 @@ import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.extended.CacheWritebackNode;
 import jdk.graal.compiler.nodes.extended.CacheWritebackSyncNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
@@ -146,6 +149,7 @@ import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
+import jdk.graal.compiler.nodes.extended.PreserveFrameStateNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
@@ -195,6 +199,7 @@ import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
 import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
+import jdk.graal.compiler.nodes.virtual.FieldReadCacheKillNode;
 import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
@@ -1950,6 +1955,25 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
+        r.register(new RequiredInlineOnlyInvocationPlugin("killFieldReadCache", Object.class, String.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode fieldNameNode) {
+                GraalError.guarantee(fieldNameNode.isJavaConstant(), "Field name must be a compile-time constant");
+                String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
+                GraalError.guarantee(fieldName != null, "Field name must not be null");
+                ValueNode nonNullObject = b.nullCheckedValue(object);
+                ResolvedJavaType type = StampTool.typeOrNull(nonNullObject);
+                GraalError.guarantee(type != null, "Receiver type must be known for field read cache kill");
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ResolvedJavaField field = helper.getField(type, fieldName);
+                    GraalError.guarantee(!field.isStatic(), "Field read cache kill requires an instance field: %s", field);
+                    GraalError.guarantee(field.isFinal(), "Field read cache kill currently requires a final field: %s", field);
+                    b.add(new FieldReadCacheKillNode(b.getAssumptions(), nonNullObject, field));
+                }
+                return true;
+            }
+        });
+
         r.register(new DeoptimizePlugin(snippetReflection, None, TransferToInterpreter, false, "deoptimize"));
         r.register(new DeoptimizePlugin(snippetReflection, InvalidateReprofile, TransferToInterpreter, false, "deoptimizeAndInvalidate"));
         r.register(new DeoptimizePlugin(snippetReflection, InvalidateRecompile, TransferToInterpreter, false, "deoptimizeAndRecompile"));
@@ -2041,6 +2065,28 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
                 BeginNode begin = b.add(new BeginNode());
                 b.addPush(JavaKind.Long, PiNode.create(n, IntegerStamp.create(64, 0, Long.MAX_VALUE).improveWith(n.stamp(NodeView.DEFAULT)), begin));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("assumeInt", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, new AssumeIntNode(value));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("assumeFloat", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
+                ValueNode rawBits = new AssumeIntNode(value);
+                b.addPush(JavaKind.Float, ReinterpretNode.create(JavaKind.Float, rawBits, NodeView.DEFAULT));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("arbitraryValue", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Long, new ArbitraryValueNode());
                 return true;
             }
         });
@@ -2180,6 +2226,29 @@ public class StandardGraphBuilderPlugins {
                 });
             }
         }
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("anchorValue", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Object, new FixedValueAnchorNode(value));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("anchorValue", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Long, new FixedValueAnchorNode(value));
+                return true;
+            }
+        });
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("preserveFrameStateHere") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new PreserveFrameStateNode());
+                return true;
+            }
+        });
 
         r.register(new RequiredInlineOnlyInvocationPlugin("spillRegisters") {
             @Override
