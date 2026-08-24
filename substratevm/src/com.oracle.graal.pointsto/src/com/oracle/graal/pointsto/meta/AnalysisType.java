@@ -680,7 +680,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         ConcurrentLightHashSet.addElement(this, subtypeReachableNotificationsUpdater, notification);
     }
 
-    public <T> void registerObjectReachableCallback(ObjectReachableCallback<T> callback) {
+    public void registerObjectReachableCallback(JVMCIObjectReachableCallback callback) {
         ConcurrentLightHashSet.addElement(this, objectReachableCallbacksUpdater, callback);
         /* Register the callback with already discovered subtypes too. */
         ConcurrentLightHashSet.forEach(this, SUBTYPES_UPDATER, (AnalysisType subType) -> {
@@ -691,9 +691,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         });
     }
 
-    public <T> void notifyObjectReachable(T object, ScanReason reason) {
+    public void notifyObjectReachable(JavaConstant object, ScanReason reason) {
         ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater,
-                        (ObjectReachableCallback<T> c) -> c.doCallback(universe.getConcurrentAnalysisAccess(), object, reason));
+                        (JVMCIObjectReachableCallback c) -> c.doCallback(universe.getConcurrentAnalysisAccess(), object, reason));
     }
 
     /**
@@ -1160,7 +1160,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         /* Register the object reachability callbacks with the newly discovered subtype. */
         if (!subType.equals(this)) {
             /* Subtypes include this type itself. */
-            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (ObjectReachableCallback<Object> callback) -> subType.registerObjectReachableCallback(callback));
+            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (JVMCIObjectReachableCallback callback) -> subType.registerObjectReachableCallback(callback));
         }
         assert result : "Tried to add a " + subType + " which is already registered";
     }
