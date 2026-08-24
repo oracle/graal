@@ -55,7 +55,6 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.guest.staging.core.c.struct.PinnedObjectField;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
 import com.oracle.svm.hosted.c.NativeCodeContext;
@@ -228,7 +227,7 @@ public class InfoTreeBuilder {
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
         for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
-            if (!AnnotationSubstitutionProcessor.isIncluded(GuestAnnotationAccess.getAnnotationValue(method, TargetElement.class), method.getDeclaringClass(), method)) {
+            if (!AnnotationSubstitutionProcessor.isIncluded(method, method.getDeclaringClass(), method)) {
                 continue;
             }
 

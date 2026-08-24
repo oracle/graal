@@ -285,7 +285,6 @@ import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -1639,7 +1638,7 @@ public class NativeImageGenerator {
             if (!m.isStatic()) {
                 throw UserError.abort("Entry point method %s is not static. Add a static modifier to the method.", m.format("%H.%n"));
             }
-            CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.from(GuestAnnotationAccess.getAnnotationValue(m, CEntryPoint.class));
+            CEntryPointGuestValue cEntryPoint = CEntryPointGuestValue.get(m);
             if (GuestAccess.get().callBooleanSupplier(cEntryPoint.include())) {
                 entryPoints.put(m, CEntryPointData.create(m));
             }
