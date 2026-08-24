@@ -24,7 +24,64 @@
  */
 
 @Platforms(Platform.HOSTED_ONLY.class)
+@GenerateAnnotationWrapper({
+                CContext.class,
+                CEntryPointBuiltinImplementation.class,
+                CEnum.class,
+                CEnumConstant.class,
+                CFunctionOptions.class,
+                CHeader.class,
+                CLibrary.class,
+                CPointerTo.class,
+                CStruct.class,
+                CTypedef.class,
+                Contended.class,
+                Delete.class,
+                DeoptStub.class,
+                ExcludeFromReferenceMap.class,
+                Hybrid.class,
+                InjectAccessors.class,
+                LayeredFieldValue.class,
+                LibCSpecific.class,
+                NeverInlineTrivial.class,
+                PodFactory.class,
+                RawPointerTo.class,
+                RawStructure.class,
+                RestrictHeapAccess.class,
+                SuppressSVMWarnings.class,
+                UnknownObjectField.class,
+                UnknownPrimitiveField.class,
+})
 package com.oracle.svm.hosted;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.CHeader;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumConstant;
+import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.type.CTypedef;
+
+import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;
+import com.oracle.svm.core.NeverInlineTrivial;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.c.libc.LibCSpecific;
+import com.oracle.svm.core.deopt.Deoptimizer.DeoptStub;
+import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
+import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
+import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.core.layered.LayeredFieldValue;
+import com.oracle.svm.guest.staging.c.function.CEntryPointBuiltins.CEntryPointBuiltinImplementation;
+import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
+
+import jdk.graal.compiler.core.common.SuppressSVMWarnings;
+import jdk.internal.vm.annotation.Contended;
