@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.codegen;
 
+import com.oracle.svm.hosted.webimage.CodeGuestValue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.CharacterCodingException;
@@ -290,7 +291,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
                     throw UserError.abort(e, "Resource at '%s' for inclusion using @JS.Code.Include on %s has invalid encoding", path, type);
                 }
             }
-            var code = GuestAnnotationAccess.getAnnotation(type, JS.Code.class);
+            var code = CodeGuestValue.get(type);
             if (code != null) {
                 String titleComment = "// Class file: " + type.toClassName();
                 lowerJavaScriptCode(codeBuffer, titleComment, code.value());

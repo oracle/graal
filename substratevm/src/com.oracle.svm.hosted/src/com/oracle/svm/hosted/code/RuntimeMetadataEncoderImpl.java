@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.svm.hosted.DeleteGuestValue;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_FLAGS_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
@@ -80,7 +81,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
@@ -122,7 +122,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.annotation.TypeAnnotationValue;
@@ -433,7 +432,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         Field signatureField = ReflectionDataBuilder.getGenericSignatureDeclaration(analysisField);
         String signature = getSignature(signatureField != null ? signatureField : reflectField);
         int offset = hostedField.wrapped.isUnsafeAccessed() ? hostedField.getOffset() : SharedField.LOC_UNINITIALIZED;
-        Delete deleteAnnotation = GuestAnnotationAccess.getAnnotation(hostedField, Delete.class);
+        DeleteGuestValue deleteAnnotation = DeleteGuestValue.get(hostedField);
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = conditionalReflectField.getDynamicAccessMetadata();
         /* Fill encoders with the necessary values. */

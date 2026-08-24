@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import com.oracle.svm.hosted.LayeredFieldValueGuestValue;
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.hosted.imagelayer.LayeredFieldValueTransformerSupport.LayeredCallbacks;
@@ -43,7 +44,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layered.LayeredFieldValue;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -58,7 +58,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
@@ -145,7 +144,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
                 var aField = loader.getAnalysisFieldForBaseLayerId(fieldId);
                 var proxy = fieldToLayeredTransformer.get(aField);
                 if (proxy == null) {
-                    LayeredFieldValue layeredFieldValue = GuestAnnotationAccess.getAnnotation(aField, LayeredFieldValue.class);
+                    LayeredFieldValueGuestValue layeredFieldValue = LayeredFieldValueGuestValue.get(aField);
                     if (layeredFieldValue != null) {
                         proxy = createTransformer(aField, layeredFieldValue, Set.copyOf(loader.getUpdatableFieldReceiverIds(fieldId)));
                     }
@@ -227,7 +226,7 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
         }
     }
 
-    public LayeredFieldValueTransformerImpl createTransformer(AnalysisField aField, LayeredFieldValue layeredFieldValue) {
+    public LayeredFieldValueTransformerImpl createTransformer(AnalysisField aField, LayeredFieldValueGuestValue layeredFieldValue) {
         var result = fieldToLayeredTransformer.get(aField);
         if (result != null) {
             return result;
@@ -245,9 +244,9 @@ public class LayeredFieldValueTransformerSupport implements InternalFeature {
         return result;
     }
 
-    private LayeredFieldValueTransformerImpl createTransformer(AnalysisField aField, LayeredFieldValue layeredFieldValue, Set<Integer> delayedValueReceivers) {
+    private LayeredFieldValueTransformerImpl createTransformer(AnalysisField aField, LayeredFieldValueGuestValue layeredFieldValue, Set<Integer> delayedValueReceivers) {
         return fieldToLayeredTransformer.computeIfAbsent(aField, _ -> {
-            var transformer = JVMCIReflectionUtil.newInstance(GuestAccess.get().lookupType(layeredFieldValue.transformer()));
+            var transformer = JVMCIReflectionUtil.newInstance(layeredFieldValue.transformer());
             return new LayeredFieldValueTransformerImpl(aField, transformer, delayedValueReceivers);
         });
     }

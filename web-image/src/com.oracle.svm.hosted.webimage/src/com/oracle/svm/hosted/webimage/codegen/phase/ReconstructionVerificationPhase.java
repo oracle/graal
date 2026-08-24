@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.codegen.phase;
 
+import com.oracle.svm.hosted.webimage.StackifierVerificationGuestValue;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.ReconstructionData;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.ScheduleWithReconstructionResult;
 import com.oracle.svm.hosted.webimage.codegen.reconstruction.stackifier.StackifierData;
@@ -55,7 +56,7 @@ public class ReconstructionVerificationPhase extends BasePhase<CoreProviders> {
      * @param providers providers
      */
     private static void verifyStackifier(StructuredGraph g, ResolvedJavaMethod method, StackifierData stackData, CoreProviders providers) {
-        StackifierVerification annot = GuestAnnotationAccess.getAnnotation(method, StackifierVerification.class);
+        StackifierVerificationGuestValue annot = StackifierVerificationGuestValue.get(method);
         if (stackData.getNrOfLabeledBlocks() != annot.expLabeledBlocks() ||
                         stackData.getNrThenScopes() != annot.expThenScopes() ||
                         stackData.getNrElseScopes() != annot.expElseScopes() ||

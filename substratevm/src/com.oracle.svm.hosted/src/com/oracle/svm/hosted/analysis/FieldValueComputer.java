@@ -27,12 +27,14 @@ package com.oracle.svm.hosted.analysis;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 public final class FieldValueComputer {
     private final BooleanSupplier availability;
-    private final List<Class<?>> types;
+    private final List<ResolvedJavaType> types;
     private final boolean canBeNull;
 
-    public FieldValueComputer(BooleanSupplier availability, List<Class<?>> types, boolean canBeNull) {
+    public FieldValueComputer(BooleanSupplier availability, List<ResolvedJavaType> types, boolean canBeNull) {
         this.availability = availability;
         this.types = types;
         this.canBeNull = canBeNull;
@@ -42,7 +44,7 @@ public final class FieldValueComputer {
         return availability.getAsBoolean();
     }
 
-    public List<Class<?>> types() {
+    public List<ResolvedJavaType> types() {
         return types;
     }
 

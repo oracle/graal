@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import com.oracle.svm.hosted.ExcludeFromReferenceMapGuestValue;
+import com.oracle.svm.hosted.ContendedGuestValue;
 import java.io.Serializable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -71,7 +73,6 @@ import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
@@ -106,8 +107,8 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -589,7 +590,7 @@ public class UniverseBuilder {
          */
         Object uncontendedSentinel = new Object();
         Object unannotatedGroup = GuestAnnotationAccess.isAnnotationPresent(clazz, Contended.class) ? new Object() : uncontendedSentinel;
-        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(GuestAnnotationAccess.getAnnotation(field, Contended.class))
+        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(ContendedGuestValue.get(field))
                         .map(a -> "".equals(a.value()) ? new Object() : a.value())
                         .orElse(unannotatedGroup);
         Map<Object, ArrayList<HostedField>> contentionGroups = rawFields.stream()
@@ -1065,9 +1066,9 @@ public class UniverseBuilder {
     }
 
     private static boolean excludeFromReferenceMap(HostedField field) {
-        ExcludeFromReferenceMap annotation = GuestAnnotationAccess.getAnnotation(field, ExcludeFromReferenceMap.class);
+        ExcludeFromReferenceMapGuestValue annotation = ExcludeFromReferenceMapGuestValue.get(field);
         if (annotation != null) {
-            return ReflectionUtil.newInstance(annotation.onlyIf()).getAsBoolean();
+            return GuestAccess.get().callBooleanSupplier(annotation.onlyIf());
         }
         return false;
     }

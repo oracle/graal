@@ -675,7 +675,7 @@ public class TruffleFeature implements InternalFeature {
         if (method == null) {
             return false;
         }
-        TruffleBoundary truffleBoundary = GuestAnnotationAccess.getAnnotation(method, TruffleBoundary.class);
+        TruffleBoundaryGuestValue truffleBoundary = TruffleBoundaryGuestValue.get(method);
         return truffleBoundary != null && truffleBoundary.transferToInterpreterOnException();
     }
 
@@ -1172,7 +1172,7 @@ public class TruffleFeature implements InternalFeature {
         int calleeCount = 0;
         for (RuntimeCompiledMethod runtimeCompiledMethod : treeInfo.runtimeCompilations()) {
             for (ResolvedJavaMethod targetMethod : runtimeCompiledMethod.getInvokeTargets()) {
-                TruffleBoundary truffleBoundary = GuestAnnotationAccess.getAnnotation(targetMethod, TruffleBoundary.class);
+                TruffleBoundaryGuestValue truffleBoundary = TruffleBoundaryGuestValue.get(targetMethod);
                 if (truffleBoundary != null) {
                     ++callSiteCount;
                     if (foundBoundaries.contains(targetMethod)) {

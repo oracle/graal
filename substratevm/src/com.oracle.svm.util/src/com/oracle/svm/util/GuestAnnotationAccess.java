@@ -222,9 +222,11 @@ public final class GuestAnnotationAccess {
      * Gets the annotation of type {@code annotationType} from {@code element} if such an annotation
      * is present, else null.
      * <p>
-     * This is a compatibility bridge for callers that still materialize builder annotations from
-     * guest metadata. New code should consume {@link AnnotationValue} or a specialized guest
-     * annotation DTO instead. GR-78020 tracks migrating existing callers and removing this method.
+     * This method is reserved for compiler code shared between image building and the Crema or
+     * Ristretto runtime compiler paths. At image build time, it materializes a builder annotation
+     * from guest metadata; at image runtime, it performs a same-context lookup on
+     * {@link RuntimeAnnotated} JVMCI elements. Hosted-only code must consume {@link AnnotationValue}
+     * or a specialized guest annotation DTO instead.
      */
     public static <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
         // Checkstyle: allow direct annotation access

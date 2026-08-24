@@ -29,13 +29,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.word.WordBase;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.analysis.FieldValueComputer;
+import com.oracle.svm.util.GuestAccess;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CustomTypeFieldHandler {
     private final BigBang bb;
@@ -75,14 +76,15 @@ public final class CustomTypeFieldHandler {
         }
     }
 
-    private List<AnalysisType> transformTypes(AnalysisField field, List<Class<?>> types) {
+    private List<AnalysisType> transformTypes(AnalysisField field, List<ResolvedJavaType> types) {
         List<AnalysisType> customTypes = new ArrayList<>();
         AnalysisType declaredType = field.getType();
+        AnalysisType wordBaseType = metaAccess.getUniverse().lookup(GuestAccess.elements().WordBase);
 
-        for (Class<?> customType : types) {
-            AnalysisType aCustomType = metaAccess.lookupJavaType(customType);
+        for (ResolvedJavaType customType : types) {
+            AnalysisType aCustomType = customType instanceof AnalysisType analysisType ? analysisType : metaAccess.getUniverse().lookup(customType);
 
-            assert !WordBase.class.isAssignableFrom(customType) : "Custom type must not be a subtype of WordBase: field: " + field + " | declared type: " + declaredType +
+            assert !wordBaseType.isAssignableFrom(aCustomType) : "Custom type must not be a subtype of WordBase: field: " + field + " | declared type: " + declaredType +
                             " | custom type: " + customType;
             assert declaredType.isAssignableFrom(aCustomType) : "Custom type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
                             " | custom type: " + customType;

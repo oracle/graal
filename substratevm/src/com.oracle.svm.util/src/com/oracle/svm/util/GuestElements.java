@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
@@ -189,6 +190,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType FieldValueTransformer = lookupType(FieldValueTransformer.class);
     public final ResolvedJavaMethod FieldValueTransformer_transform = lookupMethod(FieldValueTransformer, "transform", Object.class, Object.class);
     public final ResolvedJavaMethod FieldValueTransformer_isAvailable = lookupMethod(FieldValueTransformer, "isAvailable");
+
+    public final ResolvedJavaType WordBase = lookupType(WordBase.class);
 
     public final ResolvedJavaType ImageSingletons = lookupType(ImageSingletons.class);
     public final ResolvedJavaMethod ImageSingletons_add = lookupMethod(ImageSingletons, "add", Class.class, Object.class);

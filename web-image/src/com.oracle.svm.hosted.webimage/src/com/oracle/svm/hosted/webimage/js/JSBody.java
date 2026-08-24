@@ -28,6 +28,8 @@ package com.oracle.svm.hosted.webimage.js;
 import java.util.Arrays;
 
 import org.graalvm.webimage.api.JS;
+
+import com.oracle.svm.hosted.webimage.JSGuestValue;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.util.UserError;
@@ -54,8 +56,9 @@ public sealed interface JSBody extends SingleMemoryKill, StateSplit, FixedNodeIn
             this.body = body;
         }
 
-        public JSCode(JS js, ResolvedJavaMethod m) {
-            this(getParameterNames(js.args(), m), js.value());
+        /** Creates JavaScript code from {@code js}, inferring unspecified argument names from {@code method}. */
+        public JSCode(JSGuestValue js, ResolvedJavaMethod method) {
+            this(getParameterNames(js.args().toArray(String[]::new), method), js.value());
         }
 
         private static String[] getParameterNames(String[] explicitNames, ResolvedJavaMethod m) {

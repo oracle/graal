@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.SubstrateForeignCallTargetGuestValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
@@ -55,7 +55,7 @@ public @interface StubCallingConvention {
         public static boolean hasStubCallingConvention(ResolvedJavaMethod method) {
             boolean result = false;
             if (CalleeSavedRegisters.supportedByPlatform()) {
-                SubstrateForeignCallTarget foreignCallTargetAnnotation = GuestAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
+                SubstrateForeignCallTargetGuestValue foreignCallTargetAnnotation = SubstrateForeignCallTargetGuestValue.get(method);
                 if (foreignCallTargetAnnotation != null && foreignCallTargetAnnotation.stubCallingConvention()) {
                     result = true;
                 } else {

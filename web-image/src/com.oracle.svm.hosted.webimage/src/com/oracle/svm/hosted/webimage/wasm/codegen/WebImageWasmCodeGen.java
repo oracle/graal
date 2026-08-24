@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.wasm.codegen;
 
+import com.oracle.svm.hosted.webimage.WasmExportGuestValue;
 import static com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys.ENTIRE_IMAGE_SIZE;
 import static com.oracle.svm.hosted.webimage.metrickeys.ImageBreakdownMetricKeys.WASM_IMAGE_SIZE;
 import static com.oracle.svm.hosted.webimage.metrickeys.UniverseMetricKeys.EMITTED_METHODS;
@@ -280,7 +281,7 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
 
         for (HostedMethod entryPoint : hostedEntryPoints) {
             if (GuestAnnotationAccess.isAnnotationPresent(entryPoint, WasmExport.class)) {
-                WasmExport annotation = GuestAnnotationAccess.getAnnotation(entryPoint, WasmExport.class);
+                WasmExportGuestValue annotation = WasmExportGuestValue.get(entryPoint);
                 module.addFunctionExport(getProviders().idFactory().forMethod(entryPoint), annotation.value(), annotation.comment().isEmpty() ? null : annotation.comment());
             }
 

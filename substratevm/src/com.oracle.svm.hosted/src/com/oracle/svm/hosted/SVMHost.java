@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word.Operation;
@@ -1272,7 +1271,7 @@ public class SVMHost extends HostVM {
          * Methods from a CLibrary that is not included in the static libraries of the image should
          * not be included.
          */
-        CLibrary cLibrary = nativeLibraries.getCLibrary(method);
+        CLibraryGuestValue cLibrary = nativeLibraries.getCLibrary(method);
         if (cLibrary != null && allStaticLibNames.stream().noneMatch(lib -> lib.toString().contains(cLibrary.value()))) {
             return false;
         }
@@ -1432,8 +1431,9 @@ public class SVMHost extends HostVM {
         if (!callee.canBeInlined()) {
             return true;
         }
-        if (GuestAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
-            Class<?>[] onlyWith = GuestAnnotationAccess.getAnnotation(callee, NeverInlineTrivial.class).onlyWith();
+        NeverInlineTrivialGuestValue neverInlineTrivial = NeverInlineTrivialGuestValue.get(callee);
+        if (neverInlineTrivial != null) {
+            List<ResolvedJavaType> onlyWith = neverInlineTrivial.onlyWith();
             if (shouldEvaluateNeverInlineTrivialOnlyWith(onlyWith)) {
                 return evaluateOnlyWith(onlyWith, callee.toString(), null);
             }
@@ -1450,8 +1450,8 @@ public class SVMHost extends HostVM {
         return SubstrateOptions.NeverInlineTrivial.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(callee));
     }
 
-    private static boolean shouldEvaluateNeverInlineTrivialOnlyWith(Class<?>[] onlyWith) {
-        return onlyWith.length != 1 || onlyWith[0] != NeverInlineTrivial.NeverInlined.class;
+    private static boolean shouldEvaluateNeverInlineTrivialOnlyWith(List<ResolvedJavaType> onlyWith) {
+        return onlyWith.size() != 1 || !onlyWith.getFirst().equals(GuestAccess.get().lookupType(NeverInlineTrivial.NeverInlined.class));
     }
 
     public static boolean evaluateOnlyWith(Class<?>[] onlyWith, String context, Class<?> originalClass) {
@@ -1489,8 +1489,9 @@ public class SVMHost extends HostVM {
             if (guestAccess.elements.java_util_function_BooleanSupplier.isAssignableFrom(onlyWithType)) {
                 onlyWithResult = guestAccess.callBooleanSupplier(onlyWithType);
             } else if (guestAccess.elements.java_util_function_Predicate.isAssignableFrom(onlyWithType)) {
-                onlyWithResult = guestAccess.callPredicate(onlyWithType,
-                                guestAccess.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(originalType)));
+                JavaConstant originalClass = originalType == null ? JavaConstant.NULL_POINTER
+                                : guestAccess.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(originalType));
+                onlyWithResult = guestAccess.callPredicate(onlyWithType, originalClass);
             } else {
                 throw UserError.abort("Class specified as onlyWith for %s does not implement %s or %s", context,
                                 BooleanSupplier.class.getSimpleName(), Predicate.class.getSimpleName());

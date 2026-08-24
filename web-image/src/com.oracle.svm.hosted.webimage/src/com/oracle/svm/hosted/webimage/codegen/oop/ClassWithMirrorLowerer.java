@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.codegen.oop;
 
+import com.oracle.svm.hosted.webimage.ImportGuestValue;
 import static com.oracle.svm.hosted.webimage.codegen.RuntimeConstants.RUNTIME_SYMBOL;
 
 import java.util.ArrayList;
@@ -457,7 +458,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
     }
 
     private static String importedName(HostedType type) {
-        String importedName = GuestAnnotationAccess.getAnnotation(type, JS.Import.class).value();
+        String importedName = ImportGuestValue.get(type).value();
         return importedName.equals(UNSPECIFIED_IMPORTED_NAME_VALUE) ? computeImportedName(type) : importedName;
     }
 

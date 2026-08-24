@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import com.oracle.svm.hosted.PodFactoryGuestValue;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,8 +107,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         }
 
         AnalysisType factoryType = method.getDeclaringClass();
-        PodFactory annotation = GuestAnnotationAccess.getAnnotation(factoryType, PodFactory.class);
-        AnalysisType podConcreteType = kit.getMetaAccess().lookupJavaType(annotation.podClass());
+        PodFactoryGuestValue annotation = PodFactoryGuestValue.get(factoryType);
+        AnalysisType podConcreteType = kit.getMetaAccess().getUniverse().lookup(annotation.podClass());
         AnalysisMethod targetCtor = findMatchingConstructor(method, podConcreteType.getSuperclass());
 
         /*

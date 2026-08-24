@@ -83,8 +83,8 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
 
     public JSBodyStubMethod(ResolvedJavaMethod original) {
         super(original);
-        JavaScriptBody jsb = GuestAnnotationAccess.getAnnotation(original, JavaScriptBody.class);
-        this.jsCode = new JSBody.JSCode(jsb.args(), jsb.body());
+        JavaScriptBodyGuestValue jsb = JavaScriptBodyGuestValue.get(original);
+        this.jsCode = new JSBody.JSCode(jsb.args().toArray(String[]::new), jsb.body());
         this.isJavaCall = jsb.javacall();
         JSIntrinsifyFile.FileData data = new JSIntrinsifyFile.FileData(original.getName(), jsCode.getBody());
         if (isJavaCall) {

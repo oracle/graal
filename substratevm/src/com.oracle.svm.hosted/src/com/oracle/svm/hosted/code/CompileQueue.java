@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.svm.hosted.RestrictHeapAccessGuestValue;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
 import java.io.File;
@@ -1030,7 +1031,7 @@ public class CompileQueue {
          * to @Uninterruptible or mark them as @NeverInline, so that no-allocation does not need any
          * more inlining restrictions and this code can be removed.
          */
-        RestrictHeapAccess annotation = GuestAnnotationAccess.getAnnotation(method, RestrictHeapAccess.class);
+        RestrictHeapAccessGuestValue annotation = RestrictHeapAccessGuestValue.get(method);
         return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
     }
 
