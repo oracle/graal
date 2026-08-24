@@ -38,9 +38,11 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -553,6 +555,16 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
     public ValueNode getCacheEntry(CacheEntry<?> identifier) {
         return readCache.get(identifier);
+    }
+
+    public void killReadCache(ValueNode object, ResolvedJavaField field) {
+        Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
+        while (iterator.hasNext()) {
+            CacheEntry<?> entry = iterator.next();
+            if (entry.object == object && entry.getIdentity() instanceof FieldLocationIdentity fieldIdentity && fieldIdentity.getField().equals(field)) {
+                iterator.remove();
+            }
+        }
     }
 
     /**

@@ -61,12 +61,13 @@ public final class FieldAliasNode extends FixedWithNextNode implements MemoryAcc
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
-    public FieldAliasNode(ValueNode receiver, ResolvedJavaField field, ValueNode aliasValue) {
+    public FieldAliasNode(ValueNode receiver, ResolvedJavaField field, ValueNode aliasValue, boolean immutable) {
         super(TYPE, StampFactory.forVoid());
+        assert !immutable || field.isFinal() : "immutable fields must also be final";
         this.receiver = receiver;
         this.field = field;
         this.aliasValue = aliasValue;
-        this.location = new FieldLocationIdentity(field);
+        this.location = new FieldLocationIdentity(field, immutable);
     }
 
     public ResolvedJavaField getField() {

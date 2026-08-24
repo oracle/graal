@@ -960,6 +960,8 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     public class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
+        private AllocatableValue[] callerReturnLocations = AllocatableValue.NONE;
+
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
         }
@@ -1023,7 +1025,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             }
 
             Value[] values = super.visitInvokeArguments(invokeCc, arguments, callTarget);
-            SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
+            SubstrateCallingConvention convention = (SubstrateCallingConvention) invokeCc;
+            callerReturnLocations = convention.getAdditionalReturnLocations();
+            SubstrateCallingConventionType type = (SubstrateCallingConventionType) convention.getType();
 
             if (type.usesReturnBuffer()) {
                 /*
@@ -1092,6 +1096,16 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             return assignedLocation.register().asValue(kind);
         }
 
+        private Value[] getCallerReturns(SubstrateCallingConventionType callingConventionType, Value result, Value[] parameters) {
+            Value[] parameterReturns = callingConventionType.getAdditionalReturns(result, parameters);
+            if (callerReturnLocations.length == 0) {
+                return parameterReturns;
+            }
+            Value[] callerReturns = Arrays.copyOf(parameterReturns, parameterReturns.length + callerReturnLocations.length);
+            System.arraycopy(callerReturnLocations, 0, callerReturns, parameterReturns.length, callerReturnLocations.length);
+            return callerReturns;
+        }
+
         @Override
         protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
             var cc = (SubstrateCallingConventionType) callTarget.callType();
@@ -1131,7 +1145,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             if (cc.customABI()) {
                 GraalError.guarantee(temps.length == 0, "existing temps");
                 actualTemps = cc.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters());
-                additionalReturns = cc.getAdditionalReturns(result, parameters);
+                additionalReturns = getCallerReturns(cc, result, parameters);
             }
 
             append(createDirectCallOp(callTarget, targetMethod, result, parameters, actualTemps, additionalReturns, callState));
@@ -1147,13 +1161,13 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         @Override
         protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             boolean hasHiddenArgument = callTarget instanceof SubstrateIndirectCallTargetNode substrateIndirectCallTargetNode && substrateIndirectCallTargetNode.getHiddenArgument() != null;
-            boolean isNativeABI = ((SubstrateCallingConventionType) callTarget.callType()).nativeABI();
+            boolean unknownNativeABI = ((SubstrateCallingConventionType) callTarget.callType()).unknownNativeABI();
 
             // The register allocator cannot handle variables at call sites, need a fixed register.
             // Do not use RAX for C calls, it contains the number of XMM registers for varargs.
             // RAX can also be used for the hidden argument (non-native ABI only).
             Register targetAddressRegister = AMD64.rax;
-            if (hasHiddenArgument || isNativeABI) {
+            if (hasHiddenArgument || unknownNativeABI) {
                 targetAddressRegister = AMD64.r10;
             }
             AllocatableValue targetAddress = targetAddressRegister.asValue(SubstrateTarget.getWordStamp().getLIRKind(getLIRGeneratorTool().getLIRKindTool()));
@@ -1161,12 +1175,21 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
 
-            Value[] multipleResults = new Value[0];
+            Value[] actualTemps = temps;
+            Value[] multipleResults = Value.NO_VALUES;
             var callingConventionType = (SubstrateCallingConventionType) callTarget.callType();
-            if (callingConventionType.customABI() && callingConventionType.usesReturnBuffer()) {
-                multipleResults = Arrays.stream(callingConventionType.returnSaving)
-                                .map(SubstrateAMD64NodeLIRBuilder::asReturnedValue)
-                                .toList().toArray(new Value[0]);
+            if (callingConventionType.customABI()) {
+                if (callingConventionType.usesReturnBuffer()) {
+                    multipleResults = Arrays.stream(callingConventionType.returnSaving)
+                                    .map(SubstrateAMD64NodeLIRBuilder::asReturnedValue)
+                                    .toList().toArray(new Value[0]);
+                } else {
+                    GraalError.guarantee(temps.length == 0, "existing temps");
+                    actualTemps = Arrays.stream(callingConventionType.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters()))
+                                    .filter(value -> !asRegister(value).equals(asRegister(targetAddress)))
+                                    .toArray(Value[]::new);
+                    multipleResults = getCallerReturns(callingConventionType, result, parameters);
+                }
             }
 
             Value hiddenArgument = Value.ILLEGAL;
@@ -1175,7 +1198,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 hiddenArgument = HIDDEN_ARGUMENT_REGISTER.asValue(LIRKind.value(AMD64Kind.QWORD));
             }
 
-            append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState,
+            append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, actualTemps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
                             getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget), multipleResults, callingConventionType, hiddenArgument));
         }

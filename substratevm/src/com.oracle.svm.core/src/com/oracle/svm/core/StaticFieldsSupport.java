@@ -183,6 +183,11 @@ public final class StaticFieldsSupport {
         return StaticFieldBaseProxyNode.staticFieldBaseProxyNode(MultiLayeredStaticFieldsBase.forLayer(layerNum).getPrimitiveFields());
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Object staticFieldBaseProxy(Object staticFields) {
+        return StaticFieldBaseProxyNode.staticFieldBaseProxyNode(staticFields);
+    }
+
     public static FloatingNode createStaticFieldBaseNode(ResolvedJavaField field) {
         if (field instanceof SharedField sField) {
             assert sField.getStaticFieldBaseForRuntimeLoadedClass() == null : "Static field support with static field base should be handled in lowering providers";
@@ -214,7 +219,6 @@ public final class StaticFieldsSupport {
          */
         protected StaticFieldBaseProxyNode(ValueNode staticFieldsArray) {
             super(TYPE, StampFactory.objectNonNull());
-            assert ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.useRistretto();
             this.staticFieldsArray = staticFieldsArray;
         }
 

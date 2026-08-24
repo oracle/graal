@@ -42,6 +42,7 @@ import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadEliminationBlockState> {
 
@@ -181,7 +182,12 @@ public final class PEReadEliminationBlockState extends PartialEscapeBlockState<P
     }
 
     public void killReadCache() {
-        readCache.clear();
+        Iterator<ReadCacheEntry> iterator = readCache.getKeys().iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().identity.isMutable()) {
+                iterator.remove();
+            }
+        }
     }
 
     public void killReadCache(LocationIdentity identity, int index) {
@@ -190,6 +196,16 @@ public final class PEReadEliminationBlockState extends PartialEscapeBlockState<P
             ReadCacheEntry entry = iter.next();
             if (entry.identity.equals(identity) && (index == -1 || entry.index == -1 || index == entry.index || entry.overflowAccess)) {
                 iter.remove();
+            }
+        }
+    }
+
+    public void killReadCache(ValueNode object, ResolvedJavaField field) {
+        Iterator<ReadCacheEntry> iterator = readCache.getKeys().iterator();
+        while (iterator.hasNext()) {
+            ReadCacheEntry entry = iterator.next();
+            if (entry.object == object && entry.identity instanceof FieldLocationIdentity fieldIdentity && fieldIdentity.getField().equals(field)) {
+                iterator.remove();
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package jdk.graal.compiler.api.directives.test;
 
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Value;
+import org.junit.Assert;
+import org.junit.Test;
 
-public interface SubstrateLIRGenerator extends LIRGeneratorTool {
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.ArbitraryValueNode;
 
-    @Override
-    default AllocatableValue getAdditionalReturnLocation(CallingConvention callingConvention, int index) {
-        return ((SubstrateCallingConvention) callingConvention).getAdditionalReturnLocation(index);
+public class ArbitraryValueDirectiveTest extends GraalCompilerTest {
+
+    public static long snippet(long value) {
+        return GraalDirectives.arbitraryValue(value);
     }
 
-    void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters);
+    @Test
+    public void testArbitraryValue() {
+        test("snippet", 42L);
+    }
 
-    void emitDeadEnd();
-
-    void emitVerificationMarker(Object marker);
-
-    void emitInstructionSynchronizationBarrier();
-
-    void emitExitMethodAddressResolution(Value ip);
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        Assert.assertEquals(1, graph.getNodes().filter(ArbitraryValueNode.class).count());
+        ArbitraryValueNode arbitraryValue = graph.getNodes().filter(ArbitraryValueNode.class).first();
+        Assert.assertTrue(arbitraryValue.inputs().isEmpty());
+    }
 }

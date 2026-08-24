@@ -1864,6 +1864,7 @@ suite = {
                 ],
                 "java.base" : [
                     "jdk.internal.misc", # Unsafe
+                    "jdk.internal.vm.annotation",
                 ],
             },
             "checkstyleVersion" : "10.21.0",
