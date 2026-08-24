@@ -30,6 +30,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaMethod;
@@ -48,7 +53,7 @@ public final class JNIAccessibleMethodDescriptor {
     public static JNIAccessibleMethodDescriptor of(JavaMethod method) {
         String sig = method.getSignature().toMethodDescriptor();
         assert !sig.contains(".") : "Malformed signature (needs to use '/' as package separator)";
-        return new JNIAccessibleMethodDescriptor(method.getName(), sig);
+        return new JNIAccessibleMethodDescriptor((CharSequence) method.getName(), sig);
     }
 
     public static JNIAccessibleMethodDescriptor of(Executable method) {
@@ -70,6 +75,30 @@ public final class JNIAccessibleMethodDescriptor {
     }
 
     public static JNIAccessibleMethodDescriptor of(String methodName, Class<?>[] parameterTypes, Class<?> returnType) {
+        return new JNIAccessibleMethodDescriptor((CharSequence) methodName, createSignature(parameterTypes, returnType));
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public static JNIAccessibleMethodDescriptor ofHosted(Executable method) {
+        String name = method.getName();
+        Class<?> returnType;
+        if (method instanceof Constructor) {
+            name = CONSTRUCTOR_NAME;
+            returnType = Void.TYPE;
+        } else if (method instanceof Method) {
+            returnType = ((Method) method).getReturnType();
+        } else {
+            throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
+        }
+        return new JNIAccessibleMethodDescriptor(name, createSignature(method.getParameterTypes(), returnType));
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public static JNIAccessibleMethodDescriptor ofHosted(String methodName, Class<?>[] parameterTypes) {
+        return new JNIAccessibleMethodDescriptor(methodName, createSignature(parameterTypes, null));
+    }
+
+    private static String createSignature(Class<?>[] parameterTypes, Class<?> returnType) {
         StringBuilder sb = new StringBuilder("(");
         for (Class<?> type : parameterTypes) {
             sb.append(MetaUtil.toInternalName(type.getName()));
@@ -79,15 +108,23 @@ public final class JNIAccessibleMethodDescriptor {
             sb.append(MetaUtil.toInternalName(returnType.getName()));
         }
         assert sb.indexOf(".") == -1 : "Malformed signature (needs to use '/' as package separator)";
-        return new JNIAccessibleMethodDescriptor(methodName, sb.toString());
+        return sb.toString();
     }
 
     private final CharSequence name;
     private final CharSequence signature;
 
     JNIAccessibleMethodDescriptor(CharSequence name, CharSequence signature) {
+        assert !ImageInfo.inImageBuildtimeCode() : "CharSequence descriptors must not be constructed at build time";
         this.name = name;
         this.signature = signature;
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    private JNIAccessibleMethodDescriptor(String name, String signature) {
+        HostedStringDeduplication stringTable = HostedStringDeduplication.singleton();
+        this.name = stringTable.deduplicate(name, true);
+        this.signature = stringTable.deduplicate(signature, true);
     }
 
     public boolean isConstructor() {

@@ -47,7 +47,9 @@ public final class HostedHeapDumpHandler {
         BeforeCompilation("before-compilation"),
         CompileQueueBeforeInlining("compile-queue-before-inlining"),
         CompileQueueAfterInlining("compile-queue-after-inlining"),
-        CompileQueueAfterCompilation("compile-queue-after-compilation");
+        CompileQueueAfterCompilation("compile-queue-after-compilation"),
+        AfterImageWrite("after-image-write"),
+        BuildEnd("build-end");
 
         final String name;
 
@@ -101,6 +103,14 @@ public final class HostedHeapDumpHandler {
 
     public void dumpAfterCompilation() {
         dumpHeap(Phases.CompileQueueAfterCompilation);
+    }
+
+    public void dumpAfterImageWrite() {
+        dumpHeap(Phases.AfterImageWrite);
+    }
+
+    public void dumpBuildEnd() {
+        dumpHeap(Phases.BuildEnd);
     }
 
     private void dumpHeap(Phases phase) {

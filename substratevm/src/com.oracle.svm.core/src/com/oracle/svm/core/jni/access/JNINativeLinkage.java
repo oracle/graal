@@ -31,6 +31,7 @@ import static com.oracle.svm.core.libjvm.WhiteBoxEntryPoints.WHITEBOX_REGISTER_N
 import java.util.Map;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.BuildPhaseProvider;
 
 import jdk.internal.vm.annotation.Stable;
@@ -79,6 +81,7 @@ public final class JNINativeLinkage {
      */
     public JNINativeLinkage(DynamicHub declaringClass, CharSequence name, CharSequence descriptor) {
         assert declaringClass != null;
+        assert !ImageInfo.inImageBuildtimeCode() : "DynamicHub linkages must not be constructed at build time";
         this.declaringClass = declaringClass;
         this.declaringClassName = MetaUtil.toInternalName(declaringClass.getName());
         this.name = name;
@@ -87,9 +90,10 @@ public final class JNINativeLinkage {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JNINativeLinkage(ResolvedJavaType declaringClass, CharSequence name, CharSequence descriptor) {
-        this.declaringClassName = MetaUtil.toInternalName(declaringClass.toClassName());
-        this.name = name;
-        this.descriptor = descriptor;
+        HostedStringDeduplication stringTable = HostedStringDeduplication.singleton();
+        this.declaringClassName = stringTable.deduplicate(MetaUtil.toInternalName(declaringClass.toClassName()), true);
+        this.name = stringTable.deduplicate(name.toString(), true);
+        this.descriptor = stringTable.deduplicate(descriptor.toString(), true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

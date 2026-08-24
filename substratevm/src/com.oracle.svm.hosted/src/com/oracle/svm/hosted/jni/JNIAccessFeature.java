@@ -497,7 +497,7 @@ public class JNIAccessFeature implements Feature {
             return;
         }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), preserved, access);
-        JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
+        JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.ofHosted(method);
         jniClass.addOrUpdateMethod(descriptor, preserved, _ -> {
             AnalysisUniverse universe = access.getUniverse();
             MetaAccessProvider originalMetaAccess = universe.getOriginalMetaAccess();
@@ -536,7 +536,7 @@ public class JNIAccessFeature implements Feature {
 
     private void addNegativeMethodLookup(Class<?> declaringClass, String methodName, Class<?>[] parameterTypes, DuringAnalysisAccessImpl access) {
         JNIAccessibleClass jniClass = addClass(declaringClass, false, access);
-        JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(methodName, parameterTypes);
+        JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.ofHosted(methodName, parameterTypes);
         jniClass.addOrUpdateMethod(descriptor, false, _ -> JNIAccessibleMethod.negativeMethodQuery(jniClass));
     }
 
