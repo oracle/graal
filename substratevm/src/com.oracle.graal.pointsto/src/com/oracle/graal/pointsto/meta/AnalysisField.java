@@ -265,7 +265,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public boolean isGuaranteeFolded() {
-        return GuestAnnotationAccess.getAnnotation(this, GuaranteeFolded.class) != null;
+        return GuestAnnotationAccess.isAnnotationPresent(this, GuaranteeFolded.class);
     }
 
     public void checkGuaranteeFolded() {

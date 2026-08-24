@@ -471,7 +471,7 @@ public final class FieldValueInterceptionSupport {
      * intercept the value and return 0 / null.
      */
     private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
-        if (GuestAnnotationAccess.getAnnotation(field, InjectAccessors.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(field, InjectAccessors.class)) {
             assert !field.isAccessed();
             return JavaConstant.defaultForKind(value.getJavaKind());
         }

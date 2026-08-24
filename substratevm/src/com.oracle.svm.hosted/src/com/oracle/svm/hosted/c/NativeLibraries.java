@@ -421,9 +421,9 @@ public final class NativeLibraries {
 
         if (!context.isInConfiguration()) {
             /* Nothing to do, all elements in context are ignored. */
-        } else if (GuestAnnotationAccess.getAnnotation(method, CConstant.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(method, CConstant.class)) {
             context.appendConstantAccessor(method);
-        } else if (GuestAnnotationAccess.getAnnotation(method, CFunction.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(method, CFunction.class)) {
             /* Nothing to do, handled elsewhere but the NativeCodeContext above is important. */
         } else {
             addError("Method is not annotated with supported C interface annotation", method);
@@ -435,15 +435,15 @@ public final class NativeLibraries {
 
         if (!context.isInConfiguration()) {
             /* Nothing to do, all elements in context are ignored. */
-        } else if (GuestAnnotationAccess.getAnnotation(type, CStruct.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(type, CStruct.class)) {
             context.appendStructType(type);
-        } else if (GuestAnnotationAccess.getAnnotation(type, RawStructure.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(type, RawStructure.class)) {
             context.appendRawStructType(type);
-        } else if (GuestAnnotationAccess.getAnnotation(type, CPointerTo.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(type, CPointerTo.class)) {
             context.appendCPointerToType(type);
-        } else if (GuestAnnotationAccess.getAnnotation(type, RawPointerTo.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(type, RawPointerTo.class)) {
             context.appendRawPointerToType(type);
-        } else if (GuestAnnotationAccess.getAnnotation(type, CEnum.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(type, CEnum.class)) {
             context.appendEnumType(type);
         } else {
             addError("Type is not annotated with supported C interface annotation", type);

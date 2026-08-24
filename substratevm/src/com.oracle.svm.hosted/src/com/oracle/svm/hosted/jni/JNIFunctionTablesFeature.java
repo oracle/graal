@@ -127,8 +127,7 @@ public class JNIFunctionTablesFeature implements Feature {
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
-            CEntryPoint annotation = GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class);
-            assert annotation != null : "only entry points allowed in class";
+            assert GuestAnnotationAccess.isAnnotationPresent(method, CEntryPoint.class) : "only entry points allowed in class";
             CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> {
                 CEntryPointData data = CEntryPointData.create(method);
                 if (!SubstrateOptions.JNIExportSymbols.getValue() && data.getPublishAs() != CEntryPoint.Publish.NotPublished) {

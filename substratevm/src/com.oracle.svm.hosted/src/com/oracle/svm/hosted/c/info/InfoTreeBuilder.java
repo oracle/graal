@@ -521,7 +521,7 @@ public class InfoTreeBuilder {
     }
 
     private boolean validInterfaceDefinition(ResolvedJavaType type, Class<? extends Annotation> annotationClass) {
-        assert GuestAnnotationAccess.getAnnotation(type, annotationClass) != null;
+        assert GuestAnnotationAccess.isAnnotationPresent(type, annotationClass);
 
         if (!type.isInterface() || !nativeLibs.isPointerBase(type)) {
             nativeLibs.addError("Annotation @" + ClassUtil.getUnqualifiedName(annotationClass) + " can only be used on an interface that extends " + PointerBase.class.getSimpleName(), type);
@@ -622,8 +622,7 @@ public class InfoTreeBuilder {
         CStruct structAnnotation = GuestAnnotationAccess.getAnnotation(type, CStruct.class);
 
         if (structAnnotation == null) {
-            RawStructure rsanno = GuestAnnotationAccess.getAnnotation(type, RawStructure.class);
-            assert rsanno != null : "Unexpected struct type " + type;
+            assert GuestAnnotationAccess.isAnnotationPresent(type, RawStructure.class) : "Unexpected struct type " + type;
             return getSimpleJavaName(type);
         }
 

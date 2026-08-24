@@ -594,7 +594,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean shouldBeInlined() {
-        return GuestAnnotationAccess.getAnnotation(this, AlwaysInline.class) != null || GuestAnnotationAccess.getAnnotation(this, ForceInline.class) != null;
+        return GuestAnnotationAccess.isAnnotationPresent(this, AlwaysInline.class) || GuestAnnotationAccess.isAnnotationPresent(this, ForceInline.class);
     }
 
     private LineNumberTable lineNumberTable;

@@ -258,7 +258,7 @@ public class CSourceCodeWriter {
 
     private static boolean isFunctionPointer(MetaAccessProvider metaAccess, ResolvedJavaType type) {
         boolean functionPointer = metaAccess.lookupJavaType(CFunctionPointer.class).isAssignableFrom(type);
-        return functionPointer && Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> GuestAnnotationAccess.getAnnotation(v, InvokeCFunctionPointer.class) != null);
+        return functionPointer && Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> GuestAnnotationAccess.isAnnotationPresent(v, InvokeCFunctionPointer.class));
     }
 
     /**

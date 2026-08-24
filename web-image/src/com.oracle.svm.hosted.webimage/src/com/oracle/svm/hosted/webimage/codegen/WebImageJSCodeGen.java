@@ -340,7 +340,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     private void requestJSObjectSubclasses(HostedType type) {
         // Only explicitly exported classes must be emitted.
-        if (type.equals(jsObjectType) || GuestAnnotationAccess.getAnnotation(type, JS.Export.class) != null) {
+        if (type.equals(jsObjectType) || GuestAnnotationAccess.isAnnotationPresent(type, JS.Export.class)) {
             typeControl.requestTypeName(type);
         }
         for (HostedType subtype : type.getSubTypes()) {

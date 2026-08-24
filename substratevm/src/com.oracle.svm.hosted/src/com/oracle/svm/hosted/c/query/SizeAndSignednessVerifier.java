@@ -267,7 +267,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
             }
 
             Class<? extends Annotation> suppressionAnnotation = narrow ? AllowNarrowingCast.class : AllowWideningCast.class;
-            if (GuestAnnotationAccess.getAnnotation(method, suppressionAnnotation) == null) {
+            if (!GuestAnnotationAccess.isAnnotationPresent(method, suppressionAnnotation)) {
                 addError("Type " + type.toJavaName(false) + " has a size of " + declaredSize + " bytes, but accessed C value has a size of " + actualSize +
                                 " bytes; to suppress this error, use the annotation @" + ClassUtil.getUnqualifiedName(suppressionAnnotation), method);
             }

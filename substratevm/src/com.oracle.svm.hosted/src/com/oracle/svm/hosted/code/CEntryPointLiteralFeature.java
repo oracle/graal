@@ -67,8 +67,8 @@ public class CEntryPointLiteralFeature implements InternalFeature {
                 ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(reflectionMethod);
                 if (javaMethod instanceof AnalysisMethod) {
                     AnalysisMethod aMethod = (AnalysisMethod) javaMethod;
-                    CEntryPoint annotation = GuestAnnotationAccess.getAnnotation(aMethod, CEntryPoint.class);
-                    UserError.guarantee(annotation != null, "Method referenced by %s must be annotated with @%s: %s", CEntryPointLiteral.class.getSimpleName(),
+                    UserError.guarantee(GuestAnnotationAccess.isAnnotationPresent(aMethod, CEntryPoint.class), "Method referenced by %s must be annotated with @%s: %s",
+                                    CEntryPointLiteral.class.getSimpleName(),
                                     CEntryPoint.class.getSimpleName(), javaMethod);
                     CEntryPointCallStubSupport.singleton().registerStubForMethod(aMethod, () -> CEntryPointData.create(aMethod));
                 } else if (javaMethod instanceof HostedMethod) {

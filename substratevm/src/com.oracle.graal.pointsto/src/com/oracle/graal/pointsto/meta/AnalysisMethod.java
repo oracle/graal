@@ -405,7 +405,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public boolean isGuaranteeFolded() {
-        return isGuaranteeFolded || GuestAnnotationAccess.getAnnotation(this, GuaranteeFolded.class) != null;
+        return isGuaranteeFolded || GuestAnnotationAccess.isAnnotationPresent(this, GuaranteeFolded.class);
     }
 
     public void setGuaranteeFolded() {

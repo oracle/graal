@@ -134,13 +134,13 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             }
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
-        } else if (GuestAnnotationAccess.getAnnotation(method, InvokeCFunctionPointer.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
             return replaceCFunctionPointerInvoke(b, method, args);
         } else {
-            if (GuestAnnotationAccess.getAnnotation(method, InvokeJavaFunctionPointer.class) != null) {
+            if (GuestAnnotationAccess.isAnnotationPresent(method, InvokeJavaFunctionPointer.class)) {
                 return replaceJavaFunctionPointerInvoke(b, method, args);
             } else {
-                if (GuestAnnotationAccess.getAnnotation(method, CEntryPoint.class) != null) {
+                if (GuestAnnotationAccess.isAnnotationPresent(method, CEntryPoint.class)) {
                     assert !(method.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
                     AnalysisMethod stub = CEntryPointCallStubSupport.singleton().registerJavaStubForMethod(method);
                     assert !b.getMethod().equals(stub) : "Plugin should not be called for the invoke in the stub itself";

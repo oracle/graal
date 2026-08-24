@@ -41,7 +41,7 @@ public class ReconstructionVerificationPhase extends BasePhase<CoreProviders> {
     @Override
     protected void run(StructuredGraph graph, CoreProviders providers) {
         ReconstructionData reconstructionData = ((ScheduleWithReconstructionResult) graph.getLastSchedule()).reconstructionData();
-        if (GuestAnnotationAccess.getAnnotation(graph.method(), StackifierVerification.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(graph.method(), StackifierVerification.class)) {
             verifyStackifier(graph, graph.method(), (StackifierData) reconstructionData, providers);
         }
     }

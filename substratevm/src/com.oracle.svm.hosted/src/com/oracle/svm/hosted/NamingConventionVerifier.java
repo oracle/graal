@@ -63,7 +63,7 @@ final class NamingConventionVerifier {
             return;
         }
         for (AnalysisMethod method : universe.getMethods()) {
-            if ((method.isInvoked() || method.isReachable()) && GuestAnnotationAccess.getAnnotation(method, Fold.class) == null) {
+            if ((method.isInvoked() || method.isReachable()) && !GuestAnnotationAccess.isAnnotationPresent(method, Fold.class)) {
                 checkName(bb, method);
             }
         }

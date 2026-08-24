@@ -40,7 +40,7 @@ public class StructInfo extends SizableInfo {
 
     public static StructInfo create(String typeName, ResolvedJavaType annotatedType) {
         String typedefAnnotation = InfoTreeBuilder.getTypedefName(annotatedType);
-        if (GuestAnnotationAccess.getAnnotation(annotatedType, RawStructure.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(annotatedType, RawStructure.class)) {
             return new RawStructureInfo(typeName, typedefAnnotation, annotatedType);
         } else {
             return new StructInfo(typeName, typedefAnnotation, annotatedType, GuestAnnotationAccess.getAnnotation(annotatedType, CStruct.class).isIncomplete());

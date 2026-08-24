@@ -136,7 +136,7 @@ public class DeoptimizationUtils {
             return false;
         }
 
-        if (GuestAnnotationAccess.getAnnotation(method, DeoptTest.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, DeoptTest.class)) {
             return true;
         }
 
@@ -169,7 +169,7 @@ public class DeoptimizationUtils {
         if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
             return false;
         }
-        if (GuestAnnotationAccess.getAnnotation(method, RestrictHeapAccess.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, RestrictHeapAccess.class)) {
             return false;
         }
         if (StubCallingConvention.Utils.hasStubCallingConvention(method)) {

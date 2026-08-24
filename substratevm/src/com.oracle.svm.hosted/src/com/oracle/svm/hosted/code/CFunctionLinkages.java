@@ -58,7 +58,7 @@ public final class CFunctionLinkages {
     }
 
     public CGlobalDataInfo addOrLookupMethod(ResolvedJavaMethod method) {
-        if (GuestAnnotationAccess.getAnnotation(method, NodeIntrinsic.class) != null || GuestAnnotationAccess.getAnnotation(method, Word.Operation.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class) || GuestAnnotationAccess.isAnnotationPresent(method, Word.Operation.class)) {
             return null;
         }
         return nameToFunction.computeIfAbsent(linkageName(method), symbolName -> {

@@ -376,8 +376,8 @@ public class UniverseBuilder {
             HostedDynamicLayerInfo.singleton().registerHostedMethod(hMethod);
         }
 
-        boolean isCFunction = GuestAnnotationAccess.getAnnotation(aMethod, CFunction.class) != null;
-        boolean hasCFunctionOptions = GuestAnnotationAccess.getAnnotation(aMethod, CFunctionOptions.class) != null;
+        boolean isCFunction = GuestAnnotationAccess.isAnnotationPresent(aMethod, CFunction.class);
+        boolean hasCFunctionOptions = GuestAnnotationAccess.isAnnotationPresent(aMethod, CFunctionOptions.class);
         if (hasCFunctionOptions && !isCFunction) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
                             "Method annotated with @" + CFunctionOptions.class.getSimpleName() + " must also be annotated with @" + CFunction.class);

@@ -289,7 +289,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         buffer.emitNewLine();
         buffer.emitNewLine();
 
-        if (GuestAnnotationAccess.getAnnotation(type, JS.Export.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(type, JS.Export.class)) {
             genJavaScriptExportMirrorClassDefinition();
         }
     }

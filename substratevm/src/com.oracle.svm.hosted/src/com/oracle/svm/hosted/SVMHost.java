@@ -707,7 +707,7 @@ public class SVMHost extends HostVM {
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
-        return GuestAnnotationAccess.getAnnotation(resolvedJavaType, UnknownClass.class) != null;
+        return GuestAnnotationAccess.isAnnotationPresent(resolvedJavaType, UnknownClass.class);
     }
 
     public ClassInitializationSupport getClassInitializationSupport() {
@@ -1310,7 +1310,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Fields that are deleted or substituted should not be in the image. */
-        if (GuestAnnotationAccess.getAnnotation(field, Delete.class) != null || GuestAnnotationAccess.getAnnotation(field, InjectAccessors.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(field, Delete.class) || GuestAnnotationAccess.isAnnotationPresent(field, InjectAccessors.class)) {
             return false;
         }
 
