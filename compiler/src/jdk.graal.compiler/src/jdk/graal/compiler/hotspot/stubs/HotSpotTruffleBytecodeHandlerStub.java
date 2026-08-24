@@ -52,6 +52,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class HotSpotTruffleBytecodeHandlerStub extends Stub {
 
+    /** Template specialization is disabled for HotSpot handler stubs. */
+    private static final int DEFAULT_TEMPLATE_INDEX = 0;
+
     private final BytecodeHandlerCallSite callsite;
 
     public HotSpotTruffleBytecodeHandlerStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage, BytecodeHandlerCallSite callsite) {
@@ -63,7 +66,8 @@ public class HotSpotTruffleBytecodeHandlerStub extends Stub {
     protected StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
         try {
             HotSpotGraphKit kit = new HotSpotGraphKit(debug, callsite.getEnclosingMethod(), providers, providers.getGraphBuilderPlugins(), compilationId, callsite.getStubName(), false, true);
-            return BytecodeHandlerStubHelper.createStub(kit, callsite.getEnclosingMethod(), callsite.getBci(), false, null, null, callsite.getHandlerConfig(), callsite.getTargetMethod(), null);
+            return BytecodeHandlerStubHelper.createStub(kit, callsite.getEnclosingMethod(), callsite.getBci(), false, null, null, callsite.getHandlerConfig(), callsite.getTargetMethod(),
+                            DEFAULT_TEMPLATE_INDEX, null);
         } catch (Exception e) {
             throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
@@ -100,7 +104,7 @@ public class HotSpotTruffleBytecodeHandlerStub extends Stub {
         List<AllocatableValue> result = new ArrayList<>();
 
         // This stub is responsible for storing the updated value into the same argument location.
-        for (ArgumentInfo argumentInfo : callsite.getArgumentInfos()) {
+        for (ArgumentInfo argumentInfo : callsite.getCalleeParameterInfos()) {
             if (!argumentInfo.isImmutable()) {
                 result.add(callingConvention.getArgument(argumentInfo.index()));
             }

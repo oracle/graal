@@ -160,19 +160,19 @@ public class TailCallDuplicationOpportunityTest extends GraalCompilerTest {
         BytecodeInterpreterAnnotations.registerCompilerDirectives(getMetaAccess());
         checkStubConstruction("handler", false);
         checkStubConstruction("splittingHandler", true);
-        BytecodeHandlerConfig defaultConfig = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("handler"), getResolvedJavaMethod("handler"));
-        BytecodeHandlerConfig splittingConfig = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("splittingHandler"), getResolvedJavaMethod("handler"));
+        BytecodeHandlerConfig defaultConfig = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("handler"), getResolvedJavaMethod("handler"), false);
+        BytecodeHandlerConfig splittingConfig = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("splittingHandler"), getResolvedJavaMethod("handler"), false);
         Assert.assertNotEquals(defaultConfig, splittingConfig);
     }
 
     private void checkStubConstruction(String methodName, boolean enableTailDuplication) {
         ResolvedJavaMethod handler = getResolvedJavaMethod(methodName);
-        BytecodeHandlerConfig config = BytecodeHandlerConfig.getHandlerConfig(handler, handler);
+        BytecodeHandlerConfig config = BytecodeHandlerConfig.getHandlerConfig(handler, handler, false);
         Assert.assertEquals(enableTailDuplication, config.isTailDuplicationEnabled());
         for (boolean threading : new boolean[]{false, true}) {
             GraphKit kit = new GraphKit(getDebugContext(), handler, getProviders(), getDefaultGraphBuilderPlugins(), CompilationIdentifier.INVALID_COMPILATION_ID, "handler", false, false) {
             };
-            StructuredGraph graph = BytecodeHandlerStubHelper.createStub(kit, handler, 0, threading, getResolvedJavaMethod("fetchOpcode"), () -> new long[2], config, handler, null);
+            StructuredGraph graph = BytecodeHandlerStubHelper.createStub(kit, handler, 0, threading, getResolvedJavaMethod("fetchOpcode"), index -> new long[2], config, handler, 0, null);
             Assert.assertTrue(graph.verify(true));
             Assert.assertEquals(threading && enableTailDuplication ? 0 : 1, graph.getNodes().filter(ControlFlowAnchorNode.class).count());
             Assert.assertEquals(1, graph.getNodes(ReturnNode.TYPE).count());

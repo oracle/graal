@@ -29,10 +29,15 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.amd64.AMD64AddressNode;
 import jdk.graal.compiler.core.amd64.AMD64CompressAddressLowering;
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.VirtualState;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
 
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.vm.ci.code.Register;
 
@@ -47,6 +52,10 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
 
     @Override
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
+        if (isUncompressedValueAvailableInHandler(compression)) {
+            return false;
+        }
+
         CompressEncoding encoding = compression.getEncoding();
         if (!AMD64Address.isScaleShiftSupported(encoding.getShift())) {
             return false;
@@ -70,5 +79,19 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
         addr.setScale(stride);
         addr.setIndex(compression.getValue());
         return true;
+    }
+
+    private static boolean isUncompressedValueAvailableInHandler(CompressionNode compression) {
+        if (!SubstrateUtil.HOSTED || !InterpreterSupport.isEnabled() || compression.graph().method() == null ||
+                        !InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(compression.graph().method())) {
+            return false;
+        }
+        for (Node usage : compression.usages()) {
+            if (!(usage instanceof AddressNode) && !(usage instanceof VirtualState)) {
+                /* The scheduled uncompress dominates all its uses, so reuse it for addresses too. */
+                return true;
+            }
+        }
+        return false;
     }
 }
