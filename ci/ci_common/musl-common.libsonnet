@@ -4,7 +4,7 @@
     downloads+: {
       MUSL_TOOLCHAIN: {
         name: 'toolchain-gcc-10.3.0-zlib-1.2.13-musl',
-        version: '1.2.5.1',
+        version: '1.2.5.2',
         platformspecific: true,
       },
     },
