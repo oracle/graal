@@ -103,7 +103,6 @@ public class InterproceduralPartialEscapeAnalysisUtil {
                 return;
             }
             for (VirtualizableAllocation allocation : analysisResult.allocations().get(callTreeNode)) {
-                watchdog.recordActivity();
                 CallerContext currentCallerContext = analysisResult.callTreeNodeToCallerContext().get(callTreeNode);
 
                 Set<CallTreeNode> virtuallyInjectedCallTreeNodes = new HashSet<>();
