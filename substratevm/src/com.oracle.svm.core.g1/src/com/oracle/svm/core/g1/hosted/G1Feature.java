@@ -62,6 +62,7 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
@@ -276,6 +277,8 @@ public class G1Feature implements InternalFeature {
         verifyOptionEnabled(SubstrateOptions.UseNullRegion);
 
         UserError.guarantee(!SubstrateOptions.SupportCompileInIsolates.getValue(), "The G1 garbage collector ('--gc=G1') does not support isolated compilation.");
+        UserError.guarantee(!RuntimeClassLoading.isSupported(), "The G1 garbage collector ('--gc=G1') does not support option '%s' because it requires metaspace support.",
+                        RuntimeClassLoading.Options.RuntimeClassLoading.getName());
     }
 
     private static void verifyOptionEnabled(SubstrateOptionKey<Boolean> option) {
