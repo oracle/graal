@@ -382,10 +382,17 @@ the resulting provider-list state.
 
 `-H:AdditionalSecurityProviders=<provider-class>` remains accepted with a deprecation warning during
 the transition.
-Each named provider class is an unconditional, complete provider-registration signal: in explicit
-registration mode it has the same provider and catalog effects as unconditional qualifying
-reflection metadata, and in both legacy modes it preserves the earlier option-driven inclusion
-behavior without requiring another registration signal or a future-default option.
+In explicit registration mode, each named provider class is an unconditional, complete
+provider-registration signal with the same provider and catalog effects as unconditional qualifying
+reflection metadata.
+Without explicit registration, the option preserves the earlier option-driven inclusion behavior
+without requiring another registration signal or a future-default option.
+In legacy run-time provider-list initialization mode, naming a provider does not by itself construct
+the provider during the image build.
+The JDK constructs a configured provider through its retained path at run time, and only services
+retained through legacy service-driven inclusion or independent metadata are available.
+In legacy build-time provider-list initialization mode, [§7.4](#74-earlier-build-time-initialization-behavior)
+still permits configured-provider construction during the image build.
 The option does not install an otherwise unconfigured provider and does not change provider order.
 Replacing it with ordinary reflection metadata requires explicit provider registration until that
 behavior becomes the default.
@@ -475,6 +482,9 @@ excluding the `SecureRandom` acquisition paths in [§2.4](#24-securerandom-provi
 **Requirement.** Every supported combination in [§7](#7-transition-to-the-future-defaults) must be
 specified and selected at build time, and the earlier behavior must remain selectable without an
 application source change (§REQ-001-spec-compatibility.2).
+In legacy run-time provider-list initialization mode, the deprecated additional-provider option must
+not require successful provider construction during the image build solely because the option names
+the provider.
 
 **Domain.** Legacy inclusion with build-time initialization, legacy inclusion with run-time
 initialization, and explicit registration with run-time initialization, including the deprecated
@@ -506,8 +516,11 @@ A new path must update the architecture record.
 
 Every configured-list construction, provider lookup, and direct JDK construction path must pass
 through one acquisition filter.
-The filter must reject any provider for which the registration chokepoint did not record a complete,
-JDK-constructible plan.
+With explicit registration, the filter must reject any provider for which the registration
+chokepoint did not record a complete, JDK-constructible plan.
+In a legacy mode, the filter may also admit a provider named by the deprecated additional-provider
+option under [§7.5](#75-deprecated-additional-provider-option); that provider exposes only services
+retained by the applicable legacy rules.
 
 ### 8.10 Condition Fidelity
 
