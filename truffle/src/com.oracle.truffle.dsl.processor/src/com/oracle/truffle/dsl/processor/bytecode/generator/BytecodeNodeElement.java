@@ -1690,6 +1690,20 @@ final class BytecodeNodeElement extends AbstractElement {
         }
 
         b.string("loop: ").startWhile().string("true").end().startBlock();
+        if (tier.isCached()) {
+            b.lineComment("Detect if a tier-down occurred.");
+            b.startIf().string("wasCompiled && ").startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+            b.lineComment("Leave slow deoptimized method and reenter continueAt for faster execution");
+            if (mayWrapLocalFrame()) {
+                b.lineComment("Re-entering also ensures deoptimized continuations restore the interpreter frame layout before continuing");
+            }
+            if (this.handlerLayout.isTailCall()) {
+                b.statement("return ", BytecodeRootNodeElement.encodeState("bci", "vstate.sp"));
+            } else {
+                b.statement("return ", BytecodeRootNodeElement.encodeState("bci", "sp"));
+            }
+            b.end();
+        }
         b.startStatement().startStaticCall(types.CompilerAsserts, "partialEvaluationConstant").string("bci").end().end();
         // filtered instructions
         List<InstructionModel> instructions = parent.model.getInstructions().stream().//
@@ -1807,18 +1821,6 @@ final class BytecodeNodeElement extends AbstractElement {
         }
 
         b.end(); // switch
-
-        if (tier.isCached()) {
-            b.lineComment("Detect if a tier-down occurred during the loop iteration");
-            b.startIf().string("wasCompiled && ").startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
-            b.lineComment("Leave slow deoptimized method and reenter continueAt for faster execution");
-            if (this.handlerLayout.isTailCall()) {
-                b.statement("return ", BytecodeRootNodeElement.encodeState("bci", "vstate.sp"));
-            } else {
-                b.statement("return ", BytecodeRootNodeElement.encodeState("bci", "sp"));
-            }
-            b.end();
-        }
 
         b.end(); // try
 
