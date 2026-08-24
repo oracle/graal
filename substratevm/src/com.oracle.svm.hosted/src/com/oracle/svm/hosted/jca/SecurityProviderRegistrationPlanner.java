@@ -46,6 +46,7 @@ final class SecurityProviderRegistrationPlanner {
     }
 
     private final Set<Class<?>> candidates = ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> instantiatedCandidates = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> forcedCompletePlans = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> legacyGeneratedReflection = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, RuntimeDynamicAccessMetadata> completedMetadata = new ConcurrentHashMap<>();
@@ -54,6 +55,13 @@ final class SecurityProviderRegistrationPlanner {
 
     void addCandidate(Class<?> providerClass) {
         if (candidates.add(providerClass)) {
+            changed.set(true);
+        }
+    }
+
+    void addInstantiatedCandidate(Class<?> providerClass) {
+        addCandidate(providerClass);
+        if (instantiatedCandidates.add(providerClass)) {
             changed.set(true);
         }
     }
@@ -80,12 +88,15 @@ final class SecurityProviderRegistrationPlanner {
                             ? RuntimeDynamicAccessMetadata.alwaysAvailable(false)
                             : plan != null ? plan.completeMetadata() : null;
             RuntimeDynamicAccessMetadata registration = plan != null ? plan.registrationMetadata() : null;
+            RuntimeDynamicAccessMetadata verification = instantiatedCandidates.contains(providerClass)
+                            ? RuntimeDynamicAccessMetadata.merge(registration, RuntimeDynamicAccessMetadata.alwaysAvailable(false))
+                            : registration;
             if (complete != null && completedMetadata.put(providerClass, complete) != complete) {
                 includeProvider.accept(providerClass, complete);
                 processed = true;
             }
-            if (registration != null && verificationMetadata.put(providerClass, registration) != registration) {
-                registerVerification.accept(providerClass, registration);
+            if (verification != null && verificationMetadata.put(providerClass, verification) != verification) {
+                registerVerification.accept(providerClass, verification);
                 processed = true;
             }
         }

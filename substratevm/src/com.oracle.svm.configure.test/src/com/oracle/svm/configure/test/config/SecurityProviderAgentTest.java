@@ -66,7 +66,7 @@ public class SecurityProviderAgentTest {
 
     /** Tests §FS-002-security-providers.6.1. */
     @Test
-    public void programmaticProviderMutationDoesNotTraceConfiguredProviders() throws Exception {
+    public void programmaticProviderMutationDoesNotTraceProviders() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
                         Boolean.getBoolean(GENERATOR_ENABLED_PROPERTY));
 

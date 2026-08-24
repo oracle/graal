@@ -108,6 +108,9 @@ final class Target_sun_security_jca_ProviderConfig {
     @Alias //
     String provName;
 
+    @Alias //
+    String argument;
+
     @Alias//
     private static sun.security.util.Debug debug;
 
@@ -163,7 +166,7 @@ final class Target_sun_security_jca_ProviderConfig {
                  * Load the catalog-resolved provider directly, avoiding a ServiceLoader scan that
                  * could touch unrelated omitted descriptors. */
                 provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
-                                configuredProvider.effectiveConstructionClassName());
+                                configuredProvider.effectiveConstructionClassName(), argument);
             } else {
                 if (isLoading) {
                     /*

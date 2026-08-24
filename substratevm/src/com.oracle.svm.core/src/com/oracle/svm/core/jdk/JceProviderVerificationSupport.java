@@ -42,7 +42,6 @@ public final class JceProviderVerificationSupport {
         if (info.verificationFailure() != null) {
             return info.verificationFailure();
         }
-        SecurityProviderRuntimeAccess.traceLookup(provider);
         return null;
     }
 }

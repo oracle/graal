@@ -76,11 +76,20 @@ public class SecurityProviderRuntimeAccessTest {
     public void constructionFailureReportsActionableError() {
         SecurityException error = assertThrows(SecurityException.class,
                         () -> SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider("expected", ThrowingConstructorProvider.class.getName(),
-                                        ThrowingConstructorProvider.class.getName()));
+                                        ThrowingConstructorProvider.class.getName(), ""));
 
         assertTrue(error.getMessage().contains("expected"));
         assertTrue(error.getMessage().contains(ThrowingConstructorProvider.class.getName()));
         assertTrue(error.getMessage().contains("could not be constructed"));
+    }
+
+    // §FS-002-security-providers.1.3 and §FS-002-security-providers.2.2
+    @Test
+    public void configuredProviderUsesConfigureReturnValue() {
+        Provider provider = SecurityProviderRuntimeAccess.configureProvider(new ConfigurableProvider(), "configured");
+
+        assertEquals("configured", provider.getName());
+        assertSame(ConfigurableProvider.class, provider.getClass());
     }
 
     @Test
@@ -231,6 +240,23 @@ public class SecurityProviderRuntimeAccessTest {
         public ThrowingConstructorProvider() {
             super("throwing-provider", "1.0", "Provider whose constructor fails");
             throw new IllegalStateException("construction failed");
+        }
+    }
+
+    public static final class ConfigurableProvider extends Provider {
+        private static final long serialVersionUID = 1L;
+
+        public ConfigurableProvider() {
+            this("default");
+        }
+
+        private ConfigurableProvider(String name) {
+            super(name, "1.0", "Configurable provider");
+        }
+
+        @Override
+        public Provider configure(String configArg) {
+            return new ConfigurableProvider(configArg);
         }
     }
 
