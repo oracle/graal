@@ -79,7 +79,9 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['polybench']
   },
 
-  polybench_vm_common_ce(os, arch, fail_fast=false, skip_machine=false): (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.pipelined_graalvm('ce', os, arch, environment_variable='POLYBENCH_JVM') + {
+  polybench_vm_common_ce(os, arch, fail_fast=false, skip_machine=false):
+    local vm_edition = 'ce';
+    (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.pipelined_graalvm(vm_edition, os, arch, environment_variable='POLYBENCH_JVM') + {
     hwloc_command_prefix:: if std.length(std.find('bench', self.targets)) > 0 then ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"] else [],
     notify_groups:: ['polybench']
   },
