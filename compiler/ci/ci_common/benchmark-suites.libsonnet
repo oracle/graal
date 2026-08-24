@@ -125,7 +125,8 @@
     notify_emails+: ["andrija.kolic@oracle.com"],
     timelimit: "2:00:00",
     should_use_hwloc: false, // hwloc-bind is passed to barista with '--cmd-app-prefix'
-    environment+: {
+    environment+: self.ci_resources.repository_environment.maven_wrapper
+                + self.ci_resources.repository_environment.gradle + {
       BARISTA_HOME: "$BUILD_DIR/barista",
       XMX: "500m"
     },
