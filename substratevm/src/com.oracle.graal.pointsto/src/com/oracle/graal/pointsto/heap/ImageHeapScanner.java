@@ -649,13 +649,12 @@ public abstract class ImageHeapScanner {
                  */
                 hostVM.validateReachableObject(bb, imageHeapConstant);
                 if (objectType.hasReachabilityCallbacks()) {
-                    Object object = bb.getSnippetReflectionProvider().asObject(Object.class, imageHeapConstant);
                     /*
                      * Reachability hooks can reject objects based on additional conditions, e.g., a
                      * started Thread should never be added to the image heap, but the structure of
                      * the object is valid, as ensured by the validation above.
                      */
-                    objectType.notifyObjectReachable(object, reason);
+                    objectType.notifyObjectReachable(imageHeapConstant.getHostedObject(), reason);
                 }
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */

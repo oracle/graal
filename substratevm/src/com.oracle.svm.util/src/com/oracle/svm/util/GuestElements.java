@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -159,6 +160,9 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_util_function_BooleanSupplier = lookupType(BooleanSupplier.class);
     public final ResolvedJavaMethod java_util_function_BooleanSupplier_getAsBoolean = lookupMethod(java_util_function_BooleanSupplier, "getAsBoolean");
+
+    public final ResolvedJavaType java_util_function_Consumer = lookupType(Consumer.class);
+    public final ResolvedJavaMethod java_util_function_Consumer_accept = lookupMethod(java_util_function_Consumer, "accept", Object.class);
 
     public final ResolvedJavaType java_util_function_Function = lookupType(Function.class);
     public final ResolvedJavaMethod java_util_function_Function_apply = lookupMethod(java_util_function_Function, "apply", Object.class);

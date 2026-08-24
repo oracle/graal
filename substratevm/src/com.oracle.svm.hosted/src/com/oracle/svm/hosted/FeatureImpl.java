@@ -72,6 +72,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.JVMCIObjectReachableCallback;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MethodVariant;
@@ -474,19 +475,20 @@ public class FeatureImpl {
          * @since 24.0
          */
         public <T> void registerObjectReachableCallback(Class<T> clazz, ObjectReachableCallback<T> callback) {
-            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(callback);
+            // GR-78902: migrate all clients to JVMCI or guest callbacks.
+            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(new LegacyObjectReachableCallbackAdapter<>(callback));
         }
 
         @Override
         public <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz) {
-            ObjectReachableCallback<T> wrapper = (_, obj, _) -> callback.accept(obj);
-            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(wrapper);
+            // GR-78928: migrate builder-side clients to JVMCI or guest callbacks.
+            JavaConstant guestCallback = GuestAccess.get().getSnippetReflection().forObject(callback);
+            registerObjectReachabilityHandler(new WrappedObjectReachabilityHandler(guestCallback), getMetaAccess().lookupJavaType(clazz));
         }
 
         @Override
         public void registerObjectReachabilityHandler(Consumer<JavaConstant> callback, ResolvedJavaType type) {
-            // TODO GR-73228: make the object reachability pipeline pass JavaConstant directly.
-            ObjectReachableCallback<Object> wrapper = (_, obj, _) -> callback.accept(bb.getSnippetReflectionProvider().forObject(obj));
+            JVMCIObjectReachableCallback wrapper = (_, object, _) -> callback.accept(object);
             asAnalysisType(type).registerObjectReachableCallback(wrapper);
         }
 
