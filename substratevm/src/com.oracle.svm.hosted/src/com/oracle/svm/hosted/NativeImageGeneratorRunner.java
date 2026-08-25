@@ -337,7 +337,8 @@ public class NativeImageGeneratorRunner {
             // GR-73131 will make this non-Espresso specific.
             EconomicMap<OptionKey<?>, Object> options = parser.getHostedValues();
             @SuppressWarnings("unchecked")
-            List<String> addExports = ((LocatableMultiOptionValue<String>) options.get(NativeImageClassLoaderOptions.AddExports)).values();
+            List<String> addExports = new ArrayList<>(((LocatableMultiOptionValue<String>) options.get(NativeImageClassLoaderOptions.AddExports)).values());
+            addExports.add("java.base/jdk.internal.module=org.graalvm.nativeimage.shared");
             builder.vmOption("java.AddExports=" + String.join(File.pathSeparator, addExports));
 
             // Guest version of -XX:+EnableJVMCI that is currently passed by
