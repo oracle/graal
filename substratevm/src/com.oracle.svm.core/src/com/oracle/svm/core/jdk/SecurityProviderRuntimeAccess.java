@@ -182,7 +182,7 @@ public final class SecurityProviderRuntimeAccess {
     /** §FS-002-security-providers.4.3: Diagnose a configured omission without constructing it. */
     public static void reportMissingConfiguredProvider(String providerName) {
         // §FS-002-security-providers.7.3: Legacy modes preserve their earlier lookup failures.
-        if (!FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+        if (!FutureDefaultsOptions.metadataSecurityProviderRegistration()) {
             return;
         }
         SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProviderForDiagnostics(providerName);
@@ -212,11 +212,11 @@ public final class SecurityProviderRuntimeAccess {
     }
 
     private static String missingRegistrationRemediation() {
-        if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+        if (FutureDefaultsOptions.metadataSecurityProviderRegistration()) {
             return "Register the provider type or a supported construction path in reachability-metadata.json and rebuild the image.";
         }
         return "Provider reflection metadata does not enable provider construction or services in compatibility mode. " +
-                        "Add qualifying metadata and rebuild with --future-defaults=explicit-security-provider-registration.";
+                        "Add qualifying metadata and rebuild with --future-defaults=metadata-security-provider-registration.";
     }
 
     // §FS-002-security-providers.6.1
