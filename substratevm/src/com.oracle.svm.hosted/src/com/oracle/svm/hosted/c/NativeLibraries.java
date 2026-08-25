@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.c;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,7 +34,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -628,12 +628,11 @@ public final class NativeLibraries {
         if (!Files.isRegularFile(symbolsPath)) {
             return new StaticLibraryManifest(List.of(), List.of());
         }
-        try {
+        try (BufferedReader reader = Files.newBufferedReader(symbolsPath)) {
             List<String> symbols = new ArrayList<>();
             List<String> dependencies = new ArrayList<>();
-            Iterator<String> lines = Files.readAllLines(symbolsPath).iterator();
-            while (lines.hasNext()) {
-                String line = lines.next();
+            String line;
+            while ((line = reader.readLine()) != null) {
                 VMError.guarantee(!line.isBlank(), "Malformed static library manifest: empty line in %s", symbolsPath);
                 if (!line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX)) {
                     symbols.add(line);
@@ -643,8 +642,7 @@ public final class NativeLibraries {
                 VMError.guarantee(!dependency.isEmpty(), "Malformed static library manifest: %s", symbolsPath);
                 dependencies.add(dependency);
             }
-            while (lines.hasNext()) {
-                String line = lines.next();
+            while ((line = reader.readLine()) != null) {
                 VMError.guarantee(!line.isBlank(), "Malformed static library manifest: empty line in %s", symbolsPath);
                 VMError.guarantee(!line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX), "Malformed static library manifest: dependency after symbol in %s", symbolsPath);
                 symbols.add(line);
