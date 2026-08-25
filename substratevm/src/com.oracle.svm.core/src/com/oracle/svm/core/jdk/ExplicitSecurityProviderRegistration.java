@@ -31,6 +31,6 @@ import com.oracle.svm.core.FutureDefaultsOptions;
 public final class ExplicitSecurityProviderRegistration implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return FutureDefaultsOptions.explicitSecurityProviderRegistration();
+        return FutureDefaultsOptions.metadataSecurityProviderRegistration();
     }
 }

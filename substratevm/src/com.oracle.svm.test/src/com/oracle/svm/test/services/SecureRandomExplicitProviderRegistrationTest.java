@@ -37,7 +37,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
  * with a test containing reachable new SecureRandom(), because that is a different platform signal.
  */
 @NativeImageBuildArgs({
-                "--future-defaults=explicit-security-provider-registration",
+                "--future-defaults=metadata-security-provider-registration",
                 "--exact-reachability-metadata=com.oracle.svm.test.services",
                 "-Dcom.oracle.svm.test.services.SecureRandomExplicitProviderRegistrationTest=true"
 })

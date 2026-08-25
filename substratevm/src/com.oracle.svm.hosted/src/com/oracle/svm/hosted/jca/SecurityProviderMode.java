@@ -33,7 +33,7 @@ public enum SecurityProviderMode {
     EXPLICIT_RUN_TIME;
 
     public static SecurityProviderMode current() {
-        if (FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+        if (FutureDefaultsOptions.metadataSecurityProviderRegistration()) {
             assert FutureDefaultsOptions.securityProvidersInitializedAtRunTime();
             return EXPLICIT_RUN_TIME;
         }

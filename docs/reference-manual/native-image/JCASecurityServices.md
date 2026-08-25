@@ -50,7 +50,7 @@ It does so by registering reachability handlers for each of the `getInstance()` 
 When it determines that a `getInstance()` method is reachable at run time, it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
 Provider classes discovered as reachable subtypes of `java.security.Provider` are treated only as candidates for provider inclusion.
 The builder includes such a provider and all of its services only when the provider class is registered for reflection, either by type access, its declared nullary constructor, or its static `provider()` method.
-To apply this reflection requirement to providers selected by reachable service factories, use `--future-defaults=explicit-security-provider-registration`.
+To apply this reflection requirement to providers selected by reachable service factories, use `--future-defaults=metadata-security-provider-registration`.
 With this future default, a factory does not make an unregistered provider or its services available.
 
 Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.

@@ -389,7 +389,7 @@ Every configured construction path uses the JDK recursion guard and retry counte
 resolved from retained descriptor inventory.
 Recursive loading returns no provider for that attempt, and repeated failures stop at the JDK retry
 limit rather than retrying indefinitely.
-`--future-defaults=explicit-security-provider-registration` enables this behavior implicitly.
+`--future-defaults=metadata-security-provider-registration` enables this behavior implicitly.
 
 ### 7.2 Provider Service Descriptors
 
@@ -409,7 +409,7 @@ the descriptor in a legacy mode, so an opaque query may find it without explicit
 
 ### 7.3 Earlier Service-Driven Inclusion Behavior
 
-Without `--future-defaults=explicit-security-provider-registration`, reachability of a supported JCA
+Without `--future-defaults=metadata-security-provider-registration`, reachability of a supported JCA
 factory or security facade retains configured services of the corresponding type even when their
 provider classes lack reflection metadata.
 For example, a reachable `Signature.getInstance(runtimeAlgorithm)` can make configured `Signature`
@@ -417,7 +417,7 @@ services available, but the run-time value cannot retain another service type.
 Likewise, reachability of `GSSManager.getInstance().getMechs()`, `Sasl.createSaslClient(...)`, or
 `Sasl.createSaslServer(...)` can retain the configured GSS mechanism, SASL client-factory, or SASL
 server-factory services, respectively.
-With `--future-defaults=explicit-security-provider-registration`, the same call can select only
+With `--future-defaults=metadata-security-provider-registration`, the same call can select only
 providers registered under [§2.1](#21-qualifying-reflection-metadata), except for the `SecureRandom`
 rule in [§2.4](#24-securerandom-providers).
 Neither mode changes the programmatic rules in [§5](#5-programmatically-supplied-providers).

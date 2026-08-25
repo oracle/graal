@@ -44,7 +44,7 @@ import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
-                "--future-defaults=explicit-security-provider-registration",
+                "--future-defaults=metadata-security-provider-registration",
                 "--exact-reachability-metadata=com.oracle.svm.test.services"
 })
 public class SecurityServiceExplicitProviderRegistrationTest {
@@ -54,7 +54,7 @@ public class SecurityServiceExplicitProviderRegistrationTest {
     /** Tests explicit registration with run-time initialization. */
     @Test
     public void testExplicitRegistrationEnablesRuntimeProviderInitialization() {
-        Assert.assertTrue(FutureDefaultsOptions.explicitSecurityProviderRegistration());
+        Assert.assertTrue(FutureDefaultsOptions.metadataSecurityProviderRegistration());
         Assert.assertTrue(FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
     }
 
