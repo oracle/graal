@@ -136,34 +136,40 @@ final class NativeTruffleObject implements TruffleObject {
         }
         int messageId = message.getId();
         SymbolTable.Symbol symbol = null;
-        if (SymbolTable.isMemberNameMessage(messageId)) {
-            SymbolTable.Symbol s = context.hostSymbols.preRegister((String) args[0]);
-            if (s != null) {
-                args[0] = symbol = s;
+        try {
+            if (SymbolTable.isMemberNameMessage(messageId)) {
+                SymbolTable.Symbol s = context.hostSymbols.acquireSymbol((String) args[0]);
+                if (s != null) {
+                    args[0] = symbol = s;
+                }
+            }
+            byte[] messageReadBufferIntoOutByteArray = null;
+            int messageReadBufferIntoOutByteArrayOffset = -1;
+            if (message == MESSAGE_READ_BUFFER) {
+                messageReadBufferIntoOutByteArray = (byte[]) args[1];
+                messageReadBufferIntoOutByteArrayOffset = (Integer) args[2];
+                args[1] = null;
+                args[2] = 0;
+            }
+            // depending on message type, enable scoping here for function invocations. also for
+            // instantiate?
+            Object result = context.guestObjectReflection.dispatch(guestReferenceId, messageId, args);
+            if (symbol != null) {
+                symbol.finishRegistration();
+            }
+            if (result == null) {
+                return null;
+            }
+            if (message == MESSAGE_READ_BUFFER) {
+                byte[] outByteArray = (byte[]) result;
+                System.arraycopy(outByteArray, 0, messageReadBufferIntoOutByteArray, messageReadBufferIntoOutByteArrayOffset, outByteArray.length);
+                result = null;
+            }
+            return result;
+        } finally {
+            if (symbol != null) {
+                symbol.release();
             }
         }
-        byte[] messageReadBufferIntoOutByteArray = null;
-        int messageReadBufferIntoOutByteArrayOffset = -1;
-        if (message == MESSAGE_READ_BUFFER) {
-            messageReadBufferIntoOutByteArray = (byte[]) args[1];
-            messageReadBufferIntoOutByteArrayOffset = (Integer) args[2];
-            args[1] = null;
-            args[2] = 0;
-        }
-        // depending on message type, enable scoping here for function invocations. also for
-        // instantiate?
-        Object result = context.guestObjectReflection.dispatch(guestReferenceId, messageId, args);
-        if (symbol != null) {
-            symbol.finishRegistration();
-        }
-        if (result == null) {
-            return null;
-        }
-        if (message == MESSAGE_READ_BUFFER) {
-            byte[] outByteArray = (byte[]) result;
-            System.arraycopy(outByteArray, 0, messageReadBufferIntoOutByteArray, messageReadBufferIntoOutByteArrayOffset, outByteArray.length);
-            result = null;
-        }
-        return result;
     }
 }

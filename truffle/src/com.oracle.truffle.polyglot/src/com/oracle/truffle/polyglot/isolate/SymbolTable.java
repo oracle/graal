@@ -44,10 +44,17 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.Message;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+/**
+ * Replaces frequently used interop member names with compact ids across an isolate boundary. Each
+ * communication direction has a {@link Source} that assigns ids and a {@link Sink} that resolves
+ * them.
+ */
 final class SymbolTable {
 
     private static final boolean[] MEMBER_NAME_MESSAGES = SymbolTable.createMemberNameMessageTable();
@@ -76,7 +83,11 @@ final class SymbolTable {
     private SymbolTable() {
     }
 
+    /** A source-side symbol pinned while it is used by a dispatch. */
     static final class Symbol {
+
+        private static final int RETIRED = Integer.MIN_VALUE;
+        private static final AtomicIntegerFieldUpdater<Symbol> ACTIVE_UPDATER = AtomicIntegerFieldUpdater.newUpdater(Symbol.class, "active");
 
         private final String name;
         private final int id;
@@ -89,6 +100,14 @@ final class SymbolTable {
          * not need to be synchronized.
          */
         private boolean pending;
+        /* Approximate accesses since the last compaction. */
+        private int lru;
+        /*
+         * Number of active uses. A value greater than zero prevents Source.compact() from removing
+         * the symbol, while zero makes it eligible for retirement. RETIRED marks a removed symbol,
+         * which Source.acquireSymbol() must not return.
+         */
+        private volatile int active;
 
         private Symbol(String name, int id, boolean pending) {
             this.name = name;
@@ -104,12 +123,20 @@ final class SymbolTable {
             return id;
         }
 
+        /** Returns whether the next dispatch must send the name together with the id. */
         boolean isPending() {
             return pending;
         }
 
+        /** Marks the symbol definition as delivered to the sink. */
         void finishRegistration() {
             pending = false;
+        }
+
+        /** Releases one use acquired by {@link Source#acquireSymbol(String)}. */
+        void release() {
+            int current = ACTIVE_UPDATER.decrementAndGet(this);
+            assert current >= 0;
         }
 
         @Override
@@ -123,6 +150,22 @@ final class SymbolTable {
                 return false;
             }
             return id == ((Symbol) obj).id;
+        }
+
+        private boolean tryAcquire() {
+            int current;
+            do {
+                current = active;
+                if (current == RETIRED) {
+                    return false;
+                }
+            } while (!ACTIVE_UPDATER.compareAndSet(this, current, current + 1));
+            lru++;
+            return true;
+        }
+
+        private boolean tryRetire() {
+            return ACTIVE_UPDATER.compareAndSet(this, 0, RETIRED);
         }
     }
 
@@ -138,37 +181,129 @@ final class SymbolTable {
         return new Sink();
     }
 
+    /** Assigns ids to names on the sending side and recycles infrequently used symbols. */
     static final class Source {
 
         /*
-         * Upper bound on assigned symbol ids. The maximal value is dictated by the wire format: symbol ids
+         * Upper bound on assigned symbol ids. The maximal MAX_SYMBOLS value is dictated by the wire format: symbol ids
          * are written as a short by BinaryProtocol, so an id above Short.MAX_VALUE would be
          * silently truncated and resolve to a wrong member name. It also bounds the table for
-         * guests that compute member names dynamically. Once the ids are exhausted preRegister
-         * returns null and the names are sent verbatim again.
+         * guests that compute member names dynamically. Once the ids are exhausted, infrequently
+         * used symbols are retired and their ids are reused.
          */
-        private static final int MAX_SYMBOLS = Short.MAX_VALUE;
+        private static final int MAX_SYMBOLS = 1024;
+        /* Assigns ids until MAX_SYMBOLS is reached. */
         private final AtomicInteger idGenerator = new AtomicInteger();
+        /* Reusable ids produced by compaction; guarded by itself. */
+        private final BitSet freeIds = new BitSet(MAX_SYMBOLS);
         private final ConcurrentMap<String, Symbol> nameToSymbol = new ConcurrentHashMap<>();
 
         private Source() {
         }
 
-        Symbol preRegister(String name) {
-            Symbol s = nameToSymbol.get(name);
-            if (s != null) {
-                return s;
+        /**
+         * Acquires the symbol for a member name, creating one if an id is available. The caller
+         * must invoke {@link Symbol#release()} in a {@code finally} block and should invoke
+         * {@link Symbol#finishRegistration()} after a successful dispatch:
+         *
+         * <pre>{@code
+         * Symbol symbol = source.acquireSymbol(name);
+         * try {
+         *     dispatch(symbol != null ? symbol : name);
+         *     if (symbol != null) {
+         *         symbol.finishRegistration();
+         *     }
+         * } finally {
+         *     if (symbol != null) {
+         *         symbol.release();
+         *     }
+         * }
+         * }</pre>
+         *
+         * @param name the member name
+         * @return the acquired symbol, or {@code null} if no id can be reclaimed
+         */
+        Symbol acquireSymbol(String name) {
+            boolean compacted = false;
+            while (true) {
+                Symbol s = nameToSymbol.get(name);
+                if (s == null) {
+                    s = nameToSymbol.computeIfAbsent(name, n -> {
+                        int id = generateId();
+                        return id != Symbol.RETIRED ? new Symbol(n, id, true) : null;
+                    });
+                    if (s == null) {
+                        if (compacted) {
+                            return null;
+                        }
+                        compact();
+                        compacted = true;
+                        continue;
+                    }
+                }
+                if (s.tryAcquire()) {
+                    return s;
+                }
             }
-            if (idGenerator.get() > MAX_SYMBOLS) {
-                return null;
-            }
-            return nameToSymbol.computeIfAbsent(name, n -> {
+        }
+
+        /** Returns a fresh or recycled id, or {@link Symbol#RETIRED} if none is available. */
+        private int generateId() {
+            if (idGenerator.get() < MAX_SYMBOLS) {
                 int id = idGenerator.getAndIncrement();
-                return id <= MAX_SYMBOLS ? new Symbol(n, id, true) : null;
-            });
+                if (id < MAX_SYMBOLS) {
+                    return id;
+                }
+            }
+            synchronized (freeIds) {
+                int id = freeIds.nextSetBit(0);
+                if (id >= 0) {
+                    freeIds.clear(id);
+                    return id;
+                }
+            }
+            return Symbol.RETIRED;
+        }
+
+        /**
+         * Attempts to retire the least-used quarter of the table. Active symbols are skipped and
+         * observed usage counters are reset.
+         */
+        private synchronized void compact() {
+            synchronized (freeIds) {
+                if (!freeIds.isEmpty()) {
+                    return;
+                }
+            }
+            Symbol[] symbols = nameToSymbol.values().toArray(new Symbol[0]);
+            long[] usages = new long[symbols.length];
+            for (int i = 0; i < symbols.length; i++) {
+                Symbol symbol = symbols[i];
+                int usage = Math.max(0, symbol.lru);
+                symbol.lru = 0;
+                usages[i] = ((long) usage << Integer.SIZE) | (i & 0xffffffffL);
+            }
+            Arrays.sort(usages);
+            int target = Math.max(1, symbols.length / 4);
+            int retired = 0;
+            BitSet reclaimedIds = new BitSet(MAX_SYMBOLS);
+            for (long usage : usages) {
+                Symbol symbol = symbols[(int) usage];
+                if (symbol.tryRetire() && nameToSymbol.remove(symbol.name, symbol)) {
+                    reclaimedIds.set(symbol.id);
+                    retired++;
+                    if (retired == target) {
+                        break;
+                    }
+                }
+            }
+            synchronized (freeIds) {
+                freeIds.or(reclaimedIds);
+            }
         }
     }
 
+    /** Resolves ids on the receiving side. */
     static final class Sink {
 
         private static final int INITIAL_SIZE = 64;
@@ -183,7 +318,6 @@ final class SymbolTable {
             if (id >= cur.length) {
                 cur = Arrays.copyOf(cur, Math.max(id + 1, cur.length * 2));
             }
-            assert cur[id] == null || cur[id].equals(name) : "Symbol id " + id + " redefined from " + cur[id] + " to " + name;
             cur[id] = name;
             names = cur;
         }
