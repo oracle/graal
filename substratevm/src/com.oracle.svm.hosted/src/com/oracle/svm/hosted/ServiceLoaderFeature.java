@@ -172,7 +172,10 @@ public class ServiceLoaderFeature implements InternalFeature {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         // §FS-002-security-providers.7.2
         // Permit an absent descriptor without including its providers.
-        Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
+        // §FS-002-security-providers.7.2: Only explicit mode owns the descriptor-preservation rule.
+        if (securityProviderMode.explicitRegistration()) {
+            Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
+        }
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (securityProviderMode.explicitRegistration() && serviceName.equals(java.security.Provider.class.getName())) {
                 ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);

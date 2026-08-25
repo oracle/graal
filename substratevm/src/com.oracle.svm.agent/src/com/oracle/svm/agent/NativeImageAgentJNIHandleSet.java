@@ -41,6 +41,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClassNotFoundException;
     final JNIMethodId javaLangClassGetName;
     final JNIMethodId javaLangClassGetInterfaces;
+    final JNIMethodId javaLangClassGetModule;
 
     final JNIObjectHandle javaLangReflectMember;
     final JNIMethodId javaLangReflectMemberGetName;
@@ -65,6 +66,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaSecurityProviderServiceGetProvider;
     final JNIMethodId javaSecurityProviderServiceNewInstance;
     final JNIFieldId javaSecurityProviderServiceClassCache;
+    final JNIFieldId javaSecurityProviderServiceConstructorCache;
     final JNIFieldId javaSecurityProviderServiceEngineDescription;
     final JNIFieldId javaSecurityProviderEngineDescriptionConstructorParameterClass;
     final JNIMethodId javaSecurityProviderGetName;
@@ -166,6 +168,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
         javaLangClassGetInterfaces = getMethodId(env, javaLangClass, "getInterfaces", "()[Ljava/lang/Class;", false);
+        javaLangClassGetModule = getMethodIdOptional(env, javaLangClass, "getModule", "()Ljava/lang/Module;", false);
 
         javaLangReflectMember = newClassGlobalRef(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
@@ -192,6 +195,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaSecurityProviderServiceGetProvider = getMethodId(env, javaSecurityProviderService, "getProvider", "()Ljava/security/Provider;", false);
         javaSecurityProviderServiceNewInstance = getMethodId(env, javaSecurityProviderService, "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;", false);
         javaSecurityProviderServiceClassCache = getFieldIdOptional(env, javaSecurityProviderService, "classCache", "Ljava/lang/Object;", false);
+        javaSecurityProviderServiceConstructorCache = getFieldIdOptional(env, javaSecurityProviderService, "constructorCache", "Ljava/lang/Object;", false);
         javaSecurityProviderServiceEngineDescription = getFieldIdOptional(env, javaSecurityProviderService, "engineDescription", "Ljava/security/Provider$EngineDescription;", false);
         JNIObjectHandle javaSecurityProviderEngineDescription = findClassOptional(env, "java/security/Provider$EngineDescription");
         javaSecurityProviderEngineDescriptionConstructorParameterClass = javaSecurityProviderEngineDescription.equal(nullHandle())

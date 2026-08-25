@@ -107,7 +107,12 @@ The value of a `security.provider.<n>` property consists of a provider class or 
 optional configuration argument separated from it by whitespace.
 For an entry with a non-empty argument, the JDK constructs the provider through its selected path and
 then calls `Provider.configure(argument)`; the provider returned by `configure` is the instance for
-that entry.
+that entry, even when it has a different provider name or implementation class from the
+pre-configuration instance.
+When a configured token is a provider name rather than a class name, Native Image tries eligible
+_META-INF/services/java.security.Provider_ declarations in descriptor order and uses the first
+successfully constructed provider whose pre-configuration name matches the token.
+An ambiguous provider name never falls back to treating that token as a binary class name.
 Each configured entry is independent, so two entries for the same provider class can produce
 distinct provider instances, names, and service catalogs while retaining their configured relative
 order.
@@ -146,6 +151,10 @@ When both apply, `provider()` takes precedence (JLS §7.7.4).
 For a configured entry with an argument, construction includes the subsequent
 `Provider.configure(argument)` call and uses its return value.
 A private or parameterized constructor and a class-path `provider()` method do not qualify.
+A service descriptor is passive inventory: discovering it does not initialize or instantiate its
+declaration class.
+Native Image invokes a descriptor construction path during image generation only after qualifying
+metadata activates that path or its returned provider implementation.
 A registered provider without a qualifying path is not returned by `Security.getProvider(String)`;
 application code can still supply an existing instance under [§5](#5-programmatically-supplied-providers).
 If invoking a selected path during the image build fails or returns the wrong provider class, the
@@ -269,6 +278,18 @@ unregistered configured provider, acquisition fails before returning the provide
 The ordinary reflection diagnostic names the provider implementation class in binary form and tells
 the user to register its type or supported construction path in _reachability-metadata.json_.
 There is no provider-specific metadata format or provider-specific missing-metadata error type.
+The diagnostic lookup is side-effect-free: it does not construct or cache the omitted provider and
+does not change subsequent enumeration, duplicate detection, insertion, or factory behavior.
+An implementation retained only for provider-object use under [§5](#5-programmatically-supplied-providers)
+is not diagnosed by a name lookup: until the application inserts an instance,
+`Security.getProvider(String)` returns `null`.
+This exception does not suppress the diagnostic for a configured built-in provider merely because
+application code also makes provider-object use of its implementation class reachable.
+The diagnostic resolver uses only recorded configured entries and built-in provider aliases; it
+does not interpret an arbitrary dotted provider name as an implementation class name.
+The same diagnostic applies in exact-metadata and compatibility reporting modes.
+If reflective construction is attempted, `MissingReflectionRegistrationError` remains the top-level
+failure and is not wrapped as a provider-configuration error.
 
 ## 5. Programmatically Supplied Providers
 
@@ -290,6 +311,9 @@ On success they insert that exact object, after which `Security.getProvider(prov
 returns it and a name-based factory can select its retained services.
 They return `-1` when the list already contains a provider with the same name, and otherwise use the
 positions and ordering defined by the standard `Security` API.
+Duplicate detection and insertion positions count only providers visible in the run-time list.
+Inactive conditional or unregistered configurations retain their relative order but neither block an
+application-supplied provider with the same name nor shift its visible insertion position.
 `Security.removeProvider(provider.getName())` removes the list entry.
 Insertion retains no additional service implementation, so a missing service still produces
 `NoSuchAlgorithmException`.
@@ -319,6 +343,15 @@ Rebuilding with only the generated metadata must reproduce the observed factory 
 explicit provider registration is enabled.
 Tracing `Security.addProvider`, `Security.insertProviderAt`, or `Security.removeProvider` does not
 record provider-class metadata merely because the call receives an existing object.
+Only a successfully inserted provider object retains application-supplied provenance for later
+name-based selection; a failed insertion does not.
+A provider-object factory call has transient application-supplied provenance for that call only and
+does not change how a later name-based selection of the same object is traced.
+Provider provenance is per object, does not keep the object alive, and has bounded lookup cost.
+For a cached service implementation, tracing records the constructor the JDK actually cached,
+including a no-argument constructor selected after a parameterized-constructor probe failed.
+Security operations reached through JDK runtime modules are attributed to the first non-JDK caller,
+including calls mediated by non-security JDK classes or platform provider modules.
 An application `Class.forName`, reflective constructor call, or reflective service construction is
 traced by the ordinary reflection rules.
 
@@ -345,6 +378,10 @@ when `Security` first needs it at run time.
 `security.provider.<n>` configuration and preserves their relative order.
 `Security.getProvider(String)` constructs an entry through its retained path and fails with an
 actionable diagnostic if that path fails or returns the wrong implementation.
+Every configured construction path uses the JDK recursion guard and retry counter, including a path
+resolved from retained descriptor inventory.
+Recursive loading returns no provider for that attempt, and repeated failures stop at the JDK retry
+limit rather than retrying indefinitely.
 `--future-defaults=explicit-security-provider-registration` enables this behavior implicitly.
 
 ### 7.2 Provider Service Descriptors
@@ -355,6 +392,13 @@ Without provider reflection metadata, `ServiceLoader.load(Provider.class)` does 
 described provider.
 With that metadata, it can return the provider only when `ServiceLoader` access to `Provider` is
 reachable and therefore retains the descriptor.
+Descriptor discovery preserves declaration order without instantiating declarations that have no
+active provider-registration signal.
+Only explicit-registration mode registers a negative resource query for an absent provider
+descriptor; both legacy modes preserve the ordinary resource-query behavior. The negative query
+permits an absent descriptor to return no resource, but does not suppress a descriptor retained by
+an independent reachable use. In particular, run-time provider initialization can itself retain
+the descriptor in a legacy mode, so an opaque query may find it without explicit resource metadata.
 
 ### 7.3 Earlier Service-Driven Inclusion Behavior
 
@@ -415,7 +459,9 @@ options permitted (§REQ-001-spec-compatibility.2).
 
 **Domain.** A public provider constructor on the class path; a provider method in an explicit module;
 a provider method whose implementation differs from its service provider class; a provider method
-returning a non-public implementation; and a provider configured more than once.
+returning a non-public implementation; a provider configured more than once; a configured provider
+whose `configure` result changes its name or implementation class; ordered same-name descriptors;
+recursive construction; and repeated failing construction.
 
 ### 8.2 Metadata Closure
 
@@ -440,6 +486,9 @@ For a provider with a supported construction path, the same entry must enable th
 services.
 
 **Witness.** The metadata entry printed in the diagnostic.
+
+**Domain.** Exact-metadata and compatibility reporting, before and after provider enumeration and
+provider-list mutation.
 
 ### 8.4 No Exposure of an Unregistered Provider
 
@@ -496,6 +545,11 @@ additional-provider option in each mode.
 operations and minimal enough not to register an unused provider or repeat an observed operation.
 Tracing a provider-list mutation must not add provider-class metadata merely because it observes the
 supplied object.
+Tracing must not retain application provider objects, must distinguish transient provider-object
+calls from successful insertion, and must record the constructor actually used on service-cache
+hits.
+Caller attribution must cross every JDK runtime-module intermediary before selecting an application
+condition.
 
 **Domain.** Provider lookup, enumeration, filtering, list mutation, factory service selection, and
 `Provider.Service.newInstance(Object)`.

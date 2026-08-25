@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
@@ -157,6 +158,22 @@ public interface JvmtiInterface extends PointerBase {
     interface CapabilitiesFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv env, JvmtiCapabilities capabilitiesPtr);
+    }
+
+    @CField("GetTag")
+    GetTagFunctionPointer GetTag();
+
+    interface GetTagFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, JNIObjectHandle object, CLongPointer tagPtr);
+    }
+
+    @CField("SetTag")
+    SetTagFunctionPointer SetTag();
+
+    interface SetTagFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, JNIObjectHandle object, long tag);
     }
 
     @CField("SetBreakpoint")

@@ -26,8 +26,8 @@ package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Method;
 import java.security.Provider;
-import java.util.function.Supplier;
 
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.MissingRegistrationSupport;
@@ -40,30 +40,7 @@ import com.oracle.svm.shared.security.ProviderConstruction;
 import com.oracle.svm.shared.security.SecurityProviderCatalog;
 
 public final class SecurityProviderRuntimeAccess {
-    private static final ThreadLocal<Boolean> LOAD_UNREGISTERED_CONFIGURED_PROVIDER = new ThreadLocal<>();
-
     private SecurityProviderRuntimeAccess() {
-    }
-
-    /** §FS-002-security-providers.4.3: Explicit configured-provider lookups retain diagnostics. */
-    public static Provider loadUnregisteredConfiguredProvider(Supplier<Provider> loader) {
-        Boolean previous = LOAD_UNREGISTERED_CONFIGURED_PROVIDER.get();
-        LOAD_UNREGISTERED_CONFIGURED_PROVIDER.set(true);
-        try {
-            return loader.get();
-        } finally {
-            if (previous == null) {
-                LOAD_UNREGISTERED_CONFIGURED_PROVIDER.remove();
-            } else {
-                LOAD_UNREGISTERED_CONFIGURED_PROVIDER.set(previous);
-            }
-        }
-    }
-
-    // §FS-002-security-providers.7.1
-    /** Provider-list construction filters unregistered providers. */
-    public static boolean shouldLoadUnregisteredConfiguredProvider() {
-        return Boolean.TRUE.equals(LOAD_UNREGISTERED_CONFIGURED_PROVIDER.get());
     }
 
     // §AR-002-security-providers.2
@@ -75,6 +52,16 @@ public final class SecurityProviderRuntimeAccess {
     /** Resolve and filter a provider class through the layered run-time manifest. */
     public static boolean isJdkAcquirable(String providerClassName) {
         return passesJdkAcquisitionFilter(SecurityProviderRuntimeState.isJdkConstructible(providerClassName));
+    }
+
+    /** Determine whether a provider-list configuration can be loaded without probing it. */
+    static boolean isConfiguredProviderAcquirable(String providerName) {
+        SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProvider(providerName);
+        String configuredProviderClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
+        String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(providerName);
+        String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
+                        : builtInProviderClassName != null ? builtInProviderClassName : providerName;
+        return isJdkAcquirable(providerClassName);
     }
 
     /** §FS-002-security-providers.4.1 and §FS-002-security-providers.5.1. */
@@ -100,7 +87,15 @@ public final class SecurityProviderRuntimeAccess {
         try (var _ = MetadataTracer.disableTracing("security provider list construction")) {
             Class<?> constructionClass = Class.forName(constructionClassName, true, ClassLoader.getSystemClassLoader());
             candidate = constructProvider(constructionClass);
+            validateConstructedProvider(providerName, providerClassName, constructionClassName, candidate);
             candidate = configureProvider(candidate, argument);
+            if (candidate != null && !providerClassName.equals(candidate.getClass().getName()) &&
+                            !isJdkAcquirable(candidate.getClass().getName())) {
+                throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
+                                "configured to the unregistered implementation class " + candidate.getClass().getName(), null);
+            }
+        } catch (MissingReflectionRegistrationError ex) {
+            throw ex;
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ex) {
             throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName, "could not be constructed or configured", ex);
         }
@@ -117,17 +112,21 @@ public final class SecurityProviderRuntimeAccess {
         if (candidate == null) {
             throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName, "returned null from its construction path", null);
         }
+        return candidate;
+    }
+
+    private static void validateConstructedProvider(String providerName, String providerClassName, String constructionClassName, Provider candidate) {
+        if (candidate == null) {
+            throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName, "returned null from its construction path", null);
+        }
         if (!providerClassName.equals(candidate.getClass().getName())) {
             throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
-                            "returned an instance of " + candidate.getClass().getName(), null);
+                            "returned an instance of " + candidate.getClass().getName() + " before configuration", null);
         }
-        // §FS-002-security-providers.7.1
-        // A class-configured entry may legitimately differ from the provider's declared name.
         if (!providerName.equals(providerClassName) && !providerName.equals(candidate.getName())) {
             throw unusableConfiguredProvider(providerName, providerClassName, constructionClassName,
-                            "was constructed but reports the provider name " + candidate.getName(), null);
+                            "reported the provider name " + candidate.getName() + " before configuration", null);
         }
-        return candidate;
     }
 
     private static SecurityException unusableConfiguredProvider(String providerName, String providerClassName, String constructionClassName, String problem, Throwable cause) {
@@ -163,15 +162,40 @@ public final class SecurityProviderRuntimeAccess {
     /** §FS-002-security-providers.4.3: Cache misses probe type access for standard diagnostics. */
     @NeverInline("Keep the provider class name unknown to static analysis without an opaque compiler node.")
     public static void reportMissingRegistration(Class<?> providerClass) {
+        reportMissingRegistration(providerClass.getName());
+    }
+
+    /** Report an omitted configured provider without loading or caching its class. */
+    @NeverInline("Keep the provider class name unknown to static analysis without an opaque compiler node.")
+    public static void reportMissingRegistration(String providerClassName) {
         String remediation = missingRegistrationRemediation();
         if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             StackTraceElement responsibleClass = findExactMetadataCaller();
             if (responsibleClass != null) {
-                MissingReflectionRegistrationUtils.reportClassAccess(providerClass.getName(), responsibleClass);
+                MissingReflectionRegistrationUtils.reportClassAccess(providerClassName, responsibleClass);
             }
         }
         throw new SecurityException(
-                        "Attempted to use a security provider that was not registered for reflection at build time: " + providerClass.getName() + ". " + remediation);
+                        "Attempted to use a security provider that was not registered for reflection at build time: " + providerClassName + ". " + remediation);
+    }
+
+    /** §FS-002-security-providers.4.3: Diagnose a configured omission without constructing it. */
+    public static void reportMissingConfiguredProvider(String providerName) {
+        SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProviderForDiagnostics(providerName);
+        String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(providerName);
+        String providerClassName = configuredProvider != null ? configuredProvider.providerClassName()
+                        : builtInProviderClassName;
+        // §FS-002-security-providers.4.3: Provider-object-only plans remain ordinary list misses.
+        boolean applicationSuppliedOnly = isApplicationSuppliedOnlyDiagnostic(providerClassName, builtInProviderClassName);
+        if (providerClassName != null && !isJdkAcquirable(providerClassName) &&
+                        !applicationSuppliedOnly) {
+            reportMissingRegistration(providerClassName);
+        }
+    }
+
+    static boolean isApplicationSuppliedOnlyDiagnostic(String providerClassName, String builtInProviderClassName) {
+        return providerClassName != null && builtInProviderClassName == null &&
+                        SecurityProviderRuntimeState.isApplicationSuppliedOnly(providerClassName);
     }
 
     private static StackTraceElement findExactMetadataCaller() {

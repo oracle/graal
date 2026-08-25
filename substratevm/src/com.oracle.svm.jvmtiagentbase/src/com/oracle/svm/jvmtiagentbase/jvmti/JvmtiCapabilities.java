@@ -32,6 +32,12 @@ import org.graalvm.word.PointerBase;
 @CStruct("jvmtiCapabilities")
 @CContext(JvmtiDirectives.class)
 public interface JvmtiCapabilities extends PointerBase {
+    @CBitfield("can_tag_objects")
+    int getCanTagObjects();
+
+    @CBitfield("can_tag_objects")
+    void setCanTagObjects(int value);
+
     @CBitfield("can_generate_breakpoint_events")
     void setCanGenerateBreakpointEvents(int value);
 

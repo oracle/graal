@@ -26,6 +26,8 @@
 package com.oracle.svm.core.jdk.runtimeinit;
 
 import java.net.URL;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.Provider;
 import java.util.ArrayList;
 import java.util.Map;
@@ -50,6 +52,16 @@ final class Target_java_security_Security {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     static Properties props;
+
+    /** §FS-002-security-providers.4.3: Keep omission diagnostics outside ProviderList mutation. */
+    @Substitute
+    public static Provider getProvider(String name) {
+        Provider provider = sun.security.jca.Providers.getProviderList().getProvider(name);
+        if (provider == null) {
+            SecurityProviderRuntimeAccess.reportMissingConfiguredProvider(name);
+        }
+        return SecurityProviderRuntimeAccess.traceJdkProviderLookup(provider);
+    }
 }
 
 @TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = SecurityProvidersInitializedAtRunTime.class)
@@ -151,8 +163,7 @@ final class Target_sun_security_jca_ProviderConfig {
                             : builtInProviderClassName != null ? builtInProviderClassName : provName;
             // §FS-002-security-providers.7.1
             // Omit unregistered providers from the run-time list.
-            if (!SecurityProviderRuntimeAccess.shouldLoadUnregisteredConfiguredProvider() &&
-                            !SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
+            if (!SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
                 return null;
             }
             if (!shouldLoad()) {
@@ -161,12 +172,6 @@ final class Target_sun_security_jca_ProviderConfig {
             // Create providers which are in java.base directly
             if (BuiltInSecurityProviderLoader.isBuiltIn(provName)) {
                 provider = BuiltInSecurityProviderLoader.load(provName, debug);
-            } else if (configuredProviderClassName != null) {
-                /* §FS-002-security-providers.7.1:
-                 * Load the catalog-resolved provider directly, avoiding a ServiceLoader scan that
-                 * could touch unrelated omitted descriptors. */
-                provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
-                                configuredProvider.effectiveConstructionClassName(), argument);
             } else {
                 if (isLoading) {
                     /*
@@ -183,7 +188,15 @@ final class Target_sun_security_jca_ProviderConfig {
                 try {
                     isLoading = true;
                     tries++;
-                    provider = doLoadProvider();
+                    if (configuredProviderClassName != null) {
+                        /* §FS-002-security-providers.1.3 and §FS-002-security-providers.7.1:
+                         * Use the ordered retained descriptor candidate under the same recursion
+                         * and retry state machine as the JDK ServiceLoader path. */
+                        provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
+                                        configuredProvider.effectiveConstructionClassName(), argument);
+                    } else {
+                        provider = doLoadProvider();
+                    }
                 } finally {
                     isLoading = false;
                 }
@@ -213,16 +226,6 @@ final class Target_sun_security_jca_ProviderList {
         if (index >= 0) {
             return SecurityProviderRuntimeAccess.traceJdkProviderLookup(getProvider(index));
         }
-        for (Target_sun_security_jca_ProviderConfig config : configs) {
-            String configuredProviderName = config.provName;
-            String providerName = BuiltInSecurityProviderLoader.getProviderName(configuredProviderName);
-            String providerFQName = BuiltInSecurityProviderLoader.getProviderClassName(configuredProviderName);
-            boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
-            if (matches) {
-                Provider provider = SecurityProviderRuntimeAccess.loadUnregisteredConfiguredProvider(config::getProvider);
-                return SecurityProviderRuntimeAccess.traceJdkProviderLookup(provider);
-            }
-        }
         return null;
     }
 
@@ -237,6 +240,30 @@ final class Target_sun_security_jca_ProviderList {
             }
         }
         return activeProviders.toArray(new Provider[0]);
+    }
+}
+
+@TargetClass(className = "sun.security.jca.GetInstance", onlyWith = SecurityProvidersInitializedAtRunTime.class)
+final class Target_sun_security_jca_GetInstance_RuntimeInit {
+    /** §FS-002-security-providers.4.3: Named factories diagnose at their acquisition boundary. */
+    @Substitute
+    public static Provider.Service getService(String type, String algorithm, String providerName)
+                    throws NoSuchAlgorithmException, NoSuchProviderException {
+        // Checkstyle: allow inconsistent exceptions and errors (JDK-compatible messages)
+        if (providerName == null || providerName.isEmpty()) {
+            throw new IllegalArgumentException("missing provider");
+        }
+        Provider provider = sun.security.jca.Providers.getProviderList().getProvider(providerName);
+        if (provider == null) {
+            SecurityProviderRuntimeAccess.reportMissingConfiguredProvider(providerName);
+            throw new NoSuchProviderException("no such provider: " + providerName);
+        }
+        Provider.Service service = provider.getService(type, algorithm);
+        if (service == null) {
+            throw new NoSuchAlgorithmException("no such algorithm: " + algorithm + " for provider " + providerName);
+        }
+        // Checkstyle: disallow inconsistent exceptions and errors
+        return service;
     }
 }
 
