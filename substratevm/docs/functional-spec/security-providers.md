@@ -275,6 +275,9 @@ A provider-object overload does not throw merely because the provider is absent 
 
 When `Security.getProvider(String)` or a JCA factory causes the JDK to reflectively load an
 unregistered configured provider, acquisition fails before returning the provider.
+This diagnostic applies only with explicit provider registration enabled. Legacy modes preserve
+their earlier lookup results and exceptions for providers omitted from the Native Image provider
+list.
 The ordinary reflection diagnostic names the provider implementation class in binary form and tells
 the user to register its type or supported construction path in _reachability-metadata.json_.
 There is no provider-specific metadata format or provider-specific missing-metadata error type.
@@ -327,6 +330,10 @@ missing-registration failure from [§4.3](#43-missing-reflection-registration).
 In either case, the factory fails before it constructs the service implementation.
 This rule applies equally to a JDK-managed provider and an application-supplied provider; the latter
 still requires no provider-class reflection metadata.
+Instantiation reachability records successful verification for an application-supplied-only
+provider class independently of any configured-list instance of the same class. In particular, a
+verification failure for an omitted configured instance does not prevent provider-object use of an
+application-created instance.
 The implementation-specific recognition rule is §AR-002-security-providers.3.
 
 ## 6. Tracing Metadata

@@ -181,6 +181,10 @@ public final class SecurityProviderRuntimeAccess {
 
     /** §FS-002-security-providers.4.3: Diagnose a configured omission without constructing it. */
     public static void reportMissingConfiguredProvider(String providerName) {
+        // §FS-002-security-providers.7.3: Legacy modes preserve their earlier lookup failures.
+        if (!FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+            return;
+        }
         SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProviderForDiagnostics(providerName);
         String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(providerName);
         String providerClassName = configuredProvider != null ? configuredProvider.providerClassName()
