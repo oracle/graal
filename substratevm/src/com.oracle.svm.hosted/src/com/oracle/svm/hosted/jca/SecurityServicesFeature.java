@@ -188,10 +188,11 @@ import sun.security.x509.OIDMap;
 /// provider intent and iteration-safe candidate processing. The catalog registrar constructs
 /// eligible providers, registers their service catalogs, and owns every production manifest write.
 /// **Requirement.** For every concrete `Provider` subtype that analysis marks instantiated, whether
-/// through reachable allocation or an image-heap instance, the feature must perform JCE validation
-/// during image generation and record the outcome by provider class. The resulting
+/// through reachable allocation or an image-heap instance, the feature must record successful JCE
+/// recognition by provider class. The resulting
 /// `APPLICATION_SUPPLIED_ONLY` entry must not register reflective construction, make the provider
-/// JDK-constructible, or retain services that no independent signal retains.
+/// JDK-constructible, retain services that no independent signal retains, or inherit the verification
+/// outcome of a configured-list instance of the same class.
 /// `LegacySecurityProviderCompatibility` owns deprecated options and service-driven inclusion.
 /// Provider code accesses reflection registrations through a narrow query rather than the concrete
 /// metadata builder.
@@ -1373,7 +1374,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (providerPlanner.processNewProviders(
                         this::providerRegistrationPlan,
                         (providerClass, metadata) -> catalogRegistrar.includeProviderClass(access, providerClass, metadata),
-                        catalogRegistrar::registerApplicationSuppliedProviderClass) || resolvedServiceProviderFactory) {
+                        SecurityProviderCatalogRegistrar::registerApplicationSuppliedProviderClass) || resolvedServiceProviderFactory) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
         }

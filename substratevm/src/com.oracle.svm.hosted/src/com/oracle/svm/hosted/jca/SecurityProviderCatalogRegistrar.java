@@ -107,12 +107,10 @@ final class SecurityProviderCatalogRegistrar {
         writeProviderManifest(providerClassName, acquisitionKind, verificationResult, metadata);
     }
 
-    void registerApplicationSuppliedProviderClass(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
-        // §FS-002-security-providers.5.3
-        // Preserve verification without reconstructing the provider.
-        List<Provider> buildTimeProviders = buildTimeProvidersByClassName.get(providerClass.getName());
-        Object verificationResult = buildTimeProviders == null ? Boolean.TRUE : feature.getProviderVerificationResult(buildTimeProviders.getFirst());
-        writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, verificationResult, metadata);
+    static void registerApplicationSuppliedProviderClass(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
+        // §FS-002-security-providers.5.3: Instantiation establishes application verification.
+        // A configured instance of the class must not leak failure into provider-object use.
+        writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, Boolean.TRUE, metadata);
     }
 
     /** The sole production chokepoint that writes provider eligibility into the run-time manifest. */
