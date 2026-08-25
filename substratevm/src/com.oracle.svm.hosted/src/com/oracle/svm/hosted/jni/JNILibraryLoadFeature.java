@@ -107,7 +107,7 @@ public class JNILibraryLoadFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(
-                        NativeLibraries.singleton().getReachableBuiltinLibraryNames(),
+                        NativeLibraries.singleton().getReachableBuiltinJNILibraryNames(),
                         JNILibraryLoadFeature::shouldReferenceBuiltinOnLoad);
         if (isChanged) {
             access.requireAnalysisIteration();
@@ -116,7 +116,7 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        NativeLibraries.singleton().linkReachableBuiltinLibraries();
+        NativeLibraries.singleton().linkReachableBuiltinJNILibraries();
 
         if (!ClassRegistries.respectClassLoader()) {
             return;

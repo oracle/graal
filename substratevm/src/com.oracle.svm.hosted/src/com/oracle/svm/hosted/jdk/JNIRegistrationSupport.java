@@ -142,7 +142,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             for (String library : jniRegistrationSupportSingleton.prevLayerRegisteredLibraries) {
-                addLibrary(library);
+                NativeLibraries.singleton().registerJNILibraryAsReachable(library);
             }
         }
     }
@@ -178,7 +178,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             for (Consumer<String> handler : libraryRegistrationHandlers) {
                 handler.accept(libname);
             }
-            addLibrary(libname);
+            NativeLibraries.singleton().registerJNILibraryAsReachable(libname);
         }
     }
 
@@ -186,16 +186,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         libraryRegistrationHandlers.add(handler);
         for (String libname : jniRegistrationSupportSingleton.currentLayerRegisteredLibraries) {
             handler.accept(libname);
-        }
-    }
-
-    private static void addLibrary(String libname) {
-        /*
-         * If a library is in our list of static standard libraries, add the library to the linker
-         * command.
-         */
-        if (NativeLibraries.singleton().isPotentialBuiltinJNILibrary(libname)) {
-            NativeLibraries.singleton().markPotentialBuiltinJNILibraryReachable(libname);
         }
     }
 

@@ -3404,6 +3404,9 @@ class StaticLibrarySymbolsBuilder(mx.ArchivableProject):
         """Whether JNI symbols are invalid when no dynamic counterpart can be found."""
         return False
 
+    def _validate_dependencies(self, dependencies):
+        """Validate dependencies before they are written to the manifest."""
+
 
 class BaseJDKStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
     def __init__(self):
@@ -3453,6 +3456,9 @@ class SVMStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
     def _manifest_path(self, static_lib):
         relative_path = os.path.relpath(static_lib, self._static_lib_root())
         return join(self.get_output_root(), relative_path + '.symbols')
+
+    def _validate_dependencies(self, dependencies):
+        assert not dependencies, 'SVM static library manifests must not contain dependencies'
 
 
 class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
@@ -3528,6 +3534,7 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
             dependencies = []
         else:
             dependencies = self._collect_dependencies(dynamic_lib, self.subject._static_libs())
+        self.subject._validate_dependencies(dependencies)
         # Dependency records precede symbols so consumers can distinguish both record types
         # without changing the existing .symbols filename or the symbol line representation.
         content = ''.join(self.dependency_prefix + dependency + '\n' for dependency in sorted(dependencies))

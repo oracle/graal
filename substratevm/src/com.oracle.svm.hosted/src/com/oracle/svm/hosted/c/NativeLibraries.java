@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -133,6 +134,7 @@ public final class NativeLibraries {
     private final DependencyGraph dependencyGraph;
     private final List<String> jniStaticLibraries;
     private final LinkedHashSet<String> libraryPaths;
+    private final Map<Path, StaticLibraryManifest> staticLibraryManifests;
 
     private final List<CInterfaceError> errors;
     private final ConstantReflectionProvider constantReflection;
@@ -144,6 +146,8 @@ public final class NativeLibraries {
 
     @Stable //
     private Map<String, PotentialBuiltinJNILibrary> potentialBuiltinJNILibraryMap;
+    @Stable //
+    private Map<Path, Path> allStaticLibs;
     private boolean jvmBuiltinNativesRegistered = false;
 
     public static final class DependencyGraph {
@@ -282,6 +286,7 @@ public final class NativeLibraries {
         jniStaticLibraries = Collections.synchronizedList(new ArrayList<>());
 
         libraryPaths = initCLibraryPath();
+        staticLibraryManifests = new ConcurrentHashMap<>();
 
         this.cache = new CAnnotationProcessorCache();
     }
@@ -484,9 +489,9 @@ public final class NativeLibraries {
     }
 
     public List<String> getLibraryDependencies(String library) {
-        Path libraryPath = getStaticLibraryPath(getAllStaticLibs(), library);
+        Path libraryPath = getStaticLibraryPath(allStaticLibs, library);
         if (libraryPath != null) {
-            return readStaticLibraryManifest(libraryPath).dependencies();
+            return getStaticLibraryManifest(libraryPath).dependencies();
         }
         return List.of();
     }
@@ -495,25 +500,22 @@ public final class NativeLibraries {
         this.potentialBuiltinJNILibraryMap = Arrays.stream(JNIPlatformNativeLibrarySupport.potentialBuiltinLibraries).collect(Collectors.toMap(lib -> lib, PotentialBuiltinJNILibrary::create));
     }
 
-    public boolean isPotentialBuiltinJNILibrary(String library) {
-        return potentialBuiltinJNILibraryMap.containsKey(library);
+    public void registerJNILibraryAsReachable(String library) {
+        if (potentialBuiltinJNILibraryMap.containsKey(library)) {
+            potentialBuiltinJNILibraryMap.get(library).markReachable();
+        }
     }
 
-    public void markPotentialBuiltinJNILibraryReachable(String library) {
-        assert potentialBuiltinJNILibraryMap.containsKey(library);
-        potentialBuiltinJNILibraryMap.get(library).markReachable();
-    }
-
-    public List<PotentialBuiltinJNILibrary> getReachableBuiltinLibraries() {
+    private List<PotentialBuiltinJNILibrary> getReachableBuiltinJNILibraries() {
         return potentialBuiltinJNILibraryMap.values().stream().filter(lib -> lib.isReachable() && lib.isBuiltin()).toList();
     }
 
-    public List<String> getReachableBuiltinLibraryNames() {
-        return getReachableBuiltinLibraries().stream().map(PotentialBuiltinJNILibrary::getLibrary).toList();
+    public List<String> getReachableBuiltinJNILibraryNames() {
+        return getReachableBuiltinJNILibraries().stream().map(PotentialBuiltinJNILibrary::getLibrary).toList();
     }
 
-    public void linkReachableBuiltinLibraries() {
-        getReachableBuiltinLibraries().forEach(PotentialBuiltinJNILibrary::linkLibrary);
+    public void linkReachableBuiltinJNILibraries() {
+        getReachableBuiltinJNILibraries().forEach(PotentialBuiltinJNILibrary::linkLibrary);
     }
 
     /**
@@ -589,7 +591,6 @@ public final class NativeLibraries {
     }
 
     public Collection<Path> getStaticLibraries() {
-        Map<Path, Path> allStaticLibs = getAllStaticLibs();
         List<Path> staticLibs = new ArrayList<>();
         List<String> sortedList = dependencyGraph.sort();
 
@@ -608,14 +609,18 @@ public final class NativeLibraries {
     }
 
     public List<String> getStaticLibrarySymbols(String staticLibraryName) {
-        Path libraryPath = getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
+        Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
         if (libraryPath == null) {
             return List.of();
         }
-        return readStaticLibraryManifest(libraryPath).symbols();
+        return getStaticLibraryManifest(libraryPath).symbols();
     }
 
     private record StaticLibraryManifest(List<String> symbols, List<String> dependencies) {
+    }
+
+    private StaticLibraryManifest getStaticLibraryManifest(Path libraryPath) {
+        return staticLibraryManifests.computeIfAbsent(libraryPath, NativeLibraries::readStaticLibraryManifest);
     }
 
     private static StaticLibraryManifest readStaticLibraryManifest(Path libraryPath) {
@@ -626,15 +631,23 @@ public final class NativeLibraries {
         try {
             List<String> symbols = new ArrayList<>();
             List<String> dependencies = new ArrayList<>();
-            for (String rawLine : Files.readAllLines(symbolsPath)) {
-                String line = rawLine.trim();
-                if (line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX)) {
-                    String dependency = line.substring(STATIC_LIBRARY_DEPENDENCY_PREFIX.length());
-                    VMError.guarantee(!dependency.isEmpty(), "Malformed static library manifest: %s", symbolsPath);
-                    dependencies.add(dependency);
-                } else if (!line.isEmpty()) {
+            Iterator<String> lines = Files.readAllLines(symbolsPath).iterator();
+            while (lines.hasNext()) {
+                String line = lines.next();
+                VMError.guarantee(!line.isBlank(), "Malformed static library manifest: empty line in %s", symbolsPath);
+                if (!line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX)) {
                     symbols.add(line);
+                    break;
                 }
+                String dependency = line.substring(STATIC_LIBRARY_DEPENDENCY_PREFIX.length());
+                VMError.guarantee(!dependency.isEmpty(), "Malformed static library manifest: %s", symbolsPath);
+                dependencies.add(dependency);
+            }
+            while (lines.hasNext()) {
+                String line = lines.next();
+                VMError.guarantee(!line.isBlank(), "Malformed static library manifest: empty line in %s", symbolsPath);
+                VMError.guarantee(!line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX), "Malformed static library manifest: dependency after symbol in %s", symbolsPath);
+                symbols.add(line);
             }
             return new StaticLibraryManifest(List.copyOf(symbols), List.copyOf(dependencies));
         } catch (IOException e) {
@@ -643,11 +656,11 @@ public final class NativeLibraries {
     }
 
     public Collection<Path> getAllStaticLibNames() {
-        return getAllStaticLibs().keySet();
+        return allStaticLibs.keySet();
     }
 
     public boolean hasStaticLibrary(String library) {
-        return getStaticLibraryPath(getAllStaticLibs(), library) != null;
+        return getStaticLibraryPath(allStaticLibs, library) != null;
     }
 
     private Map<Path, Path> getAllStaticLibs() {
@@ -759,6 +772,7 @@ public final class NativeLibraries {
                 new CAnnotationProcessor(this, context).process(cache);
             }
         }
+        allStaticLibs = getAllStaticLibs();
     }
 
     public boolean isWordBase(ResolvedJavaType type) {
