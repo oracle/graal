@@ -35,7 +35,7 @@ import org.junit.Test;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
-                "--future-defaults=explicit-security-provider-registration",
+                "--future-defaults=metadata-security-provider-registration",
                 "--features=com.oracle.svm.test.services.RuntimeCompilationSecurityProviderTest$EnableRuntimeCompilationFeature"
 })
 public class RuntimeCompilationSecurityProviderTest {

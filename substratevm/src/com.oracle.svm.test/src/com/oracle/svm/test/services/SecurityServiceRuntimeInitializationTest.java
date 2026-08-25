@@ -62,7 +62,7 @@ public class SecurityServiceRuntimeInitializationTest {
     @Test
     public void testRuntimeInitializationModeIsActive() {
         Assert.assertTrue(FutureDefaultsOptions.securityProvidersInitializedAtRunTime());
-        Assert.assertFalse(FutureDefaultsOptions.explicitSecurityProviderRegistration());
+        Assert.assertFalse(FutureDefaultsOptions.metadataSecurityProviderRegistration());
     }
 
     @Test

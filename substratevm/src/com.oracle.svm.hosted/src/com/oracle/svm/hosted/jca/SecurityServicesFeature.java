@@ -272,7 +272,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. With explicit security-provider registration, use the tracing agent, register the provider class " +
                         "for reflection, or build with -H:Preserve=all.";
         private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register each security provider class for reflection in reachability-metadata.json using " +
-                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\"}]} and enable --future-defaults=explicit-security-provider-registration; " +
+                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\"}]} and enable --future-defaults=metadata-security-provider-registration; " +
                         "the Tracing Agent generates this metadata automatically. The deprecated option remains supported in compatibility mode";
         private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE = "Register each provider that implements the custom service type and its supported construction path " +
                         "in reachability-metadata.json, or collect the metadata with the Tracing Agent.";
