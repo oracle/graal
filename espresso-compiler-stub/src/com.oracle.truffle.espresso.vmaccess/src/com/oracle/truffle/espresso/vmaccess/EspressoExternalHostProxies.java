@@ -323,28 +323,29 @@ final class EspressoExternalHostProxies {
         throw JVMCIError.shouldNotReachHere(e);
     }
 
-    Value createHostProxy(Object hostTarget, EspressoExternalResolvedInstanceType espressoGuestType) {
+    Value createHostProxy(Object hostTarget, EspressoExternalResolvedInstanceType espressoGuestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
         Value createProxyMirror = access.com_oracle_truffle_espresso_vmaccess_guest_GuestHostProxyHandler_createProxy.getMirror();
         Value guestClass = espressoGuestType.getMetaObject().getMember("class");
-        return createProxyMirror.execute(hostTarget, getGuestMethodMap(hostTarget.getClass(), espressoGuestType), guestClass);
+        validateMethodNameMappings(espressoGuestType, methodNameMappings);
+        return createProxyMirror.execute(hostTarget, getGuestMethodMap(hostTarget.getClass(), espressoGuestType, methodNameMappings), guestClass);
     }
 
-    private Value getGuestMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType) {
-        HostProxyMethodMapKey key = new HostProxyMethodMapKey(hostClass, guestType);
+    private Value getGuestMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
+        HostProxyMethodMapKey key = new HostProxyMethodMapKey(hostClass, guestType, methodNameMappings);
         Value methodMap = hostProxyMethodMap.get(key);
         if (methodMap != null) {
             return methodMap;
         }
-        methodMap = computeGuestMethodMap(hostClass, guestType);
+        methodMap = computeGuestMethodMap(hostClass, guestType, methodNameMappings);
         Value previous = hostProxyMethodMap.putIfAbsent(key, methodMap);
         return previous == null ? methodMap : previous;
     }
 
-    private record HostProxyMethodMapKey(Class<?> hostClass, EspressoExternalResolvedInstanceType guestClass) {
+    private record HostProxyMethodMapKey(Class<?> hostClass, EspressoExternalResolvedInstanceType guestClass, Map<ResolvedJavaMethod, String> methodNameMappings) {
     }
 
-    private Value computeGuestMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType) {
-        Map<String, ProxyExecutable> map = computeMethodMap(hostClass, guestType);
+    private Value computeGuestMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
+        Map<String, ProxyExecutable> map = computeMethodMap(hostClass, guestType, methodNameMappings);
         ProxyObject invocables = new ProxyObject() {
             @Override
             public Object getMember(String key) {
@@ -391,14 +392,16 @@ final class EspressoExternalHostProxies {
         return computeMethodMapMirror.execute(guestClass, invocables);
     }
 
-    private Map<String, ProxyExecutable> computeMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType) {
+    private Map<String, ProxyExecutable> computeMethodMap(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType,
+                    Map<ResolvedJavaMethod, String> methodNameMappings) {
         Map<String, ProxyExecutable> map = new HashMap<>();
         Set<EspressoExternalResolvedInstanceType> seen = new HashSet<>();
-        addMethods(hostClass, guestType, map, seen);
+        addMethods(hostClass, guestType, methodNameMappings, map, seen);
         return Map.copyOf(map);
     }
 
-    private void addMethods(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType, Map<String, ProxyExecutable> map, Set<EspressoExternalResolvedInstanceType> seen) {
+    private void addMethods(Class<?> hostClass, EspressoExternalResolvedInstanceType guestType, Map<ResolvedJavaMethod, String> methodNameMappings,
+                    Map<String, ProxyExecutable> map, Set<EspressoExternalResolvedInstanceType> seen) {
         assert guestType.isInterface();
         if (!seen.add(guestType)) {
             return;
@@ -407,7 +410,8 @@ final class EspressoExternalHostProxies {
             if (method.isStatic() || !method.isPublic()) {
                 continue;
             }
-            Method hostMethod = findHostMethod(hostClass, method);
+            String hostMethodName = methodNameMappings.getOrDefault(method, method.getName());
+            Method hostMethod = findHostMethod(hostClass, method, hostMethodName);
             if (hostMethod == null) {
                 continue;
             }
@@ -438,7 +442,7 @@ final class EspressoExternalHostProxies {
             map.put(getMethodSymbol(method), new HostProxyExecutable(mh));
         }
         for (ResolvedJavaType superInterface : guestType.getInterfaces()) {
-            addMethods(hostClass, (EspressoExternalResolvedInstanceType) superInterface, map, seen);
+            addMethods(hostClass, (EspressoExternalResolvedInstanceType) superInterface, methodNameMappings, map, seen);
         }
     }
 
@@ -480,6 +484,16 @@ final class EspressoExternalHostProxies {
         }
     }
 
+    private static void validateMethodNameMappings(EspressoExternalResolvedInstanceType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
+        for (Map.Entry<ResolvedJavaMethod, String> entry : methodNameMappings.entrySet()) {
+            ResolvedJavaMethod guestMethod = Objects.requireNonNull(entry.getKey());
+            Objects.requireNonNull(entry.getValue());
+            if (!guestMethod.isPublic() || guestMethod.isStatic() || !guestMethod.getDeclaringClass().isAssignableFrom(guestType)) {
+                throw new IllegalArgumentException("Invalid guest method mapping: " + guestMethod);
+            }
+        }
+    }
+
     @SuppressWarnings("deprecation")
     private static <T extends AccessibleObject & Member> void makeAccessible(T accessibleMember) {
         try {
@@ -493,11 +507,11 @@ final class EspressoExternalHostProxies {
         }
     }
 
-    private Method findHostMethod(Class<?> hostClass, ResolvedJavaMethod method) {
+    private Method findHostMethod(Class<?> hostClass, ResolvedJavaMethod method, String hostMethodName) {
         Method hostMethod = null;
         JavaType guestReturnType = method.getSignature().getReturnType(null);
         for (Method hostMethodCandidate : hostClass.getMethods()) {
-            if (!hostMethodCandidate.getName().equals(method.getName())) {
+            if (!hostMethodCandidate.getName().equals(hostMethodName)) {
                 continue;
             }
             if (!argumentsCompatible(method, hostMethodCandidate.getParameterTypes())) {
