@@ -73,8 +73,22 @@ public class HotSpotShenandoahBarrierSet extends ShenandoahBarrierSet {
     }
 
     @Override
+    protected boolean isInHeap(LocationIdentity location) {
+        /*
+         * The contents of an OopHandle reside in a native OopStorage, not in the Java heap, so such
+         * a store must not be card marked. Compare HotSpotZBarrierSet, where the equivalent
+         * distinction is carried down to the LIR generators as StoreKind.Native.
+         */
+        return !(location instanceof HotSpotReplacementsUtil.OopHandleLocationIdentity);
+    }
+
+    @Override
     public BarrierType writeBarrierType(LocationIdentity location) {
         if (location instanceof HotSpotReplacementsUtil.OopHandleLocationIdentity) {
+            /*
+             * Off-heap oop store: the SATB pre barrier is required, the card barrier is not. The
+             * card barrier is suppressed by isInHeap above.
+             */
             return BarrierType.FIELD;
         }
         return BarrierType.NONE;
