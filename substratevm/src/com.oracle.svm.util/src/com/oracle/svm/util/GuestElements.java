@@ -142,6 +142,7 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_System_arraycopy = lookupMethod(java_lang_System, "arraycopy", Object.class, int.class, Object.class, int.class, int.class);
 
     public final ResolvedJavaType java_lang_reflect_Proxy = lookupType(Proxy.class);
+    public final ResolvedJavaMethod java_lang_reflect_Proxy_isProxyClass = lookupMethod(java_lang_reflect_Proxy, "isProxyClass", Class.class);
     public final ResolvedJavaType jdk_internal_loader_ClassLoaders = lookupType("jdk.internal.loader.ClassLoaders");
 
     public final ResolvedJavaType java_io_InputStream = lookupType(InputStream.class);

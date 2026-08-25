@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.reflect.proxy;
 
-import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -32,10 +31,12 @@ import java.util.concurrent.ConcurrentMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -58,8 +59,9 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
     private final EconomicSet<String> uniqueTypeNames = EconomicSet.create();
 
     public static boolean isProxyType(ResolvedJavaType type) {
-        Class<?> clazz = OriginalClassProvider.getJavaClass(type);
-        return Proxy.isProxyClass(clazz);
+        GuestAccess guestAccess = GuestAccess.get();
+        JavaConstant guestClass = guestAccess.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+        return guestAccess.invokeStatic(guestAccess.elements.java_lang_reflect_Proxy_isProxyClass, guestClass).asBoolean();
     }
 
     /**
