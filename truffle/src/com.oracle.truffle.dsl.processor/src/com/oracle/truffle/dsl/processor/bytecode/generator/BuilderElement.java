@@ -2153,9 +2153,13 @@ final class BuilderElement extends AbstractElement {
         addEndOperationDoc(operation, ex);
         CodeTreeBuilder b = ex.createBuilder();
 
+        /*
+         * Step 1 (Validation): Check that the operation is well-formed, that arguments are appropriate, etc.
+         * Return early if the operation is not enabled by the current parse config.
+         */
         if (operation.kind == OperationKind.TAG) {
             b.startIf().string("newTags.length == 0").end().startBlock();
-            b.startThrow().startCall("state.failArgument").doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
+            b.startThrow().startCall("state.failArgument").doubleQuote("The tags parameter for endTag must not be empty. Please specify at least one tag.").end().end();
             b.end();
             b.startDeclaration(type(int.class), "encodedTags").startStaticCall(parent.configEncoder.asType(), "encodeTags").string("newTags").end().end();
             b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
@@ -2196,24 +2200,17 @@ final class BuilderElement extends AbstractElement {
             b.end();
         }
 
-        switch (operation.kind) {
-            case FINALLY_HANDLER:
-                b.startStatement().startCall("endOperation");
-                b.tree(parent.createOperationConstant(operation));
-                b.end(2);
-                // FinallyHandler doesn't need to validate its children or call afterChild.
-                return ex;
-            case TRY_FINALLY:
-                b.startDeclaration(operationStack.asType(), "operation").startCall("verifyOperation");
-                b.tree(parent.createOperationConstant(operation));
-                b.end(2);
-                break;
-            default:
-                b.startDeclaration(operationStack.asType(), "operation").startCall("endOperation");
-                b.tree(parent.createOperationConstant(operation));
-                b.end(2);
-                break;
+        if (operation.kind == OperationKind.SOURCE || operation.kind == OperationKind.FINALLY_HANDLER) {
+            // These operations don't require any validation/completion code. Return early.
+            b.startStatement().startCall("endOperation");
+            b.tree(parent.createOperationConstant(operation));
+            b.end(2);
+            return ex;
         }
+        // Keep the entry on the stack. It should be popped later.
+        b.startDeclaration(operationStack.asType(), "operation").startCall("verifyOperation");
+        b.tree(parent.createOperationConstant(operation));
+        b.end(2);
 
         if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
             // Short-circuiting operations should have at least one child.
@@ -2235,8 +2232,15 @@ final class BuilderElement extends AbstractElement {
             b.end();
         }
 
+        /*
+         * Step 2 (Completion): Emit code to complete the operation, emitting instructions, patching table entries, etc.
+         */
         String operationBci = "-1";
         switch (operation.kind) {
+            case TAG:
+                emitCompleteEndTag(b, operation);
+                // Completion and cleanup are interleaved by emitCompleteEndTag. No more work to do.
+                return ex;
             case CUSTOM_SHORT_CIRCUIT:
                 InstructionModel shortCircuitInstruction = operation.instruction();
                 if (shortCircuitInstruction.shortCircuitModel.returnConvertedBoolean()) {
@@ -2286,38 +2290,19 @@ final class BuilderElement extends AbstractElement {
                     emitPrefixSourceInfo(b, "operation", operationStack.read(operation, operationFields.startBci), "state.bci");
                 }
                 break;
-            case SOURCE:
-                break;
-            case IF_THEN_ELSE:
-                b.statement("markReachable(", operationStack.read(operation, operationFields.thenReachable), " || ", operationStack.read(operation, operationFields.elseReachable),
-                                ")");
-                break;
-            case IF_THEN:
-            case WHILE:
-                b.lineComment("Control flow merged. Set state.reachable to the enclosing operation's reachability.");
-                b.statement("state.reachable = resolveReachable()");
-                break;
             case CONDITIONAL:
-                b.statement("markReachable(", operationStack.read(operation, operationFields.thenReachable), " || ", operationStack.read(operation, operationFields.elseReachable),
-                                ")");
+                b.startDeclaration(type(boolean.class), "reachable");
+                b.string(operationStack.read(operation, operationFields.thenReachable), " || ", operationStack.read(operation, operationFields.elseReachable));
+                b.end();
+                b.statement("state.reachable = reachable");
                 if (model.usesBoxingElimination()) {
                     buildEmitInstruction(b, "operationBci", operation.instruction(), emitMergeConditionalArguments(operation.instruction()));
                     operationBci = "operationBci";
                 }
                 break;
-            case TRY_CATCH:
-                b.statement("markReachable(", operationStack.read(operation, operationFields.tryReachable), " || ", operationStack.read(operation, operationFields.catchReachable),
-                                ")");
-                break;
             case TRY_FINALLY:
                 emitFinallyHandlersAfterTry(b, operation);
                 emitPatchBranchFixupBci(b, operation, operationFields.endBranchFixupBci, "finally handler branch target");
-                b.statement("state.popOperation()");
-                b.statement("markReachable(", operationStack.read(operation, operationFields.tryReachable), ")");
-                break;
-            case TRY_CATCH_OTHERWISE:
-                b.statement("markReachable(", operationStack.read(operation, operationFields.tryReachable), " || ", operationStack.read(operation, operationFields.catchReachable),
-                                ")");
                 break;
             case RETURN:
                 String bci = "-1";
@@ -2326,7 +2311,6 @@ final class BuilderElement extends AbstractElement {
                 }
                 emitBeforeEmitReturn(b, bci, operation, null);
                 buildEmitOperationInstruction(b, operation, operation.instruction(), constantOperandValues, null);
-                b.statement("markReachable(false)");
                 break;
             case CUSTOM_RETURN:
                 int resultOperandIndex = operation.customModel.getResultOperandIndex();
@@ -2349,90 +2333,6 @@ final class BuilderElement extends AbstractElement {
                 }
                 emitBeforeEmitReturn(b, resultChildBci, operation, beforeEmitReturnBci);
                 buildEmitOperationInstruction(b, operation, operation.instruction(), constantOperandValues, beforeEmitReturnBci);
-                b.statement("markReachable(false)");
-                break;
-            case TAG:
-                b.declaration(parent.tagNode.asType(), "tagNode", operationStack.read(operation, operationFields.node));
-
-                b.startIf().string("(encodedTags & this.tags) != tagNode.tags").end().startBlock();
-                BytecodeRootNodeElement.emitThrowIllegalArgumentException(b, "The tags provided to endTag do not match the tags provided to the corresponding beginTag call.");
-                b.end();
-
-                b.lineComment("If this tag operation is nested in another, add it to the outer tag tree. Otherwise, it becomes a tag root.");
-                b.declaration(operationStack.asType(), "outerTag", "findOuterTag()");
-
-                // Otherwise, this tag is the root of a tag tree.
-                b.startIf().string("outerTag == null").end().startBlock();
-                b.startIf().string("state.tagRoots == null").end().startBlock();
-                b.statement("state.tagRoots = new ArrayList<>(3)");
-                b.end();
-                b.statement("state.tagRoots.add(tagNode)");
-                b.end().startElseBlock(); // if !outerTagFound
-
-                b.startIf().string(operationStack.read(model.tagOperation, "outerTag", operationFields.tagChildren), " == null").end().startBlock();
-                b.tree(operationStack.write(model.tagOperation, "outerTag", operationFields.tagChildren, "new ArrayList<>(3)"));
-                b.end();
-                b.statement(operationStack.read(model.tagOperation, "outerTag", operationFields.tagChildren), ".add(tagNode)");
-
-                b.end();
-
-                b.declaration(arrayOf(parent.tagNode.asType()), "children");
-                b.declaration(generic(type(List.class), parent.tagNode.asType()), "operationChildren", operationStack.read(operation, operationFields.tagChildren));
-
-                // Set the children array and adopt children.
-                b.startIf().string("operationChildren == null").end().startBlock();
-                b.statement("children = TagNode.EMPTY_ARRAY");
-                b.end().startElseBlock();
-                b.statement("children = new TagNode[operationChildren.size()]");
-                b.startFor().string("int i = 0; i < children.length; i++").end().startBlock();
-                b.statement("children[i] = tagNode.insert(operationChildren.get(i))");
-                b.end();
-                b.end();
-
-                b.statement("tagNode.children = children");
-                b.statement("tagNode.returnBci = state.bci");
-
-                b.startIf().string(operationStack.read(operation, operationFields.producedValue)).end().startBlock();
-                String tagLeaveChildBci = model.tagLeaveValueInstruction.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX) == null ? null : operationStack.read(operation, operationFields.childBci);
-                String[] args = buildTagLeaveArguments(model.tagLeaveValueInstruction, tagLeaveChildBci, "(short) 1");
-                b.declaration(type(int.class), "operationBci");
-
-                b.startIf().string(operationStack.read(operation, operationFields.operationReachable)).end().startBlock();
-                /*
-                 * The tag leave is always reachable, because probes may decide to return at any
-                 * point and we need a point where we can continue.
-                 */
-                b.statement("markReachable(true)");
-                buildEmitInstructionWithStackEffect(b, "operationBci", false, model.tagLeaveValueInstruction, String.valueOf(model.tagLeaveValueInstruction.getStackEffect()), args);
-                b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), "state.bci", "HANDLER_TAG_EXCEPTIONAL",
-                                operationStack.read(operation, operationFields.nodeId),
-                                operationStack.read(operation, operationFields.startStackHeight)));
-                b.end().startElseBlock();
-                buildEmitInstructionWithStackEffect(b, "operationBci", false, model.tagLeaveValueInstruction, String.valueOf(model.tagLeaveValueInstruction.getStackEffect()), args);
-                b.end();
-
-                emitCallAfterChild(b, operation, "true", "operationBci");
-
-                b.end().startElseBlock();
-
-                b.startIf().string(operationStack.read(operation, operationFields.operationReachable)).end().startBlock();
-                /*
-                 * Leaving the tag leave is always reachable, because probes may decide to return at
-                 * any point and we need a point where we can continue.
-                 */
-                b.statement("markReachable(true)");
-                buildEmitInstruction(b, null, model.tagLeaveVoidInstruction, operationStack.read(operation, operationFields.nodeId));
-                b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), "state.bci", "HANDLER_TAG_EXCEPTIONAL",
-                                operationStack.read(operation, operationFields.nodeId),
-                                operationStack.read(operation, operationFields.startStackHeight)));
-                b.end().startElseBlock();
-                buildEmitInstruction(b, null, model.tagLeaveVoidInstruction, operationStack.read(operation, operationFields.nodeId));
-                b.end();
-
-                emitCallAfterChild(b, operation, "false", "-1");
-
-                b.end();
-
                 break;
             case BLOCK:
                 b.declaration(type(int.class), "numStackValues", operationStack.read(operation, operationFields.numStackValues));
@@ -2465,6 +2365,26 @@ final class BuilderElement extends AbstractElement {
                 }
 
                 break;
+            case BIND_STACKVALUE:
+                b.startDeclaration(operationStack.asType(), "stackValueOwner");
+                b.string("state.operationStack[");
+                b.string(operationStack.read(operation, operationFields.declaringOperationSp));
+                b.string("]");
+                b.end();
+                b.startAssert().string("stackValueOwner.sequenceNumber == ", operationStack.read(operation, operationFields.declaringOp)).end();
+
+                b.startDeclaration(types.StackValue, "result").startNew(stackValueImpl.asType());
+                b.string(operationStack.read(model.rootOperation, "state.operationStack[state.rootOperationSp]", operationFields.index));
+                b.string(operationStack.read(operation, operationFields.declaringOp));
+                b.string(operationStack.read(operation, operationFields.declaringOperationSp));
+                b.string("state.currentStackHeight - 1");
+                b.end().end();
+
+                b.startIf().string("stackValueOwner.operation == ").tree(parent.createOperationConstant(model.blockOperation)).end().startBlock();
+                b.tree(operationStack.write(model.blockOperation, "stackValueOwner", operationFields.numStackValues,
+                                operationStack.read(model.blockOperation, "stackValueOwner", operationFields.numStackValues) + " + 1"));
+                b.end();
+                break;
             case YIELD, CUSTOM_YIELD:
                 if (model.enableTagInstrumentation) {
                     emitDoEmitTagYield(b, operation);
@@ -2496,9 +2416,41 @@ final class BuilderElement extends AbstractElement {
                 break;
         }
 
-        if (operation.kind == OperationKind.TAG) {
-            // handled in tag section
-        } else if (operation.isSourceOnly()) {
+        /*
+         * Step 3 (Cleanup): pop the completed operation from the stack and update metadata of the parent operation.
+         */
+        b.statement("state.popOperation()");
+        switch (operation.kind) {
+            case IF_THEN_ELSE:
+                b.statement("markReachable(", operationStack.read(operation, operationFields.thenReachable), " || ", operationStack.read(operation, operationFields.elseReachable),
+                                ")");
+                break;
+            case IF_THEN:
+            case WHILE:
+                b.lineComment("Control flow merged. Set state.reachable to the enclosing operation's reachability.");
+                b.statement("state.reachable = resolveReachable()");
+                break;
+            case CONDITIONAL:
+                // reachable is declared in step 2
+                b.statement("markReachable(reachable)");
+                break;
+            case TRY_CATCH:
+            case TRY_CATCH_OTHERWISE:
+                b.statement("markReachable(", operationStack.read(operation, operationFields.tryReachable), " || ", operationStack.read(operation, operationFields.catchReachable),
+                                ")");
+                break;
+            case TRY_FINALLY:
+                b.statement("markReachable(", operationStack.read(operation, operationFields.tryReachable), ")");
+                break;
+            case RETURN:
+            case CUSTOM_RETURN:
+                b.statement("markReachable(false)");
+                break;
+            default:
+                break;
+        }
+
+        if (operation.isSourceOnly()) {
             // Source operations are metadata-only and do not produce a child for their parent.
         } else if (operation.forwardsChildResult) {
             // Forward the operation's child result to its parent.
@@ -2508,25 +2460,6 @@ final class BuilderElement extends AbstractElement {
             }
             emitCallAfterChild(b, operation, operationStack.read(operation, operationFields.producedValue), bci);
         } else if (operation.kind == OperationKind.BIND_STACKVALUE) {
-            b.startDeclaration(operationStack.asType(), "stackValueOwner");
-            b.string("state.operationStack[");
-            b.string(operationStack.read(operation, operationFields.declaringOperationSp));
-            b.string("]");
-            b.end();
-            b.startAssert().string("stackValueOwner.sequenceNumber == ", operationStack.read(operation, operationFields.declaringOp)).end();
-
-            b.startDeclaration(types.StackValue, "result").startNew(stackValueImpl.asType());
-            b.string(operationStack.read(model.rootOperation, "state.operationStack[state.rootOperationSp]", operationFields.index));
-            b.string(operationStack.read(operation, operationFields.declaringOp));
-            b.string(operationStack.read(operation, operationFields.declaringOperationSp));
-            b.string("state.currentStackHeight - 1");
-            b.end().end();
-
-            b.startIf().string("stackValueOwner.operation == ").tree(parent.createOperationConstant(model.blockOperation)).end().startBlock();
-            b.tree(operationStack.write(model.blockOperation, "stackValueOwner", operationFields.numStackValues,
-                            operationStack.read(model.blockOperation, "stackValueOwner", operationFields.numStackValues) + " + 1"));
-            b.end();
-
             emitCallAfterChild(b, operation, "true", "-1");
             b.startReturn().string("result").end();
         } else if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
@@ -2572,7 +2505,92 @@ final class BuilderElement extends AbstractElement {
         return ex;
     }
 
-    static String childString(int numChildren) {
+    private void emitCompleteEndTag(CodeTreeBuilder b, OperationModel operation) {
+        b.declaration(parent.tagNode.asType(), "tagNode", operationStack.read(operation, operationFields.node));
+
+        b.startIf().string("(encodedTags & this.tags) != tagNode.tags").end().startBlock();
+        BytecodeRootNodeElement.emitThrowIllegalArgumentException(b, "The tags provided to endTag do not match the tags provided to the corresponding beginTag call.");
+        b.end();
+
+        b.lineComment("If this tag operation is nested in another, add it to the outer tag tree. Otherwise, it becomes a tag root.");
+        b.declaration(operationStack.asType(), "outerTag", "findOuterTag(state.operationSp - 2)");
+
+        // Otherwise, this tag is the root of a tag tree.
+        b.startIf().string("outerTag == null").end().startBlock();
+        b.startIf().string("state.tagRoots == null").end().startBlock();
+        b.statement("state.tagRoots = new ArrayList<>(3)");
+        b.end();
+        b.statement("state.tagRoots.add(tagNode)");
+        b.end().startElseBlock(); // if !outerTagFound
+
+        b.startIf().string(operationStack.read(model.tagOperation, "outerTag", operationFields.tagChildren), " == null").end().startBlock();
+        b.tree(operationStack.write(model.tagOperation, "outerTag", operationFields.tagChildren, "new ArrayList<>(3)"));
+        b.end();
+        b.statement(operationStack.read(model.tagOperation, "outerTag", operationFields.tagChildren), ".add(tagNode)");
+
+        b.end();
+
+        b.declaration(arrayOf(parent.tagNode.asType()), "children");
+        b.declaration(generic(type(List.class), parent.tagNode.asType()), "operationChildren", operationStack.read(operation, operationFields.tagChildren));
+
+        // Set the children array and adopt children.
+        b.startIf().string("operationChildren == null").end().startBlock();
+        b.statement("children = TagNode.EMPTY_ARRAY");
+        b.end().startElseBlock();
+        b.statement("children = new TagNode[operationChildren.size()]");
+        b.startFor().string("int i = 0; i < children.length; i++").end().startBlock();
+        b.statement("children[i] = tagNode.insert(operationChildren.get(i))");
+        b.end();
+        b.end();
+
+        b.statement("tagNode.children = children");
+        b.statement("tagNode.returnBci = state.bci");
+
+        b.startIf().string(operationStack.read(operation, operationFields.producedValue)).end().startBlock();
+        String tagLeaveChildBci = model.tagLeaveValueInstruction.getImmediate(ImmediateKind.RELATIVE_BYTECODE_INDEX) == null ? null : operationStack.read(operation, operationFields.childBci);
+        String[] args = buildTagLeaveArguments(model.tagLeaveValueInstruction, tagLeaveChildBci, "(short) 1");
+        b.declaration(type(int.class), "operationBci");
+
+        b.startIf().string(operationStack.read(operation, operationFields.operationReachable)).end().startBlock();
+        /*
+         * The tag leave is always reachable, because probes may decide to return at any
+         * point and we need a point where we can continue.
+         */
+        b.statement("markReachable(true)");
+        buildEmitInstructionWithStackEffect(b, "operationBci", false, model.tagLeaveValueInstruction, String.valueOf(model.tagLeaveValueInstruction.getStackEffect()), args);
+        b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), "state.bci", "HANDLER_TAG_EXCEPTIONAL",
+                        operationStack.read(operation, operationFields.nodeId),
+                        operationStack.read(operation, operationFields.startStackHeight)));
+        b.end().startElseBlock();
+        buildEmitInstructionWithStackEffect(b, "operationBci", false, model.tagLeaveValueInstruction, String.valueOf(model.tagLeaveValueInstruction.getStackEffect()), args);
+        b.end();
+
+        b.statement("state.popOperation()");
+        emitCallAfterChild(b, operation, "true", "operationBci");
+
+        b.end().startElseBlock();
+
+        b.startIf().string(operationStack.read(operation, operationFields.operationReachable)).end().startBlock();
+        /*
+         * The tag leave is always reachable, because probes may decide to return at any
+         * point and we need a point where we can continue.
+         */
+        b.statement("markReachable(true)");
+        buildEmitInstruction(b, null, model.tagLeaveVoidInstruction, operationStack.read(operation, operationFields.nodeId));
+        b.statement(doCreateExceptionHandler(operationStack.read(operation, operationFields.handlerStartBci), "state.bci", "HANDLER_TAG_EXCEPTIONAL",
+                        operationStack.read(operation, operationFields.nodeId),
+                        operationStack.read(operation, operationFields.startStackHeight)));
+        b.end().startElseBlock();
+        buildEmitInstruction(b, null, model.tagLeaveVoidInstruction, operationStack.read(operation, operationFields.nodeId));
+        b.end();
+
+        b.statement("state.popOperation()");
+        emitCallAfterChild(b, operation, "false", "-1");
+
+        b.end();
+    }
+
+    private static String childString(int numChildren) {
         return numChildren + ((numChildren == 1) ? " child" : " children");
     }
 
@@ -2590,13 +2608,13 @@ final class BuilderElement extends AbstractElement {
 
     private CodeExecutableElement createFindOuterTag() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), operationStack.asType(), "findOuterTag");
+        ex.addParameter(new CodeVariableElement(type(int.class), "topOperationSp"));
         CodeTreeBuilder b = ex.createBuilder();
-        b.declaration(type(boolean.class), "outerTagFound", "false");
-        buildOperationStackWalk(b, () -> {
+        buildOperationStackWalk(b, "topOperationSp", "state.rootOperationSp", () -> {
             b.startIf().string("operation.operation == ").tree(parent.createOperationConstant(model.tagOperation)).end().startBlock();
             b.statement("return operation");
             b.end(); // if tag operation
-        });
+        }, "state");
 
         b.statement("return null");
 
@@ -3161,7 +3179,11 @@ final class BuilderElement extends AbstractElement {
     }
 
     private void buildOperationStackWalk(CodeTreeBuilder b, String lowerLimit, Runnable r, String state) {
-        b.startFor().string("int i = ", state, ".operationSp - 1; i >= ", lowerLimit, "; i--").end().startBlock();
+        buildOperationStackWalk(b, state + ".operationSp - 1", lowerLimit, r, state);
+    }
+
+    private void buildOperationStackWalk(CodeTreeBuilder b, String upperLimit, String lowerLimit, Runnable r, String state) {
+        b.startFor().string("int i = ", upperLimit, "; i >= ", lowerLimit, "; i--").end().startBlock();
         b.declaration(operationStack.asType(), "operation", state + ".operationStack[i]");
         b.startIf().string("operation.operation == ").tree(parent.createOperationConstant(model.finallyHandlerOperation)).end().startBlock();
         b.startAssign("i").string(operationStack.read(List.of(model.finallyHandlerOperation), operationFields.finallyOperationSp)).end();
