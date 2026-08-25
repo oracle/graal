@@ -84,6 +84,8 @@ public class ShenandoahOopHandleBarrierTest extends HotSpotGraalCompilerTest {
     @Test
     public void testInHeapFieldWriteIsCardMarked() {
         Assume.assumeTrue("Shenandoah specific test", runtime().getGarbageCollector() == HotSpotGC.Shenandoah);
+        Assume.assumeTrue("card barriers are only enabled for generational Shenandoah",
+                        runtime().getVMConfig().getFlag("ShenandoahCardBarrier", Boolean.class));
         test("heapFieldStoreSnippet", new Holder(), "value");
         Assert.assertTrue("expected to see an in-heap oop store", sawInHeapObjectWrite);
     }
