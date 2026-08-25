@@ -25,6 +25,20 @@
  */
 package com.oracle.svm.test;
 
+import static java.lang.constant.ConstantDescs.CD_CallSite;
+import static java.lang.constant.ConstantDescs.CD_Class;
+import static java.lang.constant.ConstantDescs.CD_MethodHandles_Lookup;
+import static java.lang.constant.ConstantDescs.CD_MethodType;
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_String;
+
+import java.lang.classfile.ClassFile;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.DirectMethodHandleDesc;
+import java.lang.constant.DynamicCallSiteDesc;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodHandleDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -40,25 +54,10 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import java.lang.classfile.ClassFile;
-import java.lang.constant.ClassDesc;
-import java.lang.constant.DirectMethodHandleDesc;
-import java.lang.constant.DynamicCallSiteDesc;
-import java.lang.constant.DynamicConstantDesc;
-import java.lang.constant.MethodHandleDesc;
-import java.lang.constant.MethodTypeDesc;
-
-import com.oracle.svm.hosted.FeatureImpl;
-
-import static java.lang.constant.ConstantDescs.CD_CallSite;
-import static java.lang.constant.ConstantDescs.CD_Class;
-import static java.lang.constant.ConstantDescs.CD_MethodHandles_Lookup;
-import static java.lang.constant.ConstantDescs.CD_MethodType;
-import static java.lang.constant.ConstantDescs.CD_Object;
-import static java.lang.constant.ConstantDescs.CD_String;
+import com.oracle.svm.core.feature.JVMCIFeatureAccess;
 
 /**
- * Tests the {@code registerBuildTimeIndyIncludeList} and {@code registerBuildTimeCondyIncludeList}
+ * Tests the {@code registerBuildTimeBootstrapIndy} and {@code registerBuildTimeBootstrapCondy}
  * APIs by generating a class with ASM that uses custom bootstrap methods for invokedynamic and
  * constantdynamic, registering those bootstrap methods via the Feature API, and verifying that they
  * are resolved at build time.
@@ -68,6 +67,8 @@ public class BootstrapMethodTest {
     static Class<?> generatedClass;
     static boolean indyBootstrapCalledAtBuildTime;
     static boolean condyBootstrapCalledAtBuildTime;
+    static boolean jvmciIndyBootstrapCalledAtBuildTime;
+    static boolean jvmciCondyBootstrapCalledAtBuildTime;
     static boolean runtimeIndyBootstrapCalledAtBuildTime;
     static boolean runtimeCondyBootstrapCalledAtBuildTime;
 
@@ -86,6 +87,23 @@ public class BootstrapMethodTest {
             condyBootstrapCalledAtBuildTime = true;
         }
         return "condy-resolved";
+    }
+
+    @SuppressWarnings("unused")
+    public static CallSite myJVMCIIndyBootstrap(MethodHandles.Lookup lookup, String name, MethodType type) {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            jvmciIndyBootstrapCalledAtBuildTime = true;
+        }
+        MethodHandle mh = MethodHandles.constant(String.class, "jvmci-indy-resolved");
+        return new ConstantCallSite(mh.asType(type));
+    }
+
+    @SuppressWarnings("unused")
+    public static Object myJVMCICondyBootstrap(MethodHandles.Lookup lookup, String name, Class<?> type) {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            jvmciCondyBootstrapCalledAtBuildTime = true;
+        }
+        return "jvmci-condy-resolved";
     }
 
     @SuppressWarnings("unused")
@@ -113,10 +131,17 @@ public class BootstrapMethodTest {
                                 MethodHandles.Lookup.class, String.class, MethodType.class);
                 Method condyBsm = BootstrapMethodTest.class.getDeclaredMethod("myCondyBootstrap",
                                 MethodHandles.Lookup.class, String.class, Class.class);
+                Method jvmciIndyBsm = BootstrapMethodTest.class.getDeclaredMethod("myJVMCIIndyBootstrap",
+                                MethodHandles.Lookup.class, String.class, MethodType.class);
+                Method jvmciCondyBsm = BootstrapMethodTest.class.getDeclaredMethod("myJVMCICondyBootstrap",
+                                MethodHandles.Lookup.class, String.class, Class.class);
 
-                FeatureImpl.DuringSetupAccessImpl impl = (FeatureImpl.DuringSetupAccessImpl) access;
-                impl.registerBuildTimeIndyIncludeList(indyBsm);
-                impl.registerBuildTimeCondyIncludeList(condyBsm);
+                access.registerBuildTimeBootstrapIndy(indyBsm);
+                access.registerBuildTimeBootstrapCondy(condyBsm);
+
+                JVMCIFeatureAccess.DuringSetupAccess jvmciAccess = (JVMCIFeatureAccess.DuringSetupAccess) access;
+                jvmciAccess.registerBuildTimeBootstrapIndy(jvmciAccess.getMetaAccess().lookupJavaMethod(jvmciIndyBsm));
+                jvmciAccess.registerBuildTimeBootstrapCondy(jvmciAccess.getMetaAccess().lookupJavaMethod(jvmciCondyBsm));
             } catch (NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
@@ -154,6 +179,12 @@ public class BootstrapMethodTest {
         DirectMethodHandleDesc condyBsmHandle = MethodHandleDesc.ofMethod(
                         DirectMethodHandleDesc.Kind.STATIC, testClassDesc, "myCondyBootstrap", condyBsmDesc);
 
+        DirectMethodHandleDesc jvmciIndyBsmHandle = MethodHandleDesc.ofMethod(
+                        DirectMethodHandleDesc.Kind.STATIC, testClassDesc, "myJVMCIIndyBootstrap", indyBsmDesc);
+
+        DirectMethodHandleDesc jvmciCondyBsmHandle = MethodHandleDesc.ofMethod(
+                        DirectMethodHandleDesc.Kind.STATIC, testClassDesc, "myJVMCICondyBootstrap", condyBsmDesc);
+
         DirectMethodHandleDesc runtimeIndyBsmHandle = MethodHandleDesc.ofMethod(
                         DirectMethodHandleDesc.Kind.STATIC, testClassDesc, "myRuntimeIndyBootstrap", indyBsmDesc);
 
@@ -164,6 +195,8 @@ public class BootstrapMethodTest {
 
         DynamicCallSiteDesc indyCallSite = DynamicCallSiteDesc.of(indyBsmHandle, "getValue", stringReturnDesc);
         DynamicConstantDesc<?> condyConst = DynamicConstantDesc.ofNamed(condyBsmHandle, "myConst", CD_String);
+        DynamicCallSiteDesc jvmciIndyCallSite = DynamicCallSiteDesc.of(jvmciIndyBsmHandle, "getValue", stringReturnDesc);
+        DynamicConstantDesc<?> jvmciCondyConst = DynamicConstantDesc.ofNamed(jvmciCondyBsmHandle, "myJVMCIConst", CD_String);
         DynamicCallSiteDesc runtimeIndyCallSite = DynamicCallSiteDesc.of(runtimeIndyBsmHandle, "getValue", stringReturnDesc);
         DynamicConstantDesc<?> runtimeCondyConst = DynamicConstantDesc.ofNamed(runtimeCondyBsmHandle, "myRuntimeConst", CD_String);
 
@@ -181,6 +214,18 @@ public class BootstrapMethodTest {
             cb.withMethod("loadCondy", stringReturnDesc, ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC,
                             mb -> mb.withCode(code -> {
                                 code.ldc(condyConst);
+                                code.areturn();
+                            }));
+
+            cb.withMethod("callJVMCIIndy", stringReturnDesc, ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC,
+                            mb -> mb.withCode(code -> {
+                                code.invokedynamic(jvmciIndyCallSite);
+                                code.areturn();
+                            }));
+
+            cb.withMethod("loadJVMCICondy", stringReturnDesc, ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC,
+                            mb -> mb.withCode(code -> {
+                                code.ldc(jvmciCondyConst);
                                 code.areturn();
                             }));
 
@@ -220,6 +265,30 @@ public class BootstrapMethodTest {
         Method loadCondy = generatedClass.getDeclaredMethod("loadCondy");
         String result = (String) loadCondy.invoke(null);
         Assert.assertEquals("condy-resolved", result);
+    }
+
+    @Test
+    public void testJVMCIIndyResolvedAtBuildTime() throws Exception {
+        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
+        Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
+        Assert.assertTrue("JVMCI-registered indy bootstrap should have been called at build time",
+                        jvmciIndyBootstrapCalledAtBuildTime);
+
+        Method callIndy = generatedClass.getDeclaredMethod("callJVMCIIndy");
+        String result = (String) callIndy.invoke(null);
+        Assert.assertEquals("jvmci-indy-resolved", result);
+    }
+
+    @Test
+    public void testJVMCICondyResolvedAtBuildTime() throws Exception {
+        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
+        Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
+        Assert.assertTrue("JVMCI-registered condy bootstrap should have been called at build time",
+                        jvmciCondyBootstrapCalledAtBuildTime);
+
+        Method loadCondy = generatedClass.getDeclaredMethod("loadJVMCICondy");
+        String result = (String) loadCondy.invoke(null);
+        Assert.assertEquals("jvmci-condy-resolved", result);
     }
 
     @Test

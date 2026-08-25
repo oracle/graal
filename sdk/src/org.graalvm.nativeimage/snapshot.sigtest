@@ -1077,6 +1077,8 @@ CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$Dur
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 meth public abstract <%0 extends java.lang.Object> void registerObjectReachabilityHandler(java.util.function.Consumer<{%%0}>,java.lang.Class<{%%0}>)
 meth public abstract void registerObjectReplacer(java.util.function.Function<java.lang.Object,java.lang.Object>)
+meth public abstract void registerBuildTimeBootstrapIndy(java.lang.reflect.Executable)
+meth public abstract void registerBuildTimeBootstrapCondy(java.lang.reflect.Executable)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$FeatureAccess
  outer org.graalvm.nativeimage.hosted.Feature

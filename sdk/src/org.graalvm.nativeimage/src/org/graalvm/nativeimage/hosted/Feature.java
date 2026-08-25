@@ -54,10 +54,10 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
-import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
-import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
 import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
 /**
  * Features allow clients to intercept the native image generation and run custom initialization
@@ -240,6 +240,26 @@ public interface Feature {
          * @since 24.2
          */
         <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz);
+
+        /**
+         * Registers a method that is allowed to be executed at build time if called as the
+         * bootstrap method for an invokedynamic, in which case each call site outputted will be
+         * constant-folded. Other bootstrap methods will be executed at run time by default,
+         * creating the call site at run time.
+         *
+         * @since 25.4
+         */
+        void registerBuildTimeBootstrapIndy(Executable method);
+
+        /**
+         * Registers a method that is allowed to be executed at build time if called as the
+         * bootstrap method for a constantdynamic, in which case each call site outputted will be
+         * constant-folded. Other bootstrap methods will be executed at run time by default,
+         * creating the call site at run time.
+         *
+         * @since 25.4
+         */
+        void registerBuildTimeBootstrapCondy(Executable method);
     }
 
     /**
