@@ -123,7 +123,7 @@ final class Target_java_util_ResourceBundle {
     static native Control getDefaultControl(Module targetModule, String baseName);
 }
 
-/** Crema uses caller-independent JDK bundle lookup (FS-001-native-image-semantics.3.3). */
+/** Crema uses caller-independent JDK bundle lookup. */
 final class ResourceBundleMissingRegistrationSupport {
     private ResourceBundleMissingRegistrationSupport() {
     }
