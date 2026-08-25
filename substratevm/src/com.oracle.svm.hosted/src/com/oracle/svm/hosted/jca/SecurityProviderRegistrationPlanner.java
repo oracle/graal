@@ -48,7 +48,6 @@ final class SecurityProviderRegistrationPlanner {
     private final Set<Class<?>> candidates = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> instantiatedCandidates = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> forcedCompletePlans = ConcurrentHashMap.newKeySet();
-    private final Set<Class<?>> legacyGeneratedReflection = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, RuntimeDynamicAccessMetadata> completedMetadata = new ConcurrentHashMap<>();
     private final Map<Class<?>, RuntimeDynamicAccessMetadata> verificationMetadata = new ConcurrentHashMap<>();
     private final AtomicBoolean changed = new AtomicBoolean();
@@ -73,17 +72,13 @@ final class SecurityProviderRegistrationPlanner {
         }
     }
 
-    void beforeLegacyReflectionRegistration(Class<?> providerClass) {
-        legacyGeneratedReflection.add(providerClass);
-    }
-
     boolean processNewProviders(Function<Class<?>, RegistrationPlan> planProvider,
                     BiConsumer<Class<?>, RuntimeDynamicAccessMetadata> includeProvider,
                     BiConsumer<Class<?>, RuntimeDynamicAccessMetadata> registerVerification) {
         boolean discoveredCandidate = changed.getAndSet(false);
         boolean processed = false;
         for (Class<?> providerClass : candidates) {
-            RegistrationPlan plan = !legacyGeneratedReflection.contains(providerClass) ? planProvider.apply(providerClass) : null;
+            RegistrationPlan plan = planProvider.apply(providerClass);
             RuntimeDynamicAccessMetadata complete = forcedCompletePlans.contains(providerClass)
                             ? RuntimeDynamicAccessMetadata.alwaysAvailable(false)
                             : plan != null ? plan.completeMetadata() : null;
