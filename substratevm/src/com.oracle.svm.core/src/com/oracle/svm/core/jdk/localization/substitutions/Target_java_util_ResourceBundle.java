@@ -39,7 +39,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
@@ -63,7 +62,7 @@ final class Target_java_util_ResourceBundle {
 
         // get resource bundles for a named module only if loader is the module's class loader
         if (callerModule.isNamed() && loader == getLoader(callerModule)) {
-            if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
+            if (ResourceBundleMissingRegistrationSupport.shouldReport(baseName, locale, control)) {
                 MissingResourceRegistrationUtils.reportResourceBundleAccess(callerModule, baseName);
             }
             return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
@@ -82,7 +81,7 @@ final class Target_java_util_ResourceBundle {
                         ? loader.getUnnamedModule()
                         : BootLoader.getUnnamedModule();
 
-        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
+        if (ResourceBundleMissingRegistrationSupport.shouldReport(baseName, locale, control)) {
             MissingResourceRegistrationUtils.reportResourceBundleAccess(unnamedModule, baseName);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
@@ -105,7 +104,7 @@ final class Target_java_util_ResourceBundle {
          * TODO GR-67556 - Implement proper module-aware LocalizationSupport bundle registration to
          * ensure we show MissingResourceRegistrationError in all relevant situations.
          */
-        if (ResourceBundleMissingRegistrationSupport.shouldReport(caller, baseName, locale, control)) {
+        if (ResourceBundleMissingRegistrationSupport.shouldReport(baseName, locale, control)) {
             MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> getBundleImpl(callerModule, module, baseName, locale, control));
@@ -124,21 +123,14 @@ final class Target_java_util_ResourceBundle {
     static native Control getDefaultControl(Module targetModule, String baseName);
 }
 
-/**
- * Missing-registration reporting applies only to image-build-time bundle lookups. Runtime-loaded
- * classes can legally reach bundles that were not visible to static analysis, so those lookups must
- * use the regular JDK fallback path instead of reporting a Native Image missing registration error.
- */
+/** Crema uses caller-independent JDK bundle lookup. */
 final class ResourceBundleMissingRegistrationSupport {
     private ResourceBundleMissingRegistrationSupport() {
     }
 
-    static boolean shouldReport(Class<?> caller, String baseName, Locale locale, Control control) {
-        return !isRuntimeLoaded(caller) && !ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control);
-    }
-
-    private static boolean isRuntimeLoaded(Class<?> clazz) {
-        return clazz != null && RuntimeClassLoading.isSupported() && DynamicHub.fromClass(clazz).isRuntimeLoaded();
+    static boolean shouldReport(String baseName, Locale locale, Control control) {
+        return !RuntimeClassLoading.isSupported() &&
+                        !ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control);
     }
 }
 
