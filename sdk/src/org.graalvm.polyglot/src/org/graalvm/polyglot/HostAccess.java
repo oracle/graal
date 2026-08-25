@@ -51,6 +51,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -98,6 +99,8 @@ import org.graalvm.polyglot.Engine.ToStringSupport;
  */
 public final class HostAccess {
 
+    private static final Predicate<Member> UNRESTRICTED_PUBLIC_ACCESS = member -> true;
+
     private final String name;
     private final EconomicSet<Class<? extends Annotation>> accessAnnotations;
     final EconomicSet<Class<? extends Annotation>> implementableAnnotations;
@@ -105,7 +108,7 @@ public final class HostAccess {
     private final EconomicSet<AnnotatedElement> members;
     private final EconomicSet<Class<?>> implementableTypes;
     private final List<Object> targetMappings;
-    final boolean allowPublic;
+    private final Predicate<Member> allowPublicPredicate;
     final boolean allowAllInterfaceImplementations;
     final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
@@ -123,7 +126,7 @@ public final class HostAccess {
     final Lookup methodLookup;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, false,
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false,
                     null, false, null, null, null);
 
     /**
@@ -336,9 +339,9 @@ public final class HostAccess {
 
     HostAccess(EconomicSet<Class<? extends Annotation>> annotations, EconomicMap<Class<?>, Boolean> excludeTypes, EconomicSet<AnnotatedElement> members,
                     EconomicSet<Class<? extends Annotation>> implementableAnnotations,
-                    EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
+                    EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings, Predicate<Member> allowPublicPredicate,
                     String name,
-                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
+                    boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
                     boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess, boolean allowBigIntegerNumberAccess, boolean allowAccessInheritance,
                     MutableTargetMapping[] allowMutableTargetMappings, boolean methodScopingDefault, EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations,
                     EconomicSet<Executable> disableMethodScoping, Lookup methodLookup) {
@@ -349,8 +352,8 @@ public final class HostAccess {
         this.implementableAnnotations = copySet(implementableAnnotations, Equivalence.IDENTITY);
         this.implementableTypes = copySet(implementableTypes, Equivalence.IDENTITY);
         this.targetMappings = targetMappings != null ? new ArrayList<>(targetMappings) : null;
+        this.allowPublicPredicate = allowPublicPredicate;
         this.name = name;
-        this.allowPublic = allowPublic;
         this.allowAllInterfaceImplementations = allowAllImplementations;
         this.allowAllClassImplementations = allowAllClassImplementations;
         this.allowArrayAccess = allowArrayAccess;
@@ -379,8 +382,7 @@ public final class HostAccess {
             return false;
         }
         HostAccess other = (HostAccess) obj;
-        return allowPublic == other.allowPublic//
-                        && allowAllInterfaceImplementations == other.allowAllInterfaceImplementations//
+        return allowAllInterfaceImplementations == other.allowAllInterfaceImplementations//
                         && allowAllClassImplementations == other.allowAllClassImplementations//
                         && allowArrayAccess == other.allowArrayAccess//
                         && allowListAccess == other.allowListAccess//
@@ -393,6 +395,7 @@ public final class HostAccess {
                         && equalsSet(implementableAnnotations, other.implementableAnnotations)//
                         && equalsSet(implementableTypes, other.implementableTypes)//
                         && Objects.equals(targetMappings, other.targetMappings)//
+                        && Objects.equals(allowPublicPredicate, other.allowPublicPredicate)//
                         && equalsSet(accessAnnotations, other.accessAnnotations)//
                         && Arrays.equals(allowMutableTargetMappings, other.allowMutableTargetMappings);
     }
@@ -404,8 +407,7 @@ public final class HostAccess {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(allowPublic,
-                        allowAllInterfaceImplementations,
+        return Objects.hash(allowAllInterfaceImplementations,
                         allowAllClassImplementations,
                         allowArrayAccess,
                         allowListAccess,
@@ -419,6 +421,7 @@ public final class HostAccess {
                         hashSet(implementableTypes),
                         hashSet(members),
                         targetMappings,
+                        allowPublicPredicate,
                         hashSet(accessAnnotations));
     }
 
@@ -545,24 +548,10 @@ public final class HostAccess {
     }
 
     boolean allowsAccess(AnnotatedElement member) {
-        if (excludeTypes != null) {
-            Class<?> owner = getDeclaringClass(member);
-            MapCursor<Class<?>, Boolean> cursor = excludeTypes.getEntries();
-            while (cursor.advance()) {
-                Class<?> ban = cursor.getKey();
-                if (cursor.getValue()) {
-                    // include subclasses
-                    if (ban.isAssignableFrom(owner)) {
-                        return false;
-                    }
-                } else {
-                    if (ban == owner) {
-                        return false;
-                    }
-                }
-            }
+        if (isAccessExcluded(member)) {
+            return false;
         }
-        if (allowPublic) {
+        if (allowsPublicAccessImpl(member)) {
             return true;
         }
         if (members != null && members.contains(member)) {
@@ -576,6 +565,33 @@ public final class HostAccess {
             }
         }
         return false;
+    }
+
+    boolean allowsPublicAccess(AnnotatedElement member) {
+        return !isAccessExcluded(member) && allowsPublicAccessImpl(member);
+    }
+
+    private boolean isAccessExcluded(AnnotatedElement member) {
+        if (excludeTypes != null) {
+            Class<?> owner = getDeclaringClass(member);
+            MapCursor<Class<?>, Boolean> cursor = excludeTypes.getEntries();
+            while (cursor.advance()) {
+                Class<?> ban = cursor.getKey();
+                if (cursor.getValue()) {
+                    // include subclasses
+                    if (ban.isAssignableFrom(owner)) {
+                        return true;
+                    }
+                } else if (ban == owner) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean allowsPublicAccessImpl(AnnotatedElement member) {
+        return allowPublicPredicate != null && allowPublicPredicate.test((Member) member);
     }
 
     boolean isMethodScoped(Executable e) {
@@ -605,6 +621,18 @@ public final class HostAccess {
         return allowMutableTargetMappings;
     }
 
+    boolean hasPublicAccess() {
+        return allowPublicPredicate != null;
+    }
+
+    boolean allowsAllPublicAccess() {
+        return allowPublicPredicate == UNRESTRICTED_PUBLIC_ACCESS;
+    }
+
+    boolean hasPublicAccessPredicate() {
+        return hasPublicAccess() && !allowsAllPublicAccess();
+    }
+
     /**
      * {@inheritDoc}
      *
@@ -615,7 +643,9 @@ public final class HostAccess {
         if (name != null) {
             return name;
         }
-        return "HostAccess[allowPublicAccess=" + allowPublic +
+        boolean allowsAllPublicAccess = allowsAllPublicAccess();
+        return "HostAccess[allowPublicAccess=" + allowsAllPublicAccess +
+                        ", allowPublicPredicate=" + (allowsAllPublicAccess ? null : allowPublicPredicate) +
                         ", allowAllInterfaceImplementations=" + allowAllInterfaceImplementations +
                         ", allowAllClassImplementations=" + allowAllClassImplementations +
                         ", allowArrayAccess=" + allowArrayAccess +
@@ -804,7 +834,7 @@ public final class HostAccess {
         private EconomicSet<Class<?>> implementableTypes;
         private EconomicSet<AnnotatedElement> members;
         private List<Object> targetMappings;
-        private boolean allowPublic;
+        private Predicate<Member> allowPublicPredicate;
         private boolean allowArrayAccess;
         private boolean allowListAccess;
         private boolean allowBufferAccess;
@@ -832,8 +862,8 @@ public final class HostAccess {
             this.implementationAnnotations = copySet(access.implementableAnnotations, Equivalence.IDENTITY);
             this.implementableTypes = copySet(access.implementableTypes, Equivalence.IDENTITY);
             this.targetMappings = access.targetMappings != null ? new ArrayList<>(access.targetMappings) : null;
+            this.allowPublicPredicate = access.allowPublicPredicate;
             this.excludeTypes = access.excludeTypes;
-            this.allowPublic = access.allowPublic;
             this.allowListAccess = access.allowListAccess;
             this.allowArrayAccess = access.allowArrayAccess;
             this.allowBufferAccess = access.allowBufferAccess;
@@ -869,12 +899,46 @@ public final class HostAccess {
          * Allows unrestricted access to all public constructors, methods or fields of public
          * classes. Note that this policy allows unrestricted access to reflection. It is highly
          * discouraged from using this option in environments where the guest application is not
-         * fully trusted.
+         * fully trusted. This setting replaces selected public access configured using
+         * {@link #allowPublicAccess(Predicate)}.
          *
          * @since 19.0
          */
         public Builder allowPublicAccess(boolean allow) {
-            allowPublic = allow;
+            allowPublicPredicate = allow ? UNRESTRICTED_PUBLIC_ACCESS : null;
+            return this;
+        }
+
+        /**
+         * Allows access to public constructors, methods or fields of public classes for which the
+         * given predicate returns {@code true}. Only public members are passed to the predicate. A
+         * predicate that returns {@code true} for every member exposes the same host members as
+         * {@link #allowPublicAccess(boolean) allowPublicAccess(true)}. This setting replaces previously
+         * configured public access. The predicate does not restrict
+         * access granted by {@link #allowAccess(Executable)},
+         * {@link #allowAccess(Field)}, or {@link #allowAccessAnnotatedBy(Class)}. For example, a
+         * method annotated with an annotation configured using {@link #allowAccessAnnotatedBy(Class)}
+         * remains accessible even if the predicate returns {@code false} for that method. Access denied
+         * with {@link #denyAccess(Class)} or {@link #denyAccess(Class, boolean)} takes precedence.
+         * <p>
+         * Predicate-selected public access is only supported with {@link SandboxPolicy#TRUSTED} and
+         * cannot be used with {@link SandboxPolicy#CONSTRAINED} or stricter sandbox policies. For a
+         * sandboxed context, each required member should instead be granted explicitly using
+         * {@link #allowAccess(Executable)} or {@link #allowAccess(Field)} after reviewing it for
+         * security implications.
+         * <p>
+         * Member visibility is determined when host class metadata is initialized and retained for
+         * the lifetime of this policy. The predicate may be invoked multiple times and concurrently,
+         * and therefore must be stable, thread-safe, and free of side effects. Errors thrown by the
+         * predicate are propagated as host exceptions.
+         *
+         * @param predicate the predicate that selects public host members to expose
+         * @return this builder
+         * @throws NullPointerException if {@code predicate} is {@code null}
+         * @since 25.4
+         */
+        public Builder allowPublicAccess(Predicate<Member> predicate) {
+            allowPublicPredicate = Objects.requireNonNull(predicate);
             return this;
         }
 
@@ -1432,8 +1496,10 @@ public final class HostAccess {
                     ToStringSupport.appendCall(b, "targetTypeMapping", mapping);
                 }
             }
-            if (allowPublic) {
+            if (allowPublicPredicate == UNRESTRICTED_PUBLIC_ACCESS) {
                 ToStringSupport.appendCall(b, "allowPublicAccess", true);
+            } else if (allowPublicPredicate != null) {
+                ToStringSupport.appendCall(b, "allowPublicAccess", allowPublicPredicate);
             }
             if (allowAllImplementations) {
                 ToStringSupport.appendCall(b, "allowAllImplementations", true);
@@ -1503,7 +1569,7 @@ public final class HostAccess {
          * @since 19.0
          */
         public HostAccess build() {
-            return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
+            return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, allowPublicPredicate, name,
                             allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess,
                             allowIteratorAccess, allowMapAccess, allowBigIntegerNumberAccess, allowAccessInheritance, allowMutableTargetMappings, methodScopingDefault, disableMethodScopingAnnotations,
                             disableMethodScoping, methodLookup);

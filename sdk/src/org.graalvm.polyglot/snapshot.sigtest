@@ -290,7 +290,7 @@ meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder(org.graalvm.polyglot.HostAccess)
 supr java.lang.Object
-hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,impl,implementableAnnotations,implementableTypes,members,methodLookup,methodScopingDefault,name,targetMappings
+hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,impl,implementableAnnotations,implementableTypes,members,methodLookup,methodScopingDefault,name,publicAccessPredicates,targetMappings
 
 CLSS public final org.graalvm.polyglot.HostAccess$Builder
  outer org.graalvm.polyglot.HostAccess
@@ -315,6 +315,7 @@ meth public org.graalvm.polyglot.HostAccess$Builder allowIteratorAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowListAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowMapAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowPublicAccess(boolean)
+meth public org.graalvm.polyglot.HostAccess$Builder allowPublicAccess(java.util.function.Predicate<java.lang.reflect.Member>)
 meth public org.graalvm.polyglot.HostAccess$Builder denyAccess(java.lang.Class<?>)
 meth public org.graalvm.polyglot.HostAccess$Builder denyAccess(java.lang.Class<?>,boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScoping(java.lang.reflect.Executable)
@@ -322,7 +323,7 @@ meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScopingAnnotate
 meth public org.graalvm.polyglot.HostAccess$Builder methodScoping(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder useModuleLookup(java.lang.invoke.MethodHandles$Lookup)
 supr java.lang.Object
-hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodLookup,methodScopingDefault,name,targetMappings
+hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodLookup,methodScopingDefault,name,publicAccessPredicates,targetMappings
 
 CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAccess$DisableMethodScoping
  outer org.graalvm.polyglot.HostAccess

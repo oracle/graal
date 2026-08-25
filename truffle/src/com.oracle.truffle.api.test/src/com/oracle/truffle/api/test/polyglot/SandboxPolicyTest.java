@@ -818,6 +818,16 @@ public class SandboxPolicyTest {
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
+        hostAccess = HostAccess.newBuilder().allowPublicAccess(member -> false).build();
+        try (Context context = newContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae,
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowPublicAccess(Predicate) configured");
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
         hostAccess = HostAccess.newBuilder().allowAccessInheritance(true).build();
         try (Context context = newContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);

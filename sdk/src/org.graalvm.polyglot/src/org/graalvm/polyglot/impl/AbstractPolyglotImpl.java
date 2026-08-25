@@ -295,6 +295,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsAccess(Object hostAccess, AnnotatedElement element);
 
+        public abstract boolean allowsPublicAccess(Object hostAccess, AnnotatedElement element);
+
         public abstract boolean allowsImplementation(Object hostAccess, Class<?> type);
 
         public abstract boolean isMethodScopingEnabled(Object hostAccess);
@@ -314,6 +316,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isMapAccessible(Object hostAccess);
 
         public abstract boolean isBigIntegerAccessibleAsNumber(Object hostAccess);
+
+        public abstract boolean hasPublicAccess(Object hostAccess);
 
         public abstract boolean allowsPublicAccess(Object hostAccess);
 

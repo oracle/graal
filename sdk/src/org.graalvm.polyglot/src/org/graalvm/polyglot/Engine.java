@@ -1381,6 +1381,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean allowsPublicAccess(Object access, AnnotatedElement element) {
+            return ((HostAccess) access).allowsPublicAccess(element);
+        }
+
+        @Override
         public boolean allowsImplementation(Object access, Class<?> type) {
             return ((HostAccess) access).allowsImplementation(type);
         }
@@ -1441,8 +1446,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean hasPublicAccess(Object access) {
+            return ((HostAccess) access).hasPublicAccess();
+        }
+
+        @Override
         public boolean allowsPublicAccess(Object access) {
-            return ((HostAccess) access).allowPublic;
+            return ((HostAccess) access).allowsAllPublicAccess();
         }
 
         @Override
