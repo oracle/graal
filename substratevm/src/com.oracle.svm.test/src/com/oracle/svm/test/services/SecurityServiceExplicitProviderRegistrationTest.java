@@ -34,6 +34,7 @@ import java.security.Signature;
 import javax.crypto.Mac;
 
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -72,11 +73,12 @@ public class SecurityServiceExplicitProviderRegistrationTest {
         Assert.assertNotNull("An unrelated advertised service must remain usable.", jksService.newInstance(null));
     }
 
-    // §FS-002-security-providers.4.2, §FS-002-security-providers.7.3
+    // §FS-002-security-providers.4.3, §FS-002-security-providers.7.3
     /** Tests omitted providers. */
     @Test
     public void testReachableFactoryDoesNotIncludeUnregisteredProvider() {
-        Assert.assertNull("A reachable Signature factory must not include SunEC.", Security.getProvider("SunEC"));
+        Assert.assertThrows("An omitted HotSpot provider must report its missing registration.",
+                        MissingReflectionRegistrationError.class, () -> Security.getProvider("SunEC"));
         try {
             Signature signature = Signature.getInstance("SHA256withECDSA");
             Assert.assertNotEquals("A different platform provider may supply the same algorithm.", "SunEC", signature.getProvider().getName());
