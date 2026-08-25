@@ -1558,22 +1558,6 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.thirdparty": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "sdk:NATIVEIMAGE",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-            "jacoco" : "exclude",
-        },
-
         "com.oracle.svm.bench": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -2279,10 +2263,9 @@ suite = {
 
         "LIBRARY_SUPPORT": {
             "subDir": "src",
-            "description" : "Native Image feature-based support for important non-JDK libraries and languages (e.g. gson, Groovy)",
+            "description" : "Native Image feature-based support for important non-JDK languages (e.g. Groovy)",
             "dependencies": [
                 "com.oracle.svm.polyglot",
-                "com.oracle.svm.thirdparty",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
