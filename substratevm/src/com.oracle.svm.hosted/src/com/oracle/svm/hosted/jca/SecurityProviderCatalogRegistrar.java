@@ -59,9 +59,9 @@ final class SecurityProviderCatalogRegistrar {
         SecurityProviderRuntimeState.currentLayer().registerConfiguredProviderName(provider.getName(), provider.getClass().getName());
     }
 
-    static void recordServiceLoadedConfiguredProvider(Provider provider, Class<?> constructionClass) {
+    static void recordServiceLoadedConfiguredProvider(Provider provider, Class<?> constructionClass, int descriptorOrder) {
         SecurityProviderRuntimeState.currentLayer().registerServiceLoadedConfiguredProvider(
-                        provider.getName(), provider.getClass().getName(), constructionClass.getName());
+                        provider.getName(), provider.getClass().getName(), constructionClass.getName(), descriptorOrder);
     }
 
     void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
@@ -83,6 +83,11 @@ final class SecurityProviderCatalogRegistrar {
                 }
             }
         }
+    }
+
+    /** §FS-002-security-providers.7.3: Include one provider without its whole catalog. */
+    void includeProviderForLegacyService(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {
+        registerProvider(access, provider, metadata);
     }
 
     private void registerProvider(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {

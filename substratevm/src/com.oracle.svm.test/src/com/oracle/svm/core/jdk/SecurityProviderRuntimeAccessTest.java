@@ -61,15 +61,10 @@ public class SecurityProviderRuntimeAccessTest {
     }
 
     @Test
-    public void renamedConfiguredProviderReportsActionableError() {
+    public void configuredProviderMayRenameItself() {
         Provider candidate = new ConstructorProvider();
-        SecurityException error = assertThrows(SecurityException.class,
-                        () -> SecurityProviderRuntimeAccess.validateConfiguredProvider("expected", ConstructorProvider.class.getName(),
-                                        ConstructorProvider.class.getName(), candidate));
-
-        assertTrue(error.getMessage().contains("expected"));
-        assertTrue(error.getMessage().contains(ConstructorProvider.class.getName()));
-        assertTrue(error.getMessage().contains(CONSTRUCTOR_PROVIDER_NAME));
+        assertSame(candidate, SecurityProviderRuntimeAccess.validateConfiguredProvider("expected", ConstructorProvider.class.getName(),
+                        ConstructorProvider.class.getName(), candidate));
     }
 
     @Test
@@ -90,6 +85,22 @@ public class SecurityProviderRuntimeAccessTest {
 
         assertEquals("configured", provider.getName());
         assertSame(ConfigurableProvider.class, provider.getClass());
+    }
+
+    // §FS-002-security-providers.1.3
+    @Test
+    public void configuredProviderMayReturnAnotherProviderClass() {
+        Provider provider = SecurityProviderRuntimeAccess.configureProvider(new DifferentClassConfigurableProvider(), "configured");
+
+        assertEquals("configured", provider.getName());
+        assertSame(ConfigurableProvider.class, provider.getClass());
+    }
+
+    // §FS-002-security-providers.4.3
+    @Test
+    public void onlyThirdPartyProviderObjectPlansSuppressDiagnostics() {
+        assertFalse(SecurityProviderRuntimeAccess.isApplicationSuppliedOnlyDiagnostic(null, null));
+        assertFalse(SecurityProviderRuntimeAccess.isApplicationSuppliedOnlyDiagnostic("sun.security.ec.SunEC", "sun.security.ec.SunEC"));
     }
 
     @Test
@@ -252,6 +263,19 @@ public class SecurityProviderRuntimeAccessTest {
 
         private ConfigurableProvider(String name) {
             super(name, "1.0", "Configurable provider");
+        }
+
+        @Override
+        public Provider configure(String configArg) {
+            return new ConfigurableProvider(configArg);
+        }
+    }
+
+    public static final class DifferentClassConfigurableProvider extends Provider {
+        private static final long serialVersionUID = 1L;
+
+        public DifferentClassConfigurableProvider() {
+            super("different-class-configurable", "1.0", "Configurable provider with another result class");
         }
 
         @Override
