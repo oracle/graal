@@ -141,7 +141,7 @@ public class SecurityServiceTest {
     /** §FS-002-security-providers.7.3: Tests the public-constructor compatibility surface. */
     @Test
     public void testLegacyServiceInclusionRegistersEveryPublicProviderConstructor() throws Exception {
-        Assert.assertFalse(FutureDefaultsOptions.explicitSecurityProviderRegistration());
+        Assert.assertFalse(FutureDefaultsOptions.metadataSecurityProviderRegistration());
         Provider provider = LegacyConstructorProvider.class.getConstructor(String.class).newInstance("reflected");
         Assert.assertEquals("legacy-constructor-provider-reflected", provider.getName());
     }
@@ -160,7 +160,7 @@ public class SecurityServiceTest {
     @Test
     public void testTypeMetadataApplicationProviderVerification() throws Exception {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-        Assume.assumeFalse("tests compatibility-mode verification", FutureDefaultsOptions.explicitSecurityProviderRegistration());
+        Assume.assumeFalse("tests compatibility-mode verification", FutureDefaultsOptions.metadataSecurityProviderRegistration());
 
         Provider provider = new TypeMetadataProvider();
         SecurityProviderRuntimeState.ProviderInfo info = SecurityProviderRuntimeState.getProviderInfo(provider);
@@ -318,7 +318,7 @@ public class SecurityServiceTest {
         @SuppressWarnings("deprecation")
         public ReflectionMetadataProvider() {
             super(REFLECTION_METADATA_PROVIDER_NAME, 1.0, "Provider registered through reflection metadata");
-            if (ImageInfo.inImageBuildtimeCode() && !FutureDefaultsOptions.explicitSecurityProviderRegistration()) {
+            if (ImageInfo.inImageBuildtimeCode() && !FutureDefaultsOptions.metadataSecurityProviderRegistration()) {
                 throw new AssertionError("Compatibility mode must not instantiate a provider solely because it has reflection metadata.");
             }
             putService(new Service(this, "JCACompliantNoOpService", REFLECTION_METADATA_PROVIDER_ALGORITHM,

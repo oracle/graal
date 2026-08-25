@@ -56,14 +56,14 @@ final class Target_java_security_Security_ProviderMutation {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/java/security/Security.java#L469-L478")
     public static synchronized int insertProviderAt(Provider provider, int position) {
         sun.security.jca.ProviderList providers = sun.security.jca.Providers.getFullProviderList();
-        sun.security.jca.ProviderList updatedProviders = FutureDefaultsOptions.explicitSecurityProviderRegistration()
+        sun.security.jca.ProviderList updatedProviders = FutureDefaultsOptions.metadataSecurityProviderRegistration()
                         ? SecurityProviderListSupport.insertAtVisiblePosition(providers, provider, position)
                         : sun.security.jca.ProviderList.insertAt(providers, provider, position - 1);
         if (providers == updatedProviders) {
             return -1;
         }
         sun.security.jca.Providers.setProviderList(updatedProviders);
-        return FutureDefaultsOptions.explicitSecurityProviderRegistration()
+        return FutureDefaultsOptions.metadataSecurityProviderRegistration()
                         ? SecurityProviderListSupport.visibleIndex(updatedProviders, provider.getName())
                         : updatedProviders.getIndex(provider.getName()) + 1;
     }

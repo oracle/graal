@@ -1,4 +1,4 @@
-Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'exact-reflection', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration', 'explicit-security-provider-registration'. The preferred usage is '--future-defaults=all'.
+Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'exact-reflection', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration', 'metadata-security-provider-registration'. The preferred usage is '--future-defaults=all'.
 
 The meaning of each possible option is as follows:
   'all' - is the preferred option, and it enables all other behaviors.
@@ -19,4 +19,4 @@ The meaning of each possible option is as follows:
 
   'explicit-feature-singleton-registration' - stops automatically publishing user features reached from '--features' as 'ImageSingletons'. If code needs feature-singleton lookup compatibility, the feature must register its feature object explicitly.
 
-  'explicit-security-provider-registration' - requires reflection metadata to include a security provider and its services, and enables 'run-time-initialize-security-providers'. Reachable security-service factory methods do not include providers without reflection metadata.
+  'metadata-security-provider-registration' - requires reflection metadata to include a security provider and its services, and enables 'run-time-initialize-security-providers'. Reachable security-service factory methods do not include providers without reflection metadata.
