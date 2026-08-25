@@ -73,6 +73,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -184,10 +185,8 @@ final class BreakpointInterceptor {
     /* Classes from these class loaders are assumed to not be dynamically loaded. */
     private static JNIObjectHandle[] builtinClassLoaders;
 
-    /** Existing provider objects supplied through application APIs must not become metadata. */
-    private static final ReentrantLock applicationSuppliedSecurityProvidersLock = new ReentrantLock();
-    private static JNIObjectHandle[] applicationSuppliedSecurityProviders;
-    private static int applicationSuppliedSecurityProviderCount;
+    private static final long APPLICATION_SUPPLIED_SECURITY_PROVIDER_TAG = 1L << 62;
+    private static boolean securityProviderTaggingAvailable;
 
     private static void traceReflectBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result,
                     JNIMethodId[] stackTrace, Object... args) {
@@ -745,63 +744,39 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    /** §FS-002-security-providers.6.1: Remember an existing provider without tracing it. */
-    private static boolean addApplicationSuppliedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp,
-                    @SuppressWarnings("unused") InterceptedState state) {
-        rememberApplicationSuppliedSecurityProvider(jni, getObjectArgument(thread, 0));
+    /** §FS-002-security-providers.6.1: Tag only an insertion that reached list publication. */
+    private static boolean publishApplicationSuppliedSecurityProvider(@SuppressWarnings("unused") JNIEnvironment jni, JNIObjectHandle thread,
+                    @SuppressWarnings("unused") Breakpoint bp,
+                    InterceptedState state) {
+        JNIMethodId callerMethod = state.getCallerMethod(1);
+        if (callerMethod.isNonNull() && callerMethod.equal(agent.handles().javaSecurityInsertProviderAt)) {
+            tagApplicationSuppliedSecurityProvider(Support.getObjectArgument(thread, 1, 0));
+        }
         return true;
     }
 
-    /** §FS-002-security-providers.6.1: Provider-object factories receive an existing instance. */
-    private static boolean getSecurityServiceForApplicationSuppliedProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp,
-                    @SuppressWarnings("unused") InterceptedState state) {
-        rememberApplicationSuppliedSecurityProvider(jni, getObjectArgument(thread, 2));
-        return true;
-    }
-
-    private static void rememberApplicationSuppliedSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider) {
-        if (provider.equal(nullHandle())) {
+    private static void tagApplicationSuppliedSecurityProvider(JNIObjectHandle provider) {
+        if (!securityProviderTaggingAvailable || provider.equal(nullHandle())) {
             return;
         }
-        JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
-        if (clearException(jni)) {
-            return;
-        }
-        String providerClassName = getClassNameOrNull(jni, providerClass);
-        if (providerClassName == null || SecurityProviderCatalog.getProviderClassName(providerClassName) != null) {
-            /* A provider-object overload is also an internal step of name-based JDK factories. */
-            return;
-        }
-        applicationSuppliedSecurityProvidersLock.lock();
-        try {
-            for (int i = 0; i < applicationSuppliedSecurityProviderCount; i++) {
-                if (jniFunctions().getIsSameObject().invoke(jni, provider, applicationSuppliedSecurityProviders[i])) {
-                    return;
-                }
-            }
-            if (applicationSuppliedSecurityProviderCount == applicationSuppliedSecurityProviders.length) {
-                JNIObjectHandle[] expanded = new JNIObjectHandle[applicationSuppliedSecurityProviders.length * 2];
-                System.arraycopy(applicationSuppliedSecurityProviders, 0, expanded, 0, applicationSuppliedSecurityProviders.length);
-                applicationSuppliedSecurityProviders = expanded;
-            }
-            applicationSuppliedSecurityProviders[applicationSuppliedSecurityProviderCount++] = agent.handles().newTrackedGlobalRef(jni, provider);
-        } finally {
-            applicationSuppliedSecurityProvidersLock.unlock();
+        CLongPointer tagPointer = StackValue.get(CLongPointer.class);
+        if (jvmtiFunctions().GetTag().invoke(jvmtiEnv(), provider, tagPointer) != JvmtiError.JVMTI_ERROR_NONE ||
+                        jvmtiFunctions().SetTag().invoke(jvmtiEnv(), provider,
+                                        tagPointer.read() | APPLICATION_SUPPLIED_SECURITY_PROVIDER_TAG) != JvmtiError.JVMTI_ERROR_NONE) {
+            securityProviderTaggingAvailable = false;
         }
     }
 
-    private static boolean isApplicationSuppliedSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider) {
-        applicationSuppliedSecurityProvidersLock.lock();
-        try {
-            for (int i = 0; i < applicationSuppliedSecurityProviderCount; i++) {
-                if (jniFunctions().getIsSameObject().invoke(jni, provider, applicationSuppliedSecurityProviders[i])) {
-                    return true;
-                }
-            }
+    private static boolean isApplicationSuppliedSecurityProvider(JNIObjectHandle provider) {
+        if (!securityProviderTaggingAvailable || provider.equal(nullHandle())) {
             return false;
-        } finally {
-            applicationSuppliedSecurityProvidersLock.unlock();
         }
+        CLongPointer tagPointer = StackValue.get(CLongPointer.class);
+        if (jvmtiFunctions().GetTag().invoke(jvmtiEnv(), provider, tagPointer) != JvmtiError.JVMTI_ERROR_NONE) {
+            securityProviderTaggingAvailable = false;
+            return false;
+        }
+        return (tagPointer.read() & APPLICATION_SUPPLIED_SECURITY_PROVIDER_TAG) != 0;
     }
 
     /**
@@ -814,7 +789,8 @@ final class BreakpointInterceptor {
         traceCachedSecurityServiceImplementation(jni, thread, service, effectiveCallerClass, state);
         JNIObjectHandle provider = Support.callObjectMethod(jni, service, agent.handles().javaSecurityProviderServiceGetProvider);
         boolean validResult = !clearException(jni) && provider.notEqual(nullHandle());
-        if (validResult && !isApplicationSuppliedSecurityProvider(jni, provider)) {
+        boolean providerObjectFactory = isProviderObjectFactoryCall(jni, state);
+        if (validResult && !providerObjectFactory && !isApplicationSuppliedSecurityProvider(provider)) {
             traceJdkConstructibleSecurityProvider(jni, provider, effectiveCallerClass, state);
             traceSecurityProvider(jni, provider, true, effectiveCallerClass, state);
         }
@@ -827,6 +803,7 @@ final class BreakpointInterceptor {
                     InterceptedState state) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
         if (handles.javaSecurityProviderServiceClassCache.isNull() ||
+                        handles.javaSecurityProviderServiceConstructorCache.isNull() ||
                         handles.javaSecurityProviderServiceEngineDescription.isNull() ||
                         handles.javaSecurityProviderEngineDescriptionConstructorParameterClass.isNull()) {
             return;
@@ -856,6 +833,17 @@ final class BreakpointInterceptor {
             parameterClass = jniFunctions().getGetObjectField().invoke(jni, engineDescription, handles.javaSecurityProviderEngineDescriptionConstructorParameterClass);
             if (clearException(jni)) {
                 return;
+            }
+            /* §FS-002-security-providers.6.1: A populated constructorCache records the JDK's
+             * no-argument fallback, even when this engine declares a parameter type. */
+            if (getObjectArgument(thread, 1).equal(nullHandle()) && parameterClass.notEqual(nullHandle())) {
+                JNIObjectHandle constructorCache = jniFunctions().getGetObjectField().invoke(jni, service, handles.javaSecurityProviderServiceConstructorCache);
+                if (clearException(jni)) {
+                    return;
+                }
+                if (constructorCache.notEqual(nullHandle())) {
+                    parameterClass = nullHandle();
+                }
             }
         } else {
             JNIObjectHandle constructorParameter = getObjectArgument(thread, 1);
@@ -1063,11 +1051,42 @@ final class BreakpointInterceptor {
             }
             JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
             String callerClassName = getClassNameOrNull(jni, callerClass);
-            if (callerClassName != null && !isJdkSecurityImplementation(callerClassName)) {
+            if (callerClassName != null && !isJdkRuntimeClass(jni, callerClass, callerClassName)) {
                 return callerClass;
             }
         }
         return nullHandle();
+    }
+
+    /** Distinguish transient provider-object acquisition from an outer name/default factory. */
+    private static boolean isProviderObjectFactoryCall(JNIEnvironment jni, InterceptedState state) {
+        JNIMethodId outermostJdkMethod = nullPointer();
+        for (int depth = 1; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
+            JNIMethodId callerMethod = state.getCallerMethod(depth);
+            if (callerMethod.isNull()) {
+                break;
+            }
+            JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
+            String callerClassName = getClassNameOrNull(jni, callerClass);
+            if (callerClassName == null) {
+                continue;
+            }
+            if (!isJdkRuntimeClass(jni, callerClass, callerClassName)) {
+                return outermostJdkMethod.isNull() || methodAcceptsProvider(outermostJdkMethod);
+            }
+            outermostJdkMethod = callerMethod;
+        }
+        return true;
+    }
+
+    private static boolean methodAcceptsProvider(JNIMethodId method) {
+        CCharPointerPointer signaturePointer = StackValue.get(CCharPointerPointer.class);
+        if (jvmtiFunctions().GetMethodName().invoke(jvmtiEnv(), method, nullPointer(), signaturePointer, nullPointer()) != JvmtiError.JVMTI_ERROR_NONE) {
+            return true;
+        }
+        String signature = fromCString(signaturePointer.read());
+        jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePointer.read());
+        return signature.contains("Ljava/security/Provider;");
     }
 
     private static boolean isJdkSecurityImplementation(String className) {
@@ -1076,7 +1095,27 @@ final class BreakpointInterceptor {
                         className.startsWith("javax.net.ssl.") ||
                         className.startsWith("javax.security.") ||
                         className.startsWith("sun.security.") ||
-                        className.startsWith("com.sun.crypto.provider.");
+                        className.startsWith("com.sun.crypto.provider.") ||
+                        className.startsWith("com.sun.security.sasl.") ||
+                        className.startsWith("org.jcp.xml.dsig.internal.dom.") ||
+                        className.startsWith("apple.security.") ||
+                        className.startsWith("com.oracle.security.ucrypto.");
+    }
+
+    /** §FS-002-security-providers.6.1: Cross all JDK runtime-module intermediaries. */
+    private static boolean isJdkRuntimeClass(JNIEnvironment jni, JNIObjectHandle clazz, String className) {
+        NativeImageAgentJNIHandleSet handles = agent.handles();
+        if (handles.javaLangClassGetModule.isNonNull()) {
+            JNIObjectHandle module = Support.callObjectMethod(jni, clazz, handles.javaLangClassGetModule);
+            if (!clearException(jni) && module.notEqual(nullHandle())) {
+                JNIObjectHandle moduleNameHandle = Support.callObjectMethod(jni, module, handles.javaLangModuleGetName);
+                if (!clearException(jni) && moduleNameHandle.notEqual(nullHandle())) {
+                    String moduleName = fromJniString(jni, moduleNameHandle);
+                    return moduleName.startsWith("java.") || moduleName.startsWith("jdk.");
+                }
+            }
+        }
+        return isJdkSecurityImplementation(className);
     }
 
     // §FS-002-security-providers.6.1
@@ -1927,13 +1966,13 @@ final class BreakpointInterceptor {
         BreakpointInterceptor.experimentalClassDefineSupport = exptlClassDefineSupport;
         BreakpointInterceptor.experimentalUnsafeAllocationSupport = exptlUnsafeAllocationSupport;
         BreakpointInterceptor.trackReflectionMetadata = trackReflectionData;
-        BreakpointInterceptor.applicationSuppliedSecurityProviders = new JNIObjectHandle[16];
-        BreakpointInterceptor.applicationSuppliedSecurityProviderCount = 0;
+        BreakpointInterceptor.securityProviderTaggingAvailable = false;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
         capabilities.setCanGenerateBreakpointEvents(1);
         capabilities.setCanAccessLocalVariables(1);
+        capabilities.setCanTagObjects(1);
 
         if (exptlUnsafeAllocationSupport) {
             capabilities.setCanGenerateNativeMethodBindEvents(1);
@@ -1950,6 +1989,8 @@ final class BreakpointInterceptor {
                             formatPtr.read() == JvmtiLocationFormat.JVMTI_JLOCATION_JVMBCI.getCValue(), "Expecting BCI locations");
         }
         check(jvmti.getFunctions().AddCapabilities().invoke(jvmti, capabilities));
+        check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
+        BreakpointInterceptor.securityProviderTaggingAvailable = capabilities.getCanTagObjects() != 0;
         UnmanagedMemory.free(capabilities);
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
@@ -2173,24 +2214,23 @@ final class BreakpointInterceptor {
         installedBreakpoints = null;
         nativeBreakpoints = null;
         observedExplicitLoadClassCallSites = null;
-        applicationSuppliedSecurityProviders = null;
-        applicationSuppliedSecurityProviderCount = 0;
+        securityProviderTaggingAvailable = false;
         tracer = null;
     }
 
     static boolean securityProviderHooksAvailable() {
-        boolean getService = false;
+        boolean providerPublication = false;
         boolean getProvider = false;
         if (installedBreakpoints != null) {
             for (Breakpoint breakpoint : installedBreakpoints.values()) {
-                if (breakpoint.specification.className.equals("sun/security/jca/GetInstance") && breakpoint.specification.methodName.equals("getService")) {
-                    getService = true;
+                if (breakpoint.specification.className.equals("sun/security/jca/Providers") && breakpoint.specification.methodName.equals("setProviderList")) {
+                    providerPublication = true;
                 } else if (breakpoint.specification.className.equals("sun/security/jca/ProviderConfig") && breakpoint.specification.methodName.equals("getProvider")) {
                     getProvider = true;
                 }
             }
         }
-        return getService && getProvider;
+        return providerPublication && getProvider && securityProviderTaggingAvailable;
     }
 
     private interface BreakpointHandler {
@@ -2228,10 +2268,8 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
 
-                    brk("java/security/Security", "addProvider", "(Ljava/security/Provider;)I", BreakpointInterceptor::addApplicationSuppliedSecurityProvider),
-                    brk("java/security/Security", "insertProviderAt", "(Ljava/security/Provider;I)I", BreakpointInterceptor::addApplicationSuppliedSecurityProvider),
-                    optionalBrk("sun/security/jca/GetInstance", "getService", "(Ljava/lang/String;Ljava/lang/String;Ljava/security/Provider;)Ljava/security/Provider$Service;",
-                                    BreakpointInterceptor::getSecurityServiceForApplicationSuppliedProvider),
+                    brk("sun/security/jca/Providers", "setProviderList", "(Lsun/security/jca/ProviderList;)V",
+                                    BreakpointInterceptor::publishApplicationSuppliedSecurityProvider),
                     brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
                                     BreakpointInterceptor::newSecurityServiceInstance),
                     brk("java/security/Provider$Service", "getProvider", "()Ljava/security/Provider;",

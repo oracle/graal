@@ -65,6 +65,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.ServiceConfigurationError;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -374,6 +375,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private final Map<String, List<Provider>> buildTimeProvidersByClassName = new HashMap<>();
     /** ServiceLoader declaration classes, in discovery order, keyed by returned implementation class. */
     private final Map<Class<?>, List<Class<?>>> providerConstructionClasses = new HashMap<>();
+    private final Map<Class<?>, Integer> providerConstructionOrder = new HashMap<>();
+    private final List<ServiceProviderFactoryCandidate> unresolvedServiceProviderFactories = new ArrayList<>();
     private SecurityProviderCatalogRegistrar catalogRegistrar;
     private ReflectionRegistrationView reflectionRegistrationView;
     private boolean preserveAll;
@@ -781,6 +784,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         availableServices = computeAvailableServices();
         buildTimeProvidersByClassName.clear();
         providerConstructionClasses.clear();
+        providerConstructionOrder.clear();
+        unresolvedServiceProviderFactories.clear();
         for (Provider provider : Security.getProviders()) {
             String providerClassName = provider.getClass().getName();
             buildTimeProvidersByClassName.computeIfAbsent(providerClassName, _ -> new ArrayList<>()).add(provider);
@@ -799,23 +804,64 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         accessImpl.getImageClassLoader().classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (serviceName.equals(Provider.class.getName())) {
                 // §FS-002-security-providers.7.2:
-                // Descriptors resolve implementation candidates without registering them.
+                // Inventory descriptors without executing provider code.
+                int descriptorOrder = 0;
                 for (String serviceProviderClassName : providers) {
                     Class<?> serviceProviderClass = access.findClassByName(serviceProviderClassName);
-                    Provider provider = tryInstantiateServiceProvider(serviceProviderClass);
-                    if (provider == null) {
+                    if (serviceProviderClass == null || !Modifier.isPublic(serviceProviderClass.getModifiers())) {
+                        descriptorOrder++;
                         continue;
                     }
-                    Class<?> providerClass = provider.getClass();
-                    if (!ProviderConstruction.isProviderImplementationClass(providerClass)) {
-                        continue;
+                    Method providerMethod = findProviderMethod(serviceProviderClass);
+                    if (providerMethod != null) {
+                        Class<?> returnType = providerMethod.getReturnType();
+                        if (ProviderConstruction.isProviderImplementationClass(returnType)) {
+                            registerServiceProviderConstructionCandidate(returnType, serviceProviderClass, descriptorOrder);
+                        } else {
+                            unresolvedServiceProviderFactories.add(new ServiceProviderFactoryCandidate(serviceProviderClass, providerMethod, descriptorOrder));
+                        }
+                    } else if (ProviderConstruction.isProviderImplementationClass(serviceProviderClass) && findNullaryConstructor(serviceProviderClass) != null) {
+                        registerServiceProviderConstructionCandidate(serviceProviderClass, serviceProviderClass, descriptorOrder);
                     }
-                    providerConstructionClasses.computeIfAbsent(providerClass, _ -> new ArrayList<>()).add(serviceProviderClass);
-                    SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, serviceProviderClass);
-                    addCandidateProviderClass(providerClass);
+                    descriptorOrder++;
                 }
             }
         });
+    }
+
+    private record ServiceProviderFactoryCandidate(Class<?> constructionClass, Method providerMethod, int descriptorOrder) {
+    }
+
+    private void registerServiceProviderConstructionCandidate(Class<?> providerClass, Class<?> constructionClass, int descriptorOrder) {
+        List<Class<?>> constructionClasses = providerConstructionClasses.computeIfAbsent(providerClass, _ -> new ArrayList<>());
+        if (!constructionClasses.contains(constructionClass)) {
+            constructionClasses.add(constructionClass);
+        }
+        providerConstructionOrder.merge(constructionClass, descriptorOrder, Math::min);
+        addCandidateProviderClass(providerClass);
+    }
+
+    /** Resolve a provider() declaration only after its construction path has qualifying metadata. */
+    private boolean resolveActiveServiceProviderFactories() {
+        boolean resolvedAny = false;
+        for (int index = 0; index < unresolvedServiceProviderFactories.size();) {
+            ServiceProviderFactoryCandidate candidate = unresolvedServiceProviderFactories.get(index);
+            if (reflectionRegistrationView.executableAccess(candidate.providerMethod()) == null) {
+                index++;
+                continue;
+            }
+            ProviderInstantiation result = instantiateServiceProvider(candidate.constructionClass());
+            Provider provider = result.provider();
+            if (provider == null || !ProviderConstruction.isProviderImplementationClass(provider.getClass())) {
+                String message = "Registered security provider factory %s could not produce a valid Provider during image generation.";
+                throw result.failure() == null ? UserError.abort(message, candidate.constructionClass().getName())
+                                : UserError.abort(result.failure(), message, candidate.constructionClass().getName());
+            }
+            registerServiceProviderConstructionCandidate(provider.getClass(), candidate.constructionClass(), candidate.descriptorOrder());
+            unresolvedServiceProviderFactories.remove(index);
+            resolvedAny = true;
+        }
+        return resolvedAny;
     }
 
     private void addCandidateProviderClass(Class<?> providerClass) {
@@ -1054,6 +1100,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             ProviderInstantiation result = instantiateServiceProvider(constructionClass);
             Provider provider = result.provider();
             if (provider != null && provider.getClass().equals(providerClass)) {
+                Integer descriptorOrder = providerConstructionOrder.get(constructionClass);
+                if (descriptorOrder != null) {
+                    SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
+                }
                 return provider;
             }
             lastFailure = result.failure();
@@ -1068,10 +1118,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         throw lastFailure == null ? UserError.abort(message, providerClass.getName()) : UserError.abort(lastFailure, message, providerClass.getName());
     }
 
-    private static Provider tryInstantiateServiceProvider(Class<?> serviceProviderClass) {
-        return instantiateServiceProvider(serviceProviderClass).provider();
-    }
-
     private record ProviderInstantiation(Provider provider, Throwable failure) {
     }
 
@@ -1084,10 +1130,19 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             // A qualifying provider() method precedes the constructor.
             Method providerMethod = findProviderMethod(serviceProviderClass);
             if (providerMethod != null) {
-                return new ProviderInstantiation((Provider) providerMethod.invoke(null), null);
+                Object value = providerMethod.invoke(null);
+                return value instanceof Provider provider ? new ProviderInstantiation(provider, null)
+                                : new ProviderInstantiation(null, new ServiceConfigurationError(
+                                                serviceProviderClass.getName() + ".provider() did not return a Provider"));
             }
             Constructor<?> constructor = findNullaryConstructor(serviceProviderClass);
-            return new ProviderInstantiation(constructor != null ? (Provider) constructor.newInstance() : null, null);
+            if (constructor == null) {
+                return new ProviderInstantiation(null, null);
+            }
+            Object value = constructor.newInstance();
+            return value instanceof Provider provider ? new ProviderInstantiation(provider, null)
+                            : new ProviderInstantiation(null, new ServiceConfigurationError(
+                                            serviceProviderClass.getName() + " is not a Provider"));
         } catch (ReflectiveOperationException | SecurityException | LinkageError ex) {
             /* ProviderConfig ignores a broken ServiceLoader entry and continues with the next. */
             return new ProviderInstantiation(null, ex);
@@ -1137,9 +1192,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
         registerService(a, service, metadata);
         if (!mode.explicitRegistration()) {
-            Class<?> providerClass = service.getProvider().getClass();
-            providerPlanner.beforeLegacyReflectionRegistration(providerClass);
-            providerPlanner.requestCompleteProvider(providerClass);
+            // §FS-002-security-providers.7.3: Retain the selected service and its provider, not
+            // unrelated services from the same provider catalog.
+            catalogRegistrar.includeProviderForLegacyService(a, service.getProvider(), metadata);
         }
     }
 
@@ -1313,11 +1368,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        boolean resolvedServiceProviderFactory = resolveActiveServiceProviderFactories();
         // Consume concurrent plans in the serialized feature pass.
         if (providerPlanner.processNewProviders(
                         this::providerRegistrationPlan,
                         (providerClass, metadata) -> catalogRegistrar.includeProviderClass(access, providerClass, metadata),
-                        catalogRegistrar::registerApplicationSuppliedProviderClass)) {
+                        catalogRegistrar::registerApplicationSuppliedProviderClass) || resolvedServiceProviderFactory) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
         }

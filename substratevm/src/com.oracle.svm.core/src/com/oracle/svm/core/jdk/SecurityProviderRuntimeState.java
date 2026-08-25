@@ -26,6 +26,8 @@ package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Constructor;
 import java.security.Provider;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.graalvm.collections.EconomicMap;
@@ -60,15 +62,14 @@ public final class SecurityProviderRuntimeState {
      * is the ServiceLoader declaration that owns the selected construction path and can differ from
      * the implementation class for a provider method.
      */
-    public record ConfiguredProviderInfo(String providerClassName, String constructionClassName) {
+    public record ConfiguredProviderInfo(String providerClassName, String constructionClassName, int descriptorOrder) {
         public String effectiveConstructionClassName() {
             return constructionClassName != null ? constructionClassName : providerClassName;
         }
     }
 
     private final EconomicMap<String, ConditionalProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
-    private final EconomicMap<String, ConfiguredProviderInfo> configuredProviders = ImageHeapMap.createNonLayeredMap();
-    private final EconomicMap<String, Boolean> ambiguousConfiguredProviderNames = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<String, List<ConfiguredProviderInfo>> configuredProviders = ImageHeapMap.createNonLayeredMap();
 
     private Properties savedInitialSecurityProperties;
     private Constructor<?> sunECConstructor;
@@ -102,37 +103,45 @@ public final class SecurityProviderRuntimeState {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void registerConfiguredProviderKey(String configuredValue, String providerClassName) {
-        ConfiguredProviderInfo previous = configuredProviders.get(configuredValue);
-        if (previous == null) {
-            configuredProviders.put(configuredValue, new ConfiguredProviderInfo(providerClassName, null));
-        } else if (!previous.providerClassName().equals(providerClassName)) {
-            // §FS-002-security-providers.7.1
-            // Provider names are not globally unique class keys.
-            ambiguousConfiguredProviderNames.put(configuredValue, true);
-        }
+        registerConfiguredProviderCandidate(configuredValue, new ConfiguredProviderInfo(providerClassName, null, -1));
     }
 
     /** Records the first ServiceLoader declaration that resolves a provider name. */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void registerServiceLoadedConfiguredProvider(String providerName, String providerClassName, String constructionClassName) {
-        registerServiceLoadedConfiguredProviderKey(providerName, providerClassName, constructionClassName);
+    public synchronized void registerServiceLoadedConfiguredProvider(String providerName, String providerClassName, String constructionClassName, int descriptorOrder) {
+        registerServiceLoadedConfiguredProviderKey(providerName, providerClassName, constructionClassName, descriptorOrder);
         // §FS-002-security-providers.7.1
         // Security properties accept either the provider name or its implementation class name.
-        registerServiceLoadedConfiguredProviderKey(providerClassName, providerClassName, constructionClassName);
+        registerServiceLoadedConfiguredProviderKey(providerClassName, providerClassName, constructionClassName, descriptorOrder);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void registerServiceLoadedConfiguredProviderKey(String configuredValue, String providerClassName, String constructionClassName) {
-        ConfiguredProviderInfo previous = configuredProviders.get(configuredValue);
-        if (previous == null) {
-            configuredProviders.put(configuredValue, new ConfiguredProviderInfo(providerClassName, constructionClassName));
-        } else if (previous.providerClassName().equals(providerClassName) && previous.constructionClassName() == null) {
-            configuredProviders.put(configuredValue, new ConfiguredProviderInfo(providerClassName, constructionClassName));
-        } else if (!previous.providerClassName().equals(providerClassName)) {
-            // §FS-002-security-providers.7.1
-            // Multiple descriptors can report the same provider name.
-            ambiguousConfiguredProviderNames.put(configuredValue, true);
+    private void registerServiceLoadedConfiguredProviderKey(String configuredValue, String providerClassName, String constructionClassName, int descriptorOrder) {
+        registerConfiguredProviderCandidate(configuredValue, new ConfiguredProviderInfo(providerClassName, constructionClassName, descriptorOrder));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void registerConfiguredProviderCandidate(String configuredValue, ConfiguredProviderInfo candidate) {
+        List<ConfiguredProviderInfo> candidates = configuredProviders.get(configuredValue);
+        if (candidates == null) {
+            candidates = new ArrayList<>();
+            configuredProviders.put(configuredValue, candidates);
         }
+        for (int index = 0; index < candidates.size(); index++) {
+            ConfiguredProviderInfo previous = candidates.get(index);
+            if (previous.providerClassName().equals(candidate.providerClassName())) {
+                if (previous.constructionClassName() == null && candidate.constructionClassName() != null) {
+                    candidates.set(index, candidate);
+                }
+                return;
+            }
+        }
+        int insertionIndex = candidates.size();
+        while (insertionIndex > 0 && candidate.descriptorOrder() >= 0 &&
+                        candidates.get(insertionIndex - 1).descriptorOrder() > candidate.descriptorOrder()) {
+            insertionIndex--;
+        }
+        candidates.add(insertionIndex, candidate);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -186,21 +195,36 @@ public final class SecurityProviderRuntimeState {
         return false;
     }
 
+    /** Whether the active plan permits only use through an application-supplied provider object. */
+    static boolean isApplicationSuppliedOnly(String providerClassName) {
+        ProviderInfo info = getProviderInfo(providerClassName);
+        return info != null && info.acquisitionKind() == AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
+    }
+
+    /** §FS-002-security-providers.1.3: Select the first active descriptor candidate in order. */
     public static ConfiguredProviderInfo getConfiguredProvider(String providerName) {
-        ConfiguredProviderInfo result = null;
         for (SecurityProviderRuntimeState state : singletons()) {
-            if (Boolean.TRUE.equals(state.ambiguousConfiguredProviderNames.get(providerName))) {
-                return null;
-            }
-            ConfiguredProviderInfo info = state.configuredProviders.get(providerName);
-            if (info != null) {
-                if (result != null && !result.equals(info)) {
-                    return null;
+            List<ConfiguredProviderInfo> candidates = state.configuredProviders.get(providerName);
+            if (candidates != null) {
+                for (ConfiguredProviderInfo candidate : candidates) {
+                    if (isJdkConstructible(candidate.providerClassName())) {
+                        return candidate;
+                    }
                 }
-                result = info;
             }
         }
-        return result;
+        return null;
+    }
+
+    /** §FS-002-security-providers.4.3: Resolve diagnostics without constructing a provider. */
+    public static ConfiguredProviderInfo getConfiguredProviderForDiagnostics(String providerName) {
+        for (SecurityProviderRuntimeState state : singletons()) {
+            List<ConfiguredProviderInfo> candidates = state.configuredProviders.get(providerName);
+            if (candidates != null && !candidates.isEmpty()) {
+                return candidates.getFirst();
+            }
+        }
+        return null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

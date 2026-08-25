@@ -92,13 +92,20 @@ final class Target_sun_security_jca_ProviderConfig_ExplicitRegistration {
 
     @Alias //
     Provider provider;
+
+    @Alias
+    Target_sun_security_jca_ProviderConfig_ExplicitRegistration(@SuppressWarnings("unused") Provider provider) {
+    }
+
+    @Alias
+    native Provider getProvider();
 }
 
 @TargetClass(className = "sun.security.jca.ProviderList", onlyWith = ExplicitSecurityProviderRegistration.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
     @Alias //
-    private Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs;
+    Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs;
 
     @Alias
     Target_sun_security_jca_ProviderList_ExplicitRegistration(
@@ -139,6 +146,76 @@ final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
                         targetProviderList.configs.length - removeIndex - 1);
         return SubstrateUtil.cast(new Target_sun_security_jca_ProviderList_ExplicitRegistration(updatedConfigs, true),
                         sun.security.jca.ProviderList.class);
+    }
+
+}
+
+final class SecurityProviderListSupport {
+    /** §FS-002-security-providers.5.2: Translate an API position through visible providers. */
+    static sun.security.jca.ProviderList insertAtVisiblePosition(sun.security.jca.ProviderList providerList, Provider provider, int position) {
+        Target_sun_security_jca_ProviderList_ExplicitRegistration targetProviderList = SubstrateUtil.cast(providerList,
+                        Target_sun_security_jca_ProviderList_ExplicitRegistration.class);
+        Provider[] activeProviders = providerList.toArray();
+        for (Provider activeProvider : activeProviders) {
+            if (activeProvider.getName().equals(provider.getName())) {
+                return providerList;
+            }
+        }
+
+        int visibleIndex = position <= 0 || position > activeProviders.length ? activeProviders.length : position - 1;
+        int rawInsertionIndex = targetProviderList.configs.length;
+        int currentVisibleIndex = 0;
+        int lastActiveRawIndex = -1;
+        for (int rawIndex = 0; rawIndex < targetProviderList.configs.length && currentVisibleIndex < activeProviders.length; rawIndex++) {
+            if (configurationMatchesProvider(targetProviderList.configs[rawIndex], activeProviders[currentVisibleIndex])) {
+                if (currentVisibleIndex == visibleIndex) {
+                    rawInsertionIndex = rawIndex;
+                    break;
+                }
+                lastActiveRawIndex = rawIndex;
+                currentVisibleIndex++;
+            }
+        }
+        if (visibleIndex == activeProviders.length && lastActiveRawIndex >= 0) {
+            rawInsertionIndex = lastActiveRawIndex + 1;
+        }
+
+        Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] updatedConfigs = new Target_sun_security_jca_ProviderConfig_ExplicitRegistration[targetProviderList.configs.length + 1];
+        System.arraycopy(targetProviderList.configs, 0, updatedConfigs, 0, rawInsertionIndex);
+        updatedConfigs[rawInsertionIndex] = new Target_sun_security_jca_ProviderConfig_ExplicitRegistration(provider);
+        System.arraycopy(targetProviderList.configs, rawInsertionIndex, updatedConfigs, rawInsertionIndex + 1,
+                        targetProviderList.configs.length - rawInsertionIndex);
+        return SubstrateUtil.cast(new Target_sun_security_jca_ProviderList_ExplicitRegistration(updatedConfigs, true),
+                        sun.security.jca.ProviderList.class);
+    }
+
+    /** Return a provider's one-based position in the filtered list. */
+    static int visibleIndex(sun.security.jca.ProviderList providerList, String name) {
+        int visibleIndex = 0;
+        for (Provider provider : providerList.toArray()) {
+            visibleIndex++;
+            if (provider.getName().equals(name)) {
+                return visibleIndex;
+            }
+        }
+        return -1;
+    }
+
+    /** §FS-002-security-providers.4.3: Map visible entries without probing configurations. */
+    private static boolean configurationMatchesProvider(Target_sun_security_jca_ProviderConfig_ExplicitRegistration config, Provider provider) {
+        if (config.provider == provider || config.provName.equals(provider.getName()) || config.provName.equals(provider.getClass().getName())) {
+            return true;
+        }
+        SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProviderForDiagnostics(config.provName);
+        if (configuredProvider != null && configuredProvider.providerClassName().equals(provider.getClass().getName())) {
+            return true;
+        }
+        String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(config.provName);
+        return provider.getClass().getName().equals(builtInProviderClassName) ||
+                        SecurityProviderRuntimeAccess.isConfiguredProviderAcquirable(config.provName);
+    }
+
+    private SecurityProviderListSupport() {
     }
 }
 

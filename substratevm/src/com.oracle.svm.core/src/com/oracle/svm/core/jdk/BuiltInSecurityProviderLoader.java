@@ -59,16 +59,17 @@ public final class BuiltInSecurityProviderLoader {
         }
         return switch (providerClassName) {
             case "sun.security.provider.Sun" ->
-                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.provider.Sun() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.provider.Sun() : null;
             case "sun.security.rsa.SunRsaSign" ->
-                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.rsa.SunRsaSign() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.rsa.SunRsaSign() : null;
             case "com.sun.crypto.provider.SunJCE" ->
-                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new com.sun.crypto.provider.SunJCE() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new com.sun.crypto.provider.SunJCE() : null;
             case "sun.security.ssl.SunJSSE" ->
-                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.ssl.SunJSSE() : loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? new sun.security.ssl.SunJSSE() : null;
             case "sun.security.ec.SunEC" ->
-                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? allocateSunECProvider() : loadReflectively(providerClassName, debug);
-            case "apple.security.AppleProvider" -> loadReflectively(providerClassName, debug);
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? allocateSunECProvider() : null;
+            case "apple.security.AppleProvider" ->
+                SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName) ? loadReflectively(providerClassName, debug) : null;
             default -> null;
         };
     }
