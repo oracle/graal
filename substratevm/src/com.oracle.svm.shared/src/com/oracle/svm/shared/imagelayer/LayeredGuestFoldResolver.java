@@ -22,28 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.shared.meta;
+package com.oracle.svm.shared.imagelayer;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+/** Builder resolver names that can be used from guest-facing code. */
+public final class LayeredGuestFoldResolver {
+    /** Resolves the GuestFold in the initial layer. */
+    public static final String INITIAL_LAYER = "com.oracle.svm.core.imagelayer.LayeredFoldResolver$InitialLayer";
+    /** Resolves the GuestFold in the application layer. */
+    public static final String APPLICATION_LAYER = "com.oracle.svm.core.imagelayer.LayeredFoldResolver$ApplicationLayer";
 
-/**
- * Marks a method as requiring constant folding during native-image building by
- * {@code GuestFoldInvocationPlugin}.
- * <p>
- * The folding is performed in the guest context. All arguments to such a method (including the
- * receiver if applicable) must be compile-time constants.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface GuestFold {
-
-    /**
-     * The binary name of the builder-side {@code Fold.Resolver} that controls how the
-     * {@link GuestFold} value is resolved, or an empty string to use the default policy provided by
-     * the compiler environment.
-     */
-    String resolver() default "";
+    private LayeredGuestFoldResolver() {
+    }
 }
