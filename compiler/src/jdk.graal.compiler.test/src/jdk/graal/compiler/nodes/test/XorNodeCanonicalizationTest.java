@@ -25,9 +25,10 @@
 
 package jdk.graal.compiler.nodes.test;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import org.junit.Test;
 
 public class XorNodeCanonicalizationTest extends GraalCompilerTest {
 
@@ -79,6 +80,72 @@ public class XorNodeCanonicalizationTest extends GraalCompilerTest {
     public void xorSelfNegationLong() {
         testAgainstReference("xorSelfNegationLongReferenceSnippet", "xorSelfNegationLeftLongSnippet");
         testAgainstReference("xorSelfNegationLongReferenceSnippet", "xorSelfNegationRightLongSnippet");
+    }
+
+    public static int xorRepeatedReferenceSnippet(int x, int y) {
+        return x ^ y;
+    }
+
+    public static int xorRepeatedXFirstLeftAssocSnippet(int x, int y) {
+        // duplicates removed during bytecode parsing
+        return ((x ^ x) ^ x) ^ y;
+    }
+
+    @Test
+    public void xorRepeatedXFirstLeftAssoc() {
+        testAgainstReference("xorRepeatedReferenceSnippet", "xorRepeatedXFirstLeftAssocSnippet");
+    }
+
+    public static int xorRepeatedXFirstRightAssocSnippet(int x, int y) {
+        return x ^ (x ^ (x ^ y));
+    }
+
+    @Test
+    public void xorRepeatedXFirstRightAssoc() {
+        testAgainstReference("xorRepeatedReferenceSnippet", "xorRepeatedXFirstRightAssocSnippet");
+    }
+
+    public static int xorRepeatedYFirstLeftAssocSnippet(int x, int y) {
+        // reassociated to right-associative form during bytecode parsing
+        return ((y ^ x) ^ x) ^ x;
+    }
+
+    @Test
+    public void xorRepeatedYFirstLeftAssoc() {
+        testAgainstReference("xorRepeatedReferenceSnippet", "xorRepeatedYFirstLeftAssocSnippet");
+    }
+
+    public static int xorRepeatedYFirstRightAssocSnippet(int x, int y) {
+        // duplicates removed during bytecode parsing
+        return y ^ (x ^ (x ^ x));
+    }
+
+    @Test
+    public void xorRepeatedYFirstRightAssoc() {
+        testAgainstReference("xorRepeatedReferenceSnippet", "xorRepeatedYFirstRightAssocSnippet");
+    }
+
+    public static int xorRepeatedMixedReferenceSnippet(int x, int y) {
+        return 0;
+    }
+
+    public static int xorRepeatedMixedLeftAssocSnippet(int x, int y) {
+        // reassociated to right-associative form during bytecode parsing
+        return ((x ^ y) ^ x) ^ y;
+    }
+
+    @Test
+    public void xorRepeatedMixedLeftAssoc() {
+        testAgainstReference("xorRepeatedMixedReferenceSnippet", "xorRepeatedMixedLeftAssocSnippet");
+    }
+
+    public static int xorRepeatedMixedRightAssocSnippet(int x, int y) {
+        return x ^ (y ^ (x ^ y));
+    }
+
+    @Test
+    public void xorRepeatedMixedRightAssoc() {
+        testAgainstReference("xorRepeatedMixedReferenceSnippet", "xorRepeatedMixedRightAssocSnippet");
     }
 
     private void testAgainstReference(String referenceSnippet, String testSnippet) {
