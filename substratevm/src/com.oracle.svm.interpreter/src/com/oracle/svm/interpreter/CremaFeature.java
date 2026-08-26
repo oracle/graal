@@ -54,7 +54,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classloading.RuntimeClassLoadingFeature;
 import com.oracle.svm.hosted.code.CEntryPointData;
-import com.oracle.svm.hosted.jni.JNIJavaCallInterpreterWrapperMethod;
+import com.oracle.svm.interpreter.hosted.JNIJavaCallInterpreterWrapperMethod;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
