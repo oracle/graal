@@ -77,6 +77,7 @@ import java.util.TreeMap;
 import java.util.function.IntBinaryOperator;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -152,7 +153,7 @@ final class BuilderElement extends AbstractElement {
     private CodeExecutableElement validateLocalScope;
     private CodeExecutableElement validateMaterializedLocalScope;
     private CodeExecutableElement validateStackValueScope;
-    private CodeExecutableElement canBindStackValue;
+    private CodeExecutableElement validateBindStackValueOwner;
 
     private final BuilderSourceInfoTable builderSourceInfoTable = new BuilderSourceInfoTable();
     private OperationFields operationFields;
@@ -1528,27 +1529,21 @@ final class BuilderElement extends AbstractElement {
                 break;
             case BIND_STACKVALUE:
                 b.declaration(type(int.class), "stackValueOwnerSp", UNINIT);
-                b.declaration(operationStack.asType(), "stackValueOwner", "null");
                 b.startFor().string("int i = state.operationSp - 1; i >= state.rootOperationSp; i--").end().startBlock();
-                b.declaration(operationStack.asType(), "parentOperation", "state.operationStack[i]");
-                b.startSwitch().string("parentOperation.operation").end().startBlock();
+                b.startSwitch().string("state.operationStack[i].operation").end().startBlock();
                 b.startCase().tree(parent.createOperationConstant(model.sourceOperation)).end();
                 b.startCase().tree(parent.createOperationConstant(model.sourceSectionPrefixOperation)).end();
                 b.startCase().tree(parent.createOperationConstant(model.sourceSectionSuffixOperation)).end();
                 b.startCaseBlock();
-                b.lineComment("skip metadata operations");
+                b.lineComment("skip source operations");
                 b.statement("continue");
                 b.end();
                 b.end();
-                b.startIf().startCall(getCanBindStackValue().getSimpleName().toString()).string("parentOperation.operation").end().end().startBlock();
                 b.statement("stackValueOwnerSp = i");
-                b.statement("stackValueOwner = parentOperation");
-                b.end();
                 b.statement("break");
                 b.end();
-                b.startIf().string("stackValueOwner == null").end().startBlock();
-                b.startThrow().startCall("state.failState").doubleQuote("BindStackValue can only be used in a custom operation or Block.").end().end();
-                b.end();
+                b.startStatement().startCall(getValidateBindStackValueOwner().getSimpleName().toString()).string("stackValueOwnerSp").end().end();
+                b.declaration(operationStack.asType(), "stackValueOwner", "state.operationStack[stackValueOwnerSp]");
                 break;
         }
 
@@ -1705,7 +1700,6 @@ final class BuilderElement extends AbstractElement {
         b.startIf().string("operation.sequenceNumber != stackValueImpl.declaringOp").end().startBlock();
         b.startThrow().startCall("state.failArgument").doubleQuote("Stack value must belong to an active custom operation or Block in the current root node.").end().end();
         b.end();
-        b.startAssert().startCall(getCanBindStackValue().getSimpleName().toString()).string("operation.operation").end().end();
 
         return method;
     }
@@ -1714,31 +1708,68 @@ final class BuilderElement extends AbstractElement {
         b.startStatement().startCall(getValidateStackValueScope().getSimpleName().toString()).string(operation.getOperationBeginArgumentName(0)).end().end();
     }
 
-    private CodeExecutableElement getCanBindStackValue() {
-        if (canBindStackValue == null) {
-            canBindStackValue = createCanBindStackValue();
-            this.add(canBindStackValue);
+    private CodeExecutableElement getValidateBindStackValueOwner() {
+        if (validateBindStackValueOwner == null) {
+            validateBindStackValueOwner = createValidateBindStackValueOwner();
+            this.add(validateBindStackValueOwner);
         }
-        return canBindStackValue;
+        return validateBindStackValueOwner;
     }
 
-    private CodeExecutableElement createCanBindStackValue() {
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(boolean.class), "canBindStackValue");
-        method.addParameter(new CodeVariableElement(type(int.class), "operation"));
+    private CodeExecutableElement createValidateBindStackValueOwner() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "validateBindStackValueOwner");
+        method.addParameter(new CodeVariableElement(type(int.class), "stackValueOwnerSp"));
         CodeTreeBuilder b = method.createBuilder();
 
-        b.startSwitch().string("operation").end().startBlock();
-        b.startCase().tree(parent.createOperationConstant(model.blockOperation)).end();
-        for (OperationModel customOperation : model.getOperations().stream().filter(o -> o.kind == OperationKind.CUSTOM).toList()) {
-            b.startCase().tree(parent.createOperationConstant(customOperation)).end();
+        record ValidateBindStackValueOwnerGroup(boolean allowed, int customVariadicIndex)
+                        implements
+                            Comparable<ValidateBindStackValueOwnerGroup> {
+            @Override
+            public int compareTo(ValidateBindStackValueOwnerGroup other) {
+                int result = Boolean.compare(allowed, other.allowed);
+                return result != 0 ? result : Integer.compare(customVariadicIndex, other.customVariadicIndex);
+            }
         }
-        b.startCaseBlock();
-        b.returnTrue();
-        b.end();
-        b.caseDefault();
-        b.startCaseBlock();
-        b.returnFalse();
-        b.end();
+
+        TreeMap<ValidateBindStackValueOwnerGroup, List<OperationModel>> operationsByGroup = model.getOperations().stream().collect(Collectors.groupingBy(
+                        op -> {
+                            boolean allowed = switch (op.kind) {
+                                case BLOCK, CUSTOM, CUSTOM_RETURN, CUSTOM_YIELD -> true;
+                                default -> false;
+                            };
+                            int customVariadicIndex = op.isCustomVariadic() ? op.numDynamicOperands() - 1 : -1;
+                            return new ValidateBindStackValueOwnerGroup(allowed, customVariadicIndex);
+                        }, TreeMap::new, Collectors.toList()));
+
+        b.declaration(operationStack.asType(), "stackValueOwner", "state.operationStack[stackValueOwnerSp]");
+        b.startSwitch().string("stackValueOwner.operation").end().startBlock();
+
+        for (var entry : operationsByGroup.entrySet()) {
+            ValidateBindStackValueOwnerGroup group = entry.getKey();
+            if (group.allowed && group.customVariadicIndex == -1) {
+                // Operation always supports stack value binding.
+                continue;
+            }
+
+            for (OperationModel operation : entry.getValue()) {
+                b.startCase().tree(parent.createOperationConstant(operation)).end();
+            }
+            b.startCaseBlock();
+            if (!group.allowed) {
+                // Operation does not support stack value binding.
+                b.startThrow().startCall("state.failState").doubleQuote("BindStackValue can only be used in a custom operation or Block.").end().end();
+            } else if (group.customVariadicIndex == 0) {
+                // Operand is always in variadic position.
+                b.startThrow().startCall("state.failState").doubleQuote("BindStackValue cannot be used in variadic operand position.").end().end();
+            } else {
+                // Operation may be in variadic position.
+                b.startIf().string("stackValueOwner.childCount >= ").string(group.customVariadicIndex).end().startBlock();
+                b.startThrow().startCall("state.failState").doubleQuote("BindStackValue cannot be used in variadic operand position.").end().end();
+                b.end();
+                b.statement("break");
+            }
+            b.end();
+        }
         b.end();
 
         return method;
