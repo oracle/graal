@@ -18,7 +18,7 @@ This phase is responsible for:
 - running `afterCompilation(...)` feature callbacks;
 - verifying the shadow heap again after compilation has produced embedded constants.
 
-## Input
+## Inputs and Entry State
 
 The phase receives:
 
@@ -30,7 +30,10 @@ The phase receives:
 - parsed hosted options such as deoptimization testing, backend selection, and compilation
   diagnostics.
 
-## Output
+The image heap has not yet been laid out, and no final code-cache layout or runtime code metadata
+has been produced.
+
+## Results and Completion States
 
 The phase produces:
 
@@ -42,28 +45,8 @@ The phase produces:
 - completed `beforeCompilation(...)` and `afterCompilation(...)` feature callbacks;
 - a verified shadow heap after compilation.
 
-## Preconditions
-
-- Hosted universe construction has produced hosted metadata, hosted meta-access, hosted entry
-  points, runtime compiler configuration, and AOT graph-builder plugins.
-- Static analysis summaries needed by compilation are still available, but detailed analysis
-  type-flow state has been cleaned up.
-- The image heap model exists but has not been laid out, and no final code-cache layout or runtime
-  code metadata has been produced.
-
-## Postconditions
-
-- The compile queue has finished, and reachable hosted methods selected for AOT compilation have
-  associated
-  [`CompilationResult`](../../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/code/CompilationResult.java)
-  objects.
-- [`NativeImageCodeCache`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageCodeCache.java)
-  has ordered compiled methods and constants, assigned code offsets, and built runtime code
-  metadata for later image writing.
-- Hosted method graph state can be cleared to reduce memory pressure before image creation.
-- The shadow heap has been verified again to account for constants embedded by compilation.
-- Later phases may lay out heap objects and write object-file sections, but they should not add new
-  methods to the compile queue or depend on method graphs that were cleared after compilation.
+Later phases may lay out heap objects and write object-file sections, but must not add methods to the
+compile queue.
 
 ## Main Classes
 
@@ -71,14 +54,8 @@ Core anchors:
 
 - [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) coordinates
   compilation in `doRun(...)`.
-- [`CompileQueue`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/code/CompileQueue.java) owns compile
-  tasks and drives method compilation.
-- [`NativeImageCodeCache`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageCodeCache.java) owns the
-  compiled-code model, code-cache constants, layout, symbols, and runtime metadata.
 - [`NativeImageCodeCacheFactory`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageCodeCacheFactory.java)
   creates the target-specific code-cache implementation.
-- [`LIRNativeImageCodeCache`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/LIRNativeImageCodeCache.java) is
-  the normal LIR backend code-cache implementation.
 
 ## Control Flow
 

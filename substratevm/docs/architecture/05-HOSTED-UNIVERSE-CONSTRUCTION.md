@@ -16,7 +16,7 @@ This phase is responsible for:
 - finding hosted native entry points;
 - releasing analysis type-flow state after summarized metadata has been transferred.
 
-## Input
+## Inputs and Entry State
 
 The phase receives:
 
@@ -27,7 +27,10 @@ The phase receives:
 - parsed hosted options and class-initialization policy;
 - analysis entry points and native entry-point markings.
 
-## Output
+The fixed-point analysis state remains available and has not yet been released by
+`bb.cleanupAfterAnalysis()`.
+
+## Results and Completion States
 
 The phase produces:
 
@@ -41,27 +44,9 @@ The phase produces:
 - analysis cleanup after hosted universe construction, allowing type-flow graphs and type states to
   be garbage collected.
 
-## Preconditions
-
-- Static analysis has completed successfully and produced a fixed reachable universe.
-- Analysis type-flow state and analysis metadata are still available; `bb.cleanupAfterAnalysis()`
-  has not yet released the detailed analysis graph state.
-- No hosted metadata wrappers, hosted vtables, dynamic hubs, hosted field layouts, or runtime
-  compiler configuration for this image have been finalized yet.
-
-## Postconditions
-
-- [`AnalysisUniverse`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/meta/AnalysisUniverse.java)
-  has been sealed and converted into
-  [`HostedUniverse`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/meta/HostedUniverse.java)
-  metadata.
-- Hosted types, methods, fields, signatures, constant pools, type-check metadata, dynamic hubs,
-  field layouts, vtables, and deterministic method/field orderings are available to later phases.
-- Runtime compiler configuration and graph-builder plugins for
-  [`ParsingReason.AOTCompilation`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/ParsingReason.java)
-  have been created.
-- Analysis type-flow state can be cleaned up after the required summaries have been transferred.
-  Later phases must use hosted metadata, not mutable analysis metadata, as their primary model.
+The analysis universe is sealed and converted into hosted metadata.
+Later phases use hosted metadata and the AOT runtime configuration rather than mutable analysis
+metadata.
 
 ## Main Classes
 
@@ -69,12 +54,6 @@ Core anchors:
 
 - [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) coordinates
   hosted universe construction in `doRun(...)`.
-- [`HostedUniverse`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/meta/HostedUniverse.java) owns hosted
-  metadata lookup maps and deterministic hosted metadata collections.
-- [`UniverseBuilder`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/meta/UniverseBuilder.java) transforms the
-  analysis universe into hosted metadata.
-- [`HostedMetaAccess`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/meta/HostedMetaAccess.java) exposes
-  hosted metadata lookups to later phases.
 - [`HostedRuntimeConfigurationBuilder`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/code/HostedRuntimeConfigurationBuilder.java)
   creates runtime compiler configuration for AOT compilation.
 

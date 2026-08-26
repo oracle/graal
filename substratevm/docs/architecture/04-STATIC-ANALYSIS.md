@@ -18,7 +18,7 @@ The step is responsible for:
 This document describes the main Native Image use case. Web Image and other alternative front ends
 are outside the current scope.
 
-## Input
+## Inputs and Entry State
 
 The static analysis phase receives state prepared by hosted setup:
 
@@ -35,7 +35,9 @@ The static analysis phase receives state prepared by hosted setup:
   state, and image-layer state where enabled;
 - [`SVMImageHeapScanner`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/heap/SVMImageHeapScanner.java) and [`SVMImageHeapVerifier`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/heap/SVMImageHeapVerifier.java) for shadow-heap scanning and verification.
 
-## Output
+Reachability remains mutable, and the analysis lifecycle callbacks have not yet run.
+
+## Results and Completion States
 
 The step produces the analysis result consumed by hosted universe construction:
 
@@ -51,39 +53,10 @@ The step produces the analysis result consumed by hosted universe construction:
 - a decision to continue to hosted universe construction, return after analysis, or interrupt the
   build for [`ExitAfterAnalysis`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageOptions.java).
 
-The analysis engine is intentionally not cleaned up at the end of this step. `doRun(...)` keeps the
-type-flow information alive for hosted universe construction and calls `bb.cleanupAfterAnalysis()`
-only after [`UniverseBuilder.build(...)`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/meta/UniverseBuilder.java).
-
-## Preconditions
-
-- Hosted setup has created the analysis universe, analysis engine, feature handler, native-library
-  model, substitutions, graph-builder plugins, heap scanner/verifier, and initial roots.
-- Application and builder classes intended for analysis have already been loaded through the Native
-  Image class-loader environment.
-- Feature callbacks before static analysis have completed, but `beforeAnalysis(...)`,
-  `duringAnalysis(...)`, `afterAnalysis(...)`, and `onAnalysisExit(...)` have not yet run.
-- Reachability is still mutable: features, graph parsing, heap scanning, native-library processing,
-  and metadata registration may still cause additional types, methods, fields, constants, resources,
-  or dynamic-access metadata to become reachable during analysis.
-
-## Postconditions
-
-- The points-to/reachability engine has reached a fixed point, and feature analysis callbacks have
-  completed.
-- Reachable
-  [`AnalysisType`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/meta/AnalysisType.java),
-  [`AnalysisMethod`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/meta/AnalysisMethod.java),
-  and [`AnalysisField`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/meta/AnalysisField.java)
-  state is ready to be converted into hosted metadata.
-- The shadow heap has been scanned and verified from known roots and embedded constants that are
-  available at analysis time.
-- New classes, types, methods, and fields must not become newly reachable after this point through
-  ordinary analysis registration. Later phases consume the fixed analysis result; attempts to
-  introduce new analysis state after the fixed point are errors or must be modeled by a dedicated
-  later-phase mechanism.
-- Analysis type-flow state is still retained until hosted universe construction transfers the
-  required summaries into hosted metadata.
+On normal completion, reachability is fixed and the resulting metadata is ready for hosted-universe
+construction.
+`doRun(...)` keeps type-flow information until
+[`UniverseBuilder.build(...)`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/meta/UniverseBuilder.java) transfers the required summaries, then calls `bb.cleanupAfterAnalysis()`.
 
 ## Main Classes
 
@@ -92,13 +65,6 @@ Core anchors:
 - [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java)
   owns the static-analysis lifecycle through `setupNativeImage(...)`, `runPointsToAnalysis(...)`,
   `createAnalysisUniverse(...)`, `createBigBang(...)`, and `initializeBigBang(...)`.
-- [`Inflation`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/analysis/Inflation.java) is the Native
-  Image-specific [`BigBang`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/BigBang.java) interface exposed to hosted setup, features, heap scanning, and graph
-  parsing.
-- [`NativeImagePointsToAnalysis`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/analysis/NativeImagePointsToAnalysis.java)
-  is the default Native Image points-to analysis engine.
-- [`AnalysisUniverse`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/meta/AnalysisUniverse.java) owns
-  the analysis-time model consumed by hosted universe construction.
 - [`FeatureImpl`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/FeatureImpl.java) provides the public
   feature access objects for `beforeAnalysis`, `duringAnalysis`, `afterAnalysis`, and
   `onAnalysisExit`.

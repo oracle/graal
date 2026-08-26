@@ -3,10 +3,7 @@
 ## Purpose
 
 The image heap and image model phase turns the shadow heap, code-cache constants, entry points, and
-hosted metadata into the abstract image object that image writing will serialize. It starts after
-compilation and after the code cache has runtime metadata. It ends when [`AbstractImage.create(...)`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java)
-has produced the image-kind-specific model and `image.build(...)` has finalized object-file content
-that must exist before writing.
+hosted metadata into an image model ready for image writing.
 
 This phase is responsible for:
 
@@ -19,7 +16,7 @@ This phase is responsible for:
 - running `afterAbstractImageCreation(...)` Graal feature callbacks;
 - building the in-memory object-file model before final write/link.
 
-## Input
+## Inputs and Entry State
 
 The phase receives:
 
@@ -31,38 +28,20 @@ The phase receives:
 - image heap layouter and object sorter singletons;
 - feature state for heap-layout and image-creation callbacks.
 
-## Output
+The shadow heap accepts final verification and layout work, but no abstract image or
+object-file-backed image model has been built.
 
-The phase produces:
+## Results and Completion States
 
-- sealed shadow heap that rejects further image-heap mutation;
-- [`ImageHeapLayoutInfo`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/image/ImageHeapLayoutInfo.java) describing heap section layout, object offsets, and heap size metadata;
-- populated [`NativeImageHeap.ObjectInfo`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageHeap.java) records for objects and static fields;
-- [`AbstractImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java) implementation for executable, static executable, shared library, or image layer;
+The phase produces a sealed heap layout and an image-kind-specific
+[`AbstractImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java) ready for `image.write(...)`:
+
+- [`ImageHeapLayoutInfo`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/image/ImageHeapLayoutInfo.java) and populated
+  [`NativeImageHeap.ObjectInfo`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageHeap.java) records;
 - finalized in-memory object-file sections, buffers, relocations, method symbols, heap contents, and
-  image metadata ready for `image.write(...)`.
+  image metadata.
 
-## Preconditions
-
-- Compilation has completed, and
-  [`NativeImageCodeCache`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageCodeCache.java)
-  contains compiled methods, code-cache constants, and runtime metadata.
-- The shadow heap still accepts final verification and layout work, but it has not yet been sealed
-  for image writing.
-- Hosted metadata, native libraries, entry points, image kind, code cache, and image heap model are
-  available, but no abstract image or object-file-backed image model has been built yet.
-
-## Postconditions
-
-- The shadow heap has been verified, sealed, and laid out into image heap sections with
-  [`ImageHeapLayoutInfo`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/image/ImageHeapLayoutInfo.java).
-- Image heap objects, static fields, code-cache constants, trailing objects, and object offsets are
-  fixed for image writing.
-- The image-kind-specific
-  [`AbstractImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java)
-  has been created, and the in-memory object-file-backed image model has been built.
-- After this phase, later code should not register new image-heap objects or mutate heap layout.
-  Image writing consumes the fixed heap, code cache, relocation, section, and symbol model.
+Later code must not register new image-heap objects or mutate heap layout.
 
 ## Main Classes
 
@@ -70,12 +49,6 @@ Core anchors:
 
 - [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) coordinates
   heap verification, heap layout, abstract image creation, and image build.
-- [`NativeImageHeap`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageHeap.java) owns the
-  image heap model and object metadata.
-- [`ImageHeapLayouter`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/image/ImageHeapLayouter.java) lays out
-  image heap objects and static fields.
-- [`AbstractImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java) is the common
-  image-kind abstraction.
 - [`NativeImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImage.java) is the concrete
   object-file-backed image model used by CC-linked images.
 - [`NativeImageHeapWriter`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageHeapWriter.java)
@@ -141,5 +114,3 @@ The normal image heap and image model flow is:
   wrappers for CC-linked outputs.
 - [`RelocatableBuffer`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/RelocatableBuffer.java): byte buffer plus relocation metadata used by the concrete image model for
   text, read-only data, writable data, and heap sections.
-- [`NativeImageHeapWriter`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageHeapWriter.java): writes the image heap model into the relocatable section buffers
-  created during `AbstractImage.build(...)`.

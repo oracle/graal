@@ -21,13 +21,7 @@ This phase is responsible for:
   bundle-root directory;
 - starting the builder JVM with a compact argument file and an image-builder argument file.
 
-The driver launches the builder process whose main class is
-[`com.oracle.svm.hosted.NativeImageGeneratorRunner`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGeneratorRunner.java)
-and remains active while it runs. It waits for the process to complete and handles its exit status.
-For bundle builds, it then copies staged build output to the external destination and writes or
-finalizes the bundle archive.
-
-## Input
+## Inputs and Entry State
 
 The driver receives:
 
@@ -45,7 +39,11 @@ The driver receives:
 - driver configuration supplied through `NATIVE_IMAGE_OPTIONS` or `NATIVE_IMAGE_CONFIG_FILE`;
 - optional bundle/container configuration.
 
-## Output
+At entry, command-line arguments, embedded configuration, macro options, environment variables,
+and manifest attributes are still raw inputs.
+No hosted builder classes, application classes, or image classes have been loaded by the builder JVM.
+
+## Results and Completion States
 
 The phase produces:
 
@@ -64,27 +62,8 @@ The phase produces:
   external bundle output directory;
 - a driver exit status derived from the builder process exit status.
 
-## Preconditions
-
-- The external `native-image` command has been invoked in a GraalVM installation or container
-  environment that can locate the Java executable, Native Image modules, and native toolchain
-  defaults.
-- User command-line arguments, embedded `native-image.properties`, macro options, environment
-  variables, and manifest attributes are still raw inputs. They have not yet been partitioned into
-  driver options, builder JVM options, hosted options, runtime options, and application arguments.
-- No hosted builder classes, application classes, or image classes have been loaded by the builder
-  JVM yet. Driver setup must compute the JVM command line before the builder process can exist.
-
-## Postconditions
-
-- Driver-only commands and options have either been handled locally or translated into builder JVM
-  and image-builder arguments.
-- The builder module path, upgrade module path, application classpath/module-path, system
-  properties, memory flags, module exports/opens, and keep-alive file have been decided.
-- The builder JVM can be launched with argument files whose main class is
-  [`com.oracle.svm.hosted.NativeImageGeneratorRunner`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGeneratorRunner.java).
-- No hosted setup, classpath scanning, static analysis, hosted universe construction, compilation,
-  image heap layout, or image writing has happened yet.
+Driver-only commands and options are handled locally or translated into builder arguments.
+The launched builder JVM performs the subsequent hosted phases; that work is outside driver setup.
 
 ## Main Classes
 
@@ -92,9 +71,6 @@ Core anchors:
 
 - [`NativeImage`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) owns the external
   `native-image` launcher, option processing, builder JVM command creation, and process execution.
-- [`BuildConfiguration`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) supplies
-  installation paths, build arguments, builder module paths, Java executable, and temporary
-  directories.
 - [`APIOptionHandler`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/APIOptionHandler.java) maps public
   `native-image` options to builder arguments and validates option scope.
 - [`DefaultOptionHandler`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/DefaultOptionHandler.java) handles
@@ -196,6 +172,6 @@ The normal driver flow is:
   [`NativeImageGeneratorRunner`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGeneratorRunner.java).
 - `imageClasspath` and `imageModulePath`: application inputs that the builder will load through the
   Native Image class loader.
-- [`BundleSupport`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundleSupport.java) and [`BundlePathMap`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundlePathMap.java): optional path rewriting and container support used when the
-  build is recorded or replayed as a bundle.
+- [`BundlePathMap`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundlePathMap.java): optional path
+  rewriting and container support used when a build is recorded or replayed as a bundle.
 - `ProcessBuilder`: final process launch model for the builder JVM.

@@ -8,50 +8,40 @@ reports final build metrics. It starts after `image.build(...)` has finalized th
 ends when the final executable, shared library, static executable, image layer, or relocatable image
 has been written.
 
-This phase is responsible for:
+## Inputs and Entry State
 
-- running `beforeImageWrite(...)` and `afterImageWrite(...)` feature callbacks;
-- writing the already-populated in-memory object-file representation, including image and optional debug-information sections,
-  to a temporary relocatable object file;
-- creating a platform-specific [`LinkerInvocation`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/LinkerInvocation.java);
-- invoking the platform C compiler/linker for CC-linked images via the native toolchain compiler driver (gcc, clang, ...);
-- supporting cross-compilation workflows by allowing image generation to stop after writing the target relocatable
-  object file, so that final linking can be performed separately with the target toolchain;
-- for shared-layer builds, writing a `.nil` Native Image Layer archive that packages the platform-native layer library,
-  the persisted layer snapshot (including image singletons and analysis metadata), serialized compiler graphs,
-  and build metadata for subsequent layer builds;
-- reporting image, heap, code, debug-info, disk-size, and compilation metrics.
+Before this phase begins:
 
-## Input
-
-The phase receives:
-
-- the concrete [`AbstractImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java)
-  instance for the requested image kind, after `image.build(...)` has populated its in-memory [`ObjectFile`](../../src/com.oracle.objectfile/src/com/oracle/objectfile/ObjectFile.java);
-- [`NativeImageCodeCache`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageCodeCache.java), [`NativeImageHeap`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageHeap.java), [`ImageHeapLayoutInfo`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/image/ImageHeapLayoutInfo.java), hosted metadata, native
-  libraries, and entry points;
-- native linker inputs, including resolved static-library archives, dynamic-library names and search
+- static analysis, hosted-universe construction, compilation, and image-heap layout have completed;
+- `createAbstractImage(...)` and `image.build(...)` have completed, so the concrete
+  [`AbstractImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java) owns a populated in-memory
+  [`ObjectFile`](../../src/com.oracle.objectfile/src/com/oracle/objectfile/ObjectFile.java) containing code, read-only data, writable data, image-heap sections, symbols, and relocation
+  information;
+- the image name and kind, target object-file format, entry points, native-library configuration,
+  generated-files output directory, and temporary build directory are available;
+- [`NativeImageCodeCache`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageCodeCache.java), [`NativeImageHeap`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageHeap.java), [`ImageHeapLayoutInfo`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/image/ImageHeapLayoutInfo.java), hosted metadata,
+  runtime configuration, option provider, debug context, and feature state are available;
+- native linker inputs include resolved static-library archives, dynamic-library names and search
   paths, previously built image-layer libraries where applicable, and additional object files or
   libraries contributed by features;
-- `.symbols` manifests accompanying Base JDK static libraries, which generate an object containing
-  the built-in JNI symbol lookup table. References from that object cause the corresponding
-  definitions to be linked from the static archives and support runtime lookup by name;
-- generated-files output directory and temporary build directory;
-- runtime configuration, option provider, debug context, and feature state;
-- target object-file format and platform linker configuration.
+- `.symbols` manifests accompanying Base JDK static libraries generate an object containing the
+  built-in JNI symbol lookup table. References from that object cause the corresponding definitions
+  to be linked from the static archives and support runtime lookup by name;
+- `beforeImageWrite(...)` and `afterImageWrite(...)` callbacks have not yet run, and neither the
+  relocatable object file nor a final linked image has been written. `beforeImageWrite(...)`
+  callbacks may still register transformations of the subsequently created `LinkerInvocation`.
 
-## Output
+## Results and Completion States
 
-The phase always produces:
+The phase always writes a relocatable object file in the temporary build directory, normally for use
+as a linker input.
 
-- a relocatable object file in the temporary build directory, normally used as a linker input.
-
-If `ExitAfterRelocatableImageWrite` is enabled, that object file is the terminal image artifact and
-the phase returns immediately.
+If `ExitAfterRelocatableImageWrite` is enabled, the relocatable object file is the terminal image
+artifact and the phase returns immediately.
 It does not create a [`LinkerInvocation`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/LinkerInvocation.java), invoke the platform linker, run `afterImageWrite(...)` callbacks,
 persist or archive shared-layer state, or report final creation metrics.
 
-Otherwise, the phase additionally:
+Otherwise, normal completion:
 
 - creates a [`LinkerInvocation`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/LinkerInvocation.java), uses it to invoke the platform linker, and subsequently passes it to
   `afterImageWrite(...)` callbacks;
@@ -59,36 +49,15 @@ Otherwise, the phase additionally:
   image-layer library;
 - emits platform-specific companion artifacts when applicable, including separate debug information
   and Windows import libraries for non-executable images;
-- for shared-layer builds, writes a `.nil` Native Image Layer archive containing the persisted layer
-  snapshot and singleton state, graphs, build metadata, and linked layer library;
+- runs final image-write callbacks and, for shared-layer builds, writes a `.nil` Native Image Layer
+  archive containing the persisted layer snapshot and singleton state, graphs, build metadata, and
+  linked layer library;
 - records and reports final image, heap, code, debug-info, compilation-count, and disk-size metrics
   through `ProgressReporter`.
 
-## Preconditions
-
-Before this phase begins:
-
-- static analysis, hosted-universe construction, compilation, and image-heap layout have completed;
-- `createAbstractImage(...)` and `image.build(...)` have completed, so the concrete image owns a
-  populated in-memory [`ObjectFile`](../../src/com.oracle.objectfile/src/com/oracle/objectfile/ObjectFile.java) containing its code, read-only data, writable data, image-heap sections,
-  symbols, and relocation information;
-- the image name and kind, target object-file format, entry points, native-library configuration,
-  output directory, and temporary build directory are available;
-- `beforeImageWrite(...)` and `afterImageWrite(...)` callbacks have not yet run, and neither the
-  relocatable object file nor a final linked image has been written. `beforeImageWrite(...)`
-  callbacks may still register transformations of the subsequently created `LinkerInvocation`.
-
-## Postconditions
-
-- The object file and optional debug information have been written, and the platform linker has
-  produced the requested final artifact unless the build intentionally stops after relocatable image
-  write.
-- Final image-write callbacks have completed, and shared-layer singleton/archive state has been
-  persisted when applicable.
-- Final image, heap, code, debug-info, disk-size, and compilation metrics have been reported.
-- After this phase, the build artifact is the observable output. Earlier phase models such as the
-  hosted universe, heap layout, code cache, and linker invocation are diagnostic/reporting inputs
-  rather than mutable build state.
+After normal completion, the linked image is the observable output. Earlier phase models such as the
+hosted universe, heap layout, code cache, and linker invocation are diagnostic or reporting inputs
+rather than mutable build state.
 
 ## Main Classes
 
@@ -96,12 +65,8 @@ Core anchors:
 
 - [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) coordinates
   image writing, final callbacks, layer archiving, and reporting.
-- [`AbstractImage`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/AbstractImage.java) defines
-  `build(...)` and `write(...)`.
 - [`NativeImageViaCC`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/NativeImageViaCC.java) writes the
   object file and invokes the platform linker if `ExitAfterRelocatableImageWrite` is disabled.
-- [`CCLinkerInvocation`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/image/CCLinkerInvocation.java) builds
-  platform-specific linker commands.
 
 ## Control Flow
 

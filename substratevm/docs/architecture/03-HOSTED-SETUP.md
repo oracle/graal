@@ -11,7 +11,7 @@ graphs, initial roots, and image-layer state.
 This phase ends when [`BigBang`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/BigBang.java) is initialized and the analysis roots, entry-point stubs, heap scanner,
 heap verifier, and native-library model are ready for static analysis.
 
-## Input
+## Inputs and Entry State
 
 Hosted setup receives:
 
@@ -24,7 +24,10 @@ Hosted setup receives:
 - registered option values for class initialization, missing-registration behavior, layered images,
   compiler configuration, native libraries, preserve mode, and reporting.
 
-## Output
+Core hosted state and feature lifecycle callbacks through `afterRegistration(...)` and
+`duringSetup(...)` have not yet been created or run.
+
+## Results and Completion States
 
 The phase produces:
 
@@ -42,31 +45,8 @@ The phase produces:
   elements registered for [`ParsingReason.PointsToAnalysis`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/ParsingReason.java);
 - image-layer loader/writer state when building layers.
 
-## Preconditions
-
-- Builder startup has installed the Native Image class-loader environment, parsed hosted options,
-  loaded application classes, selected the image kind, and resolved Java/C entry points.
-- Core hosted state such as feature registry, image singletons, substitution processors, analysis
-  universe, analysis engine, native-library model, and heap scanner/verifier has not yet been
-  created.
-- Feature lifecycle callbacks before `afterRegistration(...)` and `duringSetup(...)` have not yet
-  run for this image build.
-
-## Postconditions
-
-- Core hosted services and
-  [`ImageSingletons`](../../../sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/ImageSingletons.java)
-  are installed for platform, target, class loading, reporting, class initialization, dynamic
-  access, native libraries, and image-layer state.
-- Automatic and user-requested features have been registered, dependency-ordered, and advanced
-  through `afterRegistration(...)` and `duringSetup(...)`.
-- Substitutions, class-initialization policy, native libraries, graph-builder plugins, initial
-  roots, entry-point stubs, and image-layer state are connected to
-  [`AnalysisUniverse`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/meta/AnalysisUniverse.java)
-  and the analysis engine.
-- Static analysis can start. Later phases assume that feature discovery and hosted setup are
-  complete; they add reachability and metadata through the analysis lifecycle rather than reopening
-  initial setup.
+Features are dependency-ordered and advanced through `afterRegistration(...)` and `duringSetup(...)`.
+Static analysis can start using the established hosted services, roots, substitutions, and metadata.
 
 ## Main Classes
 
@@ -75,14 +55,8 @@ Core anchors:
 - [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) owns
   `setupNativeImage(...)`, `createAnalysisUniverse(...)`, `createBigBang(...)`, and
   `initializeBigBang(...)`.
-- [`FeatureHandler`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/FeatureHandler.java) registers automatic
-  and user-enabled features and invokes lifecycle callbacks.
-- [`AnalysisUniverse`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/meta/AnalysisUniverse.java) is
-  the mutable analysis model created during setup.
 - [`NativeImagePointsToAnalysis`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/analysis/NativeImagePointsToAnalysis.java)
   is the default analysis engine created by `createBigBang(...)`.
-- [`NativeLibraries`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/c/NativeLibraries.java) owns C interface
-  declarations, libraries, constants, and annotation-processor integration.
 
 ## Control Flow
 

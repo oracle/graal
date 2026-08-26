@@ -10,7 +10,7 @@ application classes, chooses the image kind, resolves Java and C entry points, a
 This phase bridges the external driver world and the hosted image-builder lifecycle. It ends when
 [`NativeImageGenerator.run(...)`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) is called.
 
-## Input
+## Inputs and Entry State
 
 The builder receives:
 
@@ -21,7 +21,10 @@ The builder receives:
 - hosted option descriptors visible to the builder class loader;
 - optional service provider override for [`NativeImageGeneratorRunnerProvider`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGeneratorRunnerProvider.java).
 
-## Output
+The builder JVM has started, but the Native Image class-loader environment is not yet installed and
+application classes have not yet been loaded through `ImageClassLoader`.
+
+## Results and Completion States
 
 The phase produces:
 
@@ -33,28 +36,7 @@ The phase produces:
 - resolved Java main support and native entry-point metadata;
 - a configured [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) ready to run hosted setup.
 
-## Preconditions
-
-- Driver setup has launched the builder JVM with the module path, exports/opens, system properties,
-  argument files, and keep-alive file needed by the builder.
-- The builder JVM has started, but the Native Image class-loader environment has not yet been
-  installed and application classes have not yet been loaded through
-  [`ImageClassLoader`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/ImageClassLoader.java).
-- Image kind, Java main entry point, native entry points, hosted option values, and the
-  [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java)
-  instance do not exist yet.
-
-## Postconditions
-
-- The Native Image system class loader and image class loader are installed and can resolve classes
-  and resources from the image classpath/module-path.
-- Hosted options have been parsed, unrecognized builder arguments have been rejected, platform
-  assumptions have been checked, and application classes have been loaded.
-- Image kind and entry points have been resolved, and a configured
-  [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java)
-  is ready to start hosted setup.
-- After this phase, later build phases assume that builder startup choices such as image kind,
-  classpath/module-path, and main entry-point metadata are stable.
+Hosted options, image kind, and entry points are resolved and stable for later phases.
 
 ## Main Classes
 
@@ -62,10 +44,6 @@ Core anchors:
 
 - CE [`NativeImageGeneratorRunner`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGeneratorRunner.java) owns the
   builder JVM entry point, class-loader installation, image-kind selection, and generator creation.
-- CE [`NativeImageClassLoaderSupport`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageClassLoaderSupport.java)
-  builds the Native Image class-loader hierarchy and hosted option parser.
-- CE [`ImageClassLoader`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/ImageClassLoader.java) exposes loaded
-  classes, modules, platform information, hosted options, and class discovery to later phases.
 - CE [`NativeImageGenerator`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGenerator.java) is created at
   the end of this phase and receives the resolved build inputs.
 
