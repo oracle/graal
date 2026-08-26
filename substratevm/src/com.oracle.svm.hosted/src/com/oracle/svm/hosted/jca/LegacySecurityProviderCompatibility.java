@@ -32,7 +32,14 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import com.oracle.svm.core.util.UserError;
 
 /**
- * Retirement boundary for deprecated security-provider options and service-driven inclusion.
+ * Retirement boundary for deprecated security-provider options and service-driven inclusion
+ * (§FS-002-security-providers.7.3 and §FS-002-security-providers.7.5).
+ *
+ * <p>
+ * Resolves the provider and service types named by legacy options and passes them to the
+ * feature's existing registration paths. Keeping those transition-only inputs here lets the
+ * planned metadata-driven registration path remain independent of deprecated options and
+ * service-reachability inclusion.
  */
 final class LegacySecurityProviderCompatibility {
     private LegacySecurityProviderCompatibility() {
