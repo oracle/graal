@@ -25,6 +25,8 @@
 package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
+import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -107,6 +109,20 @@ public enum CEOptimization {
     /// [InliningPhase] is a less aggressive inlining algorithm used when priority
     /// inlining is disabled. Inlining as a whole can be disabled with [HighTier.Options#Inline].
     Inlining(HighTier.Options.Inline, InliningPhase.class),
+
+    /// [PullThroughPhiPhase] heuristically duplicates floating operations at control flow merges.
+    /// The duplicated operations can then be specialized based on the types and values of the
+    /// preceding branches.
+    ///
+    /// This phase is enabled by default and can be disabled with
+    /// [PullThroughPhiPhase.Options#OptPullThroughPhi].
+    PullThroughPhi(PullThroughPhiPhase.Options.OptPullThroughPhi, PullThroughPhiPhase.class),
+
+    /// [DuplicationPhase] uses simulation to evaluate the optimization effects of tail
+    /// duplication while balancing the expected performance benefit against the code size cost.
+    ///
+    /// This phase is enabled by default and can be disabled with [GraalOptions#OptDuplication].
+    Duplication(GraalOptions.OptDuplication, DuplicationPhase.class),
 
     /**
      * {@link DeadCodeEliminationPhase} tries to remove unused (i.e., "dead") code from a program.

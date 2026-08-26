@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.SpectrePHTMitigations;
+import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
@@ -133,6 +134,10 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(new FrameStateAssignmentPhase());
+
+        if (PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options)) {
+            appendPhase(new PullThroughPhiPhase(canonicalizer));
+        }
 
         if (VectorIntrinsics.Options.Vectorization.getValue(options)) {
             appendPhase(new NodeVectorizationPhase(canonicalizer));

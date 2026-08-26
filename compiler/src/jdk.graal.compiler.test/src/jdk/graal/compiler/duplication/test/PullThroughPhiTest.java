@@ -26,19 +26,35 @@ package jdk.graal.compiler.duplication.test;
 
 import static jdk.graal.compiler.api.directives.GraalDirectives.injectBranchProbability;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.GraphOrder;
 
 public class PullThroughPhiTest extends GraalCompilerTest {
     public static Object field;
+
+    @Test
+    public void testCommunityPhasePlan() {
+        OptionValues enabled = getInitialOptions();
+        // Community compilation runs the optimization in both tiers by default.
+        Assert.assertNotNull(new HighTier(enabled).findPhase(PullThroughPhiPhase.class));
+        Assert.assertNotNull(new MidTier(enabled).findPhase(PullThroughPhiPhase.class));
+
+        OptionValues disabled = new OptionValues(enabled, PullThroughPhiPhase.Options.OptPullThroughPhi, false);
+        Assert.assertNull(new HighTier(disabled).findPhase(PullThroughPhiPhase.class));
+        Assert.assertNull(new MidTier(disabled).findPhase(PullThroughPhiPhase.class));
+    }
 
     public static int s01(int a, int b, int c) {
         int phi1 = 0;

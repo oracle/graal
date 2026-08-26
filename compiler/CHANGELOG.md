@@ -2,9 +2,14 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
-## GraalVM 25.3 (Internal Version 25.3.4.1)
+## GraalVM 25.4 (Internal Version 25.4.4.1.1)
+* (GR-79029): Add `PullThroughPhiPhase` and `DuplicationPhase` to the community compiler configuration.
+  The optimizations are enabled by default and can be disabled with `-Djdk.graal.OptPullThroughPhi=false` and
+  `-Djdk.graal.OptDuplication=false`, respectively.
 * (GR-78795): Extended `OptimizeDivPhase` with magic-number optimizations for unsigned integer division
   and remainder operations by constant values.
+
+## GraalVM 25.3 (Internal Version 25.3.4.1)
 * (GR-77137) Add new priority inlining algorithm that does extensive analysis of the call graph when making
   inlining decisions (see `PriorityInliningPhase` for details). It is now the default inliner. To use the old
   inliner now requires setting the `UsePriorityInlining` option to false (e.g. `-Djdk.graal.UsePriorityInlining=false`).

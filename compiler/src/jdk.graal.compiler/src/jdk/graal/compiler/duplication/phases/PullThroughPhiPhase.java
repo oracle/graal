@@ -130,6 +130,9 @@ public class PullThroughPhiPhase extends BasePhase<CoreProviders> {
 
     public static class Options {
         // @formatter:off
+        @Option(help = "Performs expression level code duplication at control flow merges to specialize " +
+                       "code to branch values where possible.")
+        public static final OptionKey<Boolean> OptPullThroughPhi = new OptionKey<>(true);
         @Option(help = "PullThroughPhiOptimization: Enable floating node duplication over multiple phi nodes at once.", type = OptionType.Debug)
         public static final OptionKey<Boolean> TryExplodeOverPhis = new OptionKey<>(true);
         @Option(help = "PullThroughPhiOptimization: Enable floating node duplication over phis where the target node has different phis as input.", type = OptionType.Debug)
@@ -139,7 +142,7 @@ public class PullThroughPhiPhase extends BasePhase<CoreProviders> {
         public static final OptionKey<Double> PullThroughPhiCodeSizeIncrease = new OptionKey<>(0.1/*== 10% of the initial graph size*/);
         @Option(help = "See PullThroughPhiCodeSizeIncrease", type = OptionType.Debug)
         public static final OptionKey<Double> PullThroughPhiCodeSizeIncreaseHotCode = new OptionKey<>(2.5/*== 250% of the initial graph size*/);
-        @Option(help = "PullThroughPhiOptimization: Cost/Benefit heuristic for EE floating node duplication: " +
+        @Option(help = "PullThroughPhiOptimization: Cost/Benefit heuristic for floating node duplication: " +
                        "reduces cost by a constant factor when comparing with relative benefit.", type = OptionType.Debug)
         public static final OptionKey<Double> CostReductionFactor = new OptionKey<>(32D);
         @Option(help = "See CostReductionFactor.", type = OptionType.Debug)
