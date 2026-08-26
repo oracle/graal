@@ -47,4 +47,5 @@ Consulting the CI configurations in ci/ci.jsonnet may help understand how `mx ga
 ## Security Providers
 
 - [JCA Security Provider Inclusion](functional-spec/security-providers.md): required provider inclusion and run-time behavior.
-- [Security Provider Architecture](architecture/security-providers.md): provider inclusion, verification, and metadata tracing.
+- [§AR-002-security-providers](../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java):
+  provider inclusion, verification, and metadata tracing.

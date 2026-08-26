@@ -30,18 +30,18 @@ import com.oracle.svm.core.FutureDefaultsOptions;
 public enum SecurityProviderMode {
     LEGACY_BUILD_TIME,
     LEGACY_RUN_TIME,
-    EXPLICIT_RUN_TIME;
+    METADATA_RUN_TIME;
 
     public static SecurityProviderMode current() {
         if (FutureDefaultsOptions.metadataSecurityProviderRegistration()) {
             assert FutureDefaultsOptions.securityProvidersInitializedAtRunTime();
-            return EXPLICIT_RUN_TIME;
+            return METADATA_RUN_TIME;
         }
         return FutureDefaultsOptions.securityProvidersInitializedAtRunTime() ? LEGACY_RUN_TIME : LEGACY_BUILD_TIME;
     }
 
     public boolean explicitRegistration() {
-        return this == EXPLICIT_RUN_TIME;
+        return this == METADATA_RUN_TIME;
     }
 
     public boolean runtimeProviderList() {

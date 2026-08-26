@@ -12,46 +12,46 @@ redirect_from:
 
 This page explains Native Image support of the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/en/java/javase/25/security/java-cryptography-architecture-jca-reference-guide.html) framework.
 
-The JCA framework uses a provider architecture to access security services such as digital signatures, message digests, certificates and certificate validation, encryption (symmetric/asymmetric block/stream ciphers), key generation and management, and secure random number generation, etc.
-To achieve algorithm independence and extensibility it relies on reflection, therefore it requires a custom configuration in Native Image.
+The JCA framework uses a provider architecture to access security services such as digital signatures, message digests, certificates and certificate validation, encryption, key generation and management, and secure random number generation.
+To achieve algorithm independence and extensibility, it uses reflection to construct providers and service implementations.
+Native Image therefore requires reachability metadata for dynamically accessed providers and services that it cannot discover automatically.
 By default the `native-image` builder uses static analysis to discover which of these services are used (see next section for details).
 The automatic registration of security services can be disabled with `-H:-EnableSecurityServicesFeature`.
 Then a custom reflection configuration file or feature can be used to register the security services required by a specific application.
 Note that when automatic registration of security providers is disabled, all providers are, by default, filtered from special JDK caches that are necessary for security functionality.
-In this case, register the provider class and its nullary constructor for reflection in _reachability-metadata.json_, for example:
+To use provider reflection metadata as the complete inclusion signal in this case, also enable `--future-defaults=metadata-security-provider-registration`.
+Register either the provider class or one of its supported construction paths for reflection in _reachability-metadata.json_, for example:
 
 ```json
 {
   "reflection": [
     {
-      "type": "com.example.security.CustomProvider",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
+      "type": "com.example.security.CustomProvider"
     }
   ]
 }
 ```
 
 Alternatively, collect the metadata by running your application on the JVM with the [Tracing Agent](AutomaticMetadataCollection.md).
+The deprecated `-H:AdditionalSecurityProviders=<provider-class>` option remains accepted for compatibility.
+Without explicit security-provider registration, this option preserves its previous provider-inclusion behavior, whereas reflection metadata alone does not.
+Neither the option nor reflection metadata installs an otherwise unconfigured provider or changes provider order.
 
 ## Security Services Automatic Registration
 
-The mechanism, implemented in the `com.oracle.svm.hosted.jca.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
-
 Each JCA provider registers concrete implementation classes for the algorithms it supports.
-Each of the service classes (`Signature`, `Cipher`, `Mac`, `KeyPair`, `KeyGenerator`, `KeyFactory`, `KeyStore`, etc.) declares a series of `getInstance(<algorithm>, <provider>` factory methods which provide a concrete service implementation.
+Each of the service classes (`Signature`, `Cipher`, `Mac`, `KeyPairGenerator`, `KeyGenerator`, `KeyFactory`, `KeyStore`, and others) declares a series of `getInstance(<algorithm>, <provider>)` factory methods which provide a concrete service implementation.
 When a specific algorithm is requested, the framework searches the registered providers for the corresponding implementation classes and dynamically allocates objects for concrete service implementations.
 The `native-image` builder uses static analysis to discover which of these services are used.
 It does so by registering reachability handlers for each of the `getInstance()` factory methods.
-When it determines that a `getInstance()` method is reachable at run time, it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
+By default, when it determines that a `getInstance()` method is reachable at run time, it automatically registers the configured providers and concrete implementations of the corresponding service type.
 Provider classes discovered as reachable subtypes of `java.security.Provider` are treated only as candidates for provider inclusion.
-The builder includes such a provider and all of its services only when the provider class is registered for reflection, either by type access, its declared nullary constructor, or its static `provider()` method.
 To apply this reflection requirement to providers selected by reachable service factories, use `--future-defaults=metadata-security-provider-registration`.
-With this future default, a factory does not make an unregistered provider or its services available.
+With this future default, a factory does not make an unregistered provider or its services available, except when `SecureRandom` supplies the registration signal described below.
+For a JDK-constructible provider, registering either the provider implementation type or a supported construction path retains the provider's complete service catalog.
+A supported construction path is a public no-argument constructor of a public, concrete provider class, or a public static no-argument `provider()` method on a public service-provider class in a named module.
+Provider registration does not install a provider.
+For JDK-managed lookup, the provider must also have a matching `security.provider.<n>` entry; alternatively, application code can insert an existing provider instance with the standard `Security` API.
 
 Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.
 The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
@@ -61,29 +61,34 @@ The report will detail all registered service classes, the API methods that trig
 ## Provider Initialization
 
 Currently, security providers are initialized at build time.
-To move their initialization to run time, use the option `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk`.
-Providers listed in the build-time `java.security` configuration are still verified at build time.
-Providers included only through reflection metadata are treated as explicitly configured, since run-time codebase verification is not available in Native Image.
+To move their initialization to run time, use the option `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=metadata-security-provider-registration`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk`.
+Explicit security-provider registration enables run-time provider initialization implicitly.
+Native Image still records Java Cryptography Extension (JCE) provider-verification outcomes at build time for retained provider classes.
+Provider classes that are not part of the build-time provider configuration are treated as successfully verified when Native Image recognizes their instantiation or includes them through reflection metadata, since run-time codebase verification is not available.
 Run-time initialization of security providers helps reduce image heap size.
 
 ## Provider Registration
 
-The `native-image` builder captures the list of providers and their preference order from the underlying JVM.
+The `native-image` builder captures the configured providers and their preference order from the effective build-time security properties.
 The provider order is specified in the `java.security` file under `<java-home>/conf/security/java.security`.
-New security providers cannot be registered at run time by default (see the section above); all providers must be statically configured at executable build time.
-If the user specifies `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk` to move providers initialization to run time, then a specific properties file can be used via the command line option `-Djava.security.properties=<path>`.
+In explicit registration mode, a configured provider is available through JDK-managed lookup only if its implementation type or supported construction path is registered for reflection, except when `SecureRandom` supplies the registration signal.
+An application can construct a provider directly and pass the existing instance to a provider-object factory overload without provider-class reflection metadata.
+It can also add that instance to the provider list at run time with `Security.addProvider(Provider)` or `Security.insertProviderAt(Provider, int)`.
+The provider's service implementations and their required construction metadata must already be retained in the executable, and JCE verification must succeed.
+To supply a custom security properties file when building with run-time provider initialization, use `-Djava.security.properties=<path>` on the `native-image` command line.
 
 ## Providers Reordering at Run Time
 
-It is possible to reorder security providers at run time, however only existing provider instances can be used.
-For example, if the `BouncyCastle` provider is registered at build time and you want to insert it at position 1 at run time:
+It is possible to reorder installed security-provider instances at run time.
+For example, if the `BouncyCastle` provider is available and you want to insert it at position 1 at run time:
+
 ```java
 Provider bcProvider = Security.getProvider("BC");
 Security.removeProvider("BC");
 Security.insertProviderAt(bcProvider, 1);
 ```
 
-If `--future-defaults=all` or `--future-defaults=run-time-initialize-jdk` is enabled, the list of providers is constructed at run time.
+If `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=metadata-security-provider-registration`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk` is enabled, the list of configured providers is constructed at run time.
 The same approach to manipulating providers can then be used.
 
 ## SecureRandom
@@ -99,9 +104,9 @@ acquisition also triggers registration of the complete configured-provider set t
 ## Custom Service Types
 
 By default, Native Image automatically detects only service types specified in the JCA framework.
-The `-H:AdditionalSecurityServiceTypes` option is deprecated.
-Register the provider class and its supported construction path in _reachability-metadata.json_ so
-Native Image retains its complete service catalog, including custom service types.
+The `-H:AdditionalSecurityServiceTypes` option remains accepted for compatibility, but is deprecated.
+To replace it, enable `--future-defaults=metadata-security-provider-registration` and register either the provider implementation type or one of its supported construction paths in _reachability-metadata.json_.
+For a JDK-constructible provider, Native Image then retains the complete service catalog, including custom service types.
 Alternatively, collect this metadata with the Tracing Agent.
 For compatibility with automatic service-driven registration, the service interface must have a
 `getInstance` method and the same name as the service type.

@@ -1459,6 +1459,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      * Returns the run-time availability of type-access registrations contributed in the current
      * image layer, or {@code null} when this layer has no such registration.
      */
+    @Override
     public RuntimeDynamicAccessMetadata getTypeRegistrationMetadata(Class<?> clazz) {
         AnalysisType analysisType = metaAccess.optionalLookupJavaType(clazz).orElse(null);
         if (analysisType == null) {
@@ -1479,6 +1480,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      * Returns the run-time availability of executable-access registrations contributed in the
      * current image layer, or {@code null} when this layer has no such registration.
      */
+    @Override
     public RuntimeDynamicAccessMetadata getMethodRegistrationMetadata(Executable method) {
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(method);
         ElementData data = methods.get(analysisMethod);

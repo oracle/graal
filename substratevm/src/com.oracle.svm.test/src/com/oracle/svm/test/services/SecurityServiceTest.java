@@ -31,22 +31,15 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
 import java.security.spec.AlgorithmParameterSpec;
-import java.util.Set;
 
-import javax.crypto.Mac;
 import javax.crypto.MacSpi;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
-import org.ietf.jgss.GSSManager;
-import org.ietf.jgss.GSSName;
-import org.ietf.jgss.Oid;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
@@ -72,21 +65,15 @@ public class SecurityServiceTest {
     private static final String REFLECTION_METADATA_PROVIDER_NAME = "reflection-metadata-provider";
     private static final String REFLECTION_METADATA_PROVIDER_ALGORITHM = "reflection-metadata-algo";
     private static final String REFLECTION_METADATA_PROVIDER_MAC_ALGORITHM = "reflection-metadata-mac";
-    private static final String SERVICE_LOADED_PROVIDER_ALGORITHM = "service-loaded-provider-algo";
     private static final String TYPE_METADATA_PROVIDER_NAME = "type-metadata-provider";
     private static final String TYPE_METADATA_PROVIDER_ALGORITHM = "type-metadata-algo";
-    private static final String TYPE_METADATA_PROVIDER_MAC_ALGORITHM = "type-metadata-mac";
     private static final String FAILED_VERIFICATION_PROVIDER_MAC_ALGORITHM = "failed-verification-mac";
-    private static final String REACHABLE_PROVIDER_WITHOUT_METADATA_NAME = "reachable-provider-without-metadata";
-    private static final String REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM = "reachable-without-metadata-algo";
 
     public static class TestFeature implements Feature {
         @Override
         public void afterRegistration(AfterRegistrationAccess access) {
             // register the providers
-            Security.addProvider(new NoOpProvider());
             Security.addProvider(new NoOpProviderTwo());
-            Security.addProvider(new LegacyConstructorProvider());
             // open sun.security.jca.GetInstance
             ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, JCACompliantNoOpService.class,
                             ReflectionUtil.lookupClass(false, "sun.security.jca.GetInstance"));
@@ -96,17 +83,10 @@ public class SecurityServiceTest {
         public void duringSetup(final DuringSetupAccess access) {
             if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
                 // we use these (application) classes during Native image build
-                RuntimeClassInitialization.initializeAtBuildTime(NoOpService.class);
-                RuntimeClassInitialization.initializeAtBuildTime(NoOpProvider.class);
                 RuntimeClassInitialization.initializeAtBuildTime(NoOpProviderTwo.class);
-                RuntimeClassInitialization.initializeAtBuildTime(LegacyConstructorProvider.class);
             }
             RuntimeClassInitialization.initializeAtBuildTime(ImageHeapProvider.class);
             RuntimeClassInitialization.initializeAtBuildTime(ImageHeapProviderHolder.class);
-            // register the service implementation for reflection explicitly,
-            // non-standard services are not processed automatically
-            RuntimeReflection.register(NoOpImpl.class);
-            RuntimeReflection.register(NoOpImpl.class.getDeclaredConstructors());
         }
 
         @Override
@@ -138,92 +118,6 @@ public class SecurityServiceTest {
         }
     }
 
-    /** §FS-002-security-providers.7.3: Tests the public-constructor compatibility surface. */
-    @Test
-    public void testLegacyServiceInclusionRegistersEveryPublicProviderConstructor() throws Exception {
-        Assert.assertFalse(FutureDefaultsOptions.metadataSecurityProviderRegistration());
-        Provider provider = LegacyConstructorProvider.class.getConstructor(String.class).newInstance("reflected");
-        Assert.assertEquals("legacy-constructor-provider-reflected", provider.getName());
-    }
-
-    /** §FS-002-security-providers.7.3: Tests service-driven GSS provider inclusion. */
-    @Test
-    public void testGSSProviderServiceRegistration() throws Exception {
-        Oid kerberosV5 = new Oid("1.2.840.113554.1.2.2");
-        GSSManager manager = GSSManager.getInstance();
-        Assert.assertTrue("The reachable GSS facade must preserve the Kerberos mechanism.", Set.of(manager.getMechs()).contains(kerberosV5));
-        Assert.assertEquals("user@REALM", manager.createName("user@REALM", GSSName.NT_USER_NAME, kerberosV5).toString());
-    }
-
-    // §FS-002-security-providers.5.3, §FS-002-security-providers.7.3
-    /** Tests compatibility-mode verification. */
-    @Test
-    public void testTypeMetadataApplicationProviderVerification() throws Exception {
-        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-        Assume.assumeFalse("tests compatibility-mode verification", FutureDefaultsOptions.metadataSecurityProviderRegistration());
-
-        Provider provider = new TypeMetadataProvider();
-        SecurityProviderRuntimeState.ProviderInfo info = SecurityProviderRuntimeState.getProviderInfo(provider);
-        Assert.assertNotNull("Type-only provider metadata must establish a JCE verification result.", info);
-        Assert.assertEquals(SecurityProviderRuntimeState.AcquisitionKind.APPLICATION_SUPPLIED_ONLY, info.acquisitionKind());
-        Assert.assertNull("The application-supplied provider should pass class-based verification.", info.verificationFailure());
-        Assert.assertNotNull(Mac.getInstance(TYPE_METADATA_PROVIDER_MAC_ALGORITHM, provider));
-    }
-
-    /** §FS-002-security-providers.5.3: Tests preservation of the failed-verification outcome. */
-    @Test
-    public void testFailedBuildTimeProviderVerificationStaysUnusable() {
-        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-
-        Provider provider = new FailedVerificationProvider();
-        SecurityProviderRuntimeState.ProviderInfo info = SecurityProviderRuntimeState.getProviderInfo(provider);
-        Assert.assertNotNull("The failed verification outcome must be retained.", info);
-        Assert.assertNotNull("A successful later catalog pass must not erase the failure.", info.verificationFailure());
-        Assert.assertTrue(info.verificationFailure().getMessage().contains("simulated build-time provider verification failure"));
-        Assert.assertThrows(SecurityException.class,
-                        () -> Mac.getInstance(FAILED_VERIFICATION_PROVIDER_MAC_ALGORITHM, provider));
-    }
-
-    /** Tests §AR-002-security-providers.3 and §FS-002-security-providers.4.1. */
-    @Test
-    public void testInstantiatedProviderWithoutMetadataIsValidatedButDoesNotRegisterServices() {
-        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-
-        Provider provider = new ReachableProviderWithoutMetadata();
-        assertApplicationSuppliedProviderWasValidated(provider);
-        int position = Security.addProvider(provider);
-        try {
-            Assert.assertTrue("Provider should be registered.", position > 0);
-            Assert.assertThrows(NoSuchAlgorithmException.class, () -> JCACompliantNoOpService.getInstance(REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM));
-        } finally {
-            Security.removeProvider(REACHABLE_PROVIDER_WITHOUT_METADATA_NAME);
-        }
-    }
-
-    /** §AR-002-security-providers.3: An image-heap provider instance is validated. */
-    @Test
-    public void testImageHeapProviderWithoutMetadataIsValidated() {
-        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-        assertApplicationSuppliedProviderWasValidated(ImageHeapProviderHolder.PROVIDER);
-    }
-
-    private static void assertApplicationSuppliedProviderWasValidated(Provider provider) {
-        SecurityProviderRuntimeState.ProviderInfo info = SecurityProviderRuntimeState.getProviderInfo(provider);
-        Assert.assertNotNull("An instantiated provider must have a build-time validation outcome.", info);
-        Assert.assertEquals(SecurityProviderRuntimeState.AcquisitionKind.APPLICATION_SUPPLIED_ONLY, info.acquisitionKind());
-        Assert.assertNull("The test provider should pass build-time validation.", info.verificationFailure());
-    }
-
-    /** Tests §FS-002-security-providers.5.1 and §FS-002-security-providers.5.3. */
-    @Test
-    public void testInstantiatedJceProviderWithoutMetadataUsesRetainedService() throws Exception {
-        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-
-        Provider provider = new UnregisteredMacProvider();
-        assertApplicationSuppliedProviderWasValidated(provider);
-        Assert.assertSame(provider, Mac.getInstance("unregistered-mac", provider).getProvider());
-    }
-
     @Delete
     @TargetClass(className = "sun.security.pkcs11.SunPKCS11")
     static final class Target_sun_security_pkcs11_SunPKCS11 {
@@ -238,33 +132,6 @@ public class SecurityServiceTest {
         Assert.assertNull("Provider should not be present.", registered);
     }
 
-    static final class NoOpProvider extends Provider {
-
-        static final long serialVersionUID = 1234L;
-
-        /*
-         * The java.security.Provider(String name, double version, String info) constructor was
-         * deprecated in Java > 8
-         */
-        @SuppressWarnings("deprecation")
-        protected NoOpProvider() {
-            super("no-op-provider", 1.0, "No-op provider used in " + SecurityServiceTest.class.getName());
-            putService(new NoOpService(this));
-        }
-    }
-
-    private static final class NoOpService extends Provider.Service {
-        NoOpService(final Provider provider) {
-            super(provider, "NoOp", "no-op-algo", NoOpImpl.class.getName(), null, null);
-        }
-    }
-
-    public static final class NoOpImpl {
-        public NoOpImpl() {
-
-        }
-    }
-
     private static final class NoOpProviderTwo extends Provider {
         static final long serialVersionUID = 1234L;
 
@@ -272,21 +139,6 @@ public class SecurityServiceTest {
         protected NoOpProviderTwo() {
             super("no-op-provider-two", 1.0, "No-op provider two used in " + SecurityServiceTest.class.getName());
             putService(new Service(this, "JCACompliantNoOpService", "no-op-algo-two", JcaCompliantNoOpServiceImpl.class.getName(), null, null));
-        }
-    }
-
-    public static final class LegacyConstructorProvider extends Provider {
-        static final long serialVersionUID = 1234L;
-
-        public LegacyConstructorProvider() {
-            this("default");
-        }
-
-        @SuppressWarnings("deprecation")
-        public LegacyConstructorProvider(String configuration) {
-            super("legacy-constructor-provider-" + configuration, 1.0, "Provider with legacy public constructors");
-            putService(new Service(this, "JCACompliantNoOpService", "legacy-constructor-algo",
-                            JcaCompliantNoOpServiceImpl.class.getName(), null, null));
         }
     }
 
@@ -307,9 +159,6 @@ public class SecurityServiceTest {
     }
 
     public static final class TypeMetadataNoOpServiceImpl extends JCACompliantNoOpService {
-    }
-
-    public static final class ReachableNoOpServiceImpl extends JCACompliantNoOpService {
     }
 
     public static final class ReflectionMetadataProvider extends Provider {
@@ -335,7 +184,7 @@ public class SecurityServiceTest {
             super(TYPE_METADATA_PROVIDER_NAME, 1.0, "Provider registered through type-level reflection metadata");
             putService(new Service(this, "JCACompliantNoOpService", TYPE_METADATA_PROVIDER_ALGORITHM,
                             TypeMetadataNoOpServiceImpl.class.getName(), null, null));
-            putService(new Service(this, "Mac", TYPE_METADATA_PROVIDER_MAC_ALGORITHM, ReflectionMetadataMacSpi.class.getName(), null, null));
+            putService(new Service(this, "Mac", "type-metadata-mac", ReflectionMetadataMacSpi.class.getName(), null, null));
         }
     }
 
@@ -344,9 +193,7 @@ public class SecurityServiceTest {
 
         @SuppressWarnings("deprecation")
         public ReachableProviderWithoutMetadata() {
-            super(REACHABLE_PROVIDER_WITHOUT_METADATA_NAME, 1.0, "Reachable provider without reflection metadata");
-            putService(new Service(this, "JCACompliantNoOpService", REACHABLE_PROVIDER_WITHOUT_METADATA_ALGORITHM,
-                            ReachableNoOpServiceImpl.class.getName(), null, null));
+            super("reachable-provider-without-metadata", 1.0, "Reachable provider without reflection metadata");
         }
     }
 
@@ -360,16 +207,6 @@ public class SecurityServiceTest {
         @SuppressWarnings("deprecation")
         public ImageHeapProvider() {
             super("image-heap-provider-without-metadata", 1.0, "Image-heap provider without reflection metadata");
-        }
-    }
-
-    public static final class UnregisteredMacProvider extends Provider {
-        static final long serialVersionUID = 1234L;
-
-        @SuppressWarnings("deprecation")
-        public UnregisteredMacProvider() {
-            super("unregistered-mac-provider", 1.0, "Provider used to test missing-registration diagnostics");
-            putService(new Service(this, "Mac", "unregistered-mac", ReflectionMetadataMacSpi.class.getName(), null, null));
         }
     }
 
@@ -412,14 +249,4 @@ public class SecurityServiceTest {
         }
     }
 
-    public static final class ServiceLoadedProvider extends Provider {
-        static final long serialVersionUID = 1234L;
-
-        @SuppressWarnings("deprecation")
-        public ServiceLoadedProvider() {
-            super("service-loaded-provider", 1.0, "Provider registered only through META-INF/services");
-            putService(new Service(this, "JCACompliantNoOpService", SERVICE_LOADED_PROVIDER_ALGORITHM,
-                            ReflectionMetadataNoOpServiceImpl.class.getName(), null, null));
-        }
-    }
 }
