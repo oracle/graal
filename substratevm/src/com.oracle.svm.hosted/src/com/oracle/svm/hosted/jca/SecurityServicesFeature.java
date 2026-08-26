@@ -424,7 +424,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
         oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
-        if (!mode.runtimeProviderList()) {
+        if (mode.legacyBuildTime()) {
             verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
             providerListField = access.findField("sun.security.jca.Providers", "providerList");
             classCacheField = access.findField(Service.class, "classCache");
@@ -567,7 +567,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_mscapi");
         }
 
-        if (!mode.runtimeProviderList()) {
+        if (mode.legacyBuildTime()) {
             access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
                 // JVMCI migration blocked by GR-72131: Refactor security service code for project
                 // Terminus.
@@ -1403,7 +1403,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             access.requireAnalysisIteration();
         }
         access.rescanRoot(oidTableField, scanReason);
-        if (!mode.runtimeProviderList()) {
+        if (mode.legacyBuildTime()) {
             maybeScanVerificationResultsField(access);
             maybeScanProvidersField(access);
             if (cachedProviders != null) {
