@@ -146,6 +146,8 @@ When multiple roots match, the longest root takes precedence.
 You can combine `pathMappings` with the top-level `localRoot` and `remoteRoot` pair.
 If matching roots have the same length, the top-level pair takes precedence.
 Paths that do not match a configured root remain unchanged.
+When path mappings are configured, a source receives a `sourceReference` only if its runtime path does not match a mapped remote root.
+A source that matches a mapping is returned with the mapped client path, even when the runtime cannot verify its readability.
 
 > Note: Paths for sources with a positive `sourceReference` remain unchanged.
 > The client must retrieve these sources with a DAP `source` request that specifies the source reference.

@@ -164,6 +164,14 @@ public final class ExecutionContext {
         return pathMappings.toClient(path);
     }
 
+    boolean hasPathMappings() {
+        return pathMappings.hasMappings();
+    }
+
+    boolean isRuntimePathMapped(String path) {
+        return pathMappings.isMapped(path);
+    }
+
     public void setLinesStartAt1(Boolean value) {
         if (value != null && !value) {
             linesStartAt1 = false;

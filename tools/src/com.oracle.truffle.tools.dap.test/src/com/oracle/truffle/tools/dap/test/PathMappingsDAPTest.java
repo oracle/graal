@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,6 +70,49 @@ public class PathMappingsDAPTest {
     }
 
     @Test
+    public void testUnmappedSourceUsesSourceReference() throws Exception {
+        Path runtimeRoot = Files.createTempDirectory("dap-runtime").toRealPath();
+        Path mappedRuntimeRoot = Files.createTempDirectory("dap-mapped-runtime").toRealPath();
+        Path sourceFile = writeSource(runtimeRoot);
+        String clientRoot = runtimeRoot.resolveSibling("dap-client").toString();
+        Source source = Source.newBuilder("sl", sourceFile.toFile()).build();
+        DAPTester tester = DAPTester.start(true);
+        initialize(tester);
+        JSONObject configuration = new JSONObject().put("localRoot", clientRoot).put("remoteRoot", mappedRuntimeRoot.toString());
+        send(tester, "attach", configuration, 2);
+        assertLifecycleResponse(tester, "attach");
+        send(tester, "configurationDone", new JSONObject(), 3);
+        assertResponse(receive(tester), "configurationDone");
+        tester.eval(source);
+
+        JSONObject sourceReference = null;
+        boolean stopped = false;
+        while (!stopped) {
+            JSONObject message = receive(tester);
+            if ("loadedSource".equals(message.optString("event"))) {
+                JSONObject loadedSource = message.getJSONObject("body").getJSONObject("source");
+                if (sourceFile.getFileName().toString().equals(loadedSource.optString("name"))) {
+                    Assert.assertEquals(sourceFile.toString(), loadedSource.getString("path"));
+                    Assert.assertTrue(loadedSource.getInt("sourceReference") > 0);
+                    sourceReference = loadedSource;
+                }
+            } else if ("stopped".equals(message.optString("event"))) {
+                stopped = true;
+            }
+        }
+        Assert.assertNotNull("Missing source-reference loadedSource event", sourceReference);
+
+        send(tester, "stackTrace", new JSONObject().put("threadId", 1), 4);
+        JSONObject stackTraceSource = receive(tester).getJSONObject("body").getJSONArray("stackFrames").getJSONObject(0).getJSONObject("source");
+        Assert.assertEquals(sourceFile.toString(), stackTraceSource.getString("path"));
+        Assert.assertEquals(sourceReference.getInt("sourceReference"), stackTraceSource.getInt("sourceReference"));
+
+        send(tester, "continue", new JSONObject().put("threadId", 1), 5);
+        receiveContinue(tester);
+        tester.finish();
+    }
+
+    @Test
     public void testLongestMappingAndBoundary() throws Exception {
         Path runtimeRoot = Files.createTempDirectory("dap-runtime").toRealPath();
         Path nestedRoot = Files.createDirectories(runtimeRoot.resolve("nested"));
@@ -102,10 +145,11 @@ public class PathMappingsDAPTest {
     }
 
     @Test
-    public void testSourceReferencePathIsUnchanged() throws Exception {
+    public void testMappedSourceDoesNotUseSourceReference() throws Exception {
         Path runtimeRoot = Files.createTempDirectory("dap-runtime").toRealPath();
         Path runtimePath = runtimeRoot.resolve("Virtual.sl");
         String clientRoot = runtimeRoot.resolveSibling("dap-client").toString();
+        String clientPath = clientRoot + File.separator + runtimePath.getFileName();
         Source source = Source.newBuilder("sl", CODE, runtimePath.getFileName().toString()).uri(runtimePath.toUri()).build();
         DAPTester tester = DAPTester.start(true);
         initialize(tester);
@@ -116,31 +160,29 @@ public class PathMappingsDAPTest {
         assertResponse(receive(tester), "configurationDone");
         tester.eval(source);
 
-        JSONObject sourceReference = null;
+        JSONObject mappedSource = null;
         boolean stopped = false;
         while (!stopped) {
             JSONObject message = receive(tester);
             if ("loadedSource".equals(message.optString("event"))) {
                 JSONObject loadedSource = message.getJSONObject("body").getJSONObject("source");
                 if (runtimePath.getFileName().toString().equals(loadedSource.optString("name"))) {
-                    Assert.assertEquals(runtimePath.toString(), loadedSource.getString("path"));
-                    Assert.assertTrue(loadedSource.getInt("sourceReference") > 0);
-                    sourceReference = loadedSource;
+                    Assert.assertEquals(clientPath, loadedSource.getString("path"));
+                    Assert.assertFalse(loadedSource.has("sourceReference"));
+                    mappedSource = loadedSource;
                 }
             } else if ("stopped".equals(message.optString("event"))) {
                 stopped = true;
             }
         }
-        Assert.assertNotNull("Missing source-reference loadedSource event", sourceReference);
+        Assert.assertNotNull("Missing mapped loadedSource event", mappedSource);
 
         send(tester, "stackTrace", new JSONObject().put("threadId", 1), 4);
         JSONObject stackTraceSource = receive(tester).getJSONObject("body").getJSONArray("stackFrames").getJSONObject(0).getJSONObject("source");
-        Assert.assertEquals(runtimePath.toString(), stackTraceSource.getString("path"));
-        Assert.assertEquals(sourceReference.getInt("sourceReference"), stackTraceSource.getInt("sourceReference"));
+        Assert.assertEquals(clientPath, stackTraceSource.getString("path"));
+        Assert.assertFalse(stackTraceSource.has("sourceReference"));
 
-        JSONObject requestSource = new JSONObject(sourceReference.toString());
-        requestSource.put("path", clientRoot + File.separator + runtimePath.getFileName());
-        send(tester, "source", new JSONObject().put("source", requestSource).put("sourceReference", sourceReference.getInt("sourceReference")), 5);
+        send(tester, "source", new JSONObject().put("source", mappedSource), 5);
         JSONObject sourceResponse = receive(tester);
         assertResponse(sourceResponse, "source");
         Assert.assertEquals(CODE, sourceResponse.getJSONObject("body").getString("content"));
