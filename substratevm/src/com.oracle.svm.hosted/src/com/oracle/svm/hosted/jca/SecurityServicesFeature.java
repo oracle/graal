@@ -138,7 +138,7 @@ import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
-/// AR-002-security-providers: Security Provider Architecture
+/// AR-001-security-providers: Security Provider Architecture
 ///
 /// The feature records at image build time which security providers the JDK may construct, which
 /// provider services reflection may instantiate, and which application-created providers JCE may
@@ -152,14 +152,18 @@ import sun.security.x509.OIDMap;
 /// instantiated Provider subtype -----> application-provider verification only
 /// ```
 ///
-/// The registration planner interprets reflection and instantiation signals. The catalog registrar
-/// then records provider construction, retained services, and verification results in the layered
-/// run-time manifest. Legacy service-driven inclusion bypasses the planner and retains only the
-/// reached service type and its provider.
+/// At image build time, {@link SecurityServicesFeature#providerRegistrationPlan} interprets
+/// reflection metadata, and {@link SecurityProviderRegistrationPlanner#processNewProviders}
+/// combines it with instantiation signals. Complete plans go to
+/// {@link SecurityProviderCatalogRegistrar#includeProviderClass}; verification-only plans go to
+/// {@link SecurityProviderCatalogRegistrar#registerApplicationSuppliedProviderClass}. Legacy
+/// {@link SecurityServicesFeature#registerService} inclusion bypasses the planner and goes directly
+/// to {@link SecurityProviderCatalogRegistrar#includeProviderForLegacyService}.
 ///
-/// At run time, JDK-managed provider construction consults the manifest through the acquisition
-/// filter. An application-supplied provider object consults the same manifest only for JCE
-/// verification; supplying an existing instance does not require reflective provider construction.
+/// At run time, {@link SecurityProviderRuntimeAccess#isJdkAcquirable} gates JDK-managed provider
+/// construction. Application-supplied provider objects instead use
+/// {@link com.oracle.svm.core.jdk.JceProviderVerificationSupport#getVerificationResult
+/// getVerificationResult} for JCE verification; they do not require reflective construction.
 /// This architecture implements §FS-002-security-providers.
 ///
 /// ## 1. Supported Transition Modes

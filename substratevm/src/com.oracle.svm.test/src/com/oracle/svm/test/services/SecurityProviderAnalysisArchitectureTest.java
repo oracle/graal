@@ -36,7 +36,7 @@ import org.junit.Test;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 
 public class SecurityProviderAnalysisArchitectureTest {
-    /** Tests §AR-002-security-providers.3 and §AR-002-security-providers.4. */
+    /** Tests §AR-001-security-providers.3 and §AR-001-security-providers.4. */
     @Test
     public void typeMetadataCreatesApplicationSuppliedVerificationState() throws Exception {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
@@ -49,7 +49,7 @@ public class SecurityProviderAnalysisArchitectureTest {
         Assert.assertNotNull(Mac.getInstance("type-metadata-mac", provider));
     }
 
-    /** Tests §AR-002-security-providers.4 manifest merge semantics. */
+    /** Tests §AR-001-security-providers.4 manifest merge semantics. */
     @Test
     public void failedBuildTimeVerificationIsNotOverwritten() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
@@ -62,14 +62,14 @@ public class SecurityProviderAnalysisArchitectureTest {
         Assert.assertThrows(SecurityException.class, () -> Mac.getInstance("failed-verification-mac", provider));
     }
 
-    /** Tests §AR-002-security-providers.3 without granting JDK construction eligibility. */
+    /** Tests §AR-001-security-providers.3 without granting JDK construction eligibility. */
     @Test
     public void instantiatedProviderWithoutMetadataIsValidationOnly() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
         assertApplicationSuppliedProviderWasValidated(new SecurityServiceTest.ReachableProviderWithoutMetadata());
     }
 
-    /** §AR-002-security-providers.3: An image-heap provider instance is validated. */
+    /** §AR-001-security-providers.3: An image-heap provider instance is validated. */
     @Test
     public void imageHeapProviderWithoutMetadataIsValidated() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());

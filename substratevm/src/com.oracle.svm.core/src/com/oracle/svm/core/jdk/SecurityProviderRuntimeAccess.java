@@ -43,7 +43,7 @@ public final class SecurityProviderRuntimeAccess {
     private SecurityProviderRuntimeAccess() {
     }
 
-    // §AR-002-security-providers.2
+    // §AR-001-security-providers.2
     /** Apply the single JDK-acquisition filter to hosted or run-time eligibility state. */
     public static boolean passesJdkAcquisitionFilter(boolean eligible) {
         return eligible;
