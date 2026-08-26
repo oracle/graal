@@ -28,12 +28,18 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.util.OriginalClassProvider;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.AccessCondition} using JVMCI types.
  */
 public class JVMCIAccessCondition {
+
+    public static AccessCondition guestAccessCondition(@SuppressWarnings("unused") JavaConstant condition) {
+        // TODO GR-79409: Implement guest access-condition decoding.
+        throw new UnsupportedOperationException("Guest access-condition decoding is not implemented.");
+    }
 
     /**
      * @see AccessCondition#typeReached(Class)

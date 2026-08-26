@@ -31,11 +31,14 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.hosted.ReflectiveAccessImpl;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestCallbackBridge;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
+import com.oracle.svm.util.dynamicaccess.JVMCIAccessCondition;
 import com.oracle.svm.util.dynamicaccess.JVMCIReflectiveAccess;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -61,48 +64,127 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
     }
 
     @Override
-    public void register(AccessCondition condition, ResolvedJavaType... types) {
+    public void register(JavaConstant condition, ResolvedJavaType... types) {
+        AccessCondition accessCondition = JVMCIAccessCondition.guestAccessCondition(condition);
         for (ResolvedJavaType type : types) {
-            rdaInstance.register(condition, OriginalClassProvider.getJavaClass(type));
+            rdaInstance.register(accessCondition, OriginalClassProvider.getJavaClass(type));
         }
     }
 
     @Override
-    public void register(AccessCondition condition, ResolvedJavaMethod... methods) {
+    public void register(JavaConstant condition, ResolvedJavaMethod... methods) {
+        AccessCondition accessCondition = JVMCIAccessCondition.guestAccessCondition(condition);
         for (ResolvedJavaMethod method : methods) {
-            rdaInstance.register(condition, OriginalMethodProvider.getJavaMethod(method));
+            rdaInstance.register(accessCondition, OriginalMethodProvider.getJavaMethod(method));
         }
     }
 
     @Override
-    public void register(AccessCondition condition, ResolvedJavaField... fields) {
+    public void register(JavaConstant condition, ResolvedJavaField... fields) {
+        AccessCondition accessCondition = JVMCIAccessCondition.guestAccessCondition(condition);
         for (ResolvedJavaField field : fields) {
-            rdaInstance.register(condition, OriginalFieldProvider.getJavaField(field));
+            rdaInstance.register(accessCondition, OriginalFieldProvider.getJavaField(field));
         }
     }
 
+    /**
+     * Guest callback bridge for
+     * {@link org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#register(AccessCondition, Class[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
+     */
+    @GuestCallbackBridge
+    public void registerClasses(JavaConstant condition, JavaConstant classes) {
+        register(condition, GuestAccess.get().asResolvedJavaTypes(classes));
+    }
+
+    /**
+     * Guest callback bridge for
+     * {@link org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#register(AccessCondition, java.lang.reflect.Executable[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param executables a {@link JavaConstant} representing the guest {@code Executable[]} to register
+     */
+    @GuestCallbackBridge
+    public void registerExecutables(JavaConstant condition, JavaConstant executables) {
+        register(condition, GuestAccess.get().asResolvedJavaMethods(executables));
+    }
+
+    /**
+     * Guest callback bridge for
+     * {@link org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#register(AccessCondition, java.lang.reflect.Field[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param fields a {@link JavaConstant} representing the guest {@code Field[]} to register
+     */
+    @GuestCallbackBridge
+    public void registerFields(JavaConstant condition, JavaConstant fields) {
+        register(condition, GuestAccess.get().asResolvedJavaFields(fields));
+    }
+
     @Override
-    public void registerForSerialization(AccessCondition condition, ResolvedJavaType... types) {
+    public void registerForSerialization(JavaConstant condition, ResolvedJavaType... types) {
+        AccessCondition accessCondition = JVMCIAccessCondition.guestAccessCondition(condition);
         for (ResolvedJavaType type : types) {
             // GR-71804 tracks registering serialization metadata without converting to Class objects.
-            rdaInstance.registerForSerialization(condition, OriginalClassProvider.getJavaClass(type));
+            rdaInstance.registerForSerialization(accessCondition, OriginalClassProvider.getJavaClass(type));
         }
     }
 
+    /**
+     * Guest callback bridge for
+     * {@link org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#registerForSerialization(AccessCondition, Class[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
+     */
+    @GuestCallbackBridge
+    public void registerForSerializationClasses(JavaConstant condition, JavaConstant classes) {
+        registerForSerialization(condition, GuestAccess.get().asResolvedJavaTypes(classes));
+    }
+
     @Override
-    public ResolvedJavaType registerProxy(AccessCondition condition, ResolvedJavaType... interfaces) {
+    public ResolvedJavaType registerProxy(JavaConstant condition, ResolvedJavaType... interfaces) {
+        AccessCondition accessCondition = JVMCIAccessCondition.guestAccessCondition(condition);
         List<Class<?>> reflectionInterfaces = new ArrayList<>();
         for (ResolvedJavaType intf : interfaces) {
             reflectionInterfaces.add(OriginalClassProvider.getJavaClass(intf));
         }
-        Class<?> proxy = rdaInstance.registerProxy(condition, reflectionInterfaces.toArray(Class[]::new));
+        Class<?> proxy = rdaInstance.registerProxy(accessCondition, reflectionInterfaces.toArray(Class[]::new));
         return GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(proxy);
     }
 
+    /**
+     * Guest callback bridge for
+     * {@link org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#registerProxy(AccessCondition, Class[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param interfaces a {@link JavaConstant} representing the guest {@code Class<?>[]} of proxy interfaces
+     * @return a JVMCI type representing the guest proxy class
+     */
+    @GuestCallbackBridge
+    public ResolvedJavaType registerProxyInterfaces(JavaConstant condition, JavaConstant interfaces) {
+        return registerProxy(condition, GuestAccess.get().asResolvedJavaTypes(interfaces));
+    }
+
     @Override
-    public void registerForUnsafeAllocation(AccessCondition condition, ResolvedJavaType... types) {
+    public void registerForUnsafeAllocation(JavaConstant condition, ResolvedJavaType... types) {
+        AccessCondition accessCondition = JVMCIAccessCondition.guestAccessCondition(condition);
         for (ResolvedJavaType type : types) {
-            rdaInstance.registerForUnsafeAllocation(condition, OriginalClassProvider.getJavaClass(type));
+            rdaInstance.registerForUnsafeAllocation(accessCondition, OriginalClassProvider.getJavaClass(type));
         }
+    }
+
+    /**
+     * Guest callback bridge for
+     * {@link org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess#registerForUnsafeAllocation(AccessCondition, Class[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
+     */
+    @GuestCallbackBridge
+    public void registerForUnsafeAllocationClasses(JavaConstant condition, JavaConstant classes) {
+        registerForUnsafeAllocation(condition, GuestAccess.get().asResolvedJavaTypes(classes));
     }
 }
