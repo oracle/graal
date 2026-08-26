@@ -67,6 +67,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.ServiceConfigurationError;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import javax.crypto.Cipher;
@@ -108,6 +109,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.InternalReflectiveAccess;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -377,7 +379,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private final Map<Class<?>, Integer> providerConstructionOrder = new HashMap<>();
     private final List<ServiceProviderFactoryCandidate> unresolvedServiceProviderFactories = new ArrayList<>();
     private SecurityProviderCatalogRegistrar catalogRegistrar;
-    private ReflectionRegistrationView reflectionRegistrationView;
+    private ReflectionHostedSupport reflectionHostedSupport;
     private boolean preserveAll;
 
     @Override
@@ -507,7 +509,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
         initializeServiceRegistrationData();
         preserveAll = access.getImageClassLoader().classLoaderSupport.isPreserveAll();
-        reflectionRegistrationView = ReflectionRegistrationView.singleton();
+        reflectionHostedSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
         access.registerSubtypeReachabilityHandler((duringAccess, providerClass) -> {
             addCandidateProviderClass(providerClass);
             DuringAnalysisAccessImpl duringAccessImpl = (DuringAnalysisAccessImpl) duringAccess;
@@ -833,7 +835,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         boolean resolvedAny = false;
         for (int index = 0; index < unresolvedServiceProviderFactories.size();) {
             ServiceProviderFactoryCandidate candidate = unresolvedServiceProviderFactories.get(index);
-            if (reflectionRegistrationView.executableAccess(candidate.providerMethod()) == null) {
+            if (reflectionHostedSupport.getMethodRegistrationMetadata(candidate.providerMethod()) == null) {
                 index++;
                 continue;
             }
@@ -1222,11 +1224,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
                 Constructor<?> constructor = findNullaryConstructor(constructionClass);
                 if (constructor != null) {
-                    result = ReflectionRegistrationView.merge(result, reflectionRegistrationView.executableAccess(constructor));
+                    result = RuntimeDynamicAccessMetadata.merge(result, reflectionHostedSupport.getMethodRegistrationMetadata(constructor));
                 }
                 Method providerMethod = findProviderMethod(constructionClass);
                 if (providerMethod != null) {
-                    result = ReflectionRegistrationView.merge(result, reflectionRegistrationView.executableAccess(providerMethod));
+                    result = RuntimeDynamicAccessMetadata.merge(result, reflectionHostedSupport.getMethodRegistrationMetadata(providerMethod));
                 }
             }
             return result;
@@ -1236,9 +1238,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private SecurityProviderRegistrationPlanner.RegistrationPlan providerRegistrationPlan(Class<?> providerClass) {
-        RuntimeDynamicAccessMetadata typeMetadata = reflectionRegistrationView.typeAccess(providerClass);
+        RuntimeDynamicAccessMetadata typeMetadata = reflectionHostedSupport.getTypeRegistrationMetadata(providerClass);
         RuntimeDynamicAccessMetadata constructionMetadata = providerConstructionRegistrationMetadata(providerClass);
-        RuntimeDynamicAccessMetadata registrationMetadata = ReflectionRegistrationView.merge(typeMetadata, constructionMetadata);
+        RuntimeDynamicAccessMetadata registrationMetadata = RuntimeDynamicAccessMetadata.merge(typeMetadata, constructionMetadata);
         if (registrationMetadata == null) {
             return null;
         }
@@ -1276,12 +1278,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         // §FS-002-security-providers.2.2: A qualifying provider() method precedes the constructor.
         Method providerMethod = findProviderMethod(providerClass);
         if (providerMethod != null) {
-            ReflectionRegistrationView.forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, providerMethod));
+            forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, providerMethod));
             return;
         }
         Constructor<?> constructor = findNullaryConstructor(providerClass);
         if (constructor != null) {
-            ReflectionRegistrationView.forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, constructor));
+            forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, constructor));
         }
     }
 
@@ -1405,10 +1407,20 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     void registerForReflection(Class<?> clazz, RuntimeDynamicAccessMetadata metadata) {
-        ReflectionRegistrationView.forEachCondition(metadata, condition -> {
+        forEachCondition(metadata, condition -> {
             InternalReflectiveAccess.singleton().register(condition, clazz);
             InternalReflectiveAccess.singleton().register(condition, clazz.getConstructors());
         });
+    }
+
+    private static void forEachCondition(RuntimeDynamicAccessMetadata metadata, Consumer<AccessCondition> action) {
+        if (metadata.isAlwaysAvailable()) {
+            action.accept(AccessCondition.unconditional());
+            return;
+        }
+        for (Class<?> conditionType : metadata.getTypesForEncoding()) {
+            action.accept(AccessCondition.typeReached(conditionType));
+        }
     }
 
     private static boolean isSignature(Service s) {

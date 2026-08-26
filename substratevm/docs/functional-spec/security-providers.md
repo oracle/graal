@@ -59,7 +59,7 @@ initialization, and an application can instead install an existing instance with
 [§7](#7-transition-to-the-future-defaults) defines the future-default options that select this
 behavior during the transition from service-driven provider inclusion and build-time provider-list
 initialization.
-The implementation is described by [§AR-002-security-providers](../architecture/security-providers.md).
+The implementation is described by [§AR-002-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
 
 ## 1. Notation
 
@@ -564,7 +564,7 @@ condition.
 ### 8.9 Architecture Obligations
 
 The following requirements apply universally to the implementation.
-[§AR-002-security-providers](../architecture/security-providers.md) names the structures that enforce
+[§AR-002-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java) names the structures that enforce
 them.
 
 #### 8.9.1 Closure of Registration Signals
