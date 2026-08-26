@@ -34,6 +34,7 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 
@@ -77,9 +78,22 @@ public class SnippetRuntime {
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to %s.%s", declaringClass.getName(), methodName);
 
-        boolean isUninterruptible = UninterruptibleAnnotationUtils.isUninterruptible(GuestAccess.get().lookupMethod(method));
+        boolean isUninterruptible = isUninterruptible(method);
         boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
         return findForeignCall(methodName, method, callSideEffect, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
+    }
+
+    private static boolean isUninterruptible(Method method) {
+        try {
+            return UninterruptibleAnnotationUtils.isUninterruptible(GuestAccess.get().lookupMethod(method));
+        } catch (NoClassDefFoundError error) {
+            /* GR-79035: This is a workaround until all foreign-call targets live in the guest and SubstrateForeignCallDescriptor operates only on guest JVMCI methods. */
+            GuestAccess guestAccess = GuestAccess.get();
+            if (!guestAccess.isFullyIsolated() || guestAccess.lookupType(method.getDeclaringClass().getName()) != null) {
+                throw error;
+            }
+            return AnnotationAccess.getAnnotation(method, Uninterruptible.class) != null;
+        }
     }
 
     private static SubstrateForeignCallDescriptor findForeignJdkCall(String descriptorName, Class<?> declaringClass, String methodName, CallSideEffect callSideEffect, boolean isUninterruptible,
