@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class JNIGraphKit extends HostedGraphKit {
 
-    JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
+    public JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);
     }
 
