@@ -256,6 +256,10 @@ It can make the same object available to name-based lookup by calling
 
 A configured but unregistered provider is omitted from `Security.getProviders()`, provider filters,
 and `Security.getAlgorithms(String)`.
+These APIs enumerate usable providers and services.
+They neither expose a partially functional provider nor fail solely because another configured
+provider is unregistered
+([§FD-003-provider-enumeration-reports-usable-providers](decisions/provider-enumeration-reports-usable-providers.md#fd-003-provider-enumeration-reports-usable-providers-enumerate-only-usable-security-providers)).
 `Security.getProvider(String)`, JCA factories, `ServiceLoader`, and JDK default or fallback paths
 must not return that provider, one of its services, or an engine backed by it.
 Making a factory call reachable, adding a _META-INF/services/java.security.Provider_ descriptor, or
