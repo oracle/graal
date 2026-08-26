@@ -34,7 +34,14 @@ import java.util.function.Function;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 
 /**
- * Tracks provider-registration intent separately from reflection metadata emitted to realize it.
+ * Tracks provider-registration intent separately from the reflection metadata that realizes it,
+ * as required by §FS-002-security-providers.8.9.1.
+ *
+ * <p>
+ * A complete plan makes a provider JDK-constructible and retains its service catalog; an
+ * instantiated provider records only the JCE verification needed for application-supplied use.
+ * Iterative processing ensures signals discovered during analysis are handled before analysis
+ * completes.
  */
 final class SecurityProviderRegistrationPlanner {
     record RegistrationPlan(RuntimeDynamicAccessMetadata registrationMetadata, RuntimeDynamicAccessMetadata completeMetadata) {

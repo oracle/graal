@@ -44,7 +44,7 @@ public enum SecurityProviderMode {
         return this == METADATA_RUN_TIME;
     }
 
-    public boolean runtimeProviderList() {
-        return this != LEGACY_BUILD_TIME;
+    public boolean legacyBuildTime() {
+        return this == LEGACY_BUILD_TIME;
     }
 }

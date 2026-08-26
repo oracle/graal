@@ -157,7 +157,7 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         securityProviderMode = SecurityProviderMode.current();
-        if (!securityProviderMode.runtimeProviderList()) {
+        if (securityProviderMode.legacyBuildTime()) {
             servicesToSkip.add(java.security.Provider.class.getName());
         }
         if (!FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
