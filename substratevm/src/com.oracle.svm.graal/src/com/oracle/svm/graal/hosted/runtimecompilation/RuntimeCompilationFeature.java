@@ -418,11 +418,9 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         if (SubstrateOptions.useLLVMBackend()) {
             throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
         }
-        /*
-         * Runtime randomness seeds constant blinding and code-offset randomization. Register it
-         * only with its runtime-compilation consumer so ordinary executables do not retain JCA
-         * security providers. §FS-002-security-providers.2.4
-         */
+        /* Runtime randomness seeds constant blinding and code-offset randomization. Register it
+         * only with runtime compilation so ordinary executables do not retain JCA providers.
+         * §FS-002-security-providers.2.4 */
         if (ImageLayerBuildingSupport.firstImageBuild() && !ImageSingletons.contains(RuntimeRandomness.class)) {
             ImageSingletons.add(RuntimeRandomness.class, new RuntimeRandomnessSupport());
         }
