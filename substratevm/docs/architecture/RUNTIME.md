@@ -1,8 +1,8 @@
 # Native Image Runtime Architecture
 
 This document describes the architecture of a generated Native Image after the build has produced an
-executable, shared library, static executable, or image layer. The companion build-time overview is
-[README.md](README.md).
+executable, shared library, static executable, or image layer. The companion build-time guide is
+[BUILDTIME.md](BUILDTIME.md).
 
 The runtime architecture starts where image writing ends. The generated image contains compiled
 application code, selected JDK/runtime support, runtime metadata, the image heap, startup entry
