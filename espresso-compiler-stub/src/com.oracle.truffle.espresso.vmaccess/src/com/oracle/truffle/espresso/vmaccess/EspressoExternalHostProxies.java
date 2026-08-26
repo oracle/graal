@@ -489,7 +489,8 @@ final class EspressoExternalHostProxies {
         for (Map.Entry<ResolvedJavaMethod, String> entry : methodNameMappings.entrySet()) {
             ResolvedJavaMethod guestMethod = Objects.requireNonNull(entry.getKey());
             Objects.requireNonNull(entry.getValue());
-            if (!guestMethod.isPublic() || guestMethod.isStatic() || !guestMethod.getDeclaringClass().isAssignableFrom(guestType)) {
+            ResolvedJavaType declaringClass = guestMethod.getDeclaringClass();
+            if (!guestMethod.isPublic() || guestMethod.isStatic() || !declaringClass.isInterface() || !declaringClass.isAssignableFrom(guestType)) {
                 throw new IllegalArgumentException("Invalid guest method mapping: " + guestMethod);
             }
         }

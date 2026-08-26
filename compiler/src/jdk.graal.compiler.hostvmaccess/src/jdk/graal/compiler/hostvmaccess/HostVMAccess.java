@@ -591,7 +591,8 @@ final class HostVMAccess implements VMAccess {
 
     private static void validateMethodNameMappings(ResolvedJavaType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
         for (ResolvedJavaMethod guestMethod : methodNameMappings.keySet()) {
-            if (!guestMethod.isPublic() || guestMethod.isStatic() || !guestMethod.getDeclaringClass().isAssignableFrom(guestType)) {
+            ResolvedJavaType declaringClass = guestMethod.getDeclaringClass();
+            if (!guestMethod.isPublic() || guestMethod.isStatic() || !declaringClass.isInterface() || !declaringClass.isAssignableFrom(guestType)) {
                 throw new IllegalArgumentException("Invalid guest method mapping: " + guestMethod);
             }
         }
