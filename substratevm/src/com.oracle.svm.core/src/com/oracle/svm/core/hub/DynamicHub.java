@@ -79,6 +79,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
@@ -180,6 +181,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute //
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
+
+    /** Shared cache for hubs whose runtime-visible annotation set is known to be empty. */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private static final Object EMPTY_ANNOTATION_DATA = createEmptyAnnotationData();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static Object createEmptyAnnotationData() {
+        Class<?> annotationDataClass = ReflectionUtil.lookupClass("java.lang.Class$AnnotationData");
+        Constructor<?> constructor = ReflectionUtil.lookupConstructor(annotationDataClass, Map.class, Map.class, int.class);
+        Map<Class<? extends Annotation>, Annotation> emptyMap = Collections.emptyMap();
+        return ReflectionUtil.newInstance(constructor, emptyMap, emptyMap, 0);
+    }
 
     /** Marker value for {@link DynamicHubCompanion#classLoader}. */
     static final Object NO_CLASS_LOADER = new Object();
@@ -685,6 +698,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         assert companion.hubMetadata == null;
         companion.hubMetadata = new DynamicHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesEncodingIndex,
                         nestMembersEncodingIndex, signersEncodingIndex);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setEmptyAnnotationData() {
+        assert companion.annotationData == null;
+        companion.annotationData = EMPTY_ANNOTATION_DATA;
     }
 
     private DynamicHubMetadata hubMetadata() {
@@ -2251,7 +2270,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final class AnnotationDataAccessors {
         @SuppressWarnings("unused")
         private static Target_java_lang_Class_AnnotationData getAnnotationData(DynamicHub that) {
-            return that.companion.annotationData;
+            return SubstrateUtil.cast(that.companion.annotationData, Target_java_lang_Class_AnnotationData.class);
         }
     }
 
