@@ -79,6 +79,13 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     notify_groups:: ['polybench']
   },
 
+  polybench_vm_common_ce(os, arch, fail_fast=false, skip_machine=false):
+    local vm_edition = 'ce';
+    (if skip_machine then self.vm_bench_base(machine_name=null) else self.vm_bench_common) + vm_common.pipelined_graalvm(vm_edition, os, arch, environment_variable='POLYBENCH_JVM') + {
+    hwloc_command_prefix:: if std.length(std.find('bench', self.targets)) > 0 then ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"] else [],
+    notify_groups:: ['polybench']
+  },
+
   polybench_vm_hpc_common(bench=false): self.polybench_vm_common('linux', 'amd64', skip_machine=true) + self.polybench_hpc_linux_common(shape=if bench then 'x52' else 'e4_8_64') + {
     # Even gate jobs should upload results, since the data is used for regression tracking.
     teardown: [self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!']],
