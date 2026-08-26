@@ -60,7 +60,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
  * non-selected elements are set to zeroes.
  */
 @NodeInfo
-public class VectorAPILoadMaskedNode extends VectorAPIMacroNode implements Canonicalizable {
+public class VectorAPILoadMaskedNode extends VectorAPIMacroNode implements VectorAPIMemoryAccess, Canonicalizable {
     public static final NodeClass<VectorAPILoadMaskedNode> TYPE = NodeClass.create(VectorAPILoadMaskedNode.class);
 
     @Node.Input(Association) AddressNode address;
@@ -107,6 +107,11 @@ public class VectorAPILoadMaskedNode extends VectorAPIMacroNode implements Canon
     @Override
     public SimdStamp vectorStamp() {
         return loadStamp;
+    }
+
+    @Override
+    public LocationIdentity locationIdentity() {
+        return location;
     }
 
     @Override

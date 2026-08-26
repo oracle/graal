@@ -28,15 +28,31 @@ import java.util.function.BiFunction;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.TypeSymbol;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -58,6 +74,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILibraryUn
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILoadMaskedNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPILoadNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIMacroNode;
+import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIMemoryAccess;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIMaskReductionCoercedNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIRearrangeOpNode;
 import jdk.graal.compiler.vector.replacements.vectorapi.nodes.VectorAPIReductionCoercedNode;
@@ -287,7 +304,7 @@ public class VectorAPIIntrinsics {
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
                 StampPair returnStamp = makeReturnStamp(b, speciesStamp);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, vmClass, eClass, length, base, offset, fromSegment, container, index, s, defaultImpl);
-                b.addPush(JavaKind.Object, VectorAPILoadNode.create(params, loadType, address, b));
+                addMemoryAccess(b, base, offset, fromSegment, address, VectorAPILoadNode.create(params, loadType, address, b), JavaKind.Object);
                 return true;
             }
         });
@@ -302,7 +319,7 @@ public class VectorAPIIntrinsics {
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
                 StampPair returnStamp = makeReturnStamp(b, speciesStamp);
                 MacroParams params = MacroParams.of(b, targetMethod, returnStamp, vClass, mClass, eClass, length, base, offset, fromSegment, m, offsetInRange, container, index, s, defaultImpl);
-                b.addPush(JavaKind.Object, VectorAPILoadMaskedNode.create(params, loadType, address, b));
+                addMemoryAccess(b, base, offset, fromSegment, address, VectorAPILoadMaskedNode.create(params, loadType, address, b), JavaKind.Object);
                 return true;
             }
         });
@@ -316,7 +333,7 @@ public class VectorAPIIntrinsics {
                 VectorAPIType storeType = VectorAPIType.ofConstant(vClass, b);
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
                 MacroParams params = MacroParams.of(b, targetMethod, vClass, eClass, length, base, offset, fromSegment, b.nullCheckedValue(v), container, index, defaultImpl);
-                b.add(VectorAPIStoreNode.create(params, inputStamp, storeType, address));
+                addMemoryAccess(b, base, offset, fromSegment, address, VectorAPIStoreNode.create(params, inputStamp, storeType, address), JavaKind.Void);
                 return true;
             }
         });
@@ -330,7 +347,7 @@ public class VectorAPIIntrinsics {
                 AddressNode address = VectorAPIUtils.buildAddress(base, offset, container, index);
                 MacroParams params = MacroParams.of(b, targetMethod, vClass, mClass, eClass, length, base, offset, fromSegment, b.nullCheckedValue(v), b.nullCheckedValue(m), container, index,
                                 defaultImpl);
-                b.add(VectorAPIStoreMaskedNode.create(params, storeType, address));
+                addMemoryAccess(b, base, offset, fromSegment, address, VectorAPIStoreMaskedNode.create(params, storeType, address), JavaKind.Void);
                 return true;
             }
         });
@@ -442,6 +459,93 @@ public class VectorAPIIntrinsics {
                 return true;
             }
         });
+    }
+
+    /**
+     * Adds a Vector API memory access to the graph. If the access is to a memory segment, it may be
+     * on-heap (non-null address base) or off-heap (null address base). If we cannot decide
+     * statically which variant it is, this method builds an {@code if} diamond with both variants.
+     * This branch may or may not fold away later. Compare the handling of scalar unsafe accesses in
+     * {@code UnsafeAccessPlugin#createUnsafeAccess}.
+     */
+    private static <T extends VectorAPIMacroNode & VectorAPIMemoryAccess> void addMemoryAccess(GraphBuilderContext b, ValueNode base, ValueNode offset, ValueNode fromSegment, AddressNode address,
+                    T accessNode, JavaKind resultKind) {
+        if (!(fromSegment.isJavaConstant() && fromSegment.asJavaConstant().asInt() != 0) || StampTool.isPointerAlwaysNull(base) || StampTool.isPointerNonNull(base) ||
+                        NamedLocationIdentity.isArrayLocation(accessNode.locationIdentity())) {
+            /* Not a segment access, or we know statically which variant it is. */
+            if (resultKind == JavaKind.Void) {
+                b.add(accessNode);
+            } else {
+                b.addPush(resultKind, accessNode);
+            }
+            return;
+        }
+
+        /* Set up the empty control flow diamond. */
+        StructuredGraph graph = b.getGraph();
+        LogicNode isNull = graph.addOrUniqueWithInputs(IsNullNode.create(base));
+        BeginNode offHeapPath = graph.add(new BeginNode());
+        BeginNode heapPath = graph.add(new BeginNode());
+        b.add(new IfNode(isNull, offHeapPath, heapPath, BranchProbabilityData.injected(0.5, true)));
+        EndNode offHeapEnd = graph.add(new EndNode());
+        offHeapPath.setNext(offHeapEnd);
+        EndNode heapEnd = graph.add(new EndNode());
+        heapPath.setNext(heapEnd);
+
+        PiNode nonNullBase = graph.addWithoutUnique(new PiNode(base, StampFactory.objectNonNull(), heapPath));
+        AddressNode offHeapAddress = OffsetAddressNode.create(offset);
+        AddressNode onHeapAddress = new OffsetAddressNode(nonNullBase, offset);
+
+        /*
+         * The new copy of the macro node will be the on-heap variant, the original `accessNode`
+         * will be the off-heap variant.
+         */
+        GraalError.guarantee(accessNode.locationIdentity().isAny(), "initial location identity must be any, to be refined later %s / %s", accessNode, accessNode.locationIdentity());
+        VectorAPIMacroNode heapAccess = (VectorAPIMacroNode) accessNode.copyWithInputs(false);
+        accessNode.getNodeClass().replaceFirstInput(accessNode, address, offHeapAddress);
+        accessNode.getNodeClass().replaceFirstInput(accessNode, base, ConstantNode.defaultForKind(JavaKind.Object));
+        heapAccess.getNodeClass().replaceFirstInput(heapAccess, address, onHeapAddress);
+        heapAccess.getNodeClass().replaceFirstInput(heapAccess, base, nonNullBase);
+
+        if (resultKind == JavaKind.Void) {
+            b.add(accessNode);
+            b.add(heapAccess);
+        } else {
+            b.addPush(resultKind, accessNode);
+            b.pop(resultKind);
+            b.addPush(resultKind, heapAccess);
+            /*
+             * Leave the heapAccess on the stack as a placeholder value. When we add the merge, it
+             * will be assigned a frame state, and that state's stack effect must be correct. Below
+             * we will build a phi and a new state for the merge.
+             */
+        }
+        MergeNode merge = b.add(new MergeNode());
+
+        /*
+         * We added the macro nodes via the GraphBuilderContext, which is convenient because it
+         * initializes the frame states and exception paths. But it added the macros and the merge
+         * in a row, we must unlink them from each other and wire them up correctly.
+         */
+        accessNode.replaceAtPredecessor(null);
+        heapAccess.replaceAtPredecessor(null);
+        merge.replaceAtPredecessor(null);
+
+        offHeapEnd.replaceAtPredecessor(null);
+        offHeapPath.setNext(accessNode);
+        accessNode.next().setNext(offHeapEnd);
+        heapEnd.replaceAtPredecessor(null);
+        heapPath.setNext(heapAccess);
+        heapAccess.next().setNext(heapEnd);
+
+        merge.addForwardEnd(offHeapEnd);
+        merge.addForwardEnd(heapEnd);
+
+        if (resultKind != JavaKind.Void) {
+            b.pop(resultKind);  // remove the placeholder
+            b.push(resultKind, graph.addOrUnique(new ValuePhiNode(accessNode.stamp(NodeView.DEFAULT), merge, new ValueNode[]{accessNode, heapAccess})));
+        }
+        b.setStateAfter(merge);
     }
 
     /**
