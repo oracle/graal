@@ -32,11 +32,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
@@ -65,6 +68,8 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignDowncallPlan;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallData;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.JNIObjectHandles;
@@ -81,8 +86,12 @@ import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
@@ -134,6 +143,8 @@ public abstract class InterpreterStubSection {
     public static final SectionName SVM_INTERP = new SectionName.ProgbitsSectionName("svm_interp");
 
     private static final CGlobalData<Pointer> BASE = CGlobalDataFactory.forSymbol(nameForVTableIndex(0));
+
+    private static final CGlobalData<CCharPointer> FFM_UPCALL_ENTER_ERROR = CGlobalDataFactory.createCString("Could not enter isolate for FFM upcall.");
 
     private static final String REASON_REFERENCES_ON_STACK = "stack frame might contain object references that are not known to the GC";
 
@@ -302,6 +313,55 @@ public abstract class InterpreterStubSection {
         return enterHelper(interpreterMethod, enterData);
     }
 
+    public static final class FFMUpcallEnterPrologue implements CEntryPointOptions.Prologue {
+        @Uninterruptible(reason = "prologue")
+        public static void enter(Isolate isolate) {
+            int enterResult = CEntryPointActions.enterAttachThread(isolate, true);
+            if (enterResult != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(enterResult, FFM_UPCALL_ENTER_ERROR.get());
+            }
+        }
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(prologue = FFMUpcallEnterPrologue.class)
+    public static long enterInterpreterForFFMUpcall(Pointer runtimeData, Isolate isolate, Pointer enterData) throws Throwable {
+        /* The trampoline keeps the runtime data pinned, explicitly when necessary, for its lifetime. */
+        ForeignUpcallData data = (ForeignUpcallData) runtimeData.toObject();
+        ForeignUpcallPlan plan = data.plan();
+        InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
+        Pointer upcallData = accessHelper.getFFMUpcallData();
+        int[] argumentTypes = plan.signature().getArgumentTypes();
+        Object[] arguments = new Object[argumentTypes.length];
+        Pointer returnBuffer = Word.nullPointer();
+        for (int i = 0; i < argumentTypes.length; i++) {
+            int argumentType = argumentTypes[i];
+            if (PreparedSignature.isStubLocation(argumentType)) {
+                VMError.guarantee(PreparedSignature.getStubLocation(argumentType) == PreparedSignature.STUB_LOCATION_RETURN_BUFFER && returnBuffer.isNull(),
+                                "Unexpected stub location for a foreign upcall argument");
+                returnBuffer = accessHelper.getFFMUpcallReturnBuffer(upcallData);
+                arguments[i] = returnBuffer.rawValue();
+            } else {
+                arguments[i] = readIncomingArgument(accessHelper, enterData, argumentType, PreparedSignature.getKind(argumentType), ObjectArgumentKind.NONE);
+            }
+        }
+
+        VMError.guarantee(plan.buffersReturn() == returnBuffer.isNonNull(), "Unexpected foreign upcall return buffer");
+        Object result = data.target().invokeWithArguments(arguments);
+        if (plan.buffersReturn()) {
+            copyReturnBufferToUpcallData(accessHelper, upcallData, returnBuffer, plan.preparedReturns());
+        } else {
+            long rawResult = encodeReturnValue(plan.signature().getReturnKind(), result, ObjectReturnKind.NONE);
+            if (plan.signature().getReturnKind().isNumericFloat()) {
+                int returnLocation = PreparedSignature.encodeArgumentType(JavaKind.Double, 0, true);
+                accessHelper.setFpArgumentAt(returnLocation, upcallData, rawResult);
+            } else {
+                int returnLocation = PreparedSignature.encodeArgumentType(JavaKind.Long, 0, true);
+                writeUpcallGpResultToUpcallData(accessHelper, returnLocation, upcallData, rawResult);
+            }
+        }
+        return upcallData.rawValue();
+    }
 
     @AlwaysInline("Performance")
     private static Object readIncomingArgument(InterpreterAccessStubData accessHelper, Pointer enterData, int argumentType, JavaKind targetKind, ObjectArgumentKind objectKind) {
@@ -334,12 +394,31 @@ public abstract class InterpreterStubSection {
         };
     }
 
+    private static void copyReturnBufferToUpcallData(InterpreterAccessStubData accessHelper, Pointer upcallData, Pointer returnBuffer, int[] preparedReturns) {
+        int offset = 0;
+        for (int preparedReturn : preparedReturns) {
+            JavaKind kind = PreparedSignature.getKind(preparedReturn);
+            long value = returnBuffer.readLong(offset);
+            if (kind == JavaKind.Double) {
+                accessHelper.setFpArgumentAt(preparedReturn, upcallData, value);
+                offset += 16;
+            } else {
+                VMError.guarantee(kind == JavaKind.Long);
+                writeUpcallGpResultToUpcallData(accessHelper, preparedReturn, upcallData, value);
+                offset += 8;
+            }
+        }
+    }
 
     @Uninterruptible(reason = SWITCH_TO_UNINTERRUPTIBLE)
     private static long readIncomingGpArgument(InterpreterAccessStubData accessHelper, int argumentType, Pointer enterData) {
         return accessHelper.getGpArgumentAt(argumentType, enterData);
     }
 
+    @Uninterruptible(reason = SWITCH_TO_UNINTERRUPTIBLE)
+    private static void writeUpcallGpResultToUpcallData(InterpreterAccessStubData accessHelper, int argumentType, Pointer upcallData, long value) {
+        accessHelper.setGpArgumentAtIncoming(argumentType, upcallData, value);
+    }
 
     public static long enterInterpreterForJNIUpcallArrayVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer array) throws InstantiationException {
         InterpreterResolvedJavaMethod method = (InterpreterResolvedJavaMethod) CremaJNIMethodIds.getMethod(methodId);
@@ -560,6 +639,7 @@ public abstract class InterpreterStubSection {
     }
 
     private enum ObjectArgumentKind {
+        NONE,
         JNI_HANDLE,
         INTERPRETER_HANDLE
     }
@@ -1289,9 +1369,21 @@ public abstract class InterpreterStubSection {
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 @InternalVMMethod
 final class InterpreterForeignFunctionsSupportImpl implements InterpreterForeignFunctionsSupport {
+    @UnknownPrimitiveField(availability = com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer upcallStubPointer;
 
     @Override
     public Object linkToNative(ForeignDowncallPlan plan, Object[] arguments, int captureMask) {
         return InterpreterStubSection.leaveInterpreterForForeignDowncall(plan, arguments, captureMask);
+    }
+
+    @Override
+    public CFunctionPointer getUpcallStubPointer() {
+        return upcallStubPointer;
+    }
+
+    @Override
+    public void setUpcallStubPointer(CFunctionPointer pointer) {
+        upcallStubPointer = pointer;
     }
 }

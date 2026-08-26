@@ -106,6 +106,12 @@ public interface InterpreterAccessStubData {
     void setGpReturn(Pointer data, long gpReturn);
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    Pointer getFFMUpcallData();
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    Pointer getFFMUpcallReturnBuffer(Pointer upcallData);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getFpReturn(Pointer data);
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

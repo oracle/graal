@@ -43,6 +43,9 @@ import static jdk.vm.ci.aarch64.AArch64.r3;
 import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
+import static jdk.vm.ci.aarch64.AArch64.v1;
+import static jdk.vm.ci.aarch64.AArch64.v2;
+import static jdk.vm.ci.aarch64.AArch64.v3;
 
 import java.util.List;
 
@@ -57,6 +60,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
@@ -67,9 +71,12 @@ import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -402,6 +409,56 @@ public class AArch64InterpreterStubs {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             /* The wrapper returns raw bits in r0; JNI floating-point variants return them in v0. */
             masm.fmov(64, v0, r0);
+            super.leave(crb);
+        }
+    }
+
+    /** Captures the complete native argument state for the universal Crema FFM upcall stub. */
+    public static class InterpreterFFMUpcallStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
+        public InterpreterFFMUpcallStubContext(SharedMethod method) {
+            super(method);
+        }
+
+        private static AArch64Address upcallDataAddress(SubstrateAArch64Backend.SubstrateAArch64FrameMap frameMap, int offset) {
+            return createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, frameMap.offsetForStackSlot(frameMap.getInterpreterFFMUpcallData()) + offset);
+        }
+
+        @Override
+        public void enter(CompilationResultBuilder crb) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            SubstrateAArch64Backend.SubstrateAArch64FrameMap frameMap = (SubstrateAArch64Backend.SubstrateAArch64FrameMap) crb.frameMap;
+            SubstrateAArch64RegisterConfig registerConfig = (SubstrateAArch64RegisterConfig) frameMap.getRegisterConfig();
+            List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+
+            /* r9 and r10 contain the trampoline metadata and isolate, so use r11 for the caller SP. */
+            masm.mov(64, r11, sp);
+            super.enter(crb);
+            masm.str(64, r11, upcallDataAddress(frameMap, offsetAbiSpReg()));
+            for (int i = 0; i < gps.size(); i++) {
+                masm.str(64, gps.get(i), upcallDataAddress(frameMap, offsetAbiGpArg(i)));
+            }
+            for (int i = 0; i < fps.size(); i++) {
+                masm.fstr(64, fps.get(i), upcallDataAddress(frameMap, offsetAbiFpArg(i)));
+            }
+
+            /* Adapt the trampoline registers and captured frame address to the Java signature. */
+            masm.mov(64, gps.get(0), SubstrateAArch64MacroAssembler.scratch1);
+            masm.mov(64, gps.get(1), SubstrateAArch64MacroAssembler.scratch2);
+            masm.add(64, gps.get(2), sp, frameMap.offsetForStackSlot(frameMap.getInterpreterFFMUpcallData()));
+        }
+
+        @Override
+        public void leave(CompilationResultBuilder crb) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            /* The Java helper returns the thread-local upcall data pointer in r0. */
+            masm.mov(64, r11, r0);
+            masm.ldr(64, r0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiGpArg(0)));
+            masm.ldr(64, r1, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiGpArg(1)));
+            masm.fldr(64, v0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(0)));
+            masm.fldr(64, v1, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(1)));
+            masm.fldr(64, v2, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(2)));
+            masm.fldr(64, v3, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(3)));
             super.leave(crb);
         }
     }
@@ -799,6 +856,22 @@ public class AArch64InterpreterStubs {
 
     @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
     public static class AArch64InterpreterAccessStubData implements InterpreterAccessStubData {
+
+        /* Stable per-thread ABI state and buffered-return storage for interpreter FFM upcalls. */
+        private static final FastThreadLocalBytes<Pointer> FFM_UPCALL_DATA = FastThreadLocalFactory.createBytes(
+                        () -> sizeOfInterpreterData() + ForeignUpcallPlan.MAX_RETURN_BUFFER_SIZE, "AArch64 interpreter FFM upcall data");
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public Pointer getFFMUpcallData() {
+            return FFM_UPCALL_DATA.getAddress();
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public Pointer getFFMUpcallReturnBuffer(Pointer upcallData) {
+            return upcallData.add(sizeOfInterpreterData());
+        }
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

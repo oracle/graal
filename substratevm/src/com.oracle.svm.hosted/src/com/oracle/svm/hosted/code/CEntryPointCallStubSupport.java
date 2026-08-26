@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.reflect.Executable;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -46,6 +47,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -94,12 +96,16 @@ public final class CEntryPointCallStubSupport {
     }
 
     public AnalysisMethod registerStubForMethod(AnalysisMethod method, Supplier<CEntryPointData> entryPointDataSupplier) {
+        return registerStubForMethod(method, entryPointDataSupplier, List.of());
+    }
+
+    public AnalysisMethod registerStubForMethod(AnalysisMethod method, Supplier<CEntryPointData> entryPointDataSupplier, List<AnnotationValue> injectedAnnotations) {
         return methodToStub.compute(method, (_, existingValue) -> {
             AnalysisMethod value = existingValue;
             if (value == null) {
                 assert !bb.getUniverse().sealed();
                 CEntryPointData entryPointData = entryPointDataSupplier.get();
-                CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(bb, method, entryPointData);
+                CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(bb, method, entryPointData, injectedAnnotations);
                 AnalysisMethod wrapped = bb.getUniverse().lookup(stub);
                 bb.addRootMethod(wrapped, true, "Registered in " + CEntryPointCallStubSupport.class).registerAsNativeEntryPoint(entryPointData);
                 value = wrapped;
