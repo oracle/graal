@@ -2218,21 +2218,6 @@ final class BreakpointInterceptor {
         tracer = null;
     }
 
-    static boolean securityProviderHooksAvailable() {
-        boolean providerPublication = false;
-        boolean getProvider = false;
-        if (installedBreakpoints != null) {
-            for (Breakpoint breakpoint : installedBreakpoints.values()) {
-                if (breakpoint.specification.className.equals("sun/security/jca/Providers") && breakpoint.specification.methodName.equals("setProviderList")) {
-                    providerPublication = true;
-                } else if (breakpoint.specification.className.equals("sun/security/jca/ProviderConfig") && breakpoint.specification.methodName.equals("getProvider")) {
-                    getProvider = true;
-                }
-            }
-        }
-        return providerPublication && getProvider && securityProviderTaggingAvailable;
-    }
-
     private interface BreakpointHandler {
         boolean dispatch(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state);
     }
