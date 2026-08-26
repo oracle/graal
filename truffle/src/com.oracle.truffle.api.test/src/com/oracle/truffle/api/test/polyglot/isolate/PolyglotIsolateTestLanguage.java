@@ -52,6 +52,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -144,11 +145,12 @@ class PolyglotIsolateTestLanguage extends TruffleLanguage<PolyglotIsolateTestLan
     private static final String SPAWN_SUBPROCESS = "spawnSubProcess";
     private static final String LOOP_HOST_CALL = "loopHostCall";
     private static final String ALLOCATE_GUEST_OBJECT = "allocateGuestObject";
+    private static final String TEST_SYMBOL_CACHE = "testSymbolCache";
     private static final Pattern CALL_PATTERN = Pattern.compile(
                     "^(" + HOST_OBJECT_CALL + "|" + SPAWN_HOST_OBJECT_CALL + "|" + SPAWN_HOST_OBJECT_CALL_NO_WAIT + "|" + SPAWN_HOST_OBJECT_CALL_VIRTUAL +
                                     "|" + THROW + "|" + CATCH + "|" + READ + "|" + WRITE + "|" + EVAL + "|" + ALLOC + "|" + ACCESS + "|" + ACCESS_BINDINGS +
                                     "|" + RETURN_WEAKLY_REACHABLE_GUEST_OBJECT + "|" + EXIT + "|" + TEST + "|" + LOG + "|" + INTERPRETERRECURSION + "|" + KILL_ACTIVE_CHILD_PROCESS +
-                                    "|" + SPAWN_SUBPROCESS + "|" + LOOP_HOST_CALL + "|" + ALLOCATE_GUEST_OBJECT +
+                                    "|" + SPAWN_SUBPROCESS + "|" + LOOP_HOST_CALL + "|" + ALLOCATE_GUEST_OBJECT + "|" + TEST_SYMBOL_CACHE +
                                     ")\\((\\w+)\\((.*)\\),(\\d+)\\)$");
 
     @Override
@@ -227,7 +229,8 @@ class PolyglotIsolateTestLanguage extends TruffleLanguage<PolyglotIsolateTestLan
         KILL(PolyglotIsolateTestLanguage.KILL_ACTIVE_CHILD_PROCESS),
         SPAWNSUBPROCESS(PolyglotIsolateTestLanguage.SPAWN_SUBPROCESS),
         LOOP_HOST_CALL(PolyglotIsolateTestLanguage.LOOP_HOST_CALL),
-        ALLOCATE_GUEST_OBJECT(PolyglotIsolateTestLanguage.ALLOCATE_GUEST_OBJECT);
+        ALLOCATE_GUEST_OBJECT(PolyglotIsolateTestLanguage.ALLOCATE_GUEST_OBJECT),
+        TEST_SYMBOL_CACHE(PolyglotIsolateTestLanguage.TEST_SYMBOL_CACHE);
 
         private static final Map<String, Command> COMMAND_BY_NAME;
         static {
@@ -319,6 +322,8 @@ class PolyglotIsolateTestLanguage extends TruffleLanguage<PolyglotIsolateTestLan
                     return loopHostCall();
                 case ALLOCATE_GUEST_OBJECT:
                     return allocateGuestObject();
+                case TEST_SYMBOL_CACHE:
+                    return testSymbolCache();
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new IllegalArgumentException("Unknown command " + command);
@@ -598,6 +603,24 @@ class PolyglotIsolateTestLanguage extends TruffleLanguage<PolyglotIsolateTestLan
         @TruffleBoundary
         private Object allocateGuestObject() {
             return new GuestArray(new byte[Integer.parseInt(argument)]);
+        }
+
+        @TruffleBoundary
+        private Object testSymbolCache() {
+            Map<String, Object> members = new HashMap<>();
+            int count = Integer.parseInt(argument);
+            if ("method".equals(hostMethodToCall)) {
+                for (int i = 1; i <= count; i++) {
+                    members.put("method_" + i, new GuestFunction(i));
+                }
+            } else if ("field".equals(hostMethodToCall)) {
+                for (int i = 1; i <= count; i++) {
+                    members.put("field_" + i, i);
+                }
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Unknown command " + hostMethodToCall);
+            }
+            return new GuestObject(members);
         }
 
         @SuppressWarnings({"unchecked", "unused"})
@@ -917,6 +940,148 @@ class PolyglotIsolateTestLanguage extends TruffleLanguage<PolyglotIsolateTestLan
                 throw InvalidArrayIndexException.create(index);
             }
             return data[(int) index];
+        }
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportLibrary(InteropLibrary.class)
+    static final class GuestObject implements TruffleObject {
+
+        private final Map<String, Object> members;
+
+        GuestObject(Map<String, Object> members) {
+            this.members = Objects.requireNonNull(members);
+        }
+
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(boolean includeInternal) {
+            return new GuestList(members.keySet().toArray());
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return members.containsKey(member);
+        }
+
+        @ExportMessage
+        boolean isMemberModifiable(String member) {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberInsertable(String member) {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberRemovable(String member) {
+            return false;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberInvocable(String member) {
+            Object value = members.get(member);
+            if (value instanceof TruffleObject) {
+                return InteropLibrary.getUncached(value).isExecutable(value);
+            }
+            return false;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String memberName) throws UnknownIdentifierException {
+            Object value = members.get(memberName);
+            if (value == null) {
+                throw UnknownIdentifierException.create(memberName);
+            }
+            return value;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object invokeMember(String member, Object[] arguments) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+            Object value = members.get(member);
+            if (value == null) {
+                throw UnknownIdentifierException.create(member);
+            }
+            InteropLibrary interop = InteropLibrary.getUncached();
+            if (value instanceof TruffleObject && interop.isExecutable(value)) {
+                return interop.execute(value, arguments);
+            }
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        void writeMember(String member, Object value) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        void removeMember(String member) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportLibrary(InteropLibrary.class)
+    static final class GuestList implements TruffleObject {
+
+        private final Object[] items;
+
+        GuestList(Object... items) {
+            this.items = items;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return items.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < items.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index < 0 || index >= items.length) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            return items[(int) index];
+        }
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportLibrary(InteropLibrary.class)
+    static final class GuestFunction implements TruffleObject {
+
+        private final Object result;
+
+        GuestFunction(Object result) {
+            this.result = Objects.requireNonNull(result);
+        }
+
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object... arguments) {
+            return result;
         }
     }
 }

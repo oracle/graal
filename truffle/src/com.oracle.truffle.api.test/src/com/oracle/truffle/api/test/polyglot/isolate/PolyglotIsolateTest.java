@@ -2315,6 +2315,29 @@ public class PolyglotIsolateTest {
         builder.run();
     }
 
+    @Test
+    public void testSymbolCache() {
+        try (Context context = Context.newBuilder("triste").option("engine.SpawnIsolate", "true").build()) {
+            Value methods = context.eval("triste", "testSymbolCache(method(5000),1)");
+            Set<String> methodKeys = methods.getMemberKeys();
+            assertEquals(5000, methodKeys.size());
+            for (String key : methodKeys) {
+                int expected = Integer.parseInt(key.substring("method_".length()));
+                assertEquals(expected, methods.invokeMember(key).asInt());
+                assertEquals(expected, methods.invokeMember(key).asInt());
+            }
+
+            Value fields = context.eval("triste", "testSymbolCache(field(5000),1)");
+            Set<String> fieldKeys = fields.getMemberKeys();
+            assertEquals(5000, fieldKeys.size());
+            for (String key : fieldKeys) {
+                int expected = Integer.parseInt(key.substring("field_".length()));
+                assertEquals(expected, fields.getMember(key).asInt());
+                assertEquals(expected, fields.getMember(key).asInt());
+            }
+        }
+    }
+
     @HostReflection
     public static final class HostObjectFactory {
 
