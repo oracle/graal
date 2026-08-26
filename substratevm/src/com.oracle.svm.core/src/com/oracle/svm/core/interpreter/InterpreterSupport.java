@@ -60,14 +60,17 @@ import jdk.vm.ci.meta.Signature;
 /* Enables unoptimized execution of AOT compiled methods with an interpreter. The SVM
  * constraints apply, e.g. this itself does not enable class loading. */
 public abstract class InterpreterSupport {
+    public static final byte NATIVE_DOWNCALL_RETURNS_IN_FP_REGISTER = 1;
+    public static final byte NATIVE_DOWNCALL_RETURNS_IN_BUFFER = 1 << 1;
+
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private CFunctionPointer leaveStubPointer;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private int leaveStubLength;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
-    private CFunctionPointer jniDowncallStubPointer;
+    private CFunctionPointer nativeDowncallStubPointer;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
-    private int jniDowncallStubLength;
+    private int nativeDowncallStubLength;
 
     @Fold
     public static boolean isEnabled() {
@@ -488,10 +491,10 @@ public abstract class InterpreterSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setJNIDowncallStubPointer(CFunctionPointer jniDowncallStubPointer, int length) {
-        assert singleton().jniDowncallStubPointer == null : "multiple JNI downcall stub methods registered";
-        singleton().jniDowncallStubPointer = jniDowncallStubPointer;
-        singleton().jniDowncallStubLength = length;
+    public static void setNativeDowncallStubPointer(CFunctionPointer nativeDowncallStubPointer, int length) {
+        assert singleton().nativeDowncallStubPointer == null : "multiple native downcall stub methods registered";
+        singleton().nativeDowncallStubPointer = nativeDowncallStubPointer;
+        singleton().nativeDowncallStubLength = length;
     }
 
     /**
@@ -512,9 +515,9 @@ public abstract class InterpreterSupport {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isInInterpreterJNIDowncallStub(CodePointer ip) {
-        Pointer start = (Pointer) singleton().jniDowncallStubPointer;
-        Pointer end = start.add(singleton().jniDowncallStubLength);
+    public static boolean isInInterpreterNativeDowncallStub(CodePointer ip) {
+        Pointer start = (Pointer) singleton().nativeDowncallStubPointer;
+        Pointer end = start.add(singleton().nativeDowncallStubLength);
         return start.belowOrEqual((UnsignedWord) ip) && end.aboveOrEqual((UnsignedWord) ip);
     }
 

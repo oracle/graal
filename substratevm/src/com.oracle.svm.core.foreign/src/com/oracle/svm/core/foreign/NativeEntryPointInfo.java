@@ -28,8 +28,11 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.Objects;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.foreign.abi.ABIDescriptor;
@@ -114,8 +117,15 @@ public final class NativeEntryPointInfo {
                     boolean needsTransition,
                     boolean allowHeapAccess) {
         var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, allowHeapAccess);
-        CFunctionPointer downcallStubPointer = ForeignFunctionsRuntime.singleton().getDowncallStubPointer(info);
-        return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.methodType(), downcallStubPointer, capturedStateMask);
+        ForeignFunctionsRuntime foreignFunctionsRuntime = ForeignFunctionsRuntime.singleton();
+        CFunctionPointer downcallStubPointer = foreignFunctionsRuntime.getDowncallStubPointer(info, !(ImageInfo.inImageRuntimeCode() && InterpreterForeignFunctionsSupport.isAvailable()));
+        if (downcallStubPointer.isNull()) {
+            // crema case
+            return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.methodType(), Word.nullPointer(), Word.nullPointer(), capturedStateMask,
+                            foreignFunctionsRuntime.createInterpreterDowncallPlan(info));
+        }
+        return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.methodType(), downcallStubPointer, foreignFunctionsRuntime.getDowncallStubInvokerPointer(methodType),
+                        capturedStateMask, null);
     }
 
     public MethodType methodType() {

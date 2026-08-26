@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.interpreter;
 
+import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 
 class ThreadListenerThreadLocalHandlesAllocator implements ThreadListener {
     @Override
     public void beforeThreadRun() {
-        InterpreterStubSection.TL_HANDLES.set(new ThreadLocalHandles<>(InterpreterStubSection.MAX_ARGUMENT_HANDLES));
+        InterpreterStubSection.TL_HANDLES.set(new ThreadLocalHandles<>(InterpreterAccessStubData.MAX_ARGUMENT_HANDLES));
         ThreadListener.super.beforeThreadRun();
     }
 }
