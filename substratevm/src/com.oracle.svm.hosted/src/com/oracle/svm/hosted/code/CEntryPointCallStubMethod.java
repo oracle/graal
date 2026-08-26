@@ -128,21 +128,38 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     static CEntryPointCallStubMethod create(BigBang bb, AnalysisMethod targetMethod, CEntryPointData entryPointData) {
+        return create(bb, targetMethod, entryPointData, List.of());
+    }
+
+    static CEntryPointCallStubMethod create(BigBang bb, AnalysisMethod targetMethod, CEntryPointData entryPointData, List<AnnotationValue> injectedAnnotations) {
         MetaAccessProvider originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
         ResolvedJavaType declaringClass = originalMetaAccess.lookupJavaType(IsolateEnterStub.class);
         ConstantPool constantPool = IsolateEnterStub.getConstantPool(originalMetaAccess);
-        return new CEntryPointCallStubMethod(entryPointData, targetMethod, declaringClass, constantPool, bb.getMetaAccess());
+        return new CEntryPointCallStubMethod(entryPointData, targetMethod, declaringClass, constantPool, bb.getMetaAccess(), injectedAnnotations);
     }
 
     private final CEntryPointData entryPointData;
     private final ResolvedJavaMethod targetMethod;
     private final ResolvedSignature<AnalysisType> targetSignature;
+    private final List<AnnotationValue> injectedAnnotations;
 
-    private CEntryPointCallStubMethod(CEntryPointData entryPointData, AnalysisMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool, AnalysisMetaAccess metaAccess) {
+    private CEntryPointCallStubMethod(CEntryPointData entryPointData, AnalysisMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool, AnalysisMetaAccess metaAccess,
+                    List<AnnotationValue> injectedAnnotations) {
         super(BuilderUtil.uniqueStubName(targetMethod.getWrapped()), holderClass, createSignature(targetMethod, metaAccess), holderConstantPool);
         this.entryPointData = entryPointData;
         this.targetMethod = targetMethod.getWrapped();
         this.targetSignature = targetMethod.getSignature();
+        this.injectedAnnotations = List.copyOf(injectedAnnotations);
+    }
+
+    @Override
+    public List<AnnotationValue> getInjectedAnnotations() {
+        if (injectedAnnotations.isEmpty()) {
+            return super.getInjectedAnnotations();
+        }
+        List<AnnotationValue> annotations = new ArrayList<>(super.getInjectedAnnotations());
+        annotations.addAll(injectedAnnotations);
+        return annotations;
     }
 
     /**

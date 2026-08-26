@@ -1783,6 +1783,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     static class SubstrateAArch64FrameMap extends AArch64FrameMap {
         private StackSlot interpreterJNIUpcallData;
+        private StackSlot interpreterFFMUpcallData;
 
         SubstrateAArch64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
             super(codeCache, registerConfig, referenceMapFactory);
@@ -1795,6 +1796,15 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         StackSlot getInterpreterJNIUpcallData() {
             return interpreterJNIUpcallData;
+        }
+
+        void allocateInterpreterFFMUpcallData() {
+            assert interpreterFFMUpcallData == null;
+            interpreterFFMUpcallData = allocateStackMemory(AArch64InterpreterStubs.sizeOfInterpreterData(), getTarget().wordSize);
+        }
+
+        StackSlot getInterpreterFFMUpcallData() {
+            return interpreterFFMUpcallData;
         }
     }
 
@@ -1854,6 +1864,14 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                     yield new AArch64InterpreterStubs.InterpreterJNIUpcallStubContext(method);
                 } else {
                     throw VMError.shouldNotReachHere("JNI interpreter stubs cannot be generated at run-time");
+                }
+            }
+            case InterpreterFFMUpcallStub -> {
+                if (SubstrateUtil.HOSTED) {
+                    assert InterpreterSupport.isEnabled();
+                    yield new AArch64InterpreterStubs.InterpreterFFMUpcallStubContext(method);
+                } else {
+                    throw VMError.shouldNotReachHere("FFM interpreter stubs cannot be generated at run-time");
                 }
             }
             case InterpreterLeaveStub -> {
@@ -2097,10 +2115,14 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
          * hosted-only CallVariant in that case until GR-74744 is fixed.
          */
         if (SubstrateUtil.HOSTED) {
-            InterpreterJNIUpcallStubGuestValue annotation = InterpreterJNIUpcallStubGuestValue.get(method);
-            if (annotation != null && annotation.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN.class)) {
+            InterpreterJNIUpcallStubGuestValue jniAnnotation = InterpreterJNIUpcallStubGuestValue.get(method);
+            if (jniAnnotation != null && jniAnnotation.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN.class)) {
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterJNIUpcallData();
+            }
+            if (stubType == Deoptimizer.StubType.InterpreterFFMUpcallStub) {
+                assert InterpreterSupport.isEnabled();
+                ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterFFMUpcallData();
             }
         }
         if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {

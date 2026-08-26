@@ -78,6 +78,8 @@ import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignDowncallPlan;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallData;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_BoundMethodHandle;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -101,6 +103,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.internal.foreign.abi.VMStorage;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -280,14 +283,6 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         return ensureDowncallStubInvokerCreated.apply(methodType);
     }
 
-    CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {
-        FunctionPointerHolder holder = upcallStubs.get(jep);
-        if (holder == null) {
-            throw reportMissingUpcall(jep);
-        }
-        return holder.functionPointer;
-    }
-
     Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
         if (!areFunctionCallsSupported()) {
             throw functionCallsUnsupported();
@@ -296,14 +291,29 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
          * Look up the upcall stub pointer first to avoid unnecessary allocation and synchronization
          * if it doesn't exist.
          */
-        CFunctionPointer upcallStubPointer = getUpcallStubPointer(jep);
+        FunctionPointerHolder holder = upcallStubs.get(jep);
+        CFunctionPointer upcallStubPointer;
+        Object runtimeArgument;
+        if (holder != null) {
+            upcallStubPointer = holder.functionPointer;
+            runtimeArgument = methodHandle;
+        } else if (InterpreterForeignFunctionsSupport.isAvailable()) {
+            upcallStubPointer = InterpreterForeignFunctionsSupport.singleton().getUpcallStubPointer();
+            VMError.guarantee(upcallStubPointer.isNonNull(), "Crema FFM upcall stub was not initialized");
+            runtimeArgument = new InterpreterUpcallData(methodHandle, createInterpreterUpcallPlan(abiUtils, jep));
+        } else {
+            throw reportMissingUpcall(jep);
+        }
         synchronized (trampolines) {
             if (currentTrampolineSet == null || !currentTrampolineSet.hasFreeTrampolines()) {
                 currentTrampolineSet = new TrampolineSet(trampolineTemplate);
                 trampolines.put(currentTrampolineSet.base().rawValue(), currentTrampolineSet);
             }
-            return currentTrampolineSet.assignTrampoline(methodHandle, upcallStubPointer);
+            return currentTrampolineSet.assignTrampoline(runtimeArgument, upcallStubPointer);
         }
+    }
+
+    private record InterpreterUpcallData(MethodHandle target, ForeignUpcallPlan plan) implements ForeignUpcallData {
     }
 
     /**
@@ -531,6 +541,38 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         return invoker.invoke(stub, args);
     }
 
+    static ForeignUpcallPlan createInterpreterUpcallPlan(AbiUtils abi, JavaEntryPointInfo jep) {
+        var storages = jep.parametersAssignment();
+        VMError.guarantee(storages.length == jep.handleType().parameterCount());
+
+        boolean hasReturnBuffer = false;
+        int stackSize = 0;
+        int[] preparedArgumentTypes = new int[storages.length];
+        for (int i = 0; i < storages.length; i++) {
+            JavaKind kind = JavaKind.fromJavaClass(jep.handleType().parameterType(i));
+            int preparedType = abi.toPreparedSignatureLocation(storages[i], kind, false, ArgumentAdaptation.NONE);
+            if (PreparedSignature.isStubLocation(preparedType)) {
+                VMError.guarantee(PreparedSignature.getStubLocation(preparedType) == PreparedSignature.STUB_LOCATION_RETURN_BUFFER && !hasReturnBuffer,
+                                "Unexpected stub location for a foreign upcall argument");
+                hasReturnBuffer = true;
+            } else if (PreparedSignature.isStackSlot(preparedType)) {
+                stackSize = Math.max(stackSize, PreparedSignature.getStackOffset(preparedType) + Long.BYTES);
+            }
+            preparedArgumentTypes[i] = preparedType;
+        }
+
+        VMError.guarantee(jep.buffersReturn() == hasReturnBuffer, "Unexpected foreign upcall return buffer");
+        if (hasReturnBuffer) {
+            VMError.guarantee(jep.returnBufferSize() <= ForeignUpcallPlan.MAX_RETURN_BUFFER_SIZE,
+                            "FFM upcall return buffer exceeds the universal interpreter stub capacity");
+        }
+
+        stackSize = NumUtil.roundUp(stackSize, SubstrateTarget.singleton().stackAlignment);
+        PreparedSignature signature = new PreparedSignature(JavaKind.fromJavaClass(jep.cMethodType().returnType()), preparedArgumentTypes, stackSize);
+        int[] preparedReturns = computePreparedReturns(abi, jep.returnAssignment(), jep.buffersReturn());
+        return new ForeignUpcallPlan(signature, preparedReturns);
+    }
+
     ForeignDowncallPlan createInterpreterDowncallPlan(NativeEntryPointInfo nep) {
         AbiUtils abi = abiUtils;
         var storages = nep.parametersAssignment();
@@ -596,15 +638,14 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         PreparedSignature signature = new PreparedSignature(JavaKind.fromJavaClass(nep.methodType().returnType()),
                         preparedArgumentTypes, stackSize);
 
-        int[] preparedReturns = computePreparedReturns(abi, nep);
+        int[] preparedReturns = computePreparedReturns(abi, nep.returnsAssignment(), nep.needsReturnBuffer());
         return new ForeignDowncallPlan(signature, preparedReturns, nep.skipsTransition());
     }
 
-    private static int[] computePreparedReturns(AbiUtils abi, NativeEntryPointInfo nep) {
-        if (!nep.needsReturnBuffer()) {
+    private static int[] computePreparedReturns(AbiUtils abi, VMStorage[] returnStorages, boolean needsReturnBuffer) {
+        if (!needsReturnBuffer) {
             return null;
         }
-        var returnStorages = nep.returnsAssignment();
         VMError.guarantee(returnStorages.length > 1);
         int[] preparedReturns = new int[returnStorages.length];
         for (int i = 0; i < returnStorages.length; i++) {
