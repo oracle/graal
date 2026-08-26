@@ -3,7 +3,6 @@
 This directory contains functional specifications for Native Image.
 
 - [JCA Security Provider Inclusion](security-providers.md): provider lookup and factory-call behavior based on metadata.
-- [Requirements](requirements/): the properties each specification is accepted against, and the evidence that discharges them.
 - [Functional Decisions](decisions/): product behavior decisions and tradeoffs for the specifications.
 
 ## Notation

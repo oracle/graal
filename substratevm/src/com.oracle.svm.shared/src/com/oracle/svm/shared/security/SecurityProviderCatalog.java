@@ -27,6 +27,9 @@ package com.oracle.svm.shared.security;
 /**
  * Provider names and classes that require shared handling in Native Image runtime support and the
  * Tracing Agent.
+ *
+ * @see <a href="https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/conf/security/java.security">JDK default provider configuration</a>
+ * @see <a href="https://docs.oracle.com/en/java/javase/25/security/howtoimplaprovider.html">JDK provider configuration guide</a>
  */
 public final class SecurityProviderCatalog {
     private SecurityProviderCatalog() {

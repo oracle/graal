@@ -31,22 +31,11 @@ import java.security.Provider;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
-// §FS-002-security-providers.2.2
 /**
- * The rule that decides how a JCA security provider can be constructed, stated in the JDK's terms.
+ * Shared predicates for recognizing JDK-supported security-provider construction paths.
  *
- * A provider is constructed through the path the JDK would use. The JDK
- * reaches a configured provider through {@code sun.security.jca.ProviderConfig}, which resolves the
- * entry through {@link java.util.ServiceLoader} and otherwise falls back to a legacy class-name load
- * that calls {@code Class.newInstance()}. The constructor path requires a public, concrete
- * {@link Provider} subtype and a public nullary constructor. The provider-method path requires a
- * public service provider class in an explicit module, but that class may be an interface, abstract,
- * or unrelated to {@link Provider}.
- *
- * The build-time constructibility predicate, the build-time instantiation that reads a provider's
- * service catalog, and the run-time provider-list loader all decide with these predicates, so a
- * construction path the build accepts is the path the run time takes. Each caller performs its own
- * member lookup, because the hosted and run-time sides reach members through different mechanisms.
+ * Hosted and run-time callers perform member lookup through their respective mechanisms and use
+ * these predicates to apply the same eligibility rules.
  */
 public final class ProviderConstruction {
 
@@ -67,10 +56,11 @@ public final class ProviderConstruction {
     }
 
     /**
-     * Returns whether {@code providerClass} can be the class of a provider instance. A provider
+     * Returns whether {@code providerClass} can be a provider implementation class. A provider
      * method can return an instance of a non-public implementation class.
      */
     public static boolean isProviderImplementationClass(Class<?> providerClass) {
+        // §FS-002-security-providers.1.1
         if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive() || providerClass.isInterface()) {
             return false;
         }
@@ -79,32 +69,36 @@ public final class ProviderConstruction {
     }
 
     /**
-     * Returns whether {@code providerClass} can use the provider-constructor path.
+     * Returns whether {@code providerClass} satisfies the class requirements of the constructor
+     * path.
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L763-L785")
     public static boolean isProviderConstructorClass(Class<?> providerClass) {
+        // §FS-002-security-providers.2.2
         return isProviderImplementationClass(providerClass) && Modifier.isPublic(providerClass.getModifiers());
     }
 
     /**
-     * Returns whether {@code constructor} is the nullary constructor that both JDK paths use.
+     * Returns whether {@code constructor} is a supported public no-argument construction path.
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
     public static boolean isQualifyingConstructor(Constructor<?> constructor) {
+        // §FS-002-security-providers.2.2
         return constructor != null && Modifier.isPublic(constructor.getModifiers()) && constructor.getParameterCount() == 0 &&
                         isProviderConstructorClass(constructor.getDeclaringClass());
     }
 
     /**
-     * Returns whether {@code method} is a {@code provider()} factory method that
-     * {@link java.util.ServiceLoader} would call: public, static, nullary, returning a
-     * {@link Provider} subtype, and declared by a public class in an explicit module.
+     * Returns whether {@code method} is a supported {@code provider()} construction path: public,
+     * static, nullary, returning a {@link Provider} subtype, and declared by a public class in an
+     * explicit module.
      *
      * The declaring class itself need not be a {@link Provider} subtype, because a factory method
      * supplies the instance in place of the constructor.
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
     public static boolean isQualifyingProviderMethod(Method method) {
+        // §FS-002-security-providers.2.2
         if (method == null || !PROVIDER_METHOD_NAME.equals(method.getName())) {
             return false;
         }
