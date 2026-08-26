@@ -79,15 +79,36 @@ public class JNILibraryLoadFeature implements Feature {
         return ImageSingletons.lookup(JNILibraryLoadFeature.class);
     }
 
+    private static boolean shouldReferenceBuiltinOnLoad(String libName) {
+        if (Platform.includedIn(Platform.WINDOWS.class) && libName.equals("extnet")) {
+            /*
+             * The Windows extnet archive has no OnLoad function. Class-loader-aware images
+             * generate a no-op implementation so that the JDK can recognize extnet as a
+             * built-in library. Without that generated symbol table, no definition exists and
+             * creating a C-global reference would cause an unresolved symbol at link time.
+             */
+            return ClassRegistries.respectClassLoader();
+        }
+        /*
+         * Native Image links the JNI entry points it needs from management_ext directly, without
+         * executing the JDK's System.loadLibrary path. Its OnLoad function initializes HotSpot's
+         * JMM interface through JVM_GetManagement, which Native Image does not implement.
+         * Avoid referencing that function as it won't be called anyway.
+         */
+        return !libName.equals("management_ext");
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
+        NativeLibraries.singleton().initializePotentialBuiltinLibraries();
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries());
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(
+                        NativeLibraries.singleton().getReachableBuiltinJNILibraryNames(),
+                        JNILibraryLoadFeature::shouldReferenceBuiltinOnLoad);
         if (isChanged) {
             access.requireAnalysisIteration();
         }
@@ -95,6 +116,8 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        NativeLibraries.singleton().linkReachableBuiltinJNILibraries();
+
         if (!ClassRegistries.respectClassLoader()) {
             return;
         }
@@ -131,7 +154,7 @@ public class JNILibraryLoadFeature implements Feature {
         }
 
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
+        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibraries());
 
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             Path sourceFile = writeStaticBuiltinSymbolTable(linkerInvocation.getTempDirectory(), staticBuiltinSymbols);
@@ -186,6 +209,9 @@ public class JNILibraryLoadFeature implements Feature {
         Set<String> staticBuiltinSymbols = new LinkedHashSet<>();
         for (String libName : staticLibNames) {
             staticBuiltinSymbols.addAll(nativeLibraries.getStaticLibrarySymbols(libName));
+            if (!shouldReferenceBuiltinOnLoad(libName)) {
+                staticBuiltinSymbols.remove(JNILibraryInitializer.getOnLoadName(libName, true));
+            }
             if (Platform.includedIn(Platform.WINDOWS.class) && libName.equals("extnet")) {
                 emitNopExtnetOnLoad = true;
             }

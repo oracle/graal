@@ -40,11 +40,9 @@ import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -60,20 +58,8 @@ public class JmxServerFeature implements InternalFeature {
         return ImageLayerBuildingSupport.firstImageBuild() && VMInspectionOptions.hasJmxServerSupport();
     }
 
-    private static void handleNativeLibraries(BeforeAnalysisAccess access) {
-        // This is required for password authentication.
-        // JMX checks the restrictions on the password file via a JNI native method.
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("management_agent");
-        BeforeAnalysisAccessImpl beforeAnalysisAccess = (BeforeAnalysisAccessImpl) access;
-        beforeAnalysisAccess.getNativeLibraries().addStaticJniLibrary("management_agent");
-        // Resolve calls to jdk_internal_agent* as builtIn. For calls to native method
-        // isAccessUserOnly0.
-        PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("jdk_internal_agent");
-    }
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        handleNativeLibraries(access);
         registerJMXAgentResources();
         configureReflection((BeforeAnalysisAccessImpl) access);
         configureProxy(access);

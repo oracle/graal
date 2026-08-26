@@ -31,9 +31,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
@@ -47,16 +44,5 @@ class JNIRegistrationAttach extends JNIRegistrationUtil implements InternalFeatu
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return requiredModule().isPresent();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        a.registerReachabilityHandler(JNIRegistrationAttach::registerAndLinkAttach, method(a, "sun.tools.attach.AttachProviderImpl", "attachVirtualMachine", String.class));
-        PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_tools_attach_VirtualMachineImpl");
-    }
-
-    private static void registerAndLinkAttach(@SuppressWarnings("unused") DuringAnalysisAccess a) {
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("attach");
-        NativeLibraries.singleton().addStaticJniLibrary("attach");
     }
 }

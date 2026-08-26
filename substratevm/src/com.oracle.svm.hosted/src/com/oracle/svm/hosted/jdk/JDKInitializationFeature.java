@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,10 +39,8 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -114,6 +112,11 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Ends up in the image heap with -H:Preserve=all");
 
         rci.initializeAtBuildTime("jdk.internal", JDK_CLASS_REASON);
+        /*
+         * Override the package-wide policy because FileSystemImpl loads management_agent in its
+         * static initializer.
+         */
+        rci.initializeAtRunTime("jdk.internal.agent.FileSystemImpl", "Loads the management_agent library at run time");
         rci.initializeAtBuildTime("jdk.jfr", "Needed for Native Image substitutions");
         rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HelloWorld", "Fails build-time initialization");
         rci.initializeAtRunTime("jdk.jfr.snippets.Snippets$HTTPPostRequest", "Fails build-time initialization");
@@ -391,17 +394,11 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
 
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             a.registerReachabilityHandler(JDKInitializationFeature::registerInflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
-            a.registerReachabilityHandler(JDKInitializationFeature::registerAndLinkZip, method(a, "java.util.zip.ZipUtils", "loadLibrary"));
         }
     }
 
     private static void registerInflaterInitIDs(DuringAnalysisAccess a) {
         JVMCIRuntimeJNIAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
-    }
-
-    private static void registerAndLinkZip(@SuppressWarnings("unused") DuringAnalysisAccess a) {
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("zip");
-        NativeLibraries.singleton().addStaticJniLibrary("zip");
     }
 
     /**
