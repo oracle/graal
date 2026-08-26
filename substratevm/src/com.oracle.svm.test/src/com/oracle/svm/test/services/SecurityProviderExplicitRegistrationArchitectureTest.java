@@ -41,7 +41,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 public class SecurityProviderExplicitRegistrationArchitectureTest {
     private static final String REGISTERED_PROVIDER_NAME = "reflection-metadata-provider";
 
-    /** Tests §AR-002-security-providers.3 and §AR-002-security-providers.4. */
+    /** Tests §AR-001-security-providers.3 and §AR-001-security-providers.4. */
     @Test
     public void instantiatedProvidersHaveClassKeyedAcquisitionKinds() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());

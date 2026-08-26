@@ -59,7 +59,7 @@ initialization, and an application can instead install an existing instance with
 [§7](#7-transition-to-the-future-defaults) defines the future-default options that select this
 behavior during the transition from service-driven provider inclusion and build-time provider-list
 initialization.
-The implementation is described by [§AR-002-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
+The implementation is described by [§AR-001-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
 
 ## 1. Notation
 
@@ -334,7 +334,7 @@ Instantiation reachability records successful verification for an application-su
 provider class independently of any configured-list instance of the same class. In particular, a
 verification failure for an omitted configured instance does not prevent provider-object use of an
 application-created instance.
-The implementation-specific recognition rule is §AR-002-security-providers.3.
+The implementation-specific recognition rule is §AR-001-security-providers.3.
 
 ## 6. Tracing Metadata
 
@@ -564,7 +564,7 @@ condition.
 ### 8.9 Architecture Obligations
 
 The following requirements apply universally to the implementation.
-[§AR-002-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java) names the structures that enforce
+[§AR-001-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java) names the structures that enforce
 them.
 
 #### 8.9.1 Closure of Registration Signals
