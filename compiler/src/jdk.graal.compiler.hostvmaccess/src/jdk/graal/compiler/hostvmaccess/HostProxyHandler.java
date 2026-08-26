@@ -129,11 +129,15 @@ final class HostProxyHandler implements InvocationHandler {
                 continue;
             }
             String hostMethodName = method.getName();
+            boolean explicitlyMapped = false;
             if (!methodNameMappings.isEmpty()) {
                 ResolvedJavaMethod guestMethod = lookupJavaMethod(method, methodHandles);
-                hostMethodName = methodNameMappings.getOrDefault(guestMethod, hostMethodName);
+                explicitlyMapped = methodNameMappings.containsKey(guestMethod);
+                if (explicitlyMapped) {
+                    hostMethodName = methodNameMappings.get(guestMethod);
+                }
             }
-            Method hostMethod = findHostMethod(hostClass, method, hostMethodName);
+            Method hostMethod = findHostMethod(hostClass, method, hostMethodName, explicitlyMapped);
             if (hostMethod == null) {
                 continue;
             }
@@ -203,7 +207,7 @@ final class HostProxyHandler implements InvocationHandler {
         }
     }
 
-    private static Method findHostMethod(Class<?> hostClass, Method method, String hostMethodName) {
+    private static Method findHostMethod(Class<?> hostClass, Method method, String hostMethodName, boolean explicitlyMapped) {
         Method hostMethod = null;
         for (Method hostMethodCandidate : hostClass.getMethods()) {
             if (!hostMethodCandidate.getName().equals(hostMethodName)) {
@@ -221,7 +225,9 @@ final class HostProxyHandler implements InvocationHandler {
                 throw new RuntimeException("Unimplemented: most specific mapping: " + hostMethod + " vs. " + hostMethodCandidate);
             }
         }
-        if (hostMethod == null && !method.isDefault()) {
+        if (hostMethod == null && explicitlyMapped) {
+            throw new IllegalArgumentException("No compatible host method for guest method " + method + " under requested host name '" + hostMethodName + "' in host class " + hostClass.getName());
+        } else if (hostMethod == null && !method.isDefault()) {
             throw new IllegalArgumentException("Method compatible with " + method + " not found in class " + hostClass.getName());
         }
         return hostMethod;

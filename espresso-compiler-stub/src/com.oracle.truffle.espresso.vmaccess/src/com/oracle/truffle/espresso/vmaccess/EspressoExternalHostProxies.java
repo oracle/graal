@@ -410,8 +410,9 @@ final class EspressoExternalHostProxies {
             if (method.isStatic() || !method.isPublic()) {
                 continue;
             }
-            String hostMethodName = methodNameMappings.getOrDefault(method, method.getName());
-            Method hostMethod = findHostMethod(hostClass, method, hostMethodName);
+            boolean explicitlyMapped = methodNameMappings.containsKey(method);
+            String hostMethodName = explicitlyMapped ? methodNameMappings.get(method) : method.getName();
+            Method hostMethod = findHostMethod(hostClass, method, hostMethodName, explicitlyMapped);
             if (hostMethod == null) {
                 continue;
             }
@@ -507,7 +508,7 @@ final class EspressoExternalHostProxies {
         }
     }
 
-    private Method findHostMethod(Class<?> hostClass, ResolvedJavaMethod method, String hostMethodName) {
+    private Method findHostMethod(Class<?> hostClass, ResolvedJavaMethod method, String hostMethodName, boolean explicitlyMapped) {
         Method hostMethod = null;
         JavaType guestReturnType = method.getSignature().getReturnType(null);
         for (Method hostMethodCandidate : hostClass.getMethods()) {
@@ -526,7 +527,10 @@ final class EspressoExternalHostProxies {
                 throw new RuntimeException("Unimplemented: most specific mapping: " + hostMethod + " vs. " + hostMethodCandidate);
             }
         }
-        if (hostMethod == null && !method.isDefault()) {
+        if (hostMethod == null && explicitlyMapped) {
+            throw new IllegalArgumentException("No compatible host method for guest method " + method.format("%r %h.%n(%p)") + " under requested host name '" + hostMethodName + "' in host class " +
+                            hostClass.getName());
+        } else if (hostMethod == null && !method.isDefault()) {
             throw new IllegalArgumentException("Method compatible with " + method.format("%r %h.%n(%p)") + " not found in class " + hostClass.getName());
         }
         return hostMethod;
