@@ -661,8 +661,8 @@ public final class NativeLibraries {
         return getStaticLibraryPath(allStaticLibs, library) != null;
     }
 
-    private Map<Path, Path> getAllStaticLibs() {
-        Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
+    private void collectAllStaticLibs() {
+        allStaticLibs = new LinkedHashMap<>();
         String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
@@ -673,7 +673,6 @@ public final class NativeLibraries {
                 UserError.abort(e, "Invalid library path %s", libraryPath);
             }
         }
-        return allStaticLibs;
     }
 
     public Collection<String> getLibraryPaths() {
@@ -770,7 +769,7 @@ public final class NativeLibraries {
                 new CAnnotationProcessor(this, context).process(cache);
             }
         }
-        allStaticLibs = getAllStaticLibs();
+        collectAllStaticLibs();
     }
 
     public boolean isWordBase(ResolvedJavaType type) {
