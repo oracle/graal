@@ -90,6 +90,7 @@ final class SecurityProviderCatalogRegistrar {
         registerProvider(access, provider, metadata);
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     private void registerProvider(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {
         usedProviders.add(provider);
         feature.registerForReflection(provider.getClass(), metadata);
@@ -98,6 +99,7 @@ final class SecurityProviderCatalogRegistrar {
         }
         /* Trigger initialization of lazy field java.security.Provider.entrySet. */
         provider.entrySet();
+
         String providerClassName = provider.getClass().getName();
         Object verificationResult = feature.getProviderVerificationResult(provider);
         recordConfiguredProvider(provider);
