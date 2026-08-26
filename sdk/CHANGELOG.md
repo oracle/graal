@@ -2,7 +2,8 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
-## Version 25.4.4
+## Version 25.4
+* GR-63447: Added `HostAccess.Builder#allowPublicAccess(Predicate<Member>)` to selectively expose public host members without explicitly naming them upfront.
 * GR-72910: Added `Feature.DuringSetupAccess#registerBuildTimeBootstrapIndy` and `Feature.DuringSetupAccess#registerBuildTimeBootstrapCondy`, allowing frameworks to register invokedynamic and constant-dynamic bootstrap methods for execution at image build time.
 
 ## Version 25.3.4

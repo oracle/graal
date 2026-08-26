@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,10 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
@@ -64,10 +66,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -114,6 +118,44 @@ public class HostAccessTest extends AbstractHostAccessTest {
         public int value = 24;
     }
 
+    public static class SelectiveAccess {
+
+        public int allowedField = 42;
+        public int deniedField = 43;
+
+        public SelectiveAccess() {
+        }
+
+        public SelectiveAccess(int value) {
+            allowedField = value;
+        }
+
+        public String allowedMethod() {
+            return "allowed";
+        }
+
+        public String deniedMethod() {
+            return "denied";
+        }
+
+        public String overloaded(String value) {
+            return value;
+        }
+
+        public int overloaded(int value) {
+            return value;
+        }
+
+        @Export
+        public String annotatedMethod() {
+            return "annotated";
+        }
+
+        public String explicitlyAllowedMethod() {
+            return "explicit";
+        }
+    }
+
     @Test
     public void usefulToStringExplicit() {
         assertEquals("HostAccess.EXPLICIT", HostAccess.EXPLICIT.toString());
@@ -150,6 +192,157 @@ public class HostAccessTest extends AbstractHostAccessTest {
         verifyObjectImpl(HostAccess.EXPLICIT);
         verifyObjectImpl(HostAccess.SCOPED);
         verifyObjectImpl(HostAccess.ALL);
+    }
+
+    @Test
+    public void allowSelectedPublicMembers() throws Exception {
+        Predicate<Member> methodSelector = member -> member instanceof Method method && (method.getName().equals("allowedMethod") ||
+                        (method.getName().equals("overloaded") && Arrays.equals(method.getParameterTypes(), new Class<?>[]{String.class})));
+        Predicate<Member> fieldSelector = member -> member instanceof Field field && field.getName().equals("allowedField");
+        Predicate<Member> constructorSelector = member -> member instanceof Constructor<?> constructor && constructor.getParameterCount() == 0;
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(methodSelector.or(fieldSelector).or(constructorSelector)).build();
+        setupEnv(access);
+
+        Value value = context.asValue(new SelectiveAccess());
+        assertTrue(value.hasMember("allowedMethod"));
+        assertEquals("allowed", value.invokeMember("allowedMethod").asString());
+        assertFalse(value.hasMember("deniedMethod"));
+        assertTrue(value.hasMember("allowedField"));
+        assertEquals(42, value.getMember("allowedField").asInt());
+        assertFalse(value.hasMember("deniedField"));
+        assertEquals("selected", value.invokeMember("overloaded", "selected").asString());
+        assertTrue(value.canInvokeMember("overloaded(java.lang.String)"));
+        assertFalse(value.canInvokeMember("overloaded(int)"));
+
+        Value type = context.asValue(SelectiveAccess.class);
+        assertTrue(type.canInstantiate());
+        assertTrue(type.newInstance().asHostObject() instanceof SelectiveAccess);
+        assertFails(() -> type.newInstance(42), IllegalArgumentException.class);
+    }
+
+    @Test
+    public void selectedPublicMembersComposeWithExistingAccessRules() throws Exception {
+        Predicate<Member> selector = member -> member.getName().equals("allowedMethod");
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(selector).allowAccess(SelectiveAccess.class.getMethod("explicitlyAllowedMethod")).allowAccessAnnotatedBy(Export.class).build();
+        setupEnv(access);
+
+        Value value = context.asValue(new SelectiveAccess());
+        assertEquals("allowed", value.invokeMember("allowedMethod").asString());
+        assertEquals("annotated", value.invokeMember("annotatedMethod").asString());
+        assertEquals("explicit", value.invokeMember("explicitlyAllowedMethod").asString());
+        assertFalse(value.hasMember("deniedMethod"));
+    }
+
+    @Test
+    public void denyAccessOverridesSelectedPublicMembers() {
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(member -> true).denyAccess(SelectiveAccess.class).build();
+        setupEnv(access);
+
+        Value value = context.asValue(new SelectiveAccess());
+        assertFalse(value.hasMember("allowedMethod"));
+        assertFalse(value.hasMember("allowedField"));
+    }
+
+    @Test
+    public void publicAccessPredicateOverridesPreviousConfiguration() {
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(member -> true).allowPublicAccess(true).allowPublicAccess(member -> member.getName().equals("allowedMethod")).build();
+        setupEnv(access);
+
+        Value value = context.asValue(new SelectiveAccess());
+        assertEquals("allowed", value.invokeMember("allowedMethod").asString());
+        assertFalse(value.hasMember("deniedMethod"));
+    }
+
+    @Test
+    public void unrestrictedPublicAccessOverridesPredicate() {
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(member -> false).allowPublicAccess(true).build();
+        setupEnv(access);
+
+        Value value = context.asValue(new SelectiveAccess());
+        assertEquals("denied", value.invokeMember("deniedMethod").asString());
+        assertEquals(43, value.getMember("deniedField").asInt());
+    }
+
+    @Test
+    public void alwaysTruePublicAccessPredicateMatchesUnrestrictedPublicAccess() {
+        Set<String> unrestrictedMembers = getPrivatePointMembers(HostAccess.newBuilder().allowPublicAccess(true).build());
+        Set<String> predicateMembers = getPrivatePointMembers(HostAccess.newBuilder().allowPublicAccess(member -> true).build());
+        assertEquals(unrestrictedMembers, predicateMembers);
+    }
+
+    private Set<String> getPrivatePointMembers(HostAccess access) {
+        setupEnv(access);
+        Value point = context.asValue(new PrivatePoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+        return new HashSet<>(point.getMemberKeys());
+    }
+
+    @Test
+    public void disabledPublicAccessOverridesPredicate() {
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(member -> true).allowPublicAccess(false).build();
+        setupEnv(access);
+
+        Value value = context.asValue(new SelectiveAccess());
+        assertFalse(value.hasMember("allowedMethod"));
+        assertFalse(value.hasMember("allowedField"));
+    }
+
+    @Test
+    public void publicAccessPredicateError() {
+        IllegalArgumentException error = new IllegalArgumentException();
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(member -> {
+            throw error;
+        }).build();
+        setupEnv(access);
+
+        try {
+            context.asValue(new SelectiveAccess()).hasMember("allowedMethod");
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertSame(error, e.asHostException());
+        }
+    }
+
+    static class SelectiveBridgeBase {
+
+        public String inherited(String value) {
+            return value;
+        }
+
+        public String varargs(String... values) {
+            return String.join("", values);
+        }
+    }
+
+    public static final class SelectiveBridgeSubclass extends SelectiveBridgeBase {
+    }
+
+    static class SelectiveGenericBridgeBase<T> {
+
+        public T generic(T value) {
+            return value;
+        }
+    }
+
+    public static final class SelectiveGenericBridgeSubclass extends SelectiveGenericBridgeBase<String> {
+    }
+
+    @Test
+    public void selectedPublicBridgeMethods() {
+        assertTrue(Arrays.stream(SelectiveBridgeSubclass.class.getDeclaredMethods()).anyMatch(Method::isBridge));
+        assertTrue(Arrays.stream(SelectiveGenericBridgeSubclass.class.getDeclaredMethods()).anyMatch(Method::isBridge));
+        HostAccess access = HostAccess.newBuilder().allowPublicAccess(member -> member instanceof Method method &&
+                        (method.getName().equals("inherited") || method.getName().equals("varargs") || method.getName().equals("generic"))).build();
+        setupEnv(access);
+
+        Value bridge = context.asValue(new SelectiveBridgeSubclass());
+        assertEquals("inherited", bridge.invokeMember("inherited", "inherited").asString());
+        assertEquals("varargs", bridge.invokeMember("varargs", (Object) new String[]{"var", "args"}).asString());
+        Value genericBridge = context.asValue(new SelectiveGenericBridgeSubclass());
+        assertEquals("generic", genericBridge.invokeMember("generic", "generic").asString());
     }
 
     public static class MyEquals {

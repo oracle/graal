@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.host;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -76,7 +77,7 @@ final class HostClassCache {
     private final boolean iteratorAccess;
     private final boolean mapAccess;
     private final boolean bigIntegerNumberAccess;
-    final boolean allowsPublicAccess;
+    final boolean hasPublicAccess;
     final boolean allowsAccessInheritance;
     private final Map<Class<?>, Object> targetMappings;
     private final Lookup methodLookup;
@@ -105,7 +106,7 @@ final class HostClassCache {
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
         this.mapAccess = apiAccess.isMapAccessible(hostAccess);
         this.bigIntegerNumberAccess = apiAccess.isBigIntegerAccessibleAsNumber(hostAccess);
-        this.allowsPublicAccess = apiAccess.allowsPublicAccess(hostAccess);
+        this.hasPublicAccess = apiAccess.hasPublicAccess(hostAccess);
         this.allowsAccessInheritance = apiAccess.allowsAccessInheritance(hostAccess);
         this.targetMappings = groupMappings(apiAccess, hostAccess);
         this.methodLookup = apiAccess.getMethodLookup(hostAccess);
@@ -219,17 +220,34 @@ final class HostClassCache {
 
     @TruffleBoundary
     boolean allowsAccess(Method m) {
-        return apiAccess.allowsAccess(hostAccess, m) || isGeneratedClassMember(m);
+        return allowsAccessImpl(m) || isGeneratedClassMember(m);
+    }
+
+    @TruffleBoundary
+    boolean allowsPublicAccess(Method m) {
+        try {
+            return apiAccess.allowsPublicAccess(hostAccess, m);
+        } catch (Throwable t) {
+            throw HostContext.get(null).hostToGuestException(t);
+        }
     }
 
     @TruffleBoundary
     boolean allowsAccess(Constructor<?> m) {
-        return apiAccess.allowsAccess(hostAccess, m) || isGeneratedClassMember(m);
+        return allowsAccessImpl(m) || isGeneratedClassMember(m);
     }
 
     @TruffleBoundary
     boolean allowsAccess(Field f) {
-        return apiAccess.allowsAccess(hostAccess, f) || isGeneratedClassMember(f);
+        return allowsAccessImpl(f) || isGeneratedClassMember(f);
+    }
+
+    private boolean allowsAccessImpl(AnnotatedElement member) {
+        try {
+            return apiAccess.allowsAccess(hostAccess, member);
+        } catch (Throwable t) {
+            throw HostContext.get(null).hostToGuestException(t);
+        }
     }
 
     /***

@@ -2518,11 +2518,17 @@ public final class Context implements AutoCloseable {
                                     "do not set Builder.allowHostAccess(boolean) to use the sandbox policy preset or set Builder.allowHostAccess(HostAccess)");
                 }
                 if (hostAccess != null) {
-                    if (hostAccess.allowPublic) {
+                    if (hostAccess.allowsAllPublicAccess()) {
                         throw Engine.Builder.throwSandboxException(useSandboxPolicy,
                                         "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowPublicAccess(boolean) set to true, " +
                                                         "but HostAccess.Builder.allowPublicAccess(boolean) must not be set to true.",
                                         "do not set HostAccess.Builder.allowPublicAccess(boolean)");
+                    }
+                    if (hostAccess.hasPublicAccessPredicate()) {
+                        throw Engine.Builder.throwSandboxException(useSandboxPolicy,
+                                        "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowPublicAccess(Predicate) configured, " +
+                                                        "but HostAccess.Builder.allowPublicAccess(Predicate) must not be configured.",
+                                        "do not configure HostAccess.Builder.allowPublicAccess(Predicate)");
                     }
                     if (hostAccess.allowAccessInheritance) {
                         throw Engine.Builder.throwSandboxException(useSandboxPolicy,
