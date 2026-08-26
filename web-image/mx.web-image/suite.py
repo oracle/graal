@@ -268,6 +268,9 @@ suite = {
                 ],
             },
             "javaCompliance": "21+",
+            "annotationProcessors": [
+                "substratevm:SVM_PROCESSOR",
+            ],
             "workingSets": "web-image",
             "spotbugs": "false",  # depends on SVM which has compliance level 24 which SpotBugs does not support
             "checkstyle": "com.oracle.svm.hosted",

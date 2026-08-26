@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
 
-import java.util.List;
-import java.util.function.BooleanSupplier;
+@GenerateAnnotationWrapper({
+                JS.class,
+                JS.Code.class,
+                JS.Code.Include.class,
+                JS.Import.class,
+                JSResource.class,
+                StackifierVerification.class,
+                WasmExport.class,
+})
+package com.oracle.svm.hosted.webimage;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.webimage.api.JS;
+import org.graalvm.webimage.api.JSResource;
 
-public final class FieldValueComputer {
-    private final BooleanSupplier availability;
-    private final List<ResolvedJavaType> types;
-    private final boolean canBeNull;
-
-    public FieldValueComputer(BooleanSupplier availability, List<ResolvedJavaType> types, boolean canBeNull) {
-        this.availability = availability;
-        this.types = types;
-        this.canBeNull = canBeNull;
-    }
-
-    public boolean isAvailable() {
-        return availability.getAsBoolean();
-    }
-
-    public List<ResolvedJavaType> types() {
-        return types;
-    }
-
-    public boolean canBeNull() {
-        return canBeNull;
-    }
-}
+import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;
+import com.oracle.svm.webimage.annotation.StackifierVerification;
+import com.oracle.svm.webimage.wasmgc.annotation.WasmExport;

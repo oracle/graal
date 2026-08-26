@@ -134,7 +134,7 @@ public final class CConstantValueSupportImpl implements CConstantValueSupport {
             throw VMError.shouldNotReachHere("Method not found: " + declaringClass.getName() + "." + methodName);
         }
 
-        if (GuestAnnotationAccess.getAnnotation(method, annotationClass) == null) {
+        if (!GuestAnnotationAccess.isAnnotationPresent(method, annotationClass)) {
             throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + ClassUtil.getUnqualifiedName(annotationClass));
         }
         return method;

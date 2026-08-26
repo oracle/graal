@@ -25,6 +25,8 @@
  */
 package com.oracle.svm.hosted.image;
 
+import com.oracle.svm.hosted.RawPointerToGuestValue;
+import com.oracle.svm.hosted.CPointerToGuestValue;
 import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.ADDRESS;
 import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.GETTER;
 import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.SETTER;
@@ -40,8 +42,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.c.struct.CPointerTo;
-import org.graalvm.nativeimage.c.struct.RawPointerTo;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
@@ -99,7 +99,6 @@ import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -782,13 +781,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                      * RawPointerTo annotation
                      */
                     AnalysisType pointerTo = null;
-                    CPointerTo cPointerTo = GuestAnnotationAccess.getAnnotation(type, CPointerTo.class);
+                    CPointerToGuestValue cPointerTo = CPointerToGuestValue.get(type);
                     if (cPointerTo != null) {
-                        pointerTo = metaAccess.lookupJavaType(cPointerTo.value());
+                        pointerTo = metaAccess.getUniverse().lookup(cPointerTo.value());
                     }
-                    RawPointerTo rawPointerTo = GuestAnnotationAccess.getAnnotation(type, RawPointerTo.class);
+                    RawPointerToGuestValue rawPointerTo = RawPointerToGuestValue.get(type);
                     if (rawPointerTo != null) {
-                        pointerTo = metaAccess.lookupJavaType(rawPointerTo.value());
+                        pointerTo = metaAccess.getUniverse().lookup(rawPointerTo.value());
                     }
 
                     pointerToEntry = processElementInfo(nativeLibs, metaAccess, pointerTo);

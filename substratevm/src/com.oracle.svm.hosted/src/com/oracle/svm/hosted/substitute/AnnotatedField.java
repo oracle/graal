@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
 
 import com.oracle.svm.util.AnnotatedWrapper;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -42,10 +40,6 @@ public class AnnotatedField implements ResolvedJavaField, OriginalFieldProvider,
 
     private final ResolvedJavaField original;
     private final List<AnnotationValue> injectedAnnotations;
-
-    public AnnotatedField(ResolvedJavaField original, Annotation injectedAnnotation) {
-        this(original, GuestAnnotationAccess.asAnnotationValue(injectedAnnotation));
-    }
 
     public AnnotatedField(ResolvedJavaField original, AnnotationValue injectedAnnotation) {
         this.original = original;

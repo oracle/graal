@@ -132,7 +132,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         imageCodeInfo = codeInfo;
         encodedLineNumberTable = EncodedLineNumberTable.encode(original.getLineNumberTable());
 
-        assert GuestAnnotationAccess.getAnnotation(original, CEntryPoint.class) == null : "Can't compile entry point method";
+        assert !GuestAnnotationAccess.isAnnotationPresent(original, CEntryPoint.class) : "Can't compile entry point method";
 
         modifiers = original.getModifiers();
         name = stringTable.deduplicate(original.getName(), true);

@@ -46,12 +46,20 @@ import org.graalvm.nativeimage.Platforms;
 ///
 /// ```java
 /// public record ExampleAnnotationGuestValue(String name, ResolvedJavaType target) {
+///     public static ExampleAnnotationGuestValue get(Annotated element) {
+///         // Looks up the annotation through GuestAnnotationAccess and delegates to from.
+///     }
+///
 ///     public static ExampleAnnotationGuestValue from(
 ///                     AnnotationValue annotationValue) {
 ///         // ...
 ///     }
 /// }
 /// ```
+///
+/// The generated `get` method is the concise path for ordinary guest annotation lookup. The `from`
+/// method remains available for specialized consumers that already have an `AnnotationValue`, such
+/// as declared-only or repeatable annotation processing.
 ///
 /// Primitive and [String] members retain their declared type, [Class] members become
 /// `ResolvedJavaType`, and enum members retain their declared enum type. `String[]` members become

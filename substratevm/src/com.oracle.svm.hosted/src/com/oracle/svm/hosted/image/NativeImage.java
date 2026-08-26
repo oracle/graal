@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import com.oracle.svm.hosted.CHeaderGuestValue;
 import static com.oracle.svm.shared.util.SubstrateUtil.mangleName;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
@@ -128,7 +129,7 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -325,21 +326,25 @@ public abstract class NativeImage extends AbstractImage {
     /**
      * Looks up the corresponding {@link CHeader} annotation for the {@link HostedMethod}. Returns
      * {@code null} if no annotation was found.
+     * <p>
+     * GR-78934: Header generation still instantiates {@link Header} in the builder. Remove
+     * this conversion when header callbacks execute in the guest context.
      */
+    @SuppressWarnings("unchecked")
     private static Class<? extends CHeader.Header> cHeader(HostedMethod entryPointStub) {
         /* check if method is annotated */
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub((CEntryPointCallStubMethod) entryPointStub.wrapped.wrapped);
-        CHeader methodAnnotation = GuestAnnotationAccess.getAnnotation(entryPoint, CHeader.class);
+        CHeaderGuestValue methodAnnotation = CHeaderGuestValue.get(entryPoint);
         if (methodAnnotation != null) {
-            return methodAnnotation.value();
+            return (Class<? extends CHeader.Header>) OriginalClassProvider.getJavaClass(methodAnnotation.value());
         }
 
         /* check if enclosing classes are annotated */
         AnalysisType enclosingType = entryPoint.getDeclaringClass();
         while (enclosingType != null) {
-            CHeader enclosing = GuestAnnotationAccess.getAnnotation(enclosingType, CHeader.class);
+            CHeaderGuestValue enclosing = CHeaderGuestValue.get(enclosingType);
             if (enclosing != null) {
-                return enclosing.value();
+                return (Class<? extends CHeader.Header>) OriginalClassProvider.getJavaClass(enclosing.value());
             }
             enclosingType = enclosingType.getEnclosingType();
         }

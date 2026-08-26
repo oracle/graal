@@ -65,7 +65,7 @@ public class SubstitutionInvocationPlugins extends InvocationPlugins {
             if (!targetType.equals(annotatedType)) {
                 /* Found a target class. Check if it is included. */
                 ResolvedJavaMethod annotatedMethod = resolveJavaMethod(annotatedType, plugin);
-                String originalName = annotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, targetType);
+                String originalName = AnnotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, targetType);
                 if (originalName == null) {
                     /*
                      * If the name is null, the element should not be substituted. Thus, we should

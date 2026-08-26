@@ -150,18 +150,6 @@ public final class GuestAnnotationAccess {
     }
 
     /**
-     * Converts an {@link Annotation} to an {@link AnnotationValue}.
-     * <p>
-     * This is a compatibility bridge for callers that still carry builder annotation instances
-     * while handling guest metadata. New code should retain or construct {@link AnnotationValue}
-     * directly. GR-78020 tracks migrating existing callers and removing this method.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static AnnotationValue asAnnotationValue(Annotation annotation) {
-        return HostAnnotationValueConverter.toAnnotationValue(annotation, GuestAccess.get()::lookupType);
-    }
-
-    /**
      * Gets the declared annotations of {@code annotated}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -203,6 +191,18 @@ public final class GuestAnnotationAccess {
     }
 
     /**
+     * Gets the annotation of type {@code annotationType} from {@code element} and immediately
+     * applies {@code factory} to its {@link AnnotationValue}. The factory receives {@code null}
+     * when the annotation is not present. Generated guest-value factories eagerly read every
+     * annotation member, so malformed member values fail during this call rather than when an
+     * individual record component is accessed.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static <T extends Annotation, U> U getAnnotationValue(Annotated element, Class<T> annotationType, Function<AnnotationValue, U> factory) {
+        return factory.apply(getAnnotationValue(element, annotationType));
+    }
+
+    /**
      * Gets the annotation represented by {@code annotationType}.
      *
      * @param declaredOnly whether inherited annotations must be ignored
@@ -222,9 +222,11 @@ public final class GuestAnnotationAccess {
      * Gets the annotation of type {@code annotationType} from {@code element} if such an annotation
      * is present, else null.
      * <p>
-     * This is a compatibility bridge for callers that still materialize builder annotations from
-     * guest metadata. New code should consume {@link AnnotationValue} or a specialized guest
-     * annotation DTO instead. GR-78020 tracks migrating existing callers and removing this method.
+     * This method is reserved for compiler code shared between image building and the Crema or
+     * Ristretto runtime compiler paths. At image build time, it materializes a builder annotation
+     * from guest metadata; at image runtime, it performs a same-context lookup on
+     * {@link RuntimeAnnotated} JVMCI elements. Hosted-only code must consume {@link AnnotationValue}
+     * or a specialized guest annotation DTO instead.
      */
     public static <T extends Annotation> T getAnnotation(Annotated element, Class<T> annotationType) {
         // Checkstyle: allow direct annotation access
@@ -245,44 +247,31 @@ public final class GuestAnnotationAccess {
     }
 
     /**
-     * Retrieves the annotations of type {@code annotationClass} from the given {@code element},
-     * including both direct annotations and those contained within a container annotation of type
-     * {@code containerClass}.
+     * Retrieves annotation values of type {@code annotationClass} from {@code element}, including
+     * both a direct annotation and annotations nested in the {@code value} member of an annotation
+     * of type {@code containerClass}.
      * <p>
      * Unlike {@link AnnotatedElement#getAnnotationsByType}, this method does not initialize all
-     * annotation classes and their dependencies, making it suitable for use during image build
-     * time.
-     * <p>
-     * The order of annotations returned by this method differs from that of
-     * {@link AnnotatedElement#getAnnotationsByType}: direct annotations are always returned first,
-     * followed by container annotations.
-     * <p>
-     * To avoid complex reflective lookups, information about the container annotation must be
-     * provided through the {@code containerClass} and {@code valueFunction} parameters.
-     * <p>
-     * This is a compatibility bridge for materializing builder annotations from guest metadata.
-     * GR-78020 tracks migrating existing callers to {@link AnnotationValue} or specialized DTOs and
-     * removing this method.
+     * annotation classes and their dependencies or materialize builder annotation objects. A
+     * direct annotation is returned first, followed by annotations from the container.
      *
-     * @param element the annotated element to retrieve annotations from
+     * @param element the annotated element to retrieve annotation values from
      * @param annotationClass the type of annotation to retrieve
-     * @param containerClass the type of container annotation that may contain the desired
+     * @param containerClass the type of container annotation that may contain the requested
      *            annotations
-     * @param valueFunction a function that extracts the desired annotations from a container
-     *            annotation
-     * @return a list of annotations of type {@code annotationClass} found on the given element
+     * @return the matching annotation values in direct-first, container-second order
      */
-    public static <A extends Annotation, C extends Annotation> List<A> getAnnotationsByType(Annotated element,
-                    Class<A> annotationClass, Class<C> containerClass, Function<C, A[]> valueFunction) {
-
-        List<A> result = new ArrayList<>();
-        A direct = getAnnotation(element, annotationClass);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static List<AnnotationValue> getAnnotationValuesByType(Annotated element, Class<? extends Annotation> annotationClass,
+                    Class<? extends Annotation> containerClass) {
+        List<AnnotationValue> result = new ArrayList<>();
+        AnnotationValue direct = getAnnotationValue(element, annotationClass);
         if (direct != null) {
             result.add(direct);
         }
-        C container = getAnnotation(element, containerClass);
+        AnnotationValue container = getAnnotationValue(element, containerClass);
         if (container != null) {
-            result.addAll(List.of(valueFunction.apply(container)));
+            result.addAll(container.getList("value", AnnotationValue.class));
         }
         return result;
     }

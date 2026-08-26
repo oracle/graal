@@ -64,7 +64,7 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
     }
 
     private Class<?> getAnnotationClass() {
-        if (GuestAnnotationAccess.getAnnotation(original, CFunction.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(original, CFunction.class)) {
             return CFunction.class;
         } else {
             throw VMError.shouldNotReachHere("Method is not annotated with @" + CFunction.class.getSimpleName());

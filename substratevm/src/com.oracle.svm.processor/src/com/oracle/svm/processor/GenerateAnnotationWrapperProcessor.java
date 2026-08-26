@@ -64,7 +64,11 @@ public class GenerateAnnotationWrapperProcessor extends AbstractProcessor {
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.common.annotation.GenerateAnnotationWrapper";
     private static final String ANNOTATION_VALUE_CLASS_NAME = "jdk.graal.compiler.annotation.AnnotationValue";
+    private static final String ANNOTATED_CLASS_NAME = "jdk.vm.ci.meta.annotation.Annotated";
+    private static final String GUEST_ANNOTATION_ACCESS_CLASS_NAME = "com.oracle.svm.util.GuestAnnotationAccess";
     private static final String LIST_CLASS_NAME = "java.util.List";
+    private static final String PLATFORM_CLASS_NAME = "org.graalvm.nativeimage.Platform";
+    private static final String PLATFORMS_CLASS_NAME = "org.graalvm.nativeimage.Platforms";
     private static final String RESOLVED_JAVA_TYPE_CLASS_NAME = "jdk.vm.ci.meta.ResolvedJavaType";
 
     private final Set<Element> processed = new HashSet<>();
@@ -135,7 +139,7 @@ public class GenerateAnnotationWrapperProcessor extends AbstractProcessor {
         String recordMembers = members.stream().map(m -> m.type + " " + m.name).collect(Collectors.joining(", "));
         String memberInitializers = members.stream().map(AnnotationWrapperMember::initializer).collect(Collectors.joining(",\n                "));
         String imports = Stream.concat(
-                        Stream.of(ANNOTATION_VALUE_CLASS_NAME),
+                        Stream.of(ANNOTATION_VALUE_CLASS_NAME, ANNOTATED_CLASS_NAME, GUEST_ANNOTATION_ACCESS_CLASS_NAME, PLATFORM_CLASS_NAME, PLATFORMS_CLASS_NAME),
                         members.stream().flatMap(member -> member.requiredImports().stream()))
                         .distinct()
                         .sorted()
@@ -156,6 +160,11 @@ public class GenerateAnnotationWrapperProcessor extends AbstractProcessor {
 
                         public record %1$s(%2$s) {
 
+                            @Platforms(Platform.HOSTED_ONLY.class)
+                            public static %1$s get(Annotated element) {
+                                return GuestAnnotationAccess.getAnnotationValue(element, %9$s.class, %1$s::from);
+                            }
+
                             public static %1$s from(AnnotationValue annotationValue) {
                                 if (annotationValue == null) {
                                     return null;
@@ -171,7 +180,8 @@ public class GenerateAnnotationWrapperProcessor extends AbstractProcessor {
                         imports,
                         memberInitializers,
                         annotationType.getQualifiedName(),
-                        targetPackage.getQualifiedName());
+                        targetPackage.getQualifiedName(),
+                        annotationType.getQualifiedName());
     }
 
     /**

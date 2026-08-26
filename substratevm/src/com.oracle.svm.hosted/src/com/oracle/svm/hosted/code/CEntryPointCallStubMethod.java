@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.svm.hosted.CEntryPointBuiltinImplementationGuestValue;
 import static com.oracle.svm.core.UninterruptibleAnnotationUtils.isUninterruptible;
 
 import java.util.ArrayList;
@@ -45,7 +46,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.guest.staging.c.function.CEntryPointBuiltins;
-import com.oracle.svm.guest.staging.c.function.CEntryPointBuiltins.CEntryPointBuiltinImplementation;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
@@ -329,7 +329,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         CEntryPoint.Builtin builtin = entryPointData.getBuiltin();
         AnalysisMethod builtinCallee = null;
         for (AnalysisMethod candidate : kit.getMetaAccess().lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods(false)) {
-            CEntryPointBuiltinImplementation annotation = GuestAnnotationAccess.getAnnotation(candidate, CEntryPointBuiltinImplementation.class);
+            CEntryPointBuiltinImplementationGuestValue annotation = CEntryPointBuiltinImplementationGuestValue.get(candidate);
             if (annotation != null && annotation.builtin().equals(builtin)) {
                 VMError.guarantee(builtinCallee == null, "More than one candidate for @%s built-in %s", CEntryPoint.class.getSimpleName(), builtin);
                 builtinCallee = candidate;

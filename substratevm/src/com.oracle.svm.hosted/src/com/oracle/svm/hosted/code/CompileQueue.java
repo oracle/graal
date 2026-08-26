@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.svm.hosted.RestrictHeapAccessGuestValue;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
 import java.io.File;
@@ -1030,14 +1031,14 @@ public class CompileQueue {
          * to @Uninterruptible or mark them as @NeverInline, so that no-allocation does not need any
          * more inlining restrictions and this code can be removed.
          */
-        RestrictHeapAccess annotation = GuestAnnotationAccess.getAnnotation(method, RestrictHeapAccess.class);
+        RestrictHeapAccessGuestValue annotation = RestrictHeapAccessGuestValue.get(method);
         return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
         for (FrameState state = invoke.stateAfter(); state != null; state = state.outerFrameState()) {
             assert state.getMethod() != null : state;
-            if (GuestAnnotationAccess.getAnnotation(state.getMethod(), annotationClass) != null) {
+            if (GuestAnnotationAccess.isAnnotationPresent(state.getMethod(), annotationClass)) {
                 return true;
             }
         }
@@ -1200,7 +1201,7 @@ public class CompileQueue {
     }
 
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config, ParseHooks hooks) {
-        if (GuestAnnotationAccess.getAnnotation(method, NodeIntrinsic.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
@@ -1361,10 +1362,10 @@ public class CompileQueue {
             return false;
         }
 
-        if (GuestAnnotationAccess.getAnnotation(callee, Specialize.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(callee, Specialize.class)) {
             return false;
         }
-        if (callerAnnotatedWith(invoke, Specialize.class) && GuestAnnotationAccess.getAnnotation(callee, DeoptTest.class) != null) {
+        if (callerAnnotatedWith(invoke, Specialize.class) && GuestAnnotationAccess.isAnnotationPresent(callee, DeoptTest.class)) {
             return false;
         }
 
@@ -1385,7 +1386,7 @@ public class CompileQueue {
     }
 
     private static void handleSpecialization(final HostedMethod method, CallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
-        if (GuestAnnotationAccess.getAnnotation(method, Specialize.class) != null && !method.isDeoptTarget() && GuestAnnotationAccess.getAnnotation(invokeTarget, DeoptTest.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, Specialize.class) && !method.isDeoptTarget() && GuestAnnotationAccess.isAnnotationPresent(invokeTarget, DeoptTest.class)) {
             /*
              * Collect the constant arguments to a method which should be specialized.
              */

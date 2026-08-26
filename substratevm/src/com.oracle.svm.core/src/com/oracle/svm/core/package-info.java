@@ -26,6 +26,9 @@
                 Uninterruptible.class,
                 CFunction.class,
                 InvokeCFunctionPointer.class,
+                ExplicitCallingConvention.class,
+                InterpreterJNIUpcallStub.class,
+                SubstrateForeignCallTarget.class,
 })
 package com.oracle.svm.core;
 
@@ -33,4 +36,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;
+import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
+import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.Uninterruptible;

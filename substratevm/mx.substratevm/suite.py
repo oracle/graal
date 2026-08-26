@@ -692,6 +692,7 @@ suite = {
             "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
             "jacoco" : "include",

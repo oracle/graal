@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.hosted.config;
 
+import com.oracle.svm.hosted.HybridGuestValue;
 import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -55,14 +56,15 @@ public class HybridLayout {
     private final int arrayBaseOffset;
 
     @SuppressWarnings("this-escape")
-    public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout, MetaAccessProvider metaAccess) {
+    public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout, HostedMetaAccess metaAccess) {
         assert Modifier.isFinal(hybridClass.getModifiers()) : "Hybrid class must be final " + hybridClass;
 
-        Class<?> componentType = GuestAnnotationAccess.getAnnotation(hybridClass, Hybrid.class).componentType();
-        assert componentType != void.class : "@Hybrid.componentType cannot be void";
+        ResolvedJavaType componentType = HybridGuestValue.get(hybridClass).componentType();
+        assert componentType.getJavaKind() != JavaKind.Void : "@Hybrid.componentType cannot be void";
 
         this.layout = layout;
-        this.arrayComponentType = (HostedType) metaAccess.lookupJavaType(componentType);
+        var analysisComponentType = hybridClass.getWrapped().getUniverse().lookup(componentType);
+        this.arrayComponentType = metaAccess.getUniverse().lookup(analysisComponentType);
         this.arrayField = null;
         this.arrayBaseOffset = NumUtil.roundUp(hybridClass.getAfterFieldsOffset(), layout.sizeInBytes(getArrayElementStorageKind()));
     }

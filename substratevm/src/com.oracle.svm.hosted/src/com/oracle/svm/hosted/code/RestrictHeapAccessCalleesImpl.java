@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.svm.hosted.RestrictHeapAccessGuestValue;
 import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.Collections;
@@ -150,7 +151,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
             }
         }
         assert aggregation.get(method) == null;
-        Access access = GuestAnnotationAccess.getAnnotation(method, RestrictHeapAccess.class).access();
+        Access access = RestrictHeapAccessGuestValue.get(method).access();
         aggregation.put(method, new RestrictionInfo(access, null, null, method));
         for (AnalysisMethod impl : implementations) {
             aggregation.putIfAbsent(impl, new RestrictionInfo(access, null, null, impl));

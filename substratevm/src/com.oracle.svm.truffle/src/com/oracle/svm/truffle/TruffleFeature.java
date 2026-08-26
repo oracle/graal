@@ -543,13 +543,13 @@ public class TruffleFeature implements InternalFeature {
                 return INLINING_DISALLOWED;
             } else if (invocationPlugins.lookupInvocation(target, builder.getOptions()) != null) {
                 return INLINING_DISALLOWED;
-            } else if (GuestAnnotationAccess.getAnnotation(target, ExplodeLoop.class) != null) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(target, ExplodeLoop.class)) {
                 /*
                  * We cannot inline a method annotated with @ExplodeLoop, because then loops are no
                  * longer exploded.
                  */
                 return INLINING_DISALLOWED;
-            } else if (GuestAnnotationAccess.getAnnotation(root, ExplodeLoop.class) != null && calleeBytecodeHasLoops(target)) {
+            } else if (GuestAnnotationAccess.isAnnotationPresent(root, ExplodeLoop.class) && calleeBytecodeHasLoops(target)) {
                 /*
                  * We cannot inline a method with loops into a method annotated with @ExplodeLoop,
                  * because then loops of the inlined callee are exploded too. This predicate is on
@@ -645,7 +645,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     private static boolean runtimeCompilationForbidden(ResolvedJavaMethod method) {
-        if (GuestAnnotationAccess.getAnnotation(method, TruffleBoundary.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, TruffleBoundary.class)) {
             return true;
         } else if (UninterruptibleAnnotationUtils.isUninterruptible(method)) {
             UninterruptibleGuestValue uninterruptibleAnnotation = UninterruptibleAnnotationUtils.getAnnotation(method);
@@ -656,7 +656,7 @@ public class TruffleFeature implements InternalFeature {
         }
         if (!method.canBeInlined()) {
             return true;
-        } else if (GuestAnnotationAccess.getAnnotation(method, TruffleCallBoundary.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(method, TruffleCallBoundary.class)) {
             return true;
         }
         return false;
@@ -675,7 +675,7 @@ public class TruffleFeature implements InternalFeature {
         if (method == null) {
             return false;
         }
-        TruffleBoundary truffleBoundary = GuestAnnotationAccess.getAnnotation(method, TruffleBoundary.class);
+        TruffleBoundaryGuestValue truffleBoundary = TruffleBoundaryGuestValue.get(method);
         return truffleBoundary != null && truffleBoundary.transferToInterpreterOnException();
     }
 
@@ -1158,7 +1158,7 @@ public class TruffleFeature implements InternalFeature {
                 if (!(method instanceof AnalysisMethod)) {
                     throw VMError.shouldNotReachHere("method should be an analysis method");
                 }
-                if (GuestAnnotationAccess.getAnnotation(method, TruffleBoundary.class) != null) {
+                if (GuestAnnotationAccess.isAnnotationPresent(method, TruffleBoundary.class)) {
                     throw VMError.shouldNotReachHere("method used during runtime compilation must never be annotated with a truffle boundary");
                 }
                 runtimeCompiledMethods.add((AnalysisMethod) method);
@@ -1172,7 +1172,7 @@ public class TruffleFeature implements InternalFeature {
         int calleeCount = 0;
         for (RuntimeCompiledMethod runtimeCompiledMethod : treeInfo.runtimeCompilations()) {
             for (ResolvedJavaMethod targetMethod : runtimeCompiledMethod.getInvokeTargets()) {
-                TruffleBoundary truffleBoundary = GuestAnnotationAccess.getAnnotation(targetMethod, TruffleBoundary.class);
+                TruffleBoundaryGuestValue truffleBoundary = TruffleBoundaryGuestValue.get(targetMethod);
                 if (truffleBoundary != null) {
                     ++callSiteCount;
                     if (foundBoundaries.contains(targetMethod)) {

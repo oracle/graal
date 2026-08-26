@@ -300,7 +300,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
         compilationBehavior = LayeredCompilationBehavior.Behavior.DEFAULT;
         if (universe.hostVM.buildingImageLayer()) {
-            LayeredCompilationBehavior behavior = GuestAnnotationAccess.getAnnotation(wrapped, LayeredCompilationBehavior.class);
+            LayeredCompilationBehaviorGuestValue behavior = LayeredCompilationBehaviorGuestValue.get(wrapped);
             if (behavior != null) {
                 compilationBehavior = behavior.value();
                 if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER && universe.hostVM.buildingExtensionLayer() && !isInSharedLayer) {
@@ -405,7 +405,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public boolean isGuaranteeFolded() {
-        return isGuaranteeFolded || GuestAnnotationAccess.getAnnotation(this, GuaranteeFolded.class) != null;
+        return isGuaranteeFolded || GuestAnnotationAccess.isAnnotationPresent(this, GuaranteeFolded.class);
     }
 
     public void setGuaranteeFolded() {

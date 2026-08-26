@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.InterpreterJNIUpcallStubGuestValue;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
@@ -81,7 +82,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
@@ -100,7 +100,6 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
@@ -1848,7 +1847,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
          * hosted-only CallVariant in that case until GR-74744 is fixed.
          */
         if (SubstrateUtil.HOSTED) {
-            InterpreterJNIUpcallStub annotation = GuestAnnotationAccess.getAnnotation(method, InterpreterJNIUpcallStub.class);
+            InterpreterJNIUpcallStubGuestValue annotation = InterpreterJNIUpcallStubGuestValue.get(method);
             if (annotation != null && annotation.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN.class)) {
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterJNIUpcallData();

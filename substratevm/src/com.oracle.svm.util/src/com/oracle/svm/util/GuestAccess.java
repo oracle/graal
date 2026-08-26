@@ -352,15 +352,35 @@ public final class GuestAccess implements VMAccess {
     }
 
     /**
+     * Creates a builder-side supplier backed by one instance of {@code supplierType} in this guest
+     * context. The returned supplier must not outlive this guest context.
+     *
+     * @param supplierType a concrete {@link java.util.function.BooleanSupplier} type
+     */
+    public BooleanSupplier createBooleanSupplier(ResolvedJavaType supplierType) {
+        JavaConstant supplier = instantiateBooleanSupplier(supplierType);
+        return () -> invokeBooleanSupplier(supplier);
+    }
+
+    /** Instantiates {@code supplierType} in the guest. */
+    private JavaConstant instantiateBooleanSupplier(ResolvedJavaType supplierType) {
+        ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, supplierType);
+        return invoke(cons, null);
+    }
+
+    /** Invokes a guest {@link BooleanSupplier}. */
+    private boolean invokeBooleanSupplier(JavaConstant supplier) {
+        return invoke(elements.java_util_function_BooleanSupplier_getAsBoolean, supplier).asBoolean();
+    }
+
+    /**
      * Instantiates an instance of {@code supplierType} in the guest and invokes
      * {@link BooleanSupplier#getAsBoolean()} on it.
      *
      * @param supplierType a concrete {@link java.util.function.BooleanSupplier} type
      */
     public boolean callBooleanSupplier(ResolvedJavaType supplierType) {
-        ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, supplierType);
-        JavaConstant supplier = invoke(cons, null);
-        return invoke(elements.java_util_function_BooleanSupplier_getAsBoolean, supplier).asBoolean();
+        return invokeBooleanSupplier(instantiateBooleanSupplier(supplierType));
     }
 
     /**

@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import com.oracle.svm.hosted.UnknownPrimitiveFieldGuestValue;
+import com.oracle.svm.hosted.UnknownObjectFieldGuestValue;
+import com.oracle.svm.hosted.LayeredFieldValueGuestValue;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -67,7 +69,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
-import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
@@ -237,7 +238,7 @@ public final class FieldValueInterceptionSupport {
      * Registers a programmatic layered field value transformer for an analysis field. This is used
      * when a feature needs the {@link LayeredFieldValueTransformer} semantics, including
      * cross-layer update tracking, but cannot express the transformer with a
-     * {@link com.oracle.svm.core.layered.LayeredFieldValue} annotation on the field.
+     * {@link LayeredFieldValue} annotation on the field.
      */
     public void registerLayeredFieldValueTransformer(AnalysisField aField, LayeredFieldValueTransformer<?> transformer) {
         VMError.guarantee(layeredSupport != null, "Layered field value transformers can only be registered in layered image builds.");
@@ -471,7 +472,7 @@ public final class FieldValueInterceptionSupport {
      * intercept the value and return 0 / null.
      */
     private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
-        if (GuestAnnotationAccess.getAnnotation(field, InjectAccessors.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(field, InjectAccessors.class)) {
             assert !field.isAccessed();
             return JavaConstant.defaultForKind(value.getJavaKind());
         }
@@ -505,7 +506,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     private FieldValueTransformation createLayeredFieldValueTransformation(ResolvedJavaField oField, AnalysisField aField) {
-        LayeredFieldValue layeredFieldValue = GuestAnnotationAccess.getAnnotation(aField, LayeredFieldValue.class);
+        LayeredFieldValueGuestValue layeredFieldValue = LayeredFieldValueGuestValue.get(aField);
         if (layeredFieldValue != null) {
             var transformer = layeredSupport.createTransformer(aField, layeredFieldValue);
             return new FieldValueTransformation(OriginalClassProvider.getOriginalType(oField.getType()), transformer);
@@ -514,20 +515,20 @@ public final class FieldValueInterceptionSupport {
     }
 
     private static FieldValueComputer createFieldValueComputer(AnalysisField field) {
-        UnknownObjectField unknownObjectField = GuestAnnotationAccess.getAnnotation(field, UnknownObjectField.class);
+        UnknownObjectFieldGuestValue unknownObjectField = UnknownObjectFieldGuestValue.get(field);
         if (unknownObjectField != null) {
             checkMisplacedAnnotation(field.getStorageKind().isObject(), field);
             return new FieldValueComputer(
-                            ReflectionUtil.newInstance(unknownObjectField.availability()),
+                            GuestAccess.get().createBooleanSupplier(unknownObjectField.availability()),
                             extractAnnotationTypes(field, unknownObjectField.types(), unknownObjectField.fullyQualifiedTypes()),
                             unknownObjectField.canBeNull());
         }
-        UnknownPrimitiveField unknownPrimitiveField = GuestAnnotationAccess.getAnnotation(field, UnknownPrimitiveField.class);
+        UnknownPrimitiveFieldGuestValue unknownPrimitiveField = UnknownPrimitiveFieldGuestValue.get(field);
         if (unknownPrimitiveField != null) {
             checkMisplacedAnnotation(field.getStorageKind().isPrimitive(), field);
             return new FieldValueComputer(
-                            ReflectionUtil.newInstance(unknownPrimitiveField.availability()),
-                            List.of(field.getType().getJavaClass()),
+                            GuestAccess.get().createBooleanSupplier(unknownPrimitiveField.availability()),
+                            List.of(field.getType()),
                             false);
         }
         return null;
@@ -558,15 +559,12 @@ public final class FieldValueInterceptionSupport {
         }
     }
 
-    private static List<Class<?>> extractAnnotationTypes(AnalysisField field, Class<?>[] types, String[] fullyQualifiedTypes) {
-        List<Class<?>> annotationTypes = new ArrayList<>(Arrays.asList(types));
+    private static List<ResolvedJavaType> extractAnnotationTypes(AnalysisField field, List<ResolvedJavaType> types, List<String> fullyQualifiedTypes) {
+        List<ResolvedJavaType> annotationTypes = new ArrayList<>(types);
         for (String annotationTypeName : fullyQualifiedTypes) {
-            try {
-                Class<?> annotationType = Class.forName(annotationTypeName);
-                annotationTypes.add(annotationType);
-            } catch (ClassNotFoundException e) {
-                throw UserError.abort("Specified computed value type not found: " + annotationTypeName);
-            }
+            ResolvedJavaType annotationType = GuestAccess.get().lookupType(annotationTypeName);
+            UserError.guarantee(annotationType != null, "Specified computed value type not found: %s", annotationTypeName);
+            annotationTypes.add(annotationType);
         }
 
         if (annotationTypes.isEmpty()) {
@@ -574,7 +572,7 @@ public final class FieldValueInterceptionSupport {
             AnalysisType fieldType = field.getType();
             UserError.guarantee(CustomTypeFieldHandler.isConcreteType(fieldType), "Illegal use of @UnknownObjectField annotation on field %s. " +
                             "The field type must be concrete or the annotation must declare a concrete type.", field);
-            annotationTypes.add(fieldType.getJavaClass());
+            annotationTypes.add(fieldType);
         }
         return annotationTypes;
     }

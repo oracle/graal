@@ -147,13 +147,6 @@ class AnnotatedObjectAccess {
         return HostAnnotationValueConverter.toAnnotation(annotationValue, annotationType, OriginalClassProvider::getJavaClass);
     }
 
-    /**
-     * Converts an {@link Annotation} to an {@link AnnotationValue}.
-     */
-    public AnnotationValue asAnnotationValue(Annotation annotation) {
-        return HostAnnotationValueConverter.toAnnotationValue(annotation, GuestAccess.get()::lookupType);
-    }
-
     protected boolean hasAnnotation(Annotated element, Class<? extends Annotation> annotationType) {
         try {
             // Checkstyle: allow direct annotation access

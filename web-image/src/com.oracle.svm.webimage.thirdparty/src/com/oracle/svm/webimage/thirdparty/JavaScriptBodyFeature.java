@@ -50,11 +50,10 @@ import net.java.html.js.JavaScriptResource;
 public class JavaScriptBodyFeature implements Feature {
 
     private static String[] getJSResources(ResolvedJavaType type) {
-        var requiredJavaScriptResources = GuestAnnotationAccess.getAnnotationsByType(type, JavaScriptResource.class, JavaScriptResource.Group.class,
-                        JavaScriptResource.Group::value);
+        var requiredJavaScriptResources = GuestAnnotationAccess.getAnnotationValuesByType(type, JavaScriptResource.class, JavaScriptResource.Group.class);
         assert !requiredJavaScriptResources.isEmpty() ||
-                        !GuestAnnotationAccess.isAnnotationPresent(type, JavaScriptResource.Group.class) : "Repeated annotation not detected by getDeclaredAnnotationsByType";
-        return requiredJavaScriptResources.stream().map(JavaScriptResource::value).toArray(String[]::new);
+                        !GuestAnnotationAccess.isAnnotationPresent(type, JavaScriptResource.Group.class) : "Repeated annotation not detected by metadata lookup";
+        return requiredJavaScriptResources.stream().map(JavaScriptResourceGuestValue::from).map(JavaScriptResourceGuestValue::value).toArray(String[]::new);
     }
 
     @Override

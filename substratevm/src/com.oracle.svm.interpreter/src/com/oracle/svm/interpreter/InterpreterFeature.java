@@ -114,10 +114,10 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     static boolean executableByInterpreter(AnalysisMethod m) {
-        if (GuestAnnotationAccess.getAnnotation(m, CFunction.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(m, CFunction.class)) {
             return false;
         }
-        if (GuestAnnotationAccess.getAnnotation(m, CEntryPoint.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(m, CEntryPoint.class)) {
             return false;
         }
         UninterruptibleGuestValue uninterruptible = UninterruptibleAnnotationUtils.getAnnotation(m);
@@ -143,7 +143,7 @@ public class InterpreterFeature implements InternalFeature {
     }
 
     public static boolean callableByInterpreter(ResolvedJavaMethod m, MetaAccessProvider metaAccess) {
-        if (GuestAnnotationAccess.getAnnotation(m, Fold.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(m, Fold.class)) {
             /*
              * GR-55052: For now @Fold methods are considered not callable. The problem is that such
              * methods are reachability cut-offs, so we would need to roll our own reachability

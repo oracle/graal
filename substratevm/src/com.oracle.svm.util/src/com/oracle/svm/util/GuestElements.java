@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
@@ -98,6 +99,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_lang_Double = lookupType(Double.class);
     public final ResolvedJavaMethod java_lang_Double_valueOf = lookupMethod(java_lang_Double, "valueOf", double.class);
     public final ResolvedJavaMethod java_lang_Double_doubleValue = lookupMethod(java_lang_Double, "doubleValue");
+
+    public final ResolvedJavaType java_lang_Void = lookupType(Void.class);
 
     public final ResolvedJavaType java_lang_Enum = lookupType(Enum.class);
     public final ResolvedJavaMethod java_lang_Enum_name = lookupMethod(java_lang_Enum, "name");
@@ -181,6 +184,7 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType Delete = lookupType(Delete.class);
     public final ResolvedJavaType CEntryPoint_IsolateContext = lookupType(CEntryPoint.IsolateContext.class);
     public final ResolvedJavaType CEntryPoint_IsolateThreadContext = lookupType(CEntryPoint.IsolateThreadContext.class);
+    public final ResolvedJavaType CEntryPointOptions_NoCallerEpilogue = lookupType("com.oracle.svm.guest.staging.c.function.CEntryPointOptions$NoCallerEpilogue");
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
@@ -188,6 +192,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType FieldValueTransformer = lookupType(FieldValueTransformer.class);
     public final ResolvedJavaMethod FieldValueTransformer_transform = lookupMethod(FieldValueTransformer, "transform", Object.class, Object.class);
     public final ResolvedJavaMethod FieldValueTransformer_isAvailable = lookupMethod(FieldValueTransformer, "isAvailable");
+
+    public final ResolvedJavaType WordBase = lookupType(WordBase.class);
 
     public final ResolvedJavaType ImageSingletons = lookupType(ImageSingletons.class);
     public final ResolvedJavaMethod ImageSingletons_add = lookupMethod(ImageSingletons, "add", Class.class, Object.class);

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.pltgot;
 
+import com.oracle.svm.core.ExplicitCallingConventionGuestValue;
 import java.lang.reflect.Method;
 
 import com.oracle.objectfile.ObjectFile;
@@ -32,7 +33,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -83,7 +83,7 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
         if (GuestAnnotationAccess.isAnnotationPresent(method.getDeclaringClass(), GuestAccess.elements().InternalVMMethod)) {
             return false;
         }
-        ExplicitCallingConvention ecc = GuestAnnotationAccess.getAnnotation(method, ExplicitCallingConvention.class);
+        ExplicitCallingConventionGuestValue ecc = ExplicitCallingConventionGuestValue.get(method);
         if (ecc != null && ecc.value().equals(SubstrateCallingConventionKind.ForwardReturnValue)) {
             /*
              * Methods that use ForwardReturnValue calling convention can't be resolved with PLT/GOT

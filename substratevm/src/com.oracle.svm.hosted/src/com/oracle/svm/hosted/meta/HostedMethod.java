@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import com.oracle.svm.hosted.DeoptStubGuestValue;
 import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHereAtRuntime;
 
@@ -428,7 +429,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public Deoptimizer.StubType getDeoptStubType() {
-        Deoptimizer.DeoptStub stubAnnotation = GuestAnnotationAccess.getAnnotation(this, Deoptimizer.DeoptStub.class);
+        DeoptStubGuestValue stubAnnotation = DeoptStubGuestValue.get(this);
         if (stubAnnotation != null) {
             return stubAnnotation.stubType();
         }
@@ -594,7 +595,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean shouldBeInlined() {
-        return GuestAnnotationAccess.getAnnotation(this, AlwaysInline.class) != null || GuestAnnotationAccess.getAnnotation(this, ForceInline.class) != null;
+        return GuestAnnotationAccess.isAnnotationPresent(this, AlwaysInline.class) || GuestAnnotationAccess.isAnnotationPresent(this, ForceInline.class);
     }
 
     private LineNumberTable lineNumberTable;

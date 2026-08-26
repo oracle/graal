@@ -79,7 +79,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     @Override
     public List<AnnotationValue> getInjectedAnnotations() {
         /* Annotate @CEnumValue methods with @Uninterruptible. */
-        if (GuestAnnotationAccess.getAnnotation(original, CEnumValue.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(original, CEnumValue.class)) {
             return INJECTED_ANNOTATIONS;
         }
         return List.of();
@@ -101,11 +101,11 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     }
 
     private ValueNode createInvoke(AnalysisMethod method, HostedGraphKit kit, AnalysisType returnType, ValueNode arg) {
-        if (GuestAnnotationAccess.getAnnotation(method, CEnumLookup.class) != null) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, CEnumLookup.class)) {
             /* Call a method that converts the primitive value to a Java enum. */
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(returnType);
             return CInterfaceEnumTool.singleton().createInvokeLookupEnum(kit, returnType, enumInfo, arg, true);
-        } else if (GuestAnnotationAccess.getAnnotation(method, CEnumValue.class) != null) {
+        } else if (GuestAnnotationAccess.isAnnotationPresent(method, CEnumValue.class)) {
             /* Call a method that converts a Java enum to a primitive value. */
             ResolvedJavaType declaringType = method.getDeclaringClass();
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(declaringType);

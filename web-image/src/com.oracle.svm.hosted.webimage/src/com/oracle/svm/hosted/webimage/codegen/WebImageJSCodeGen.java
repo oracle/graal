@@ -25,6 +25,8 @@
 
 package com.oracle.svm.hosted.webimage.codegen;
 
+import com.oracle.svm.hosted.webimage.CodeGuestValue;
+import com.oracle.svm.hosted.webimage.IncludeGuestValue;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.CharacterCodingException;
@@ -270,8 +272,9 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
         HashSet<String> includedPaths = new HashSet<>();
         codeBuffer.emitNewLine();
         for (HostedType type : getProviders().typeControl().emittedTypes()) {
-            var includes = GuestAnnotationAccess.getAnnotationsByType(type, JS.Code.Include.class, JS.Code.Include.Group.class, JS.Code.Include.Group::value);
-            for (JS.Code.Include include : includes) {
+            var includes = GuestAnnotationAccess.getAnnotationValuesByType(type, JS.Code.Include.class, JS.Code.Include.Group.class);
+            for (var annotationValue : includes) {
+                IncludeGuestValue include = IncludeGuestValue.from(annotationValue);
                 String path = include.value();
                 if (includedPaths.contains(path)) {
                     continue;
@@ -290,7 +293,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
                     throw UserError.abort(e, "Resource at '%s' for inclusion using @JS.Code.Include on %s has invalid encoding", path, type);
                 }
             }
-            var code = GuestAnnotationAccess.getAnnotation(type, JS.Code.class);
+            var code = CodeGuestValue.get(type);
             if (code != null) {
                 String titleComment = "// Class file: " + type.toClassName();
                 lowerJavaScriptCode(codeBuffer, titleComment, code.value());
@@ -340,7 +343,7 @@ public class WebImageJSCodeGen extends WebImageCodeGen {
 
     private void requestJSObjectSubclasses(HostedType type) {
         // Only explicitly exported classes must be emitted.
-        if (type.equals(jsObjectType) || GuestAnnotationAccess.getAnnotation(type, JS.Export.class) != null) {
+        if (type.equals(jsObjectType) || GuestAnnotationAccess.isAnnotationPresent(type, JS.Export.class)) {
             typeControl.requestTypeName(type);
         }
         for (HostedType subtype : type.getSubTypes()) {

@@ -125,6 +125,7 @@ import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1004,8 +1005,9 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static boolean hasExplicitReceiverExport(AnalysisType type) {
-        for (ExportLibrary export : GuestAnnotationAccess.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
-            if (export.receiverType() != Void.class) {
+        for (var annotationValue : GuestAnnotationAccess.getAnnotationValuesByType(type, ExportLibrary.class, ExportLibrary.Repeat.class)) {
+            ExportLibraryGuestValue export = ExportLibraryGuestValue.from(annotationValue);
+            if (!export.receiverType().equals(GuestAccess.elements().java_lang_Void)) {
                 return true;
             }
         }

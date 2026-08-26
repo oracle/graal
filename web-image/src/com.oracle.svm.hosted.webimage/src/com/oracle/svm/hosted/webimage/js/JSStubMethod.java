@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.js;
 
+import com.oracle.svm.hosted.webimage.JSGuestValue;
 import java.util.List;
 import java.util.Objects;
 
@@ -121,7 +122,7 @@ public class JSStubMethod extends CustomSubstitutionMethod {
         } else {
             rawCall = GuestAnnotationAccess.isAnnotationPresent(method, JSRawCall.class);
             coercion = GuestAnnotationAccess.isAnnotationPresent(method, JS.Coerce.class);
-            JS js = Objects.requireNonNull(GuestAnnotationAccess.getAnnotation(method, JS.class));
+            JSGuestValue js = Objects.requireNonNull(JSGuestValue.get(method));
             jsCode = new JSBody.JSCode(js, method);
         }
         return buildGraph(debug, method, providers, purpose, jsCode, coercion, rawCall);

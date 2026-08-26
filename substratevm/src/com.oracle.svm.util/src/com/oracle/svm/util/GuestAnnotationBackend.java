@@ -110,15 +110,6 @@ final class GuestAnnotationBackend extends AnnotatedObjectAccess {
         throw annotationMaterializationUnsupported();
     }
 
-    /**
-     * This metadata backend exposes {@link AnnotationValue} as its boundary representation and
-     * therefore cannot accept a builder annotation instance.
-     */
-    @Override
-    public AnnotationValue asAnnotationValue(Annotation annotation) {
-        throw annotationMaterializationUnsupported();
-    }
-
     private static ResolvedJavaType lookupSharedAnnotationType(Class<? extends Annotation> annotationType) {
         Objects.requireNonNull(annotationType, "annotationType");
         GuestAccess access = GuestAccess.get();
