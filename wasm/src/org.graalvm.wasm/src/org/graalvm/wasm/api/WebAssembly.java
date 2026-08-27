@@ -276,7 +276,7 @@ public class WebAssembly extends Dictionary {
                 String shared = module.memoryIsShared(memoryIndex) ? "shared" : "single";
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), shared));
             } else if (tableIndex != null) {
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), tableElementTypeToInteropString(module, tableIndex)));
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), tableTypeToInteropString(module, tableIndex)));
             } else if (f != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.function.name(), WebAssembly.functionInfo(f)));
             } else if (globalIndex != null) {
@@ -319,7 +319,7 @@ public class WebAssembly extends Dictionary {
                     final Integer tableIndex = importedTableDescriptors.get(descriptor);
                     if (tableIndex != null) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.table.name(),
-                                        tableElementTypeToInteropString(module, tableIndex)));
+                                        tableTypeToInteropString(module, tableIndex)));
                     } else {
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
                     }
@@ -384,6 +384,31 @@ public class WebAssembly extends Dictionary {
             checkArgumentCount(args, 2);
         } else {
             checkArgumentCount(args, 1);
+        }
+
+        if (args.length == 5) {
+            InteropLibrary lib = InteropLibrary.getUncached();
+            final boolean indexType64;
+            try {
+                indexType64 = lib.asBoolean(args[4]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Table address type flag must be convertible to boolean");
+            }
+            final long initialSize;
+            final long maximumSize;
+            try {
+                initialSize = indexType64 ? lib.asLong(args[0]) : lib.asInt(args[0]);
+                maximumSize = indexType64 ? lib.asLong(args[1]) : lib.asInt(args[1]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Table size must be convertible to its address type");
+            }
+            final ValueType elementType;
+            try {
+                elementType = parseInteropValueType(lib.asString(args[2]));
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element kind must be convertible to string");
+            }
+            return tableAlloc(initialSize, maximumSize, elementType, args[3], indexType64);
         }
 
         final int initialSize;
@@ -459,10 +484,17 @@ public class WebAssembly extends Dictionary {
     }
 
     public WasmTable tableAlloc(int initial, int maximum, ValueType elemType, Object initialValue) {
-        if (compareUnsigned(initial, maximum) > 0) {
+        return tableAlloc(initial, maximum, elemType, initialValue, false);
+    }
+
+    public WasmTable tableAlloc(long initial, long maximum, ValueType elemType, Object initialValue, boolean indexType64) {
+        if (indexType64 && !currentContext.getContextOptions().supportMemory64()) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "64-bit indexed tables require wasm.Memory64");
+        }
+        if (Long.compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max memory size");
         }
-        if (compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
+        if (Long.compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds implementation limit");
         }
         if (!elemType.isReferenceType()) {
@@ -471,8 +503,8 @@ public class WebAssembly extends Dictionary {
         if (!refTypes && !ReferenceType.FUNCREF.equals(elemType)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable wasm.BulkMemoryAndRefTypes to support other reference types");
         }
-        final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
-        return new WasmTable(initial, maximum, maxAllowedSize, (ReferenceType) elemType, initialValue);
+        final int maxAllowedSize = (int) minUnsigned(maximum, Integer.toUnsignedLong(JS_LIMITS.tableInstanceSizeLimit()));
+        return new WasmTable(initial, maximum, maxAllowedSize, (ReferenceType) elemType, initialValue, indexType64);
     }
 
     private static Object tableGrow(Object[] args) {
@@ -480,22 +512,35 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        if (!(args[1] instanceof Integer)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+        final long delta;
+        if (table.hasIndexType64()) {
+            if (!(args[1] instanceof Long)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be a 64-bit table index");
+            }
+            delta = (Long) args[1];
+        } else {
+            if (!(args[1] instanceof Integer)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+            }
+            delta = (Integer) args[1];
         }
-        int delta = (Integer) args[1];
-        if (args.length > 2) {
-            return tableGrow(table, delta, args[2]);
+        Object ref = args.length > 2 ? args[2] : WasmConstant.NULL;
+        if (table.hasIndexType64()) {
+            return tableGrow(table, delta, ref);
         }
-        return tableGrow(table, delta, WasmConstant.NULL);
+        return tableGrow(table, (int) delta, ref);
     }
 
     public static int tableGrow(WasmTable table, int delta, Object ref) {
+        return (int) tableGrow(table, (long) delta, ref);
+    }
+
+    public static long tableGrow(WasmTable table, long delta, Object ref) {
         final long result = table.grow(delta, ref);
         if (result == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow table above max limit");
         }
-        return (int) result;
+        return result;
     }
 
     private static Object tableRead(Object[] args) {
@@ -503,16 +548,31 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        if (!(args[1] instanceof Integer)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+        final long index;
+        if (table.hasIndexType64()) {
+            if (!(args[1] instanceof Long)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be a 64-bit table index");
+            }
+            index = (Long) args[1];
+        } else {
+            if (!(args[1] instanceof Integer)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+            }
+            index = (Integer) args[1];
         }
-        int index = (Integer) args[1];
         return tableRead(table, index);
     }
 
     public static Object tableRead(WasmTable table, int index) {
+        return tableRead(table, (long) index);
+    }
+
+    public static Object tableRead(WasmTable table, long index) {
         try {
-            return table.get(index);
+            if (Long.compareUnsigned(index, table.size()) >= 0) {
+                throw new IndexOutOfBoundsException();
+            }
+            return table.get((int) index);
         } catch (IndexOutOfBoundsException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
@@ -523,20 +583,35 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        if (!(args[1] instanceof Integer)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+        final long index;
+        if (table.hasIndexType64()) {
+            if (!(args[1] instanceof Long)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be a 64-bit table index");
+            }
+            index = (Long) args[1];
+        } else {
+            if (!(args[1] instanceof Integer)) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
+            }
+            index = (Integer) args[1];
         }
-        int index = (Integer) args[1];
         return tableWrite(table, index, args[2]);
     }
 
     public Object tableWrite(WasmTable table, int index, Object element) {
+        return tableWrite(table, (long) index, element);
+    }
+
+    public Object tableWrite(WasmTable table, long index, Object element) {
         if (!table.elemType().matchesValue(element)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
         }
 
         try {
-            table.set(index, element);
+            if (Long.compareUnsigned(index, table.size()) >= 0) {
+                throw new ArrayIndexOutOfBoundsException();
+            }
+            table.set((int) index, element);
         } catch (ArrayIndexOutOfBoundsException e) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Table index out of bounds: " + e.getMessage());
         }
@@ -548,6 +623,9 @@ public class WebAssembly extends Dictionary {
         checkArgumentCount(args, 1);
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
+        }
+        if (table.hasIndexType64()) {
+            return (long) table.size();
         }
         return tableSize(table);
     }
@@ -677,8 +755,9 @@ public class WebAssembly extends Dictionary {
         return typeString.toString();
     }
 
-    private static String tableElementTypeToInteropString(WasmModule module, int tableIndex) {
-        return valueTypeToInteropString(module.closedTypeOf(module.tableElementType(tableIndex)));
+    private static String tableTypeToInteropString(WasmModule module, int tableIndex) {
+        String addressType = module.tableHasIndexType64(tableIndex) ? "i64" : "i32";
+        return addressType + " " + valueTypeToInteropString(module.closedTypeOf(module.tableElementType(tableIndex)));
     }
 
     private static String globalValueTypeToInteropString(WasmModule module, int globalIndex) {
