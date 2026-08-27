@@ -940,11 +940,14 @@ public abstract class InterpreterStubSection {
                         accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (long) arg);
                         gpIdx++;
                         break;
-                    case Object:
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, Word.objectToTrackedPointer(arg).rawValue());
+                    case Object: {
+                        // objectToUntrackedPointer converts `null` to 0L but, the Java ABI expects
+                        // it to be the heap-base null representation
+                        Pointer val = arg == null ? KnownIntrinsics.heapBase() : Word.objectToUntrackedPointer(arg);
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, val.rawValue());
                         gpIdx++;
                         break;
-
+                    }
                     case Float:
                         accessHelper.setFpArgumentAt(cArgType, leaveData, fpIdx, Float.floatToRawIntBits((float) arg));
                         fpIdx++;

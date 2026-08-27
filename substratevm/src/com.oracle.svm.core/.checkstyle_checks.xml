@@ -8,6 +8,16 @@
       <message key="type.file.mismatch"
                value="The top-level type matching the filename must be declared first in the file."/>
     </module>
+
+    <!-- Tracked object pointers are unsupported in Substrate VM until GR-28442 is resolved. -->
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="objectToTrackedPointer"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow tracked object pointers in Substrate VM."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="\bWord\.objectToTrackedPointer\b"/>
+      <property name="message" value="Word.objectToTrackedPointer is not supported in Substrate VM until GR-28442 is resolved."/>
+      <property name="ignoreComments" value="true"/>
+    </module>
     
     <!-- Disallows direct calls to "AnnotatedElement.get(Declared)Annotation(s)". This check can yield false positives,
     i.e., it will match any ".get(Declared)Annotation(s)" calls that are not preceded by "AnnotationAccess"
