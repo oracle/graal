@@ -67,6 +67,7 @@ import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakDependentCacheN
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakInlineCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSharedCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSimpleNodeGen;
+import com.oracle.truffle.api.dsl.test.WeakCachedTestFactory.WeakSingleInstanceCacheNodeGen;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -86,6 +87,7 @@ public class WeakCachedTest extends AbstractPolyglotTest {
             node.execute(o);
             o = null;
             GCUtils.assertGc("Reference is not collected", ref);
+            assertFails(() -> node.execute(new String("")), UnsupportedSpecializationException.class);
         });
     }
 
@@ -108,6 +110,42 @@ public class WeakCachedTest extends AbstractPolyglotTest {
             return arg;
         }
 
+    }
+
+    @Test
+    public void testWeakSingleInstanceCache() throws IOException, InterruptedException {
+        runInSubprocess(() -> {
+            WeakSingleInstanceCacheNode node = WeakSingleInstanceCacheNodeGen.create();
+            Object value = new String("");
+            WeakReference<Object> ref = new WeakReference<>(value);
+            assertEquals("cached", node.execute(value));
+            value = null;
+            GCUtils.assertGc("Reference is not collected", ref);
+            assertEquals("generic", node.execute(new String("")));
+        });
+    }
+
+    abstract static class WeakSingleInstanceCacheNode extends Node {
+
+        abstract String execute(Object arg0);
+
+        @Specialization
+        String doCached(String arg,
+                        @Cached(value = "arg", weak = true) String cachedStorage,
+                        @Cached(value = "createClassStorage()", neverDefault = false) Object cachedClassStorage) {
+            assertNotNull(cachedStorage);
+            assertNotNull(cachedClassStorage);
+            return "cached";
+        }
+
+        static Object createClassStorage() {
+            return new Object();
+        }
+
+        @Specialization(replaces = "doCached")
+        static String doGeneric(String arg) {
+            return "generic";
+        }
     }
 
     @Test
