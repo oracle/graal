@@ -37,6 +37,7 @@ import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
 import static jdk.vm.ci.aarch64.AArch64.r11;
+import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.aarch64.AArch64.r19;
 import static jdk.vm.ci.aarch64.AArch64.r2;
 import static jdk.vm.ci.aarch64.AArch64.r3;
@@ -60,7 +61,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
@@ -431,10 +431,13 @@ public class AArch64InterpreterStubs {
             List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
             List<Register> fps = registerConfig.getFloatingPointParameterRegs();
 
-            /* r9 and r10 contain the trampoline metadata and isolate, so use r11 for the caller SP. */
-            masm.mov(64, r11, sp);
+            /* r11 and r12 contain the trampoline metadata and isolate. */
             super.enter(crb);
-            masm.str(64, r11, upcallDataAddress(frameMap, offsetAbiSpReg()));
+            try (AArch64MacroAssembler.ScratchRegister sc = masm.getScratchRegister()) {
+                Register originalSp = sc.getRegister();
+                masm.add(64, originalSp, sp, frameMap.totalFrameSize());
+                masm.str(64, originalSp, upcallDataAddress(frameMap, offsetAbiSpReg()));
+            }
             for (int i = 0; i < gps.size(); i++) {
                 masm.str(64, gps.get(i), upcallDataAddress(frameMap, offsetAbiGpArg(i)));
             }
@@ -443,8 +446,8 @@ public class AArch64InterpreterStubs {
             }
 
             /* Adapt the trampoline registers and captured frame address to the Java signature. */
-            masm.mov(64, gps.get(0), SubstrateAArch64MacroAssembler.scratch1);
-            masm.mov(64, gps.get(1), SubstrateAArch64MacroAssembler.scratch2);
+            masm.mov(64, gps.get(0), r11);
+            masm.mov(64, gps.get(1), r12);
             masm.add(64, gps.get(2), sp, frameMap.offsetForStackSlot(frameMap.getInterpreterFFMUpcallData()));
         }
 
