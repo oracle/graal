@@ -77,6 +77,7 @@ import com.oracle.svm.hosted.webimage.wasm.codegen.WasmWebImage;
 import com.oracle.svm.hosted.webimage.wasmgc.WebImageWasmGCJavaMainSupport;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.webimage.WebImageJSJavaMainSupport;
 import com.oracle.svm.webimage.platform.WebImagePlatformConfigurationProvider;
@@ -123,7 +124,7 @@ public class WebImageGenerator extends NativeImageGenerator {
     @SuppressWarnings("try")
     @Override
     protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints,
-                    ResolvedJavaMethod javaMainMethod, String imageName, AbstractImage.NativeImageKind k,
+                    ResolvedJavaType javaMainClass, ResolvedJavaMethod javaMainMethod, String imageName, AbstractImage.NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions) {
         OptionValues options = HostedOptionValues.singleton().get();
         setWebImageSystemProperties();
@@ -131,7 +132,7 @@ public class WebImageGenerator extends NativeImageGenerator {
             try (Timer.StopTimer ignoredTimer = TimerCollection.createTimerAndStart(WebImageTotalTime)) {
 
                 imageKind = k;
-                super.doRun(entryPoints, javaMainMethod, imageName, k, new JSSubstitutionProcessor());
+                super.doRun(entryPoints, javaMainClass, javaMainMethod, imageName, k, new JSSubstitutionProcessor());
 
                 try (LoggerScope universeScope = LoggerContext.currentContext().scope(UNIVERSE_BUILD_SCOPE_NAME, WebImageGenerator::saveUniverseCounters)) {
                     LoggerContext.counter(ANALYSIS_TYPES).add(bb.getUniverse().getTypes().size());
@@ -151,13 +152,14 @@ public class WebImageGenerator extends NativeImageGenerator {
      * entry points used by Native Image.
      */
     @Override
-    protected void installJavaMainSupport(ResolvedJavaMethod javaMainMethod) {
+    protected void installJavaMainSupport(ResolvedJavaType javaMainClass, ResolvedJavaMethod javaMainMethod) {
+        Class<?> originalClass = OriginalClassProvider.getJavaClass(javaMainClass);
         Method originalMethod = (Method) OriginalMethodProvider.getJavaMethod(javaMainMethod);
         try {
             JavaMainSupport support = switch (WebImageOptions.getBackend(loader)) {
-                case JS -> new WebImageJSJavaMainSupport(originalMethod);
-                case WASM -> new WebImageWasmLMJavaMainSupport(originalMethod);
-                case WASMGC -> new WebImageWasmGCJavaMainSupport(originalMethod);
+                case JS -> new WebImageJSJavaMainSupport(originalClass, originalMethod);
+                case WASM -> new WebImageWasmLMJavaMainSupport(originalClass, originalMethod);
+                case WASMGC -> new WebImageWasmGCJavaMainSupport(originalClass, originalMethod);
             };
             ImageSingletons.add(JavaMainSupport.class, support);
         } catch (IllegalAccessException | IllegalArgumentException ex) {

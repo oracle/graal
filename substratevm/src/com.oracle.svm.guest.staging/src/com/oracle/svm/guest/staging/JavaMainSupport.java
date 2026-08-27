@@ -91,7 +91,7 @@ public class JavaMainSupport {
      * Creates support state for invoking {@code javaMainMethod} at image runtime.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
+    public JavaMainSupport(Class<?> javaMainClass, Method javaMainMethod) throws IllegalAccessException {
         int mods = javaMainMethod.getModifiers();
         this.mainNonstatic = !Modifier.isStatic(mods);
         this.mainWithoutArgs = javaMainMethod.getParameterCount() == 0;
@@ -100,7 +100,6 @@ public class JavaMainSupport {
 
         MethodHandle mainHandle = MethodHandles.lookup().unreflect(javaMainMethod);
         MethodHandle ctorHandle = null;
-        Class<?> javaMainClass = javaMainMethod.getDeclaringClass();
         if (mainNonstatic) {
             /*
              * Instance main.

@@ -116,18 +116,19 @@ final class GuestImageGeneratorSupport {
      * @param javaMainMethod the application Java main method resolved by
      *            {@link NativeImageGeneratorRunner}
      */
-    static void installJavaMainSupport(ResolvedJavaMethod javaMainMethod) {
+    static void installJavaMainSupport(ResolvedJavaType javaMainClass, ResolvedJavaMethod javaMainMethod) {
         GuestAccess access = GuestAccess.get();
+        JavaConstant mainClass = access.getProviders().getConstantReflection().asJavaClass(javaMainClass);
         JavaConstant executable = access.asExecutableConstant(javaMainMethod);
-        if (executable == null) {
+        if (mainClass == null || executable == null) {
             throw UserError.abort("Cannot install Java main support because no reflective executable is available for %s.", javaMainMethod.format("%H.%n(%p)"));
         }
 
         ResolvedJavaType javaMainSupportType = access.lookupType(JavaMainSupport.class);
-        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), javaMainSupportType, Method.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), javaMainSupportType, Class.class, Method.class);
         JavaConstant javaMainSupport;
         try {
-            javaMainSupport = access.invoke(ctor, null, executable);
+            javaMainSupport = access.invoke(ctor, null, mainClass, executable);
         } catch (InvocationException ex) {
             if (ex.getCause() instanceof IllegalArgumentException iae) {
                 throw UserError.abort(iae, "%s", iae.getMessage());

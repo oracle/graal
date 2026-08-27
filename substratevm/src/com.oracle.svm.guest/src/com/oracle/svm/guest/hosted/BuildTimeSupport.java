@@ -42,6 +42,9 @@ import jdk.internal.misc.MethodFinder;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class BuildTimeSupport {
 
+    record MainEntryPointInfo(Class<?> mainClass, Method mainMethod) {
+    }
+
     /**
      * Gets the method that is the application's entry point into a native image. This will be
      * either the {@linkplain #getCMainFunction C-function entry point} or, if that does not exist,
@@ -54,7 +57,7 @@ public class BuildTimeSupport {
      *            the image class loader is used.
      * @param methodName name of the main entry point method
      */
-    static Method getMainEntryPointMethod(String className, String moduleName, String methodName) throws ClassNotFoundException {
+    static MainEntryPointInfo getMainEntryPointInfo(String className, String moduleName, String methodName) throws ClassNotFoundException {
         Class<?> mainClass;
         String nonEmptyClassName = className;
         try {
@@ -96,7 +99,7 @@ public class BuildTimeSupport {
         }
 
         Method main = getCMainFunction(methodName, mainClass);
-        return main != null ? main : getJavaMainMethod(methodName, mainClass);
+        return new MainEntryPointInfo(mainClass, main != null ? main : getJavaMainMethod(methodName, mainClass));
     }
 
     /**

@@ -515,6 +515,9 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(args.extra_image_builder_arguments)
                 helloworld(svm_experimental_options(['-H:+RunMainInNewThread']) + args.extra_image_builder_arguments)
+                # GR-74135: Instantiate the configured concrete class when its instance main is
+                # inherited from an abstract superclass.
+                helloworld(['--variant', 'inheritedInstance'] + args.extra_image_builder_arguments)
 
     with Task('terminus helloworld', tasks, tags=[GraalTags.terminus]) as t:
         if t: _run_terminus_gate(args)
@@ -1635,6 +1638,16 @@ class HelloWorld {
     void main() {
         System.out.println(System.getenv("%s"));
     }
+}
+''',
+    'inheritedInstance': '''
+abstract class AbstractMain {
+    protected void main(String[] args) {
+        System.out.println(System.getenv("%s"));
+    }
+}
+
+class HelloWorld extends AbstractMain {
 }
 ''',
     'unnamedClass': '''

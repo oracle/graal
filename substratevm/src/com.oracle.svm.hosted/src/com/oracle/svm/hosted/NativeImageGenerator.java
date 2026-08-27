@@ -550,7 +550,7 @@ public class NativeImageGenerator {
      * Executes the image build. Only one image can be built with this generator.
      */
     public void run(Map<ResolvedJavaMethod, CEntryPointData> entryPoints,
-                    ResolvedJavaMethod javaMainMethod, String imageName,
+                    ResolvedJavaType javaMainClass, ResolvedJavaMethod javaMainMethod, String imageName,
                     NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     EconomicSet<String> allOptionNames, TimerCollection timerCollection) {
@@ -608,7 +608,7 @@ public class NativeImageGenerator {
             }
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
 
-            doRun(entryPoints, javaMainMethod, imageName, k, harnessSubstitutions);
+            doRun(entryPoints, javaMainClass, javaMainMethod, imageName, k, harnessSubstitutions);
         } finally {
             reporter.ensureCreationStageEndCompleted();
         }
@@ -647,7 +647,7 @@ public class NativeImageGenerator {
      * @param javaMainMethod application Java main method to install before analysis, or {@code null}
      *            when the selected entry point already is a C entry point
      */
-    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaMethod javaMainMethod, String imageName, NativeImageKind k,
+    protected void doRun(Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaType javaMainClass, ResolvedJavaMethod javaMainMethod, String imageName, NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
@@ -655,7 +655,7 @@ public class NativeImageGenerator {
 
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(GuestAccess.get().getSnippetReflection())).build();
                         DebugCloseable _ = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(options, entryPoints, javaMainMethod, imageName, harnessSubstitutions, debug);
+            setupNativeImage(options, entryPoints, javaMainClass, javaMainMethod, imageName, harnessSubstitutions, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -1047,7 +1047,7 @@ public class NativeImageGenerator {
      * Installs image-builder state, including Java-main support when {@code javaMainMethod} is not
      * {@code null}, before analysis starts.
      */
-    protected void setupNativeImage(OptionValues options, Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaMethod javaMainMethod,
+    protected void setupNativeImage(OptionValues options, Map<ResolvedJavaMethod, CEntryPointData> entryPoints, ResolvedJavaType javaMainClass, ResolvedJavaMethod javaMainMethod,
                     String imageName, SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent _ = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
@@ -1062,7 +1062,7 @@ public class NativeImageGenerator {
                 FutureDefaultsOptions.parseAndVerifyOptions();
                 GuestImageGeneratorSupport.installArgsSupport();
                 if (javaMainMethod != null) {
-                    installJavaMainSupport(javaMainMethod);
+                    installJavaMainSupport(javaMainClass, javaMainMethod);
                 }
 
                 Providers originalProviders = GuestAccess.get().getProviders();
@@ -1270,8 +1270,8 @@ public class NativeImageGenerator {
     /**
      * Installs the Java-main support selected by this image generator.
      */
-    protected void installJavaMainSupport(ResolvedJavaMethod javaMainMethod) {
-        GuestImageGeneratorSupport.installJavaMainSupport(javaMainMethod);
+    protected void installJavaMainSupport(ResolvedJavaType javaMainClass, ResolvedJavaMethod javaMainMethod) {
+        GuestImageGeneratorSupport.installJavaMainSupport(javaMainClass, javaMainMethod);
     }
 
     /**

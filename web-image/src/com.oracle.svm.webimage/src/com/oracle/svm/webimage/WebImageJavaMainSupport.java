@@ -53,8 +53,8 @@ import jdk.graal.compiler.debug.GraalError;
 public abstract class WebImageJavaMainSupport extends JavaMainSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WebImageJavaMainSupport(Method javaMainMethod) throws IllegalAccessException {
-        super(javaMainMethod);
+    protected WebImageJavaMainSupport(Class<?> javaMainClass, Method javaMainMethod) throws IllegalAccessException {
+        super(javaMainClass, javaMainMethod);
     }
 
     /**
