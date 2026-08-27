@@ -1173,7 +1173,8 @@ public final class NativeImageClassLoaderSupport {
                 return;
             }
 
-            if (!isVisibleToGuest(moduleReference)) {
+            boolean visibleToGuest = isVisibleToGuest(moduleReference);
+            if (!visibleToGuest && !registerTypes) {
                 return;
             }
 
@@ -1194,7 +1195,13 @@ public final class NativeImageClassLoaderSupport {
                         String className = extractClassName(moduleResource, fileSystemSeparatorChar);
                         if (className != null) {
                             currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
-                            executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, registerTypes, preserveModule, isBuilderContainer));
+                            if (visibleToGuest) {
+                                executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, registerTypes, preserveModule, isBuilderContainer));
+                            } else {
+                                executor.execute(() -> {
+                                    handleBuilderModuleClassFileName(module, className, registerTypes);
+                                });
+                            }
                         }
                         if (isInImageModulePathOfLayeredBuild) {
                             executor.execute(() -> PathDigests.storePathFileDigest(container, moduleResource, isJar, pathDigests.mpDigests));
@@ -1413,6 +1420,23 @@ public final class NativeImageClassLoaderSupport {
             if (clazz != null && registerTypes) {
                 imageClassLoader.registerClass(clazz);
             }
+        }
+
+        private void handleBuilderModuleClassFileName(Module module, String className, boolean registerTypes) {
+            Class<?> clazz = null;
+            try {
+                clazz = imageClassLoader.forName(className, module);
+            } catch (AssertionError error) {
+                VMError.shouldNotReachHere(error);
+            } catch (ClassNotFoundException | SecurityException | LinkageError t) {
+                LinkageError le = t instanceof LinkageError l ? l : (LinkageError) new NoClassDefFoundError(className).initCause(t);
+                ImageClassLoader.handleClassLoadingError(le, "host: resolving class %s in %s", className, module);
+            }
+
+            if (clazz != null && registerTypes) {
+                imageClassLoader.registerBuilderClass(clazz);
+            }
+            imageClassLoader.watchdog.recordActivity();
         }
     }
 
