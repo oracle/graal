@@ -39,6 +39,7 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.shared.option.APIOption;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -537,24 +538,26 @@ final class ComprehensiveOptions {
         if (option.group() != null) {
             return OPTION_TYPE_STRING;
         }
-        if (option.variants().length > 0) {
-            if (option.variants().length == 2 &&
-                            (Arrays.asList(option.variants()).contains("true") || Arrays.asList(option.variants()).contains("+"))) {
-                return "Boolean";
-            }
-            return OPTION_TYPE_STRING;
-        }
-        return OPTION_TYPE_STRING;
+        return option.booleanOption() ? "Boolean" : OPTION_TYPE_STRING;
     }
 
     private static String generateUsageExample(String optionName, APIOptionHandler.OptionInfo option) {
-        if (option.group() != null) {
-            return optionName + "=value";
+        if (option.group() != null || option.booleanOption() || option.fixedValue()) {
+            return optionName;
         }
-        if (option.variants().length > 0) {
-            return optionName + "=" + option.variants()[0];
+        String valueSeparator = preferredValueSeparator(option.valueSeparator());
+        String value = valueSeparator + "<value>";
+        return option.defaultValue() != null ? optionName + "[" + value + "]" : optionName + value;
+    }
+
+    private static String preferredValueSeparator(char[] valueSeparators) {
+        for (char valueSeparator : valueSeparators) {
+            if (valueSeparator == '=') {
+                return "=";
+            }
         }
-        return optionName;
+        char valueSeparator = valueSeparators[0];
+        return APIOption.Utils.valueSeparatorToString(valueSeparator);
     }
 
     private static String escapeMarkdown(String text) {
