@@ -8,35 +8,35 @@ The provider-enumeration APIs must define whether such configured but unregister
 absent, cause enumeration to fail, or remain visible until an application accesses them.
 
 Reflection offers a superficially similar query-versus-use distinction.
-Query metadata can expose a `Method` descriptor without permitting its invocation.
+Query metadata can expose a [`Method`][method] descriptor without permitting its invocation.
 The security-provider API has no equivalent descriptor type.
-`Security.getProviders()` returns live `Provider` instances whose construction establishes their
-names, properties, and service catalogs.
+[`Security.getProviders()`][security] returns live [`Provider`][provider] instances whose construction
+establishes their names, properties, and service catalogs.
 Applications can inspect and mutate those instances, pass them to provider-object factory
 overloads, and instantiate their services.
-Returning a `Provider` is therefore already provider access, not a harmless query that can fail at a
-later boundary.
+Returning a [`Provider`][provider] is therefore already provider access, not a harmless query that
+can fail at a later boundary.
 
 ## 2. Decision
 
-`Security.getProviders()`, the filtered `Security.getProviders` overloads, and
-`Security.getAlgorithms(String)` enumerate only providers and services that are usable in the
-run-time provider list.
+[`Security.getProviders()`][security], the filtered [`Security.getProviders`][security] overloads,
+and [`Security.getAlgorithms(String)`][security] enumerate only providers and services that are
+usable in the run-time provider list.
 They omit a configured but unregistered provider and do not fail solely because such an entry
 exists elsewhere in the configuration.
 
-Native Image does not construct a placeholder or partially functional `Provider` for an
+Native Image does not construct a placeholder or partially functional [`Provider`][provider] for an
 unregistered configuration.
 An operation that identifies and attempts to acquire that provider, such as
-`Security.getProvider(String)` or a named Java Cryptography Architecture (JCA) factory, fails before
-returning it and reports the missing reflection registration.
+[`Security.getProvider(String)`][security] or a named Java Cryptography Architecture (JCA) factory,
+fails before returning it and reports the missing reflection registration.
 This behavior deliberately does not match reflection's query-then-use model.
 The JDK exposes no query-only provider handle, and no available alternative preserves the
-`Provider` contract without fully including and constructing the provider.
+[`Provider`][provider] contract without fully including and constructing the provider.
 
 ## 3. Rationale
 
-A placeholder cannot preserve the `Provider` contract.
+A placeholder cannot preserve the [`Provider`][provider] contract.
 It would have the wrong implementation class or would require construction of the implementation
 that registration intentionally excludes.
 It could not accurately answer service filters without retaining the omitted service catalog, and
@@ -48,11 +48,12 @@ Standard JDK configurations contain providers that many applications do not use.
 Requiring metadata for all of them before enumeration succeeds would undermine closed-world
 selection and encourage retaining all providers solely to inspect the active list.
 
-The chosen behavior makes a returned `Provider[]` a truthful list of usable provider objects.
+The chosen behavior makes a returned [`Provider[]`][provider] a truthful list of usable provider
+objects.
 It also preserves actionable diagnostics at acquisition operations that identify which configured
 provider the application requires.
 This is an unavoidable difference from reflection unless the JDK introduces a provider descriptor
-that is separate from a live `Provider` instance.
+that is separate from a live [`Provider`][provider] instance.
 
 ## 4. Rejected Alternatives
 
@@ -65,8 +66,8 @@ class identity, provider identity, properties, services, and provider-object fac
 
 ### 4.2 Fail Provider Enumeration When Any Configuration Is Unregistered
 
-This alternative would make `Security.getProviders()` analogous to a reflection bulk query that
-lacks complete query metadata.
+This alternative would make [`Security.getProviders()`][security] analogous to a reflection bulk
+query that lacks complete query metadata.
 It was rejected because one unused provider would prevent discovery of every registered provider.
 Filtered queries have the additional problem that Native Image cannot know whether an
 unregistered provider matches a service criterion without retaining or constructing its catalog.
@@ -79,3 +80,7 @@ Registering the provider class makes the provider and its complete retained serv
 after rebuilding.
 Building with `-H:Preserve=all` retains all JDK providers when an application requires complete JDK
 enumeration behavior.
+
+[method]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/reflect/Method.html
+[provider]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/Provider.html
+[security]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/Security.html
