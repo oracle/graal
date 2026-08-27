@@ -143,39 +143,122 @@ import jdk.vm.ci.meta.annotation.Annotated;
 import sun.reflect.annotation.ExceptionProxy;
 import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 
-/// [ReflectionDataBuilder] manages reflection registrations in Native Image. It makes sure that classes, methods and
-/// fields registered through the Feature API or JSON metadata files are available through reflective queries at run-
-/// time. To do so, [ReflectionDataBuilder] operates in four phases:
-/// 1. Elements are registered for reflection through one of the entry points defined in [RuntimeReflectionSupport] or
-///    [ReflectionHostedSupport] (for elements found on the heap). These entry points take core reflection types as
-///    arguments, as they are expected to be called from user features.
-/// 2. The `register...` methods
-///    ([#registerClass(AccessCondition, ConfigurationMemberAccessibility, ResolvedJavaType, boolean)], etc.) then
-///    accept JVMCI types and perform their conversion to [AnalysisType] as needed. They encapsulate the registration
-///    code into analysis tasks, and check whether to include the registered elements using the
-///    [ReflectionDataBuilder#reflectivityFilter]. They also fill the metadata maps ([#types], [#methods] and [#fields])
-///    with the necessary information.
-/// 3. Private `registerTypesFor...` methods then perform the necessary registrations for the registered elements to
-///    be accessible at runtime. This can include making elements reachable, rescanning objects on the heap, etc. In
-///    particular, [#registerTypesForTypeQuery(AnalysisType, TypeData, boolean, boolean)] registers the complete metadata for a
-///    given type, including fields, methods, inner types, etc. The fields and methods are not registered for reflective
-///    access themselves.
-/// 4. The contents of the metadata maps are queried from NativeImageCodeCache using the [ReflectionHostedSupport]
-///    API. Temporary code is currently used to match the existing [ReflectionHostedSupport] API, which will eventually
-///    be replaced by an interface matching the structure of [ReflectionDataBuilder] (GR-72062)
+/// AR-002-reflection: Reflection Metadata Architecture
 ///
-/// Elements can be registered on the following levels (stored in [ElementData#accessibility]):
-/// * `NONE`: The element was found on the heap. In this case, we have to register types for its generic signature and
-///   annotations, which are lazily created at runtime using reflection.
-/// * `QUERIED`: The element can be reflectively queried at runtime, for example through [Class#forName(String)] for
-///   types, [Class#getDeclaredMethod(String, Class\[\])] for methods and [Class#getDeclaredField(String)] for fields.
-///   In this case, we have to be able to reconstruct the queried object at run-time, and therefore need to make sure
-///   that every field value of the element is seen as reachable by the analysis.
-/// * `ACCESSED`: The element can be reflectively accessed at runtime, through [Field#get(Object)],
-///   [Field#set(Object, Object)], [Method#invoke(Object, Object...)] or [Constructor#newInstance(Object...)]. For
-///   types, this means that class queries such as [Class#getMethods()] are allowed. In this case, we need to register
-///   the actual field or method represented by the element as reachable, and trigger the creation of the necessary
-///   accessors (e.g. SubstrateMethodAccessor).
+/// Native Image records reflection capabilities during analysis and enforces those capabilities at
+/// run time. Reachability can retain an implementation detail, but it never grants application
+/// reflection access. The principal build-time inputs and outputs are:
+///
+/// ```text
+/// Registration                         Recorded result
+/// ------------------------------------------------------------------------------
+/// type ------------------------------> name lookup + complete Class queries
+/// queried method, constructor, field -> reconstructable reflection object
+/// invocable method or constructor ---> query metadata + invocation accessor
+/// accessible field ------------------> query metadata + field access
+/// unsafe-allocated type -------------> allocation without a constructor
+/// ```
+///
+/// {@link ReflectionFeature} installs this builder and routes combined reflection metadata through
+/// the configuration adapters. Feature API registrations and recognized build-time constants enter
+/// through {@link RuntimeReflectionSupport}. Heap-discovered reflection objects enter through
+/// {@link ReflectionHostedSupport}. This architecture implements FS-003-reflection.
+///
+/// ## 1. Registration Levels
+///
+/// {@link ElementData#accessibility} represents three cumulative levels. {@code NONE} retains the
+/// supporting signature and annotation data for an object already in the image heap. {@code QUERIED}
+/// retains enough data to reconstruct a {@link Class}, {@link Method}, {@link Constructor}, or
+/// {@link Field}. {@code ACCESSED} additionally retains the target and accessor needed to invoke a
+/// method or constructor or to read or write a field. A type at {@code ACCESSED} means that all of
+/// its {@link Class} queries are available; it does not raise its members to {@code ACCESSED}. This
+/// separation implements FS-003-reflection.1 and FS-003-reflection.6.
+///
+/// Public registration entry points first resolve core reflection objects to JVMCI objects. The
+/// private {@code register...} methods convert those objects to analysis elements, apply
+/// {@link #reflectivityFilter}, and update {@link #types}, {@link #methods}, and {@link #fields}.
+/// The {@code registerTypesFor...} methods retain the dependent types, annotations, signatures, and
+/// heap objects needed to reconstruct the registered element.
+///
+/// ## 2. Type Closure and Class Acquisition
+///
+/// Type registration converges at
+/// {@link #registerTypesForTypeQuery(AnalysisType, TypeData, boolean, boolean)}. It makes the type
+/// reachable, installs it in the appropriate run-time class registry, retains its complete
+/// {@link Class} query metadata, and makes its immediate array type reachable. It does not create
+/// method or constructor invocation accessors and does not mark fields as accessible. These effects
+/// implement FS-003-reflection.2.2 and FS-003-reflection.2.3.
+///
+/// {@link #registerTypeForRuntimeAccess(AnalysisType)} supplies the class-registry entry consumed by
+/// {@code Class.forName}, class-loader lookup, and method-handle class resolution. These acquisition
+/// paths share the registration result but retain their own loader, module, initialization, and
+/// access checks, as required by FS-003-reflection.3.
+///
+/// A {@link Class} object found in the image heap is registered at {@code NONE}.
+/// {@link #registerTypesForHeapType(AnalysisType)} retains its intrinsic structure, generic
+/// information, and annotations so that the always-available operations described in
+/// section FS-003-reflection.2.1 do not depend on application reflection registration.
+///
+/// ## 3. Member Queries and Accessors
+///
+/// Type registration records all declared member queries and the inherited public-member closure.
+/// Individual member access registration also records the declaring type's query information so
+/// exact lookup can distinguish an absent member from missing metadata.
+///
+/// An {@code ACCESSED} executable causes {@link ReflectionFeature} to create a
+/// {@link SubstrateAccessor}. The accessor retains the invocation stub and direct or virtual target.
+/// An {@code ACCESSED} field is marked unsafe-accessed because reflection field accessors use its
+/// offset. Query-only members have no invocation or value-access path. This separation implements
+/// the requirement in FS-003-reflection.11.3.
+///
+/// ## 4. Proxies, Lambdas, and Serialization
+///
+/// The combined metadata parser resolves proxy and lambda type descriptors before routing the
+/// resulting classes. The proxy registry owns ordered interface-list registration and
+/// {@link com.oracle.svm.core.reflect.proxy.DynamicProxySupport DynamicProxySupport} enforces it at
+/// run time. Lambda descriptors resolve to every matching generated class before ordinary type or
+/// serialization registration is applied. This implements FS-003-reflection.4 and
+/// the lambda rules in FS-003-reflection.5.
+///
+/// Serialization descriptors are routed to
+/// {@link com.oracle.svm.hosted.reflect.serialize.SerializationFeature SerializationFeature}.
+/// Its builder owns serialization constructors and generated accessors, while this builder records
+/// the ordinary reflection elements needed by those paths. Neither component promotes unrelated
+/// members to {@code ACCESSED}. This implements FS-003-reflection.7.
+///
+/// ## 5. Conditions and Layers
+///
+/// {@link ConditionalConfigurationRegistry} schedules registration work when a build-time condition
+/// can be represented. Registered elements carry {@link RuntimeDynamicAccessMetadata}, which tests
+/// the corresponding reached condition at run time. Build-time retention is deliberately broader
+/// than run-time availability: retaining a guarded accessor cannot satisfy its condition. This
+/// implements FS-003-reflection.9 and FS-003-reflection.11.4.
+///
+/// Layered snapshots preserve registered element identities and accessibility levels. Runtime
+/// decoders merge the reflection metadata supplied by all image layers; each dynamic access still
+/// tests its own condition.
+///
+/// ## 6. Run-Time Enforcement
+///
+/// {@link ReflectionHostedSupport} exposes the completed maps to the metadata encoder.
+/// {@link com.oracle.svm.core.hub.DynamicHub DynamicHub} consumes the encoded class and query flags.
+/// Method and constructor substitutions reject invocation without an accessor, and field
+/// substitutions reject value access without active access metadata.
+/// {@link com.oracle.svm.core.reflect.UnsafeFieldUtil UnsafeFieldUtil} applies the same field rule to
+/// unsafe offsets; unsafe allocation uses the distinct per-type allocation capability. These paths
+/// implement FS-003-reflection.6 and FS-003-reflection.8.
+///
+/// {@link com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils
+/// MissingReflectionRegistrationUtils} is the common diagnostic boundary. It identifies the class
+/// or member and reports the metadata needed for the failed operation without performing that
+/// operation. Exact reflection is the default policy; compatibility-only continuation remains
+/// outside the registration maps described here. This implements FS-003-reflection.10 and
+/// the diagnostic requirement in FS-003-reflection.11.5.
+///
+/// ## 7. Boundary
+///
+/// Reflection metadata does not include resources. A registered class can invoke its resource APIs,
+/// but resource availability is owned by the resource registry and its separate specification.
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport, ReflectionHostedSupport {
     private AnalysisMetaAccess metaAccess;
@@ -489,7 +572,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding methods, the declaring class of the method has to be registered to allow
          * individual queries at run-time.
          */
-        /* Only exact-metadata builds encode it (FS-001-native-image-semantics.3.4). */
+        /* See FS-003-reflection.6.1: access registration also makes the method queryable. */
         if (exactReachabilityMetadataSupported()) {
             registerMethodDeclaringType(condition, method.getDeclaringClass(), method.isConstructor(), preserved);
         }
@@ -668,7 +751,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Without hiding fields, the declaring class of the field has to be registered to allow
          * individual queries at run-time.
          */
-        /* Only exact-metadata builds encode it (FS-001-native-image-semantics.3.4). */
+        /* See FS-003-reflection.6.2: access registration also makes the field queryable. */
         if (exactReachabilityMetadataSupported()) {
             registerFieldDeclaringType(condition, field.getDeclaringClass(), preserved);
         }

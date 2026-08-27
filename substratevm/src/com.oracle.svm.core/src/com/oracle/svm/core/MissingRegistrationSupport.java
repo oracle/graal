@@ -46,7 +46,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 public class MissingRegistrationSupport {
     private final OptionClassFilter legacyExactMetadataFilter;
     private final boolean legacyExactMetadata;
-    /** Set iff the build selects exact metadata (FS-001-native-image-semantics.3.4). */
+    /** Set iff the build prepares exact metadata (FS-003-reflection.10). */
     private final boolean exactMetadataSupported;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -93,7 +93,7 @@ public class MissingRegistrationSupport {
      * configured scope.
      */
     public boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
-        /* Runtime scope selection, see FS-001-native-image-semantics.3.4. */
+        /* See FS-003-reflection.10: compatibility options can refine reporting scope. */
         String packages = MissingRegistrationUtils.exactReachabilityMetadataPackages();
         return MissingRegistrationUtils.globalExactReachabilityMetadata() || exactMetadataForPackage(packages, packageName) ||
                         legacyExactMetadataFilter.isIncluded(moduleName, packageName, className) != null ||

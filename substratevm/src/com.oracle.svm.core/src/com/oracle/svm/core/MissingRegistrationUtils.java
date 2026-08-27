@@ -66,7 +66,7 @@ public class MissingRegistrationUtils {
      * any other image this folds to {@code false} and the reporting paths are unreachable.
      */
     public static boolean exactReachabilityMetadata() {
-        /* Build-time selection, see FS-001-native-image-semantics.3.4. */
+        /* See FS-003-reflection.10: exact metadata is selected before run-time reporting. */
         return exactReachabilityMetadataSupported() &&
                         (globalExactReachabilityMetadata() || !exactReachabilityMetadataPackages().isEmpty() || MissingRegistrationSupport.singleton().legacyExactMetadata());
     }

@@ -36,6 +36,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 
 public class UnsafeFieldUtil {
     public static long getFieldOffset(Target_java_lang_reflect_Field field) {
+        /* See FS-003-reflection.8.2: an unsafe offset requires active field-access metadata. */
         if (field == null) {
             throw new NullPointerException();
         }

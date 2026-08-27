@@ -16,6 +16,11 @@ The documentation for the Truffle framework, for example, is in [_truffle/docs/_
 This also applies to languages, tools, and other components maintained in [related repositories](#related-repositories).
 Instructions for building GraalVM from source are in [`vm/README.md`](vm/README.md).
 
+- [§FS-003-reflection](substratevm/docs/functional-spec/reflection.md): Java reflection
+  registration and run-time access.
+- [§AR-002-reflection](substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/reflect/ReflectionDataBuilder.java):
+  reflection metadata architecture.
+
 ## Get Support
 
 * Open a [GitHub issue][issues] for reproducible bugs and concrete feature requests.

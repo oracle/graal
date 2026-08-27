@@ -1328,11 +1328,11 @@ public class SubstrateOptions {
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         public static final HostedOptionKey<Boolean> UseCompressedReferenceShift = new HostedOptionKey<>(true);
 
-        /** FS-001-native-image-semantics.3.4. */
+        /** See FS-003-reflection.10: global exact-reflection selection. */
         @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
         public static final RuntimeOptionKey<Boolean> ExactReachabilityMetadata = new ExactReachabilityMetadataOptionKey<>(false);
 
-        /** FS-001-native-image-semantics.3.4. */
+        /** See FS-003-reflection.10: package-scoped exact-reflection selection. */
         @Option(help = "Comma-separated list of packages whose calls use exact reachability metadata. " +
                         "Requires an image built with --future-defaults=exact-reflection.")//
         public static final RuntimeOptionKey<String> ExactReachabilityMetadataPackages = new ExactReachabilityMetadataOptionKey<>("");

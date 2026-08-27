@@ -191,7 +191,7 @@ public class ReflectionRegistrationTest {
         }
     }
 
-    /** The package option narrows the future default (FS-001-native-image-semantics.3.4). */
+    /** The package option preserves transition scoping from FS-003-reflection.10. */
     @NativeImageBuildArgs({
                     "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
                     "--future-defaults=exact-reflection",
@@ -214,7 +214,7 @@ public class ReflectionRegistrationTest {
             assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new ExactFieldLookupTarget()));
         }
 
-        /** FS-001-native-image-semantics.3.4. */
+        /** See FS-003-reflection.10: exact reporting applies only to selected packages. */
         @Test
         public void testExactReachabilityMetadataPackageFilter() {
             MissingRegistrationSupport support = MissingRegistrationSupport.singleton();
@@ -234,7 +234,7 @@ public class ReflectionRegistrationTest {
         }
     }
 
-    /** Warn mode only reports and keeps legacy behavior (FS-001-native-image-semantics.3.4). */
+    /** See FS-003-reflection.10: warn mode reports and continues with earlier behavior. */
     @NativeImageBuildArgs({
                     "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
                     "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
@@ -257,7 +257,7 @@ public class ReflectionRegistrationTest {
         }
     }
 
-    /** Unnamed defineClass is checked by class-file name (FS-001-native-image-semantics.3.4). */
+    /** See FS-003-reflection.3.1: an unnamed definition is checked by its class-file name. */
     @NativeImageBuildArgs({
                     "-H:+UnlockExperimentalVMOptions",
                     "-H:+RuntimeClassLoading",

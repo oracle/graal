@@ -245,6 +245,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     public Class<?> getProxyClass(ClassLoader loader, boolean nullIfMissing, Class<?>... interfaces) {
+        /* See FS-003-reflection.4: the ordered interface list is the proxy registration key. */
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         Object clazzOrError = proxyCache.get(key);
         if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(clazzOrError == null ? null : ConditionalRuntimeValue.getDynamicAccessMetadata(clazzOrError))) {

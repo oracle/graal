@@ -871,6 +871,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void checkClassFlag(int mask, String methodName) {
+        /* See FS-003-reflection.2.2: a registered type carries its complete Class query flags. */
         if (isPrimitive() || isArray()) {
             return;
         }
@@ -2253,6 +2254,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @Override
     public DynamicHub arrayType() {
+        /* See FS-003-reflection.2.3: type registration covers only the immediate array type. */
         Class<?> clazz = toClass(this);
         if (clazz == void.class || (clazz.isArray() && SubstrateUtil.arrayTypeDimension(clazz) >= 255)) {
             throw new UnsupportedOperationException(new IllegalArgumentException());

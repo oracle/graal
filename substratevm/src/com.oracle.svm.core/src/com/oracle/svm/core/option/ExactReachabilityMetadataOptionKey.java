@@ -66,7 +66,7 @@ public final class ExactReachabilityMetadataOptionKey<T> extends RuntimeOptionKe
         }
     }
 
-    /** Non-default values need a build with exact metadata (FS-001-native-image-semantics.3.4). */
+    /** Non-default compatibility values need exact metadata (FS-003-reflection.10). */
     private boolean selectsExactMetadataWithoutSupport() {
         return !MissingRegistrationSupport.singleton().exactMetadataSupported() && hasBeenSet() && !Objects.equals(getValue(), getDefaultValue());
     }
