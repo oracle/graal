@@ -31,9 +31,9 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 
 import com.oracle.svm.core.util.UserError;
 
+// §FS-002-security-providers.7.3 and §FS-002-security-providers.7.5
 /**
- * Retirement boundary for deprecated security-provider options and service-driven inclusion
- * (§FS-002-security-providers.7.3 and §FS-002-security-providers.7.5).
+ * Retirement boundary for deprecated security-provider options and service-driven inclusion.
  *
  * <p>
  * Resolves the provider and service types named by legacy options and passes them to the

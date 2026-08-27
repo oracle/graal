@@ -16,6 +16,11 @@ The documentation for the Truffle framework, for example, is in [_truffle/docs/_
 This also applies to languages, tools, and other components maintained in [related repositories](#related-repositories).
 Instructions for building GraalVM from source are in [`vm/README.md`](vm/README.md).
 
+Native Image security-provider behavior and its implementation are described by:
+
+* [§FS-002-security-providers](substratevm/docs/functional-spec/security-providers.md#fs-002-security-providers-jca-security-provider-registration-and-run-time-access)
+* [§AR-001-security-providers](substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java)
+
 ## Get Support
 
 * Open a [GitHub issue][issues] for reproducible bugs and concrete feature requests.

@@ -40,18 +40,29 @@ Neither the option nor reflection metadata installs an otherwise unconfigured pr
 ## Security Services Automatic Registration
 
 Each JCA provider registers concrete implementation classes for the algorithms it supports.
-Each of the service classes (`Signature`, `Cipher`, `Mac`, `KeyPairGenerator`, `KeyGenerator`, `KeyFactory`, `KeyStore`, and others) declares a series of `getInstance(<algorithm>, <provider>)` factory methods which provide a concrete service implementation.
+Each of the service classes ([`Signature`][signature], [`Cipher`][cipher], [`Mac`][mac],
+[`KeyPairGenerator`][key-pair-generator], [`KeyGenerator`][key-generator],
+[`KeyFactory`][key-factory], [`KeyStore`][key-store], and others) declares a series of
+`getInstance(<algorithm>, <provider>)` factory methods which provide a concrete service
+implementation.
 When a specific algorithm is requested, the framework searches the registered providers for the corresponding implementation classes and dynamically allocates objects for concrete service implementations.
 The `native-image` builder uses static analysis to discover which of these services are used.
 It does so by registering reachability handlers for each of the `getInstance()` factory methods.
 By default, when it determines that a `getInstance()` method is reachable at run time, it automatically registers the configured providers and concrete implementations of the corresponding service type.
-Provider classes discovered as reachable subtypes of `java.security.Provider` are treated only as candidates for provider inclusion.
+Provider classes discovered as reachable subtypes of [`java.security.Provider`][provider] are
+treated only as candidates for provider inclusion.
 To apply this reflection requirement to providers selected by reachable service factories, use `--future-defaults=metadata-security-provider-registration`.
-With this future default, a factory does not make an unregistered provider or its services available, except when `SecureRandom` supplies the registration signal described below.
+With this future default, a factory does not make an unregistered provider or its services
+available, except when [`SecureRandom`][secure-random] supplies the registration signal described
+below.
 For a JDK-constructible provider, registering either the provider implementation type or a supported construction path retains the provider's complete service catalog.
-A supported construction path is a public no-argument constructor of a public, concrete provider class, or a public static no-argument `provider()` method on a public service-provider class in a named module.
+A supported construction path is a public no-argument constructor of a public, concrete provider
+class, or a public static no-argument [`provider()`][service-loader] method on a public
+service-provider class in a named module.
 Provider registration does not install a provider.
-For JDK-managed lookup, the provider must also have a matching `security.provider.<n>` entry; alternatively, application code can insert an existing provider instance with the standard `Security` API.
+For JDK-managed lookup, the provider must also have a matching `security.provider.<n>` entry;
+alternatively, application code can insert an existing provider instance with the standard
+[`Security`][security] API.
 
 Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.
 The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
@@ -71,9 +82,13 @@ Run-time initialization of security providers helps reduce image heap size.
 
 The `native-image` builder captures the configured providers and their preference order from the effective build-time security properties.
 The provider order is specified in the `java.security` file under `<java-home>/conf/security/java.security`.
-In explicit registration mode, a configured provider is available through JDK-managed lookup only if its implementation type or supported construction path is registered for reflection, except when `SecureRandom` supplies the registration signal.
+In explicit registration mode, a configured provider is available through JDK-managed lookup only
+if its implementation type or supported construction path is registered for reflection, except when
+[`SecureRandom`][secure-random] supplies the registration signal.
 An application can construct a provider directly and pass the existing instance to a provider-object factory overload without provider-class reflection metadata.
-It can also add that instance to the provider list at run time with `Security.addProvider(Provider)` or `Security.insertProviderAt(Provider, int)`.
+It can also add that instance to the provider list at run time with
+[`Security.addProvider(Provider)`][security] or
+[`Security.insertProviderAt(Provider, int)`][security].
 The provider's service implementations and their required construction metadata must already be retained in the executable, and JCE verification must succeed.
 To supply a custom security properties file when building with run-time provider initialization, use `-Djava.security.properties=<path>` on the `native-image` command line.
 
@@ -97,9 +112,10 @@ Native Image initializes `NativePRNG`, its seed generators, and related entropy-
 run time.
 This prevents `/dev/random`, `/dev/urandom`, and machine-specific seed state from being captured
 on the image builder.
-Class-initialization safety is separate from provider registration: a reachable `SecureRandom`
-acquisition also triggers registration of the complete configured-provider set that declares
-`SecureRandom` services.
+Class-initialization safety is separate from provider registration: a reachable
+[`SecureRandom`][secure-random] acquisition also triggers registration of the complete
+configured-provider set that declares
+[`SecureRandom`][secure-random] services.
 
 ## Custom Service Types
 
@@ -116,3 +132,15 @@ If you rely on third-party code that does not comply with these requirements, ma
 
 * [URL Protocols in Native Image](URLProtocols.md)
 * [Jipher JCE with Native Image](../../security/JipherJCE.md)
+
+[cipher]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/javax/crypto/Cipher.html
+[key-factory]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/KeyFactory.html
+[key-generator]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/javax/crypto/KeyGenerator.html
+[key-pair-generator]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/KeyPairGenerator.html
+[key-store]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/KeyStore.html
+[mac]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/javax/crypto/Mac.html
+[provider]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/Provider.html
+[secure-random]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/SecureRandom.html
+[security]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/Security.html
+[service-loader]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/ServiceLoader.html
+[signature]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/Signature.html
