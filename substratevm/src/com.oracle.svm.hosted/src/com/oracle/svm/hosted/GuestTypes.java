@@ -196,6 +196,8 @@ public final class GuestTypes {
      * <p>
      * If {@code element} is a {@link ResolvedJavaType}, the {@link Platforms} annotation on its
      * enclosing classes and package are consulted as well.
+     * <p>
+     * GR-79036: Unify the type-level JVMCI path with builder class platform filtering.
      */
     public ImageClassLoader.PlatformSupportResult isPlatformSupported(Annotated element, Platform thePlatform) {
         if (element instanceof ResolvedJavaType javaType) {
