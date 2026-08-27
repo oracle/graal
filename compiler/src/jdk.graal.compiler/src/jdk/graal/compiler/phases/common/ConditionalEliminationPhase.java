@@ -999,7 +999,11 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                                     // Pi not required here.
                                 } else {
                                     ConditionalEliminationUtil.InfoElement infoElement = phiInfoElements.get(merge.forwardEndAt(i));
-                                    assert infoElement != null;
+                                    if (infoElement == null || !ConditionalEliminationUtil.mayRewriteToGuard(infoElement.getGuard())) {
+                                        // The improved phi stamp cannot be materialized safely. This is a rare case so cleaning up afterwards seems better than a two pass implementation.
+                                        GraphUtil.killWithUnusedFloatingInputs(newPhi);
+                                        return;
+                                    }
                                     Stamp curBestStamp = infoElement.getStamp();
                                     ValueNode input = infoElement.getProxifiedInput();
                                     if (input == null) {
