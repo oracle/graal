@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.impl.ClassLoading;
 
@@ -164,17 +165,27 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     protected abstract boolean loaderIsBootOrPlatform();
 
     public final Class<?> defineClass(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
+        return defineClass(typeOrNull, b, off, len, info, null);
+    }
+
+    /**
+     * @param beforeDefinition if non-null, invoked with the parsed class type before the class is
+     *            defined, e.g. to reject the definition when {@code typeOrNull} is null and the
+     *            name is only known after parsing. May throw to abort the definition.
+     */
+    final Class<?> defineClass(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info, Consumer<Symbol<Type>> beforeDefinition) {
         // GR-62338: for parallel class loaders this synchronization should be skipped.
         Object syncObject = getClassLoader();
         if (syncObject == null) {
             syncObject = this;
         }
         synchronized (syncObject) {
-            return defineClassInner(typeOrNull, b, off, len, info);
+            return defineClassInner(typeOrNull, b, off, len, info, beforeDefinition);
         }
     }
 
-    private Class<?> defineClassInner(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info) {
+    private Class<?> defineClassInner(Symbol<Type> typeOrNull, byte[] b, int off, int len, ClassDefinitionInfo info,
+                    Consumer<Symbol<Type>> beforeDefinition) {
         RuntimeClassLoading.guaranteeClassLoadingAllowed();
         byte[] data = b;
         if (off != 0 || b.length != len) {
@@ -189,6 +200,9 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         ParserKlass parsed = parseClass(typeOrNull, info, data);
         Symbol<Type> type = typeOrNull == null ? parsed.getType() : typeOrNull;
         assert typeOrNull == null || type == parsed.getType() : typeOrNull + " vs. " + parsed.getType();
+        if (beforeDefinition != null) {
+            beforeDefinition.accept(type);
+        }
         checkProhibitedPackage(parsed);
         if (info.addedToRegistry() && findLoadedClass(type) != null) {
             String kind;

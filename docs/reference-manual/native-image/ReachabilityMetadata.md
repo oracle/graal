@@ -30,13 +30,19 @@ You can provide reachability metadata to the `native-image` builder using the fo
 
 > Note: Native Image is migrating to the more user-friendly implementation of reachability metadata that shows problems early on and allows easy debugging.
 >
-> To enable the new user-friendly reachability-metadata mode for your application, pass the option `--exact-reachability-metadata` at build time. To enable the user-friendly mode only for concrete packages, pass `--exact-reachability-metadata=<comma-separated-list-of-packages>`.
+> To enable the new user-friendly reachability-metadata mode for your application, pass `--future-defaults=exact-reflection` at build time.
+> Executables built this way accept two immutable runtime options: `-XX:+ExactReachabilityMetadata` selects the mode globally, including `Class.forName` and ordinary resource lookups, and `-XX:ExactReachabilityMetadataPackages=<comma-separated-packages>` limits it to specific packages.
+> Executables built without `--future-defaults=exact-reflection` keep the legacy behavior and reject these runtime options.
+> Only a build that passes `--future-defaults=exact-reflection` may also set these options as build-time defaults with `-R:+ExactReachabilityMetadata` or `-R:ExactReachabilityMetadataPackages=<comma-separated-packages>`; any other build fails with an error naming `--future-defaults=exact-reflection`.
+> The build options `--exact-reachability-metadata[=<packages>]` and `--exact-reachability-metadata-path=<paths>` are deprecated: they still select exact reachability metadata for their configured scope, but new builds should use `--future-defaults=exact-reflection` with the runtime options instead.
 >
 > To get an overview of all places in your code where missing registrations occur, without committing to the exact behavior, you can pass `-XX:MissingRegistrationReportingMode=Warn` when starting the application.
+> In that mode, and for callers outside the packages selected with `-XX:ExactReachabilityMetadataPackages=`, a missing registration is only reported and the call continues with its legacy, non-exact behavior.
 >
 > To detect places where the application accidentally ignores a missing registration error (with `catch (Throwable t)` blocks), pass `-XX:MissingRegistrationReportingMode=Exit` when starting the application. The application will then unconditionally print the error message with the stack trace and exit immediately. This behavior is ideal for running application tests to guarantee all metadata is included.
 >
-> The user-friendly implementation for reflection will become the default in future releases of GraalVM so the timely adoption is important to avoid project breakage.
+> The `--future-defaults=exact-reflection` mode previews the future reflection behavior while preserving legacy behavior for `Class.forName` and ordinary resource lookups.
+> Resource bundles remain subject to exact metadata checks in that future-default mode.
 
 ### Table of Contents
 
@@ -601,7 +607,7 @@ is not required:
 
 Failing to provide metadata for an element that is dynamically accessed from native code will result in an exception (`MissingJNIRegistrationError`).
 
-> Note that most libraries that use JNI do not handle exceptions properly, so to see which elements are missing `--exact-reachability-metadata` in combination with `-XX:MissingRegistrationReportingMode=Warn` must be used.
+> Note that most libraries that use JNI do not handle exceptions properly, so use exact reachability metadata in combination with `-XX:MissingRegistrationReportingMode=Warn` to see which elements are missing.
 
 ## Foreign Function and Memory API
 

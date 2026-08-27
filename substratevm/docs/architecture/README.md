@@ -12,3 +12,10 @@ Native Image has two closely related architectural views:
 
 The build-time guide links to the eight detailed lifecycle phases.
 The runtime guide describes the generated image after image writing has finished.
+
+## Component Architecture Records
+
+- [§AR-001-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java):
+  provider inclusion, verification, and metadata tracing.
+- [§AR-002-reflection](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/reflect/ReflectionDataBuilder.java):
+  reflection registration, metadata encoding, and run-time enforcement.

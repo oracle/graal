@@ -125,12 +125,6 @@ public final class MissingResourceRegistrationUtils extends MissingRegistrationU
                     FileSystemProvider.class.getTypeName(), Set.of("newFileChannel"));
 
     private static StackTraceElement getResponsibleClass(Throwable t) {
-        StackTraceElement[] stackTrace = t.getStackTrace();
-        for (StackTraceElement stackTraceElement : stackTrace) {
-            if (resourceEntryPoints.getOrDefault(stackTraceElement.getClassName(), Set.of()).contains(stackTraceElement.getMethodName())) {
-                return stackTraceElement;
-            }
-        }
-        return null;
+        return getResponsibleClass(t, resourceEntryPoints);
     }
 }

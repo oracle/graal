@@ -43,3 +43,16 @@ Consulting the CI configurations in ci/ci.jsonnet may help understand how `mx ga
 ## Project Terminus
 
 - [Project Terminus](project-terminus.md): overview and design direction for self-hosting Native Image.
+
+## Reflection
+
+- [Java Reflection Registration](functional-spec/reflection.md): class acquisition, metadata queries,
+  invocation, serialization, and unsafe access.
+- [§AR-002-reflection](../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/reflect/ReflectionDataBuilder.java):
+  reflection registration, metadata encoding, and run-time enforcement.
+
+## Security Providers
+
+- [JCA Security Provider Inclusion](functional-spec/security-providers.md): required provider inclusion and run-time behavior.
+- [§AR-001-security-providers](../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java):
+  provider inclusion, verification, and metadata tracing.

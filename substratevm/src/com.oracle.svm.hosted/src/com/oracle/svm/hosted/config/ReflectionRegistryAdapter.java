@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadataSupported;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.StrictConfiguration;
 
 import java.io.ObjectStreamClass;
 import java.io.ObjectStreamField;
@@ -47,6 +48,7 @@ import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.TypeResult;
 
@@ -96,7 +98,7 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
             if (classLookupException instanceof LinkageError) {
                 String reflectionName = ClassNameSupport.typeNameToReflectionName(namedDescriptor.name());
                 reflectionSupport.registerClassLookupException(condition, reflectionName, classLookupException);
-            } else if (throwMissingRegistrationErrors() && jniAccessible & classLookupException instanceof ClassNotFoundException) {
+            } else if (exactReachabilityMetadataSupported() && jniAccessible & classLookupException instanceof ClassNotFoundException) {
                 String jniName = ClassNameSupport.typeNameToJNIName(namedDescriptor.name());
                 jniSupport.registerClassLookup(condition, false, jniName);
             }
@@ -250,6 +252,10 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
         super.registerFieldNegativeQuery(condition, jniAccessible, type, fieldName);
         if (jniAccessible) {
             jniSupport.registerFieldLookup(condition, false, type, fieldName);
+        } else {
+            if (StrictConfiguration.getValue()) {
+                LogUtils.warning("Could not resolve field for type %s and name \'%s\' for reflection registration", type, fieldName);
+            }
         }
     }
 
@@ -266,6 +272,10 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
         super.registerMethodNegativeQuery(condition, jniAccessible, type, methodName, methodParameterTypes);
         if (jniAccessible) {
             jniSupport.registerMethodLookup(condition, false, type, methodName, getParameterTypes(methodParameterTypes));
+        } else {
+            if (StrictConfiguration.getValue()) {
+                LogUtils.warning("Could not resolve method for type %s with name \"%s\" and parameter types %s for reflection registration", type, methodName, methodParameterTypes);
+            }
         }
     }
 
@@ -274,6 +284,10 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
         super.registerConstructorNegativeQuery(condition, jniAccessible, type, constructorParameterTypes);
         if (jniAccessible) {
             jniSupport.registerConstructorLookup(condition, false, type, getParameterTypes(constructorParameterTypes));
+        } else {
+            if (StrictConfiguration.getValue()) {
+                LogUtils.warning("Could not resolve constructor for type %s and parameter types %s for reflection registration", type, constructorParameterTypes);
+            }
         }
     }
 }

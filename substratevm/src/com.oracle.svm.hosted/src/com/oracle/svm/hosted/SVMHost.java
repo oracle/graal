@@ -240,7 +240,6 @@ public class SVMHost extends HostVM {
     private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
-    private final MissingRegistrationSupport missingRegistrationSupport;
 
     private final SymbolEncoder encoder = SymbolEncoder.singleton();
 
@@ -282,12 +281,11 @@ public class SVMHost extends HostVM {
 
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    MissingRegistrationSupport missingRegistrationSupport) {
+                    @SuppressWarnings("unused") MissingRegistrationSupport missingRegistrationSupport) {
         super(options, loader.getClassLoader());
         this.loader = loader;
         this.classInitializationSupport = classInitializationSupport;
         this.annotationSubstitutions = annotationSubstitutions;
-        this.missingRegistrationSupport = missingRegistrationSupport;
         this.originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
@@ -524,9 +522,9 @@ public class SVMHost extends HostVM {
                  * precedence over the generic ThrowMissingRegistrationError option.
                  */
             }
-        } else if (!missingRegistrationSupport.reportMissingRegistrationErrors(type.getJavaClass())) {
-            type.registerAsUnsafeAllocated("Type is not listed as ThrowMissingRegistrationError and therefore registered as Unsafe allocated automatically for compatibility reasons");
-            typeToHub.get(type).setCanUnsafeAllocate();
+        } else {
+            type.registerAsUnsafeAllocated("Type is registered as Unsafe allocated automatically for compatibility mode");
+            typeToHub.get(type).setCanUnsafeAllocateForLegacyCompatibility();
         }
     }
 

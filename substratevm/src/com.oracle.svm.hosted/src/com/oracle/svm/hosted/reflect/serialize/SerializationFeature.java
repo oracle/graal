@@ -375,6 +375,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     @Override
     public void registerLambdaCapturingClass(AccessCondition condition, String lambdaCapturingClassName) {
+        /* See FS-003-reflection.7: lambda serialization retains its deserialization path. */
         abortIfSealed();
         Objects.requireNonNull(lambdaCapturingClassName, () -> nullErrorMessage("lambda capturing class", "serialization"));
         Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);

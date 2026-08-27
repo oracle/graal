@@ -101,45 +101,49 @@ final class ReflectionRuntimeMetadata {
         final String name;
         final HostedType type;
         final boolean trustedFinal;
+        final boolean legacyAccess;
         final int offset;
         final int installedLayerNumber;
         final String deletedReason;
 
         private FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, boolean complete, boolean negative, boolean hiding, JavaConstant heapObject, HostedType declaringType, String name,
                         HostedType type,
-                        int modifiers, boolean trustedFinal,
+                        int modifiers, boolean trustedFinal, boolean legacyAccess,
                         String signature, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations, int offset, int installedLayerNumber, String deletedReason) {
             super(dynamicAccessMetadata, complete, negative, heapObject, declaringType, modifiers, signature, annotations, typeAnnotations);
             this.hiding = hiding;
             this.name = name;
             this.type = type;
             this.trustedFinal = trustedFinal;
+            this.legacyAccess = legacyAccess;
             this.offset = offset;
             this.installedLayerNumber = installedLayerNumber;
             this.deletedReason = deletedReason;
         }
 
         /* Field registered for reflection */
-        FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, HostedType declaringType, String name, HostedType type, int modifiers, boolean trustedFinal, String signature,
+        FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, HostedType declaringType, String name, HostedType type, int modifiers, boolean trustedFinal, boolean legacyAccess,
+                        String signature,
                         AnnotationValue[] annotations,
                         TypeAnnotationValue[] typeAnnotations, int offset, int installedLayerNumber, String deletedReason) {
-            this(dynamicAccessMetadata, true, false, false, null, declaringType, name, type, modifiers, trustedFinal, signature, annotations, typeAnnotations, offset, installedLayerNumber,
+            this(dynamicAccessMetadata, true, false, false, null, declaringType, name, type, modifiers, trustedFinal, legacyAccess, signature, annotations, typeAnnotations, offset,
+                            installedLayerNumber,
                             deletedReason);
         }
 
         /* Field in heap */
         FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, boolean registered, JavaConstant heapObject, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
-            this(dynamicAccessMetadata, registered, false, false, heapObject, null, null, null, 0, false, null, annotations, typeAnnotations, LOC_UNINITIALIZED, LAYER_NUM_UNINSTALLED, null);
+            this(dynamicAccessMetadata, registered, false, false, heapObject, null, null, null, 0, false, false, null, annotations, typeAnnotations, LOC_UNINITIALIZED, LAYER_NUM_UNINSTALLED, null);
         }
 
         /* Hiding field */
         FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, HostedType declaringType, String name, HostedType type, int modifiers) {
-            this(dynamicAccessMetadata, false, false, true, null, declaringType, name, type, modifiers, false, null, null, null, LOC_UNINITIALIZED, LAYER_NUM_UNINSTALLED, null);
+            this(dynamicAccessMetadata, false, false, true, null, declaringType, name, type, modifiers, false, false, null, null, null, LOC_UNINITIALIZED, LAYER_NUM_UNINSTALLED, null);
         }
 
         /* Reachable or negative query field */
         FieldMetadata(RuntimeDynamicAccessMetadata dynamicAccessMetadata, HostedType declaringType, String name, boolean negative) {
-            this(dynamicAccessMetadata, false, negative, false, null, declaringType, name, null, 0, false, null, null, null, LOC_UNINITIALIZED, LAYER_NUM_UNINSTALLED, null);
+            this(dynamicAccessMetadata, false, negative, false, null, declaringType, name, null, 0, false, false, null, null, null, LOC_UNINITIALIZED, LAYER_NUM_UNINSTALLED, null);
         }
     }
 

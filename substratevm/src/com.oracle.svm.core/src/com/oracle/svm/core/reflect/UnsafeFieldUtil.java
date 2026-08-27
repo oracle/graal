@@ -27,6 +27,7 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.Field;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
@@ -35,6 +36,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 
 public class UnsafeFieldUtil {
     public static long getFieldOffset(Target_java_lang_reflect_Field field) {
+        /* See FS-003-reflection.8.2: an unsafe offset requires active field-access metadata. */
         if (field == null) {
             throw new NullPointerException();
         }
@@ -44,10 +46,20 @@ public class UnsafeFieldUtil {
         }
         int offset = field.root == null ? field.offset : field.root.offset;
         boolean conditionsSatisfied = dynamicAccessMetadata.satisfied();
+        if (conditionsSatisfied) {
+            checkLegacyAccess(field);
+        }
         if (offset <= 0 || !conditionsSatisfied) {
             throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class));
         }
         return offset;
+    }
+
+    public static void checkLegacyAccess(Target_java_lang_reflect_Field field) {
+        boolean legacyAccess = field.legacyAccess || (field.root != null && field.root.legacyAccess);
+        if (legacyAccess && MissingRegistrationUtils.exactReflection()) {
+            MissingReflectionRegistrationUtils.reportLegacyAccessedField(SubstrateUtil.cast(field, Field.class));
+        }
     }
 
     private static void traceFieldAccess(Field f) {

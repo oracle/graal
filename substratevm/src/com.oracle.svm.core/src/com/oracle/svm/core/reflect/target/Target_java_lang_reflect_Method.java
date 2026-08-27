@@ -135,6 +135,8 @@ public final class Target_java_lang_reflect_Method {
      */
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
+        /* See FS-003-reflection.6.1:
+         * query metadata alone does not supply an invocation accessor. */
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
         if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
             MethodUtil.traceMethodAccess(SubstrateUtil.cast(this, Executable.class));

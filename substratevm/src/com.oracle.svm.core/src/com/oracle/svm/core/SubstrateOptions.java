@@ -58,6 +58,7 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
+import com.oracle.svm.core.option.ExactReachabilityMetadataOptionKey;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
@@ -1327,6 +1328,15 @@ public class SubstrateOptions {
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         public static final HostedOptionKey<Boolean> UseCompressedReferenceShift = new HostedOptionKey<>(true);
 
+        /** See FS-003-reflection.10: global exact-reflection selection. */
+        @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
+        public static final RuntimeOptionKey<Boolean> ExactReachabilityMetadata = new ExactReachabilityMetadataOptionKey<>(false);
+
+        /** See FS-003-reflection.10: package-scoped exact-reflection selection. */
+        @Option(help = "Comma-separated list of packages whose calls use exact reachability metadata. " +
+                        "Requires an image built with --future-defaults=exact-reflection.")//
+        public static final RuntimeOptionKey<String> ExactReachabilityMetadataPackages = new ExactReachabilityMetadataOptionKey<>("");
+
         /** Use {@link SubstrateOptions#getPageSize()} instead. */
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
@@ -1584,12 +1594,13 @@ public class SubstrateOptions {
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
-    @APIOption(name = "exact-reachability-metadata", defaultValue = "")//
-    @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
+    @APIOption(name = "exact-reachability-metadata", defaultValue = "", //
+                    deprecated = "Use '--future-defaults=exact-reflection' at build time and, if needed, '-XX:+ExactReachabilityMetadata' or '-XX:ExactReachabilityMetadataPackages=<packages>' at run time instead.")//
+    @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt", deprecated = true, deprecationMessage = "Use --future-defaults=exact-reflection and the ExactReachabilityMetadata runtime options instead.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
-    @APIOption(name = "exact-reachability-metadata-path")//
-    @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt")//
+    @APIOption(name = "exact-reachability-metadata-path", deprecated = "Use '--future-defaults=exact-reflection' at build time and '-XX:ExactReachabilityMetadataPackages=<packages>' at run time instead.")//
+    @Option(help = "file:doc-files/ExactReachabilityMetadataPathHelp.txt", deprecated = true, deprecationMessage = "Use --future-defaults=exact-reflection and the ExactReachabilityMetadataPackages runtime option instead.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -1754,7 +1765,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ReduceImplicitExceptionStackTraceInformation = new HostedOptionKey<>(false);
 
     @Option(help = "Allow all instantiated types to be allocated via Unsafe.allocateInstance().", type = OptionType.Expert, //
-                    deprecated = true, deprecationMessage = "ThrowMissingRegistrationErrors is the preferred way of configuring this on a per-type level.") //
+                    deprecated = true, deprecationMessage = "Use --future-defaults=exact-reflection to detect missing unsafe-allocation metadata.") //
     public static final HostedOptionKey<Boolean> AllowUnsafeAllocationOfAllInstantiatedTypes = new HostedOptionKey<>(null);
 
     @Option(help = "Enable fallback to mremap for initializing the image heap.")//

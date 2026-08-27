@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReflection;
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
@@ -406,6 +406,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final int ADDITIONAL_FLAGS_INSTANTIATED_BIT = 0;
     /** Indicates whether this type is accessible through JNI class lookup. */
     private static final int ADDITIONAL_FLAGS_JNI_ACCESSIBLE_BIT = 1;
+    /** Indicates that unsafe allocation was enabled only for legacy compatibility. */
+    private static final int ADDITIONAL_FLAGS_LEGACY_UNSAFE_ALLOCATION_BIT = 2;
 
     /**
      * The hub for the component type of an array, or null if this hub is not an array hub.
@@ -869,6 +871,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void checkClassFlag(int mask, String methodName) {
+        /* See FS-003-reflection.2.2: a registered type carries its complete Class query flags. */
         if (isPrimitive() || isArray()) {
             return;
         }
@@ -877,7 +880,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(!classFlagSet, dynamicAccessMetadata != null && dynamicAccessMetadata.isPreserved())) {
             MetadataTracer.singleton().traceReflectionType(toClass(this));
         }
-        if (throwMissingRegistrationErrors() && !(classFlagSet && dynamicAccessMetadata != null && dynamicAccessMetadata.satisfied())) {
+        if (exactReflection() && !(classFlagSet && dynamicAccessMetadata != null && dynamicAccessMetadata.satisfied())) {
             MissingReflectionRegistrationUtils.reportClassQuery(DynamicHub.toClass(this), methodName);
         }
     }
@@ -1122,40 +1125,56 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean canUnsafeInstantiateAsInstanceFastPath() {
+        if (exactReflection() && isFlagSet(companion.additionalFlags, ADDITIONAL_FLAGS_LEGACY_UNSAFE_ALLOCATION_BIT)) {
+            return false;
+        }
         return companion.canUnsafeAllocate != null && companion.canUnsafeAllocate.fastPathSatisfied();
     }
 
     public boolean canUnsafeInstantiateAsInstanceSlowPath() {
-        RuntimeDynamicAccessMetadata canUnsafeAllocate = canUnsafeAllocate();
+        RuntimeDynamicAccessMetadata canUnsafeAllocate = exactReflection() && isFlagSet(companion.additionalFlags, ADDITIONAL_FLAGS_LEGACY_UNSAFE_ALLOCATION_BIT)
+                        ? registeredUnsafeAllocationMetadata()
+                        : canUnsafeAllocate();
         return canUnsafeAllocate != null && canUnsafeAllocate.satisfied();
     }
 
+    public boolean isUnsafeAllocationAllowedForLegacyCompatibility() {
+        return isFlagSet(companion.additionalFlags, ADDITIONAL_FLAGS_LEGACY_UNSAFE_ALLOCATION_BIT);
+    }
+
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata() {
-        return canUnsafeAllocate();
+        return registeredUnsafeAllocationMetadata();
     }
 
     private RuntimeDynamicAccessMetadata canUnsafeAllocate() {
         if (companion.canUnsafeAllocate == null) {
-            RuntimeDynamicAccessMetadata unsafeAllocationMetadata = null;
-            if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                var singletons = LayeredReflectionMetadataSingleton.singletons();
-                for (int i = 0; i < singletons.length; ++i) {
-                    var reflectionMetadata = singletons[i];
-                    if (reflectionMetadata.getReflectionMetadata(this).unsafeAllocatedIndex != NO_DATA) {
-                        unsafeAllocationMetadata = reflectionMetadata.getReflectionMetadata(this).getUnsafeAllocationMetadata(this, i);
-                        break;
-                    }
-                }
-            } else {
-                unsafeAllocationMetadata = ImageReflectionMetadata.getUnsafeAllocationMetadata(encodedReflectionMetadata(), layerId);
-            }
-            companion.canUnsafeAllocate = unsafeAllocationMetadata;
+            companion.canUnsafeAllocate = registeredUnsafeAllocationMetadata();
         }
         return companion.canUnsafeAllocate;
     }
 
+    private RuntimeDynamicAccessMetadata registeredUnsafeAllocationMetadata() {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            var singletons = LayeredReflectionMetadataSingleton.singletons();
+            for (int i = 0; i < singletons.length; ++i) {
+                var reflectionMetadata = singletons[i];
+                if (reflectionMetadata.getReflectionMetadata(this).unsafeAllocatedIndex != NO_DATA) {
+                    return reflectionMetadata.getReflectionMetadata(this).getUnsafeAllocationMetadata(this, i);
+                }
+            }
+            return null;
+        }
+        return ImageReflectionMetadata.getUnsafeAllocationMetadata(encodedReflectionMetadata(), layerId);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setCanUnsafeAllocate() {
+        companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setCanUnsafeAllocateForLegacyCompatibility() {
+        companion.additionalFlags = NumUtil.safeToUByte((companion.additionalFlags & 0xff) | makeFlag(ADDITIONAL_FLAGS_LEGACY_UNSAFE_ALLOCATION_BIT, true));
         companion.canUnsafeAllocate = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
     }
 
@@ -1634,7 +1653,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void checkField(String fieldName, Field field, boolean publicOnly) throws NoSuchFieldException {
-        boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
 
         if (field == null) {
@@ -1642,7 +1660,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(!allFieldsRegistered, isPreserved())) {
                 traceFieldLookup(fieldName, field, publicOnly);
             }
-            if (throwMissingErrors && !allFieldsRegistered) {
+            if (exactReflection() && !allFieldsRegistered) {
                 MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName);
             }
             /*
@@ -1660,7 +1678,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata == null, metadataRegisteredForReplay)) {
                 traceFieldLookup(fieldName, field, publicOnly, negative);
             }
-            if (throwMissingErrors && hiding) {
+            if (exactReflection() && hiding) {
                 MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName);
             }
             if (negative || hiding) {
@@ -1719,7 +1737,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * @return true if the method exists and is visible, false if missing (NoSuchMethodException).
      */
     private boolean checkExecutableExists(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) {
-        boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
 
         if (method == null) {
@@ -1731,7 +1748,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(missingMetadata, isPreserved())) {
                 traceMethodLookup(methodName, parameterTypes, method, publicOnly);
             }
-            if (throwMissingErrors && missingMetadata) {
+            if (exactReflection() && missingMetadata) {
                 MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
             }
             /*
@@ -1752,7 +1769,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata == null, metadataRegisteredForReplay)) {
                 traceMethodLookup(methodName, parameterTypes, method, publicOnly, negative);
             }
-            if (throwMissingErrors && hiding) {
+            if (exactReflection() && hiding) {
                 MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
             }
             return !(negative || hiding);
@@ -2237,26 +2254,33 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @Override
     public DynamicHub arrayType() {
+        /* See FS-003-reflection.2.3: type registration covers only the immediate array type. */
         Class<?> clazz = toClass(this);
         if (clazz == void.class || (clazz.isArray() && SubstrateUtil.arrayTypeDimension(clazz) >= 255)) {
             throw new UnsupportedOperationException(new IllegalArgumentException());
         }
         boolean followReflectionConfiguration = ClassLoadingSupport.singleton().followReflectionConfiguration();
         DynamicHub arrayHub = getArrayHub();
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub != null ? arrayHub.getDynamicAccessMetadata() : null;
-        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
+        RuntimeDynamicAccessMetadata arrayMetadata = arrayHub != null ? arrayHub.getDynamicAccessMetadata() : null;
+        RuntimeDynamicAccessMetadata componentMetadata = getDynamicAccessMetadata();
+        boolean metadataMissing = arrayMetadata == null && componentMetadata == null;
+        boolean metadataPreserved = (arrayMetadata != null && arrayMetadata.isPreserved()) ||
+                        (componentMetadata != null && componentMetadata.isPreserved());
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(metadataMissing, metadataPreserved)) {
             MetadataTracer.singleton().traceReflectionArrayType(clazz);
         }
+        boolean registrationSatisfied = (arrayMetadata != null && arrayMetadata.satisfied()) ||
+                        (componentMetadata != null && componentMetadata.satisfied());
         // this access is validated even if the array hub exists
         if (RuntimeClassLoading.isSupported()) {
-            if (throwMissingRegistrationErrors() &&
+            if (exactReflection() &&
                             followReflectionConfiguration &&
-                            (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())) {
+                            !registrationSatisfied) {
                 MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
             }
         } else {
-            if (followReflectionConfiguration && (arrayHub == null || (throwMissingRegistrationErrors() &&
-                            (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())))) {
+            if (followReflectionConfiguration && (arrayHub == null || (exactReflection() &&
+                            !registrationSatisfied))) {
                 MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
             }
         }

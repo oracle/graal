@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,9 +26,12 @@
 package com.oracle.svm.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.classfile.ClassFile;
+import java.lang.constant.ClassDesc;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Set;
@@ -40,8 +43,10 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.junit.Test;
 
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.test.exactmetadataexcluded.ExactReachabilityMetadataExcludedCaller;
 
 import jdk.internal.misc.Unsafe;
 
@@ -53,6 +58,10 @@ public class ReflectionRegistrationTest {
     private static final int FIELD_LOOKUP_TEST_VALUE = 42;
 
     public static class FieldLookupTarget {
+        public int value = FIELD_LOOKUP_TEST_VALUE;
+    }
+
+    public static class ExactFieldLookupTarget {
         public int value = FIELD_LOOKUP_TEST_VALUE;
     }
 
@@ -182,27 +191,110 @@ public class ReflectionRegistrationTest {
         }
     }
 
+    /** The package option preserves transition scoping from FS-003-reflection.10. */
     @NativeImageBuildArgs({
-                    "--exact-reachability-metadata=com.oracle.svm.test",
+                    "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
+                    "--future-defaults=exact-reflection",
+                    "-R:ExactReachabilityMetadataPackages=com.example.unused,com.oracle.svm.test",
                     "--features=com.oracle.svm.test.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
     })
     public static class ExactReachabilityTest {
         public static class TestFeature implements Feature {
             @Override
             public void beforeAnalysis(BeforeAnalysisAccess access) {
-                RuntimeReflection.registerFieldLookup(FieldLookupTarget.class, "value");
+                RuntimeReflection.registerFieldLookup(ExactFieldLookupTarget.class, "value");
+                RuntimeReflection.registerFieldLookup(ExactFieldLookupTarget.class, "value");
             }
         }
 
         @Test
         public void testFieldLookupAllowsQueryOnly() throws NoSuchFieldException {
-            Field field = FieldLookupTarget.class.getDeclaredField(fieldName());
+            Field field = ExactFieldLookupTarget.class.getDeclaredField(fieldName());
             assertEquals(fieldName(), field.getName());
-            assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new FieldLookupTarget()));
+            assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new ExactFieldLookupTarget()));
+        }
+
+        /** See FS-003-reflection.10: exact reporting applies only to selected packages. */
+        @Test
+        public void testExactReachabilityMetadataPackageFilter() {
+            MissingRegistrationSupport support = MissingRegistrationSupport.singleton();
+            assertTrue(support.reportMissingRegistrationErrors(null, ExactReachabilityTest.class.getPackageName(), ExactReachabilityTest.class.getName()));
+            assertFalse(support.reportMissingRegistrationErrors(null, ExactReachabilityMetadataExcludedCaller.class.getPackageName(), ExactReachabilityMetadataExcludedCaller.class.getName()));
+        }
+
+        @Test
+        public void testExcludedPackageKeepsLegacyFieldAccess() throws ReflectiveOperationException {
+            Field field = ExactFieldLookupTarget.class.getDeclaredField(fieldName());
+            Object value = ExactReachabilityMetadataExcludedCaller.readField(field, new ExactFieldLookupTarget());
+            assertEquals(FIELD_LOOKUP_TEST_VALUE, value);
         }
 
         private static String fieldName() {
             return System.nanoTime() == Long.MIN_VALUE ? "missing" : "value";
+        }
+    }
+
+    /** See FS-003-reflection.10: warn mode reports and continues with earlier behavior. */
+    @NativeImageBuildArgs({
+                    "--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+                    "--future-defaults=exact-reflection",
+                    "-R:+ExactReachabilityMetadata",
+                    "-R:MissingRegistrationReportingMode=Warn",
+                    "--features=com.oracle.svm.test.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
+    })
+    public static class WarnExactReflectionTest {
+        @Test
+        public void testWarningKeepsLegacyFieldAccess() throws ReflectiveOperationException {
+            Field field = ExactFieldLookupTarget.class.getDeclaredField("value");
+            assertEquals(FIELD_LOOKUP_TEST_VALUE, field.get(new ExactFieldLookupTarget()));
+        }
+
+        @Test
+        public void testWarningKeepsLegacyUnsafeAllocationExceptionType() {
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> unsafeAllocate(UnsafeAllocationTarget.class));
+            assertTrue(exception.getMessage().contains("unsafeAllocated"));
+        }
+    }
+
+    /** See FS-003-reflection.3.1: an unnamed definition is checked by its class-file name. */
+    @NativeImageBuildArgs({
+                    "-H:+UnlockExperimentalVMOptions",
+                    "-H:+RuntimeClassLoading",
+                    "--future-defaults=exact-reflection",
+                    "--features=com.oracle.svm.test.ReflectionRegistrationTest$UnnamedDefineClassExactReflectionTest$TestFeature"
+    })
+    public static class UnnamedDefineClassExactReflectionTest {
+        private static final String REGISTERED_CLASS_NAME = "com.oracle.svm.test.RuntimeDefinedRegisteredClass";
+        private static final String UNREGISTERED_CLASS_NAME = "com.oracle.svm.test.RuntimeDefinedUnregisteredClass";
+
+        public static class TestFeature implements Feature {
+            @Override
+            public void beforeAnalysis(BeforeAnalysisAccess access) {
+                RuntimeReflection.registerClassLookup(REGISTERED_CLASS_NAME);
+            }
+        }
+
+        private static final class TestClassLoader extends ClassLoader {
+            @SuppressWarnings("deprecation")
+            private Class<?> define(byte[] bytes) {
+                return defineClass(bytes, 0, bytes.length);
+            }
+        }
+
+        @Test
+        public void testRegisteredUnnamedClassDefinition() {
+            Class<?> definedClass = new TestClassLoader().define(generateClassBytes(REGISTERED_CLASS_NAME));
+            assertEquals(REGISTERED_CLASS_NAME, definedClass.getName());
+        }
+
+        @Test
+        public void testUnregisteredUnnamedClassDefinition() {
+            assertThrows(MissingReflectionRegistrationError.class, () -> new TestClassLoader().define(generateClassBytes(UNREGISTERED_CLASS_NAME)));
+        }
+
+        private static byte[] generateClassBytes(String className) {
+            return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder.withSuperclass(ClassDesc.of("java.lang.Object")));
         }
     }
 }

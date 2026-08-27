@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub.registry;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.exactReachabilityMetadata;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.lang.ref.ReferenceQueue;
@@ -41,6 +41,8 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.ClassLoadingSupport;
 
 import com.oracle.svm.configure.ClassNameSupport;
+import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -327,7 +329,7 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     private static void maybeThrowMissingRegistrationError(DynamicHub result, String name) {
-        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && ClassNameSupport.isValidReflectionName(name) && shouldThrowMissingRegistrationError(result)) {
+        if (exactReachabilityMetadata() && shouldFollowReflectionConfiguration() && ClassNameSupport.isValidReflectionName(name) && shouldThrowMissingRegistrationError(result)) {
             MissingReflectionRegistrationUtils.reportClassAccess(name);
         }
     }
@@ -396,22 +398,24 @@ public final class ClassRegistries implements ParsingContext {
             remainingDims--;
             hub = arrayHub;
         }
-        // Perform the MissingRegistrationError check for the final element
-        hub = hub.arrayType();
+        if (FutureDefaultsOptions.exactReflection() && !exactReachabilityMetadata()) {
+            // Class-name lookup is deliberately less strict than other reflection when only the
+            // exact-reflection future default is enabled. The future default is folded, so images
+            // without it do not reach the lambda below.
+            DynamicHub finalHub = hub;
+            hub = MissingRegistrationUtils.runIgnoringMissingRegistrations(finalHub::arrayType);
+        } else {
+            hub = hub.arrayType();
+        }
         return SubstrateUtil.cast(hub, Class.class);
     }
 
     public static Class<?> defineClass(ClassLoader loader, String name, byte[] b, int off, int len, ClassDefinitionInfo info) {
         // name can use either dot or slash package separators.
         assert RuntimeClassLoading.isSupported();
-        String reflectionName = toReflectionName(name);
-        if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
-            MissingReflectionRegistrationUtils.reportClassAccess(reflectionName);
-            // The defineClass path usually can't throw ClassNotFoundException
-            throw sneakyThrow(new ClassNotFoundException(name));
-        }
         AbstractRuntimeClassRegistry registry = (AbstractRuntimeClassRegistry) runtimeLastLayer().getRegistry(loader);
         if (name != null) {
+            checkClassDefinitionRegistration(name);
             ByteSequence typeBytes = ByteSequence.createTypeFromName(name);
             Symbol<Type> type = SymbolsSupport.getTypes().getOrCreateValidType(typeBytes);
             if (type == null) {
@@ -419,12 +423,17 @@ public final class ClassRegistries implements ParsingContext {
             }
             return registry.defineClass(type, b, off, len, info);
         } else {
-            return registry.defineClass(null, b, off, len, info);
+            /* The class name is only known once the class file has been parsed. */
+            return registry.defineClass(null, b, off, len, info, type -> checkClassDefinitionRegistration(TypeSymbols.typeToName(type).toString()));
         }
     }
 
-    private static String toReflectionName(String name) {
-        return name == null ? null : ClassNameSupport.jniNameToReflectionName(name);
+    /** {@code name} may use either dot or slash package separators. */
+    private static void checkClassDefinitionRegistration(String name) {
+        String reflectionName = ClassNameSupport.jniNameToReflectionName(name);
+        if (MissingRegistrationUtils.exactReflection() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
+            MissingReflectionRegistrationUtils.reportDefineClass(reflectionName);
+        }
     }
 
     private static boolean isRegisteredClassName(String name) {
@@ -434,11 +443,6 @@ public final class ClassRegistries implements ParsingContext {
             }
         }
         return false;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
-        throw (T) ex;
     }
 
     public static String loaderNameAndId(ClassLoader loader) {

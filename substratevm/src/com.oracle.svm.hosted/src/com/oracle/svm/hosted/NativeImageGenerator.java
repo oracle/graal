@@ -1077,9 +1077,10 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
-                OptionClassFilter missingRegistrationClassFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ThrowMissingRegistrationErrors,
+                OptionClassFilter legacyExactMetadataFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ThrowMissingRegistrationErrors,
                                 SubstrateOptions.ThrowMissingRegistrationErrorsPaths);
-                MissingRegistrationSupport missingRegistrationSupport = new MissingRegistrationSupport(missingRegistrationClassFilter);
+                boolean legacyExactMetadata = SubstrateOptions.ThrowMissingRegistrationErrors.hasBeenSet() || SubstrateOptions.ThrowMissingRegistrationErrorsPaths.hasBeenSet();
+                MissingRegistrationSupport missingRegistrationSupport = new MissingRegistrationSupport(legacyExactMetadataFilter, legacyExactMetadata);
                 ImageSingletons.add(MissingRegistrationSupport.class, missingRegistrationSupport);
 
                 if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(options)) {

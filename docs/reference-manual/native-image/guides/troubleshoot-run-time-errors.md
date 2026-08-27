@@ -21,11 +21,20 @@ In some cases, you need to provide the analysis with configuration to make all d
 Failing to do so will result in an image that terminates at run-time with hard-to-diagnose errors once the dynamic feature is used in the application.
 This can be avoided by eagerly checking for missing metadata.
 
-1. Pass the `--exact-reachability-metadata` option to the `native-image` tool and rebuild the application. If you want to do this only for a specific package, specify a package prefix `--exact-reachability-metadata=[package prefix]`.
-    
-    > This option was introduced in GraalVM for JDK 23 for debugging purposes. In GraalVM versions prior to JDK 23, use the `-H:ThrowMissingRegistrationErrors=` build option instead.
+1. Build the executable with `--future-defaults=exact-reflection` and enable exact reachability metadata when starting it.
+   Pass `-XX:+ExactReachabilityMetadata` to enable it globally, or pass `-XX:ExactReachabilityMetadataPackages=<comma-separated-packages>` to limit it to specific packages.
+   The runtime options can only be changed during startup and are rejected by executables built without `--future-defaults=exact-reflection`.
+
+    > The same restriction applies at build time: `-R:+ExactReachabilityMetadata` and `-R:ExactReachabilityMetadataPackages=<comma-separated-packages>` bake the runtime options into the executable, but only in a build that also passes `--future-defaults=exact-reflection`. Any other build fails with:
+    >
+    > ```
+    > Error: The option 'ExactReachabilityMetadata' can only be set for an image built with '--future-defaults=exact-reflection'.
+    > ```
+
+    > The deprecated build options `--exact-reachability-metadata[=<packages>]` and `--exact-reachability-metadata-path=<paths>` remain accepted for compatibility, but new builds and tests should use `--future-defaults=exact-reflection` together with the runtime options.
 
 2. Run the generated native executable passing the `-XX:MissingRegistrationReportingMode=Warn` option to find all places in your code where missing registrations occur.
+   In `Warn` mode, and for callers outside the packages selected with `-XX:ExactReachabilityMetadataPackages=`, a missing registration is only reported: the call then continues with its legacy, non-exact behavior instead of failing.
 
     > `-XX:MissingRegistrationReportingMode=` was promoted to a run-time option in GraalVM for JDK 23. In GraalVM versions prior to JDK 23, use the `-H:MissingRegistrationReportingMode=Warn` build option instead.
 
@@ -40,6 +49,8 @@ This can be avoided by eagerly checking for missing metadata.
 For diagnosing shared libraries built with Native Image, you can either:
 * specify `-R:MissingRegistrationReportingMode=Exit` when building a native shared library;
 * or specify `-XX:MissingRegistrationReportingMode=Exit` when the isolate is created. `graal_create_isolate_params_t` has `argc` and `argv` fields that can be used to pass C-style command-line options at run time.
+
+Exact reachability metadata is selected the same way: build the shared library with `--future-defaults=exact-reflection`, then either add `-R:+ExactReachabilityMetadata` to that build or pass `-XX:+ExactReachabilityMetadata` through the isolate parameters.
 
 ### 2. Set java.home and Classpath Explicitly
 

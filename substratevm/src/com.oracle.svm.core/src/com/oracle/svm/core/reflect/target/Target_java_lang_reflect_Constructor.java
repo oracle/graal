@@ -91,6 +91,7 @@ public final class Target_java_lang_reflect_Constructor {
 
     @Substitute
     public Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
+        /* See FS-003-reflection.6.1: construction requires an active invocation accessor. */
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
         if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
             ConstructorUtil.traceConstructorAccess(SubstrateUtil.cast(this, Executable.class));

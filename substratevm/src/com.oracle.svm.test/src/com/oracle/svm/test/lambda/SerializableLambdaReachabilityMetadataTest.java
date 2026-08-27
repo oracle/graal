@@ -42,7 +42,8 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
-                "--exact-reachability-metadata=com.oracle.svm.test.lambda",
+                "--future-defaults=exact-reflection",
+                "-R:+ExactReachabilityMetadata",
                 "-H:ConfigurationResourceRoots=com/oracle/svm/test/lambda/serializablemetadata",
                 "-H:-UnlockExperimentalVMOptions"
 })
