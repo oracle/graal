@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.RecordComponent;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.phases.util.Providers;
@@ -426,6 +427,17 @@ public interface VMAccess {
      * @param guestType the interface that should be implemented by the returned value.
      */
     JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType);
+
+    /**
+     * Creates a host proxy using explicit host method names for selected guest methods. Mappings
+     * augment the normal eager name-based matching; unmapped guest methods retain their own names.
+     *
+     * @param hostTarget the object that will be used as receiver when calling methods.
+     * @param guestType the interface that should be implemented by the returned value.
+     * @param methodNameMappings mappings from guest methods declared by {@code guestType} or one of
+     *            its transitive superinterfaces to host method names
+     */
+    JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType, Map<ResolvedJavaMethod, String> methodNameMappings);
 
     /**
      * Gets the host exception wrapped the

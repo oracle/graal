@@ -32,6 +32,7 @@ import java.net.URL;
 import java.nio.ByteOrder;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -1070,11 +1071,18 @@ final class EspressoExternalVMAccess implements VMAccess {
 
     @Override
     public JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType) {
+        return createHostProxy(hostTarget, guestType, Collections.emptyMap());
+    }
+
+    @Override
+    public JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
         Objects.requireNonNull(hostTarget);
+        // The mappings become part of a cache key, so snapshot them to prevent caller mutations.
+        Map<ResolvedJavaMethod, String> copiedMethodNameMappings = Map.copyOf(methodNameMappings);
         if (!(Objects.requireNonNull(guestType) instanceof EspressoExternalResolvedInstanceType espressoGuestType) || !espressoGuestType.isInterface()) {
             throw new IllegalArgumentException("Invalid guest type");
         }
-        Value hostProxy = hostProxies.createHostProxy(hostTarget, espressoGuestType);
+        Value hostProxy = hostProxies.createHostProxy(hostTarget, espressoGuestType, copiedMethodNameMappings);
         return new EspressoExternalObjectConstant(this, hostProxy);
     }
 

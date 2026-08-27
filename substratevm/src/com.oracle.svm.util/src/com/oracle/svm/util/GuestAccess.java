@@ -744,6 +744,11 @@ public final class GuestAccess implements VMAccess {
     }
 
     @Override
+    public JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
+        return delegate.createHostProxy(hostTarget, guestType, methodNameMappings);
+    }
+
+    @Override
     public Throwable unwrapHostProxyException(JavaConstant guestWrapper) {
         return delegate.unwrapHostProxyException(guestWrapper);
     }

@@ -107,13 +107,19 @@ final class HostProxyHandler implements InvocationHandler {
      * @return an immutable map for dispatching {@link Method} invocations to {@link MethodHandle}s
      */
     static Map<Method, MethodHandle> computeMethodMap(Class<?> hostClass, Class<?> guestClass, HostProxyHandlerMethodHandles methodHandles) {
+        return computeMethodMap(hostClass, guestClass, Collections.emptyMap(), methodHandles);
+    }
+
+    static Map<Method, MethodHandle> computeMethodMap(Class<?> hostClass, Class<?> guestClass, Map<ResolvedJavaMethod, String> methodNameMappings,
+                    HostProxyHandlerMethodHandles methodHandles) {
         Map<Method, MethodHandle> map = new LinkedHashMap<>();
         Set<Class<?>> seen = new LinkedHashSet<>();
-        addMethods(hostClass, guestClass, methodHandles, map, seen);
+        addMethods(hostClass, guestClass, methodNameMappings, methodHandles, map, seen);
         return Collections.unmodifiableMap(map);
     }
 
-    private static void addMethods(Class<?> hostClass, Class<?> guestClass, HostProxyHandlerMethodHandles methodHandles, Map<Method, MethodHandle> map, Set<Class<?>> seen) {
+    private static void addMethods(Class<?> hostClass, Class<?> guestClass, Map<ResolvedJavaMethod, String> methodNameMappings, HostProxyHandlerMethodHandles methodHandles,
+                    Map<Method, MethodHandle> map, Set<Class<?>> seen) {
         assert guestClass.isInterface();
         if (!seen.add(guestClass)) {
             return;
@@ -122,7 +128,16 @@ final class HostProxyHandler implements InvocationHandler {
             if (Modifier.isStatic(method.getModifiers()) || !Modifier.isPublic(method.getModifiers())) {
                 continue;
             }
-            Method hostMethod = findHostMethod(hostClass, method);
+            String hostMethodName = method.getName();
+            boolean explicitlyMapped = false;
+            if (!methodNameMappings.isEmpty()) {
+                ResolvedJavaMethod guestMethod = lookupJavaMethod(method, methodHandles);
+                explicitlyMapped = methodNameMappings.containsKey(guestMethod);
+                if (explicitlyMapped) {
+                    hostMethodName = methodNameMappings.get(guestMethod);
+                }
+            }
+            Method hostMethod = findHostMethod(hostClass, method, hostMethodName, explicitlyMapped);
             if (hostMethod == null) {
                 continue;
             }
@@ -158,7 +173,15 @@ final class HostProxyHandler implements InvocationHandler {
             map.put(method, mh);
         }
         for (Class<?> superInterface : guestClass.getInterfaces()) {
-            addMethods(hostClass, superInterface, methodHandles, map, seen);
+            addMethods(hostClass, superInterface, methodNameMappings, methodHandles, map, seen);
+        }
+    }
+
+    private static ResolvedJavaMethod lookupJavaMethod(Method method, HostProxyHandlerMethodHandles methodHandles) {
+        try {
+            return (ResolvedJavaMethod) methodHandles.lookupJavaMethod.invoke(method);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -184,10 +207,10 @@ final class HostProxyHandler implements InvocationHandler {
         }
     }
 
-    private static Method findHostMethod(Class<?> hostClass, Method method) {
+    private static Method findHostMethod(Class<?> hostClass, Method method, String hostMethodName, boolean explicitlyMapped) {
         Method hostMethod = null;
         for (Method hostMethodCandidate : hostClass.getMethods()) {
-            if (!hostMethodCandidate.getName().equals(method.getName())) {
+            if (!hostMethodCandidate.getName().equals(hostMethodName)) {
                 continue;
             }
             if (!argumentsCompatible(method.getParameterTypes(), hostMethodCandidate.getParameterTypes())) {
@@ -202,7 +225,9 @@ final class HostProxyHandler implements InvocationHandler {
                 throw new RuntimeException("Unimplemented: most specific mapping: " + hostMethod + " vs. " + hostMethodCandidate);
             }
         }
-        if (hostMethod == null && !method.isDefault()) {
+        if (hostMethod == null && explicitlyMapped) {
+            throw new IllegalArgumentException("No compatible host method for guest method " + method + " under requested host name '" + hostMethodName + "' in host class " + hostClass.getName());
+        } else if (hostMethod == null && !method.isDefault()) {
             throw new IllegalArgumentException("Method compatible with " + method + " not found in class " + hostClass.getName());
         }
         return hostMethod;

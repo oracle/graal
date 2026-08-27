@@ -45,6 +45,7 @@ import java.lang.reflect.RecordComponent;
 import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -546,13 +547,23 @@ final class HostVMAccess implements VMAccess {
 
     @Override
     public JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType) {
+        return createHostProxy(hostTarget, guestType, Collections.emptyMap());
+    }
+
+    @Override
+    public JavaConstant createHostProxy(Object hostTarget, ResolvedJavaType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
         Objects.requireNonNull(hostTarget);
+        // The mappings become part of a cache key, so snapshot them to prevent caller mutations.
+        // Checkstyle: stop stable iteration order check
+        Map<ResolvedJavaMethod, String> copiedMethodNameMappings = Map.copyOf(methodNameMappings);
+        // Checkstyle: resume stable iteration order check
         Class<?> guestClass = providers.getSnippetReflection().originalClass(Objects.requireNonNull(guestType));
         if (guestClass == null || !guestClass.isInterface()) {
             throw new IllegalArgumentException("Invalid guest type");
         }
+        validateMethodNameMappings(guestType, copiedMethodNameMappings);
         /* There is no fast-path for guestClass == hostClass due to exception handling */
-        HostProxyHandler handler = new HostProxyHandler(hostTarget, getHostProxyMethodMap(hostTarget.getClass(), guestClass));
+        HostProxyHandler handler = new HostProxyHandler(hostTarget, getHostProxyMethodMap(hostTarget.getClass(), guestClass, copiedMethodNameMappings));
         Object guestHostProxy = Proxy.newProxyInstance(guestClass.getClassLoader(), new Class<?>[]{guestClass}, handler);
         return providers.getSnippetReflection().forObject(guestHostProxy);
     }
@@ -567,18 +578,27 @@ final class HostVMAccess implements VMAccess {
         return e.getCause();
     }
 
-    private Map<Method, MethodHandle> getHostProxyMethodMap(Class<?> hostClass, Class<?> guestClass) {
-        HostProxyMethodMapKey key = new HostProxyMethodMapKey(hostClass, guestClass);
+    private Map<Method, MethodHandle> getHostProxyMethodMap(Class<?> hostClass, Class<?> guestClass, Map<ResolvedJavaMethod, String> methodNameMappings) {
+        HostProxyMethodMapKey key = new HostProxyMethodMapKey(hostClass, guestClass, methodNameMappings);
         Map<Method, MethodHandle> methodMap = hostProxyMethodMap.get(key);
         if (methodMap != null) {
             return methodMap;
         }
-        methodMap = computeMethodMap(hostClass, guestClass, hostProxyMethodHandles);
+        methodMap = computeMethodMap(hostClass, guestClass, methodNameMappings, hostProxyMethodHandles);
         Map<Method, MethodHandle> previous = hostProxyMethodMap.putIfAbsent(key, methodMap);
         return previous == null ? methodMap : previous;
     }
 
-    private record HostProxyMethodMapKey(Class<?> hostClass, Class<?> guestClass) {
+    private static void validateMethodNameMappings(ResolvedJavaType guestType, Map<ResolvedJavaMethod, String> methodNameMappings) {
+        for (ResolvedJavaMethod guestMethod : methodNameMappings.keySet()) {
+            ResolvedJavaType declaringClass = guestMethod.getDeclaringClass();
+            if (!guestMethod.isPublic() || guestMethod.isStatic() || !declaringClass.isInterface() || !declaringClass.isAssignableFrom(guestType)) {
+                throw new IllegalArgumentException("Invalid guest method mapping: " + guestMethod);
+            }
+        }
+    }
+
+    private record HostProxyMethodMapKey(Class<?> hostClass, Class<?> guestClass, Map<ResolvedJavaMethod, String> methodNameMappings) {
     }
 
     private static HostProxyHandlerMethodHandles getHostProxyMethodHandles(Providers providers) {
