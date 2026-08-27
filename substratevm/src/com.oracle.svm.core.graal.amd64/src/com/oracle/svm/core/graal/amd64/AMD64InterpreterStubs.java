@@ -283,6 +283,12 @@ public class AMD64InterpreterStubs {
         public void enter(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
 
+            /*
+             * Optional fast paths are emitted before the regular prologue, so mark the start of
+             * this routine as an indirect target.
+             */
+            masm.maybeEmitIndirectTargetMarker();
+
             List<Register> gps = getRegisterConfig().getJavaGeneralParameterRegs();
             List<Register> fps = getRegisterConfig().getFloatingPointParameterRegs();
 
@@ -366,6 +372,11 @@ public class AMD64InterpreterStubs {
             List<Register> fps = registerConfig.getFloatingPointParameterRegs();
             Register originalSp = r11;
 
+            /*
+             * Since the caller stack pointer is saved before the regular prologue, we must mark
+             * the start of this routine as an indirect target.
+             */
+            masm.maybeEmitIndirectTargetMarker();
             /* Preserve the caller stack pointer before the regular prologue allocates the frame. */
             masm.movq(originalSp, rsp);
             super.enter(crb);
