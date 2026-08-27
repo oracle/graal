@@ -33,9 +33,9 @@ import java.util.function.Function;
 
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 
+// §FS-002-security-providers.8.9.1
 /**
- * Tracks provider-registration intent separately from the reflection metadata that realizes it,
- * as required by §FS-002-security-providers.8.9.1.
+ * Tracks provider-registration intent separately from the reflection metadata that realizes it.
  *
  * <p>
  * A complete plan makes a provider JDK-constructible and retains its service catalog; an

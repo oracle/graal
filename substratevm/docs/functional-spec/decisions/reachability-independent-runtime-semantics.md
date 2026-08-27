@@ -34,7 +34,9 @@ Compare two builds: one contains the `if (probe)` block and one omits it.
 Run both with the same provider configuration, metadata, `providerName`, and `probe=false`.
 Analysis must consider the block reachable, but neither run executes it.
 Both runs must print the same result and expose the same providers and services.
-The dormant `Signature` call must not make a provider or service available or change provider
-selection.
+The dormant [`Signature`][signature] call must not make a provider or service available or change
+provider selection.
 The security-provider reachability requirement applies this example directly
-(§FS-002-security-providers.8.6).
+([§FS-002-security-providers.8.6](../security-providers.md#86-reachability-independence)).
+
+[signature]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/Signature.html

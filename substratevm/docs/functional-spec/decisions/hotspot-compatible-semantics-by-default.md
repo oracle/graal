@@ -27,4 +27,4 @@ A functional specification states its ordinary metadata requirements and any int
 deviation.
 It does not introduce a flag merely to enable standard Java behavior.
 The security-provider construction-parity requirement is one application of this decision
-(§FS-002-security-providers.8.1).
+([§FS-002-security-providers.8.1](../security-providers.md#81-construction-parity)).
