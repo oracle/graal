@@ -406,7 +406,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.shared.util.ReflectionUtil", SHARED_CODE),
                     clazz("com.oracle.svm.shared.util.SubstrateUtil", SHARED_CODE),
                     clazz("com.oracle.svm.shared.util.VMError", NI_HOSTED_IMPLEMENTATION),
-                    pkg("com.oracle.svm.thirdparty.gson", GUEST_CONTEXT_ONLY),
                     clazz("com.oracle.svm.util.AnnotatedObjectAccess", TERMINUS_HELPER),
                     clazz("com.oracle.svm.util.GuestAccess", TERMINUS_HELPER),
                     clazz("com.oracle.svm.util.HostModuleUtil", TERMINUS_HELPER));
