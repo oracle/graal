@@ -29,11 +29,26 @@ import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class DefaultImageHeapObjectSorter extends BasicImageHeapObjectSorter {
+
+    private final ResolvedJavaType hubCompanionType;
+    private final ResolvedJavaType classInitInfoType;
+    private final ResolvedJavaType synchronizerType;
+
+    public DefaultImageHeapObjectSorter(MetaAccessProvider metaAccess) {
+        this.hubCompanionType = metaAccess.lookupJavaType(DynamicHubCompanion.class);
+        this.classInitInfoType = metaAccess.lookupJavaType(ClassInitializationInfo.class);
+        this.synchronizerType = metaAccess.lookupJavaType(AbstractOwnableSynchronizer.class);
+    }
 
     @Override
     protected int compareGroup(ImageHeapObject a, ImageHeapObject b) {
@@ -42,14 +57,16 @@ public class DefaultImageHeapObjectSorter extends BasicImageHeapObjectSorter {
             return s;
         }
 
+        ResolvedJavaType aType = a.getObjectType();
+        ResolvedJavaType bType = b.getObjectType();
+
         /*
          * Hub companions contain writable fields for reflection data and other values that are
          * lazily decoded or computed at runtime. Grouping them can significantly reduce dirtied
          * (copy on write) image heap pages, which improves sharing between isolates and processes.
          */
-        boolean aIsHubCompanion = a.getObjectClass() == DynamicHubCompanion.class;
-        boolean bIsHubCompanion = b.getObjectClass() == DynamicHubCompanion.class;
-        if (aIsHubCompanion != bIsHubCompanion) {
+        boolean aIsHubCompanion = hubCompanionType.equals(aType);
+        if (aIsHubCompanion != hubCompanionType.equals(bType)) {
             return aIsHubCompanion ? -1 : 1;
         }
 
@@ -58,14 +75,12 @@ public class DefaultImageHeapObjectSorter extends BasicImageHeapObjectSorter {
          * at runtime. They also use locks in the image heap so that they are readily available at
          * runtime. Grouping CII and lock synchronizers can also reduce dirtied image heap pages.
          */
-        boolean aIsClassInitInfo = a.getObjectClass() == ClassInitializationInfo.class;
-        boolean bIsClassInitInfo = b.getObjectClass() == ClassInitializationInfo.class;
-        if (aIsClassInitInfo != bIsClassInitInfo) {
+        boolean aIsClassInitInfo = classInitInfoType.equals(aType);
+        if (aIsClassInitInfo != classInitInfoType.equals(bType)) {
             return aIsClassInitInfo ? -1 : 1;
         }
-        boolean aIsSynchronizer = AbstractOwnableSynchronizer.class.isAssignableFrom(a.getObjectClass());
-        boolean bIsSynchronizer = AbstractOwnableSynchronizer.class.isAssignableFrom(b.getObjectClass());
-        if (aIsSynchronizer != bIsSynchronizer) {
+        boolean aIsSynchronizer = synchronizerType.isAssignableFrom(aType);
+        if (aIsSynchronizer != synchronizerType.isAssignableFrom(bType)) {
             return aIsSynchronizer ? -1 : 1;
         }
 
