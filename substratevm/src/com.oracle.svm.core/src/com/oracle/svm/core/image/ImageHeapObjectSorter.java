@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.core.image;
 
+import com.oracle.svm.core.SubstrateOptions;
+
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.locks.AbstractOwnableSynchronizer;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
-import com.oracle.svm.core.hub.DynamicHubCompanion;
 
 /**
  * Sorter of {@link ImageHeapObject} instances after they have been assigned to heap partitions,
@@ -112,33 +109,6 @@ public abstract class ImageHeapObjectSorter {
         if (aIsLargeObject != bIsLargeObject) {
             // Place large objects before others
             return aIsLargeObject ? -1 : 1;
-        }
-
-        /*
-         * Hub companions contain writable fields for reflection data and other values that are
-         * lazily decoded or computed at runtime. Grouping them can significantly reduce dirtied
-         * (copy on write) image heap pages, which improves sharing between isolates and processes.
-         */
-        boolean aIsHubCompanion = a.getObjectClass() == DynamicHubCompanion.class;
-        boolean bIsHubCompanion = b.getObjectClass() == DynamicHubCompanion.class;
-        if (aIsHubCompanion != bIsHubCompanion) {
-            return aIsHubCompanion ? -1 : 1;
-        }
-
-        /*
-         * ClassInitializationInfo objects are written when a class is initialized or first reached
-         * at runtime. They also use locks in the image heap so that they are readily available at
-         * runtime. Grouping CII and lock synchronizers can also reduce dirtied image heap pages.
-         */
-        boolean aIsClassInitInfo = a.getObjectClass() == ClassInitializationInfo.class;
-        boolean bIsClassInitInfo = b.getObjectClass() == ClassInitializationInfo.class;
-        if (aIsClassInitInfo != bIsClassInitInfo) {
-            return aIsClassInitInfo ? -1 : 1;
-        }
-        boolean aIsSynchronizer = AbstractOwnableSynchronizer.class.isAssignableFrom(a.getObjectClass());
-        boolean bIsSynchronizer = AbstractOwnableSynchronizer.class.isAssignableFrom(b.getObjectClass());
-        if (aIsSynchronizer != bIsSynchronizer) {
-            return aIsSynchronizer ? -1 : 1;
         }
 
         return 0;

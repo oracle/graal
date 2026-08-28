@@ -45,7 +45,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
-import com.oracle.svm.core.image.ImageHeapObjectSorter;
+import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -69,7 +69,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * state is mutable while {@link DynamicHub} must be immutable, and 2) few classes require
  * initialization at runtime so factoring out the information reduces image size. To also reduce
  * dirtied (copied on write) image heap pages, objects and their {@link #initLock} are specifically
- * considered by {@link ImageHeapObjectSorter}.
+ * considered by {@link DefaultImageHeapObjectSorter}.
  * <p>
  * Note that methods of this class never show up in exception stack traces (i.e., all related frames
  * will be filtered from the stack trace, see {@link InternalVMMethod} annotation below). This can
@@ -120,7 +120,7 @@ public final class ClassInitializationInfo {
      * The lock held during initialization of the class. Allocated during image building, otherwise
      * we would need synchronization or atomic operations to install the lock at runtime.
      *
-     * These locks are considered by {@link ImageHeapObjectSorter}.
+     * These locks are considered by {@link DefaultImageHeapObjectSorter}.
      */
     private final ReentrantLock initLock;
 

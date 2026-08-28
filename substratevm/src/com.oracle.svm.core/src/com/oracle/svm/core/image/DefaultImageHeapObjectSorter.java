@@ -24,30 +24,49 @@
  */
 package com.oracle.svm.core.image;
 
-import java.util.Comparator;
-import java.util.List;
-
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
+import java.util.concurrent.locks.AbstractOwnableSynchronizer;
+
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
-public class DefaultImageHeapObjectSorter extends ImageHeapObjectSorter implements Comparator<ImageHeapObject> {
+public class DefaultImageHeapObjectSorter extends BasicImageHeapObjectSorter {
 
     @Override
-    protected void doSort(ImageHeapPartition partition, List<ImageHeapObject> objects, Comparator<ImageHeapObject> primaryComparator) {
-        objects.sort(primaryComparator.thenComparing(this));
-    }
-
-    @Override
-    public int compare(ImageHeapObject a, ImageHeapObject b) {
-        int groupResult = compareGroup(a, b);
-        if (groupResult != 0) {
-            return groupResult;
+    protected int compareGroup(ImageHeapObject a, ImageHeapObject b) {
+        int s = super.compareGroup(a, b);
+        if (s != 0) {
+            return s;
         }
 
-        if (isLarge(a)) {
-            return Long.signum(b.getSize() - a.getSize());
+        /*
+         * Hub companions contain writable fields for reflection data and other values that are
+         * lazily decoded or computed at runtime. Grouping them can significantly reduce dirtied
+         * (copy on write) image heap pages, which improves sharing between isolates and processes.
+         */
+        boolean aIsHubCompanion = a.getObjectClass() == DynamicHubCompanion.class;
+        boolean bIsHubCompanion = b.getObjectClass() == DynamicHubCompanion.class;
+        if (aIsHubCompanion != bIsHubCompanion) {
+            return aIsHubCompanion ? -1 : 1;
+        }
+
+        /*
+         * ClassInitializationInfo objects are written when a class is initialized or first reached
+         * at runtime. They also use locks in the image heap so that they are readily available at
+         * runtime. Grouping CII and lock synchronizers can also reduce dirtied image heap pages.
+         */
+        boolean aIsClassInitInfo = a.getObjectClass() == ClassInitializationInfo.class;
+        boolean bIsClassInitInfo = b.getObjectClass() == ClassInitializationInfo.class;
+        if (aIsClassInitInfo != bIsClassInitInfo) {
+            return aIsClassInitInfo ? -1 : 1;
+        }
+        boolean aIsSynchronizer = AbstractOwnableSynchronizer.class.isAssignableFrom(a.getObjectClass());
+        boolean bIsSynchronizer = AbstractOwnableSynchronizer.class.isAssignableFrom(b.getObjectClass());
+        if (aIsSynchronizer != bIsSynchronizer) {
+            return aIsSynchronizer ? -1 : 1;
         }
 
         return 0;
