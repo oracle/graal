@@ -76,6 +76,7 @@ import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.InstructionDescriptor;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.StackValue;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.Yield;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -139,6 +140,27 @@ public class CustomYieldTest {
         CustomYieldTestRootNode root = nodes.getNode(0);
 
         CustomYieldResult result = (CustomYieldResult) root.getCallTarget().call(40, 2);
+        assertEquals(42, result.value());
+        assertEquals(123, result.continueWith(123));
+    }
+
+    @Test
+    public void testStackValue() {
+        BytecodeRootNodes<CustomYieldTestRootNode> nodes = CustomYieldTestRootNodeGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginPairYield();
+            b.beginBindStackValue();
+            b.emitLoadConstant(21);
+            StackValue value = b.endBindStackValue();
+            b.emitLoadStackValue(value);
+            b.endPairYield();
+            b.endReturn();
+            b.endRoot();
+        });
+        CustomYieldTestRootNode root = nodes.getNode(0);
+
+        CustomYieldResult result = (CustomYieldResult) root.getCallTarget().call();
         assertEquals(42, result.value());
         assertEquals(123, result.continueWith(123));
     }

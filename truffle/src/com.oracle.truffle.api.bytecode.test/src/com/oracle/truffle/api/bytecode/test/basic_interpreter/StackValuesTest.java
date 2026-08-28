@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -132,6 +133,63 @@ public class StackValuesTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(63L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testBindVariadicOperand0Fails() {
+        assertParseFailure("BindStackValue cannot be used in variadic operand position.", IllegalStateException.class, b -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadic0Operation();
+            emitBindStackValue(b, 42L);
+            b.endVariadic0Operation();
+
+            b.endReturn();
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testBindVariadicOperand1Fails() {
+        assertParseFailure("BindStackValue cannot be used in variadic operand position.", IllegalStateException.class, b -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadic1Operation();
+            b.emitLoadConstant(123L);
+            emitBindStackValue(b, 42L);
+            b.endVariadic1Operation();
+
+            b.endReturn();
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testBindFixedOperandOfVariadicOperation() {
+        BasicInterpreter root = parseNode("bindFixedOperandOfVariadicOperation", b -> {
+            b.beginRoot();
+            b.beginReturn();
+
+            b.beginVariadic1Operation();
+            StackValue value = emitBindStackValue(b, 42L);
+            for (int i = 0; i < run.getVariadicsLimit(); i++) {
+                b.emitLoadConstant((long) i);
+            }
+            b.emitLoadStackValue(value);
+            b.endVariadic1Operation();
+
+            b.endReturn();
+            b.endRoot();
+        });
+
+        Object[] expected = new Object[run.getVariadicsLimit() + 1];
+        for (int i = 0; i < run.getVariadicsLimit(); i++) {
+            expected[i] = (long) i;
+        }
+        expected[expected.length - 1] = 42L;
+        assertArrayEquals(expected, (Object[]) root.getCallTarget().call());
     }
 
     @Test

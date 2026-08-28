@@ -77,6 +77,7 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.InstructionDescriptor;
 import com.oracle.truffle.api.bytecode.Return;
+import com.oracle.truffle.api.bytecode.StackValue;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
@@ -157,6 +158,22 @@ public class CustomReturnTest {
         });
 
         assertEquals("right:left", root.getCallTarget().call());
+    }
+
+    @Test
+    public void testStackValue() {
+        CustomReturnInstructionRootNode root = parse(b -> {
+            b.beginRoot();
+            b.beginMultiOperandCustomReturn();
+            b.beginBindStackValue();
+            b.emitLoadConstant("value");
+            StackValue value = b.endBindStackValue();
+            b.emitLoadStackValue(value);
+            b.endMultiOperandCustomReturn();
+            b.endRoot();
+        });
+
+        assertEquals("value:value", root.getCallTarget().call());
     }
 
     @Test
