@@ -49,6 +49,8 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionEncoding;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedInstructionPatternModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedLiteral;
 
 public final class InstructionRewriterModel {
     private final String generatedTypeName;
@@ -104,7 +106,7 @@ public final class InstructionRewriterModel {
         if (a.lhs.length == b.lhs.length) {
             // Check if the patterns are identical.
             for (int i = 0; i < a.lhs.length; i++) {
-                if (a.lhs[i].instruction() != b.lhs[i].instruction()) {
+                if (!instructionPatternsCanOverlap(a.lhs[i], b.lhs[i])) {
                     // Different patterns.
                     return;
                 }
@@ -124,7 +126,7 @@ public final class InstructionRewriterModel {
 
             outer: for (int i = 0; i < larger.lhs.length - smaller.lhs.length + 1; i++) {
                 for (int j = 0; j < smaller.lhs.length; j++) {
-                    if (larger.lhs[i + j].instruction() != smaller.lhs[j].instruction()) {
+                    if (!instructionPatternsCanOverlap(larger.lhs[i + j], smaller.lhs[j])) {
                         // No match starting at i. Try next substring.
                         continue outer;
                     }
@@ -132,6 +134,18 @@ public final class InstructionRewriterModel {
                 throw new IllegalArgumentException("Rewrite rule %s has a lhs containing the lhs of rewrite rule %s".formatted(larger, smaller));
             }
         }
+    }
+
+    private static boolean instructionPatternsCanOverlap(ResolvedInstructionPatternModel a, ResolvedInstructionPatternModel b) {
+        if (a.instruction() != b.instruction()) {
+            return false;
+        }
+        for (int i = 0; i < a.immediates().length; i++) {
+            if (a.immediates()[i] instanceof ResolvedLiteral aLiteral && b.immediates()[i] instanceof ResolvedLiteral bLiteral && aLiteral.value() != bLiteral.value()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public String getGeneratedTypeName() {
