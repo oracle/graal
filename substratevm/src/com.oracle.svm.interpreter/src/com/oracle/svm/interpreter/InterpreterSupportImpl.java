@@ -54,15 +54,15 @@ import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.hosted.SubstrateBytecodeHandlerStub;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -131,17 +131,25 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         JavaType returnType = signature.getReturnType(accessingClass);
         CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(callingConventionType, returnType, signature.toParameterTypes(thisType), stubSection.valueKindFactory);
 
+        int gpRegisterIndex = 0;
+        int fpRegisterIndex = 0;
+        int index = 0;
         if (hasReceiver) {
-            argumentTypes[0] = PreparedSignature.encodeArgumentType(JavaKind.Object, 0, true);
+            argumentTypes[0] = PreparedSignature.encodeArgumentType(JavaKind.Object, gpRegisterIndex, true);
+            index++;
+            gpRegisterIndex++;
         }
-        for (int i = 0; i < count; i++) {
-            int index = i + (hasReceiver ? 1 : 0);
+        for (int i = 0; i < count; i++, index++) {
             AllocatableValue allocatableValue = callingConvention.getArgument(index);
             JavaKind argKind = signature.getParameterKind(i);
-            int value = 0;
+            int value;
             if (allocatableValue instanceof StackSlot stackSlot) {
                 // Both, in the enter- and leavestub we want the "outgoing semantics".
                 value = stackSlot.getOffset(0);
+            } else if (argKind.isNumericFloat()) {
+                value = fpRegisterIndex++;
+            } else {
+                value = gpRegisterIndex++;
             }
             boolean isRegister = !(allocatableValue instanceof StackSlot);
             argumentTypes[index] = PreparedSignature.encodeArgumentType(argKind, value, isRegister);
@@ -175,6 +183,8 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
         CallingConvention callingConvention = stubSection.registerConfig.getCallingConvention(SubstrateCallingConventionKind.Native.toType(true), returnType, parameterTypes,
                         stubSection.valueKindFactory);
+        int gpRegisterIndex = 0;
+        int fpRegisterIndex = 0;
         for (int i = 0; i < argumentTypes.length; i++) {
             /*
              * We need to keep using signature.getParameterKind here and not use parameterTypes
@@ -182,9 +192,15 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
              */
             AllocatableValue allocatableValue = callingConvention.getArgument(i);
             JavaKind argKind = i < 2 ? stubSection.target.wordJavaKind : signature.getParameterKind(i - 2);
-            int value = 0;
+            int value;
             if (allocatableValue instanceof StackSlot stackSlot) {
                 value = stackSlot.getOffset(0);
+            } else if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && Platform.includedIn(Platform.AMD64.class)) {
+                value = i;
+            } else if (argKind.isNumericFloat()) {
+                value = fpRegisterIndex++;
+            } else {
+                value = gpRegisterIndex++;
             }
             boolean isRegister = !(allocatableValue instanceof StackSlot);
             argumentTypes[i] = PreparedSignature.encodeArgumentType(argKind, value, isRegister);

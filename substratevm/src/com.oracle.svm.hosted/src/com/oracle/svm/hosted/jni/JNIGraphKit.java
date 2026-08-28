@@ -26,12 +26,12 @@ package com.oracle.svm.hosted.jni;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveEpilogue;
 import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
 import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIEnvEnterFatalOnFailurePrologue;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveEpilogue;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.graal.compiler.core.common.type.ObjectStamp;

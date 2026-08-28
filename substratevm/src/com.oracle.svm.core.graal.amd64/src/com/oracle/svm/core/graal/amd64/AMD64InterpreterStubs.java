@@ -858,8 +858,9 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public long getGpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getGpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             return switch (pos) {
                 case 0 -> p.getAbiGp0();
                 case 1 -> p.getAbiGp1();
@@ -878,13 +879,14 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAt(int cArgType, Pointer data, int pos, long val, boolean incoming) {
-            setGpArgumentAt0(cArgType, data, pos, val, incoming, JAVA_GP_REGISTERS_SIZE);
+        public void setGpArgumentAt(int cArgType, Pointer data, long val, boolean incoming) {
+            setGpArgumentAt0(cArgType, data, val, incoming, JAVA_GP_REGISTERS_SIZE);
         }
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAtNative(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+        public void setGpArgumentAtNative(int cArgType, Pointer data, long val, boolean incoming) {
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (PreparedSignature.isRegister(cArgType) && pos == NATIVE_GP_REGISTERS_SIZE) {
                 /*
                  * SysV models the number of XMM arguments to a variadic function as a synthetic
@@ -895,12 +897,13 @@ public class AMD64InterpreterStubs {
                 ((InterpreterDataAMD64) data).setAbiGpRet(val);
                 return;
             }
-            setGpArgumentAt0(cArgType, data, pos, val, incoming, NATIVE_GP_REGISTERS_SIZE);
+            setGpArgumentAt0(cArgType, data, val, incoming, NATIVE_GP_REGISTERS_SIZE);
         }
 
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        private static void setGpArgumentAt0(int cArgType, Pointer data, int pos, long val, boolean incoming, int gpRegisterSize) {
+        private static void setGpArgumentAt0(int cArgType, Pointer data, long val, boolean incoming, int gpRegisterSize) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos < gpRegisterSize) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
@@ -935,8 +938,9 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public long getFpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getFpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos <= upperFpEnd()) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
@@ -966,8 +970,9 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public void setFpArgumentAt(int cArgType, Pointer data, int pos, long val) {
+        public void setFpArgumentAt(int cArgType, Pointer data, long val) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos <= upperFpEnd()) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {

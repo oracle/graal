@@ -836,8 +836,9 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public long getGpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getGpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             return switch (pos) {
                 case 0 -> p.getAbiGpArg0();
                 case 1 -> p.getAbiGpArg1();
@@ -857,8 +858,9 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAt(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+        public void setGpArgumentAt(int cArgType, Pointer data, long val, boolean incoming) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos <= 7) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
@@ -885,8 +887,9 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public long getFpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getFpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             return switch (pos) {
                 case 0 -> p.getAbiFpArg0();
                 case 1 -> p.getAbiFpArg1();
@@ -906,8 +909,9 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public void setFpArgumentAt(int cArgType, Pointer data, int pos, long val) {
+        public void setFpArgumentAt(int cArgType, Pointer data, long val) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             switch (pos) {
                 case 0 -> p.setAbiFpArg0(val);
                 case 1 -> p.setAbiFpArg1(val);
