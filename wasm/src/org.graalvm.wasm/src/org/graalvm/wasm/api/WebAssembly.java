@@ -396,12 +396,8 @@ public class WebAssembly extends Dictionary {
             }
             final long initialSize;
             final long maximumSize;
-            try {
-                initialSize = indexType64 ? lib.asLong(args[0]) : lib.asInt(args[0]);
-                maximumSize = indexType64 ? lib.asLong(args[1]) : lib.asInt(args[1]);
-            } catch (UnsupportedMessageException e) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Table size must be convertible to its address type");
-            }
+            initialSize = asTableAddress(args[0], indexType64);
+            maximumSize = asTableAddress(args[1], indexType64);
             final ValueType elementType;
             try {
                 elementType = parseInteropValueType(lib.asString(args[2]));
@@ -480,7 +476,7 @@ public class WebAssembly extends Dictionary {
                 }
             }
         }
-        return tableAlloc(initialSize, maximumSize, elementType, initialValue);
+        return tableAlloc(initialSize, maximumSize, elementType, initialValue, false);
     }
 
     public WasmTable tableAlloc(int initial, int maximum, ValueType elemType, Object initialValue) {
@@ -507,32 +503,27 @@ public class WebAssembly extends Dictionary {
         return new WasmTable(initial, maximum, maxAllowedSize, (ReferenceType) elemType, initialValue, indexType64);
     }
 
+    private static long asTableAddress(Object value, boolean indexType64) {
+        final long address;
+        try {
+            address = InteropLibrary.getUncached().asLong(value);
+        } catch (UnsupportedMessageException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Table address must be convertible to a 64-bit integer");
+        }
+        if (!indexType64 && (address < 0 || address > 0xFFFF_FFFFL)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "32-bit table address must be a non-negative unsigned 32-bit integer");
+        }
+        return address;
+    }
+
     private static Object tableGrow(Object[] args) {
         checkArgumentCount(args, 2);
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        final long delta;
-        if (table.hasIndexType64()) {
-            if (!(args[1] instanceof Long)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be a 64-bit table index");
-            }
-            delta = (Long) args[1];
-        } else {
-            if (!(args[1] instanceof Integer)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
-            }
-            delta = (Integer) args[1];
-        }
+        long delta = asTableAddress(args[1], table.hasIndexType64());
         Object ref = args.length > 2 ? args[2] : WasmConstant.NULL;
-        if (table.hasIndexType64()) {
-            return tableGrow(table, delta, ref);
-        }
-        return tableGrow(table, (int) delta, ref);
-    }
-
-    public static int tableGrow(WasmTable table, int delta, Object ref) {
-        return (int) tableGrow(table, (long) delta, ref);
+        return tableGrow(table, delta, ref);
     }
 
     public static long tableGrow(WasmTable table, long delta, Object ref) {
@@ -548,23 +539,8 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        final long index;
-        if (table.hasIndexType64()) {
-            if (!(args[1] instanceof Long)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be a 64-bit table index");
-            }
-            index = (Long) args[1];
-        } else {
-            if (!(args[1] instanceof Integer)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
-            }
-            index = (Integer) args[1];
-        }
+        long index = asTableAddress(args[1], table.hasIndexType64());
         return tableRead(table, index);
-    }
-
-    public static Object tableRead(WasmTable table, int index) {
-        return tableRead(table, (long) index);
     }
 
     public static Object tableRead(WasmTable table, long index) {
@@ -583,23 +559,8 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        final long index;
-        if (table.hasIndexType64()) {
-            if (!(args[1] instanceof Long)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be a 64-bit table index");
-            }
-            index = (Long) args[1];
-        } else {
-            if (!(args[1] instanceof Integer)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
-            }
-            index = (Integer) args[1];
-        }
+        long index = asTableAddress(args[1], table.hasIndexType64());
         return tableWrite(table, index, args[2]);
-    }
-
-    public Object tableWrite(WasmTable table, int index, Object element) {
-        return tableWrite(table, (long) index, element);
     }
 
     public Object tableWrite(WasmTable table, long index, Object element) {
@@ -624,13 +585,6 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmTable table)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm table");
         }
-        if (table.hasIndexType64()) {
-            return (long) table.size();
-        }
-        return tableSize(table);
-    }
-
-    public static int tableSize(WasmTable table) {
         return table.size();
     }
 
