@@ -183,9 +183,12 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_net_InetAddress_array = SYMBOLS.putType("[Ljava/net/InetAddress;");
         public static final Symbol<Type> sun_net_ConnectionResetException = SYMBOLS.putType("Lsun/net/ConnectionResetException;");
         public static final Symbol<Type> java_net_UnknownHostException = SYMBOLS.putType("Ljava/net/UnknownHostException;");
+        public static final Symbol<Type> java_net_SocketOption = SYMBOLS.putType("Ljava/net/SocketOption;");
         public static final Symbol<Type> sun_nio_ch_IOStatus = SYMBOLS.putType("Lsun/nio/ch/IOStatus;");
         public static final Symbol<Type> java_net_spi_InetAddressResolver$LookupPolicy = SYMBOLS.putType("Ljava/net/spi/InetAddressResolver$LookupPolicy;");
         public static final Symbol<Type> sun_nio_ch_Net = SYMBOLS.putType("Lsun/nio/ch/Net;");
+        public static final Symbol<Type> sun_nio_ch_OptionKey = SYMBOLS.putType("Lsun/nio/ch/OptionKey;");
+
         // libjava
         public static final Symbol<Type> java_lang_ProcessHandleImpl$Info = SYMBOLS.putType("Ljava/lang/ProcessHandleImpl$Info;");
         // libnio
@@ -1260,6 +1263,7 @@ public class EspressoSymbols {
         public static final Symbol<Signature> _void_Exception = SYMBOLS.putSignature(Types._void, Types.java_lang_Exception);
         public static final Symbol<Signature> _void_String_String_String_int = SYMBOLS.putSignature(Types._void, Types.java_lang_String, Types.java_lang_String, Types.java_lang_String, Types._int);
         public static final Symbol<Signature> _void_int = SYMBOLS.putSignature(Types._void, Types._int);
+        public static final Symbol<Signature> _void_int_int = SYMBOLS.putSignature(Types._void, Types._int, Types._int);
         public static final Symbol<Signature> _void_boolean = SYMBOLS.putSignature(Types._void, Types._boolean);
         public static final Symbol<Signature> _void_long = SYMBOLS.putSignature(Types._void, Types._long);
         public static final Symbol<Signature> _void_long_int = SYMBOLS.putSignature(Types._void, Types._long, Types._int);

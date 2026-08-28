@@ -185,6 +185,12 @@ public final class LibsMeta implements ContextAccess {
         public final ObjectKlass java_net_InetSocketAddress;
         public final Method java_net_InetSocketAddress_init;
 
+        // Synchronize guest and host SocketOptions.
+        public final ObjectKlass sun_nio_ch_OptionKey;
+        public final Method sun_nio_ch_OptionKey_init;
+        public final ObjectKlass java_net_SocketOption;
+        public final Method java_net_SocketOption_name;
+
         // Checkstyle: resume field name check
 
         private LibNetMeta() {
@@ -221,6 +227,11 @@ public final class LibsMeta implements ContextAccess {
 
             java_net_InetSocketAddress = knownKlass(EspressoSymbols.Types.java_net_InetSocketAddress);
             java_net_InetSocketAddress_init = java_net_InetSocketAddress.lookupDeclaredMethod(EspressoSymbols.Names._init_, EspressoSymbols.Signatures.java_net_InetSocketAddress_init_signature);
+
+            sun_nio_ch_OptionKey = knownKlass(EspressoSymbols.Types.sun_nio_ch_OptionKey);
+            sun_nio_ch_OptionKey_init = sun_nio_ch_OptionKey.requireDeclaredMethod(EspressoSymbols.Names._init_, EspressoSymbols.Signatures._void_int_int);
+            java_net_SocketOption = knownKlass(EspressoSymbols.Types.java_net_SocketOption);
+            java_net_SocketOption_name = java_net_SocketOption.requireDeclaredMethod(EspressoSymbols.Names.name, EspressoSymbols.Signatures.String);
         }
     }
 

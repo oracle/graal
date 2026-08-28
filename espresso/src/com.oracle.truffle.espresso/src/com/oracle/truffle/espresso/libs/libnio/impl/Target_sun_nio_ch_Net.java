@@ -32,7 +32,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketOption;
-import java.net.StandardSocketOptions;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 
@@ -260,14 +259,13 @@ public final class Target_sun_nio_ch_Net {
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static void setIntOption0(@JavaType(FileDescriptor.class) StaticObject fd, @SuppressWarnings("unused") boolean mayNeedConversion,
-                    int level, int opt, int arg, @SuppressWarnings("unused") boolean isIPv6,
-                    @Inject EspressoContext ctx, @Inject TruffleIO io, @Inject LibsState libsState) {
+                    int level, @SuppressWarnings("unused") int opt, int arg, @SuppressWarnings("unused") boolean isIPv6, @Inject TruffleIO io, @Inject LibsState libsState) {
         libsState.net.checkNetworkEnabled();
         // We set the option over the public NetworkChannel API, thus the low-level platform
         // specific arguments like mayNeedConversion and isIpv6 aren't needed
 
         // recover SocketOption and do Type-Conversion
-        SocketOption<?> socketOption = getSocketOption(level, opt, ctx);
+        SocketOption<?> socketOption = getSocketOption(level);
         Class<?> type = socketOption.type();
         if (type == Integer.class) {
             SocketOption<Integer> intSocketOption = (SocketOption<Integer>) socketOption;
@@ -286,14 +284,13 @@ public final class Target_sun_nio_ch_Net {
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static int getIntOption0(@JavaType(FileDescriptor.class) StaticObject fd, @SuppressWarnings("unused") boolean mayNeedConversion,
-                    int level, int opt,
-                    @Inject EspressoContext ctx, @Inject TruffleIO io, @Inject LibsState libsState) {
+                    int level, @SuppressWarnings("unused") int opt, @Inject TruffleIO io, @Inject LibsState libsState) {
         libsState.net.checkNetworkEnabled();
         // We get the option over the public NetworkChannel API, thus the low-level platform
         // mayNeedConversion and isIpv6 aren't needed
 
         // recover SocketOption and do Type-Conversion
-        SocketOption<?> socketOption = getSocketOption(level, opt, ctx);
+        SocketOption<?> socketOption = getSocketOption(level);
         Class<?> type = socketOption.type();
         if (type == Integer.class) {
             SocketOption<Integer> intSocketOption = (SocketOption<Integer>) socketOption;
@@ -378,64 +375,7 @@ public final class Target_sun_nio_ch_Net {
         return ops;
     }
 
-    private static SocketOption<?> getSocketOption(int level, int opt, EspressoContext ctx) {
-        // todo (GR-70147): synchronize between host and guest
-        // be aware of GR-71965
-        switch (level) {
-            case 0:
-                switch (opt) {
-                    case 1:
-                        return StandardSocketOptions.IP_TOS;
-                    case 32:
-                        return StandardSocketOptions.IP_MULTICAST_IF;
-                    case 33:
-                        return StandardSocketOptions.IP_MULTICAST_TTL;
-                    case 34:
-                        return StandardSocketOptions.IP_MULTICAST_LOOP;
-                }
-                break;
-            case 1:
-                switch (opt) {
-                    case 2:
-                        return StandardSocketOptions.SO_REUSEADDR;
-                    case 6:
-                        return StandardSocketOptions.SO_BROADCAST;
-                    case 7:
-                        return StandardSocketOptions.SO_SNDBUF;
-                    case 8:
-                        return StandardSocketOptions.SO_RCVBUF;
-                    case 9:
-                        return StandardSocketOptions.SO_KEEPALIVE;
-                    case 10:
-                        /*
-                         * Would be a ExtendedSocketOption.SO_OOBINLINE, however ExtendedOption are
-                         * package private so we cannot easily access them. For set and getOption of
-                         * Net, extended options aren't accessed over the native world anyway thus
-                         * we shouldn't reach here
-                         */
-                        throw JavaSubstitution.unimplemented();
-                    case 13:
-                        return StandardSocketOptions.SO_LINGER;
-                    case 15:
-                        return StandardSocketOptions.SO_REUSEPORT;
-                }
-                break;
-            case 41:
-                switch (opt) {
-                    case 17:
-                        return StandardSocketOptions.IP_MULTICAST_IF;
-                    case 18:
-                        return StandardSocketOptions.IP_MULTICAST_TTL;
-                    case 19:
-                        return StandardSocketOptions.IP_MULTICAST_LOOP;
-                    case 67:
-                        return StandardSocketOptions.IP_TOS;
-                }
-                break;
-        }
-        if (level == 6 && opt == 1) {
-            return StandardSocketOptions.TCP_NODELAY;
-        }
-        throw Throw.throwUnsupported("Unsupported SocketOption: level = " + level + ", opt = " + opt, ctx);
+    private static SocketOption<?> getSocketOption(int level) {
+        return LibsState.SocketOptionSync.getOption(level);
     }
 }

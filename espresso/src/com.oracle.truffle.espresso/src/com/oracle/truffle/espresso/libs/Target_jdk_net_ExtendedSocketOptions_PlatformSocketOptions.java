@@ -34,6 +34,7 @@ public final class Target_jdk_net_ExtendedSocketOptions_PlatformSocketOptions {
     @Substitution(languageFilter = EspressoLibsFilter.class)
     public static @JavaType(internalName = "Ljdk/net/ExtendedSocketOptions$PlatformSocketOptions;") StaticObject create(
                     @Inject LibsMeta libsMeta) {
+        // todo (GR-78554)
         // lazily initialize jdk/net
         libsMeta.initJdkNet();
         // create a nonPlatformSpecificOptions instance to return
