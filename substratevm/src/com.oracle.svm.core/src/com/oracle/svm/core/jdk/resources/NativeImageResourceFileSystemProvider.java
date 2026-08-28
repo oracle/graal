@@ -135,7 +135,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
     @Override
     public FileSystem newFileSystem(Path path, Map<String, ?> env) {
-        FileSystemContext context = new FileSystemContext(0, null, "");
+        FileSystemContext context = new FileSystemContext(NativeImageResourceFileSystem.ANY_ROOT_ID, null, "");
         try {
             writeLock.lock();
             checkIfResourcePath(path);
@@ -201,7 +201,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
     private static FileSystemContext parseFileSystemContext(URI uri) {
         if ("/".equals(uri.getPath())) {
-            return new FileSystemContext(0, null, "");
+            return new FileSystemContext(NativeImageResourceFileSystem.ANY_ROOT_ID, null, "");
         }
         return parseResourcePath(uri).fileSystemContext();
     }

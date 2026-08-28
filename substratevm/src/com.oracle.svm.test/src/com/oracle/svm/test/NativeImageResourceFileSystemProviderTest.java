@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -59,7 +60,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -76,6 +76,8 @@ public class NativeImageResourceFileSystemProviderTest {
 
     private static final String NEW_DIRECTORY = RESOURCE_DIR + "/tmp";
     private static final String NEW_FILE = NEW_DIRECTORY + "/newFile";
+    private static final String RESOURCE_FROM_ANOTHER_ROOT = "META-INF/native-image-resource-test/com.oracle.svm.test.ServiceC/com.oracle.svm.test.impl.ServiceCImpl";
+    private static final Map<String, String> CREATE_ENV = Map.of("create", "true");
 
     private static final int TIME_SPAN = 1_000_000;
 
@@ -85,9 +87,6 @@ public class NativeImageResourceFileSystemProviderTest {
     public void createNewFileSystem() {
         URI resource = resourceNameToURI(RESOURCE_FILE_1, true);
 
-        Map<String, String> env = new HashMap<>(); // no EconomicSet: api
-        env.put("create", "true");
-
         boolean exceptionThrown = false;
         try {
             // Try to get file system. This should raise exception.
@@ -96,7 +95,7 @@ public class NativeImageResourceFileSystemProviderTest {
             // File system not found. Create new one.
             exceptionThrown = true;
             try {
-                fileSystem = FileSystems.newFileSystem(resource, env);
+                fileSystem = FileSystems.newFileSystem(resource, CREATE_ENV);
             } catch (IOException ioException) {
                 Assert.fail("Error during creating a new file system!");
             }
@@ -152,6 +151,36 @@ public class NativeImageResourceFileSystemProviderTest {
             });
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system walk, starting from the root!");
+        }
+    }
+
+    @Test
+    public void unqualifiedResourceFileSystemResolvesAcrossClasspathRoots() throws IOException {
+        URI aggregateResourceUri = URI.create("resource:/");
+        FileSystem aggregateFileSystem;
+        boolean created = false;
+        try {
+            aggregateFileSystem = FileSystems.newFileSystem(aggregateResourceUri, CREATE_ENV);
+            created = true;
+        } catch (FileSystemAlreadyExistsException e) {
+            aggregateFileSystem = FileSystems.getFileSystem(aggregateResourceUri);
+        }
+
+        try {
+            // fileSystem is root-qualified because createNewFileSystem() creates it from
+            // RESOURCE_FILE_1's URI, which encodes that resource's root ID, rather than from the
+            // aggregate resource:/ URI. It must not resolve a resource from another root.
+            Assert.assertFalse("A root-qualified filesystem must not fall back to another classpath root", Files.exists(fileSystem.getPath(RESOURCE_FROM_ANOTHER_ROOT)));
+
+            // aggregateFileSystem is created from the unqualified resource:/ URI, so it is not
+            // bound to RESOURCE_FILE_1's root and can resolve resources from any root.
+            Path resource = aggregateFileSystem.getPath(ROOT_DIRECTORY).resolve(RESOURCE_FROM_ANOTHER_ROOT);
+            Assert.assertEquals("com.oracle.svm.test.impl.ServiceCImpl", Files.readString(resource).trim());
+            Assert.assertEquals(resourceNameToURI(ROOT_DIRECTORY + RESOURCE_FROM_ANOTHER_ROOT, true), resource.toUri());
+        } finally {
+            if (created) {
+                aggregateFileSystem.close();
+            }
         }
     }
 
