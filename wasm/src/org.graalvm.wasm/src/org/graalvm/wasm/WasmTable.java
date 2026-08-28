@@ -115,8 +115,8 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
         this(declaredMinSize, declaredMaxSize, (int) declaredMinSize, maxAllowedSize, elemType, WasmConstant.NULL, indexType64);
     }
 
-    public WasmTable(long declaredMinSize, long declaredMaxSize, int maxAllowedSize, ReferenceType elemType, Object initialValue) {
-        this(declaredMinSize, declaredMaxSize, (int) declaredMinSize, maxAllowedSize, elemType, initialValue, false);
+    public WasmTable(long declaredMinSize, long declaredMaxSize, int maxAllowedSize, ReferenceType elemType, Object initialValue, boolean indexType64) {
+        this(declaredMinSize, declaredMaxSize, (int) declaredMinSize, maxAllowedSize, elemType, initialValue, indexType64);
     }
 
     /**
