@@ -158,7 +158,8 @@ public final class DynamicHubCompanion {
     ClassRepository genericInfo;
     SoftReference<Target_java_lang_Class_ReflectionData<?>> reflectionData;
     AnnotationType annotationType;
-    Target_java_lang_Class_AnnotationData annotationData;
+    @UnknownObjectField(fullyQualifiedTypes = "java.lang.Class$AnnotationData", canBeNull = true, availability = BuildPhaseProvider.AfterCompilation.class) //
+    Object annotationData;
     Constructor<?> cachedConstructor;
     Object jfrEventConfiguration;
     @Stable RuntimeDynamicAccessMetadata dynamicAccess;
