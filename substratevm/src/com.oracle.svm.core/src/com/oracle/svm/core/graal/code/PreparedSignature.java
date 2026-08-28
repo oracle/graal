@@ -179,11 +179,6 @@ public final class PreparedSignature {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static int getDefaultArgumentType() {
-        return 0;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public JavaKind getReturnKind() {
         return returnKind;
     }
