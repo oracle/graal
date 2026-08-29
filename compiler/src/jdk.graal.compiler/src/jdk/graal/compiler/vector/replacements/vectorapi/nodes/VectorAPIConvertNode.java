@@ -56,10 +56,13 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.LogicValueStamp;
+import jdk.graal.compiler.vector.nodes.simd.SimdConcatNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.graal.compiler.vector.nodes.simd.SimdCutNode;
+import jdk.graal.compiler.vector.nodes.simd.SimdInsertNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIOperations;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -167,7 +170,8 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
                  */
                 return null;
             }
-        } else if (newFromStamp.getVectorLength() >= newToStamp.getVectorLength()) {
+        } else {
+            boolean padResult = newFromStamp.getVectorLength() < newToStamp.getVectorLength();
             if (newFromStamp.getVectorLength() > newToStamp.getVectorLength()) {
                 /*
                  * This is a castShape operation that only uses part of the input vector. Currently
@@ -182,17 +186,19 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
             Stamp to = newToStamp.getComponent(0);
             if (from.equals(to)) {
                 /* Casting a value to itself. */
-                return valueConstant;
+                return padResult ? padConstant(valueConstant, newToStamp) : valueConstant;
             } else if (from.isIntegerStamp() && to.isIntegerStamp()) {
                 ArithmeticOpTable.IntegerConvertOp<?> conversion = PrimitiveStamp.getBits(from) < PrimitiveStamp.getBits(to)
                                 ? (newOp == ConversionOp.UCAST ? newFromStamp.getOps().getZeroExtend() : newFromStamp.getOps().getSignExtend())
                                 : newFromStamp.getOps().getNarrow();
-                return (SimdConstant) conversion.foldConstant(PrimitiveStamp.getBits(from), PrimitiveStamp.getBits(to), valueConstant);
+                SimdConstant converted = (SimdConstant) conversion.foldConstant(PrimitiveStamp.getBits(from), PrimitiveStamp.getBits(to), valueConstant);
+                return padResult ? padConstant(converted, newToStamp) : converted;
             } else {
                 FloatConvert floatConvert = FloatConvert.forStamps(from, to);
                 if (floatConvert != null) {
                     ArithmeticOpTable.FloatConvertOp conversion = newFromStamp.getOps().getFloatConvert(floatConvert);
-                    return (SimdConstant) conversion.foldConstant(valueConstant);
+                    SimdConstant converted = (SimdConstant) conversion.foldConstant(valueConstant);
+                    return padResult ? padConstant(converted, newToStamp) : converted;
                 } else if (from.isIntegerStamp() && PrimitiveStamp.getBits(from) == Byte.SIZE && to.isFloatStamp()) {
                     /*
                      * We need to support i8 -> float conversions via an intermediate. This is
@@ -203,15 +209,20 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
                     floatConvert = FloatConvert.forStamps(scalarIntermediateStamp, to);
                     SimdStamp simdIntermediateStamp = SimdStamp.broadcast(scalarIntermediateStamp, newFromStamp.getVectorLength());
                     ArithmeticOpTable.FloatConvertOp conversion = simdIntermediateStamp.getOps().getFloatConvert(floatConvert);
-                    return (SimdConstant) conversion.foldConstant(intermediateConstant);
+                    SimdConstant converted = (SimdConstant) conversion.foldConstant(intermediateConstant);
+                    return padResult ? padConstant(converted, newToStamp) : converted;
                 }
                 /* Other subword <-> float conversion, don't constant fold for now. */
                 return null;
             }
-        } else {
-            /* Don't constant fold conversions between different length vectors for now. */
-            return null;
         }
+    }
+
+    /** Fills the result lanes beyond the converted lanes with zeros. */
+    private static SimdConstant padConstant(SimdConstant converted, SimdStamp resultStamp) {
+        Constant[] values = Arrays.copyOf(converted.getValues().toArray(new Constant[0]), resultStamp.getVectorLength());
+        Arrays.fill(values, converted.getVectorLength(), values.length, VectorAPIUtils.zeroConstant(resultStamp.getComponent(0)));
+        return new SimdConstant(values);
     }
 
     public ValueNode inputVector() {
@@ -262,7 +273,7 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
             int fromBits = PrimitiveStamp.getBits(fromStamp.getComponent(0)) * fromStamp.getVectorLength();
             int toBits = PrimitiveStamp.getBits(toStamp.getComponent(0)) * toStamp.getVectorLength();
             return fromBits == toBits && vectorArch.getSupportedVectorMoveLength(toStamp.getComponent(0), toStamp.getVectorLength()) == toStamp.getVectorLength();
-        } else if (fromStamp.getVectorLength() >= toStamp.getVectorLength() && fromStamp.getVectorLength() % toStamp.getVectorLength() == 0) {
+        } else if (fromStamp.getVectorLength() >= toStamp.getVectorLength()) {
             /*
              * Same length, or something like an element-wise extension from <i16, i16, i16, i16> to
              * <i32, i32>. The latter throws away some elements and then converts the rest.
@@ -282,17 +293,8 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
                 FloatConvert floatConvert = FloatConvert.forStamps(from, to);
                 if (floatConvert != null) {
                     return vectorArch.getSupportedVectorConvertLength(to, from, toStamp.getVectorLength(), floatConvert) == toStamp.getVectorLength();
-                } else if (from.isIntegerStamp() && PrimitiveStamp.getBits(from) == Byte.SIZE && to.isFloatStamp()) {
-                    /*
-                     * We need to support i8 -> float conversions via an intermediate. This is
-                     * necessary to make castShape work.
-                     */
-                    IntegerStamp intermediate = StampFactory.forInteger(PrimitiveStamp.getBits(to));
-                    if (!canExpandIntegerCast(vectorArch, op, toStamp.getVectorLength(), from, intermediate)) {
-                        return false;
-                    }
-                    floatConvert = FloatConvert.forStamps(intermediate, to);
-                    return vectorArch.getSupportedVectorConvertLength(to, intermediate, toStamp.getVectorLength(), floatConvert) == toStamp.getVectorLength();
+                } else if (canExpandByteToFloat(vectorArch, op, toStamp.getVectorLength(), from, to)) {
+                    return true;
                 }
                 /*
                  * We don't support more general obscure conversions like f64 -> i16 directly. In
@@ -302,12 +304,73 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
             }
         } else {
             /*
-             * This is a conversion from a shorter vector to a longer one, something like <i32, i32>
-             * to <i16, i16, i16, i16>. The semantics is to convert the elements we have and pad
-             * with zeros. We choose not to handle this at the moment.
+             * This is a conversion from a vector with fewer elements to one with more elements,
+             * such as <i32, i32> to <i16, i16, i16, i16>, or <i16, i16> to <i32, i32, i32, i32>.
+             * The element types may also be the same, as in <i32, i32> to <i32, i32, i32, i32>, or
+             * have the same size, as in <f32, f32> to <i32, i32, i32, i32>. Convert the available
+             * elements and pad the remaining result elements with zeros.
              */
+            Stamp from = fromStamp.getComponent(0);
+            Stamp to = toStamp.getComponent(0);
+            boolean canConvert;
+            if (from.equals(to)) {
+                canConvert = true;
+            } else if (from.isIntegerStamp() && to.isIntegerStamp()) {
+                canConvert = canExpandIntegerCast(vectorArch, op, fromStamp.getVectorLength(), from, to);
+            } else {
+                FloatConvert floatConvert = FloatConvert.forStamps(from, to);
+                canConvert = floatConvert != null &&
+                                vectorArch.getSupportedVectorConvertLength(to, from, fromStamp.getVectorLength(), floatConvert) == fromStamp.getVectorLength();
+                if (floatConvert == null) {
+                    canConvert = canExpandByteToFloat(vectorArch, op, fromStamp.getVectorLength(), from, to);
+                }
+            }
+            return canConvert && canPadConvertedVector(vectorArch, toStamp, fromStamp.getVectorLength());
+        }
+    }
+
+    /**
+     * Checks whether an i8 to floating point conversion can be expanded through an integer
+     * intermediate. This is necessary to make {@code castShape} work because there is no direct
+     * {@link FloatConvert} for this conversion.
+     */
+    private static boolean canExpandByteToFloat(VectorArchitecture vectorArch, ConversionOp op, int vectorLength, Stamp from, Stamp to) {
+        if (!(from.isIntegerStamp() && PrimitiveStamp.getBits(from) == Byte.SIZE && to.isFloatStamp())) {
             return false;
         }
+        IntegerStamp intermediate = StampFactory.forInteger(PrimitiveStamp.getBits(to));
+        if (!canExpandIntegerCast(vectorArch, op, vectorLength, from, intermediate)) {
+            return false;
+        }
+        FloatConvert floatConvert = FloatConvert.forStamps(intermediate, to);
+        return vectorArch.getSupportedVectorConvertLength(to, intermediate, vectorLength, floatConvert) == vectorLength;
+    }
+
+    /**
+     * Checks whether the target can represent {@code resultStamp} and place a converted vector in
+     * its low lanes, with all remaining lanes set to zero. Padding uses either an insert or the same
+     * concatenation strategy as the nibble lookup padding in {@link VectorAPIUnaryOpNode}.
+     */
+    private static boolean canPadConvertedVector(VectorArchitecture vectorArch, SimdStamp resultStamp, int convertedLength) {
+        Stamp elementStamp = resultStamp.getComponent(0);
+        if (vectorArch.getSupportedVectorMoveLength(elementStamp, resultStamp.getVectorLength()) != resultStamp.getVectorLength()) {
+            return false;
+        }
+
+        SimdStamp convertedStamp = SimdStamp.broadcast(elementStamp, convertedLength);
+        if (vectorArch.supportsVectorInsert(resultStamp, convertedStamp, 0)) {
+            return true;
+        }
+
+        int currentLength = convertedLength;
+        int elementBytes = PrimitiveStamp.getBits(elementStamp) / Byte.SIZE;
+        while (currentLength < resultStamp.getVectorLength()) {
+            if (currentLength * 2 > resultStamp.getVectorLength() || !vectorArch.supportsVectorConcat(currentLength * elementBytes)) {
+                return false;
+            }
+            currentLength *= 2;
+        }
+        return true;
     }
 
     public static boolean canExpandIntegerCast(VectorArchitecture vectorArch, ConversionOp op, int vectorLength, Stamp fromElement, Stamp toElement) {
@@ -341,22 +404,58 @@ public class VectorAPIConvertNode extends VectorAPIMacroNode implements Canonica
             } else if (fromStamp.getVectorLength() > toStamp.getVectorLength()) {
                 value = new SimdCutNode(value, 0, toStamp.getVectorLength());
             }
-            if (from.isIntegerStamp() && to.isIntegerStamp()) {
-                return expandIntegerCast(op, value, PrimitiveStamp.getBits(from), PrimitiveStamp.getBits(to));
+            ValueNode converted;
+            if (from.equals(to)) {
+                converted = value;
+            } else if (from.isIntegerStamp() && to.isIntegerStamp()) {
+                converted = expandIntegerCast(op, value, PrimitiveStamp.getBits(from), PrimitiveStamp.getBits(to));
             } else {
                 FloatConvert floatConvert = FloatConvert.forStamps(from, to);
                 if (floatConvert != null) {
-                    return new FloatConvertNode(floatConvert, value);
+                    converted = new FloatConvertNode(floatConvert, value);
                 } else {
                     GraalError.guarantee(from.isIntegerStamp() && PrimitiveStamp.getBits(from) == Byte.SIZE && to.isFloatStamp(),
                                     "unsupported %s -> %s conversion, should have been verified before", from, to);
                     IntegerStamp intermediate = StampFactory.forInteger(PrimitiveStamp.getBits(to));
                     ValueNode convertedIntermediate = expandIntegerCast(op, value, PrimitiveStamp.getBits(from), PrimitiveStamp.getBits(intermediate));
                     floatConvert = FloatConvert.forStamps(intermediate, to);
-                    return new FloatConvertNode(floatConvert, convertedIntermediate);
+                    converted = new FloatConvertNode(floatConvert, convertedIntermediate);
                 }
             }
+
+            if (fromStamp.getVectorLength() < toStamp.getVectorLength()) {
+                converted = graph().addOrUniqueWithInputs(converted);
+                return padConvertedVector(vectorArch, converted);
+            }
+            return converted;
         }
+    }
+
+    /**
+     * Places {@code converted} in the low lanes of the result and fills the upper lanes with zeros.
+     * An insert handles targets where the converted value is smaller than half of the result. A
+     * sequence of concatenations is used on targets which support concatenation instead.
+     */
+    private ValueNode padConvertedVector(VectorArchitecture vectorArch, ValueNode converted) {
+        SimdStamp convertedStamp = (SimdStamp) converted.stamp(NodeView.DEFAULT);
+        if (vectorArch.supportsVectorInsert(toStamp, convertedStamp, 0)) {
+            ValueNode zeros = zeroVector(toStamp);
+            return graph().addOrUniqueWithInputs(SimdInsertNode.create(zeros, converted, 0));
+        }
+
+        ValueNode padded = converted;
+        int currentLength = convertedStamp.getVectorLength();
+        while (currentLength < toStamp.getVectorLength()) {
+            SimdStamp zeroStamp = SimdStamp.broadcast(toStamp.getComponent(0), currentLength);
+            ValueNode zeros = zeroVector(zeroStamp);
+            padded = graph().addOrUnique(new SimdConcatNode(padded, zeros));
+            currentLength *= 2;
+        }
+        return padded;
+    }
+
+    private ValueNode zeroVector(SimdStamp vectorStamp) {
+        return graph().unique(SimdConstant.constantNodeForBroadcast(VectorAPIUtils.zeroConstant(vectorStamp.getComponent(0)), vectorStamp.getVectorLength()));
     }
 
     public static ValueNode expandIntegerCast(ConversionOp op, ValueNode value, int fromBits, int toBits) {

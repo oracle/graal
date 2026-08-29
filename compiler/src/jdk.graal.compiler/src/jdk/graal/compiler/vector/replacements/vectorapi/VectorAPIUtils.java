@@ -214,12 +214,16 @@ public class VectorAPIUtils {
         return primitiveArrayLocationIdentity(base);
     }
 
+    /** Returns a zero constant with the type and bit width described by {@code stamp}. */
+    public static JavaConstant zeroConstant(Stamp stamp) {
+        return stamp instanceof IntegerStamp
+                        ? JavaConstant.forPrimitiveInt(PrimitiveStamp.getBits(stamp), 0)
+                        : JavaConstant.defaultForKind(stamp.getStackKind());
+    }
+
     public static SimdPrimitiveCompareNode isZero(ValueNode vector, VectorArchitecture vectorArch) {
         SimdStamp simdStamp = (SimdStamp) vector.stamp(NodeView.DEFAULT);
-        Stamp elementStamp = simdStamp.getComponent(0);
-        JavaConstant zero = elementStamp instanceof IntegerStamp
-                        ? JavaConstant.forPrimitiveInt(PrimitiveStamp.getBits(elementStamp), 0)
-                        : JavaConstant.defaultForKind(elementStamp.getStackKind());
+        JavaConstant zero = zeroConstant(simdStamp.getComponent(0));
         ConstantNode zeroVector = SimdConstant.constantNodeForBroadcast(zero, simdStamp.getVectorLength());
         return SimdPrimitiveCompareNode.simdCompare(CanonicalCondition.EQ, vector, zeroVector, false, vectorArch);
     }
