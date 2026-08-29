@@ -24,21 +24,32 @@
  */
 package jdk.graal.compiler.core.phases;
 
+import static jdk.graal.compiler.duplication.phases.simulation.DuplicationOptions.EarlySimulationDepth;
+import static jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase.FACTORS_INCLUDING_PEA;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
+
+import java.util.ListIterator;
+import java.util.function.Consumer;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.duplication.phases.MethodDuplicationPhase;
+import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
+import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
+import jdk.graal.compiler.duplication.phases.simulation.FixedDuplicationSimulationConfig;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
@@ -127,8 +138,11 @@ public class HighTier extends BaseTier<HighTierContext> {
             appendPhase(new BoxNodeIdentityPhase());
         }
 
+        this.<HighTierContext> appendControlFlowDuplicationPhases(this::appendPhase, options, canonicalizer);
+
         if (GraalOptions.PartialEscapeAnalysis.getValue(options)) {
-            appendPhase(new FinalPartialEscapePhase(true, canonicalizer, null, options));
+            PhaseSuite<CoreProviders> cleanup = createFinalPEACleanup(options, canonicalizer);
+            appendPhase(new FinalPartialEscapePhase(true, canonicalizer, cleanup, options));
         }
 
         if (VectorAPIIntrinsics.intrinsificationSupported(options)) {
@@ -141,6 +155,54 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
         appendPhase(new HighTierLoweringPhase(canonicalizer));
+    }
+
+    /// Determines whether at least one control flow duplication phase is enabled in `options`.
+    protected static boolean isControlFlowDuplicationEnabled(OptionValues options) {
+        return PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options) || GraalOptions.OptDuplication.getValue(options);
+    }
+
+    /// Adds the enabled control flow duplication phases through `phaseConsumer`.
+    protected final <C extends CoreProviders> void appendControlFlowDuplicationPhases(Consumer<BasePhase<? super C>> phaseConsumer, OptionValues options,
+                    CanonicalizerPhase canonicalizer) {
+        if (PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options)) {
+            phaseConsumer.accept(new PullThroughPhiPhase(canonicalizer));
+        }
+        if (GraalOptions.OptDuplication.getValue(options)) {
+            // Dead code elimination reduces the graph considered by duplication simulation.
+            phaseConsumer.accept(new DeadCodeEliminationPhase());
+            phaseConsumer.accept(new DuplicationPhase(FixedDuplicationSimulationConfig.defaultForDepth(EarlySimulationDepth), true, true,
+                            FACTORS_INCLUDING_PEA, canonicalizer, getDuplicationVectorizationCheck(), options));
+        }
+    }
+
+    /// Removes the top-level control flow duplication phases so a subclass can reposition them.
+    protected final void removeControlFlowDuplicationPhases() {
+        removePhase(PullThroughPhiPhase.class);
+        ListIterator<BasePhase<? super HighTierContext>> duplicationPosition = findPhase(DuplicationPhase.class);
+        if (duplicationPosition != null) {
+            duplicationPosition.previous();
+            duplicationPosition.remove();
+            BasePhase<? super HighTierContext> precedingPhase = duplicationPosition.previous();
+            assert precedingPhase instanceof DeadCodeEliminationPhase : precedingPhase;
+            duplicationPosition.remove();
+        }
+    }
+
+    /// Creates the control flow duplication phases that clean up and iteratively expose escape
+    /// analysis opportunities.
+    protected final PhaseSuite<CoreProviders> createFinalPEACleanup(OptionValues options, CanonicalizerPhase canonicalizer) {
+        if (!isControlFlowDuplicationEnabled(options)) {
+            return null;
+        }
+        PhaseSuite<CoreProviders> cleanup = new PhaseSuite<>();
+        this.<CoreProviders> appendControlFlowDuplicationPhases(cleanup::appendPhase, options, canonicalizer);
+        return cleanup;
+    }
+
+    /// Gets the policy used to prevent duplication from harming later vectorization.
+    protected DuplicationPhase.VectorizationCheck getDuplicationVectorizationCheck() {
+        return (loop, graph, providers) -> false;
     }
 
     @Override

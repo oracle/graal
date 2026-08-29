@@ -24,8 +24,11 @@
  */
 package jdk.graal.compiler.duplication.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationOptions;
@@ -33,6 +36,7 @@ import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.duplication.phases.simulation.FixedDuplicationSimulationConfig;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -40,6 +44,16 @@ import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 public class DuplicationPhiCreationTest extends GraalCompilerTest {
 
     public static Object field;
+
+    @Test
+    public void testCommunityPhasePlan() {
+        OptionValues enabled = getInitialOptions();
+        // Community compilation runs duplication by default.
+        Assert.assertNotNull(new HighTier(enabled).findPhase(DuplicationPhase.class));
+
+        OptionValues disabled = new OptionValues(enabled, GraalOptions.OptDuplication, false);
+        Assert.assertNull(new HighTier(disabled).findPhase(DuplicationPhase.class));
+    }
 
     static final class A {
         int a;

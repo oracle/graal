@@ -73,7 +73,7 @@ public class DuplicationOptions {
     @Option(help = "Ignores low frequency branches during simulation.", type = Debug)
     public static final OptionKey<Boolean> SimulationPruneUnlikelyBranches = new OptionKey<>(true);
 
-    @Option(help = "Cost/Benefit heuristic for EE simulation-based code duplication: reduce cost by a constant factor when comparing with relative benefit.", type = Debug)
+    @Option(help = "Cost/Benefit heuristic for simulation-based code duplication: reduce cost by a constant factor when comparing with relative benefit.", type = Debug)
     public static final OptionKey<Integer> DuplicationCostReductionFactor = new OptionKey<>(64);
 
     @Option(help = "See DuplicationCostReductionFactor", type = Debug)

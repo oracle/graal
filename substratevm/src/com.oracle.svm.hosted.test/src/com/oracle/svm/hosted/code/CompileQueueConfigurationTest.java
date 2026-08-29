@@ -38,6 +38,7 @@ import jdk.graal.compiler.core.phases.EconomyLowTier;
 import jdk.graal.compiler.core.phases.EconomyMarkFixReadsPhase;
 import jdk.graal.compiler.core.phases.EconomyMidTier;
 import jdk.graal.compiler.core.phases.MidTier;
+import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -86,6 +87,8 @@ public class CompileQueueConfigurationTest {
         Assert.assertFalse(LoopVectorizationPhase.Options.VectorizeLoops.getValue(options));
         Assert.assertFalse(MidTier.Options.OptimisticAliasingAnalysis.getValue(options));
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
+        Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
+        Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, true, true);
@@ -94,6 +97,8 @@ public class CompileQueueConfigurationTest {
         Assert.assertFalse(LoopVectorizationPhase.Options.VectorizeLoops.getValue(options));
         Assert.assertFalse(MidTier.Options.OptimisticAliasingAnalysis.getValue(options));
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
+        Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
+        Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, false, false);
@@ -102,6 +107,8 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(LoopVectorizationPhase.Options.VectorizeLoops.getValue(options));
         Assert.assertTrue(MidTier.Options.OptimisticAliasingAnalysis.getValue(options));
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
+        Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
+        Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
     }
 
     @Test

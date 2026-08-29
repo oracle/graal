@@ -41,15 +41,15 @@ import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -95,7 +95,7 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAllocatedMemory(Object obj) {
-        return isInAllocatedMemory(Word.objectToTrackedPointer(obj));
+        return isInAllocatedMemory(Word.objectToUntrackedPointer(obj));
     }
 
     @Override
@@ -107,7 +107,7 @@ public class MetaspaceImpl implements Metaspace {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAddressSpace(Object obj) {
-        return isInAddressSpace(Word.objectToTrackedPointer(obj));
+        return isInAddressSpace(Word.objectToUntrackedPointer(obj));
     }
 
     @Override

@@ -89,6 +89,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.phases.MidTier;
+import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
@@ -347,6 +348,10 @@ public class SubstrateOptions {
         enable(GraalOptions.ReduceCodeSize, values);
         enable(ReduceImplicitExceptionStackTraceInformation, values);
         enable(GraalOptions.OptimizeLongJumps, values);
+
+        /* Control flow duplication almost always increases code size. */
+        disable(GraalOptions.OptDuplication, values);
+        disable(PullThroughPhiPhase.Options.OptPullThroughPhi, values);
 
         if (disableLoopOptimizations) {
             /*

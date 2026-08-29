@@ -911,7 +911,7 @@ public final class InterpreterToVM {
         DynamicHub thisHub = DynamicHub.fromClass(thisClass);
 
         int vtableOffset = DynamicHubUtils.determineDispatchTableOffset(thisHub, callTargetHub, vTableIndex);
-        MethodRef vtableEntry = Word.objectToTrackedPointer(thisHub).readWord(vtableOffset);
+        MethodRef vtableEntry = Word.objectToUntrackedPointer(thisHub).readWord(vtableOffset);
         return getSVMVTableCodePointer(vtableEntry);
     }
 
