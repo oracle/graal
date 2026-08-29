@@ -138,7 +138,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
         return fastPathBlock;
     }
 
-    void markFastPathBlock() {
+    public void markFastPathBlock() {
         fastPathBlock = true;
     }
 

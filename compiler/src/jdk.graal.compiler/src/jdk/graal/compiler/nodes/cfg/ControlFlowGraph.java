@@ -937,17 +937,34 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     /**
-     * Marks blocks whose LIR should avoid spill optimizations that add fast-path memory traffic.
+     * Marks blocks considered part of a fast path. LSRA uses this hint to avoid propagating spills
+     * required by other blocks into these blocks when profitable; spills required by the marked
+     * blocks themselves remain permitted.
      */
     public void markFastPathBlocks() {
+        BasicBlockSet visited = createBasicBlockSet();
         for (HIRBlock block : reversePostOrder) {
             if (isThreadedSwitchBlock(block)) {
                 block.markFastPathBlock();
             }
             if (isStubFastPathBlock(block)) {
-                for (HIRBlock fastPathBlock = block; fastPathBlock != null; fastPathBlock = fastPathBlock.getDominator()) {
-                    fastPathBlock.markFastPathBlock();
-                }
+                markPredecessorPaths(block, visited);
+            }
+        }
+    }
+
+    private static void markPredecessorPaths(HIRBlock exitBlock, BasicBlockSet visited) {
+        ArrayList<HIRBlock> worklist = new ArrayList<>();
+        worklist.add(exitBlock);
+        while (!worklist.isEmpty()) {
+            HIRBlock block = worklist.removeLast();
+            if (visited.get(block)) {
+                continue;
+            }
+            visited.set(block);
+            block.markFastPathBlock();
+            for (int predecessorIndex = 0; predecessorIndex < block.getPredecessorCount(); predecessorIndex++) {
+                worklist.add(block.getPredecessorAt(predecessorIndex));
             }
         }
     }
@@ -959,8 +976,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
     /**
      * Determines whether {@code block} is the exit of a bytecode-handler stub fast path. Such a
-     * block returns the results of a {@link MultiReturnNode}; its dominator chain forms the fast
-     * path.
+     * block returns the results of a {@link MultiReturnNode}; every predecessor-reachable block,
+     * including loop backedges, is part of a normal stub path and receives the fast-path hint.
      */
     private static boolean isStubFastPathBlock(HIRBlock block) {
         return block.getEndNode() instanceof ReturnNode returnNode && returnNode.result() instanceof MultiReturnNode;
