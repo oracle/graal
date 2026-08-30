@@ -91,6 +91,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     protected LocationIdentity locationIdentity;
     private boolean isInOOMETry;
     private boolean sideEffect;
+    private boolean guaranteedNotToThrow;
 
     public InvokeNode(CallTargetNode callTarget, int bci) {
         this(callTarget, bci, callTarget.returnStamp().getTrustedStamp());
@@ -308,6 +309,20 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     public void setSideEffect(boolean sideEffect) {
         this.sideEffect = sideEffect;
+    }
+
+    /**
+     * Records that an interprocedural analysis proved this invoke cannot throw an exception.
+     */
+    public void setGuaranteedNotToThrow() {
+        guaranteedNotToThrow = true;
+    }
+
+    /**
+     * Returns whether an interprocedural analysis proved this invoke cannot throw an exception.
+     */
+    public boolean isGuaranteedNotToThrow() {
+        return guaranteedNotToThrow;
     }
 
     @Override

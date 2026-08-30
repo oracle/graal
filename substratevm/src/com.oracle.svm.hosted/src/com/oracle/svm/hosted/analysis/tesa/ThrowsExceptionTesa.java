@@ -25,12 +25,14 @@
 package com.oracle.svm.hosted.analysis.tesa;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.hosted.analysis.tesa.effect.BooleanEffect;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnwindNode;
@@ -57,13 +59,13 @@ public class ThrowsExceptionTesa extends BooleanTesa {
     }
 
     @Override
-    protected boolean canOptimizedInvoke(Invoke invoke) {
-        return invoke instanceof InvokeWithExceptionNode;
-    }
-
-    @Override
     protected void optimizeInvoke(HostedUniverse universe, StructuredGraph graph, Invoke invoke, BooleanEffect targetState) {
         assert targetState.hasNoEffects() : "Only false in actionable: " + targetState;
-        ((InvokeWithExceptionNode) invoke).replaceWithInvoke();
+        InvokeNode nonThrowingInvoke = switch (invoke) {
+            case InvokeNode invokeNode -> invokeNode;
+            case InvokeWithExceptionNode invokeWithExceptionNode -> invokeWithExceptionNode.replaceWithInvoke();
+            default -> throw AnalysisError.shouldNotReachHere("Unexpected invoke type: " + invoke);
+        };
+        nonThrowingInvoke.setGuaranteedNotToThrow();
     }
 }
