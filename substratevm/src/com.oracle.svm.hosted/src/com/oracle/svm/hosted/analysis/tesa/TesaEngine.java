@@ -130,6 +130,7 @@ public class TesaEngine implements ImageBuildStatistics.TesaPrinter {
      */
     private void registerDefaultAnalyses() {
         registerTesa(new KilledLocationTesa());
+        registerTesa(new AccessedLocationTesa());
         registerTesa(new KilledLocationSetTesa());
         registerTesa(new AllocationTesa());
         registerTesa(new LoopTesa());

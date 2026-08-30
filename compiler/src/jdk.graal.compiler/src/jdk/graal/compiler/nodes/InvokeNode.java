@@ -51,6 +51,7 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -74,6 +75,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @OptionalInput ValueNode classInit;
     @Input(Extension) CallTargetNode callTarget;
     @OptionalInput(State) FrameState stateDuring;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
     protected int bci;
     protected boolean polymorphic;
     protected InlineControl inlineControl;
@@ -82,6 +84,11 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
      * an interprocedural analysis can provide more precise location.
      */
     protected LocationIdentity killedLocationIdentity;
+    /**
+     * The location accessed by the invoke. Typically, it will be {@link LocationIdentity#any()},
+     * but an interprocedural analysis can provide a more precise location.
+     */
+    protected LocationIdentity locationIdentity;
     private boolean isInOOMETry;
     private boolean sideEffect;
 
@@ -104,6 +111,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.polymorphic = false;
         this.inlineControl = InlineControl.Normal;
         this.killedLocationIdentity = killedLocationIdentity;
+        this.locationIdentity = LocationIdentity.any();
         this.sideEffect = super.hasSideEffect();
     }
 
@@ -158,6 +166,29 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     public void setKilledLocationIdentity(LocationIdentity identity) {
         this.killedLocationIdentity = identity;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
+    }
+
+    /**
+     * Sets the location accessed by this invoke.
+     */
+    public void setLocationIdentity(LocationIdentity identity) {
+        this.locationIdentity = identity;
+    }
+
+    @Override
+    public MemoryKill getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    @Override
+    public void setLastLocationAccess(MemoryKill lla) {
+        updateUsagesInterface(lastLocationAccess, lla);
+        lastLocationAccess = lla;
     }
 
     @Override

@@ -116,7 +116,7 @@ public class KilledLocationTesa extends AbstractTesa<LocationEffect> {
      *
      * @see AnalysisToHostedGraphTransplanter
      */
-    private static LocationIdentity transplantIdentity(HostedUniverse universe, LocationIdentity location) {
+    static LocationIdentity transplantIdentity(HostedUniverse universe, LocationIdentity location) {
         return switch (location) {
             case SubstrateFieldLocationIdentity substrateFieldLocationIdentity -> {
                 var field = substrateFieldLocationIdentity.getField();

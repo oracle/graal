@@ -45,6 +45,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -73,6 +74,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Input(Extension) CallTargetNode callTarget;
     @OptionalInput(State) FrameState stateDuring;
     @OptionalInput(State) FrameState stateAfter;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
     protected int bci;
     protected boolean polymorphic;
     protected InlineControl inlineControl;
@@ -82,6 +84,11 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
      * an interprocedural analysis can provide more precise location.
      */
     private LocationIdentity killedLocationIdentity = LocationIdentity.any();
+    /**
+     * The location accessed by the invoke. Typically, it will be {@link LocationIdentity#any()},
+     * but an interprocedural analysis can provide a more precise location.
+     */
+    private LocationIdentity locationIdentity = LocationIdentity.any();
     private boolean sideEffect = true;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
@@ -192,6 +199,29 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
+    }
+
+    /**
+     * Sets the location accessed by this invoke.
+     */
+    public void setLocationIdentity(LocationIdentity identity) {
+        this.locationIdentity = identity;
+    }
+
+    @Override
+    public MemoryKill getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    @Override
+    public void setLastLocationAccess(MemoryKill lla) {
+        updateUsagesInterface(lastLocationAccess, lla);
+        lastLocationAccess = lla;
+    }
+
+    @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
         if (callTarget != null) {
@@ -246,6 +276,8 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     public InvokeNode replaceWithInvoke() {
         try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
             InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, bci, stamp, this.getKilledLocationIdentity()));
+            newInvoke.setLocationIdentity(getLocationIdentity());
+            newInvoke.setLastLocationAccess(getLastLocationAccess());
             newInvoke.setStateAfter(stateAfter);
             newInvoke.setStateDuring(stateDuring);
             newInvoke.setInlineControl(inlineControl);
