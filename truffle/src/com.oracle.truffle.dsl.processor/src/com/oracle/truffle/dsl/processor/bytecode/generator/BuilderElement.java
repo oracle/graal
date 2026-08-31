@@ -44,6 +44,8 @@ import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitDecodeVarintEntry;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitInitCompressedSourceIterationVariables;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.mergeSuppressWarnings;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
@@ -7437,6 +7439,7 @@ final class BuilderElement extends AbstractElement {
         private static final int BUILDER_METHOD_PARAM_COUNT = 1 + SourceInfoTable.NUM_ATTRIBUTES;
         private static final int SUFFIX_NEXT_NODE_ID_ATTRIBUTE = 0;
         private static final int SUFFIX_NEXT_PATCH_INDEX_ATTRIBUTE = 1;
+        private static final int MAX_COMPRESSED_SOURCE_INFO_ENTRY_LENGTH = 1 + (3 + SourceInfoTable.NUM_ATTRIBUTES) * 5;
 
         private final CodeVariableElement sourceSectionSuffixTag;
         private final Map<SourceSectionKind, CodeVariableElement> tags;
@@ -7471,6 +7474,9 @@ final class BuilderElement extends AbstractElement {
             }
             BuilderElement.this.addAll(createEndPrefixBeginSuffixBuilderMethods());
 
+            if (model.enableCompressedSources) {
+                BuilderElement.this.add(createAppendVarint());
+            }
             BuilderElement.this.add(createFinalizeSourceInfoTable());
             BuilderElement.this.add(createDoEmitRootSourceInfo());
             rootStackElement.add(createDoEmitSourceInfo());
@@ -7640,9 +7646,9 @@ final class BuilderElement extends AbstractElement {
             b.statement("this.sourceInfo = Arrays.copyOf(this.sourceInfo, this.sourceInfo.length * 2)");
             b.end();
 
-            b.statement(writeElement("this.sourceInfo", "index", parent.sourceInfoTable.sourceOffset, "sourceIndex"));
             b.statement(writeElement("this.sourceInfo", "index", parent.sourceInfoTable.startBciOffset, "startBci"));
             b.statement(writeElement("this.sourceInfo", "index", parent.sourceInfoTable.endBciOffset, "endBci"));
+            b.statement(writeElement("this.sourceInfo", "index", parent.sourceInfoTable.sourceOffset, "sourceIndex"));
             for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
                 b.statement(writeElement("this.sourceInfo", "index", parent.sourceInfoTable.attributeOffsets.get(i), attrParams.get(i)));
             }
@@ -7656,9 +7662,64 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
+        // @formatter:off
+        // The current encoding for compressed sources looks like:
+        // +-------------+------+--------------------------------------------------------+
+        // | Field       | Size | Meaning                                                |
+        // +-------------+------+--------------------------------------------------------+
+        // | entryLength | 1    | byte length of this whole entry, including this byte   |
+        // | startBci    | var  | unsigned start BCI                                     |
+        // | endBci      | var  | unsigned(endBci - startBci)                            |
+        // | sourceIndex | var  | unsigned index                                         |
+        // | attr1       | var  | unsigned(attr1 + 2)                                    |
+        // | attr2       | var  | unsigned(attr2 + 2)                                    |
+        // | ...                                                                         |
+        // | attrN       | var  | unsigned(attrN + 2)                                    |
+        // +-------------+------+--------------------------------------------------------+
+        // Entries start at index 0 and each entry is prefixed by a one-byte length for the entire entry.
+        // Varints are written most-significant 7-bit group first; the high bit marks continuation.
+        // Additionally, attributes use -1 to indicate unavailable info and -2 to indicate unspecified attributes.
+        // Thus, zero encodes -2, one encodes -1, and the value of every attribute is shifted by 2.
+        // @formatter:on
         private CodeExecutableElement createFinalizeSourceInfoTable() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), arrayOf(type(int.class)), "finalizeSourceInfoTable");
-            ex.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "builderSourceInfo"));
+            if (!model.enableCompressedSources) {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), arrayOf(type(int.class)), "finalizeSourceInfoTable");
+                ex.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "builderSourceInfo"));
+                ex.addParameter(new CodeVariableElement(type(int.class), "builderTableLength"));
+                BytecodeRootNodeElement.addJavadoc(ex, "Converts the builder source info table into a source info table that can be used by the bytecode interpreter.");
+
+                CodeTreeBuilder b = ex.createBuilder();
+
+                b.startAssert().string("builderTableLength % ").variable(entryLengthVariable).string(" == 0").end();
+
+                b.startDeclaration(type(int.class), "length");
+                b.startParentheses().string("builderTableLength / ").variable(entryLengthVariable).end().string(" * ").variable(parent.sourceInfoTable.entryLengthVariable);
+                b.end();
+
+                b.startDeclaration(arrayOf(type(int.class)), "sourceInfo");
+                b.startNewArray(arrayOf(type(int.class)), CodeTreeBuilder.singleString("length")).end();
+                b.end();
+
+                b.declaration(type(int.class), "i", "0");
+                b.declaration(type(int.class), "j", "0");
+
+                b.startWhile().string("i < builderTableLength").end().startBlock();
+                b.startStatement().startStaticCall(type(System.class), "arraycopy");
+                b.string("builderSourceInfo").string("i");
+                b.string("sourceInfo").string("j");
+                b.variable(parent.sourceInfoTable.entryLengthVariable);
+                b.end(2);
+                b.startStatement().string("i += ").variable(entryLengthVariable).end();
+                b.startStatement().string("j += ").variable(parent.sourceInfoTable.entryLengthVariable).end();
+                b.end();
+
+                b.startReturn().string("sourceInfo").end();
+
+                return ex;
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), arrayOf(type(byte.class)), "finalizeSourceInfoTable");
+            ex.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "sourceInfo"));
             ex.addParameter(new CodeVariableElement(type(int.class), "builderTableLength"));
             BytecodeRootNodeElement.addJavadoc(ex, "Converts the builder source info table into a compressed source info table that can be used by the bytecode interpreter.");
 
@@ -7666,30 +7727,65 @@ final class BuilderElement extends AbstractElement {
 
             b.startAssert().string("builderTableLength % ").variable(entryLengthVariable).string(" == 0").end();
 
-            b.startDeclaration(type(int.class), "length");
-            b.startParentheses().string("builderTableLength / ").variable(entryLengthVariable).end().string(" * ").variable(parent.sourceInfoTable.entryLengthVariable);
-            b.end();
-
-            b.startDeclaration(arrayOf(type(int.class)), "sourceInfo");
-            b.startNewArray(arrayOf(type(int.class)), CodeTreeBuilder.singleString("length")).end();
-            b.end();
-
-            b.declaration(type(int.class), "i", "0");
-            b.declaration(type(int.class), "j", "0");
-
-            b.startWhile().string("i < builderTableLength").end().startBlock();
-            b.startStatement().startStaticCall(type(System.class), "arraycopy");
-            b.string("builderSourceInfo").string("i");
-            b.string("sourceInfo").string("j");
-            b.variable(parent.sourceInfoTable.entryLengthVariable);
+            b.declaration(arrayOf(type(byte.class)), "compressedSourceInfo", "new byte[Math.max(16, builderTableLength)]");
+            b.declaration(type(int.class), "compressedSourceInfoIndex", "0");
+            b.declaration(type(int.class), "maxCompressedSourceInfoEntryLength", Integer.toString(MAX_COMPRESSED_SOURCE_INFO_ENTRY_LENGTH));
+            b.startFor().string("int entryIndex = 0; entryIndex < builderTableLength; entryIndex += ").variable(entryLengthVariable).end().startBlock();
+            b.startIf().string("compressedSourceInfoIndex + maxCompressedSourceInfoEntryLength > compressedSourceInfo.length").end().startBlock();
+            b.startAssign("compressedSourceInfo").startStaticCall(type(Arrays.class), "copyOf");
+            b.string("compressedSourceInfo");
+            b.startStaticCall(type(Math.class), "max").string("compressedSourceInfo.length * 2").string("compressedSourceInfoIndex + maxCompressedSourceInfoEntryLength").end();
             b.end(2);
-            b.startStatement().string("i += ").variable(entryLengthVariable).end();
-            b.startStatement().string("j += ").variable(parent.sourceInfoTable.entryLengthVariable).end();
             b.end();
+            b.declaration(type(int.class), "entryStartIndex", "compressedSourceInfoIndex");
+            b.declaration(type(int.class), "entryLengthIndex", "compressedSourceInfoIndex++");
+            b.declaration(type(int.class), "startBci", SourceInfoTable.loadElement("sourceInfo", "entryIndex", parent.sourceInfoTable.startBciOffset));
+            b.declaration(type(int.class), "endBci", SourceInfoTable.loadElement("sourceInfo", "entryIndex", parent.sourceInfoTable.endBciOffset));
+            emitAppendCompressedSourceInfoElement(b, "startBci", false);
+            b.declaration(type(int.class), "endBciDelta", "endBci - startBci");
+            emitAppendCompressedSourceInfoElement(b, "endBciDelta", false);
+            emitAppendCompressedSourceInfoElement(b, SourceInfoTable.loadElement("sourceInfo", "entryIndex", parent.sourceInfoTable.sourceOffset).toString(), false);
+            b.declaration(type(int.class), "attrStart", "compressedSourceInfoIndex");
+            for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
+                emitAppendCompressedSourceInfoElement(b, SourceInfoTable.loadElement("sourceInfo", "entryIndex", parent.sourceInfoTable.attributeOffsets.get(i)).toString(), true);
+            }
 
-            b.startReturn().string("sourceInfo").end();
+            b.startIf().tree(SourceInfoTable.loadElement("sourceInfo", "entryIndex", tagOffset)).string(" == ").variable(sourceSectionSuffixTag).end().startBlock();
+            b.startAssert().string("entryIndex + ").variable(entryLengthVariable).string(" == builderTableLength").end();
+            b.lineComment("Reserve the maximum attribute encoding size for this suffix entry, which may be patched later.");
+            b.statement("compressedSourceInfoIndex = attrStart + " + SourceInfoTable.NUM_ATTRIBUTES * 5);
+            b.end();
+            b.declaration(type(int.class), "entryLength", "compressedSourceInfoIndex - entryStartIndex");
+            b.startAssert().string("entryLength <= 0xFF").end();
+            b.statement("compressedSourceInfo[entryLengthIndex] = (byte) entryLength");
+            b.end();
+            b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("compressedSourceInfo").string("compressedSourceInfoIndex").end().end();
 
             return ex;
+        }
+
+        private CodeExecutableElement createAppendVarint() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "appendVarint");
+            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "info"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "index"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "encoded"));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "writeIndex", "index");
+            b.declaration(type(int.class), "encodedBytes", "1");
+            b.startFor().string("int remaining = encoded >>> 7; remaining != 0; remaining >>>= 7").end().startBlock();
+            b.statement("encodedBytes++");
+            b.end();
+            b.startFor().string("int shift = (encodedBytes - 1) * 7; shift > 0; shift -= 7").end().startBlock();
+            b.statement("info[writeIndex++] = (byte) (((encoded >>> shift) & 0x7F) | 0x80)");
+            b.end();
+            b.statement("info[writeIndex++] = (byte) (encoded & 0x7F)");
+            b.startReturn().string("writeIndex").end();
+            return ex;
+        }
+
+        private void emitAppendCompressedSourceInfoElement(CodeTreeBuilder b, String value, boolean needsAttributeOffset) {
+            String encoded = needsAttributeOffset ? "(" + value + " + 2)" : value;
+            b.statement("compressedSourceInfoIndex = appendVarint(compressedSourceInfo, compressedSourceInfoIndex, " + encoded + ")");
         }
 
         private CodeExecutableElement createDoEmitRootSourceInfo() {
@@ -7779,18 +7875,55 @@ final class BuilderElement extends AbstractElement {
             b.statement(writeElement("info", "patchIndex", tagOffset, "tag"));
 
             b.end().startElseBlock();
-            b.lineComment("Patch already-built root node's source info table.");
-            b.declaration(type(int[].class), "info", "nodes.get(nodeId).bytecode.sourceInfo");
+            if (!model.enableCompressedSources) {
+                b.lineComment("Patch already-built root node's source info table.");
+                b.declaration(type(int[].class), "info", "nodes.get(nodeId).bytecode.sourceInfo");
 
-            b.startAssert().string("patchIndex % ").variable(entryLengthVariable).string(" == 0").end();
-            b.startDeclaration(type(int.class), "finalizedPatchIndex");
-            b.string("(patchIndex / ").variable(entryLengthVariable).string(") * ").variable(parent.sourceInfoTable.entryLengthVariable);
-            b.end();
+                b.startAssert().string("patchIndex % ").variable(entryLengthVariable).string(" == 0").end();
+                b.startDeclaration(type(int.class), "finalizedPatchIndex");
+                b.string("(patchIndex / ").variable(entryLengthVariable).string(") * ").variable(parent.sourceInfoTable.entryLengthVariable);
+                b.end();
 
-            b.startAssign("nextNodeId").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(SUFFIX_NEXT_NODE_ID_ATTRIBUTE))).end();
-            b.startAssign("nextPatchIndex").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(SUFFIX_NEXT_PATCH_INDEX_ATTRIBUTE))).end();
-            for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
-                b.statement(writeElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(i), dataParams.get(i)));
+                if (SourceInfoTable.NUM_ATTRIBUTES < 2) {
+                    throw new AssertionError("need at least 2 attributes in the source info table to patch suffix source sections.");
+                }
+                b.startAssign("nextNodeId").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(0))).end();
+                b.startAssign("nextPatchIndex").tree(SourceInfoTable.loadElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(1))).end();
+                for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
+                    b.statement(writeElement("info", "finalizedPatchIndex", parent.sourceInfoTable.attributeOffsets.get(i), dataParams.get(i)));
+                }
+            } else {
+                b.lineComment("Patch already-built root node's compressed source info table.");
+                b.declaration(parent.asType(), "patchedNode", "nodes.get(nodeId)");
+                b.declaration(type(byte[].class), "info", "patchedNode.bytecode.sourceInfo");
+
+                b.declaration(type(int.class), "finalizedPatchIndex", "0");
+                b.declaration(type(int.class), "entryEnd", "0");
+                b.startFor().string("int scanIndex = 0; scanIndex < info.length;").end().startBlock();
+                b.statement("finalizedPatchIndex = scanIndex");
+                b.statement("entryEnd = scanIndex + (info[scanIndex] & 0xFF)");
+                b.statement("scanIndex = entryEnd");
+                b.end();
+                b.startAssert().string("entryEnd == info.length").end();
+
+                emitInitCompressedSourceIterationVariables(b, type(int.class), "index", "finalizedPatchIndex + 1");
+                emitDecodeVarintEntry(b, "info", "index");
+                emitDecodeVarintEntry(b, "info", "index");
+                emitDecodeVarintEntry(b, "info", "index");
+                b.declaration(type(int.class), "payloadStart", "index");
+
+                if (SourceInfoTable.NUM_ATTRIBUTES < 2) {
+                    throw new AssertionError("need at least 2 attributes in the source info table to patch suffix source sections.");
+                }
+                emitDecodeVarintEntry(b, "info", "index");
+                b.statement("nextNodeId = (int) decoded - 2");
+                CodeTree decodedPatchIndex = emitDecodeVarintEntry(b, "info", "index", null);
+                b.startAssign("nextPatchIndex").tree(decodedPatchIndex).string(" - 2").end();
+                b.declaration(type(int.class), "writeIndex", "payloadStart");
+                for (int i = 0; i < SourceInfoTable.NUM_ATTRIBUTES; i++) {
+                    emitWriteCompressedPatchAttribute(b, "info", "writeIndex", dataParams.get(i).getSimpleName().toString());
+                }
+                b.startAssert().string("writeIndex <= entryEnd").end();
             }
 
             b.end();
@@ -7800,6 +7933,25 @@ final class BuilderElement extends AbstractElement {
             b.end();
 
             return ex;
+        }
+
+        private void emitWriteCompressedPatchAttribute(CodeTreeBuilder b, String array, String indexVar, String value) {
+            emitWriteCompressedPatchValue(b, array, indexVar, value, true);
+        }
+
+        private void emitWriteCompressedPatchValue(CodeTreeBuilder b, String array, String indexVar, String value, boolean offsetAttribute) {
+            b.startBlock();
+            b.declaration(type(int.class), "encodedValue", offsetAttribute ? "(" + value + " + 2)" : value);
+            b.declaration(type(int.class), "encodedBytes", "1");
+            b.startFor().string("int remaining = encodedValue >>> 7; remaining != 0; remaining >>>= 7").end().startBlock();
+            b.statement("encodedBytes++");
+            b.end();
+            b.startAssert().string(indexVar + " + encodedBytes <= " + array + ".length").end();
+            b.startFor().string("int shift = (encodedBytes - 1) * 7; shift > 0; shift -= 7").end().startBlock();
+            b.statement(array + "[" + indexVar + "++] = (byte) (((encodedValue >>> shift) & 0x7F) | 0x80)");
+            b.end();
+            b.statement(array + "[" + indexVar + "++] = (byte) (encodedValue & 0x7F)");
+            b.end();
         }
 
         private CodeExecutableElement createSourceInfoMatches() {

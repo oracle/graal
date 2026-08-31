@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
-import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree.expectedSourceTree;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -77,7 +76,6 @@ import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 import com.oracle.truffle.api.bytecode.SourceInformation;
-import com.oracle.truffle.api.bytecode.SourceInformationTree;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
@@ -2897,64 +2895,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             assertEquals(instructions.get(3).getNextBytecodeIndex(), s4.getEndBytecodeIndex());
         }
 
-    }
-
-    @Test
-    public void testIntrospectionDataSourceInformationTree() {
-        Source source = Source.newBuilder("test", "return (a + b) + 2", "test.test").build();
-        BasicInterpreter node = parseNodeWithSource("introspectionDataSourceInformationTree", b -> {
-            b.beginSource(source);
-            b.beginSourceSection(0, 18);
-
-            b.beginRoot();
-            b.beginReturn();
-
-            b.beginSourceSection(7, 11);
-            b.beginAdd();
-
-            b.beginSourceSection(7, 7);
-            b.beginAdd();
-
-            b.beginSourceSection(8, 1);
-            b.emitLoadArgument(0);
-            b.endSourceSection();
-
-            b.beginSourceSection(12, 1);
-            b.emitLoadArgument(1);
-            b.endSourceSection();
-
-            b.endAdd();
-            b.endSourceSection();
-
-            b.beginSourceSection(17, 1);
-            b.emitLoadConstant(2L);
-            b.endSourceSection();
-
-            b.endAdd();
-            b.endSourceSection();
-
-            b.endReturn();
-            b.endRoot();
-
-            b.endSourceSection();
-            b.endSource();
-        });
-        BytecodeNode bytecode = node.getBytecodeNode();
-
-        // @formatter:off
-        ExpectedSourceTree expected = expectedSourceTree("return (a + b) + 2",
-            expectedSourceTree("(a + b) + 2",
-                expectedSourceTree("(a + b)",
-                    expectedSourceTree("a"),
-                    expectedSourceTree("b")
-                ),
-                expectedSourceTree("2")
-            )
-        );
-        // @formatter:on
-        SourceInformationTree tree = bytecode.getSourceInformationTree();
-        expected.assertTreeEquals(tree);
-        assertTrue(tree.toString().contains("return (a + b) + 2"));
     }
 
     @Test

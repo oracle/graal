@@ -262,6 +262,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableInstructionTracing = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableInstructionTracing");
         model.enableInstructionRewriting = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableInstructionRewriting");
         model.enableTailCallHandlers = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTailCallHandlers");
+        model.enableCompressedSources = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableCompressedSources");
 
         // Check basic declaration properties.
         Set<Modifier> modifiers = typeElement.getModifiers();
