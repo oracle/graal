@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.heap;
+package com.oracle.svm.core.image;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
-import com.oracle.svm.core.image.ImageHeapObjectSorter;
-import com.oracle.svm.hosted.FeatureImpl.BeforeHeapLayoutAccessImpl;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.Comparator;
+import java.util.List;
 
-/**
- * Feature for selecting the order in which objects in the image heap are sorted during image
- * generation.
- */
-@AutomaticallyRegisteredFeature
-public class ImageHeapObjectSortFeature implements InternalFeature {
-
+public class BasicImageHeapObjectSorter extends ImageHeapObjectSorter implements Comparator<ImageHeapObject> {
     @Override
-    public void beforeHeapLayout(BeforeHeapLayoutAccess access) {
-        MetaAccessProvider metaAccess = ((BeforeHeapLayoutAccessImpl) access).getMetaAccess();
-        ImageSingletons.add(ImageHeapObjectSorter.class, createImageHeapObjectSorter(metaAccess));
+    protected void doSort(ImageHeapPartition partition, List<ImageHeapObject> objects, Comparator<ImageHeapObject> primaryComparator) {
+        objects.sort(primaryComparator.thenComparing(this));
     }
 
-    protected ImageHeapObjectSorter createImageHeapObjectSorter(MetaAccessProvider metaAccess) {
-        return new DefaultImageHeapObjectSorter(metaAccess);
+    @Override
+    public int compare(ImageHeapObject a, ImageHeapObject b) {
+        int groupResult = compareGroup(a, b);
+        if (groupResult != 0) {
+            return groupResult;
+        }
+
+        if (isLarge(a)) {
+            return Long.signum(b.getSize() - a.getSize());
+        }
+
+        return 0;
     }
 }
