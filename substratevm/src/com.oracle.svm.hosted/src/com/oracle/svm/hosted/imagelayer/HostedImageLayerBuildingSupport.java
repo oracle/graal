@@ -333,9 +333,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
 
             SubstrateOptions.ClosedTypeWorld.update(values, false);
-            if (SubstrateOptions.imageLayerEnabledHandler != null) {
-                SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
-            }
+            SubstrateOptions.StackOverflowCheckInPrologue.update(values, false);
+            SubstrateOptions.SafepointCheckInEpilogue.update(values, false);
 
             /*
              * In a shared layer we do not want to perform aggressive inlining.
@@ -350,9 +349,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
         if (isLayerUseOptionEnabled(hostedOptions)) {
             SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
-            if (SubstrateOptions.imageLayerEnabledHandler != null) {
-                SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
-            }
+            SubstrateOptions.StackOverflowCheckInPrologue.update(values, false);
+            SubstrateOptions.SafepointCheckInEpilogue.update(values, false);
         }
 
         if (isLayeredImageBuild(hostedOptions)) {

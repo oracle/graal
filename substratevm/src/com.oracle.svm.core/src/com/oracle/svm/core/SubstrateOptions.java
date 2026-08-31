@@ -104,6 +104,10 @@ import jdk.vm.ci.code.CodeUtil;
 
 public class SubstrateOptions {
 
+    @Option(help = "Check for stack overflow in method prologue")//
+    public static final HostedOptionKey<Boolean> StackOverflowCheckInPrologue = new HostedOptionKey<>(true);
+    @Option(help = "Check for safepoints in method epilogue")//
+    public static final HostedOptionKey<Boolean> SafepointCheckInEpilogue = new HostedOptionKey<>(true);
     @Option(help = "Enable use of priority inlining during AOT compilation.")//
     public static final HostedOptionKey<Boolean> AOTPriorityInline = new HostedOptionKey<>(true);
     @Option(help = "Perform method-based checks during inlining.", type = OptionType.Debug)//
@@ -199,7 +203,6 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
-    public static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
     public static OptionEnabledHandler<Boolean> imageLayerCreateEnabledHandler;
 
     @Fold
@@ -491,10 +494,6 @@ public class SubstrateOptions {
 
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
-    }
-
-    public static void setImageLayerEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
-        SubstrateOptions.imageLayerEnabledHandler = updateHandler;
     }
 
     public static void setImageLayerCreateEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {

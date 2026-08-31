@@ -29,9 +29,11 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 
 public abstract class SubstrateBackendWithAssembler<A extends Assembler<?>> extends SubstrateBackend {
+    protected final SubstrateFrameContextSupport frameContextSupport;
 
-    protected SubstrateBackendWithAssembler(Providers providers) {
+    protected SubstrateBackendWithAssembler(Providers providers, boolean scratchRegisterAvailable) {
         super(providers);
+        frameContextSupport = new SubstrateFrameContextSupport(scratchRegisterAvailable);
     }
 
     public abstract A createAssembler(OptionValues options);
