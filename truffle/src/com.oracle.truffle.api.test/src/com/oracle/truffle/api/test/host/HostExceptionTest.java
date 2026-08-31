@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,6 +95,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -121,6 +122,7 @@ public class HostExceptionTest {
     private static final String RUNNER = "runner";
     private static final String RETHROWER = "rethrower";
     private static final String THROW_EXCEPTION = "throwException";
+    private static final String THROW_EXCEPTION_UNCACHED = "throwExceptionUncached";
     private static final String TRY_CATCH = "catchException";
     private static final String GET_STACK = "getStack";
 
@@ -162,6 +164,7 @@ public class HostExceptionTest {
                         case RUNNER -> new RunnerRootNode();
                         case RETHROWER -> new RethrowerRootNode();
                         case THROW_EXCEPTION -> new ThrowExceptionRootNode();
+                        case THROW_EXCEPTION_UNCACHED -> new ThrowExceptionRootNode(true);
                         case TRY_CATCH -> new TryCatchRootNode();
                         case GET_STACK -> new GetStackRootNode();
                         default -> throw new IllegalArgumentException(requestedSource);
@@ -687,6 +690,23 @@ public class HostExceptionTest {
         assertEquals(expectedMessage, polyglotException.getMessage());
         assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
         assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
+    }
+
+    @Test
+    public void testThrowHostExceptionObjectUncachedLocation() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        expectedException = NoSuchElementException.class;
+        Callable<Object> instantiate = NoSuchElementException::new;
+
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
+        Value throwException = context.eval(ProxyLanguage.ID, THROW_EXCEPTION_UNCACHED);
+        Value result = catcher.execute(throwException, instantiate);
+        assertHostException(result, expectedException);
+
+        PolyglotException polyglotException = result.as(PolyglotException.class);
+        StackFrame firstFrame = getProxyLanguageFrames(polyglotException).get(0);
+        assertEquals(THROW_EXCEPTION_UNCACHED, firstFrame.getRootName());
+        assertNotNull(firstFrame.getSourceLocation());
     }
 
     @Test
@@ -1429,25 +1449,47 @@ public class HostExceptionTest {
     }
 
     class ThrowExceptionRootNode extends RootNode {
-        @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
+        @Child private InteropLibrary interop;
+        private final String name;
+        private final boolean uncached;
 
         ThrowExceptionRootNode() {
+            this(false);
+        }
+
+        ThrowExceptionRootNode(boolean uncached) {
             super(ProxyLanguage.get(null));
+            this.uncached = uncached;
+            this.name = uncached ? THROW_EXCEPTION_UNCACHED : THROW_EXCEPTION;
+            this.interop = uncached ? InteropLibrary.getUncached() : InteropLibrary.getFactory().createDispatched(5);
         }
 
         @TruffleBoundary
         @Override
         public SourceSection getSourceSection() {
-            return Source.newBuilder(ProxyLanguage.ID, "throwException", THROW_EXCEPTION).build().createSection(1);
+            return Source.newBuilder(ProxyLanguage.ID, name, name).build().createSection(1);
         }
 
         @Override
         public String getName() {
-            return THROW_EXCEPTION;
+            return name;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            if (uncached) {
+                EncapsulatingNodeReference encapsulatingNode = EncapsulatingNodeReference.getCurrent();
+                Node previous = encapsulatingNode.set(this);
+                try {
+                    return executeImpl(frame);
+                } finally {
+                    encapsulatingNode.set(previous);
+                }
+            }
+            return executeImpl(frame);
+        }
+
+        private Object executeImpl(VirtualFrame frame) {
             Object exceptionSupplier = frame.getArguments()[0];
             Object[] args = Arrays.copyOfRange(frame.getArguments(), 1, frame.getArguments().length);
             try {

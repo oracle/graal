@@ -96,6 +96,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
@@ -2877,7 +2878,8 @@ final class HostObject implements TruffleObject {
         if (isException()) {
             RuntimeException ex = (HostException) extraInfo;
             if (ex == null) {
-                ex = context.hostToGuestException((Throwable) obj, node);
+                Node location = node.isAdoptable() ? node : EncapsulatingNodeReference.getCurrent().get();
+                ex = context.hostToGuestException((Throwable) obj, location);
             }
             throw ex;
         }
