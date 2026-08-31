@@ -133,6 +133,15 @@ final class ComprehensiveOptions {
                 println.accept("");
             }
         },
+        /* Internal format used by the documentation updater. */
+        HTML("html") {
+            @Override
+            void printOptions(Consumer<String> println, SortedMap<String, APIOptionHandler.OptionInfo> apiOptions, Map<String, GroupInfo> groupInfos) {
+                List<String> markdownLines = new ArrayList<>();
+                MARKDOWN.printOptions(markdownLines::add, apiOptions, groupInfos);
+                printHtmlTable(println, markdownLines);
+            }
+        },
         JSON("json") {
             @Override
             void printOptions(Consumer<String> println, SortedMap<String, APIOptionHandler.OptionInfo> apiOptions, Map<String, GroupInfo> groupInfos) {
@@ -315,8 +324,62 @@ final class ComprehensiveOptions {
             }
             throw NativeImage.showError("Invalid format: '" + format + "'. Valid formats are: " +
                             Arrays.stream(values())
+                                            .filter(f -> f != HTML)
                                             .flatMap(f -> Arrays.stream(f.aliases))
                                             .collect(Collectors.joining(", ")));
+        }
+
+        private static void printHtmlTable(Consumer<String> println, List<String> markdownLines) {
+            int tableStart = markdownLines.indexOf("| Command | Type | Description | Default | Usage |");
+            if (tableStart == -1) {
+                throw VMError.shouldNotReachHere("Could not find the Markdown options table");
+            }
+
+            println.accept("<table>");
+            println.accept("  <thead>");
+            printHtmlRow(println, "th", markdownLines.get(tableStart));
+            println.accept("  </thead>");
+            println.accept("  <tbody>");
+            for (int i = tableStart + 2; i < markdownLines.size(); i++) {
+                String line = markdownLines.get(i);
+                if (line.isEmpty()) {
+                    break;
+                }
+                printHtmlRow(println, "td", line);
+            }
+            println.accept("  </tbody>");
+            println.accept("</table>");
+        }
+
+        private static void printHtmlRow(Consumer<String> println, String tag, String markdownRow) {
+            println.accept("    <tr>");
+            for (String cell : splitMarkdownRow(markdownRow)) {
+                String value = cell.strip().replace("\\|", "|");
+                String codeDelimiter = Character.toString((char) 96);
+                if (value.startsWith(codeDelimiter) && value.endsWith(codeDelimiter)) {
+                    value = "<code>" + value.substring(1, value.length() - 1) + "</code>";
+                }
+                println.accept("      <" + tag + ">" + value + "</" + tag + ">");
+            }
+            println.accept("    </tr>");
+        }
+
+        private static List<String> splitMarkdownRow(String markdownRow) {
+            List<String> cells = new ArrayList<>();
+            StringBuilder cell = new StringBuilder();
+            boolean escaped = false;
+            for (int i = 1; i < markdownRow.length() - 1; i++) {
+                char character = markdownRow.charAt(i);
+                if (character == '|' && !escaped) {
+                    cells.add(cell.toString());
+                    cell.setLength(0);
+                } else {
+                    cell.append(character);
+                }
+                escaped = character == '\\' && !escaped;
+            }
+            cells.add(cell.toString());
+            return cells;
         }
     }
 
@@ -557,11 +620,14 @@ final class ComprehensiveOptions {
         return optionName;
     }
 
-    private static String escapeMarkdown(String text) {
+    static String escapeMarkdown(String text) {
         if (text == null) {
             return "";
         }
-        return text.replace("|", "\\|").replace("\\", "\\\\");
+        // Escape existing backslashes first so that the backslash which escapes a table-cell
+        // separator remains a single backslash in the generated Markdown.
+        return text.replace("\\", "\\\\").replace("|", "\\|")
+                        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static String startLowerCase(String str) {
