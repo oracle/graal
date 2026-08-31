@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -192,6 +193,7 @@ public class TutorialTest extends StaticObjectModelTest {
     @SuppressWarnings("unused")
     public void safetyChecks2() {
         try (TestEnvironment te = new TestEnvironment(config)) {
+            Assume.assumeTrue(te.supportsSafetyChecks());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty property = new DefaultStaticProperty("property");
             Object staticObject1 = builder.property(property, Object.class, false).build().getFactory().create();
@@ -199,7 +201,7 @@ public class TutorialTest extends StaticObjectModelTest {
 
             try {
                 property.setObject(staticObject2, "wrong shape");
-                Assert.assertFalse(te.supportsSafetyChecks());
+                Assert.fail();
             } catch (IllegalArgumentException e) {
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -248,6 +249,7 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     @SuppressWarnings("unused")
     public void wrongShape() {
         try (TestEnvironment te = new TestEnvironment(config)) {
+            Assume.assumeTrue(te.supportsSafetyChecks());
             StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
             StaticProperty p1 = new DefaultStaticProperty("property");
             b1.property(p1, td.type, false);
@@ -261,7 +263,7 @@ public class PropertyAccessTest extends StaticObjectModelTest {
 
             try {
                 td.setter.set(p1, o2, td.testValue);
-                Assert.assertFalse(te.supportsSafetyChecks());
+                Assert.fail();
             } catch (IllegalArgumentException e) {
                 if (te.isArrayBased()) {
                     Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
@@ -276,6 +278,7 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     @SuppressWarnings("unused")
     public void wrongObject() {
         try (TestEnvironment te = new TestEnvironment(config)) {
+            Assume.assumeTrue(te.supportsSafetyChecks());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty property = new DefaultStaticProperty("property");
             builder.property(property, int.class, false);
@@ -285,7 +288,7 @@ public class PropertyAccessTest extends StaticObjectModelTest {
 
             try {
                 property.setInt(wrongObject, 42);
-                Assert.assertFalse(te.supportsSafetyChecks());
+                Assert.fail();
             } catch (IllegalArgumentException e) {
                 Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
             }
