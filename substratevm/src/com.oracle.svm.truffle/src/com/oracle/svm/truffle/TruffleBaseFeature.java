@@ -270,6 +270,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     private GraalGraphObjectReplacer graalGraphObjectReplacer;
     private final EconomicSet<Class<?>> registeredClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> registeredExportLibraryClasses = EconomicSet.create();
+    private final EconomicSet<Class<?>> registeredExportLibraryReceiverClasses = EconomicSet.create();
     private final Set<Class<?>> pendingExportLibraryReceiverClasses = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
@@ -992,16 +993,19 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.class) || GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
             Class<?> receiverClass = type.getJavaClass();
             if (registeredExportLibraryClasses.add(receiverClass)) {
-                access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
+                if (registeredExportLibraryReceiverClasses.add(receiverClass)) {
+                    access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
+                }
                 if (hasExplicitReceiverExport(type)) {
                     /*
                      * Initialize the export class first so its generated code registers the
-                     * explicit receiver types, then initialize those actual dispatch targets.
+                     * explicit receiver types. Resolve only instantiated concrete receiver types.
                      */
                     initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
                     for (ExportLibrary export : GuestAnnotationAccess.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
-                        if (export.receiverType() != Void.class) {
-                            initializeTruffleLibraryReceiverAtBuildTime(export.receiverType());
+                        Class<?> receiverType = export.receiverType();
+                        if (receiverType != Void.class && registeredExportLibraryReceiverClasses.add(receiverType)) {
+                            access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverType);
                         }
                     }
                 }
@@ -1020,7 +1024,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private void registerConcreteTruffleLibraryReceiver(@SuppressWarnings("unused") DuringAnalysisAccess access, Class<?> receiverClass) {
-        if (!Modifier.isAbstract(receiverClass.getModifiers())) {
+        if (!Modifier.isAbstract(receiverClass.getModifiers()) || receiverClass.isArray()) {
             pendingExportLibraryReceiverClasses.add(receiverClass);
         }
     }
