@@ -216,6 +216,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean nonNull()
 meth public abstract java.lang.String name()
+meth public abstract !hasdefault int templateVariable()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
  outer com.oracle.truffle.api.HostCompilerDirectives

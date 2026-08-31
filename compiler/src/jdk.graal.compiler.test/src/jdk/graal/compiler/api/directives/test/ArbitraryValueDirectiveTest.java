@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.interpreter;
+package jdk.graal.compiler.api.directives.test;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import org.junit.Assert;
+import org.junit.Test;
 
-import com.oracle.svm.interpreter.metadata.Bytecodes;
-import com.oracle.svm.shared.util.VMError;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.ArbitraryValueNode;
 
-final class ConstantBytecodes {
+public class ArbitraryValueDirectiveTest extends GraalCompilerTest {
 
-    private ConstantBytecodes() {
-        throw VMError.shouldNotReachHereAtRuntime();
+    public static long snippet(long value) {
+        return GraalDirectives.arbitraryValue(value);
     }
 
-    /**
-     * Version of {@link Bytecodes#lengthOf(int)} that returns a constant. The opcode must be a
-     * compile-time constant.
-     *
-     * @see Bytecodes#lengthOf(int)
-     */
-    @Fold
-    public static int lengthOf(int opcode) {
-        return Bytecodes.lengthOf(opcode);
+    @Test
+    public void testArbitraryValue() {
+        test("snippet", 42L);
+    }
+
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        Assert.assertEquals(1, graph.getNodes().filter(ArbitraryValueNode.class).count());
+        ArbitraryValueNode arbitraryValue = graph.getNodes().filter(ArbitraryValueNode.class).first();
+        Assert.assertTrue(arbitraryValue.inputs().isEmpty());
     }
 }

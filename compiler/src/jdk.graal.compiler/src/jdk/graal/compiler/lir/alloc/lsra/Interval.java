@@ -403,6 +403,30 @@ public final class Interval {
             list.add(registerPriority.ordinal());
         }
 
+        public void addSorted(int usePos, RegisterPriority registerPriority) {
+            IntList newList = new IntList(list.size() + 2);
+            boolean added = false;
+            for (int i = 0; i < size(); i++) {
+                int existingUsePos = usePos(i);
+                RegisterPriority existingPriority = registerPriority(i);
+                if (!added && usePos >= existingUsePos) {
+                    newList.add(usePos);
+                    newList.add(usePos == existingUsePos && existingPriority.greaterEqual(registerPriority) ? existingPriority.ordinal() : registerPriority.ordinal());
+                    added = true;
+                    if (usePos == existingUsePos) {
+                        continue;
+                    }
+                }
+                newList.add(existingUsePos);
+                newList.add(existingPriority.ordinal());
+            }
+            if (!added) {
+                newList.add(usePos);
+                newList.add(registerPriority.ordinal());
+            }
+            list = newList;
+        }
+
         public int size() {
             return list.size() >> 1;
         }
@@ -1366,6 +1390,13 @@ public final class Interval {
                 assert usePosList.usePos(len - 1) == pos : "list not sorted correctly";
                 usePosList.setRegisterPriority(len - 1, registerPriority);
             }
+        }
+    }
+
+    void addUsePosSorted(int pos, RegisterPriority registerPriority) {
+        assert covers(pos, LIRInstruction.OperandMode.USE) : String.format("use position %d not covered by live range of interval %s", pos, this);
+        if (registerPriority != RegisterPriority.None && LIRValueUtil.isVariable(operand)) {
+            usePosList.addSorted(pos, registerPriority);
         }
     }
 

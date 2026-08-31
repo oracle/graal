@@ -142,14 +142,12 @@ public final class InterpreterFrameUtil {
     public static Object popObject(InterpreterFrame frame, long slot) {
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
-        assert !(result instanceof ReturnAddress);
         return result;
     }
 
     public static Object popObject(InterpreterFrame frame, long slot, long slotOffset) {
         Object result = frame.getObjectStatic(slot, slotOffset);
         clearReference(frame, slot, slotOffset);
-        assert !(result instanceof ReturnAddress);
         return result;
     }
 
@@ -175,18 +173,6 @@ public final class InterpreterFrameUtil {
 
     public static double popDouble(InterpreterFrame frame, long slot, long slotOffset) {
         return frame.getDoubleStatic(slot, slotOffset);
-    }
-
-    static Object popReturnAddressOrObject(InterpreterFrame frame, long slot) {
-        Object result = frame.getObjectStatic(slot);
-        clearReference(frame, slot);
-        return result;
-    }
-
-    static Object popReturnAddressOrObject(InterpreterFrame frame, long slot, long slotOffset) {
-        Object result = frame.getObjectStatic(slot, slotOffset);
-        clearReference(frame, slot, slotOffset);
-        return result;
     }
 
     static void putReturnAddress(InterpreterFrame frame, long slot, int targetBCI) {
@@ -277,6 +263,11 @@ public final class InterpreterFrameUtil {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void incrementLocalInt(InterpreterFrame frame, int localSlot, int increment) {
+        frame.incrementIntStatic(localSlot, increment);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLocalFloat(InterpreterFrame frame, int localSlot, float value) {
         frame.setFloatStatic(localSlot, value);
     }
@@ -329,14 +320,19 @@ public final class InterpreterFrameUtil {
     }
 
     @NeverInline("Keep argument array allocation and filling out of bytecode-handler stubs")
-    public static Object[] popArguments(InterpreterFrame frame, long top, boolean hasReceiver, InterpreterUnresolvedSignature signature) {
+    public static Object[] popArgumentsWithAppendix(InterpreterFrame frame, long top, boolean hasReceiver, InterpreterUnresolvedSignature signature, Object appendix) {
         int argCount = signature.getParameterCount(false);
 
         int extraParam = hasReceiver ? 1 : 0;
         final Object[] args = new Object[argCount + extraParam];
 
+        int lastStackArgument = argCount - 1;
+        assert argCount > 0 && signature.getParameterKind(lastStackArgument) == JavaKind.Object;
+        args[lastStackArgument + extraParam] = appendix;
+        lastStackArgument--;
+
         long argAt = top - 1;
-        for (int i = argCount - 1; i >= 0; --i) {
+        for (int i = lastStackArgument; i >= 0; --i) {
             JavaKind argKind = signature.getParameterKind(i);
             // @formatter:off
             switch (argKind) {

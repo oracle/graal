@@ -28,6 +28,7 @@ package com.oracle.svm.interpreter;
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 
@@ -100,7 +101,11 @@ public final class SemanticJavaException extends RuntimeException {
     }
 
     @NeverInline("Keep class-cast exception construction out of bytecode-handler stubs")
-    static SemanticJavaException raiseClassCastException(Object instance, Class<?> clazz) {
+    static SemanticJavaException raiseClassCastException(long bci, long top, InterpreterState state) {
+        Object instance = state.peekObject(top, -1);
+        long cpi = state.readCPI2(bci);
+        InterpreterResolvedJavaType type = (InterpreterResolvedJavaType) state.uncheckedCachedEntryAt(cpi);
+        Class<?> clazz = type.getJavaClass();
         throw raiseInlined(new ClassCastException(cannotCastMsg(instance, clazz)));
     }
 

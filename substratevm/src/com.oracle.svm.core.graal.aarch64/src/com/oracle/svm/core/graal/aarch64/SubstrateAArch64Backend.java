@@ -812,6 +812,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
     }
 
     public class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
+
+        private AllocatableValue[] callerReturnLocations = AllocatableValue.NONE;
+
         public SubstrateAArch64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AArch64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
         }
@@ -846,7 +849,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             }
 
             Value[] values = super.visitInvokeArguments(invokeCc, arguments, callTarget);
-            SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
+            SubstrateCallingConvention convention = (SubstrateCallingConvention) invokeCc;
+            callerReturnLocations = convention.getAdditionalReturnLocations();
+            SubstrateCallingConventionType type = (SubstrateCallingConventionType) convention.getType();
 
             if (type.usesReturnBuffer()) {
                 /*
@@ -923,6 +928,16 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             return assignedLocation.register().asValue(kind);
         }
 
+        private Value[] getCallerReturns(SubstrateCallingConventionType callingConventionType, Value result, Value[] parameters) {
+            Value[] parameterReturns = callingConventionType.getAdditionalReturns(result, parameters);
+            if (callerReturnLocations.length == 0) {
+                return parameterReturns;
+            }
+            Value[] callerReturns = Arrays.copyOf(parameterReturns, parameterReturns.length + callerReturnLocations.length);
+            System.arraycopy(callerReturnLocations, 0, callerReturns, parameterReturns.length, callerReturnLocations.length);
+            return callerReturns;
+        }
+
         @Override
         protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
             var cc = (SubstrateCallingConventionType) callTarget.callType();
@@ -960,7 +975,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             if (cc.customABI()) {
                 VMError.guarantee(temps.length == 0, "existing temps");
                 actualTemps = cc.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters());
-                additionalReturns = cc.getAdditionalReturns(result, parameters);
+                additionalReturns = getCallerReturns(cc, result, parameters);
             }
 
             append(new SubstrateAArch64DirectCallOp(targetMethod, result, parameters,
@@ -977,11 +992,18 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             SubstrateCallingConventionType cc = (SubstrateCallingConventionType) callTarget.callType();
 
-            Value[] multipleResults = new Value[0];
-            if (cc.customABI() && cc.usesReturnBuffer()) {
-                multipleResults = Arrays.stream(cc.returnSaving)
-                                .map(SubstrateAArch64NodeLIRBuilder::asReturnedValue)
-                                .toList().toArray(new Value[0]);
+            Value[] actualTemps = temps;
+            Value[] multipleResults = Value.NO_VALUES;
+            if (cc.customABI()) {
+                if (cc.usesReturnBuffer()) {
+                    multipleResults = Arrays.stream(cc.returnSaving)
+                                    .map(SubstrateAArch64NodeLIRBuilder::asReturnedValue)
+                                    .toList().toArray(new Value[0]);
+                } else {
+                    VMError.guarantee(temps.length == 0, "existing temps");
+                    actualTemps = cc.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters());
+                    multipleResults = getCallerReturns(cc, result, parameters);
+                }
             }
 
             Value hiddenArgument = Value.ILLEGAL;
@@ -990,7 +1012,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 hiddenArgument = HIDDEN_ARGUMENT_REGISTER.asValue(LIRKind.value(AArch64Kind.QWORD));
             }
 
-            append(new SubstrateAArch64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState, setupJavaFrameAnchor(callTarget),
+            append(new SubstrateAArch64IndirectCallOp(targetMethod, result, parameters, actualTemps, targetAddress, callState, setupJavaFrameAnchor(callTarget),
                             getNewThreadStatus(callTarget), getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget), multipleResults,
                             hiddenArgument));
         }
