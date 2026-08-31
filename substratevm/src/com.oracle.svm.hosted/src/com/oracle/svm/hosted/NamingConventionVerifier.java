@@ -99,6 +99,24 @@ final class NamingConventionVerifier {
         checkName(bb, null, format);
     }
 
+    static boolean isNameAllowed(ResolvedJavaMethod method) {
+        return namingConventionsViolation(method.format("%H.%n(%p)")) == null;
+    }
+
+    static boolean isNameAllowed(ResolvedJavaField field) {
+        return namingConventionsViolation(field.format("%H.%n")) == null;
+    }
+
+    static boolean isNameAllowed(ResolvedJavaType type) {
+        return namingConventionsViolation(type.toJavaName(true)) == null;
+    }
+
+    /*
+     * Layered-image candidate probing uses the predicates above to reject an unsupported candidate
+     * before analysis creates an element for it. checkUniverse remains the verification backstop:
+     * any forbidden element that becomes reachable through another path still fails the build.
+     */
+
     private static void checkName(BigBang bb, AnalysisMethod method, String name) {
         String message = namingConventionsViolation(name);
         if (message != null) {

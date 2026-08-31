@@ -564,6 +564,13 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS):
                 native_unittests_task(args.extra_image_builder_arguments)
 
+    # These tests exercise provider analysis and manifest integration that is not observable through
+    # the specification TCK. Keep the focused architecture groups in the public/GitHub presubmit tag.
+    with Task('security provider architecture native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS):
+                security_provider_architecture_native_unittests_task(args.extra_image_builder_arguments)
+
     generic_field_type_tags = [GraalTags.native_unittests, GraalTags.all_native_unittests, GraalTags.generic_field_type]
     with Task('generic field type', tasks, tags=generic_field_type_tags) as t:
         if t:
@@ -856,8 +863,6 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.libjvm=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.properties=ALL-UNNAMED',
             '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-            '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
-            '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
         ])
     if extra_build_args is not None:
         additional_build_args += extra_build_args
@@ -894,6 +899,14 @@ def native_unittests_task(
         ),
         computed,
     )
+
+
+def security_provider_architecture_native_unittests_task(extra_build_args=None):
+    computed = _compute_native_unittest_args(extra_build_args, include_svm_test_features=True)
+    native_image_context_run(_native_unittest, [
+        'com.oracle.svm.test.services.RuntimeCompilationSecurityProviderTest',
+        'com.oracle.svm.test.services.SecurityProviderExplicitRegistrationArchitectureTest',
+    ] + computed)
 
 
 def generic_field_type_test_task(extra_build_args=None):
@@ -1062,6 +1075,7 @@ def java_desktop_integration_task(native_image, extra_build_args=None):
 def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
     run_agent_jar_url_protocol_config_test(agent_path)
+    run_agent_security_provider_config_test(agent_path)
     conditional_config_filter_path = join(svmbuild_dir(), 'conditional-config-filter.json')
     with open(conditional_config_filter_path, 'w', encoding='utf-8') as conditional_config_filter:
         conditional_config_filter.write('''
@@ -1073,6 +1087,35 @@ def conditional_config_task(native_image):
 ''')
     run_agent_conditional_config_test(agent_path, conditional_config_filter_path)
     run_nic_conditional_config_test(agent_path, conditional_config_filter_path)
+
+
+def run_agent_security_provider_config_test(agent_path):
+    generator_class = 'com.oracle.svm.configure.test.config.SecurityProviderAgentTest'
+    verifier_class = 'com.oracle.svm.configure.test.config.SecurityProviderAgentVerifierTest'
+    cases = [
+        ('enumeration', 'enumerateSecurityProviders', 'verifyEnumeratedProvidersWereRecorded'),
+        ('mutation', 'programmaticProviderMutationDoesNotTraceProviders',
+         'verifyMutationDidNotRecordProviders'),
+        ('service-construction', 'providerServiceHelpersRetainConstructorMetadata',
+         'verifyProviderServiceConstructorWasRecorded'),
+        ('service-selection', 'jceServiceSelectionRetainsConstructorMetadata',
+         'verifySelectedJceServiceConstructorWasRecorded'),
+        ('parameterized-service', 'providerServiceUsesTheActualConstructorArgument',
+         'verifyProviderServiceUsedTheActualConstructorArgument'),
+    ]
+    for name, generator_method, verifier_method in cases:
+        config_dir = join(svmbuild_dir(), 'security-provider-agent-' + name + '-test-config')
+        if exists(config_dir):
+            mx.rmtree(config_dir)
+        agent_opts = ['config-output-dir=' + config_dir]
+        jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                      '-D' + generator_class + '.generator.enabled=true'] +
+                     _configure_test_jvmci_exports() +
+                     [generator_class + '#' + generator_method])
+        jvm_unittest(['-D' + verifier_class + '.verifier.enabled=true',
+                      '-D' + verifier_class + '.configpath=' + config_dir] +
+                     _configure_test_jvmci_exports() +
+                     [verifier_class + '#' + verifier_method])
 
 
 def run_agent_jar_url_protocol_config_test(agent_path):

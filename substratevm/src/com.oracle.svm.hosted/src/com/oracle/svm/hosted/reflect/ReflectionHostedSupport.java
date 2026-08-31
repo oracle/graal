@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 
 public interface ReflectionHostedSupport {
     Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
@@ -54,6 +55,18 @@ public interface ReflectionHostedSupport {
     void retainReflectionFieldsAfterRuntimeMetadataEncoding();
 
     Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables();
+
+    /**
+     * Returns the run-time availability of type-access registrations contributed in the current
+     * image layer, or {@code null} when this layer has no such registration.
+     */
+    RuntimeDynamicAccessMetadata getTypeRegistrationMetadata(Class<?> type);
+
+    /**
+     * Returns the run-time availability of executable-access registrations contributed in the
+     * current image layer, or {@code null} when this layer has no such registration.
+     */
+    RuntimeDynamicAccessMetadata getMethodRegistrationMetadata(Executable executable);
 
     Object getAccessor(AnalysisMethod method);
 

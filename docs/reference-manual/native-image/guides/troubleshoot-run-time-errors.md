@@ -62,13 +62,7 @@ Other handy options are `-H:+AddAllCharsets` to add charsets support, and `-H:+I
 Pass those options at build time.
 This might increase the size of the resulting binary.
 
-### 4. Add Missing Security Providers
-
-If your application is using Security Providers, try to pre-initialize security providers by passing the option `-H:AdditionalSecurityProviders=<list-of-providers>` at build time. 
-Here is a list of all JDK security providers to choose from:
-`sun.security.provider.Sun,sun.security.rsa.SunRsaSign,sun.security.ec.SunEC,sun.security.ssl.SunJSSE,com.sun.crypto.provider.SunJCE,sun.security.jgss.SunProvider,com.sun.security.sasl.Provider,org.jcp.xml.dsig.internal.dom.XMLDSigRI,sun.security.smartcardio.SunPCSC,sun.security.provider.certpath.ldap.JdkLDAP,com.sun.security.sasl.gsskerb.JdkSASL`.
-
-### 5. File a Native Image Run-Time Issue
+### 4. File a Native Image Run-Time Issue
 
 Only if you tried all the above suggestions, file a [Native Image Run-Time Issue Report](https://github.com/oracle/graal/issues/new?assignees=&labels=native-image%2Cbug%2Crun-time&projects=&template=1_1_native_image_run_time_bug_report.yml&title=%5BNative+Image%5D+) at GitHub, filling out the necessary information. 
 

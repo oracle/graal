@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClassNotFoundException;
     final JNIMethodId javaLangClassGetName;
     final JNIMethodId javaLangClassGetInterfaces;
+    final JNIMethodId javaLangClassGetModule;
 
     final JNIObjectHandle javaLangReflectMember;
     final JNIMethodId javaLangReflectMemberGetName;
@@ -56,6 +57,28 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIMethodId javaLangObjectGetClass;
     final JNIMethodId javaLangObjectToString;
+
+    final JNIObjectHandle javaLangRefReference;
+    final JNIMethodId javaLangRefReferenceGet;
+
+    final JNIObjectHandle javaSecurityProviderService;
+    final JNIMethodId javaSecurityProviderServiceGetClassName;
+    final JNIMethodId javaSecurityProviderServiceGetProvider;
+    final JNIMethodId javaSecurityProviderServiceNewInstance;
+    final JNIFieldId javaSecurityProviderServiceClassCache;
+    final JNIFieldId javaSecurityProviderServiceConstructorCache;
+    final JNIFieldId javaSecurityProviderServiceEngineDescription;
+    final JNIFieldId javaSecurityProviderEngineDescriptionConstructorParameterClass;
+    final JNIMethodId javaSecurityProviderGetName;
+    final JNIMethodId javaSecurityGetProvider;
+    final JNIMethodId javaSecurityGetProviders;
+    final JNIMethodId javaSecurityGetProvidersString;
+    final JNIMethodId javaSecurityGetProvidersMap;
+    final JNIMethodId javaSecurityGetAlgorithms;
+    final JNIMethodId javaSecurityAddProvider;
+    final JNIMethodId javaSecurityInsertProviderAt;
+    final JNIMethodId javaSecurityRemoveProvider;
+    final JNIFieldId sunSecurityJcaProviderConfigProvider;
 
     final JNIObjectHandle javaLangStackOverflowError;
 
@@ -145,6 +168,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
         javaLangClassGetInterfaces = getMethodId(env, javaLangClass, "getInterfaces", "()[Ljava/lang/Class;", false);
+        javaLangClassGetModule = getMethodIdOptional(env, javaLangClass, "getModule", "()Ljava/lang/Module;", false);
 
         javaLangReflectMember = newClassGlobalRef(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
@@ -162,6 +186,38 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
         javaLangObjectToString = getMethodId(env, javaLangObject, "toString", "()Ljava/lang/String;", false);
+
+        javaLangRefReference = newClassGlobalRef(env, "java/lang/ref/Reference");
+        javaLangRefReferenceGet = getMethodId(env, javaLangRefReference, "get", "()Ljava/lang/Object;", false);
+
+        javaSecurityProviderService = newClassGlobalRef(env, "java/security/Provider$Service");
+        javaSecurityProviderServiceGetClassName = getMethodId(env, javaSecurityProviderService, "getClassName", "()Ljava/lang/String;", false);
+        javaSecurityProviderServiceGetProvider = getMethodId(env, javaSecurityProviderService, "getProvider", "()Ljava/security/Provider;", false);
+        javaSecurityProviderServiceNewInstance = getMethodId(env, javaSecurityProviderService, "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;", false);
+        javaSecurityProviderServiceClassCache = getFieldIdOptional(env, javaSecurityProviderService, "classCache", "Ljava/lang/Object;", false);
+        javaSecurityProviderServiceConstructorCache = getFieldIdOptional(env, javaSecurityProviderService, "constructorCache", "Ljava/lang/Object;", false);
+        javaSecurityProviderServiceEngineDescription = getFieldIdOptional(env, javaSecurityProviderService, "engineDescription", "Ljava/security/Provider$EngineDescription;", false);
+        JNIObjectHandle javaSecurityProviderEngineDescription = findClassOptional(env, "java/security/Provider$EngineDescription");
+        javaSecurityProviderEngineDescriptionConstructorParameterClass = javaSecurityProviderEngineDescription.equal(nullHandle())
+                        ? WordFactory.nullPointer()
+                        : getFieldIdOptional(env, javaSecurityProviderEngineDescription, "constructorParameterClass", "Ljava/lang/Class;", false);
+        JNIObjectHandle javaSecurityProvider = findClass(env, "java/security/Provider");
+        javaSecurityProviderGetName = getMethodId(env, javaSecurityProvider, "getName", "()Ljava/lang/String;", false);
+
+        JNIObjectHandle javaSecuritySecurity = findClass(env, "java/security/Security");
+        javaSecurityGetProvider = getMethodId(env, javaSecuritySecurity, "getProvider", "(Ljava/lang/String;)Ljava/security/Provider;", true);
+        javaSecurityGetProviders = getMethodId(env, javaSecuritySecurity, "getProviders", "()[Ljava/security/Provider;", true);
+        javaSecurityGetProvidersString = getMethodId(env, javaSecuritySecurity, "getProviders", "(Ljava/lang/String;)[Ljava/security/Provider;", true);
+        javaSecurityGetProvidersMap = getMethodId(env, javaSecuritySecurity, "getProviders", "(Ljava/util/Map;)[Ljava/security/Provider;", true);
+        javaSecurityGetAlgorithms = getMethodId(env, javaSecuritySecurity, "getAlgorithms", "(Ljava/lang/String;)Ljava/util/Set;", true);
+        javaSecurityAddProvider = getMethodId(env, javaSecuritySecurity, "addProvider", "(Ljava/security/Provider;)I", true);
+        javaSecurityInsertProviderAt = getMethodId(env, javaSecuritySecurity, "insertProviderAt", "(Ljava/security/Provider;I)I", true);
+        javaSecurityRemoveProvider = getMethodId(env, javaSecuritySecurity, "removeProvider", "(Ljava/lang/String;)V", true);
+
+        JNIObjectHandle sunSecurityJcaProviderConfig = findClassOptional(env, "sun/security/jca/ProviderConfig");
+        sunSecurityJcaProviderConfigProvider = sunSecurityJcaProviderConfig.equal(nullHandle())
+                        ? WordFactory.nullPointer()
+                        : getFieldIdOptional(env, sunSecurityJcaProviderConfig, "provider", "Ljava/security/Provider;", false);
 
         javaLangStackOverflowError = newClassGlobalRef(env, "java/lang/StackOverflowError");
 

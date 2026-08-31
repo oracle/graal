@@ -327,7 +327,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             types.compute(analysisType, (_, td) -> {
                 TypeData typeData = td == null ? new TypeData() : td;
 
-                ConfigurationMemberAccessibility previous = typeData.registerAs(accessibility);
+                ConfigurationMemberAccessibility previous = typeData.register(accessibility, cnd, preserved);
                 if (previous == null) {
                     registerTypesForHeapType(analysisType);
                     typeData.registerLinkageError(linkType(analysisType));
@@ -340,7 +340,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (previous == null || !previous.includes(QUERIED)) {
                         registerTypeForRuntimeAccess(analysisType);
                     }
-                    typeData.updateDynamicAccessMetadata(cnd, preserved, accessibility);
                 }
                 if (accessibility == ACCESSED) {
                     if (previous == null || !previous.includes(ACCESSED) || !preserved && typeData.dynamicAccess.isPreserved()) {
@@ -592,7 +591,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             methods.compute(analysisMethod, (aMethod, md) -> {
                 ElementData data = md != null ? md : new ElementData();
 
-                ConfigurationMemberAccessibility previous = data.registerAs(accessibility);
+                ConfigurationMemberAccessibility previous = data.register(accessibility, cnd, preserved);
                 if (previous == null) {
                     registerTypesForMethod(aMethod);
                 }
@@ -606,9 +605,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (!throwMissingRegistrationErrors()) {
                         checkHidingMethods(aMethod);
                     }
-                }
-                if (accessibility.includes(QUERIED)) {
-                    data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
                 }
                 if (accessibility.includes(ACCESSED)) {
                     if ((previous == null || !previous.includes(ACCESSED))) {
@@ -775,7 +771,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 abortIfSealed();
                 ElementData data = fd != null ? fd : new ElementData();
 
-                ConfigurationMemberAccessibility previous = data.registerAs(accessibility);
+                ConfigurationMemberAccessibility previous = data.register(accessibility, cnd, preserved);
                 if (previous == null) {
                     registerTypesForField(analysisField);
                 }
@@ -790,9 +786,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (!throwMissingRegistrationErrors()) {
                         checkHidingFields(analysisField);
                     }
-                }
-                if (accessibility.includes(QUERIED)) {
-                    data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
                 }
                 if (accessibility.includes(ACCESSED)) {
                     if (previous == null || !previous.includes(ACCESSED)) {
@@ -1452,6 +1445,48 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return types.get(analysisType).dynamicAccess;
     }
 
+    public boolean isTypeRegisteredForReflection(Class<?> clazz) {
+        AnalysisType analysisType = metaAccess.optionalLookupJavaType(clazz).orElse(null);
+        if (analysisType == null) {
+            return false;
+        }
+        TypeData data = types.get(analysisType);
+        return (data != null && data.isRegisteredAs(ACCESSED)) ||
+                        (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isTypeRegistered(analysisType, ACCESSED));
+    }
+
+    /**
+     * Returns the run-time availability of type-access registrations contributed in the current
+     * image layer, or {@code null} when this layer has no such registration.
+     */
+    @Override
+    public RuntimeDynamicAccessMetadata getTypeRegistrationMetadata(Class<?> clazz) {
+        AnalysisType analysisType = metaAccess.optionalLookupJavaType(clazz).orElse(null);
+        if (analysisType == null) {
+            return null;
+        }
+        TypeData data = types.get(analysisType);
+        return data != null && data.isRegisteredAs(ACCESSED) ? data.getDynamicAccessMetadata() : null;
+    }
+
+    public boolean isMethodRegisteredForReflection(Executable method) {
+        AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(method);
+        ElementData data = methods.get(analysisMethod);
+        return (data != null && data.isRegisteredAs(ACCESSED)) ||
+                        (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod, ACCESSED));
+    }
+
+    /**
+     * Returns the run-time availability of executable-access registrations contributed in the
+     * current image layer, or {@code null} when this layer has no such registration.
+     */
+    @Override
+    public RuntimeDynamicAccessMetadata getMethodRegistrationMetadata(Executable method) {
+        AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(method);
+        ElementData data = methods.get(analysisMethod);
+        return data != null && data.isRegisteredAs(ACCESSED) ? data.getDynamicAccessMetadata() : null;
+    }
+
     public RuntimeDynamicAccessMetadata getUnsafeAllocationMetadata(Class<?> clazz) {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         return types.get(metaAccess.lookupJavaType(clazz)).unsafeAllocatedDynamicAccess;
@@ -1876,23 +1911,31 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         /* Query metadata keeps members discoverable but must not satisfy guarded access. */
         boolean accessMetadata = false;
 
-        ConfigurationMemberAccessibility registerAs(ConfigurationMemberAccessibility newAccessibility) {
+        /*
+         * Registration tasks and feature queries run concurrently during analysis. Publish the
+         * accessibility and its dynamic-access metadata atomically so readers cannot observe a
+         * queried element before the corresponding metadata is installed.
+         */
+        synchronized ConfigurationMemberAccessibility register(ConfigurationMemberAccessibility newAccessibility, AccessCondition condition, boolean preserved) {
             ConfigurationMemberAccessibility previous = accessibility;
             if (previous == null || !previous.includes(newAccessibility)) {
                 accessibility = newAccessibility;
             }
+            if (newAccessibility.includes(QUERIED)) {
+                updateDynamicAccessMetadata(condition, preserved, newAccessibility);
+            }
             return previous;
         }
 
-        boolean isRegisteredAs(ConfigurationMemberAccessibility target) {
+        synchronized boolean isRegisteredAs(ConfigurationMemberAccessibility target) {
             return accessibility != null && accessibility.includes(target);
         }
 
-        ConfigurationMemberAccessibility getAccessibility() {
+        synchronized ConfigurationMemberAccessibility getAccessibility() {
             return accessibility;
         }
 
-        void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved, ConfigurationMemberAccessibility newAccessibility) {
+        private void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved, ConfigurationMemberAccessibility newAccessibility) {
             boolean accessRegistration = newAccessibility.includes(ACCESSED);
             if (dynamicAccess == null || accessRegistration && !accessMetadata) {
                 dynamicAccess = null;
@@ -1907,7 +1950,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             dynamicAccess = RuntimeDynamicAccessMetadata.addCondition(dynamicAccess, condition, true).withPreserved(metadataPreserved);
         }
 
-        RuntimeDynamicAccessMetadata getDynamicAccessMetadata() {
+        synchronized RuntimeDynamicAccessMetadata getDynamicAccessMetadata() {
             VMError.guarantee((dynamicAccess != null) == isRegisteredAs(QUERIED), "Dynamic access metadata should be present on queried elements");
             return dynamicAccess != null ? dynamicAccess : RuntimeDynamicAccessMetadata.alwaysAvailable(false);
         }
