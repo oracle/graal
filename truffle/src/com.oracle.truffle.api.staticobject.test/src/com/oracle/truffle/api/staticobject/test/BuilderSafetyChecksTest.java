@@ -76,13 +76,12 @@ public class BuilderSafetyChecksTest extends StaticObjectModelTest {
     private static void builderCanEnableSafetyChecksWithRelaxedEngine() {
         for (boolean arrayBased : new boolean[]{true, false}) {
             try (TestEnvironment te = new TestEnvironment(arrayBased, true, false)) {
-                if (te.supportsSafetyChecks()) {
-                    TestShape shapeA = TestShape.create(te, true);
-                    TestShape shapeB = TestShape.create(te, true);
-                    Object objectB = shapeB.objectFactory().create();
+                Assume.assumeTrue(te.supportsSafetyChecks());
+                TestShape shapeA = TestShape.create(te, true);
+                TestShape shapeB = TestShape.create(te, true);
+                Object objectB = shapeB.objectFactory().create();
 
-                    assertWrongShapeAccessFails(shapeA.intProperty(), objectB);
-                }
+                assertWrongShapeAccessFails(shapeA.intProperty(), objectB);
             }
         }
     }
@@ -104,13 +103,12 @@ public class BuilderSafetyChecksTest extends StaticObjectModelTest {
     private static void forceSafetyChecksOverridesBuilderConfiguration() {
         for (boolean arrayBased : new boolean[]{true, false}) {
             try (TestEnvironment te = new TestEnvironment(arrayBased, false, true)) {
-                if (te.supportsSafetyChecks()) {
-                    TestShape shapeA = TestShape.create(te, false);
-                    TestShape shapeB = TestShape.create(te, false);
-                    Object objectB = shapeB.objectFactory().create();
+                Assume.assumeTrue(te.supportsSafetyChecks());
+                TestShape shapeA = TestShape.create(te, false);
+                TestShape shapeB = TestShape.create(te, false);
+                Object objectB = shapeB.objectFactory().create();
 
-                    assertWrongShapeAccessFails(shapeA.intProperty(), objectB);
-                }
+                assertWrongShapeAccessFails(shapeA.intProperty(), objectB);
             }
         }
     }
