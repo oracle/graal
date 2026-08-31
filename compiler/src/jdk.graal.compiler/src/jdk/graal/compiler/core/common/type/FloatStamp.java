@@ -406,7 +406,8 @@ public final class FloatStamp extends PrimitiveStamp {
         return null;
     }
 
-    private boolean isConstant() {
+    @Override
+    public boolean isConstant() {
         /*
          * There are many forms of NaNs and any operations on them can silently convert them into
          * the canonical NaN.
