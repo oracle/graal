@@ -445,6 +445,12 @@ public class AMD64InterpreterStubs {
             List<Register> gps = registerConfig.getNativeGeneralParameterRegs();
             List<Register> fps = registerConfig.getFloatingPointParameterRegs();
 
+            /*
+             * Since the caller stack pointer is saved before the regular prologue, we must mark
+             * the start of this routine as an indirect target.
+             */
+            masm.maybeEmitIndirectTargetMarker();
+
             /* r10 and r11 contain the trampoline metadata and isolate, so use rax for the caller SP. */
             masm.movq(rax, rsp);
             super.enter(crb);
