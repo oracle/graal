@@ -98,7 +98,11 @@ import com.oracle.svm.shared.util.TimeUtils;
  */
 public class NativeImageResourceFileSystem extends FileSystem {
 
+    /// Internal root selector for the aggregate view; never encoded in resource URLs or URIs.
+    static final int ANY_ROOT_ID = -1;
     static final int NO_RESOURCE_INDEX = -1;
+    /// First resource variant, matching ClassLoader.getResource and legacy aggregate behavior.
+    private static final int RESOURCE_INDEX_FIRST = 0;
 
     private static final String GLOB_SYNTAX = "glob";
     private static final String REGEX_SYNTAX = "regex";
@@ -147,6 +151,10 @@ public class NativeImageResourceFileSystem extends FileSystem {
 
     NativeImageResourceFileSystem newView(int rootId, String moduleName, String pathPrefix) {
         return new NativeImageResourceFileSystem(this, rootId, moduleName, pathPrefix);
+    }
+
+    private boolean isAggregateView() {
+        return root.getRootId() == ANY_ROOT_ID;
     }
 
     // Returns true if there is a name=true/"true" setting in env.
@@ -299,7 +307,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     /// Resolves the selected loader root to this concrete resource path's local data index.
     /// Structural directory nodes and complete entries without data in the selected root use
     /// [#NO_RESOURCE_INDEX].
-    static int resolveResourceIndex(byte[] path, int rootId, String moduleName) {
+    int resolveResourceIndex(byte[] path, int rootId, String moduleName) {
         if (path.length == 1 && path[0] == '/') {
             // The filesystem root is a structural container, not a resource lookup key.
             return NO_RESOURCE_INDEX;
@@ -311,13 +319,41 @@ public class NativeImageResourceFileSystem extends FileSystem {
             return NO_RESOURCE_INDEX;
         }
         if (entry instanceof ResourceStorageEntry resourceStorageEntry) {
+            if (isAggregateView()) {
+                /*
+                 * The legacy aggregate filesystem always read the first data entry. For classpath
+                 * resources, this is also the first variant returned by ClassLoader.getResources
+                 * and therefore matches ClassLoader.getResource semantics.
+                 */
+                return resourceStorageEntry.getData().length > 0 ? RESOURCE_INDEX_FIRST : NO_RESOURCE_INDEX;
+            }
             return resourceStorageEntry.getDataIndexForRootId(rootId);
         }
         return NO_RESOURCE_INDEX;
     }
 
-    private static boolean isResourceVariantMissing(byte[] path, int rootId, String moduleName) {
+    private boolean isResourceVariantMissing(byte[] path, int rootId, String moduleName) {
         return resolveResourceIndex(path, rootId, moduleName) < 0;
+    }
+
+    int resolveRootIdForUri(byte[] path, int rootId, String moduleName) {
+        if (!isAggregateView()) {
+            return rootId;
+        }
+        try {
+            ResourceStorageEntryBase entry = NativeImageResourceFileSystemUtil.getEntry(moduleName, getString(path), true);
+            if (entry instanceof ResourceStorageEntry resourceStorageEntry && resourceStorageEntry.getData().length > 0) {
+                /*
+                 * Aggregate reads select RESOURCE_INDEX_FIRST in resolveResourceIndex, so the URI
+                 * must identify the concrete root that contributed that same first variant.
+                 */
+                return resourceStorageEntry.getRootId(RESOURCE_INDEX_FIRST);
+            }
+        } catch (IllegalArgumentException e) {
+            // Structural and writable entries do not have an embedded resource root.
+        }
+        // Preserve concrete roots; aggregate paths use root 0 to retain legacy URI behavior.
+        return rootId == ANY_ROOT_ID ? 0 : rootId;
     }
 
     @Override
@@ -1044,7 +1080,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             if (entry == null || !entry.isDir()) {
                 throw new NotDirectoryException(getString(path));
             }
-            if (isMultiVariantDirectoryEntry(entry)) {
+            if (!isAggregateView() && isMultiVariantDirectoryEntry(entry)) {
                 return createMultiVariantDirectoryIterator(dir, entry, filter);
             }
             List<Path> list = new ArrayList<>();
@@ -1095,7 +1131,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
                  */
                 ResourceStorageEntryWithModule resourceStorageEntry = getResourceStorageEntryWithData(dir.getModuleName(), childPath);
                 if (resourceStorageEntry != null) {
-                    childRootId = resourceStorageEntry.entry.getRootId(0);
+                    childRootId = resourceStorageEntry.entry.getRootId(RESOURCE_INDEX_FIRST);
                 }
             }
             NativeImageResourcePath dirPath = createPathForDirectoryListing(dir, childPath, childRootId);
@@ -1121,7 +1157,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
              */
             ResourceStorageEntryWithModule resourceStorageEntry = getResourceStorageEntryWithData(dirPath.getModuleName(), dirChildNode.name);
             if (resourceStorageEntry != null) {
-                return createPathForDirectoryListing(dirPath, dirChildNode.name, resourceStorageEntry.entry.getRootId(0), resourceStorageEntry.moduleName);
+                return createPathForDirectoryListing(dirPath, dirChildNode.name, resourceStorageEntry.entry.getRootId(RESOURCE_INDEX_FIRST), resourceStorageEntry.moduleName);
             }
             /*
              * Complete child nodes can also come from writable resource filesystem state instead of
