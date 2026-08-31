@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -563,7 +563,7 @@ public final class SpecializationData extends TemplateMethod {
                     Parameter p = findByVariable(var);
                     if (p != null) {
                         CacheExpression cache = findCache(p);
-                        if (cache != null && cache.isAlwaysInitialized()) {
+                        if (cache != null && cache.isAlwaysInitialized() && !cache.isWeakReferenceGet()) {
                             foundMethods.addAll(getBoundMethods(cache.getDefaultExpression()));
                         }
                     }
@@ -1143,9 +1143,10 @@ public final class SpecializationData extends TemplateMethod {
                 Parameter p = findByVariable(var);
                 if (p != null) {
                     CacheExpression cache = findCache(p);
-                    if (cache != null && cache.isAlwaysInitialized()) {
+                    if (cache != null && cache.isAlwaysInitialized() && !cache.isWeakReferenceGet()) {
                         /*
-                         * Bind variables may cause side-effects themselves.
+                         * Bind variables may cause side-effects themselves. Weak reference gets
+                         * are checked separately by a synthetic non-idempotent guard.
                          */
                         Idempotence cacheIdempotent = getIdempotence(cache.getDefaultExpression());
                         switch (cacheIdempotent) {
