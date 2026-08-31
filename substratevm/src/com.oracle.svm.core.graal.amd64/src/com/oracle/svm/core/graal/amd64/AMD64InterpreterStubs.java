@@ -891,7 +891,7 @@ public class AMD64InterpreterStubs {
                  * GP argument assigned to rax, immediately after the ordinary GP argument
                  * registers. The native leave stub loads AbiGpRet into rax before the call.
                  */
-                VMError.guarantee(!incoming && PreparedSignature.isRegister(cArgType));
+                VMError.guarantee(!incoming);
                 ((InterpreterDataAMD64) data).setAbiGpRet(val);
                 return;
             }

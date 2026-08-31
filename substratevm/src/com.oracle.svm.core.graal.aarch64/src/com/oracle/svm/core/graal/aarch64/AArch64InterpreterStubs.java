@@ -41,6 +41,7 @@ import static jdk.vm.ci.aarch64.AArch64.r19;
 import static jdk.vm.ci.aarch64.AArch64.r2;
 import static jdk.vm.ci.aarch64.AArch64.r3;
 import static jdk.vm.ci.aarch64.AArch64.r4;
+import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 
@@ -570,6 +571,9 @@ public class AArch64InterpreterStubs {
                 masm.fldr(64, fps.get(i), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, r0, offsetAbiFpArg(i)));
             }
 
+            /* AArch64 uses r8 for the indirect-result address. */
+            masm.ldr(64, r8, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, r0, offsetAbiGpRet()));
+
             /*
              * Set gp argument registers. r0 contains the pointer to the InterpreterData, so this
              * register has to be set in the last iteration.
@@ -881,6 +885,21 @@ public class AArch64InterpreterStubs {
             VMError.guarantee(incoming || offset < InterpreterAccessStubData.getStackBufferSize());
 
             spVal.writeLong(offset, val);
+        }
+
+        @Override
+        @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
+        public void setGpArgumentAtNative(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+            if (PreparedSignature.isRegister(cArgType) && pos == 8) {
+                /*
+                 * AArch64 uses r8 for the indirect-result address. Store it in the otherwise
+                 * unused GP return slot; the native leave stub loads it into r8 before the call.
+                 */
+                VMError.guarantee(!incoming);
+                ((InterpreterDataAArch64) data).setAbiGpRet(val);
+                return;
+            }
+            setGpArgumentAt(cArgType, data, pos, val, incoming);
         }
 
         @Override
