@@ -98,9 +98,18 @@ public abstract class IntegerConvertNode<OP> extends UnaryNode implements Arithm
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        ValueNode synonym = findSynonym(getOp(BinaryArithmeticNode.getArithmeticOpTable(forValue)), forValue, inputBits, resultBits, stamp(NodeView.DEFAULT));
+        NodeView view = NodeView.from(tool);
+        IntegerConvertOp<OP> operation = getOp(BinaryArithmeticNode.getArithmeticOpTable(forValue));
+        ValueNode synonym = findSynonym(operation, forValue, inputBits, resultBits, stamp(view));
         if (synonym != null) {
             return synonym;
+        }
+        ValueNode folded = foldConditional(forValue, view, constantValue -> {
+            Constant result = operation.foldConstant(inputBits, resultBits, constantValue.asConstant());
+            return result == null ? null : ConstantNode.forPrimitive(stamp(view), result);
+        });
+        if (folded != null) {
+            return folded;
         }
         return this;
     }

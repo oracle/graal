@@ -26,6 +26,8 @@ package jdk.graal.compiler.nodes.calc;
 
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import java.util.function.Function;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodes.NodeView;
@@ -49,8 +51,40 @@ public abstract class UnaryNode extends FloatingNode implements Canonicalizable.
     }
 
     public void setValue(ValueNode value) {
-        updateUsages(this.value, value);
+        if (isAlive()) {
+            updateUsages(this.value, value);
+        } else {
+            assert isUnregistered();
+        }
         this.value = value;
+    }
+
+    /**
+     * Distributes a unary operation over an integer conditional with at least one constant value.
+     * The callback folds constant values; nonconstant values use a copy of this operation.
+     *
+     * <pre>{@code
+     * -(condition ? 4 : value)  ->  condition ? -4 : -value
+     * ~(condition ? 4 : value)  ->  condition ? -5 : ~value
+     * abs(condition ? -4 : value)  ->  condition ? 4 : abs(value)
+     * narrow8(condition ? 0x80 : value)  ->  condition ? -0x80 : narrow8(value)
+     * }</pre>
+     *
+     * @return the distributed conditional, or {@code null} when the input is not a qualifying
+     *         conditional or a value cannot be transformed
+     */
+    protected ValueNode foldConditional(ValueNode forValue, NodeView view, Function<ValueNode, ValueNode> foldConstant) {
+        if (forValue instanceof ConditionalNode conditional && conditional.isFoldableOperation(view)) {
+            return ConditionalNode.foldOperation(conditional, view, foldConstant, this::duplicateWithValue);
+        }
+        return null;
+    }
+
+    private ValueNode duplicateWithValue(ValueNode newValue) {
+        UnaryNode duplicate = (UnaryNode) copyWithInputs(false);
+        duplicate.value = newValue;
+        duplicate.inferStamp();
+        return duplicate;
     }
 
     /**

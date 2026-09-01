@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package jdk.graal.compiler.nodes.calc;
+
+import java.util.function.BiFunction;
 
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
@@ -59,6 +61,34 @@ public abstract class BinaryNode extends FloatingNode implements Canonicalizable
     public void setY(ValueNode y) {
         updateUsages(this.y, y);
         this.y = y;
+    }
+
+    /**
+     * Distributes a binary operation over an integer conditional when the other operand and at
+     * least one conditional value are constants. The callbacks preserve operand order and either
+     * fold a constant value or recreate the operation for a nonconstant value.
+     *
+     * <pre>{@code
+     * (condition ? 4 : value) + 10  ->  condition ? 14 : value + 10
+     * 10 - (condition ? 4 : value)  ->  condition ? 6 : 10 - value
+     * }</pre>
+     *
+     * @return the distributed conditional, or {@code null} when neither operand is a qualifying
+     *         conditional
+     */
+    protected static ValueNode foldConditional(ValueNode forX, ValueNode forY, NodeView view,
+                    BiFunction<ValueNode, ValueNode, ValueNode> foldConstants,
+                    BiFunction<ValueNode, ValueNode, ValueNode> recreateOperation) {
+        if (forX instanceof ConditionalNode conditional && forY.isConstant() && conditional.isFoldableOperation(view)) {
+            return ConditionalNode.foldOperation(conditional, view,
+                            value -> foldConstants.apply(value, forY),
+                            value -> recreateOperation.apply(value, forY));
+        } else if (forY instanceof ConditionalNode conditional && forX.isConstant() && conditional.isFoldableOperation(view)) {
+            return ConditionalNode.foldOperation(conditional, view,
+                            value -> foldConstants.apply(forX, value),
+                            value -> recreateOperation.apply(forX, value));
+        }
+        return null;
     }
 
     /**
