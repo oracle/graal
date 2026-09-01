@@ -59,6 +59,7 @@ import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -194,6 +195,7 @@ final class Target_java_lang_invoke_MethodHandle {
     native void customize();
 }
 
+@InternalVMMethod
 final class Util_java_lang_invoke_MethodHandle {
     static Object linkTo(Object... args) throws Throwable {
         assert args.length > 0;
