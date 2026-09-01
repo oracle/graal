@@ -69,6 +69,29 @@ import jdk.vm.ci.meta.TriState;
 
 public class InliningTest extends GraalCompilerTest {
 
+    private static final class FastAccessor {
+        private final int value;
+
+        FastAccessor(int value) {
+            this.value = value;
+        }
+
+        int getValue() {
+            return value;
+        }
+    }
+
+    public static int fastAccessorSnippet(FastAccessor accessor) {
+        return accessor.getValue();
+    }
+
+    @Test
+    public void testFastAccessorRecordsMethodDependency() {
+        StructuredGraph graph = assertInlined(getGraph("fastAccessorSnippet", false));
+        ResolvedJavaMethod accessor = getResolvedJavaMethod(FastAccessor.class, "getValue");
+        Assert.assertTrue("fast-inlined accessor must be recorded for class redefinition", graph.getMethods().contains(accessor));
+    }
+
     @Test
     public void testInvokeStaticInlining() {
         assertInlined(getGraph("invokeStaticSnippet", false));
