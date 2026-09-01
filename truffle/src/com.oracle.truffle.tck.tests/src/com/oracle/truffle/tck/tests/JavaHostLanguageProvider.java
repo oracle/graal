@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.AbstractMap;
@@ -115,6 +117,10 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME, TypeDescriptor.DATE)));
         primitives.put(ZonedDateTime.class, Primitive.create("java.time.ZonedDateTime", ZonedDateTime.now(),
                         TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME, TypeDescriptor.DATE, TypeDescriptor.TIME_ZONE)));
+        primitives.put(OffsetDateTime.class, Primitive.create("java.time.OffsetDateTime", OffsetDateTime.now(),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME, TypeDescriptor.DATE, TypeDescriptor.TIME_ZONE)));
+        primitives.put(OffsetTime.class, Primitive.create("java.time.OffsetTime", OffsetTime.now(),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME, TypeDescriptor.TIME_ZONE)));
         primitives.put(ZoneId.class,
                         Primitive.create("java.time.ZoneId", ZoneId.systemDefault(),
                                         TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME_ZONE)));

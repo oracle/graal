@@ -47,7 +47,10 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collections;
@@ -663,19 +666,21 @@ public final class Context implements AutoCloseable {
      * <li>If the <code>hostValue</code> is an instance of {@link Boolean}, then it will be
      * interpreted as polyglot {@link Value#isBoolean() boolean}.
      * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalTime},
-     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Date} or
-     * {@link java.sql.Time} then it will be interpreted as polyglot {@link Value#isTime() time}.
+     * {@link LocalDateTime}, {@link ZonedDateTime}, {@link OffsetDateTime}, {@link OffsetTime},
+     * {@link java.sql.Time}, or {@link java.util.Date} but not {@link java.sql.Date}, then it will
+     * be interpreted as polyglot {@link Value#isTime() time}.
      * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalDate},
-     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} or
-     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isDate() date}.
+     * {@link LocalDateTime}, {@link ZonedDateTime}, {@link OffsetDateTime}, or
+     * {@link java.util.Date} but not {@link java.sql.Time}, then it will be interpreted as polyglot
+     * {@link Value#isDate() date}.
      * <li>If the <code>hostValue</code> is an instance of {@link ZoneId}, {@link Instant},
-     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
-     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isTimeZone() time
-     * zone}.
-     * <li>If the <code>hostValue</code> is an instance of {@link ZonedDateTime}, {@link Instant},
-     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
-     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isInstant()
-     * instant}.
+     * {@link ZonedDateTime}, {@link OffsetDateTime}, {@link OffsetTime}, or {@link java.util.Date}
+     * but not {@link java.sql.Time} or {@link java.sql.Date}, then it will be interpreted as
+     * polyglot {@link Value#isTimeZone() time zone}.
+     * <li>If the <code>hostValue</code> is an instance of {@link ZonedDateTime},
+     * {@link OffsetDateTime}, {@link Instant}, or {@link java.util.Date} but not
+     * {@link java.sql.Time} or {@link java.sql.Date}, then it will be interpreted as polyglot
+     * {@link Value#isInstant() instant}.
      * <li>If the <code>hostValue</code> is an instance of {@link Duration} then it will be
      * interpreted as polyglot {@link Value#isDuration() duration}.
      * <li>If the <code>hostValue</code> is a {@link Proxy polyglot proxy}, then it will be
