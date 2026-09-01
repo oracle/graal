@@ -48,12 +48,17 @@ public final class MethodFilter {
                     The syntax for a pattern is:
 
                       SourcePatterns = SourcePattern ["," SourcePatterns] .
-                      SourcePattern = [ "~" ] [ Class "." ] method [ "(" [ Parameter { ";" Parameter } ] ")" ] .
+                      SourcePattern = [ "~" ] [ Class "." ] method [ "(" ParameterList ")" ] .
+                      ParameterList = [ Parameter | ( ParameterSlot ";" ParameterSlot { ";" ParameterSlot } ) ] .
+                      ParameterSlot = [ Parameter ] .
                       Parameter = Class | "int" | "long" | "float" | "double" | "short" | "char" | "boolean" .
                       Class = { package "." } class .
 
                     Glob pattern matching (*, ?) is allowed in all parts of the source pattern.
+                    An empty parameter slot is equivalent to "*".
                     The "~" prefix negates the pattern.
+                    Omitting the parentheses matches any parameter list. An empty parameter list
+                    matches a method with no parameters.
 
                     Positive patterns are joined by an "or" operator: "A,B" matches anything
                     matched by "A" or "B". Negative patterns are joined by "and not": "~A,~B"
@@ -281,7 +286,8 @@ public final class MethodFilter {
                 if (pattern.charAt(pattern.length() - 1) != ')') {
                     throw new IllegalArgumentException("missing ')' at end of method filter pattern: " + pattern);
                 }
-                String[] signatureClasses = pattern.substring(pos + 1, pattern.length() - 1).split(";", -1);
+                String signatureString = pattern.substring(pos + 1, pattern.length() - 1).trim();
+                String[] signatureClasses = signatureString.isEmpty() ? new String[0] : signatureString.split(";", -1);
                 signature = new Pattern[signatureClasses.length];
                 for (int i = 0; i < signatureClasses.length; i++) {
                     signature[i] = createClassGlobPattern(signatureClasses[i].trim());
