@@ -151,7 +151,7 @@ public final class HostDateTimeTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testHostOffsetDateTime() {
+    public void testHostOffsetDateTimeUsingValue() {
         OffsetDateTime ov = OffsetDateTime.of(2025, 7, 14, 12, 34, 56, 789, ZoneOffset.ofHoursMinutes(5, 45));
         Value v = context.asValue(ov);
 
@@ -171,7 +171,7 @@ public final class HostDateTimeTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testHostOffsetTime() {
+    public void testHostOffsetTimeUsingValue() {
         OffsetTime ov = OffsetTime.of(12, 34, 56, 789, ZoneOffset.ofHoursMinutes(5, 45));
         Value v = context.asValue(ov);
 
