@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -162,6 +163,9 @@ abstract sealed class ShapeImpl extends Shape permits ShapeBasic, ShapeExt {
         }
 
         this.validAssumption = createValidAssumption();
+        if (ImageInfo.inImageBuildtimeCode()) {
+            this.leafAssumption = createLeafAssumption();
+        }
 
         int allFlags = flags;
         if ((allFlags & FLAG_HAS_INSTANCE_PROPERTIES) == 0) {
