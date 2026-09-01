@@ -26,14 +26,16 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Queue;
-import java.util.SequencedMap;
 import java.util.TreeMap;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
@@ -163,26 +165,35 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return obj;
     }
 
-    private record SortedObjects(SequencedMap<Class<?>, NavigableMap<Long, Queue<ImageHeapObject>>> grouped,
-                                 NavigableMap<Long, Queue<ImageHeapObject>> others) {
+    private record SortedObjects(Map<Class<?>, NavigableMap<Long, Queue<ImageHeapObject>>> grouped,
+                    NavigableMap<Long, Queue<ImageHeapObject>> others) {
     }
 
     private SortedObjects computeSortedObjects() {
-        SortedObjects sorted = new SortedObjects(new LinkedHashMap<>(), new TreeMap<>());
-        sorted.grouped.put(DynamicHubCompanion.class, new TreeMap<>());
-        sorted.grouped.put(ClassInitializationInfo.class, new TreeMap<>());
+        Map<Class<?>, NavigableMap<Long, Queue<ImageHeapObject>>> grouped;
+        if (SubstrateUtil.HOSTED) {
+            grouped = new LinkedHashMap<>();
+            grouped.put(DynamicHubCompanion.class, new TreeMap<>());
+            grouped.put(ClassInitializationInfo.class, new TreeMap<>());
+        } else { // no need for grouping with auxiliary images
+            grouped = Collections.emptyMap();
+        }
+        SortedObjects sorted = new SortedObjects(grouped, new TreeMap<>());
 
         for (ImageHeapObject obj : objects) {
             long objSize = obj.getSize();
             assert objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize() : Assertions.errorMessage(obj, objSize);
-            NavigableMap<Long, Queue<ImageHeapObject>> map = selectObjectMap(obj, sorted);
+            NavigableMap<Long, Queue<ImageHeapObject>> map = selectObjectGroupMap(obj, sorted);
             Queue<ImageHeapObject> q = map.computeIfAbsent(objSize, k -> new ArrayDeque<>());
             q.add(obj);
         }
         return sorted;
     }
 
-    private static NavigableMap<Long, Queue<ImageHeapObject>> selectObjectMap(ImageHeapObject obj, SortedObjects sorted) {
+    private static NavigableMap<Long, Queue<ImageHeapObject>> selectObjectGroupMap(ImageHeapObject obj, SortedObjects sorted) {
+        if (!SubstrateUtil.HOSTED) {
+            return sorted.others;
+        }
         Class<?> objectClass = obj.getObjectClass();
         if (objectClass == null) {
             return sorted.others;
