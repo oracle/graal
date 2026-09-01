@@ -38,6 +38,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.code.CodeUtil;
 
 @NodeInfo(shortName = ">>")
@@ -127,6 +128,9 @@ public final class RightShiftNode extends ShiftNode<Shr> {
                     if (other instanceof RightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
+                            if (other.getX().stamp(view) instanceof SimdStamp) {
+                                return new RightShiftNode(other.getX(), ConstantNode.forInt(mask));
+                            }
                             assert other.getX().stamp(view) instanceof IntegerStamp : Assertions.errorMessageContext("rightShiftNode", rightShiftNode, "forX", forX, "forY", forY, "other", other,
                                             "other.x", other.getX());
                             IntegerStamp istamp = (IntegerStamp) other.getX().stamp(view);
