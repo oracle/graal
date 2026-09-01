@@ -61,7 +61,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
  * given memory address, producing a result vector. This operation does not take a mask.
  */
 @NodeInfo
-public class VectorAPILoadNode extends VectorAPIMacroNode implements Canonicalizable {
+public class VectorAPILoadNode extends VectorAPIMacroNode implements VectorAPIMemoryAccess, Canonicalizable {
 
     public static final NodeClass<VectorAPILoadNode> TYPE = NodeClass.create(VectorAPILoadNode.class);
 
@@ -104,6 +104,11 @@ public class VectorAPILoadNode extends VectorAPIMacroNode implements Canonicaliz
     @Override
     public SimdStamp vectorStamp() {
         return loadStamp;
+    }
+
+    @Override
+    public LocationIdentity locationIdentity() {
+        return location;
     }
 
     @Override

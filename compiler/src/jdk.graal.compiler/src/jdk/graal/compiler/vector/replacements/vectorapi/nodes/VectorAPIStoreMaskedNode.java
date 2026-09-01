@@ -56,7 +56,7 @@ import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIUtils;
  * accessed.
  */
 @NodeInfo
-public class VectorAPIStoreMaskedNode extends VectorAPISinkNode implements Canonicalizable {
+public class VectorAPIStoreMaskedNode extends VectorAPISinkNode implements VectorAPIMemoryAccess, Canonicalizable {
 
     public static final NodeClass<VectorAPIStoreMaskedNode> TYPE = NodeClass.create(VectorAPIStoreMaskedNode.class);
 
@@ -99,6 +99,11 @@ public class VectorAPIStoreMaskedNode extends VectorAPISinkNode implements Canon
     @Override
     public Iterable<ValueNode> vectorInputs() {
         return List.of(getVector(), getMask());
+    }
+
+    @Override
+    public LocationIdentity locationIdentity() {
+        return location;
     }
 
     @Override

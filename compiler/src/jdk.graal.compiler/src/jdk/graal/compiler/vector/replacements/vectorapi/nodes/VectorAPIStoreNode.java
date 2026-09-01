@@ -59,7 +59,7 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
  * {@code storeMasked} method is not supported yet by Graal.
  */
 @NodeInfo
-public class VectorAPIStoreNode extends VectorAPISinkNode implements Canonicalizable {
+public class VectorAPIStoreNode extends VectorAPISinkNode implements VectorAPIMemoryAccess, Canonicalizable {
 
     public static final NodeClass<VectorAPIStoreNode> TYPE = NodeClass.create(VectorAPIStoreNode.class);
 
@@ -102,6 +102,11 @@ public class VectorAPIStoreNode extends VectorAPISinkNode implements Canonicaliz
     @Override
     public Iterable<ValueNode> vectorInputs() {
         return List.of(getVector());
+    }
+
+    @Override
+    public LocationIdentity locationIdentity() {
+        return location;
     }
 
     @Override
