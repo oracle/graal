@@ -912,7 +912,7 @@ class ABIs {
             return switch (storage.type()) {
                 case AArch64Architecture.StorageType.INTEGER -> {
                     int index = storage.indexOrOffset();
-                    VMError.guarantee(index >= 0 && index < (forReturn ? 2 : 8), "Unsupported AArch64 GP register assignment");
+                    VMError.guarantee(index >= 0 && index < (forReturn ? 2 : 9), "Unsupported AArch64 GP register assignment");
                     yield AbiUtils.toPreparedGpRegisterLocation(index, kind, forReturn, adaptation);
                 }
                 case AArch64Architecture.StorageType.VECTOR -> {
