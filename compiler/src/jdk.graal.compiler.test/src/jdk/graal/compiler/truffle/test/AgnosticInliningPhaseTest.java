@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,34 +57,14 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) {
         TruffleCompilerImpl compiler = getTruffleCompiler(callTarget);
         final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
-        final CompilationIdentifier compilationIdentifier = new CompilationIdentifier() {
-            @Override
-            public String toString(Verbosity verbosity) {
-                return "";
-            }
-        };
+        final TruffleCompilationTask task = newTask();
+        final CompilationIdentifier compilationIdentifier = compiler.createCompilationIdentifier(task, callTarget);
         final TruffleTierContext context = TruffleTierContext.createInitialContext(
                         partialEvaluator,
                         compiler.getOrCreateCompilerOptions(callTarget),
                         getDebugContext(), callTarget,
                         compilationIdentifier, getSpeculationLog(),
-                        new TruffleCompilationTask() {
-
-                            @Override
-                            public boolean isCancelled() {
-                                return false;
-                            }
-
-                            @Override
-                            public boolean isLastTier() {
-                                return true;
-                            }
-
-                            @Override
-                            public boolean hasNextTier() {
-                                return false;
-                            }
-                        }, null);
+                        task, null);
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(
                         new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(callTarget), false));
         agnosticInliningPhase.apply(context.graph, context);

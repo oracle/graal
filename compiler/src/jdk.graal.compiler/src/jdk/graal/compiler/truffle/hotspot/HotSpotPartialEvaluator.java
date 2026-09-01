@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -156,7 +156,7 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
         assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
         return new CachingPEGraphDecoder(config.architecture(), context.graph, graphCacheProviders, decoderProviders, context.types(), newConfig,
-                        loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, types.OptimizedCallTarget_callInlined,
+                        loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList,
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
                         createGraphBuilderPhaseInstance(graphCacheProviders, newConfig, TruffleCompilerImpl.Optimizations),
                         allowAssumptionsDuringParsing, false, true);

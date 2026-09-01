@@ -142,7 +142,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, loopExplosionPlugin,
                         providers.getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
-                        null, policy.nodePlugins, null, null,
+                        null, policy.nodePlugins, null,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), policy.needsExplicitExceptions(), false);
         this.bb = bb;
         this.policy = policy;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,21 @@ import com.oracle.truffle.compiler.TruffleCompilationTask;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 
 public interface TruffleCompilationIdentifier extends CompilationIdentifier {
+
+    /**
+     * Creates an identifier for a graph derived from this identifier. The returned identifier has
+     * this identifier as its {@linkplain #getParentCompilationIdentifier() parent}, while retaining
+     * its own identity and graph-specific state.
+     *
+     * @param graphContext the state associated with the graph
+     * @return a new graph-specific identifier
+     */
+    TruffleCompilationIdentifier createGraphIdentifier(TruffleGraphContext graphContext);
+
+    /**
+     * Returns the state associated with this identifier's graph.
+     */
+    TruffleGraphContext getGraphContext();
 
     TruffleCompilationTask getTask();
 

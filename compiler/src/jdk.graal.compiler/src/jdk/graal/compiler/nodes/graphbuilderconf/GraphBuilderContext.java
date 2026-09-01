@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -510,21 +510,6 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     @SuppressWarnings("all")
     default Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
         throw new GraalError("Cannot be called on a " + getClass().getName() + " object");
-    }
-
-    /**
-     * Interface whose instances hold inlining information about the current context, in a wider
-     * sense. The wider sense in this case concerns graph building approaches that don't necessarily
-     * keep a chain of {@link GraphBuilderContext} instances normally available through
-     * {@linkplain #getParent()}. Examples of such approaches are partial evaluation and incremental
-     * inlining.
-     */
-    interface ExternalInliningContext {
-        int getInlinedDepth();
-    }
-
-    default ExternalInliningContext getExternalInliningContext() {
-        return null;
     }
 
     /**

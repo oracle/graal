@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,13 +90,13 @@ public final class TruffleTierContext extends HighTierContext {
     }
 
     private TruffleTierContext(TruffleTierContext parent,
-                    TruffleCompilable compilable,
-                    ResolvedJavaMethod initialMethod) {
+                    ResolvedJavaMethod initialMethod,
+                    TruffleGraphContext graphContext) {
         this(parent.partialEvaluator,
                         parent.compilerOptions,
                         parent.debug,
-                        compilable,
-                        parent.compilationId,
+                        graphContext.getCompilable(),
+                        ((TruffleCompilationIdentifier) parent.compilationId).createGraphIdentifier(graphContext),
                         parent.log,
                         parent.task,
                         parent.handler,
@@ -143,8 +143,8 @@ public final class TruffleTierContext extends HighTierContext {
              */
             throw new RetryableBailoutException("Compilable not ready for compilation.");
         }
-        TruffleTierContext context = new TruffleTierContext(this, inlinedCompilable,
-                        partialEvaluator.inlineRootForCallTarget(compilable));
+        TruffleTierContext context = new TruffleTierContext(this,
+                        partialEvaluator.inlineRootForCallTarget(compilable), TruffleGraphContext.createGuestInlining(inlinedCompilable));
         context.recordStabilityAssumptions();
         return context;
     }
@@ -155,7 +155,7 @@ public final class TruffleTierContext extends HighTierContext {
      * from callDirect to the call boundary for call sites not inlined.
      */
     public TruffleTierContext createFinalizationContext(TruffleCompilable inlinedCompilable) {
-        return new TruffleTierContext(this, inlinedCompilable, partialEvaluator.getCallDirect());
+        return new TruffleTierContext(this, partialEvaluator.getCallDirect(), TruffleGraphContext.createRoot(inlinedCompilable));
     }
 
     private StructuredGraph createInitialGraph(ResolvedJavaMethod method, boolean forceSourcePositions) {

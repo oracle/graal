@@ -42,6 +42,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -116,7 +117,7 @@ import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilation;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
-import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
+import jdk.graal.compiler.truffle.TruffleGraphContext;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
 import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.graal.compiler.truffle.nodes.IsCompilationConstantNode;
@@ -387,12 +388,8 @@ public class TruffleGraphBuilderPlugins {
                     // Delay until PE graph decoding where we have an inlining context.
                     return false;
                 }
-                GraphBuilderContext.ExternalInliningContext inliningContext = b.getExternalInliningContext();
-                if (inliningContext != null) {
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(inliningContext.getInlinedDepth() == 0));
-                    return true;
-                }
-                return false;
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!TruffleGraphContext.get(b.getGraph()).isGuestInlining()));
+                return true;
             }
         });
         r.register(new RequiredInvocationPlugin("transferToInterpreter") {
@@ -1546,14 +1543,13 @@ public class TruffleGraphBuilderPlugins {
             StructuredGraph graph = location.graph();
             DebugContext debug = access.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
-                TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-                if (truffleMethod != null) {    // Never null in compilation but can be null in
-                                                // TruffleCompilerImplTest
+                if (TruffleCompilation.isTruffleCompilation(graph)) { // Can be false in TruffleCompilerImplTest.
+                    TruffleCompilable compilable = TruffleGraphContext.get(graph).getCompilable();
                     Map<String, Object> properties = new LinkedHashMap<>();
                     properties.put("location", location);
                     properties.put("method", targetMethod.format("%h.%n"));
 
-                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, truffleMethod.getCompilable(),
+                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, compilable,
                                     Collections.singletonList(access),
                                     "location argument not PE-constant", properties);
                     debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
@@ -1570,9 +1566,8 @@ public class TruffleGraphBuilderPlugins {
             StructuredGraph graph = type.graph();
             DebugContext debug = type.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
-                TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-                if (truffleMethod != null) {    // Never null in compilation but can be null in
-                                                // TruffleCompilerImplTest
+                if (TruffleCompilation.isTruffleCompilation(graph)) { // Can be false in TruffleCompilerImplTest.
+                    TruffleCompilable compilable = TruffleGraphContext.get(graph).getCompilable();
                     Map<String, Object> properties = new LinkedHashMap<>();
                     List<ValueNode> nonConstArgs = new ArrayList<>();
                     properties.put("type", type);
@@ -1588,7 +1583,7 @@ public class TruffleGraphBuilderPlugins {
                         nonConstArgs.add(isExactType);
                     }
                     properties.put("method", targetMethod.format("%h.%n"));
-                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, truffleMethod.getCompilable(), nonConstArgs,
+                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, compilable, nonConstArgs,
                                     "unsafeCast arguments could not reduce to a constant", properties);
                     debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: unsafeCast arguments could not reduce to a constant: %s, %s, %s", type, nonNull, isExactType);
                 }

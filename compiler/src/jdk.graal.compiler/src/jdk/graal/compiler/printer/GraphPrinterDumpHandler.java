@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -145,6 +145,8 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                 // If the graph to be dumped is with an invalid compilation id, it is likely derived
                 // from inlining.
                 if (compilationID != CompilationIdentifier.INVALID_COMPILATION_ID) {
+                    // Keep derived graphs in the diagnostic scope of their root compilation.
+                    compilationID = compilationID.getRootCompilationIdentifier();
                     if (previousCompilationID != CompilationIdentifier.INVALID_COMPILATION_ID && !compilationID.equals(previousCompilationID)) {
                         // Compilation ID does not match, close existing scopes.
                         for (int inlineDepth = previousInlineContext.size() - 1; inlineDepth >= 0; --inlineDepth) {
