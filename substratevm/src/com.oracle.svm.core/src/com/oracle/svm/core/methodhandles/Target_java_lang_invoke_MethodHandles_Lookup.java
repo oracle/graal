@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,7 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute
+    @TargetElement(onlyWith = NoRuntimeClassLoading.class) //
     private MethodHandle maybeBindCaller(Target_java_lang_invoke_MemberName method, MethodHandle mh,
                     Target_java_lang_invoke_MethodHandles_Lookup boundCaller)
                     throws IllegalAccessException {
@@ -83,9 +84,6 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     private Class<?> lookupClass;
 
     @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    private Class<?> prevLookupClass;
-
-    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     private int allowedModes;
 
     @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
@@ -96,22 +94,6 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @Alias
     native int lookupModes();
-
-    @Substitute
-    private IllegalAccessException makeAccessException(Class<?> targetClass) {
-        String message = "access violation: " + targetClass;
-        if (this == SubstrateUtil.cast(MethodHandles.publicLookup(), Target_java_lang_invoke_MethodHandles_Lookup.class)) {
-            message += ", from public Lookup";
-        } else {
-            Object m = SubstrateUtil.cast(lookupClass, DynamicHub.class).getModule();
-            message += ", from " + lookupClass + " (" + m + ")";
-            if (prevLookupClass != null) {
-                message += ", previous lookup " +
-                                prevLookupClass.getName() + " (" + SubstrateUtil.cast(prevLookupClass, DynamicHub.class).getModule() + ")";
-            }
-        }
-        return new IllegalAccessException(message);
-    }
 
     @Delete
     @TargetElement(onlyWith = NoRuntimeClassLoading.class) //
