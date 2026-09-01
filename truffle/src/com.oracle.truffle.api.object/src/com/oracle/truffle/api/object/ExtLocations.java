@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -403,7 +403,7 @@ abstract class ExtLocations {
         private static final AtomicReferenceFieldUpdater<AbstractObjectLocation, TypeAssumption> TYPE_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AbstractObjectLocation.class,
                         TypeAssumption.class, "typeAssumption");
 
-        static final boolean LAZY_ASSUMPTION = false;
+        static final boolean LAZY_TYPE_ASSUMPTION = false;
         private static final DebugCounter assumedTypeLocationAssumptionCount = DebugCounter.create("Typed location assumptions allocated");
         private static final DebugCounter assumedTypeLocationAssumptionInvalidationCount = DebugCounter.create("Typed location assumptions invalidated");
         private static final DebugCounter assumedTypeLocationAssumptionRenewCount = DebugCounter.create("Typed location assumptions renewed");
