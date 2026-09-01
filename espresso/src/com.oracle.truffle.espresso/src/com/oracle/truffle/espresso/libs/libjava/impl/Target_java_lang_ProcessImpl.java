@@ -176,7 +176,7 @@ public final class Target_java_lang_ProcessImpl {
                 String value = envStr.substring(equalsIndex + 1);
                 envMap.put(key, value);
             } else {
-                throw Throw.throwIOException("The byte array encoding for the Enviornment Map Entry didnt include =", ctx);
+                throw Throw.throwIOException("The byte array encoding for the Environment Map Entry didn't include =", ctx);
             }
             i++; // skip the null-terminator
         }

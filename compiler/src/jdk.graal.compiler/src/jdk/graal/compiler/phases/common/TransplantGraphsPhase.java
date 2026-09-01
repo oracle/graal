@@ -555,7 +555,7 @@ public class TransplantGraphsPhase extends BasePhase<LowTierContext> {
                     }
                 }
             } else {
-                throw GraalError.shouldNotReachHere("Unkown block source");
+                throw GraalError.shouldNotReachHere("Unknown block source");
             }
             newBlockToNodesMap.put(b, blockNodes);
         }
