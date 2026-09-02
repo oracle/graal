@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import javax.lang.model.element.TypeElement;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriterModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.DFABuilder.RewriteRuleState;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionEncoding;
@@ -129,7 +130,7 @@ public class InstructionRewriterElement extends CodeTypeElement {
         }
         List<InstructionModel> orderedTransitions = state.transitions.keySet().stream().map(model::getInstruction).sorted(model.instructionComparator()).toList();
         for (InstructionModel instruction : orderedTransitions) {
-            docBuilder.string("  ").string(instruction.getName()).string(" -> ").string(fieldName(state.transitions.get(instruction.getName()))).newLine();
+            docBuilder.string("  ").string(instruction.getName()).string(" -> {@link #").string(fieldName(state.transitions.get(instruction.getName()))).string("}").newLine();
         }
         if (EMIT_VERBOSE_JAVADOC) {
             docBuilder.string("Rewrite rule state:").newLine();
@@ -138,8 +139,9 @@ public class InstructionRewriterElement extends CodeTypeElement {
             }
         }
         if (state.isAccepting()) {
-            docBuilder.string("Accepting rule:").newLine();
-            docBuilder.string("  ").string(state.getAcceptingRule().toString()).newLine();
+            InstructionRewriteRuleModel acceptingRule = state.getAcceptingRule();
+            docBuilder.string("Accepting rule (see {@link ", BuilderElement.RootStackElement.NAME, "#applyRewriteRule").string(acceptingRule.getIndex()).string("}):").newLine();
+            docBuilder.string("  ").string(acceptingRule.toString()).newLine();
         }
         docBuilder.end();
         stateConstants.put(state, add(field));

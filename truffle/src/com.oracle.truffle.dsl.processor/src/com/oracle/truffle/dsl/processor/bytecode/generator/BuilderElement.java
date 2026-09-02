@@ -5656,6 +5656,7 @@ final class BuilderElement extends AbstractElement {
     }
 
     final class RootStackElement extends CodeTypeElement {
+        static final String NAME = "RootStackElement";
 
         final Map<DoEmitInstructionKey, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
         final Map<InstructionEncoding, CodeExecutableElement> doRewriteStepMethods = new TreeMap<>();
@@ -5676,7 +5677,7 @@ final class BuilderElement extends AbstractElement {
         private CodeExecutableElement fixStableBciDeltasBeforeRewriteMethod;
 
         RootStackElement() {
-            super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "RootStackElement");
+            super(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, NAME);
 
             TypeMirror referenceType = generic(SoftReference.class, this.asType());
             TypeMirror deque = generic(type(ThreadLocal.class), referenceType);
@@ -5775,13 +5776,12 @@ final class BuilderElement extends AbstractElement {
                     this.fixStableBciDeltasBeforeRewriteMethod = createFixStableBciDeltasBeforeRewrite();
                     this.fixBuilderStateBeforeRewriteMethod = createFixBuilderStateBeforeRewrite();
                 }
-                for (int i = 0; i < model.instructionRewriterModel.rules.length; i++) {
-                    var rule = model.instructionRewriterModel.rules[i];
+                for (var rule : model.instructionRewriterModel.rules) {
                     if (rule.getRewriteKind() == RewriteKind.SECTIONED) {
-                        remapBciMethods.put(rule, createRemapBciMethod(rule, i));
+                        remapBciMethods.put(rule, createRemapBciMethod(rule));
                     }
                     DFAModel.DFAState acceptingState = model.instructionRewriterModel.dfa.getAcceptingState(rule);
-                    applyRewriteRuleMethods.put(rule, createApplyRewriteRule(rule, acceptingState, i));
+                    applyRewriteRuleMethods.put(rule, createApplyRewriteRule(rule, acceptingState));
                 }
             }
 
@@ -6700,11 +6700,11 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
-        private CodeExecutableElement createRemapBciMethod(InstructionRewriteRuleModel rewriteRule, int ruleIndex) {
+        private CodeExecutableElement createRemapBciMethod(InstructionRewriteRuleModel rewriteRule) {
             if (rewriteRule.getRewriteKind() != RewriteKind.SECTIONED) {
                 throw new AssertionError("Unsupported rewrite rule kind: " + rewriteRule.getRewriteKind());
             }
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "remapBciRule" + ruleIndex);
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "remapBciRule" + rewriteRule.getIndex());
             ex.addParameter(new CodeVariableElement(type(int.class), "startBci"));
             ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
             BytecodeRootNodeElement.addJavadoc(ex, List.of(
@@ -6758,8 +6758,8 @@ final class BuilderElement extends AbstractElement {
             return ex;
         }
 
-        private CodeExecutableElement createApplyRewriteRule(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState, int ruleIndex) {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "applyRewriteRule" + ruleIndex);
+        private CodeExecutableElement createApplyRewriteRule(InstructionRewriteRuleModel rewriteRule, DFAModel.DFAState acceptingState) {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "applyRewriteRule" + rewriteRule.getIndex());
             ex.addParameter(new CodeVariableElement(type(int.class), "oldInstructionBci"));
             CodeTreeBuilder doc = ex.createDocBuilder();
             doc.startJavadoc().string("Applies the following rewrite rule:").newLine();
