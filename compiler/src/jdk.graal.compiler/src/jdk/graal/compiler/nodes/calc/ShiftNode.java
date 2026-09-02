@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,11 +88,25 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
         return this;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Canonicalizes a shift whose operands are constants or where distributing the shift over a
+     * conditional allows at least one of its values to fold.
+     *
+     * <pre>{@code
+     * (condition ? 4 : value) << 1  ->  condition ? 8 : value << 1
+     * 8 << (condition ? 1 : value)  ->  condition ? 16 : 8 << value
+     * }</pre>
+     *
+     * @return the canonical value, or {@code null} when no canonicalization applies
+     */
     public static <OP> ValueNode canonical(ShiftOp<OP> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
             Constant amount = forY.asConstant();
             return ConstantNode.forPrimitive(stamp, op.foldConstant(forX.asConstant(), amount));
+        } else if (stamp instanceof IntegerStamp) {
+            return foldConditional(forX, forY, view,
+                            (x, y) -> ConstantNode.forPrimitive(stamp, op.foldConstant(x.asConstant(), y.asConstant())),
+                            (x, y) -> shiftOp(x, y, view, op));
         }
         return null;
     }

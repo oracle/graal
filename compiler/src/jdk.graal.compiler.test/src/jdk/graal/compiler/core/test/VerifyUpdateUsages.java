@@ -33,6 +33,7 @@ import jdk.graal.compiler.graph.Node.OptionalInput;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
@@ -58,6 +59,15 @@ public class VerifyUpdateUsages extends VerifyPhase<CoreProviders> {
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         if (graph.method().isConstructor()) {
+            return;
+        }
+        /*
+         * UnaryNode.duplicateWithValue copies an input edge into an unregistered node with
+         * copyWithInputs(false). Replacing that edge must be a raw field assignment: the node is
+         * not in a graph and therefore has no usage list to update.
+         */
+        if (graph.method().getName().equals("duplicateWithValue") &&
+                        graph.method().getDeclaringClass().equals(context.getMetaAccess().lookupJavaType(UnaryNode.class))) {
             return;
         }
         /*

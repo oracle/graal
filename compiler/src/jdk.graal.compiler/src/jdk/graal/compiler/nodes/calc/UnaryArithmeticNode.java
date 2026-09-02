@@ -38,8 +38,10 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.vm.ci.meta.Constant;
 
 @NodeInfo
 public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements ArithmeticOperation, ArithmeticLIRLowerable {
@@ -109,9 +111,20 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
-        ValueNode synonym = findSynonym(forValue, getOp(forValue));
+        UnaryOp<OP> op = getOp(forValue);
+        ValueNode synonym = findSynonym(forValue, op);
         if (synonym != null) {
             return synonym;
+        }
+        NodeView view = NodeView.from(tool);
+        if (!(this instanceof GuardedNode) && stamp(view) instanceof IntegerStamp) {
+            ValueNode folded = foldConditional(forValue, view, constantValue -> {
+                Constant result = op.foldConstant(constantValue.asConstant());
+                return result == null ? null : ConstantNode.forPrimitive(stamp(view), result);
+            });
+            if (folded != null) {
+                return folded;
+            }
         }
         return this;
     }
