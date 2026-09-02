@@ -282,7 +282,9 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     public abstract boolean isLoopHeader();
 
     /**
-     * Returns whether this block is part of a fast path that should avoid unnecessary spilling.
+     * Returns whether this block is considered part of a fast path. Register allocators may use
+     * this hint to avoid propagating spill decisions made on other control-flow paths into the
+     * block. The block may still require spills of its own.
      */
     public abstract boolean isFastPathBlock();
 

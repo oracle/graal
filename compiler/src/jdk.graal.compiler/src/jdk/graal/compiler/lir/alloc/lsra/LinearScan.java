@@ -32,6 +32,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
@@ -117,6 +118,10 @@ public class LinearScan {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
         public static final OptionKey<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionKey(LIRPhase.Options.LIROptimization, true);
+        @Option(help = "Maximum number of interval splits created to keep pressure spills off unrelated fast paths. Non-positive values disable this optimization.", type = OptionType.Debug)
+        public static final OptionKey<Integer> LIROptLSRAMaxFastPathRecoverySplits = new OptionKey<>(100);
+        @Option(help = "Maximum number of LIR blocks in a compilation eligible for fast-path spill recovery. Non-positive values disable this optimization.", type = OptionType.Debug)
+        public static final OptionKey<Integer> LIROptLSRAMaxBlocksForFastPathRecovery = new OptionKey<>(400);
         @Option(help = "Use binary search if interval is longer than this limit", type = OptionType.Debug)
         public static final OptionKey<Integer> IntervalBinarySearchLimit = new OptionKey<>(100);
         // @formatter:on
@@ -234,6 +239,7 @@ public class LinearScan {
      */
     protected final Interval intervalEndMarker;
     private final boolean detailedAsserts;
+    private final boolean hasFastPathBlocks;
     private final LIRGenerationResult res;
     public final int intervalBinarySearchLimit;
 
@@ -258,6 +264,18 @@ public class LinearScan {
         this.intervalEndMarker.next = intervalEndMarker;
         this.detailedAsserts = Assertions.detailedAssertionsEnabled(ir.getOptions());
         this.intervalBinarySearchLimit = Options.IntervalBinarySearchLimit.getValue(ir.getOptions());
+        boolean foundFastPathBlock = false;
+        for (int i = 0; i < blockCount(); i++) {
+            if (blockAt(i).isFastPathBlock()) {
+                foundFastPathBlock = true;
+                break;
+            }
+        }
+        this.hasFastPathBlocks = foundFastPathBlock;
+    }
+
+    boolean hasFastPathBlocks() {
+        return hasFastPathBlocks;
     }
 
     /**
@@ -537,6 +555,68 @@ public class LinearScan {
     public BasicBlock<?> blockForId(int opId) {
         assert opIdToBlockMap.length > 0 && opId >= 0 && opId <= maxOpId() + 1 : "opId out of range";
         return opIdToBlockMap[opIdToIndex(opId)];
+    }
+
+    /**
+     * Iterates over all blocks whose instruction range intersects a live range of {@code interval}.
+     * The interval need not be live throughout the entire block.
+     */
+    Iterable<BasicBlock<?>> blocksForInterval(Interval interval) {
+        return () -> new Iterator<>() {
+            private final Interval.RangeIterator range = new Interval.RangeIterator(interval);
+            private BasicBlock<?> block = blockForId(range.from());
+
+            @Override
+            public BasicBlock<?> next() {
+                BasicBlock<?> currentBlock = block;
+                int nextBlockIndex = block.getLinearScanNumber() + 1;
+                if (nextBlockIndex < blockCount()) {
+                    block = blockAt(nextBlockIndex);
+                    if (range.to() <= getFirstLirInstructionId(block)) {
+                        range.next();
+                        block = range.isAtEnd() ? null : blockForId(range.from());
+                    }
+                } else {
+                    block = null;
+                }
+                return currentBlock;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return block != null;
+            }
+        };
+    }
+
+    /**
+     * Returns whether {@code interval} is live at any position in a block carrying the fast-path
+     * hint. The interval need not be live throughout the entire block.
+     */
+    boolean intervalCoversFastPathBlock(Interval interval) {
+        if (!hasFastPathBlocks()) {
+            return false;
+        }
+        for (BasicBlock<?> block : blocksForInterval(interval)) {
+            if (block.isFastPathBlock()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Returns whether any interval in {@code interval}'s split family covers a fast-path block. */
+    boolean splitFamilyCoversFastPathBlock(Interval interval) {
+        Interval splitParent = interval.splitParent();
+        if (splitParent.getSplitChildren().isEmpty()) {
+            return intervalCoversFastPathBlock(splitParent);
+        }
+        for (Interval splitChild : splitParent.getSplitChildren()) {
+            if (intervalCoversFastPathBlock(splitChild)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     boolean isBlockBegin(int opId) {

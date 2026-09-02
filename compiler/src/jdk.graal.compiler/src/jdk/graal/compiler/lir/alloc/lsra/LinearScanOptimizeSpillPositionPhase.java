@@ -26,8 +26,6 @@ package jdk.graal.compiler.lir.alloc.lsra;
 
 import static jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph.commonDominator;
 
-import java.util.Iterator;
-
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
@@ -83,7 +81,12 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             return;
         }
         BasicBlock<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
-        if (defBlock.isFastPathBlock()) {
+        /*
+         * A spill location is shared by the split family. If any child covers a block carrying the
+         * fast-path hint, hoisting the spill store to a dominator could introduce memory traffic in
+         * that block.
+         */
+        if (allocator.splitFamilyCoversFastPathBlock(interval)) {
             // TODO (GR-69742): Generalize this optimization to handle generic cases based on split
             // block frequencies
             interval.setSpillState(SpillState.NoOptimization);
@@ -101,7 +104,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
                         assert firstSpillChild.from() < splitChild.from() : Assertions.errorMessage(firstSpillChild, splitChild);
                     }
                     // iterate all blocks where the interval has use positions
-                    for (BasicBlock<?> splitBlock : blocksForInterval(splitChild)) {
+                    for (BasicBlock<?> splitBlock : allocator.blocksForInterval(splitChild)) {
                         if (defBlock.dominates(splitBlock)) {
                             debug.log("Split interval %s, block %s", splitChild, splitBlock);
                             if (spillBlock == null) {
@@ -190,54 +193,6 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             betterSpillPosWithLowerProbability.increment(debug);
             interval.setSpillDefinitionPos(spillOpId);
         }
-    }
-
-    /**
-     * Iterate over all {@link BasicBlock blocks} of an interval.
-     */
-    private class IntervalBlockIterator implements Iterator<BasicBlock<?>> {
-
-        Interval.RangeIterator range;
-        BasicBlock<?> block;
-
-        IntervalBlockIterator(Interval interval) {
-            range = new Interval.RangeIterator(interval);
-            block = allocator.blockForId(range.from());
-        }
-
-        @Override
-        public BasicBlock<?> next() {
-            BasicBlock<?> currentBlock = block;
-            int nextBlockIndex = block.getLinearScanNumber() + 1;
-            if (nextBlockIndex < allocator.sortedBlocks().length) {
-                block = allocator.getLIR().getBlockById(allocator.sortedBlocks()[nextBlockIndex]);
-                if (range.to() <= allocator.getFirstLirInstructionId(block)) {
-                    range.next();
-                    if (range.isAtEnd()) {
-                        block = null;
-                    } else {
-                        block = allocator.blockForId(range.from());
-                    }
-                }
-            } else {
-                block = null;
-            }
-            return currentBlock;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return block != null;
-        }
-    }
-
-    private Iterable<BasicBlock<?>> blocksForInterval(Interval interval) {
-        return new Iterable<>() {
-            @Override
-            public Iterator<BasicBlock<?>> iterator() {
-                return new IntervalBlockIterator(interval);
-            }
-        };
     }
 
     private static BasicBlock<?> moveSpillOutOfLoop(BasicBlock<?> defBlock, BasicBlock<?> spillBlock) {
