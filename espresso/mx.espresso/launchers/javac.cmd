@@ -139,7 +139,7 @@ exit /b %errorlevel%
         if errorlevel 1 exit /b 1
     ) else (
         :: Use !original_arg! instead of !arg! to preserve surrounding quotes if present.
-        set "launcher_args=%launcher_args% !original_arg!"
+        set "javac_args=%javac_args% !original_arg!"
     )
     exit /b 0
 
