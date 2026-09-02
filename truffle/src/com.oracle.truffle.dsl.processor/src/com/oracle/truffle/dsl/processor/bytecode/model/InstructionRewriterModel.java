@@ -161,8 +161,8 @@ public final class InstructionRewriterModel {
     }
 
     public TreeMap<InstructionEncoding, List<InstructionModel>> getInstructionsByEncoding() {
-        return getInstructions().values().stream().collect(
-                        Collectors.groupingBy(InstructionModel::getInstructionEncoding, TreeMap::new, Collectors.toList()));
+        return getInstructions().values().stream().filter(i -> !i.isQuickening()) //
+                        .collect(Collectors.groupingBy(InstructionModel::getInstructionEncoding, TreeMap::new, Collectors.toList()));
     }
 
     public Comparator<InstructionModel> instructionComparator() {
