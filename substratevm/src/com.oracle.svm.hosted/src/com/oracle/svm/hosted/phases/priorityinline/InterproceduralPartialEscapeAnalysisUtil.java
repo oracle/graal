@@ -34,6 +34,7 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.phases.priorityinline.InterproceduralPartialEscapeAnalysisPhase.AnalysisResult;
@@ -106,8 +107,9 @@ public class InterproceduralPartialEscapeAnalysisUtil {
                 CallerContext currentCallerContext = analysisResult.callTreeNodeToCallerContext().get(callTreeNode);
 
                 Set<CallTreeNode> virtuallyInjectedCallTreeNodes = new HashSet<>();
+                EconomicMap<CallTreeNode, Double> materializationFrequencyCache = EconomicMap.create(Equivalence.IDENTITY);
 
-                double thisMatFrequencySum = subtreeMaterializationFrequency(callTreeNode, allocation, analysisResult, virtuallyInjectedCallTreeNodes, watchdog);
+                double thisMatFrequencySum = subtreeMaterializationFrequency(callTreeNode, allocation, analysisResult, virtuallyInjectedCallTreeNodes, watchdog, materializationFrequencyCache);
 
                 double parentMatFrequencySum = 0.0;
 
@@ -120,7 +122,8 @@ public class InterproceduralPartialEscapeAnalysisUtil {
                     VirtualInfo virtualInfo = currentCallerContext.getVirtualReturnObject(currentInvoke);
                     if (virtualInfo != null && virtualInfo.virtual != null && analysisResult.virtualObjectAllocationMap().get(virtualInfo.virtual) == allocation) {
                         virtuallyInjectedCallTreeNodes.add(callTreeNode);
-                        parentMatFrequencySum = subtreeMaterializationFrequency(callTreeNode.parent(), allocation, analysisResult, virtuallyInjectedCallTreeNodes, watchdog);
+                        parentMatFrequencySum = subtreeMaterializationFrequency(callTreeNode.parent(), allocation, analysisResult, virtuallyInjectedCallTreeNodes, watchdog,
+                                        materializationFrequencyCache);
                     }
                     /*
                      * Compute relative frequency under assumption every materialization in parent
@@ -150,15 +153,21 @@ public class InterproceduralPartialEscapeAnalysisUtil {
 
     /* TODO: can be optimized (GR-39609) */
     private static double subtreeMaterializationFrequency(CallTreeNode current, VirtualizableAllocation allocation, AnalysisResult analysisResults, Set<CallTreeNode> virtuallyInjectedCallTreeNodes,
-                    DeadlockWatchdog watchdog) {
+                    DeadlockWatchdog watchdog, EconomicMap<CallTreeNode, Double> materializationFrequencyCache) {
         watchdog.recordActivity();
+        Double cachedFrequency = materializationFrequencyCache.get(current);
+        if (cachedFrequency != null) {
+            return cachedFrequency;
+        }
         EconomicMap<VirtualizableAllocation, EconomicSet<Materialization>> callTreeNodeMats = analysisResults.materializations().get(current);
         double totalMatFrequency = 0.0;
         if (callTreeNodeMats == null) {
+            materializationFrequencyCache.put(current, 0.0D);
             return 0.0D; // No Materializations in this CallTreeNode.
         }
         EconomicSet<Materialization> materializations = callTreeNodeMats.get(allocation);
         if (materializations == null) {
+            materializationFrequencyCache.put(current, 0.0D);
             return 0.0D; // No Materializations in this CallTreeNode.
         }
         for (Materialization mat : materializations) {
@@ -172,7 +181,8 @@ public class InterproceduralPartialEscapeAnalysisUtil {
                      * Remark: Here we potentially over-approximate frequency of materializations in
                      * the case of passing the same allocation to multiple SubgraphNode Invokes.
                      */
-                    totalMatFrequency += mat.localFrequency * subtreeMaterializationFrequency(invokeCallTreeNode, allocation, analysisResults, virtuallyInjectedCallTreeNodes, watchdog);
+                    totalMatFrequency += mat.localFrequency * subtreeMaterializationFrequency(invokeCallTreeNode, allocation, analysisResults, virtuallyInjectedCallTreeNodes, watchdog,
+                                    materializationFrequencyCache);
                 } else if (invokeCallTreeNode instanceof CutoffNode) {
                     totalMatFrequency += mat.localFrequency * cutoffMaterializationFunction((CutoffNode) invokeCallTreeNode);
                 } else {
@@ -182,7 +192,9 @@ public class InterproceduralPartialEscapeAnalysisUtil {
                 totalMatFrequency += mat.localFrequency;
             }
         }
-        return Math.min(1.0D, totalMatFrequency);
+        double materializationFrequency = Math.min(1.0D, totalMatFrequency);
+        materializationFrequencyCache.put(current, materializationFrequency);
+        return materializationFrequency;
     }
 
     private static double cutoffMaterializationFunction(CutoffNode cutoffNode) {
