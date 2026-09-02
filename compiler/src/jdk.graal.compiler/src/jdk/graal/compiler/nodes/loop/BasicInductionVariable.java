@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes.loop;
 
 import java.util.Collection;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.UnsignedLong;
@@ -39,6 +40,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
@@ -175,7 +177,7 @@ public class BasicInductionVariable extends InductionVariable {
         }
         ValueNode effectiveTripCount = maxTripCount;
         if (!effectiveTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
-            effectiveTripCount = IntegerConvertNode.convert(effectiveTripCount, stamp, graph(), NodeView.DEFAULT);
+            effectiveTripCount = IntegerConvertNode.convertUnsigned(effectiveTripCount, stamp, graph(), NodeView.DEFAULT);
         }
         ValueNode tripCountMinus1 = MathUtil.sub(graph, effectiveTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph));
         ValueNode stripTimesTripCount = MathUtil.mul(graph, stride, tripCountMinus1);
@@ -184,7 +186,7 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
-    protected ValueNode collectLocalExtremumOverflowConditions(boolean assumeLoopEntered, Stamp stamp, ValueNode effectiveMaxTripCount, ValueNode baseExtremum,
+    protected ValueNode collectLocalEndpointOverflowConditions(boolean assumeLoopEntered, Stamp stamp, ValueNode effectiveMaxTripCount, ValueNode baseEndpoint,
                     Collection<LogicNode> conditions) {
         GraalError.guarantee(stamp instanceof IntegerStamp, "Expected integer stamp for %s but got %s", this, stamp);
         ValueNode stride = strideNode();
@@ -193,16 +195,29 @@ public class BasicInductionVariable extends InductionVariable {
             stride = IntegerConvertNode.convert(stride, stamp, graph(), NodeView.DEFAULT);
             initNode = IntegerConvertNode.convert(initNode, stamp, graph(), NodeView.DEFAULT);
         }
+        IntegerStamp maxTripCountStamp = (IntegerStamp) effectiveMaxTripCount.stamp(NodeView.DEFAULT);
+        int ivStampBits = ((IntegerStamp) stamp).getBits();
+        if (maxTripCountStamp.getBits() >= ivStampBits) {
+            /*
+             * The exact overflow checks use signed arithmetic, so the unsigned maxTripCount must
+             * not be above the (signed) maximum of the IV's native width.
+             */
+            ValueNode signedMax = ConstantNode.forIntegerStamp(maxTripCountStamp, NumUtil.maxValue(ivStampBits), graph());
+            LogicNode maxTripCountTooBig = IntegerBelowNode.create(signedMax, effectiveMaxTripCount, NodeView.DEFAULT);
+            if (!maxTripCountTooBig.isContradiction()) {
+                conditions.add(graph().addOrUniqueWithInputs(maxTripCountTooBig));
+            }
+        }
         ValueNode convertedMaxTripCount = effectiveMaxTripCount;
-        if (!convertedMaxTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
-            convertedMaxTripCount = IntegerConvertNode.convert(convertedMaxTripCount, stamp, graph(), NodeView.DEFAULT);
+        if (!maxTripCountStamp.isCompatible(stamp)) {
+            convertedMaxTripCount = IntegerConvertNode.convertUnsigned(convertedMaxTripCount, stamp, graph(), NodeView.DEFAULT);
         }
         ValueNode tripCountMinusOne = MathUtil.sub(graph(), convertedMaxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph()));
+        ValueNode strideTimesTripCount = MathUtil.mul(graph(), stride, tripCountMinusOne);
         LogicNode mulOverflow = IntegerMulExactOverflowNode.create(stride, tripCountMinusOne);
         if (!mulOverflow.isContradiction()) {
             conditions.add(graph().addOrUniqueWithInputs(mulOverflow));
         }
-        ValueNode strideTimesTripCount = MathUtil.mul(graph(), stride, tripCountMinusOne);
         LogicNode addOverflow = IntegerAddExactOverflowNode.create(strideTimesTripCount, initNode);
         if (!addOverflow.isContradiction()) {
             conditions.add(graph().addOrUniqueWithInputs(addOverflow));
@@ -218,7 +233,7 @@ public class BasicInductionVariable extends InductionVariable {
         }
         ValueNode maxTripCount = loop.counted().maxTripCountNode();
         if (!maxTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph(), NodeView.DEFAULT);
+            maxTripCount = IntegerConvertNode.convertUnsigned(maxTripCount, stamp, graph(), NodeView.DEFAULT);
         }
         return MathUtil.add(graph(), MathUtil.mul(graph(), strideNode(), maxTripCount), initNode());
     }
