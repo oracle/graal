@@ -48,7 +48,6 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
-import com.oracle.svm.core.deopt.DeoptimizedFrame.DeoptTargetTier;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.PreparedSignature;
@@ -58,7 +57,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
@@ -67,12 +65,6 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.hosted.SubstrateBytecodeHandlerStub;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
-import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
-import com.oracle.svm.interpreter.ristretto.compile.RistrettoDeoptimizationSupport;
-import com.oracle.svm.interpreter.ristretto.compile.RistrettoDeoptimizedInterpreterFrame;
-import com.oracle.svm.interpreter.ristretto.compile.RistrettoInstalledCode;
-import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
-import com.oracle.svm.interpreter.ristretto.profile.RistrettoDiagnostics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -322,89 +314,18 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         if (!SubstrateOptions.useRistretto()) {
             throw VMError.shouldNotReachHere("Interpreter deoptimization requires Ristretto.");
         }
-        if (!(installedCode instanceof RistrettoInstalledCode rCode)) {
-            throw VMError.shouldNotReachHere("Must have RistrettoInstalledCode.");
-        }
-        VMError.guarantee(rCode.getMethod() instanceof RistrettoMethod, "Ristretto installed code must carry a RistrettoMethod");
-        if (((RistrettoMethod) rCode.getMethod()).getDeoptTargetTier() != DeoptTargetTier.Interpreter) {
-            throw VMError.shouldNotReachHere("Must deopt to interpreter.");
-        }
-        /*
-         * Keep the deopt-only path behind a foldable branch so no-deopt images do not parse the
-         * hosted-only Ristretto deoptimization support singleton.
-         */
-        if (RistrettoOptions.useDeoptimization()) {
-            RistrettoDiagnostics.DeoptimizationsTaken.getAndIncrement();
-            return RistrettoDeoptimizationSupport.createDeoptimizedFrame(deoptimizer, pc, frameInfo, physicalFrame, eager);
-        }
-        throw VMError.shouldNotReachHere("Interpreter deoptimization requires deopt support");
+        return RistrettoInterpreterSupport.singleton().createInterpreterDeoptimizedFrame(installedCode, deoptimizer, pc, frameInfo, physicalFrame, eager);
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInterpreterDeoptReturnValueObject(FrameInfoQueryResult frameInfo) {
-        /*
-         * BeforePop still describes the state before an invoke consumes its arguments, and Rethrow
-         * describes an exceptional edge; neither has a completed normal result in the return
-         * register. Only AfterPop can describe the gap between a callee return and storing that
-         * result into the reconstructed interpreter operand stack. The remaining checks keep this
-         * Ristretto-specific interpretation away from AOT, non-deoptimizing, synthetic, and
-         * bytecode-less frames, whose ABI return register contents must not be treated as object
-         * roots.
-         */
-        if (!SubstrateOptions.useRistretto() || !RistrettoOptions.useDeoptimization()) {
+        if (!SubstrateOptions.useRistretto()) {
             return false;
         }
-        /*
-         * The caller invokes this hook only after proving that the instruction pointer belongs to
-         * installed code with an interpreter deoptimization target. Missing decoded frame info is
-         * therefore corruption, not evidence for a primitive result. A false answer would be an
-         * unsafe default because it leaves a possible object return in an untracked machine word.
-         */
-        VMError.guarantee(frameInfo != null, "Installed Ristretto code must have decoded frame metadata");
-        if (!frameInfo.isAfterPop()) {
-            return false;
-        }
-        /*
-         * RuntimeFrameInfoCustomization always stores the SharedMethod for a frame whose method
-         * has an interpreter counterpart. That is stronger than FrameInfoQueryResult's general
-         * contract: AOT frame-info clients may legitimately observe a null deoptMethod, but an
-         * installed Ristretto frame selected by hasInstalledCodeInterpreterDeoptTarget() may not.
-         *
-         * Do not silently turn a violated encoding invariant into the primitive-return choice.
-         * At this point such a choice would hide an object from GC while the lazy-deopt stub is
-         * constructing the interpreter frame. Failing before the return address is patched is the
-         * only memory-safe response to malformed runtime frame metadata.
-         */
-        SharedMethod deoptMethod = frameInfo.getDeoptMethod();
-        VMError.guarantee(deoptMethod instanceof RistrettoMethod,
-                        "An installed Ristretto AfterPop frame must retain its deoptimization method");
-        RistrettoMethod rMethod = (RistrettoMethod) deoptMethod;
-        /*
-         * Ristretto derives the symbolic layout of every invoke from the stable compiler-visible
-         * bytecodes when the method is created. Reading that immutable metadata gives the exact
-         * call-site return kind without depending on compiler lookup, intrinsic selection, resolution,
-         * loading, allocation, or dependence on the interpreter's opportunistic linkage cache.
-         * The lookup deliberately fails if this AfterPop BCI is not an invoke: unknown metadata is
-         * never classified as primitive because that would be unsafe for a pending object result.
-         */
-        return RistrettoDeoptimizationSupport.computeDeoptInvokeReturnKind(rMethod, frameInfo.getBci()) == JavaKind.Object;
+        return RistrettoInterpreterSupport.singleton().isInterpreterDeoptReturnValueObject(frameInfo);
     }
 
-    /**
-     * Bridges the generic deoptimization stub ABI into the Ristretto-specific interpreter handoff.
-     *
-     * <p>
-     * When this hook runs, the raw GP/FP return registers still carry the compiled top-frame
-     * result, or the pending exception object if the deopt was taken on an exceptional edge. The
-     * Ristretto frame must snapshot that state before the stub tears down the compiled frame and
-     * tail-jumps into the typed interpreter entry point.
-     *
-     * <p>
-     * {@code gpReturnValueObject} is a best-effort decoded object value. It can be null even when the
-     * raw GP return value denotes an object, so the Ristretto frame keeps the raw register value as
-     * the fallback source of truth.
-     */
     @Override
     @Uninterruptible(reason = "Invoked from deoptimization stubs while transitioning to interpreter execution.")
     public UnsignedWord continueInterpreterDeoptimization(DeoptimizedFrame frame, Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue,
@@ -412,8 +333,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         if (!SubstrateOptions.useRistretto()) {
             throw VMError.shouldNotReachHere("Interpreter deoptimization requires Ristretto.");
         }
-        VMError.guarantee(frame instanceof RistrettoDeoptimizedInterpreterFrame, "Unexpected interpreter deoptimized frame implementation");
-        return ((RistrettoDeoptimizedInterpreterFrame) frame).continueInterpreterDeoptimization(originalStackPointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
+        return RistrettoInterpreterSupport.singleton().continueInterpreterDeoptimization(frame, originalStackPointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
     }
 
     @Override
@@ -721,20 +641,10 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
     @Override
     public FrameSourceInfo getSyntheticMethodFrameInfo(FrameInfoQueryResult frameInfo) {
-        if (!SubstrateOptions.useRistretto() || frameInfo.getSourceClass() != null) {
+        if (!SubstrateOptions.useRistretto()) {
             return null;
         }
-        if (!(frameInfo.getDeoptMethod() instanceof RistrettoMethod rMethod)) {
-            return null;
-        }
-
-        /*
-         * This happens for runtime-compiled Ristretto frames whose encoded frame metadata preserves
-         * the method object but does not carry the normal source-class/source-method fields.
-         */
-        InterpreterResolvedJavaMethod interpretedMethod = rMethod.getInterpreterMethod();
-        int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden(), interpretedMethod.isLambdaFormCompiled());
-        return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, frameInfo.getBci(), flags);
+        return RistrettoInterpreterSupport.singleton().getSyntheticMethodFrameInfo(frameInfo);
     }
 
     @Override
