@@ -124,13 +124,12 @@ public class InstructionRewriterElement extends CodeTypeElement {
         field.createInitBuilder().string(state.id);
 
         CodeTreeBuilder docBuilder = field.createDocBuilder().startJavadoc();
-        docBuilder.string("Transitions:").newLine();
-        if (state.transitions.isEmpty()) {
-            docBuilder.string("  none").newLine();
-        }
-        List<InstructionModel> orderedTransitions = state.transitions.keySet().stream().map(model::getInstruction).sorted(model.instructionComparator()).toList();
-        for (InstructionModel instruction : orderedTransitions) {
-            docBuilder.string("  ").string(instruction.getName()).string(" -> {@link #").string(fieldName(state.transitions.get(instruction.getName()))).string("}").newLine();
+        if (!state.transitions.isEmpty()) {
+            docBuilder.string("Transitions:").newLine();
+            List<InstructionModel> orderedTransitions = state.transitions.keySet().stream().map(model::getInstruction).sorted(model.instructionComparator()).toList();
+            for (InstructionModel instruction : orderedTransitions) {
+                docBuilder.string("  ").string(instruction.getName()).string(" -> {@link #").string(fieldName(state.transitions.get(instruction.getName()))).string("}").newLine();
+            }
         }
         if (EMIT_VERBOSE_JAVADOC) {
             docBuilder.string("Rewrite rule state:").newLine();
