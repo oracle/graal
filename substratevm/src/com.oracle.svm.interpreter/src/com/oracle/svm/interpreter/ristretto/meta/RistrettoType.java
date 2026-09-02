@@ -114,10 +114,22 @@ public final class RistrettoType extends SubstrateType {
         return super.resolveConcreteMethod(method, callerType);
     }
 
+    /**
+     * Normalizes {@code otherType} so the inherited hierarchy walk uses only Ristretto types.
+     */
+    @Override
+    public ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
+        return super.findLeastCommonAncestor(normalizeJVMCIType(otherType));
+    }
+
+    /**
+     * Normalizes {@code other} so base type hierarchy walks can test it against Ristretto metadata.
+     */
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        assert other instanceof RistrettoType : Assertions.errorMessage("Must already be wrapped", this, other);
-        RistrettoType rTypeOther = (RistrettoType) other;
+        ResolvedJavaType normalizedOther = normalizeJVMCIType(other);
+        assert normalizedOther instanceof RistrettoType : Assertions.errorMessage("Must be convertible to Ristretto metadata", this, other);
+        RistrettoType rTypeOther = (RistrettoType) normalizedOther;
         return this.interpreterType.isAssignableFrom(rTypeOther.interpreterType);
     }
 
