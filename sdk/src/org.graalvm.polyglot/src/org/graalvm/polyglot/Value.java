@@ -49,6 +49,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.zone.ZoneRules;
@@ -1722,8 +1724,11 @@ public final class Value extends AbstractValue {
      * date} and {@link #isTime() time}.</li>
      * <li><code>{@link Instant}.class</code> is supported if the value is an {@link #isInstant()
      * instant}.</li>
-     * <li><code>{@link ZonedDateTime}.class</code> is supported if the value is a {@link #isDate()
-     * date}, {@link #isTime() time} and {@link #isTimeZone() timezone}.</li>
+     * <li><code>{@link ZonedDateTime}.class</code> and <code>{@link OffsetDateTime}.class</code> are
+     * supported if the value is a {@link #isDate() date}, {@link #isTime() time} and
+     * {@link #isTimeZone() timezone}.</li>
+     * <li><code>{@link OffsetTime}.class</code> is supported if the value is a {@link #isTime()
+     * time} and {@link #isTimeZone() timezone}.</li>
      * <li><code>{@link ZoneId}.class</code> is supported if the value is a {@link #isTimeZone()
      * timezone}.</li>
      * <li><code>{@link Duration}.class</code> is supported if the value is a {@link #isDuration()

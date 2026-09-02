@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,6 +82,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -390,6 +392,7 @@ public class ValueAssert {
                         assertNull(value.as(LocalDateTime.class));
                         assertNull(value.as(LocalDate.class));
                         assertNull(value.as(ZonedDateTime.class));
+                        assertNull(value.as(OffsetDateTime.class));
                         assertNull(value.as(Date.class));
                     } else {
                         assertFails(() -> value.asDate(), ClassCastException.class);
@@ -397,6 +400,7 @@ public class ValueAssert {
                         assertFails(() -> value.as(LocalDateTime.class), ClassCastException.class);
                         assertFails(() -> value.as(LocalDate.class), ClassCastException.class);
                         assertFails(() -> value.as(ZonedDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(OffsetDateTime.class), ClassCastException.class);
                         assertFails(() -> value.as(Date.class), ClassCastException.class);
                     }
                     break;
@@ -409,6 +413,8 @@ public class ValueAssert {
                         assertNull(value.as(LocalDateTime.class));
                         assertNull(value.as(LocalTime.class));
                         assertNull(value.as(ZonedDateTime.class));
+                        assertNull(value.as(OffsetDateTime.class));
+                        assertNull(value.as(OffsetTime.class));
                         assertNull(value.as(Date.class));
                     } else {
                         assertFails(() -> value.asTime(), ClassCastException.class);
@@ -416,6 +422,8 @@ public class ValueAssert {
                         assertFails(() -> value.as(LocalDateTime.class), ClassCastException.class);
                         assertFails(() -> value.as(LocalTime.class), ClassCastException.class);
                         assertFails(() -> value.as(ZonedDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(OffsetDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(OffsetTime.class), ClassCastException.class);
                         assertFails(() -> value.as(Date.class), ClassCastException.class);
                     }
                     break;
@@ -428,6 +436,8 @@ public class ValueAssert {
                         assertNull(value.as(ZoneId.class));
                         assertNull(value.as(ZoneOffset.class));
                         assertNull(value.as(ZonedDateTime.class));
+                        assertNull(value.as(OffsetDateTime.class));
+                        assertNull(value.as(OffsetTime.class));
                         assertNull(value.as(Date.class));
                     } else {
                         assertFails(() -> value.asTimeZone(), ClassCastException.class);
@@ -435,6 +445,8 @@ public class ValueAssert {
                         assertFails(() -> value.as(ZoneId.class), ClassCastException.class);
                         assertFails(() -> value.as(ZoneOffset.class), ClassCastException.class);
                         assertFails(() -> value.as(ZonedDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(OffsetDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(OffsetTime.class), ClassCastException.class);
                         assertFails(() -> value.as(Date.class), ClassCastException.class);
                     }
                     break;
@@ -680,6 +692,8 @@ public class ValueAssert {
                         if (value.isTimeZone()) {
                             assertNotNull(value.asInstant());
                             assertEquals(value.as(ZonedDateTime.class).toLocalDate(), value.as(LocalDate.class));
+                            assertEquals(value.as(OffsetDateTime.class).toLocalDate(), value.as(LocalDate.class));
+                            assertNotNull(value.as(OffsetTime.class));
                             assertNotNull(value.as(Instant.class));
                             assertNotNull(value.as(Date.class));
                         }
@@ -692,12 +706,9 @@ public class ValueAssert {
 
                     if (value.isDate()) {
                         // asserted by DATE trait
-                    } else {
-                        if (value.isTimeZone()) {
-                            // invalid combination
-                            assertFails(() -> value.asTime(), AssertionError.class);
-                            assertFails(() -> value.asTimeZone(), AssertionError.class);
-                        }
+                    } else if (value.isTimeZone()) {
+                        assertTrue(value.asTimeZone().getRules().isFixedOffset());
+                        assertEquals(value.asTime(), value.as(OffsetTime.class).toLocalTime());
                     }
                     break;
                 case TIMEZONE:

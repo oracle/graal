@@ -52,6 +52,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -2667,7 +2669,8 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isDate() {
-        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof java.sql.Date || isInstantDate(obj);
+        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof OffsetDateTime || obj instanceof java.sql.Date ||
+                        isInstantDate(obj);
     }
 
     @ExportMessage
@@ -2681,6 +2684,8 @@ final class HostObject implements TruffleObject {
             return ((Instant) obj).atZone(UTC).toLocalDate();
         } else if (obj instanceof ZonedDateTime) {
             return ((ZonedDateTime) obj).toLocalDate();
+        } else if (obj instanceof OffsetDateTime) {
+            return ((OffsetDateTime) obj).toLocalDate();
         } else if (obj instanceof java.sql.Date) {
             return ((java.sql.Date) obj).toLocalDate();
         } else if (isInstantDate(obj)) {
@@ -2691,7 +2696,8 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isTime() {
-        return obj instanceof LocalTime || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof java.sql.Time || isInstantDate(obj);
+        return obj instanceof LocalTime || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof OffsetDateTime || obj instanceof OffsetTime ||
+                        obj instanceof java.sql.Time || isInstantDate(obj);
     }
 
     @ExportMessage
@@ -2703,6 +2709,10 @@ final class HostObject implements TruffleObject {
             return ((LocalDateTime) obj).toLocalTime();
         } else if (obj instanceof ZonedDateTime) {
             return ((ZonedDateTime) obj).toLocalTime();
+        } else if (obj instanceof OffsetDateTime) {
+            return ((OffsetDateTime) obj).toLocalTime();
+        } else if (obj instanceof OffsetTime) {
+            return ((OffsetTime) obj).toLocalTime();
         } else if (obj instanceof Instant) {
             return ((Instant) obj).atZone(UTC).toLocalTime();
         } else if (obj instanceof java.sql.Time) {
@@ -2724,7 +2734,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isTimeZone() {
-        return obj instanceof ZoneId || obj instanceof Instant || obj instanceof ZonedDateTime || isInstantDate(obj);
+        return obj instanceof ZoneId || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof OffsetDateTime || obj instanceof OffsetTime || isInstantDate(obj);
     }
 
     @ExportMessage
@@ -2733,6 +2743,10 @@ final class HostObject implements TruffleObject {
             return (ZoneId) obj;
         } else if (obj instanceof ZonedDateTime) {
             return ((ZonedDateTime) obj).getZone();
+        } else if (obj instanceof OffsetDateTime) {
+            return ((OffsetDateTime) obj).getOffset();
+        } else if (obj instanceof OffsetTime) {
+            return ((OffsetTime) obj).getOffset();
         } else if (obj instanceof Instant) {
             return UTC;
         } else if (isInstantDate(obj)) {
@@ -2746,6 +2760,8 @@ final class HostObject implements TruffleObject {
     Instant asInstant() throws UnsupportedMessageException {
         if (obj instanceof ZonedDateTime) {
             return ((ZonedDateTime) obj).toInstant();
+        } else if (obj instanceof OffsetDateTime) {
+            return ((OffsetDateTime) obj).toInstant();
         } else if (obj instanceof Instant) {
             return (Instant) obj;
         } else if (isInstantDate(obj)) {

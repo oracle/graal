@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collection;
@@ -298,8 +300,10 @@ abstract class HostToTypeNode extends Node {
             return interop.isTime(value);
         } else if (targetType == LocalDateTime.class) {
             return interop.isDate(value) && interop.isTime(value);
-        } else if (targetType == ZonedDateTime.class || targetType == Date.class || targetType == Instant.class) {
+        } else if (targetType == ZonedDateTime.class || targetType == OffsetDateTime.class || targetType == Date.class || targetType == Instant.class) {
             return interop.isInstant(value);
+        } else if (targetType == OffsetTime.class) {
+            return interop.isTime(value) && interop.isTimeZone(value);
         } else if (targetType == ZoneId.class) {
             return interop.isTimeZone(value);
         } else if (targetType == Duration.class) {
@@ -548,7 +552,7 @@ abstract class HostToTypeNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have date and time information.");
             }
-        } else if (targetType == ZonedDateTime.class) {
+        } else if (targetType == ZonedDateTime.class || targetType == OffsetDateTime.class) {
             if (interop.isDate(value) && interop.isTime(value) && interop.isTimeZone(value)) {
                 LocalDate date;
                 LocalTime time;
@@ -560,9 +564,28 @@ abstract class HostToTypeNode extends Node {
                 } catch (UnsupportedMessageException e) {
                     throw shouldNotReachHere(e);
                 }
-                obj = createZonedDateTime(date, time, timeZone);
+                ZonedDateTime zonedDateTime = createZonedDateTime(date, time, timeZone);
+                obj = targetType == OffsetDateTime.class ? zonedDateTime.toOffsetDateTime() : zonedDateTime;
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have date, time and time-zone information.");
+            }
+        } else if (targetType == OffsetTime.class) {
+            if (interop.isTime(value) && interop.isTimeZone(value)) {
+                LocalTime time;
+                ZoneId timeZone;
+                try {
+                    time = interop.asTime(value);
+                    timeZone = interop.asTimeZone(value);
+                    if (interop.isDate(value)) {
+                        obj = createZonedDateTime(interop.asDate(value), time, timeZone).toOffsetDateTime().toOffsetTime();
+                    } else {
+                        obj = createOffsetTime(time, timeZone);
+                    }
+                } catch (UnsupportedMessageException e) {
+                    throw shouldNotReachHere(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have time and time-zone information.");
             }
         } else if (targetType == ZoneId.class) {
             if (interop.isTimeZone(value)) {
@@ -694,6 +717,12 @@ abstract class HostToTypeNode extends Node {
     @TruffleBoundary
     private static LocalDateTime createDateTime(LocalDate date, LocalTime time) {
         return LocalDateTime.of(date, time);
+    }
+
+    @TruffleBoundary
+    private static OffsetTime createOffsetTime(LocalTime time, ZoneId timeZone) {
+        assert timeZone.getRules().isFixedOffset();
+        return OffsetTime.of(time, timeZone.getRules().getOffset(Instant.EPOCH));
     }
 
     private static boolean shouldImplementFunction(Object truffleObject, InteropLibrary interop) {
