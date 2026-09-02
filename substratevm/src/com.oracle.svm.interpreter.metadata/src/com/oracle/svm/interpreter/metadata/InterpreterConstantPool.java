@@ -37,7 +37,6 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -51,6 +50,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterAnalysis;
 import com.oracle.svm.shared.NeverInline;
@@ -365,7 +365,6 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     protected Object resolve(int cpi, @SuppressWarnings("unused") InterpreterResolvedObjectType accessingClass) {
-        assert Thread.holdsLock(this);
         assert cpi != 0; // guaranteed by the caller
 
         @SuppressWarnings("unused")
@@ -393,17 +392,15 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     @NeverInline("Interpreter handler slow path")
-    private synchronized Object forceResolveAt(int cpi, InterpreterResolvedObjectType accessingClass) {
-        // TODO(peterssen): GR-68611 Avoid deadlocks when hitting breakpoints (JDWP debugger)
-        // during class resolution.
-        /*
-         * Class resolution can run arbitrary code (not in the to-be resolved class <clinit>
-         * but) in the user class loaders where it can hit a breakpoint (JDWP debugger), causing
-         * a deadlock.
-         */
+    private Object forceResolveAt(int cpi, InterpreterResolvedObjectType accessingClass) {
         Object entry = cachedEntries[cpi];
         if (isUnresolved(entry)) {
-            cachedEntries[cpi] = entry = resolve(cpi, accessingClass);
+            Object resolved = resolve(cpi, accessingClass);
+            Object witness = UNSAFE.compareAndExchangeReference(cachedEntries, objectArrayOffset(cpi), entry, resolved);
+            if (witness != entry) {
+                return witness;
+            }
+            return resolved;
         }
         return entry;
     }
@@ -524,7 +521,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         }
     }
 
-    private static final class LinkedInvokeCacheEntry {
+    protected static final class LinkedInvokeCacheEntry {
         final InterpreterResolvedJavaMethod resolvedMethod;
         /*
          * A classfile can reuse the same CONSTANT_Methodref for different invoke bytecodes. For

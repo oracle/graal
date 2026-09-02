@@ -214,6 +214,12 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             // CP comes from build-time JVMCI type, derive type from UnresolvedJavaType.
             type = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaType.getName());
             allowArbitraryClassLoading = false;
+        } else if (entry instanceof InterpreterResolvedJavaType resolved) {
+            // concurrent resolution
+            return resolved;
+        } else if (entry instanceof StickyConstantError resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved type, but got " + entry);
         }
@@ -247,7 +253,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             fieldName = this.fieldName(fieldIndex);
             fieldType = this.fieldType(fieldIndex);
             int memberClassIndex = this.memberClassIndex(fieldIndex);
-            holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
+            holder = resolvedTypeAt(accessingClass, memberClassIndex);
         } else if (entry instanceof UnresolvedJavaField unresolvedJavaField) {
             Throwable cause = unresolvedJavaField.getCause();
             if (cause != null) {
@@ -260,6 +266,9 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             assert !TypeSymbols.isPrimitive(holderType) && !TypeSymbols.isArray(holderType);
             // Perf. note: The holder is re-resolved every-time (never cached).
             holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
+        } else if (entry instanceof InterpreterResolvedJavaField resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved field, but got " + entry);
         }
@@ -268,7 +277,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return result;
     }
 
-    private InterpreterResolvedJavaMethod resolveClassMethodRefConstant(int methodIndex, InterpreterResolvedObjectType accessingClass) {
+    private Object resolveClassMethodRefConstant(int methodIndex, InterpreterResolvedObjectType accessingClass) {
         assert accessingClass != null;
         assert tagAt(methodIndex) == Tag.METHOD_REF;
 
@@ -283,7 +292,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodName = this.methodName(methodIndex);
             methodSignature = this.methodSignature(methodIndex);
             int memberClassIndex = this.memberClassIndex(methodIndex);
-            holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
+            holder = resolvedTypeAt(accessingClass, memberClassIndex);
         } else if (entry instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
             Throwable cause = unresolvedJavaMethod.getCause();
             if (cause != null) {
@@ -295,6 +304,12 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
             holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
+        } else if (entry instanceof InterpreterResolvedJavaMethod resolved) {
+            // concurrent resolution
+            return resolved;
+        } else if (entry instanceof LinkedInvokeCacheEntry resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
@@ -309,7 +324,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return classMethod;
     }
 
-    private InterpreterResolvedJavaMethod resolveInterfaceMethodRefConstant(int interfaceMethodIndex, InterpreterResolvedObjectType accessingClass) {
+    private Object resolveInterfaceMethodRefConstant(int interfaceMethodIndex, InterpreterResolvedObjectType accessingClass) {
         assert tagAt(interfaceMethodIndex) == Tag.INTERFACE_METHOD_REF;
 
         Object entry = this.cachedEntries[interfaceMethodIndex];
@@ -323,7 +338,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodName = this.methodName(interfaceMethodIndex);
             methodSignature = this.methodSignature(interfaceMethodIndex);
             int memberClassIndex = this.memberClassIndex(interfaceMethodIndex);
-            holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
+            holder = resolvedTypeAt(accessingClass, memberClassIndex);
         } else if (entry instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
             Throwable cause = unresolvedJavaMethod.getCause();
             if (cause != null) {
@@ -335,6 +350,12 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
             holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
+        } else if (entry instanceof InterpreterResolvedJavaMethod resolved) {
+            // concurrent resolution
+            return resolved;
+        } else if (entry instanceof LinkedInvokeCacheEntry resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
