@@ -74,6 +74,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public class InstructionRewriterElement extends CodeTypeElement {
+    // For debugging only. Emitting verbose Javadoc can drastically increase file size.
+    private static final boolean EMIT_VERBOSE_JAVADOC = false;
+
     public final ProcessorContext context;
     public final InstructionRewriterModel model;
     private final Function<InstructionModel, CodeVariableElement> instructionConstantSupplier;
@@ -120,10 +123,6 @@ public class InstructionRewriterElement extends CodeTypeElement {
         field.createInitBuilder().string(state.id);
 
         CodeTreeBuilder docBuilder = field.createDocBuilder().startJavadoc();
-        docBuilder.string("Rewrite rule state:").newLine();
-        for (RewriteRuleState ruleState : state.getRewriteStates().stream().sorted().toList()) {
-            docBuilder.string("  ").string(ruleState.toString()).newLine();
-        }
         docBuilder.string("Transitions:").newLine();
         if (state.transitions.isEmpty()) {
             docBuilder.string("  none").newLine();
@@ -132,7 +131,16 @@ public class InstructionRewriterElement extends CodeTypeElement {
         for (InstructionModel instruction : orderedTransitions) {
             docBuilder.string("  ").string(instruction.getName()).string(" -> ").string(fieldName(state.transitions.get(instruction.getName()))).newLine();
         }
-
+        if (EMIT_VERBOSE_JAVADOC) {
+            docBuilder.string("Rewrite rule state:").newLine();
+            for (RewriteRuleState ruleState : state.getRewriteStates().stream().sorted().toList()) {
+                docBuilder.string("  ").string(ruleState.toString()).newLine();
+            }
+        }
+        if (state.isAccepting()) {
+            docBuilder.string("Accepting rule:").newLine();
+            docBuilder.string("  ").string(state.getAcceptingRule().toString()).newLine();
+        }
         docBuilder.end();
         stateConstants.put(state, add(field));
         return field;
@@ -157,11 +165,13 @@ public class InstructionRewriterElement extends CodeTypeElement {
 
         CodeTreeBuilder docBuilder = ex.createDocBuilder().startJavadoc();
         docBuilder.string("Instructions: ").string(instructionsString(instructions)).newLine();
-        docBuilder.string("Rewrite rules: ").newLine();
-        for (RewriteRuleState rewriteState : allRewriteStates) {
-            docBuilder.string("  ").string(rewriteState.toString()).newLine();
+        if (EMIT_VERBOSE_JAVADOC) {
+            docBuilder.string("Rewrite rules: ").newLine();
+            for (RewriteRuleState rewriteState : allRewriteStates) {
+                docBuilder.string("  ").string(rewriteState.toString()).newLine();
+            }
+            docBuilder.end();
         }
-        docBuilder.end();
 
         CodeTreeBuilder p = ex.createBuilder();
 
