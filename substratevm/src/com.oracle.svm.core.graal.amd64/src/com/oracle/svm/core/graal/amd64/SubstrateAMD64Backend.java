@@ -37,6 +37,7 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -155,6 +156,7 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.StandardOp.BlockEndOp;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
+import jdk.graal.compiler.lir.ValueConsumer;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64BreakpointOp;
@@ -1378,7 +1380,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
 
             makeFrame(crb, asm);
-            crb.recordMark(PROLOGUE_DECD_RSP);
+            if (shouldReserveStackFrame(method, crb.frameMap, crb.getLIR())) {
+                crb.recordMark(PROLOGUE_DECD_RSP);
+            }
 
             maybeSetFramePointer(crb, asm);
 
@@ -1405,7 +1409,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         protected final void reserveStackFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
             maybePushBasePointer(crb, asm);
-            asm.decrementq(rsp, crb.frameMap.frameSize());
+            if (shouldReserveStackFrame(method, crb.frameMap, crb.getLIR())) {
+                asm.decrementq(rsp, crb.frameMap.frameSize());
+            }
         }
 
         protected void maybePushBasePointer(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
@@ -1463,10 +1469,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             if (frameMap.needsFramePointer()) {
                 int framePointerOffset = frameMap.preserveFramePointer() ? frameMap.getFramePointerSaveAreaOffset() : 0;
                 asm.leaq(rsp, asm.makeAddress(rbp, frameMap.frameSize() - framePointerOffset));
-            } else {
+                crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
+            } else if (shouldReserveStackFrame(method, frameMap, crb.getLIR())) {
                 asm.incrementq(rsp, frameMap.frameSize());
+                crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
             }
-            crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
 
             if (frameMap.preserveFramePointer() || isCalleeSaved(rbp, frameMap.getRegisterConfig(), method)) {
                 asm.pop(rbp);
@@ -1831,6 +1838,54 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
     }
 
     /**
+     * Bytecode handlers are tail-dispatched like interpreter codelets. A handler that does not use
+     * the stack and cannot call does not need the alignment-only frame reservation that ordinary
+     * AMD64 methods use to align the stack at call sites.
+     */
+    private static boolean shouldReserveStackFrame(SharedMethod method, FrameMap frameMap, LIR lir) {
+        SubstrateAMD64FrameMap substrateFrameMap = (SubstrateAMD64FrameMap) frameMap;
+        if (!SubstrateUtil.HOSTED || !InterpreterSupport.isEnabled() || !InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method)) {
+            return true;
+        }
+        if (substrateFrameMap.preserveFramePointer() || substrateFrameMap.needsFramePointer() || method.hasCalleeSavedRegisters()) {
+            return true;
+        }
+        /* Explicit handler safepoints have a slow-path call in the final LIR. */
+        return frameMap.frameNeedsAllocating() || lirRequiresStackFrame(lir);
+    }
+
+    private static boolean lirRequiresStackFrame(LIR lir) {
+        class StackSlotFinder implements ValueConsumer {
+            private boolean found;
+
+            @Override
+            public void visitValue(Value value, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
+                found |= isStackSlot(value);
+            }
+
+            boolean found() {
+                return found;
+            }
+        }
+        StackSlotFinder stackSlotFinder = new StackSlotFinder();
+        for (int blockId : lir.getBlocks()) {
+            if (!LIR.isBlockDeleted(blockId)) {
+                for (LIRInstruction op : lir.getLIRforBlock(lir.getBlockById(blockId))) {
+                    if (op instanceof AMD64Call.CallOp || op.modifiesStackPointer()) {
+                        return true;
+                    }
+                    op.visitEachValueForward(stackSlotFinder);
+                    op.visitEachState(stackSlotFinder);
+                    if (stackSlotFinder.found()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * AMD64 Substrate VM specific frame map.
      * <p>
      * The layout is basically the same as {@link AMD64FrameMap} except that space for rbp is also
@@ -2142,10 +2197,12 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = ReservedRegisters.singleton().getHeapBaseRegister();
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister, lir);
-        crb.setTotalFrameSize(frameMap.totalFrameSize());
+        boolean reserveStackFrame = shouldReserveStackFrame(method, frameMap, lir);
+        int totalFrameSize = reserveStackFrame ? frameMap.totalFrameSize() : frameMap.totalFrameSize() - frameMap.frameSize();
+        crb.setTotalFrameSize(totalFrameSize);
         var sharedCompilationResult = (SharedCompilationResult) compilationResult;
         var substrateAMD64FrameMap = (SubstrateAMD64FrameMap) frameMap;
-        sharedCompilationResult.setFrameSize(substrateAMD64FrameMap.frameSize());
+        sharedCompilationResult.setFrameSize(reserveStackFrame ? substrateAMD64FrameMap.frameSize() : 0);
         if (SubstrateUtil.HOSTED) {
             sharedCompilationResult.setCodeAlignment(SubstrateOptions.buildTimeCodeAlignment(options));
         }
