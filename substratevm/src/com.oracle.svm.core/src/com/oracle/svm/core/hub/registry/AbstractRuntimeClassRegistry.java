@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -188,7 +188,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
         ParserKlass parsed = parseClass(typeOrNull, info, data);
         Symbol<Type> type = typeOrNull == null ? parsed.getType() : typeOrNull;
-        assert typeOrNull == null || type == parsed.getType() : typeOrNull + " vs. " + parsed.getType();
+        assert typeOrNull == null || type == parsed.getType() || info.isHidden() : typeOrNull + " vs. " + parsed.getType();
         checkProhibitedPackage(parsed);
         if (info.addedToRegistry() && findLoadedClass(type) != null) {
             String kind;
@@ -203,7 +203,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             throw new LinkageError("Loader " + ClassRegistries.loaderNameAndId(getClassLoader()) + " attempted duplicate " + kind + " definition for " + externalName + ".");
         }
         int typeID = TypeIDs.singleton().nextTypeId();
-        if (info.isHidden) {
+        if (info.isHidden()) {
             parsed = ParserKlass.forHiddenClass(parsed, typeOrNull, typeID, ClassRegistries.getParsingContext());
         }
         Class<?> clazz;

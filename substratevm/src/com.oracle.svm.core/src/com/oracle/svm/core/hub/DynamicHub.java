@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1638,8 +1638,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @CallerSensitive
-    public Method[] getMethods() throws SecurityException {
+    public Method[] getMethods() {
         checkClassFlag(ALL_METHODS_FLAG, "getMethods");
         return copyMethods(privateGetPublicMethods());
     }
@@ -1651,7 +1650,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    public Field getField(String fieldName) throws NoSuchFieldException, SecurityException {
+    public Field getField(String fieldName) throws NoSuchFieldException {
         Objects.requireNonNull(fieldName);
         Field field = getField0(fieldName);
         checkField(fieldName, field, true);
@@ -1813,7 +1812,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Constructor<?> getConstructor(Class<?>... parameterTypes);
 
     @Substitute
-    public Class<?>[] getDeclaredClasses() throws SecurityException {
+    public Class<?>[] getDeclaredClasses() {
         checkClassFlag(ALL_DECLARED_CLASSES_FLAG, "getDeclaredClasses");
         return getDeclaredClasses0();
     }
@@ -1853,8 +1852,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @CallerSensitive
-    public Method[] getDeclaredMethods() throws SecurityException {
+    public Method[] getDeclaredMethods() {
         checkClassFlag(ALL_DECLARED_METHODS_FLAG, "getDeclaredMethods");
         return copyMethods(privateGetDeclaredMethods(false));
     }
@@ -1869,7 +1867,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * @see #filterFields(Field...)
      */
     @Substitute
-    public Field getDeclaredField(String fieldName) throws NoSuchFieldException, SecurityException {
+    public Field getDeclaredField(String fieldName) throws NoSuchFieldException {
         Objects.requireNonNull(fieldName);
         Field field = searchFields(privateGetDeclaredFields(false), fieldName);
         checkField(fieldName, field, false);
@@ -1877,8 +1875,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @CallerSensitive
-    public Method getDeclaredMethod(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException, SecurityException {
+    public Method getDeclaredMethod(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
         Objects.requireNonNull(methodName);
         Method method = searchMethods(privateGetDeclaredMethods(false), methodName, parameterTypes);
         checkMethod(methodName, parameterTypes, method, false);
@@ -2041,15 +2038,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static native Class<?> forName(String className, Class<?> caller) throws ClassNotFoundException;
 
     @KeepOriginal
-    @CallerSensitive
     private static native Class<?> forName(Module module, String className);
 
     @KeepOriginal
-    @CallerSensitive
     private static native Class<?> forName(String name, boolean initialize, ClassLoader loader);
 
     @Substitute
-    @CallerSensitiveAdapter
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/Class.c#L97-L144")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L803-L821")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L3303-L3312")
