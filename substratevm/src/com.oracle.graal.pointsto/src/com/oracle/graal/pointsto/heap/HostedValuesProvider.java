@@ -76,20 +76,29 @@ public class HostedValuesProvider {
             return value;
         }
         if (value.getJavaKind() == JavaKind.Object) {
-            JavaConstant replacedConstant = universe.replaceConstantWithConstant(value, (JavaConstant constant) -> asObject(Object.class, constant));
+            JavaConstant replacedConstant = universe.replaceConstantWithAllReplacers(value);
             if (!replacedConstant.equals(value)) {
-                return validateReplacedConstant(replacedConstant);
+                return replacedConstant;
             }
         }
         return value;
     }
 
-    /** Hook to run validation checks on the replaced value. */
-    public JavaConstant validateReplacedConstant(JavaConstant value) {
+    /** Hook to canonicalize an ordinary object-replacer result for this hosted provider. */
+    public JavaConstant canonicalizeReplacedConstant(JavaConstant value) {
         return value;
     }
 
     public JavaConstant forObject(Object object) {
+        return GuestAccess.get().getSnippetReflection().forObject(object);
+    }
+
+    /**
+     * Converts an ordinary object-replacer result to the provider's intermediate constant
+     * representation. The result must remain materializable by subsequent legacy replacers. Final
+     * provider-specific canonicalization happens after the complete replacer chain.
+     */
+    public JavaConstant forObjectReplacerResult(Object object) {
         return GuestAccess.get().getSnippetReflection().forObject(object);
     }
 

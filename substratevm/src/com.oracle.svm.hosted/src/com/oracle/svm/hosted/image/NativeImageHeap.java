@@ -362,6 +362,16 @@ public final class NativeImageHeap implements ImageHeap {
         }
     }
 
+    /** Applies analysis object replacers and materializes the resulting constant. */
+    private Object replaceObject(Object object) {
+        assert !(object instanceof ImageHeapConstant) : object;
+        HostedValuesProvider hostedValuesProvider = aUniverse.getHostedValuesProvider();
+        /* GR-72922: Migrate the remaining builder-object heap operations to JVMCI. */
+        JavaConstant constant = hostedValuesProvider.forObject(object);
+        JavaConstant replacedConstant = aUniverse.replaceConstantWithOrdinaryReplacers(constant);
+        return hostedValuesProvider.asObject(Object.class, replacedConstant);
+    }
+
     public void registerAsImmutable(Object object) {
         assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
         knownImmutableObjects.add(object);
@@ -381,7 +391,7 @@ public final class NativeImageHeap implements ImageHeap {
                 throw VMError.shouldNotReachHere("Type missing from static analysis: " + cur.getClass().getTypeName());
             } else if (cur instanceof Object[]) {
                 for (Object element : ((Object[]) cur)) {
-                    addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
+                    addToWorklist(replaceObject(element), includeObject, worklist, registeredObjects);
                 }
             } else {
                 JavaConstant constant = hUniverse.getSnippetReflection().forObject(cur);
@@ -882,7 +892,7 @@ public final class NativeImageHeap implements ImageHeap {
         boolean relocatable = otherFieldsRelocatable;
         for (int idx = 0; idx < array.length; idx++) {
             Object element = array[idx];
-            Object value = aUniverse.replaceObject(element);
+            Object value = replaceObject(element);
             if (usesHeapBase()) {
                 relocatable = relocatable || isRelocatableValue(value);
             }

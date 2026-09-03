@@ -109,8 +109,8 @@ public class AnalysisUniverse implements Universe {
 
     protected final SubstitutionProcessor substitutions;
 
-    private Function<Object, Object>[] objectReplacers;
-    private Function<Object, ImageHeapConstant>[] objectToConstantReplacers;
+    private Function<JavaConstant, JavaConstant>[] objectReplacers;
+    private Function<JavaConstant, ImageHeapConstant>[] objectToConstantSnapshotReplacers;
     private Consumer<AnalysisType>[] onTypeCreatedCallbacks;
 
     private SubstitutionProcessor[] featureSubstitutions;
@@ -148,8 +148,8 @@ public class AnalysisUniverse implements Universe {
         this.analysisFactory = analysisFactory;
 
         sealed = false;
-        objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
-        objectToConstantReplacers = (Function<Object, ImageHeapConstant>[]) new Function<?, ?>[0];
+        objectReplacers = (Function<JavaConstant, JavaConstant>[]) new Function<?, ?>[0];
+        objectToConstantSnapshotReplacers = (Function<JavaConstant, ImageHeapConstant>[]) new Function<?, ?>[0];
         onTypeCreatedCallbacks = (Consumer<AnalysisType>[]) new Consumer<?>[0];
         featureSubstitutions = new SubstitutionProcessor[0];
         featureNativeSubstitutions = new SubstitutionProcessor[0];
@@ -637,16 +637,16 @@ public class AnalysisUniverse implements Universe {
         return unsafeAccessedStaticFields.keySet();
     }
 
-    public void registerObjectReplacer(Function<Object, Object> replacer) {
+    public void registerObjectReplacer(Function<JavaConstant, JavaConstant> replacer) {
         assert replacer != null;
         objectReplacers = Arrays.copyOf(objectReplacers, objectReplacers.length + 1);
         objectReplacers[objectReplacers.length - 1] = replacer;
     }
 
-    public void registerObjectToConstantReplacer(Function<Object, ImageHeapConstant> replacer) {
+    public void registerObjectToConstantReplacer(Function<JavaConstant, ImageHeapConstant> replacer) {
         assert replacer != null;
-        objectToConstantReplacers = Arrays.copyOf(objectToConstantReplacers, objectToConstantReplacers.length + 1);
-        objectToConstantReplacers[objectToConstantReplacers.length - 1] = replacer;
+        objectToConstantSnapshotReplacers = Arrays.copyOf(objectToConstantSnapshotReplacers, objectToConstantSnapshotReplacers.length + 1);
+        objectToConstantSnapshotReplacers[objectToConstantSnapshotReplacers.length - 1] = replacer;
     }
 
     public void registerOnTypeCreatedCallback(Consumer<AnalysisType> consumer) {
@@ -678,84 +678,60 @@ public class AnalysisUniverse implements Universe {
         return featureNativeSubstitutions;
     }
 
-    public Object replaceObject(Object source) {
-        return replaceObject0(source, false);
+    /**
+     * Applies all registered ordinary and object-to-constant replacers to {@code source}.
+     *
+     * @return the replaced constant, or {@code source} if no replacer changes it
+     */
+    public JavaConstant replaceConstantWithAllReplacers(JavaConstant source) {
+        return replaceConstant(source, true);
     }
 
     /**
-     * Applies registered replacers to a hosted object and converts the result back to a constant
-     * with the supplied converter.
+     * Applies all registered ordinary replacers to {@code source}. Object-to-constant replacers are
+     * also evaluated, but a matching one triggers an error because this method only supports an
+     * ordinary constant result.
+     *
+     * @return the replaced constant, or {@code source} if no replacer changes it
      */
-    public JavaConstant replaceObjectWithConstant(Object source, Function<Object, JavaConstant> converter) {
-        if (!hasReplacers()) {
-            return converter.apply(source);
-        }
-        assert !(source instanceof ImageHeapConstant) : source;
-
-        var replacedObject = replaceObject0(source, true);
-        if (replacedObject instanceof ImageHeapConstant constant) {
-            return constant;
-        }
-
-        return converter.apply(replacedObject);
+    public JavaConstant replaceConstantWithOrdinaryReplacers(JavaConstant source) {
+        return replaceConstant(source, false);
     }
 
     /**
-     * Applies registered replacers to a hosted constant after unboxing it with the supplied
-     * function.
+     * Applies registered object replacers to {@code source}. Replacers that do not support a
+     * provider-specific constant leave it unchanged. Ordinary results are canonicalized by the
+     * hosted-values provider. The result is either the final ordinary constant or the
+     * {@link ImageHeapConstant} returned by an object-to-constant replacer.
      */
-    public JavaConstant replaceConstantWithConstant(JavaConstant source, Function<JavaConstant, Object> unboxer) {
-        if (!hasReplacers() || source == null || source.getJavaKind() != JavaKind.Object || source.isNull()) {
+    private JavaConstant replaceConstant(JavaConstant source, boolean allowObjectToConstantReplacement) {
+        assert !(source instanceof ImageHeapConstant) : "ImageHeapConstants were already processed and must not reach object replacement again: " + source;
+        if (source == null || source.getJavaKind() != JavaKind.Object || source.isNull()) {
             return source;
         }
 
-        Object unwrapped = unboxer.apply(source);
-        assert !(unwrapped instanceof ImageHeapConstant) : unwrapped;
-        return replaceObjectWithConstant(unwrapped, getHostedValuesProvider()::forObject);
-    }
-
-    /**
-     * Invokes all registered object replacers and "object to constant" replacers for an object.
-     *
-     * <p>
-     * The "object to constant" replacer is allowed to successfully complete only when
-     * {@code allowObjectToConstantReplacement} is true. When
-     * {@code allowObjectToConstantReplacement} is false, if any "object to constant" replacer is
-     * triggered we throw an error.
-     *
-     * @param source The source object
-     * @param allowObjectToConstantReplacement whether object to constant replacement is supported
-     * @return The replaced object or the original source, if the source is not replaced by any
-     *         registered replacer.
-     */
-    private Object replaceObject0(Object source, boolean allowObjectToConstantReplacement) {
-        if (source == null) {
-            return null;
+        JavaConstant destination = source;
+        for (Function<JavaConstant, JavaConstant> replacer : objectReplacers) {
+            destination = Objects.requireNonNull(replacer.apply(destination));
+            assert destination.getJavaKind() == JavaKind.Object : destination;
         }
 
-        Object destination = source;
-        for (Function<Object, Object> replacer : objectReplacers) {
-            destination = replacer.apply(destination);
-        }
-
-        ImageHeapConstant ihc = null;
-        for (Function<Object, ImageHeapConstant> replacer : objectToConstantReplacers) {
-            var result = replacer.apply(destination);
+        ImageHeapConstant imageHeapConstant = null;
+        for (Function<JavaConstant, ImageHeapConstant> replacer : objectToConstantSnapshotReplacers) {
+            ImageHeapConstant result = replacer.apply(destination);
             if (result != null) {
                 AnalysisError.guarantee(allowObjectToConstantReplacement, "Object to constant replacement has been triggered from an unsupported location");
-                AnalysisError.guarantee(ihc == null, "Multiple object to constant replacers have been trigger on a single object %s %s %s", destination, ihc, result);
-                ihc = result;
+                AnalysisError.guarantee(imageHeapConstant == null, "Multiple object to constant replacers have been triggered on a single object %s %s %s", destination, imageHeapConstant, result);
+                imageHeapConstant = result;
             }
         }
 
-        return ihc == null ? destination : ihc;
-    }
-
-    /**
-     * Returns whether any object or object-to-constant replacers are currently registered.
-     */
-    private boolean hasReplacers() {
-        return objectReplacers.length != 0 || objectToConstantReplacers.length != 0;
+        if (imageHeapConstant != null) {
+            return imageHeapConstant;
+        }
+        JavaConstant canonicalResult = Objects.requireNonNull(getHostedValuesProvider().canonicalizeReplacedConstant(destination));
+        AnalysisError.guarantee(!(canonicalResult instanceof ImageHeapConstant), "Ordinary object replacers must not produce an ImageHeapConstant: %s", canonicalResult);
+        return canonicalResult;
     }
 
     public void notifyBigBangInitialized() {

@@ -43,6 +43,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -96,26 +97,62 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
      */
     @Override
     public JavaConstant readArrayElement(JavaConstant array, int index) {
+        /*
+         * GR-79043: Keep ordinary array elements constant-native and avoid materializing them
+         * to detect values that require provider-specific word canonicalization.
+         */
         JavaConstant element = super.readArrayElement(array, index);
         return interceptWordType(super.asObject(Object.class, element)).orElse(element);
     }
 
     /**
-     * {@link #forObject} replaces patched words such as {@link MethodRef} with
-     * {@link PatchedWordConstant}, and regular {@link WordBase} values with
-     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
+     * Canonicalizes a raw guest {@link WordBase} returned by an ordinary object replacer to the
+     * representation expected by Native Image. Ordinary guest constants and already canonical
+     * {@link PatchedWordConstant}s are left unchanged so that arbitrary guest objects are not
+     * materialized through {@link #interceptHosted}.
      */
     @Override
-    public JavaConstant validateReplacedConstant(JavaConstant value) {
-        VMError.guarantee(value instanceof PatchedWordConstant || !universe.getBigbang().getMetaAccess().isInstanceOf(value, WordBase.class));
-        return value;
+    public JavaConstant canonicalizeReplacedConstant(JavaConstant value) {
+        boolean needsWordCanonicalization = !(value instanceof PatchedWordConstant) && isWord(value);
+        if (!needsWordCanonicalization) {
+            return value;
+        }
+        JavaConstant canonicalValue = interceptHosted(value);
+        VMError.guarantee(canonicalValue instanceof PatchedWordConstant || !isWord(canonicalValue));
+        return canonicalValue;
     }
 
+    /** Returns whether {@code value} represents a guest {@link WordBase}. */
+    private static boolean isWord(JavaConstant value) {
+        var valueType = GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(value);
+        return valueType != null && GuestAccess.elements().WordBase.isAssignableFrom(valueType);
+    }
+
+    /**
+     * Replaces patched words such as {@link MethodRef} with {@link PatchedWordConstant}, and regular
+     * {@link WordBase} values with {@link PrimitiveConstant}. No other {@link WordBase} values can be
+     * reachable at this point.
+     */
     @Override
     public JavaConstant forObject(Object object) {
         /* The raw object may never be an ImageHeapConstant. */
         AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
         return interceptWordType(object).orElse(super.forObject(object));
+    }
+
+    /**
+     * Keeps an ordinary {@link WordBase} as a materializable object constant while replacers are
+     * still running. Relocatable words retain their {@link PatchedWordConstant} representation so
+     * JVMCI replacers can handle them symbolically. The final ordinary word result is converted to
+     * a {@link PrimitiveConstant} by {@link #canonicalizeReplacedConstant}.
+     */
+    @Override
+    public JavaConstant forObjectReplacerResult(Object object) {
+        AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
+        if (object instanceof WordBase && !(object instanceof RelocatedPointer) && !(object instanceof MethodOffset)) {
+            return super.forObjectReplacerResult(object);
+        }
+        return forObject(object);
     }
 
     @Override
@@ -145,6 +182,11 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     @Override
     public JavaConstant interceptHosted(JavaConstant constant) {
         if (constant != null && constant.getJavaKind().isObject() && !constant.isNull()) {
+            /*
+             * GR-79043: Avoid materializing ordinary guest constants solely to detect values that
+             * require provider-specific word canonicalization. Existing hosted data structures
+             * still require the ImageHeapConstant unwrapping performed here.
+             */
             Object original = super.asObject(Object.class, constant);
             if (original instanceof ImageHeapConstant heapConstant) {
                 return heapConstant;

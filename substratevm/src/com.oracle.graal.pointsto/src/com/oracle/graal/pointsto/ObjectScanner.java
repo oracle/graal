@@ -38,6 +38,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -53,7 +54,6 @@ import com.oracle.svm.util.GuestAccess;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -274,15 +274,15 @@ public class ObjectScanner {
                 }
             }
         } else {
-            ConstantReflectionProvider constantReflection = GuestAccess.get().getProviders().getConstantReflection();
-            int len = constantReflection.readArrayLength(array);
+            HostedValuesProvider hostedValuesProvider = bb.getUniverse().getHostedValuesProvider();
+            int len = hostedValuesProvider.readArrayLength(array);
             for (int idx = 0; idx < len; idx++) {
-                JavaConstant elem = constantReflection.readArrayElement(array, idx);
+                JavaConstant elem = hostedValuesProvider.readArrayElement(array, idx);
                 if (elem.isNull()) {
                     scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                 } else {
                     try {
-                        JavaConstant element = bb.getUniverse().replaceConstantWithConstant(elem, (JavaConstant constant) -> constantAsObject(bb, constant));
+                        JavaConstant element = bb.getUniverse().replaceConstantWithAllReplacers(elem);
                         scanArrayElement(array, arrayType, reason, idx, element);
                     } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
                         unsupportedFeatureDuringConstantScan(bb, elem, ex, reason);

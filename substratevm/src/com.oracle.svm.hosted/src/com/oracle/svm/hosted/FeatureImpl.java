@@ -435,16 +435,13 @@ public class FeatureImpl {
 
         @Override
         public void registerObjectReplacer(Function<Object, Object> replacer) {
-            getUniverse().registerObjectReplacer(replacer);
+            // GR-78997: migrate builder-side clients to JVMCI or guest features.
+            getUniverse().registerObjectReplacer(new LegacyObjectReplacerAdapter(replacer, getUniverse().getHostedValuesProvider()));
         }
 
         @Override
         public void registerJVMCIObjectReplacer(Function<JavaConstant, JavaConstant> replacer) {
-            // TODO GR-72473: make the object replacer pipeline consume JavaConstant directly.
-            getUniverse().registerObjectReplacer(object -> {
-                JavaConstant replacement = Objects.requireNonNull(replacer.apply(bb.getSnippetReflectionProvider().forObject(object)));
-                return bb.getSnippetReflectionProvider().asObject(Object.class, replacement);
-            });
+            getUniverse().registerObjectReplacer(replacer);
         }
 
         @Override
@@ -463,6 +460,16 @@ public class FeatureImpl {
          * object should not be replaced then {@code null} should be returned.
          */
         public void registerObjectToConstantReplacer(Function<Object, ImageHeapConstant> replacer) {
+            // GR-78998: migrate all clients to constant-based replacers.
+            getUniverse().registerObjectToConstantReplacer(new LegacyObjectToConstantReplacerAdapter(replacer, getUniverse().getHostedValuesProvider()));
+        }
+
+        /**
+         * Registers a constant-based object replacer which may return an {@link ImageHeapConstant}.
+         * Only one replacer can be triggered for a given constant. A replacer returns {@code null}
+         * when the constant should not be replaced.
+         */
+        public void registerJVMCIObjectToConstantReplacer(Function<JavaConstant, ImageHeapConstant> replacer) {
             getUniverse().registerObjectToConstantReplacer(replacer);
         }
 

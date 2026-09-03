@@ -41,6 +41,10 @@ import jdk.vm.ci.meta.JavaKind;
  * Such words can be offsets such as {@link MethodOffset} that are patched later when the image is
  * written, or {@linkplain RelocatedPointer relocated pointers} for which linker relocations are
  * created.
+ *
+ * This provider-specific constant does not represent an ordinary materializable object. Legacy
+ * object callbacks receive its underlying {@link WordBase} through the hosted-values provider,
+ * while JVMCI replacers that understand a symbolic word handle this constant explicitly.
  */
 public class PatchedWordConstant implements JavaConstant, TypedConstant {
 
