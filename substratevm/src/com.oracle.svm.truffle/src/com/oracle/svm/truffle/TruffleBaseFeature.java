@@ -172,6 +172,7 @@ import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -270,6 +271,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     private GraalGraphObjectReplacer graalGraphObjectReplacer;
     private final EconomicSet<Class<?>> registeredClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> registeredExportLibraryClasses = EconomicSet.create();
+    private final EconomicSet<Class<?>> registeredExportLibraryReceiverClasses = EconomicSet.create();
     private final Set<Class<?>> pendingExportLibraryReceiverClasses = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
@@ -992,13 +994,24 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.class) || GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
             Class<?> receiverClass = type.getJavaClass();
             if (registeredExportLibraryClasses.add(receiverClass)) {
-                access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
+                if (registeredExportLibraryReceiverClasses.add(receiverClass)) {
+                    access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
+                }
                 if (hasExplicitReceiverExport(type)) {
                     /*
-                     * Exports with an explicit receiver can be used as dynamic dispatch targets
-                     * without the export class being instantiated.
+                     * Initialize the export class first so its generated code registers the
+                     * explicit receiver types. Resolve only instantiated concrete receiver types.
                      */
                     initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+                    for (var annotationValue : GuestAnnotationAccess.getAnnotationValuesByType(type, ExportLibrary.class, ExportLibrary.Repeat.class)) {
+                        ResolvedJavaType receiverType = ExportLibraryGuestValue.from(annotationValue).receiverType();
+                        if (!receiverType.equals(GuestAccess.elements().java_lang_Void)) {
+                            Class<?> explicitReceiverClass = OriginalClassProvider.getJavaClass(receiverType);
+                            if (registeredExportLibraryReceiverClasses.add(explicitReceiverClass)) {
+                                access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, explicitReceiverClass);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1015,7 +1028,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private void registerConcreteTruffleLibraryReceiver(@SuppressWarnings("unused") DuringAnalysisAccess access, Class<?> receiverClass) {
-        if (!Modifier.isAbstract(receiverClass.getModifiers())) {
+        if (!Modifier.isAbstract(receiverClass.getModifiers()) || receiverClass.isArray()) {
             pendingExportLibraryReceiverClasses.add(receiverClass);
         }
     }
