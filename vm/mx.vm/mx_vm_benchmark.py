@@ -287,5 +287,10 @@ def register_crema_java_vm():
         ('no-profiling-' + edition, ['-svm']),
         ('xint-' + edition, ['-svm', '-XX:-JITEnableCompilation']),
     ]
+    if edition == 'ee':
+        crema_configs += [
+            ('pgo-' + edition, ['-svm']),
+            ('xint-pgo-' + edition, ['-svm', '-XX:-JITEnableCompilation']),
+        ]
     for config_name, java_args in crema_configs:
         mx_benchmark.java_vm_registry.add_vm(GraalVm('crema', config_name, java_args, []), _suite, 2)

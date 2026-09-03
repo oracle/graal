@@ -18,6 +18,11 @@
     # Returns mx arguments to have native image generation use
     # the profile created by `collect_libgraal_profile`.
     use_libgraal_profile:: [],
+
+    # Crema PGO is an EE-only configuration. Keep the shared CI hooks inert in CE.
+    collect_crema_profiles(mx_prefix=["mx"]):: [],
+    use_crema_profile:: [],
+    use_crema_xint_profile:: [],
   },
 
   vm:: {
