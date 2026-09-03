@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word.Operation;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -738,23 +737,26 @@ public class SVMHost extends HostVM {
 
     @Override
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
-        Class<?> originalClass = OriginalClassProvider.getJavaClass(type);
-        ClassLoader originalClassLoader = originalClass.getClassLoader();
+        GuestAccess guestAccess = GuestAccess.get();
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+        JavaConstant originalClass = guestAccess.getProviders().getConstantReflection().asJavaClass(originalType);
+        JavaConstant originalClassLoader = guestAccess.invoke(guestAccess.elements.java_lang_Class_getClassLoader, originalClass);
         if (NativeImageSystemClassLoader.singleton().isDisallowedClassLoader(originalClassLoader)) {
-            String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
+            String message = "Class " + originalType.toJavaName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
             message += "This usually means that some objects from a previous build leaked in the current build. ";
             message += "This can happen when using the image build server. ";
             message += "To fix the issue you must reset all static state from the bootclasspath and application classpath that points to the application objects. ";
             message += "If the offending code is in JDK code please file a bug with GraalVM. ";
             throw new UnsupportedFeatureException(message);
         }
-        if (originalClass.isRecord()) {
+        if (originalType.isRecord()) {
             try {
-                for (var recordComponent : originalClass.getRecordComponents()) {
-                    if (WordBase.class.isAssignableFrom(recordComponent.getType())) {
+                for (var recordComponent : originalType.getRecordComponents()) {
+                    ResolvedJavaType componentType = recordComponent.getType().resolve(originalType);
+                    if (guestAccess.elements.WordBase.isAssignableFrom(componentType)) {
                         throw UserError.abort("Records cannot use Word types. " +
                                         "The equals/hashCode/toString implementation of records uses method handles, and Word types are not supported as parameters of method handle invocations. " +
-                                        "Record type: `" + originalClass.getTypeName() + "`, component: `" + recordComponent.getName() + "` of type `" + recordComponent.getType().getTypeName() + "`");
+                                        "Record type: `" + originalType.toJavaName() + "`, component: `" + recordComponent.getName() + "` of type `" + componentType.toJavaName() + "`");
                     }
                 }
             } catch (LinkageError e) {

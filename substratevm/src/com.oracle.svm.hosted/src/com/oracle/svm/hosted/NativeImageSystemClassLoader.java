@@ -39,6 +39,8 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.GuestAccess;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * NativeImageCustomSystemClassLoader is a minimal {@link ClassLoader} that forwards loading of a
@@ -160,7 +162,12 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         return currentNativeImageClassLoader == c;
     }
 
-    public boolean isDisallowedClassLoader(ClassLoader c) {
+    public boolean isDisallowedClassLoader(JavaConstant classloader) {
+        GuestAccess guestAccess = GuestAccess.get();
+        if (classloader == null || classloader.isNull() || guestAccess.isFullyIsolated()) {
+            return false;
+        }
+        ClassLoader c = guestAccess.getSnippetReflection().asObject(ClassLoader.class, classloader);
         for (ClassLoader disallowedClassLoader : disallowedClassLoaders) {
             if (disallowedClassLoader == c) {
                 return true;
