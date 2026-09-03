@@ -62,6 +62,9 @@
     local libgraal_profiling_only(value) = if is_libgraal && with_profiling then value else [],
     local collect_libgraal_profile = libgraal_profiling_only(config.compiler.collect_libgraal_profile()),
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
+    local is_crema_pgo = std.objectHasAll(self, "crema_pgo") && self.crema_pgo,
+    local collect_crema_profiles = if is_crema_pgo then config.compiler.collect_crema_profiles(self.crema_pgo_variant) else [],
+    local use_crema_profile = if is_crema_pgo then self.crema_pgo_profile else [],
     local measure_libgraal_size = libgraal_profiling_only([
       self.plain_benchmark_cmd + ["file-size:*", "--"] + self.extra_vm_args,
     ] + self._maybe_bench_upload()),
@@ -122,9 +125,9 @@
     setup+: [
       ["cd", "./" + config.compiler.compiler_suite],
     ]
-    + if self.should_mx_build then collect_libgraal_profile + [
+    + if self.should_mx_build then collect_libgraal_profile + collect_crema_profiles + [
       ["mx", "hsdis", "||", "true"],
-      ["mx"] + use_libgraal_profile + ["build"],
+      ["mx"] + use_libgraal_profile + use_crema_profile + ["build"],
     ] + measure_libgraal_size else [],
     should_upload_results:: true,
     _bench_upload(filename="${BENCH_RESULTS_FILE_PATH}"):: ["bench-uploader.py", filename],
@@ -197,6 +200,34 @@
     environment+: {
       "JVM_CONFIG": "xint-" + edition
     }
+  },
+
+  crema_pgo:: self.crema + {
+    local edition = config.graalvm_edition,
+    local mx_env_path = "crema-" + edition + "-pgo",
+    crema_pgo:: true,
+    crema_pgo_variant:: "ristretto",
+    crema_pgo_profile:: config.compiler.use_crema_profile,
+    platform:: "crema-pgo-" + edition,
+    timelimit: "3:00:00",
+    environment+: {
+      "JVM_CONFIG": "pgo-" + edition,
+      "MX_ENV_PATH": mx_env_path,
+    },
+  },
+
+  crema_xint_pgo:: self.crema_xint + {
+    local edition = config.graalvm_edition,
+    local mx_env_path = "crema-xint-pgo-" + edition,
+    crema_pgo:: true,
+    crema_pgo_variant:: "xint",
+    crema_pgo_profile:: config.compiler.use_crema_xint_profile,
+    platform:: "crema-xint-pgo-" + edition,
+    timelimit: "3:00:00",
+    environment+: {
+      "JVM_CONFIG": "xint-pgo-" + edition,
+      "MX_ENV_PATH": mx_env_path,
+    },
   },
 
   crema_no_profiling:: self.crema + {

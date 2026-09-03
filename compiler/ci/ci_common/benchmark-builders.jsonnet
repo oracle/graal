@@ -3,6 +3,7 @@
   local utils = (import '../../../ci/ci_common/common-utils.libsonnet'),
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
+  local config = (import '../../../ci/repo-configuration.libsonnet'),
   local bench = (import 'benchmark-suites.libsonnet'),
   local pr_bench_settings = (import '../../../ci/ci_common/pr-bench-settings.libsonnet'),
   local hw = bc.bench_hw,
@@ -119,6 +120,10 @@
     [
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy_template(capture_crema_libjvm_size=true) + cc.crema + PR_bench_crema_awfy,
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_xint + PR_bench_crema_awfy,
+    ] + (if config.graalvm_edition == "ee" then [
+    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy_template(capture_crema_libjvm_size=true) + cc.crema_pgo + PR_bench_crema_awfy,
+    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_xint_pgo + PR_bench_crema_awfy,
+    ] else []) + [
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_no_profiling + PR_bench_crema_awfy,
     ]
   for jdk in cc.product_jdks
