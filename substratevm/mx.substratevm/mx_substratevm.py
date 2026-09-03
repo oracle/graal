@@ -2097,7 +2097,9 @@ driver_exe_build_args = driver_build_args + svm_experimental_options([
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
     f'-R:{max_heap_size_flag}',
-])
+]) + [
+    '--initialize-at-run-time=com.oracle.svm.shared.util.LogUtils',
+]
 
 additional_ni_dependencies = []
 
