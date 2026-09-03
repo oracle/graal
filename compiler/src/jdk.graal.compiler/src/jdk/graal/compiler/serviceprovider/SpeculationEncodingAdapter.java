@@ -49,18 +49,18 @@ class SpeculationEncodingAdapter implements SpeculationReasonGroup.SpeculationCo
         }
         objects = new ArrayList<>();
         for (Object c : context) {
-            if (c instanceof SpeculationReasonGroup.SpeculationContextObject) {
-                SpeculationReasonGroup.SpeculationContextObject sco = (SpeculationReasonGroup.SpeculationContextObject) c;
-                // These are compiler objects which all have the same class
-                // loader so the class name uniquely identifies the class.
-                objects.add(c.getClass().getName());
-                sco.accept(this);
+            if (c instanceof SpeculationReasonGroup.SpeculationContextObject sco) {
+                addSpeculationContextObject(sco);
             } else if (c != null && c.getClass() == BytecodePosition.class) {
                 BytecodePosition p = (BytecodePosition) c;
                 objects.add(c.getClass().getName());
                 while (p != null) {
                     visitInt(p.getBCI());
-                    objects.add(p.getMethod());
+                    if (p.getMethod() instanceof SpeculationReasonGroup.SpeculationContextObject sco) {
+                        addSpeculationContextObject(sco);
+                    } else {
+                        objects.add(p.getMethod());
+                    }
                     p = p.getCaller();
                 }
             } else if (c instanceof byte[]) {
@@ -122,5 +122,12 @@ class SpeculationEncodingAdapter implements SpeculationReasonGroup.SpeculationCo
         } else {
             objects.add(v);
         }
+    }
+
+    private void addSpeculationContextObject(SpeculationReasonGroup.SpeculationContextObject sco) {
+        // These are compiler objects which all have the same class loader so the class name
+        // uniquely identifies the class.
+        objects.add(sco.getClass().getName());
+        sco.accept(this);
     }
 }
