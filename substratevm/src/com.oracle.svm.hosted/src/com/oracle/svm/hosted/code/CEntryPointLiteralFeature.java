@@ -34,56 +34,68 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.PatchedWordConstant;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 public class CEntryPointLiteralFeature implements InternalFeature {
 
-    class CEntryPointLiteralObjectReplacer implements Function<Object, Object> {
+    class CEntryPointLiteralObjectReplacer implements Function<JavaConstant, JavaConstant> {
+        private final HostedValuesProvider hostedValuesProvider;
+
+        /** Creates a replacer that canonicalizes changed word values with {@code hostedValuesProvider}. */
+        CEntryPointLiteralObjectReplacer(HostedValuesProvider hostedValuesProvider) {
+            this.hostedValuesProvider = hostedValuesProvider;
+        }
 
         @Override
-        public Object apply(Object source) {
-            if (source instanceof CEntryPointLiteralCodePointer) {
-                CEntryPointLiteralCodePointer original = (CEntryPointLiteralCodePointer) source;
+        public JavaConstant apply(JavaConstant source) {
+            if (!(source instanceof PatchedWordConstant patchedWord)) {
+                return source;
+            }
+            /* GR-79061: Migrate CEntryPointLiteralFeature to constant-native JVMCI handling. */
+            if (!(patchedWord.getWord() instanceof CEntryPointLiteralCodePointer original)) {
+                return source;
+            }
 
-                Method reflectionMethod;
-                try {
-                    reflectionMethod = original.definingClass.getDeclaredMethod(original.methodName, original.parameterTypes);
-                } catch (NoSuchMethodException ex) {
-                    throw shouldNotReachHere("Method not found: " + original.definingClass.getName() + "." + original.methodName);
-                }
+            Method reflectionMethod;
+            try {
+                reflectionMethod = original.definingClass.getDeclaredMethod(original.methodName, original.parameterTypes);
+            } catch (NoSuchMethodException ex) {
+                throw shouldNotReachHere("Method not found: " + original.definingClass.getName() + "." + original.methodName);
+            }
 
-                ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(reflectionMethod);
-                if (javaMethod instanceof AnalysisMethod) {
-                    AnalysisMethod aMethod = (AnalysisMethod) javaMethod;
-                    UserError.guarantee(GuestAnnotationAccess.isAnnotationPresent(aMethod, CEntryPoint.class), "Method referenced by %s must be annotated with @%s: %s",
-                                    CEntryPointLiteral.class.getSimpleName(),
-                                    CEntryPoint.class.getSimpleName(), javaMethod);
-                    CEntryPointCallStubSupport.singleton().registerStubForMethod(aMethod, () -> CEntryPointData.create(aMethod));
-                } else if (javaMethod instanceof HostedMethod) {
-                    HostedMethod hMethod = (HostedMethod) javaMethod;
-                    AnalysisMethod aMethod = hMethod.getWrapped();
-                    AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
-                    HostedMethod hStub = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
-                    assert hStub.wrapped.isNativeEntryPoint();
-                    assert hStub.isCompiled() || hStub.wrapped.isInSharedLayer();
-                    /*
-                     * Only during compilation and native image writing, we do the actual
-                     * replacement.
-                     */
-                    return new MethodPointer(hStub);
-                }
+            ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(reflectionMethod);
+            if (javaMethod instanceof AnalysisMethod) {
+                AnalysisMethod aMethod = (AnalysisMethod) javaMethod;
+                UserError.guarantee(GuestAnnotationAccess.isAnnotationPresent(aMethod, CEntryPoint.class), "Method referenced by %s must be annotated with @%s: %s",
+                                CEntryPointLiteral.class.getSimpleName(),
+                                CEntryPoint.class.getSimpleName(), javaMethod);
+                CEntryPointCallStubSupport.singleton().registerStubForMethod(aMethod, () -> CEntryPointData.create(aMethod));
+            } else if (javaMethod instanceof HostedMethod) {
+                HostedMethod hMethod = (HostedMethod) javaMethod;
+                AnalysisMethod aMethod = hMethod.getWrapped();
+                AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
+                HostedMethod hStub = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
+                assert hStub.wrapped.isNativeEntryPoint();
+                assert hStub.isCompiled() || hStub.wrapped.isInSharedLayer();
+                /*
+                 * Only during compilation and native image writing, we do the actual replacement.
+                 */
+                return hostedValuesProvider.forObject(new MethodPointer(hStub));
             }
             return source;
         }
@@ -98,7 +110,7 @@ public class CEntryPointLiteralFeature implements InternalFeature {
 
         metaAccess = config.getMetaAccess();
         bb = config.getBigBang();
-        config.registerObjectReplacer(new CEntryPointLiteralObjectReplacer());
+        config.registerJVMCIObjectReplacer(new CEntryPointLiteralObjectReplacer(bb.getUniverse().getHostedValuesProvider()));
     }
 
     @Override

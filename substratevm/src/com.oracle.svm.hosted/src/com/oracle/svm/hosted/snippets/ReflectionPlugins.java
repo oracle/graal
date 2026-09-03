@@ -50,6 +50,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
@@ -71,6 +73,7 @@ import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.TypeResult;
 
@@ -744,7 +747,10 @@ public final class ReflectionPlugins {
              */
             return null;
         }
-        return (T) aUniverse.replaceObject(element);
+        /* GR-79060: Migrate this builder-object bridge to JVMCI constants. */
+        JavaConstant constant = GuestAccess.get().getSnippetReflection().forObject(element);
+        JavaConstant replacedConstant = aUniverse.replaceConstantWithOrdinaryReplacers(constant);
+        return (T) aUniverse.getHostedValuesProvider().asObject(Object.class, replacedConstant);
     }
 
     /**
@@ -763,7 +769,14 @@ public final class ReflectionPlugins {
              */
             return null;
         }
-        return aUniverse.replaceObjectWithConstant(element, context.getSnippetReflection()::forObject);
+        /* GR-79060: Migrate this builder-object bridge to JVMCI constants. */
+        JavaConstant constant = GuestAccess.get().getSnippetReflection().forObject(element);
+        JavaConstant replacedConstant = aUniverse.replaceConstantWithAllReplacers(constant);
+        if (replacedConstant instanceof ImageHeapConstant) {
+            return replacedConstant;
+        }
+        // Make sure the result is always an ImageHeapConstant
+        return aUniverse.getHeapScanner().createImageHeapConstant(replacedConstant, OtherReason.UNKNOWN);
     }
 
     private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Object receiver, Object[] arguments, JavaKind returnKind, Object returnValue,

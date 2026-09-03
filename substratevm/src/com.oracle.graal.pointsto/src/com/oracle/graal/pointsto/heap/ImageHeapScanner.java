@@ -450,9 +450,9 @@ public abstract class ImageHeapScanner {
         /* Run all registered object replacers. */
         if (constant.getJavaKind() == JavaKind.Object) {
             try {
-                JavaConstant replaced = universe.replaceConstantWithConstant(constant, (JavaConstant value) -> unwrapConstantForReplacement(value, reason));
+                JavaConstant replaced = universe.replaceConstantWithAllReplacers(constant);
                 if (!replaced.equals(constant)) {
-                    return Optional.of(hostedValuesProvider.validateReplacedConstant(replaced));
+                    return Optional.of(replaced);
                 }
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
@@ -463,20 +463,6 @@ public abstract class ImageHeapScanner {
 
         }
         return Optional.empty();
-    }
-
-    /**
-     * Unwraps a hosted constant so object replacers can operate on the original hosted object. This
-     * is temporary code that should be removed once GR-72093 is resolved.
-     */
-    private Object unwrapConstantForReplacement(JavaConstant value, ScanReason reason) {
-        Object unwrapped = snippetReflection.asObject(Object.class, value);
-        if (unwrapped == null) {
-            throw GraalError.shouldNotReachHere(formatReason("Could not unwrap constant", reason)); // ExcludeFromJacocoGeneratedReport
-        } else if (unwrapped instanceof ImageHeapConstant) {
-            throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason)); // ExcludeFromJacocoGeneratedReport
-        }
-        return unwrapped;
     }
 
     public void maybeForceHashCodeComputation(JavaConstant constant) {

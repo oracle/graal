@@ -462,7 +462,10 @@ public final class StrictDynamicAccessInferenceFeature implements InternalFeatur
                  */
                 return null;
             }
-            return (T) analysisUniverse.replaceObject(element);
+            /* GR-71955: Migrate this feature's builder-object handling to JVMCI. */
+            JavaConstant constant = GuestAccess.get().getSnippetReflection().forObject(element);
+            JavaConstant replacedConstant = analysisUniverse.replaceConstantWithOrdinaryReplacers(constant);
+            return (T) analysisUniverse.getHostedValuesProvider().asObject(Object.class, replacedConstant);
         }
 
         private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {

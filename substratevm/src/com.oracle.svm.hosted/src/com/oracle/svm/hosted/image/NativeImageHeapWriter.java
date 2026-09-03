@@ -243,9 +243,11 @@ public final class NativeImageHeapWriter {
      * heap can miss the transformation to {@link MethodPointer} because this transformation can
      * only happen late, during compilation.
      */
-    private WordBase prepareRelocatable(ObjectInfo info, WordBase word) {
+    private WordBase prepareRelocatable(ObjectInfo info, PatchedWordConstant constant) {
         try {
-            return (WordBase) heap.aUniverse.replaceObject(word);
+            JavaConstant replacedConstant = heap.aUniverse.replaceConstantWithOrdinaryReplacers(constant);
+            VMError.guarantee(replacedConstant instanceof PatchedWordConstant, "Expected a patched word replacement, found %s", replacedConstant);
+            return ((PatchedWordConstant) replacedConstant).getWord();
         } catch (AnalysisError.TypeNotFoundError ex) {
             throw heap.reportIllegalType(ex.getType(), reasonSupport.reasonForInfo(info));
         }
@@ -279,7 +281,7 @@ public final class NativeImageHeapWriter {
                     write(buffer, index, con, reason);
                 }
             } else {
-                addWordConstantRelocation(buffer, index, prepareRelocatable(info, pwc.getWord()));
+                addWordConstantRelocation(buffer, index, prepareRelocatable(info, pwc));
             }
             if (imageLayer) {
                 layerHooks.processPatchedWordWritten(pwc.getWord(), offsetInHeap, heapLayout);
