@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ObjectTreePrinter;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -61,10 +62,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Provides functionality for scanning constant objects.
- *
+ * Provides functionality for traversing object graphs from a set of roots.
+ * For every encountered field value and array element, the scanner delegates to an
+ * {@link ObjectScanningObserver}. The observer determines the purpose and effects of a traversal;
+ * for example, {@link AnalysisObjectScanningObserver} drives analysis,
+ * {@link HeapSnapshotVerifier} verifies the image-heap snapshot, and {@link ObjectTreePrinter}
+ * produces diagnostics.
+ * <p>
  * The scanning is done in parallel. The set of visited elements is a special data structure whose
- * structure can be reused over multiple scanning iterations to save CPU resources. (For details
+ * structure can be reused over multiple scanning iterations to save CPU resources (For details, see
  * {@link ReusableSet}).
  */
 public class ObjectScanner {

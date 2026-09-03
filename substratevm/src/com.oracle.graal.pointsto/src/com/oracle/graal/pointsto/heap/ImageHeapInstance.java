@@ -42,9 +42,11 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * This class implements an instance object snapshot. It stores the field values in an Object[],
  * indexed by {@link AnalysisField#getPosition()}. Each array entry is either
+ * <ul>
  * <li>a not-yet-executed {@link AnalysisFuture} of {@link JavaConstant} which captures the
  * original, hosted field value and contains logic to transform and replace this value</li>, or
  * <li>the result of executing the future, a replaced {@link JavaConstant}, i.e., the snapshot.</li>
+ * </ul>
  * <p>
  * The future task is executed when the field is marked as read. Moreover, the future is
  * self-replacing, i.e., when it is executed it also calls

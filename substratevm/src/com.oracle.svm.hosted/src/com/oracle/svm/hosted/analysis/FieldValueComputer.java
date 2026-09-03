@@ -27,8 +27,38 @@ package com.oracle.svm.hosted.analysis;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
+import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Describes a hosted field whose value is unavailable until {@link #isAvailable()} returns
+ * {@code true}. While an object value is unavailable, {@link #types()} and {@link #canBeNull()}
+ * describe the field state that must be injected into the static analysis. An unavailable primitive
+ * field uses its declared primitive state. Once the value becomes available, the field is handled
+ * through {@link FieldValueInterceptionSupport} ({@code readFieldValue}) rather than a replacement
+ * computation.
+ * <p>
+ * Making the value available does not automatically rescan the field. Late heap verification by
+ * {@link HeapSnapshotVerifier} can materialize, structurally scan, and include an object value
+ * without guaranteeing that its reachability callbacks are executed. Internal users that require
+ * these callbacks must arrange an explicit {@link ImageHeapScanner#rescanField} at a supported phase
+ * after the value becomes available.
+ * <p>
+ * Unlike a {@link FieldValueTransformer}, this class does not compute a replacement value and does
+ * not introduce a transformed-value cache. The ordinary {@link ImageHeapConstant image-heap
+ * snapshot} may still retain a field value after it has been materialized.
+ * <p>
+ * This class is the internal representation of {@link UnknownObjectField} and
+ * {@link UnknownPrimitiveField}.
+ */
 public final class FieldValueComputer {
     private final BooleanSupplier availability;
     private final List<ResolvedJavaType> types;

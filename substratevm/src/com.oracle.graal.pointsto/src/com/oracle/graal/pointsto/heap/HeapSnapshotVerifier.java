@@ -89,10 +89,23 @@ public class HeapSnapshotVerifier {
     }
 
     /**
-     * Heap verification does a complete scan from roots (static fields and embedded constant) and
-     * compares the object graph against the shadow heap. If any new reachable objects or primitive
-     * values are found then the verifier automatically patches the shadow heap. If this is during
-     * analysis then the heap scanner will also notify the analysis of the new objects.
+     * Heap verification does a complete scan from roots (static fields and embedded constants) and
+     * compares the hosted object graph against the {@link ImageHeap shadow heap}. If any new
+     * reachable objects or primitive values are found then the verifier automatically patches the
+     * shadow heap. During
+     * analysis, values processed by such a patch are also reported to the analysis.
+     * <p>
+     * Verification can materialize and traverse an {@link ImageHeapConstant} that has not been
+     * marked reachable by {@link ImageHeapScanner}. Calling
+     * {@link ImageHeapConstant#ensureReaderInstalled()}, or finding that a field snapshot already
+     * equals its hosted value, does not call
+     * {@link ImageHeapScanner#markReachable} and does not guarantee that object validation and
+     * reachability callbacks are executed. A field whose delayed value requires that processing
+     * must be explicitly rescanned through
+     * {@link ImageHeapScanner}, for example with {@link ImageHeapScanner#rescanField} or
+     * {@link ImageHeapScanner#rescanRoot} after the value becomes available.
+     * <p>
+     * The verifier intentionally does not mark every object that it traverses as reachable.
      */
     protected boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants,
                     boolean skipReachableCheck) {
