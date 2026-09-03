@@ -801,6 +801,9 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
             accessHigh = accessStart;
         }
         int accessSize = accessSizeInBytes(access);
+        if (accessSize == 0) {
+            return Pair.create(null, null);
+        }
         ValueNode sizeMinusOne = ConstantNode.forIntegerStamp(accessHigh.stamp(NodeView.DEFAULT), accessSize - 1, graph);
         accessHigh = AddNode.create(accessHigh, sizeMinusOne, NodeView.DEFAULT);
 
@@ -821,7 +824,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         } else {
             throw GraalError.shouldNotReachHereUnexpectedValue(access);
         }
-        return ((PrimitiveStamp) stamp).getBits() / Byte.SIZE;
+        return PrimitiveStamp.getBits(stamp) / Byte.SIZE;
     }
 
     public static boolean canUseSpeculation(StructuredGraph graph) {
