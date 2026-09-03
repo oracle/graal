@@ -28,9 +28,9 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -39,6 +39,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
@@ -153,11 +154,16 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                     if (other instanceof LeftShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forIntegerBits(PrimitiveStamp.getBits(stamp), 0);
+                            return BinaryArithmeticNode.createIntegerConstant(stamp, 0);
                         }
                         return new LeftShiftNode(other.getX(), ConstantNode.forInt(total));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
-                        if (stamp.getStackKind() == JavaKind.Long) {
+                        if (stamp instanceof SimdStamp simdStamp) {
+                            JavaKind componentKind = simdStamp.getComponent(0).getStackKind();
+                            GraalError.guarantee(componentKind == JavaKind.Int || componentKind == JavaKind.Long, "unexpected SIMD component kind: %s", componentKind);
+                            long constantMask = componentKind == JavaKind.Long ? -1L << amount : -1 << amount;
+                            return new AndNode(other.getX(), BinaryArithmeticNode.createIntegerConstant(stamp, constantMask));
+                        } else if (stamp.getStackKind() == JavaKind.Long) {
                             return new AndNode(other.getX(), ConstantNode.forLong(-1L << amount));
                         } else {
                             assert stamp.getStackKind() == JavaKind.Int : Assertions.errorMessage(leftShiftNode, op, stamp, forX, forY);
