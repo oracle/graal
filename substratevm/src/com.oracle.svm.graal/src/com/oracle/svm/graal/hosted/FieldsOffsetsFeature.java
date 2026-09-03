@@ -43,10 +43,13 @@ import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.core.common.Fields;
@@ -60,23 +63,43 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
  * Graal uses unsafe memory accesses to access {@link Node}s and {@link LIRInstruction}s. The
  * offsets for these accesses are maintained in {@link Fields}, which are accessible from
  * meta-classes such as {@link NodeClass} and {@link LIRInstructionClass}. We do not want to replace
- * the whole meta-classes. Instead, we just replace the {@code long[]} arrays that hold the actual
- * offsets.
+ * the whole meta-classes. Instead, we recompute the {@code Fields.offsets} values for the Native
+ * Image object layout.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class FieldsOffsetsFeature implements Feature {
+
+    /** Recomputes the {@code Fields.offsets} value after the image field layout is available. */
+    private static final class OffsetsRecomputation implements FieldValueTransformerWithAvailability {
+        // JVMCI migration blocked by GR-72589: Migrate GraalCompilerFeature to terminus
+        @Override
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isReadyForCompilation();
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            Fields fields = (Fields) receiver;
+            FieldsOffsetsReplacement replacement = FieldsOffsetsFeature.getReplacements().get(originalValue);
+            assert replacement != null : "All Fields instances must be registered before their offsets are accessed: " + fields;
+            assert replacement.fields == fields;
+            assert replacement.newOffsets != null : "Cannot access field offsets before they are assigned";
+            return replacement.newOffsets;
+        }
+    }
 
     public static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
         // JVMCI migration blocked by GR-72589: Migrate GraalCompilerFeature to terminus
         @Override
         public boolean isAvailable() {
-            return BuildPhaseProvider.isHostedUniverseBuilt();
+            return BuildPhaseProvider.isReadyForCompilation();
         }
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
             Edges edges = (Edges) receiver;
             FieldsOffsetsReplacement replacement = FieldsOffsetsFeature.getReplacements().get(edges.getOffsets());
+            assert replacement != null : "All Edges instances must be registered before their iteration mask is accessed: " + edges;
             assert replacement.fields == edges;
             assert replacement.newOffsets != null : "Cannot access iteration mask before field offsets are assigned";
             return replacement.newIterationInitMask;
@@ -96,7 +119,6 @@ public class FieldsOffsetsFeature implements Feature {
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
     static class FieldsOffsetsReplacements {
         protected final Map<long[], FieldsOffsetsReplacement> replacements = new IdentityHashMap<>();
-        protected boolean newValuesAvailable;
     }
 
     protected static Map<long[], FieldsOffsetsReplacement> getReplacements() {
@@ -108,35 +130,9 @@ public class FieldsOffsetsFeature implements Feature {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
         ImageSingletons.add(FieldsOffsetsReplacements.class, new FieldsOffsetsReplacements());
-        access.registerObjectReplacer(FieldsOffsetsFeature::replaceFieldsOffsets);
+        var offsetsField = JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(Fields.class), "offsets");
+        FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(offsetsField, new OffsetsRecomputation());
         access.registerClassReachabilityListener(FieldsOffsetsFeature::classReachabilityListener);
-    }
-
-    private static Object replaceFieldsOffsets(Object source) {
-        if (source instanceof Fields) {
-            /*
-             * All instances of Fields must have been registered before, otherwise we miss the
-             * substitution of its offsets array.
-             */
-            assert !ImageSingletons.lookup(FieldsOffsetsReplacements.class).newValuesAvailable || getReplacements().containsKey(((Fields) source).getOffsets()) : source;
-
-        } else if (source instanceof long[]) {
-            FieldsOffsetsReplacement replacement = getReplacements().get(source);
-            if (replacement != null) {
-                assert source == replacement.fields.getOffsets();
-
-                /*
-                 * We can only compute the new offsets after static analysis, i.e., after the object
-                 * layout is done and run-time field offsets are available. Until then, we return
-                 * the hosted offsets so that we have a return value. The actual offsets do not
-                 * matter at this point.
-                 */
-                if (replacement.newOffsets != null) {
-                    return replacement.newOffsets;
-                }
-            }
-        }
-        return source;
     }
 
     /* Invoked once for every class that is reachable in the native image. */
@@ -216,7 +212,6 @@ public class FieldsOffsetsFeature implements Feature {
             replacement.newOffsets = e.getKey();
             replacement.newIterationInitMask = e.getValue();
         }
-        ImageSingletons.lookup(FieldsOffsetsReplacements.class).newValuesAvailable = true;
     }
 
     @Override
