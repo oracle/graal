@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/graalvm/graal-languages-jekyll-theme.git
-  revision: 6ae97469860513f340ee832c7b84be81c43d52ad
+  revision: dbb1e342b1ac6408943b4d5fa76210d5e2bc9973
   branch: main
   specs:
-    graal-languages-jekyll-theme (0.2.0)
+    graal-languages-jekyll-theme (0.2.1)
       jekyll (~> 4.3)
 
 GEM
