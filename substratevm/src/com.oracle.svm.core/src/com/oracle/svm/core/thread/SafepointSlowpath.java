@@ -28,6 +28,8 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.snippets.SafepointSnippets;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
@@ -69,6 +71,8 @@ public class SafepointSlowpath {
      */
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK_CALLEE_SAVED_CCONV = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
                     "enterSlowPathSafepointCheckCalleeSavedCCONV", NO_SIDE_EFFECT);
+    public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK_OBJECT = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
+                    "enterSlowPathSafepointCheckObject", NO_SIDE_EFFECT);
     static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_SAFEPOINT_CHECK_REGULAR_CCONV = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
                     "enterSlowPathSafepointCheckRegularCCONV", NO_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS = SnippetRuntime.findForeignCall(SafepointSlowpath.class,
@@ -78,6 +82,7 @@ public class SafepointSlowpath {
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     ENTER_SLOW_PATH_SAFEPOINT_CHECK_CALLEE_SAVED_CCONV,
+                    ENTER_SLOW_PATH_SAFEPOINT_CHECK_OBJECT,
                     ENTER_SLOW_PATH_SAFEPOINT_CHECK_REGULAR_CCONV,
                     ENTER_SLOW_PATH_TRANSITION_FROM_NATIVE_TO_NEW_STATUS,
                     SLOW_PATH_RUN_PENDING_ACTIONS,
@@ -103,6 +108,14 @@ public class SafepointSlowpath {
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathSafepointCheckCalleeSavedCCONV() throws Throwable {
         slowPathSafepointCheck();
+    }
+
+    @ExplicitCallingConvention(SubstrateCallingConventionKind.ForwardReturnValue)
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    @Uninterruptible(reason = "Must not contain safepoint checks")
+    private static Object enterSlowPathSafepointCheckObject(Object result) throws Throwable {
+        slowPathSafepointCheck();
+        return result;
     }
 
     /**

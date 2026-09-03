@@ -7,6 +7,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-71854) On Linux AMD64, Native Image now records the selected x86-64 ISA level in `.note.gnu.property` for `-march` values requiring x86-64-v2 or newer, so tools such as `readelf` report the requirement correctly.
 * (GR-78784) Default to optional identity hash code fields with SerialGC. Few objects need one, and this optimization adds them during garbage collection. It can be disabled with `-H:-OptionalIdentityHashCodes`.
 * (GR-78804) Added outlining for StringBuilder/StringBuffer append sequences and invokedynamic string concatenations. This reduces the binary size of native executables.
+* (GR-79006) Added optimized stack overflow checks in method prologues and safepoint checks in method epilogues. Slow paths use tail calls to avoid setting up an additional frame.
 
 ## GraalVM 25.3 (Internal Version 25.3.4.1)
 * (GR-77137) Added `SubstratePriorityInliningPhase` to leverage the new priority inliner added to the compiler suite.

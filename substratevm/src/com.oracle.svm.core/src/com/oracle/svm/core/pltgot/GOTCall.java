@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.pltgot;
+package com.oracle.svm.core.pltgot;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.site.Infopoint;
