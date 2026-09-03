@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.bytecode.generator;
 import static com.oracle.truffle.dsl.processor.bytecode.model.DFABuilder.DFAModel.DFAState;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -176,44 +175,62 @@ public class InstructionRewriterElement extends CodeTypeElement {
 
         CodeTreeBuilder p = ex.createBuilder();
 
-        Map<EqualityCodeTree, List<Map.Entry<DFAState, List<RewriteRuleState>>>> stateGrouping = EqualityCodeTree.group(p, steppingStates.entrySet(), (entry, b) -> {
-            DFAState state = entry.getKey();
-            List<RewriteRuleState> rewriteStates = entry.getValue();
-
-            b.startSwitch().string("opcode").end().startBlock();
-            Set<String> seen = new HashSet<>();
-            for (var rewriteState : rewriteStates) {
-                InstructionModel instruction = rewriteState.getNextInstruction().instruction();
-                if (!seen.add(instruction.getName())) {
-                    continue; // case for this instruction was already emitted.
+        List<InstructionModel> transitioningInstructions = instructions.stream().filter(
+                        instruction -> model.dfa.states.stream().anyMatch(state -> state.transitions.containsKey(instruction.getName()))).toList();
+        Map<EqualityCodeTree, List<InstructionModel>> instructionGrouping = EqualityCodeTree.group(p, transitioningInstructions, (instruction, b) -> {
+            Map<DFAState, List<DFAState>> sourcesByDestination = new LinkedHashMap<>();
+            for (DFAState source : model.dfa.states) {
+                DFAState destination = source.transitions.get(instruction.getName());
+                if (destination == null) {
+                    destination = model.dfa.startState;
                 }
+                sourcesByDestination.computeIfAbsent(destination, unused -> new ArrayList<>()).add(source);
+            }
 
-                b.startCase().staticReference(getInstructionConstant(instruction)).end().startCaseBlock();
-                b.startReturn().staticReference(stateConstants.get(state.transitions.get(instruction.getName()))).end();
+            // Code size optimization: use the "default" case for whichever destination state has
+            // the most source states.
+            DFAState defaultDestination = null;
+            int defaultDestinationSourceCount = -1;
+            for (var entry : sourcesByDestination.entrySet()) {
+                if (entry.getValue().size() > defaultDestinationSourceCount) {
+                    defaultDestination = entry.getKey();
+                    defaultDestinationSourceCount = entry.getValue().size();
+                }
+            }
+
+            b.startSwitch().string("currentState").end().startBlock();
+            for (var entry : sourcesByDestination.entrySet()) {
+                if (entry.getKey() == defaultDestination) {
+                    continue;
+                }
+                for (DFAState source : entry.getValue()) {
+                    b.startCase().staticReference(stateConstants.get(source)).end();
+                }
+                b.startCaseBlock();
+                b.startReturn().staticReference(stateConstants.get(entry.getKey())).end();
                 b.end();
             }
             b.caseDefault().startCaseBlock();
-            b.startReturn().staticReference(startState).string(" /* reset */").end();
+            b.startReturn().staticReference(stateConstants.get(defaultDestination)).end();
             b.end();
-            b.end(); // switch(opcode)
+            b.end(); // switch(currentState)
         });
 
         CodeTreeBuilder b = p;
-        b.startSwitch().string("currentState").end().startBlock();
-        for (var group : stateGrouping.entrySet()) {
+        b.startSwitch().string("opcode").end().startBlock();
+        for (var group : instructionGrouping.entrySet()) {
             EqualityCodeTree key = group.getKey();
-            for (var entry : group.getValue()) {
-                b.startCase().staticReference(stateConstants.get(entry.getKey())).end();
+            for (InstructionModel instruction : group.getValue()) {
+                b.startCase().staticReference(getInstructionConstant(instruction)).end();
             }
             b.startCaseBlock();
             b.tree(key.getTree());
             b.end();
         }
-        // Accepting states have no transitions.
         b.caseDefault().startCaseBlock();
         b.startReturn().staticReference(startState).string(" /* reset */").end();
         b.end();
-        b.end(); // switch(currentState)
+        b.end(); // switch(opcode)
 
         return new StepMethod(ex, allRewriteStates, canRewrite);
     }
