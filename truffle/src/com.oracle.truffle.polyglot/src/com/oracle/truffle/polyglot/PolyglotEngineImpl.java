@@ -1364,9 +1364,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                  * RuntimeSupport#onEngineClosing is called under the engine lock, so no other
                  * thread can observe the temporarily cleared closing state. Clearing it allows
                  * cache implementations to preinitialize a context and ensures that an engine
-                 * persisted in an auxiliary image is usable when restored. The closing thread
-                 * must also be cleared to avoid persisting a running thread.
-                */
+                 * persisted in an auxiliary image is usable when restored. The closing thread must
+                 * also be cleared to avoid persisting a running thread.
+                 */
                 closingThread = null;
                 final boolean engineStored;
                 try {
