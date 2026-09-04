@@ -1282,47 +1282,37 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
-                boolean result = ImageSingletons.contains(key);
-                if (!result && imageLayer) {
-                    var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, LayeredInstallationKindSingletonTrait.class);
-                    if (trait != null) {
-                        SingletonLayeredInstallationKind installationKind = trait.metadata();
-                        if (installationKind == SingletonLayeredInstallationKind.MULTI_LAYER) {
-                            /*
-                             * The array representation of a MultiLayeredImageSingleton will only be
-                             * created in the final layer. However, we assume they exist in all
-                             * layers. If lookup/getAllLayers is called on this key, then our
-                             * infrastructure will ensure it is either created in the application
-                             * layer or produce a buildtime error.
-                             */
-                            result = true;
-                        } else {
-                            /*
-                             * Application layer only singletons will only be created in the final
-                             * layer. However, we assume they exist in all layers. Since this method
-                             * is called, our infrastructure will ensure it is either created in the
-                             * application layer or produce a buildtime error.
-                             */
-                            if (sharedLayer && installationKind == SingletonLayeredInstallationKind.APP_LAYER_ONLY) {
-                                /*
-                                 * Emit a runtime check against the application-layer singleton table.
-                                 * Creating the node also reserves the singleton slot for the application
-                                 * layer.
-                                 */
-                                b.addPush(JavaKind.Boolean, AccessImageSingletonFactory.containsApplicationOnlyImageSingleton(key));
-                                return true;
-                            }
-                            if (!result && extensionLayer) {
-                                /*
-                                 * Initial layer only image singletons are installed in the initial
-                                 * layer, but can be accessed from all extension layers.
-                                 */
-                                result = installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY;
-                            }
-                        }
+                boolean present = ImageSingletons.contains(key);
+                var installationKind = getLayeredInstallationKind(key, present, imageLayer, layeredSingletonSupport);
+
+                if (sharedLayer && installationKind == SingletonLayeredInstallationKind.APP_LAYER_ONLY) {
+                    /*
+                     * Emit a runtime check against the application-layer singleton table.
+                     * Creating the node also reserves the singleton slot for the application layer.
+                     */
+                    b.addPush(JavaKind.Boolean, AccessImageSingletonFactory.containsApplicationOnlyImageSingleton(key));
+                    return true;
+                }
+
+                if (!present) {
+                    if (installationKind == SingletonLayeredInstallationKind.MULTI_LAYER) {
+                        /*
+                         * The array representation of a MultiLayeredImageSingleton will only be
+                         * created in the final layer. However, we assume they exist in all
+                         * layers. If lookup/getAllLayers is called on this key, then our
+                         * infrastructure will ensure it is either created in the application
+                         * layer or produce a buildtime error.
+                         */
+                        present = true;
+                    } else if (extensionLayer && installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY) {
+                        /*
+                         * Initial layer only image singletons are installed in the initial
+                         * layer, but can be accessed from all extension layers.
+                         */
+                        present = true;
                     }
                 }
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(present));
                 return true;
             }
         });
@@ -1330,30 +1320,23 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, targetMethod, 0, Class.class, classNode);
+                boolean present = ImageSingletons.contains(key);
+                var installationKind = getLayeredInstallationKind(key, present, imageLayer, layeredSingletonSupport);
 
-                if (imageLayer && !ImageSingletons.contains(key)) {
-                    var trait = layeredSingletonSupport.getTraitForUninstalledSingleton(key, LayeredInstallationKindSingletonTrait.class);
-                    if (trait != null) {
-                        var installationKind = trait.metadata();
-                        if (sharedLayer && installationKind == SingletonLayeredInstallationKind.APP_LAYER_ONLY) {
-                            /*
-                             * This singleton is only installed in the application layer heap. All
-                             * other layers looks refer to this singleton.
-                             */
-                            b.addPush(JavaKind.Object, AccessImageSingletonFactory.loadApplicationOnlyImageSingleton(key, b.getMetaAccess()));
-                            return true;
-                        }
-                        if (extensionLayer && installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY) {
-                            /*
-                             * This singleton is only installed in the initial layer heap. When
-                             * allowed, all other layers lookups refer to this singleton.
-                             */
-                            var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
-                            JavaConstant initialSingleton = loader.loadInitialLayerOnlyImageSingleton(key);
-                            b.addPush(JavaKind.Object, ConstantNode.forConstant(initialSingleton, b.getMetaAccess(), b.getGraph()));
-                            return true;
-                        }
-                    }
+                if (sharedLayer && installationKind == SingletonLayeredInstallationKind.APP_LAYER_ONLY) {
+                    /* See the corresponding ImageSingletons.contains plugin above. */
+                    b.addPush(JavaKind.Object, AccessImageSingletonFactory.loadApplicationOnlyImageSingleton(key, b.getMetaAccess()));
+                    return true;
+                }
+                if (!present && extensionLayer && installationKind == SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY) {
+                    /*
+                     * This singleton is only installed in the initial layer heap. When
+                     * allowed, all other layers lookups refer to this singleton.
+                     */
+                    var loader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
+                    JavaConstant initialSingleton = loader.loadInitialLayerOnlyImageSingleton(key);
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(initialSingleton, b.getMetaAccess(), b.getGraph()));
+                    return true;
                 }
 
                 Object singleton = layeredSingletonSupport.lookup(key, true, false);
@@ -1361,6 +1344,21 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    /** Resolves the layered handling needed for an ImageSingletons access. */
+    private static SingletonLayeredInstallationKind getLayeredInstallationKind(Class<?> key, boolean present, boolean imageLayer, LayeredImageSingletonSupport singletonSupport) {
+        if (!imageLayer) {
+            return null;
+        }
+
+        if (present) {
+            /* An installed hosted value needs special treatment only when it is APP_LAYER_ONLY. */
+            return singletonSupport.getKeysWithTrait(SingletonLayeredInstallationKind.APP_LAYER_ONLY).contains(key) ? SingletonLayeredInstallationKind.APP_LAYER_ONLY : null;
+        }
+
+        var trait = singletonSupport.getTraitForUninstalledSingleton(key, LayeredInstallationKindSingletonTrait.class);
+        return trait == null ? null : trait.metadata();
     }
 
     private static void registerPlatformPlugins(InvocationPlugins plugins) {
