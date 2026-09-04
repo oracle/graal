@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
@@ -219,6 +220,39 @@ public class RootNodeCompilationTest extends TestWithSynchronousCompiling {
     }
 
     @Test
+    public void testCachedInlinedTargetPreparedOnce() {
+        CountingPrepareRootNode callee = new CountingPrepareRootNode();
+        callee.getCallTarget().call(); // ensure initialized for inlining
+        TwoDirectCallsRootNode caller = new TwoDirectCallsRootNode(callee, callee);
+        OptimizedCallTarget target = (OptimizedCallTarget) caller.getCallTarget();
+
+        target.compile(true);
+        target.waitForCompilation();
+
+        assertTrue(target.isValidLastTier());
+        assertEquals(2, target.call());
+        assertEquals(1, callee.prepareCount);
+    }
+
+    @Test
+    public void testDistinctInlinedTargetsPreparedOnceEach() {
+        CountingPrepareRootNode firstCallee = new CountingPrepareRootNode();
+        CountingPrepareRootNode secondCallee = new CountingPrepareRootNode();
+        firstCallee.getCallTarget().call(); // ensure initialized for inlining
+        secondCallee.getCallTarget().call(); // ensure initialized for inlining
+        TwoDirectCallsRootNode caller = new TwoDirectCallsRootNode(firstCallee, secondCallee);
+        OptimizedCallTarget target = (OptimizedCallTarget) caller.getCallTarget();
+
+        target.compile(true);
+        target.waitForCompilation();
+
+        assertTrue(target.isValidLastTier());
+        assertEquals(2, target.call());
+        assertEquals(1, firstCallee.prepareCount);
+        assertEquals(1, secondCallee.prepareCount);
+    }
+
+    @Test
     public void testPrepareForCompilationInlinedReprofile() {
         PrepareRootNode node = new PrepareRootNode(false);
         node.getCallTarget().call(); // ensure initialized for inlining
@@ -276,6 +310,50 @@ public class RootNodeCompilationTest extends TestWithSynchronousCompiling {
             return returnValue;
         }
 
+    }
+
+    static final class CountingPrepareRootNode extends RootNode {
+
+        private volatile int prepareCount;
+
+        CountingPrepareRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return 1;
+        }
+
+        @Override
+        protected boolean isTrivial() {
+            return true;
+        }
+
+        @Override
+        protected boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+            prepareCount++;
+            return true;
+        }
+    }
+
+    static final class TwoDirectCallsRootNode extends RootNode {
+
+        @Child private DirectCallNode firstCall;
+        @Child private DirectCallNode secondCall;
+
+        TwoDirectCallsRootNode(RootNode firstCallee, RootNode secondCallee) {
+            super(null);
+            firstCall = DirectCallNode.create(firstCallee.getCallTarget());
+            firstCall.forceInlining();
+            secondCall = DirectCallNode.create(secondCallee.getCallTarget());
+            secondCall.forceInlining();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return (int) firstCall.call() + (int) secondCall.call();
+        }
     }
 
     static class ConstantTargetRootNode extends BaseRootNode {

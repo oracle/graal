@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,6 +104,8 @@ public @interface TruffleFromLibGraal {
         CreateStringSupplier,
         @Signature({long.class, Object.class})
         EngineId,
+        @Signature({boolean.class, Object.class, Object.class})
+        Equals,
         @Signature({int.class, Object.class})
         GetCompilableCallCount,
         @Signature({String.class, Object.class})
@@ -140,6 +142,8 @@ public @interface TruffleFromLibGraal {
         GetSuppliedString,
         @Signature({String.class, Object.class})
         GetURI,
+        @Signature({int.class, Object.class})
+        HashCode,
         @Signature({boolean.class, Object.class})
         HasNextTier,
         @Signature({boolean.class, Object.class})

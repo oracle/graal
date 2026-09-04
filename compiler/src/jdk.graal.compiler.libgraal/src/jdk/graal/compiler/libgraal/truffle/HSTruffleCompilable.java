@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CountDirectCallNodes;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.EngineId;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.Equals;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableCallCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableName;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilerOptions;
@@ -38,6 +39,7 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetKnownCallSiteCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNonTrivialNodeCount;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuccessfulCompilationCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.HashCode;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
@@ -76,6 +78,7 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     private Long cachedFailedSpeculationsAddress;
     private volatile String cachedName;
     private volatile String cachedString;
+    private volatile Integer cachedHashCode;
 
     HSTruffleCompilable(JNIMethodScope scope, JObject handle, HSTruffleCompilerRuntime runtime) {
         super(scope, handle);
@@ -234,5 +237,25 @@ final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
     @Override
     public int getKnownCallSiteCount() {
         return HSTruffleCompilableGen.callGetKnownCallSiteCount(calls, env(), getHandle());
+    }
+
+    @TruffleFromLibGraal(Equals)
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof HSTruffleCompilable other)) {
+            return false;
+        }
+        return HSTruffleCompilableGen.callEquals(calls, env(), getHandle(), other.getHandle());
+    }
+
+    @TruffleFromLibGraal(HashCode)
+    @Override
+    public int hashCode() {
+        Integer hashCode = cachedHashCode;
+        if (hashCode == null) {
+            hashCode = HSTruffleCompilableGen.callHashCode(calls, env(), getHandle());
+            cachedHashCode = hashCode;
+        }
+        return hashCode;
     }
 }
