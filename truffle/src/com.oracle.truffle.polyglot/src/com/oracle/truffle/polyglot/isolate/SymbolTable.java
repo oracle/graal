@@ -192,6 +192,11 @@ final class SymbolTable {
          * used symbols are retired and their ids are reused.
          */
         private static final int MAX_SYMBOLS = 1024;
+        /*
+         * Upper bound for a member name length. Names longer than MAX_SYMBOL_NAME_LENGTH
+         * are not cached in the symbol table.
+         */
+        private static final int MAX_SYMBOL_NAME_LENGTH = 256;
         /* Assigns ids until MAX_SYMBOLS is reached. */
         private final AtomicInteger idGenerator = new AtomicInteger();
         /* Reusable ids produced by compaction; guarded by itself. */
@@ -221,9 +226,13 @@ final class SymbolTable {
          * }</pre>
          *
          * @param name the member name
-         * @return the acquired symbol, or {@code null} if no id can be reclaimed
+         * @return the acquired symbol, or {@code null} if no id can be reclaimed or {@code name} length is greater than
+         * {@link #MAX_SYMBOL_NAME_LENGTH}.
          */
         Symbol acquireSymbol(String name) {
+            if (name.length() > MAX_SYMBOL_NAME_LENGTH) {
+                return null;
+            }
             boolean compacted = false;
             while (true) {
                 Symbol s = nameToSymbol.get(name);

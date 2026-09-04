@@ -172,6 +172,12 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "com.oracle.truffle.polyglot.isolate.SymbolTable$Source",
+    "fields": [
+      { "name": "MAX_SYMBOL_NAME_LENGTH"}
+    ]
+  },
+  {
     "name": "java.lang.System",
     "fields": [
       { "name": "out"}

@@ -608,14 +608,15 @@ class PolyglotIsolateTestLanguage extends TruffleLanguage<PolyglotIsolateTestLan
         @TruffleBoundary
         private Object testSymbolCache() {
             Map<String, Object> members = new HashMap<>();
-            int count = Integer.parseInt(argument);
+            int count = repeatCount;
+            String prefix = argument.isEmpty() ? "" : argument;
             if ("method".equals(hostMethodToCall)) {
                 for (int i = 1; i <= count; i++) {
-                    members.put("method_" + i, new GuestFunction(i));
+                    members.put(prefix + i, new GuestFunction(i));
                 }
             } else if ("field".equals(hostMethodToCall)) {
                 for (int i = 1; i <= count; i++) {
-                    members.put("field_" + i, i);
+                    members.put(prefix + i, i);
                 }
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unknown command " + hostMethodToCall);
