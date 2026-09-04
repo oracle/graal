@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,10 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
  * value transformer can, for example, reset a field to the default null/0 value, replace a filled
  * collection with a new empty collection, or provide any kind of new value for a field.
  * <p>
+ * The value returned by {@link #transform(Object, Object)} may be cached when it is first queried
+ * for a given receiver. Consequently, later changes to the original hosted field value may not be
+ * reflected in the image heap.
+ * <p>
  * Only one field value transformer can be registered for each field.
  * <p>
  * A field value transformer can be registered for fields of classes that are initialized at image
@@ -85,7 +89,9 @@ public interface FieldValueTransformer {
     Object transform(Object receiver, Object originalValue);
 
     /**
-     * Returns true when the value for this custom computation is available.
+     * Returns true when the value for this custom computation is available. A transition from
+     * unavailable to available only permits {@link #transform(Object, Object)} to be invoked; it
+     * does not itself trigger a field scan or rescan.
      *
      * @since 25
      */
