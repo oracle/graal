@@ -204,6 +204,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.graal.substitutions.Target_jdk_graal_compiler_debug_DebugContext_Immutable$ClearImmutableCache"),
                     clazz("com.oracle.svm.guest.staging.option.RuntimeOptionsSupportImpl"),
                     clazz("com.oracle.svm.hosted.analysis.DynamicHubInitializer"),
+                    clazz("com.oracle.svm.hosted.analysis.flow.ArrayCopyOfAnalysisFeature"),
                     clazz("com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis"),
                     clazz("com.oracle.svm.hosted.annotation.AnnotationFeature"),
                     clazz("com.oracle.svm.hosted.AutomaticallyRegisteredImageSingletonHandler"),
