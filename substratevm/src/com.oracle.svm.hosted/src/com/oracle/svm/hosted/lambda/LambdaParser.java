@@ -169,6 +169,11 @@ public class LambdaParser {
         return providers.getSnippetReflection().asObject(Member.class, fieldValue);
     }
 
+    /**
+     * Returns the {@code invokedynamic} site that created {@code lambdaClass}, or {@code null} if
+     * no site can be found or resolved. This can happen when the lambda was created by invoking a
+     * lambda metafactory directly or when an {@code invokedynamic} site cannot be linked.
+     */
     public static String findLambdaCaptureSite(Class<?> lambdaClass) {
         if (!LambdaUtils.isLambdaClass(lambdaClass)) {
             throw VMError.shouldNotReachHere("Expected a lambda class: " + lambdaClass.getName());
@@ -202,7 +207,6 @@ public class LambdaParser {
                 if (stream.currentBC() != Bytecodes.INVOKEDYNAMIC) {
                     continue;
                 }
-
                 int bci = stream.currentBCI();
                 String captureSite = method.format("%H.%n(%P)%R") + "@" + bci;
                 BootstrapMethodInvocation bootstrapInvocation;
@@ -211,8 +215,9 @@ public class LambdaParser {
                     bootstrapInvocation = method.getConstantPool().lookupBootstrapMethodInvocation(cpi, Bytecodes.INVOKEDYNAMIC);
                 } catch (LinkageError e) {
                     /*
-                     * An unresolved site cannot identify a lambda. If it is needed later, the
-                     * lookup will fail with a diagnostic that includes the requested site.
+                     * An unresolved site cannot identify a lambda during this build. Lookup by
+                     * lambda class can use the fallback name, while lookup by a persisted site
+                     * fails with a diagnostic that includes the requested site.
                      */
                     continue;
                 }
@@ -255,7 +260,6 @@ public class LambdaParser {
                 }
                 captureSite = currentCaptureSite;
             }
-            VMError.guarantee(captureSite != null, "Could not find capture site for lambda class %s", lambdaClass.getName());
             return captureSite;
         }
 
