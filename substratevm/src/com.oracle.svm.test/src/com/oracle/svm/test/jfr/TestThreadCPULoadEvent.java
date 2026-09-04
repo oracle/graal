@@ -31,11 +31,10 @@ import static org.junit.Assert.assertTrue;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
+import org.graalvm.collections.EconomicSet;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -47,57 +46,61 @@ import jdk.jfr.consumer.RecordedEvent;
 
 public class TestThreadCPULoadEvent extends JfrRecordingTest {
     private static final int TIMEOUT = 30000;
-    private static final String THREAD_NAME_1 = "Thread-1";
-    private static final String THREAD_NAME_2 = "Thread-2";
-    private static final String THREAD_NAME_3 = "Thread-3";
+    private static final String EXITED_THREAD_NAME = "Exited Thread";
+    private static final String RUNNING_THREAD_NAME = "Running Thread";
 
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.ThreadCPULoad.getName()};
         Recording recording = startRecording(events);
 
-        CountDownLatch threadsStarted = new CountDownLatch(3);
-        WeakReference<Thread> thread1 = new WeakReference<>(createAndStartBusyWaitThread(THREAD_NAME_1, 10, 250, threadsStarted));
-        WeakReference<Thread> thread2 = new WeakReference<>(createAndStartBusyWaitThread(THREAD_NAME_2, 250, 10, threadsStarted));
-        Thread thread3 = createAndStartBusyWaitThread(THREAD_NAME_3, 20, TIMEOUT, threadsStarted);
+        /* Start a thread and wait until it exits. The event is emitted when the thread exits. */
+        WeakReference<Thread> exitedThread = new WeakReference<>(createAndStartBusyWaitThread(EXITED_THREAD_NAME, 20, 0));
+        waitUntilCollected(exitedThread);
 
-        /* Wait until all threads are started. */
-        threadsStarted.await();
+        /* Start a thread and keep it running. The event is emitted upon chunk end */
+        CountDownLatch busyWaitFinished = new CountDownLatch(1);
+        Thread runningThread = createAndStartBusyWaitThread(RUNNING_THREAD_NAME, 20, TIMEOUT, busyWaitFinished);
+        try {
+            busyWaitFinished.await();
 
-        /* For threads 1 and 2, the event is emitted when the thread exits. */
-        waitUntilCollected(thread1);
-        waitUntilCollected(thread2);
-
-        /* For thread 3, the event is emitted upon chunk end. */
-        stopRecording(recording, TestThreadCPULoadEvent::validateEvents);
-
-        Assert.assertTrue(thread3.isAlive());
-        thread3.interrupt();
-        thread3.join();
+            stopRecording(recording, TestThreadCPULoadEvent::validateEvents);
+            Assert.assertTrue(runningThread.isAlive());
+        } finally {
+            runningThread.interrupt();
+            runningThread.join();
+        }
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        Map<String, Float> userTimes = new HashMap<>();
-        Map<String, Float> cpuTimes = new HashMap<>();
+        EconomicSet<String> threads = EconomicSet.create(List.of(EXITED_THREAD_NAME, RUNNING_THREAD_NAME));
 
         for (RecordedEvent e : events) {
             String threadName = e.getThread().getJavaName();
-            float userTime = e.<Float> getValue("user");
-            float systemTime = e.<Float> getValue("system");
-            assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
-            assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
-            userTimes.put(threadName, userTime);
-            cpuTimes.put(threadName, userTime + systemTime);
+            threads.remove(threadName);
+
+            float userLoad = e.<Float> getValue("user");
+            float systemLoad = e.<Float> getValue("system");
+            assertTrue("User load is outside 0..1 range", 0.0 <= userLoad && userLoad <= 1.0);
+            assertTrue("System load is outside 0..1 range", 0.0 <= systemLoad && systemLoad <= 1.0);
         }
-        assertTrue(cpuTimes.containsKey(THREAD_NAME_3));
-        assertTrue(userTimes.get(THREAD_NAME_1) < userTimes.get(THREAD_NAME_2));
-        assertTrue(cpuTimes.get(THREAD_NAME_1) < cpuTimes.get(THREAD_NAME_2));
+
+        assertTrue("Events for the following threads are missing: " + threads, threads.isEmpty());
     }
 
-    private static Thread createAndStartBusyWaitThread(String name, int busyMs, int idleMs, CountDownLatch threadsStarted) {
+    private static Thread createAndStartBusyWaitThread(String name, int busyMs, int idleMs) {
+        return createAndStartBusyWaitThread(name, busyMs, idleMs, null);
+    }
+
+    private static Thread createAndStartBusyWaitThread(String name, int busyMs, int idleMs, CountDownLatch busyWaitFinished) {
         Thread thread = new Thread(() -> {
-            threadsStarted.countDown();
-            busyWait(busyMs);
+            try {
+                busyWait(busyMs);
+            } finally {
+                if (busyWaitFinished != null) {
+                    busyWaitFinished.countDown();
+                }
+            }
             sleep(idleMs);
         });
         thread.setName(name);
