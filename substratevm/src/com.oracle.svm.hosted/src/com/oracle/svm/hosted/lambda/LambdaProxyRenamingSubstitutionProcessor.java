@@ -43,11 +43,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This substitution replaces all lambda proxy types with types that have a stable names. The name
- * is formed from the lambda capture site.
+ * is formed from the lambda capture site. Lambdas created by explicitly invoking a lambda
+ * metafactory do not have an {@code invokedynamic} capture site, so their names use the signature
+ * of the target method instead.
  * <p>
- * NOTE: if multiple lambda proxies have the same capture-site hash, a unique number is appended for
- * that class. To make this conflict case truly stable, analysis must be run in the single-threaded
- * mode.
+ * NOTE: if multiple lambda proxies have the same capture-site hash or fallback signature, a unique
+ * number is appended for that class. To make this conflict case truly stable, analysis must be run
+ * in the single-threaded mode.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
@@ -79,7 +81,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
     private LambdaSubstitutionType getSubstitution(ResolvedJavaType original) {
         return typeSubstitutions.computeIfAbsent(original, (key) -> {
             String captureSite = LambdaParser.findLambdaCaptureSite(OriginalClassProvider.getJavaClass(key));
-            String lambdaTargetName = withCaptureSite(key.getName(), captureSite);
+            String lambdaTargetName = captureSite == null ? LambdaUtils.findStableLambdaName(key) : withCaptureSite(key.getName(), captureSite);
             return new LambdaSubstitutionType(key, findUniqueLambdaProxyName(lambdaTargetName));
         });
     }

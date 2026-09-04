@@ -169,6 +169,10 @@ public class LambdaParser {
         return providers.getSnippetReflection().asObject(Member.class, fieldValue);
     }
 
+    /**
+     * Returns the {@code invokedynamic} site that created {@code lambdaClass}, or {@code null} if
+     * the lambda was created by invoking a lambda metafactory directly.
+     */
     public static String findLambdaCaptureSite(Class<?> lambdaClass) {
         if (!LambdaUtils.isLambdaClass(lambdaClass)) {
             throw VMError.shouldNotReachHere("Expected a lambda class: " + lambdaClass.getName());
@@ -255,7 +259,6 @@ public class LambdaParser {
                 }
                 captureSite = currentCaptureSite;
             }
-            VMError.guarantee(captureSite != null, "Could not find capture site for lambda class %s", lambdaClass.getName());
             return captureSite;
         }
 

@@ -41,6 +41,7 @@ import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -71,6 +72,28 @@ public class BootstrapMethodTest {
     static boolean jvmciCondyBootstrapCalledAtBuildTime;
     static boolean runtimeIndyBootstrapCalledAtBuildTime;
     static boolean runtimeCondyBootstrapCalledAtBuildTime;
+    static boolean directMetafactoryLambdaCalled;
+
+    static final Runnable DIRECT_METAFACTORY_LAMBDA = createDirectMetafactoryLambda();
+
+    private static final class DirectMetafactoryHost {
+        @SuppressWarnings("unused")
+        static void target() {
+            directMetafactoryLambdaCalled = true;
+        }
+    }
+
+    private static Runnable createDirectMetafactoryLambda() {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(DirectMetafactoryHost.class, MethodHandles.lookup());
+            MethodHandle target = lookup.findStatic(DirectMetafactoryHost.class, "target", MethodType.methodType(void.class));
+            CallSite callSite = LambdaMetafactory.metafactory(lookup, "run", MethodType.methodType(Runnable.class), MethodType.methodType(void.class), target,
+                            MethodType.methodType(void.class));
+            return (Runnable) callSite.getTarget().invokeExact();
+        } catch (Throwable e) {
+            throw new AssertionError(e);
+        }
+    }
 
     @SuppressWarnings("unused")
     public static CallSite myIndyBootstrap(MethodHandles.Lookup lookup, String name, MethodType type) {
@@ -313,5 +336,12 @@ public class BootstrapMethodTest {
         Method loadRuntimeCondy = generatedClass.getDeclaredMethod("loadRuntimeCondy");
         String result = (String) loadRuntimeCondy.invoke(null);
         Assert.assertEquals("runtime-condy-resolved", result);
+    }
+
+    @Test
+    public void testDirectMetafactoryLambda() {
+        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
+        DIRECT_METAFACTORY_LAMBDA.run();
+        Assert.assertTrue("Lambda created by a direct metafactory call should be executable", directMetafactoryLambdaCalled);
     }
 }
