@@ -607,12 +607,18 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public InterpreterResolvedObjectType resolvedTypeAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
         Object resolvedEntry = resolvedAt(cpi, accessingKlass);
         assert resolvedEntry != null;
+        if (resolvedEntry instanceof StickyConstantError savedError) {
+            throw savedError.throwOnAccess();
+        }
         return (InterpreterResolvedObjectType) resolvedEntry;
     }
 
     public InterpreterResolvedObjectType uncheckedResolvedTypeAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
         Object resolvedEntry = uncheckedResolvedAt(cpi, accessingKlass);
         assert resolvedEntry != null;
+        if (resolvedEntry instanceof StickyConstantError savedError) {
+            throw savedError.throwOnAccess();
+        }
         return (InterpreterResolvedObjectType) resolvedEntry;
     }
 
@@ -639,18 +645,19 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     /**
      * This is stored in the constant pool when a "sticky" failure happens while resolving a DYNAMIC
-     * entry. It is used to throw the correct exception on subsequent accesses to that entry.
+     * or CLASS entry. It is used to throw the correct exception on subsequent accesses to that
+     * entry.
      */
-    public static final class DynamicConstantError {
+    public static final class StickyConstantError {
         private final LinkageError originalException;
         private Constructor<? extends LinkageError> cachedConstructor;
 
-        public DynamicConstantError(LinkageError originalException) {
+        public StickyConstantError(LinkageError originalException) {
             this.originalException = originalException;
         }
 
         /**
-         * Throws an exception when a failed DYNAMIC entry is accessed again. It tries to create a
+         * Throws an exception when a failed DYNAMIC or CLASS entry is accessed again. It tries to create a
          * fresh exception to give an accurate stack trace.
          */
         LinkageError throwOnAccess() {
@@ -703,7 +710,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     public Object resolvedDynamicConstantAt(int cpi, InterpreterResolvedObjectType accessingClass) {
         Object resolvedEntry = resolvedAt(cpi, accessingClass);
-        if (resolvedEntry instanceof DynamicConstantError savedError) {
+        if (resolvedEntry instanceof StickyConstantError savedError) {
             throw savedError.throwOnAccess();
         }
         if (resolvedEntry == NULL_DYNAMIC_CONSTANT_SENTINEL) {
@@ -714,7 +721,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     public Object uncheckedResolvedDynamicConstantAt(int cpi, InterpreterResolvedObjectType accessingClass) {
         Object resolvedEntry = uncheckedResolvedAt(cpi, accessingClass);
-        if (resolvedEntry instanceof DynamicConstantError savedError) {
+        if (resolvedEntry instanceof StickyConstantError savedError) {
             throw savedError.throwOnAccess();
         }
         if (resolvedEntry == NULL_DYNAMIC_CONSTANT_SENTINEL) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,8 +129,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
              * Only save LinkageErrors in the constant pool. This is in line with HotSpot behaviour.
              * Needs clarification to section 5.4.3 of the VM spec (see JDK-6308271).
              */
-            this.cachedEntries[cpi] = new DynamicConstantError(e);
-            throw e;
+            return new StickyConstantError(e);
         }
     }
 
@@ -198,7 +197,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return (InterpreterResolvedJavaType) hub.getInterpreterType();
     }
 
-    private InterpreterResolvedJavaType resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
+    private Object resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
         assert accessingKlass != null;
         assert tagAt(classIndex) == Tag.CLASS;
 
@@ -212,10 +211,6 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             type = SymbolsSupport.getTypes().fromClassNameEntry(className);
             allowArbitraryClassLoading = true;
         } else if (entry instanceof UnresolvedJavaType unresolvedJavaType) {
-            Throwable cause = unresolvedJavaType.getCause();
-            if (cause != null) {
-                throw uncheckedThrow(cause);
-            }
             // CP comes from build-time JVMCI type, derive type from UnresolvedJavaType.
             type = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaType.getName());
             allowArbitraryClassLoading = false;
@@ -233,8 +228,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             // Just throw the exception and don't prevent these classes from being loaded for
             // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
             // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
-            this.cachedEntries[classIndex] = UnresolvedJavaType.create(type.toString(), e);
-            throw e;
+            return new StickyConstantError(e);
         }
     }
 
