@@ -73,7 +73,7 @@ public class JFRCompilationTimeOverflowTest {
         Assert.assertEquals(1L, getLongField(statisticsClass, statistics, "totalTime"));
         Assert.assertEquals(200_000L, getLongField(statisticsClass, statistics, "totalTimeNanosRemainder"));
 
-        finishCompilation.invoke(statistics, (long) Integer.MAX_VALUE + 1L, false, 0);
+        finishCompilation.invoke(statistics, Integer.MAX_VALUE + 1L, false, 0);
         Assert.assertEquals(2_148L, getLongField(statisticsClass, statistics, "totalTime"));
         Assert.assertEquals(683_648L, getLongField(statisticsClass, statistics, "totalTimeNanosRemainder"));
     }
