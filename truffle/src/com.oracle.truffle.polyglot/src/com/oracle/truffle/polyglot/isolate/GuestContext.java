@@ -54,6 +54,8 @@ final class GuestContext {
     final Object polyglotContextReceiver;
     final ReflectionLibraryDispatch guestToHostDispatch;
     final GuestObjectReferences hostToGuestObjectReferences;
+    final SymbolTable.Sink hostSymbols;
+    final SymbolTable.Source guestSymbols;
     private final WeakReference<GuestContext> weakThis;
     private volatile long contextHandle = UNSET_HANDLE;
     private boolean disposed;
@@ -63,6 +65,8 @@ final class GuestContext {
         this.polyglotContextReceiver = Objects.requireNonNull(polyglotContextReceiver, "PolyglotContextReceiver must be non-null");
         this.guestToHostDispatch = ForeignReflectionLibraryDispatch.optimized(this, (ForeignReflectionLibraryDispatch) guestToHostDispatch, hostStackSpaceHeadroom);
         this.hostToGuestObjectReferences = new GuestObjectReferences(this);
+        this.hostSymbols = SymbolTable.createSinkTable();
+        this.guestSymbols = SymbolTable.createSourceTable();
         this.weakThis = new WeakReference<>(this);
     }
 

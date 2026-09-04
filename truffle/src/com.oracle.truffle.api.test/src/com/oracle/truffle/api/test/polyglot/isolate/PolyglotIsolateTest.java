@@ -2315,6 +2315,44 @@ public class PolyglotIsolateTest {
         builder.run();
     }
 
+    @Test
+    public void testSymbolCache() throws Exception {
+        try (Context context = Context.newBuilder("triste").option("engine.SpawnIsolate", "true").build()) {
+            String prefix = "method_";
+            Value methods = context.eval("triste", "testSymbolCache(method(" + prefix + "),5000)");
+            Set<String> methodKeys = methods.getMemberKeys();
+            assertEquals(5000, methodKeys.size());
+            for (String key : methodKeys) {
+                int expected = Integer.parseInt(key.substring(prefix.length()));
+                assertEquals(expected, methods.invokeMember(key).asInt());
+                assertEquals(expected, methods.invokeMember(key).asInt());
+            }
+
+            prefix = "field_";
+            Value fields = context.eval("triste", "testSymbolCache(field(" + prefix + "),5000)");
+            Set<String> fieldKeys = fields.getMemberKeys();
+            assertEquals(5000, fieldKeys.size());
+            for (String key : fieldKeys) {
+                int expected = Integer.parseInt(key.substring(prefix.length()));
+                assertEquals(expected, fields.getMember(key).asInt());
+                assertEquals(expected, fields.getMember(key).asInt());
+            }
+
+            int maxSymbolNameLength = (int) ReflectionUtils.getStaticField(Class.forName("com.oracle.truffle.polyglot.isolate.SymbolTable$Source"), "MAX_SYMBOL_NAME_LENGTH");
+            char[] longName = new char[maxSymbolNameLength + 1];
+            Arrays.fill(longName, 'A');
+            prefix = new String(longName);
+            methods = context.eval("triste", "testSymbolCache(method(" + prefix + "),10)");
+            methodKeys = methods.getMemberKeys();
+            assertEquals(10, methodKeys.size());
+            for (String key : methodKeys) {
+                int expected = Integer.parseInt(key.substring(prefix.length()));
+                assertEquals(expected, methods.invokeMember(key).asInt());
+                assertEquals(expected, methods.invokeMember(key).asInt());
+            }
+        }
+    }
+
     @HostReflection
     public static final class HostObjectFactory {
 

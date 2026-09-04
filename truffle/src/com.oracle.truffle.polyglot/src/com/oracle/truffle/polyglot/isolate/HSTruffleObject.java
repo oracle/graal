@@ -120,33 +120,50 @@ final class HSTruffleObject implements TruffleObject {
         if (MESSAGE_IS_NULL == message) {
             return false;
         }
-        byte[] messageReadBufferIntoOutByteArray = null;
-        int messageReadBufferIntoOutByteArrayOffset = -1;
-        if (message == MESSAGE_READ_BUFFER) {
-            messageReadBufferIntoOutByteArray = (byte[]) args[1];
-            messageReadBufferIntoOutByteArrayOffset = (Integer) args[2];
-            args[1] = null;
-            args[2] = 0;
-        }
-        Object result;
+        int messageId = message.getId();
+        SymbolTable.Symbol symbol = null;
         try {
-            result = context.guestToHostDispatch.dispatch(hostReferenceId, message.getId(), args);
-        } catch (AbstractTruffleException t) {
-            /*
-             * Capture the Java stack within the isolate to enable proper Guest Frame merging, which
-             * depends on CallTarget.execute frames.
-             */
-            TruffleStackTrace.fillIn(t);
-            throw t;
+            if (SymbolTable.isMemberNameMessage(messageId)) {
+                SymbolTable.Symbol s = context.guestSymbols.acquireSymbol((String) args[0]);
+                if (s != null) {
+                    args[0] = symbol = s;
+                }
+            }
+            byte[] messageReadBufferIntoOutByteArray = null;
+            int messageReadBufferIntoOutByteArrayOffset = -1;
+            if (message == MESSAGE_READ_BUFFER) {
+                messageReadBufferIntoOutByteArray = (byte[]) args[1];
+                messageReadBufferIntoOutByteArrayOffset = (Integer) args[2];
+                args[1] = null;
+                args[2] = 0;
+            }
+            Object result;
+            try {
+                result = context.guestToHostDispatch.dispatch(hostReferenceId, messageId, args);
+                if (symbol != null) {
+                    symbol.finishRegistration();
+                }
+            } catch (AbstractTruffleException t) {
+                /*
+                 * Capture the Java stack within the isolate to enable proper Guest Frame merging, which
+                 * depends on CallTarget.execute frames.
+                 */
+                TruffleStackTrace.fillIn(t);
+                throw t;
+            }
+            if (result == null) {
+                return PolyglotIsolateAccessor.ENGINE.getHostNull();
+            }
+            if (message == MESSAGE_READ_BUFFER) {
+                byte[] outByteArray = (byte[]) result;
+                System.arraycopy(outByteArray, 0, messageReadBufferIntoOutByteArray, messageReadBufferIntoOutByteArrayOffset, outByteArray.length);
+                result = null;
+            }
+            return result;
+        } finally {
+            if (symbol != null) {
+                symbol.release();
+            }
         }
-        if (result == null) {
-            return PolyglotIsolateAccessor.ENGINE.getHostNull();
-        }
-        if (message == MESSAGE_READ_BUFFER) {
-            byte[] outByteArray = (byte[]) result;
-            System.arraycopy(outByteArray, 0, messageReadBufferIntoOutByteArray, messageReadBufferIntoOutByteArrayOffset, outByteArray.length);
-            result = null;
-        }
-        return result;
     }
 }
