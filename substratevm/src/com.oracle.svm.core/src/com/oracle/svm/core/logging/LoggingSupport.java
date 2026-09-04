@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.logging;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
+import com.oracle.svm.shared.Uninterruptible;
 
 /// Provides support for unified logging, by-passing Java libraries which may not be initialized.
 public interface LoggingSupport {
@@ -45,7 +48,8 @@ public interface LoggingSupport {
     /// @return true on success
     boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length);
 
-    /// Deletes a path that was converted to native memory during configuration.
+    /// Deletes a path converted to native memory during configuration.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     boolean delete(RawFilePath path);
 
     /// Renames `source` to `target`.
@@ -53,6 +57,7 @@ public interface LoggingSupport {
     /// @param source the name of the file to be renamed
     /// @param target the new name of the file
     /// @return 0 on success, platform-dependent error code on failure
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int rename(RawFilePath source, RawFilePath target);
 
     /// Gets the native host name without depending on the initialized networking library.

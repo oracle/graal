@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.logging;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,7 +37,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
@@ -44,14 +45,15 @@ import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.Uninterruptible;
 
 /// Writes to a file and performs size-based log file rotation.
 final class LogFileOutput extends LogOutput {
     /// Provides a pool of mutexes to share amongst log files.
-    private static final VMMutex[] MUTEX_POOL = HasULSupport.get() ? new VMMutex[]{
+    private static final VMMutex[] MUTEX_POOL = {
                     new VMMutex("LogOutput.file.0"),
                     new VMMutex("LogOutput.file.1")
-    } : null;
+    };
 
     private static int nextMutexIndex;
 
@@ -63,6 +65,12 @@ final class LogFileOutput extends LogOutput {
 
     /// Expanded destination path retained for all runtime file operations.
     private final String pathName;
+
+    /// Serializes native writes and rotation for this file output.
+    private final VMMutex mutex;
+
+    /// Native file operations used by the uninterruptible rotation path.
+    private final LoggingSupport loggingSupport;
 
     /// Native paths retained for all archive slots.
     private RawFilePath[] archivePaths;
@@ -83,7 +91,9 @@ final class LogFileOutput extends LogOutput {
     private long bytesWritten;
 
     LogFileOutput(String name) {
-        super("file=" + name, nextMutex());
+        super("file=" + name);
+        this.mutex = nextMutex();
+        this.loggingSupport = LoggingSupport.singleton();
         this.pathName = expandFilename(name);
         this.path = allocatePath(pathName);
         this.archivePaths = createArchivePaths(fileCount);
@@ -114,23 +124,30 @@ final class LogFileOutput extends LogOutput {
     }
 
     @Override
-    protected boolean writeRaw(CCharPointer bytes, UnsignedWord length) {
-        /* The descriptor is opened during startup, and emergency logging cannot reopen it. */
-        if (rawDescriptor != 0) {
-            RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
-            if (!files.write(descriptor(), (Pointer) bytes, length)) {
-                return false;
-            } else {
-                bytesWritten += length.rawValue();
-            }
+    @Uninterruptible(reason = "File output writes must not safepoint.")
+    protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+        /* The descriptor is opened during startup, and logging cannot reopen it. */
+        if (rawDescriptor == 0) {
+            return 0;
         }
-        return true;
+        return writeRawLocked(bytes, length);
     }
 
-    @Override
-    protected void finishRawLine() {
-        if (fileCount > 0 && rotateSize > 0 && bytesWritten >= rotateSize) {
-            rotate();
+    @Uninterruptible(reason = "File output state is protected by a no-transition mutex.", callerMustBe = true)
+    private int writeRawLocked(CCharPointer bytes, UnsignedWord length) {
+        mutex.lockNoTransition();
+        try {
+            RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
+            if (!files.write(descriptor(), (Pointer) bytes, length)) {
+                return WRITE_FAILED;
+            }
+            bytesWritten += length.rawValue();
+            if (fileCount > 0 && rotateSize > 0 && bytesWritten >= rotateSize) {
+                return rotateRaw();
+            }
+            return 0;
+        } finally {
+            mutex.unlock();
         }
     }
 
@@ -152,32 +169,33 @@ final class LogFileOutput extends LogOutput {
         }
     }
 
-    /// Rotates the active file through the precomputed native archive paths.
-    private void rotate() {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private int rotateRaw() {
+        int status = 0;
         RawFileOperationSupport.nativeByteOrder().close(descriptor());
         rawDescriptor = 0;
-        LoggingSupport.singleton().delete(archivePaths[fileCount - 1]);
+        loggingSupport.delete(archivePaths[fileCount - 1]);
         for (int index = fileCount - 2; index >= 0; index--) {
-            rename(archivePaths[index], archivePaths[index + 1], false);
+            loggingSupport.rename(archivePaths[index], archivePaths[index + 1]);
         }
-        rename(path, archivePaths[0], true);
-        ensureOpen();
+        if (loggingSupport.rename(path, archivePaths[0]) != 0) {
+            status |= ROTATION_RENAME_FAILED;
+        }
+        if (!ensureOpenRaw()) {
+            status |= ROTATION_OPEN_FAILED;
+        }
+        return status;
     }
 
-    private static void rename(RawFilePath oldPath, RawFilePath newPath, boolean printFailure) {
-        int res = LoggingSupport.singleton().rename(oldPath, newPath);
-        int errno = LibC.errno();
-        if (res != 0 && printFailure) {
-            Log.log().string("Could not rename ") //
-                            .string((CCharPointer) oldPath) //
-                            .string(" to ") //
-                            .string((CCharPointer) newPath) //
-                            .string(" (res: ") //
-                            .signed(res) //
-                            .string(", errno: ") //
-                            .signed(errno) //
-                            .string(")").newline();
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private boolean ensureOpenRaw() {
+        RawFileDescriptor descriptor = RawFileOperationSupport.nativeByteOrder().create(path, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.WRITE);
+        if (!RawFileOperationSupport.nativeByteOrder().isValid(descriptor)) {
+            return false;
         }
+        rawDescriptor = descriptor.rawValue();
+        bytesWritten = 0;
+        return true;
     }
 
     /// Allocates native path storage for each configured archive slot.
@@ -199,6 +217,7 @@ final class LogFileOutput extends LogOutput {
     }
 
     /// Releases the native storage held for archive paths.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void freeArchivePaths() {
         if (archivePaths != null) {
             for (RawFilePath archivePath : archivePaths) {
@@ -209,15 +228,25 @@ final class LogFileOutput extends LogOutput {
 
     @Override
     protected void closeOutput() {
-        RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
-        if (rawDescriptor != 0) {
-            files.close(descriptor());
-            rawDescriptor = 0;
+        closeOutputLocked();
+    }
+
+    @Uninterruptible(reason = "File output teardown must not safepoint.")
+    private void closeOutputLocked() {
+        mutex.lockNoTransition();
+        try {
+            RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
+            if (rawDescriptor != 0) {
+                files.close(descriptor());
+                rawDescriptor = 0;
+            }
+            freeArchivePaths();
+            UntrackedNullableNativeMemory.free(path);
+            archivePaths = null;
+            path = Word.nullPointer();
+        } finally {
+            mutex.unlock();
         }
-        freeArchivePaths();
-        UntrackedNullableNativeMemory.free(path);
-        archivePaths = null;
-        path = Word.nullPointer();
     }
 
     private static synchronized VMMutex nextMutex() {
@@ -229,6 +258,7 @@ final class LogFileOutput extends LogOutput {
     }
 
     /// Reconstructs the platform descriptor from its heap-storable raw value.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private RawFileDescriptor descriptor() {
         return Word.pointer(rawDescriptor);
     }

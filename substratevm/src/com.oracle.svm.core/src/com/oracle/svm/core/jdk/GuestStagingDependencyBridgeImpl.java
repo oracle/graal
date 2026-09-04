@@ -209,7 +209,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void endOfParsing() {
         if (HasULSupport.get()) {
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging(true));
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging());
             LogConfiguration.logInitializationComplete();
         }
         maybeReportImageClasses();
@@ -226,9 +226,9 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
                     ClassLoader loader = hub.getClassLoader();
                     String loaderDesc = ClassRegistries.loaderNameAndId(loader);
                     LogTagSet.class_load_image.info(hub.getName() + " loader=" + loaderDesc + " image");
-                    Module module = cls.getModule();
+                    Module module = hub.getModule();
                     if (logModuleLoad && reportedModules.add(module)) {
-                        LogTagSet.module_load_image.info(module.getName() + " location: image");
+                        LogTagSet.module_load_image.info(ModuleNative.getName(module) + " location: image");
                     }
                 }
             });

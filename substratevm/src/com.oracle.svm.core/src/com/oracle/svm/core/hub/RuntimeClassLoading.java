@@ -177,8 +177,9 @@ public class RuntimeClassLoading {
                      'java -agentlib:native-image-agent=config-output-dir=<config-dir>,experimental-class-define-support <application-arguments>'.\
                      Note that this is an experimental feature and that it does not guarantee success. Furthermore, the resulting classes can contain entries\
                      from the classpath that should be manually filtered out to reduce image size. The agent should be used only in cases where modifying the source of the project is not possible.
-                    """.replace(
-                    "\n", System.lineSeparator());
+                    """
+                    .replace(
+                                    "\n", System.lineSeparator());
 
     public static RuntimeException throwNoBytecodeClasses(String className) {
         assert !PredefinedClassesSupport.hasBytecodeClasses() && !RuntimeClassLoading.isSupported();

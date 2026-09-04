@@ -35,12 +35,12 @@ import static com.oracle.svm.core.logging.LogDecorators.Decorator.UTCTIME;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.LibCHelper;
-import com.oracle.svm.core.log.NativeMemoryLog;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.shared.util.VMError;
 
 /// Keeps resolved values for a [LogDecorators] value, as well as the
-/// code to format them. The values are [resolved][#reset] when [writing][LogTagSet#write]
+/// code to format them. The values are captured when [writing][LogTagSet#write]
 /// a log message to its outputs.
 public final class LogDecorations {
     /// Number of seconds in a civil day.
@@ -49,8 +49,14 @@ public final class LogDecorations {
     /// Number of days between the Java epoch and the proleptic Gregorian year zero.
     private static final long DAYS_0000_TO_1970 = 719_528;
 
-    /// Tag set associated with this event.
+    /// Shared facade that resolves event data from the current thread.
+    private static final LogDecorations THREAD_LOCAL = new LogDecorations();
+
+    /// Tag set associated with a queued event, or null for the thread-local facade.
     private LogTagSet tagSet;
+
+    /// Identifies whether this instance resolves values from the current thread.
+    private final boolean threadLocal;
 
     /// The [System#currentTimeMillis()] timestamp associated with this event.
     private long systemMillis;
@@ -67,49 +73,78 @@ public final class LogDecorations {
     /// Creates an empty decoration record associated with `tagSet`.
     public LogDecorations(LogTagSet tagSet) {
         this.tagSet = tagSet;
+        this.threadLocal = false;
+    }
+
+    private LogDecorations() {
+        this.tagSet = null;
+        this.threadLocal = true;
     }
 
     public LogTagSet getTagSet() {
-        return tagSet;
+        return threadLocal ? LogThreadLocal.activeTagSet() : tagSet;
     }
 
     /// Copies event metadata from `source`.
     void copyFrom(LogDecorations source) {
-        tagSet = source.tagSet;
-        systemMillis = source.systemMillis;
-        systemNanos = source.systemNanos;
-        uptimeNanos = source.uptimeNanos;
-        threadId = source.threadId;
+        VMError.guarantee(source.threadLocal, "Expected thread-local decorations");
+        LogThreadLocal.Data data = LogThreadLocal.get();
+        systemMillis = data.getSystemMillis();
+        systemNanos = data.getSystemNanos();
+        uptimeNanos = data.getUptimeNanos();
+        threadId = data.getThreadId();
+        tagSet = LogThreadLocal.activeTagSet();
     }
 
     private static final int TIME_MILLIS_DECORATORS = TIME.bit() | UTCTIME.bit() | TIMEMILLIS.bit();
     private static final int TIME_NANOS_DECORATORS = TIMENANOS.bit();
     private static final int UPTIME_DECORATORS = UPTIME.bit() | UPTIMEMILLIS.bit() | UPTIMENANOS.bit();
 
-    /// Updates this reusable record for a new log event.
-    void reset(LogDecorators decorators) {
-        this.systemMillis = decorators.containsAny(TIME_MILLIS_DECORATORS) ? TimeUtils.currentTimeMillis() : 0;
-        this.systemNanos = decorators.containsAny(TIME_NANOS_DECORATORS) ? System.nanoTime() : 0;
-        this.uptimeNanos = decorators.containsAny(UPTIME_DECORATORS) ? System.nanoTime() - Isolates.getStartTimeNanos() : 0;
-        this.threadId = decorators.contains(TID) ? Thread.currentThread().threadId() : 0;
+    /// Captures event metadata in the current thread's logging state.
+    static LogDecorations capture(LogDecorators decorators) {
+        LogThreadLocal.Data data = LogThreadLocal.get();
+        data.setSystemMillis(decorators.containsAny(TIME_MILLIS_DECORATORS) ? TimeUtils.currentTimeMillis() : 0);
+        data.setSystemNanos(decorators.containsAny(TIME_NANOS_DECORATORS) ? System.nanoTime() : 0);
+        data.setUptimeNanos(decorators.containsAny(UPTIME_DECORATORS) ? System.nanoTime() - Isolates.getStartTimeNanos() : 0);
+        data.setThreadId(decorators.contains(TID) ? Thread.currentThread().threadId() : 0);
+        return THREAD_LOCAL;
     }
 
     /// Writes one decorator value for `level` from this event record to `target`.
     public void value(LogDecorators.Decorator decorator, LogLevel level, NativeMemoryLog target) {
         switch (decorator) {
-            case TIME -> writeDateTime(target, systemMillis, LibCHelper.SVM_localUTCOffsetSeconds(systemMillis), false);
-            case UTCTIME -> writeDateTime(target, systemMillis, 0, true);
-            case UPTIME -> writeRoundedUptime(target, uptimeNanos);
-            case TIMEMILLIS -> target.signed(systemMillis).string("ms");
-            case UPTIMEMILLIS -> target.signed(uptimeNanos / 1_000_000).string("ms");
-            case TIMENANOS -> target.signed(systemNanos).string("ns");
-            case UPTIMENANOS -> target.signed(uptimeNanos).string("ns");
+            case TIME -> {
+                long value = systemMillis();
+                writeDateTime(target, value, LibCHelper.SVM_localUTCOffsetSeconds(value), false);
+            }
+            case UTCTIME -> writeDateTime(target, systemMillis(), 0, true);
+            case UPTIME -> writeRoundedUptime(target, uptimeNanos());
+            case TIMEMILLIS -> target.signed(systemMillis()).string("ms");
+            case UPTIMEMILLIS -> target.signed(uptimeNanos() / 1_000_000).string("ms");
+            case TIMENANOS -> target.signed(systemNanos()).string("ns");
+            case UPTIMENANOS -> target.signed(uptimeNanos()).string("ns");
             case HOSTNAME -> target.string(LogConfiguration.hostname());
             case PID -> target.signed(LogConfiguration.pid());
-            case TID -> target.signed(threadId);
+            case TID -> target.signed(threadId());
             case LEVEL -> target.string(level.label());
-            case TAGS -> target.string(tagSet.commaSeparatedLabel());
+            case TAGS -> target.string(getTagSet().commaSeparatedLabel());
         }
+    }
+
+    private long systemMillis() {
+        return threadLocal ? LogThreadLocal.get().getSystemMillis() : systemMillis;
+    }
+
+    private long systemNanos() {
+        return threadLocal ? LogThreadLocal.systemNanos() : systemNanos;
+    }
+
+    private long uptimeNanos() {
+        return threadLocal ? LogThreadLocal.uptimeNanos() : uptimeNanos;
+    }
+
+    private long threadId() {
+        return threadLocal ? LogThreadLocal.threadId() : threadId;
     }
 
     /// Writes either ISO offset time or the fixed millisecond form used by the low-level path.

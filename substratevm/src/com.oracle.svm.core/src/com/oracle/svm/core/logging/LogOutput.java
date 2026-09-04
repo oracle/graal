@@ -28,28 +28,34 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.log.NativeMemoryLog;
 import com.oracle.svm.guest.staging.log.Log;
 
 /// Base class for a configured log destination.
 public abstract class LogOutput {
+    /// Status bit indicating that the native write failed.
+    protected static final int WRITE_FAILED = 1;
+
+    /// Status bit indicating that rotating the old file name failed.
+    protected static final int ROTATION_RENAME_FAILED = 2;
+
+    /// Status bit indicating that reopening the active file failed.
+    protected static final int ROTATION_OPEN_FAILED = 4;
+
     /// Configuration name used to identify repeated output arguments.
     private final String name;
-
-    /// Serializes formatting, writing, rotation, and cleanup for this output.
-    final VMMutex mutex;
 
     /// Compact command-line representation of the thresholds assigned to this output.
     private String configString = "all=off";
 
     /// Largest value seen for each decorator keeps subsequent messages aligned.
-    private final int[] decoratorPadding = new int[LogDecorators.VALUES.length];
+    private final AtomicInteger[] decoratorPadding = createDecoratorPadding();
 
     /// Decorators enabled for this destination.
     private LogDecorators decorators = LogDecorators.DEFAULT;
@@ -60,17 +66,22 @@ public abstract class LogOutput {
     /// Prevents output options from being reapplied to an existing output.
     private boolean optionsConfigured;
 
-    /// Buffer for formatting output of a [LogMessage].
-    private final NativeMemoryLog messageBuffer = new NativeMemoryLog();
+    private static final NativeMemoryLog OUTPUT_BUFFER = new NativeMemoryLog(NativeMemoryLog.BufferKind.OUTPUT);
 
-    /// Reusable native scratch storage for one decorator value.
-    private final NativeMemoryLog decoratorValueBuffer = new NativeMemoryLog();
+    private static final NativeMemoryLog DECORATOR_BUFFER = new NativeMemoryLog(NativeMemoryLog.BufferKind.DECORATOR);
 
-    private boolean writeErrorIsShown;
+    private final AtomicBoolean writeErrorIsShown = new AtomicBoolean();
 
-    protected LogOutput(String name, VMMutex mutex) {
+    protected LogOutput(String name) {
         this.name = name;
-        this.mutex = mutex;
+    }
+
+    private static AtomicInteger[] createDecoratorPadding() {
+        AtomicInteger[] result = new AtomicInteger[LogDecorators.VALUES.length];
+        for (int index = 0; index < result.length; index++) {
+            result[index] = new AtomicInteger();
+        }
+        return result;
     }
 
     public String name() {
@@ -278,45 +289,48 @@ public abstract class LogOutput {
 
     /// Writes one complete message to this output.
     final void write(LogTagSet tagSet, LogDecorations decorations, LogMessage message, LogLevel outputLevel) {
-        mutex.lock();
-        try {
-            LogMessage.LineIterator iterator = message.iterator(outputLevel);
-            while (!iterator.isAtEnd()) {
-                int decoratorsLength = writeDecorators(decorations, iterator.level());
-                tagSet.writePrefix(messageBuffer);
-                iterator.writeTo(messageBuffer, foldMultilines, decoratorsLength);
-                messageBuffer.newline();
-                iterator.next();
+        OUTPUT_BUFFER.reset();
+        int lineCount = message.lineCount();
+        boolean hasLine = false;
+        for (int index = 0; index < lineCount; index++) {
+            LogLevel lineLevel = message.lineLevel(index);
+            if (outputLevel.enables(lineLevel)) {
+                hasLine = true;
+                int decoratorsLength = writeDecorators(decorations, lineLevel);
+                tagSet.writePrefix(OUTPUT_BUFFER);
+                message.writeLineTo(index, OUTPUT_BUFFER, foldMultilines, decoratorsLength);
+                OUTPUT_BUFFER.newline();
             }
+        }
+        if (hasLine) {
             finishWrite();
-        } finally {
-            mutex.unlock();
         }
     }
 
     /// Writes one asynchronously queued message part using the copied event decorations.
     final void write(LogDecorations decorations, NativeMemoryLog message, LogLevel level) {
-        mutex.lock();
-        try {
-            int decoratorsLength = writeDecorators(decorations, level);
-            decorations.getTagSet().writePrefix(message);
-            writeMessageBytes(message, decoratorsLength);
-            messageBuffer.newline();
-            finishWrite();
-        } finally {
-            mutex.unlock();
-        }
+        OUTPUT_BUFFER.reset();
+        int decoratorsLength = writeDecorators(decorations, level);
+        decorations.getTagSet().writePrefix(OUTPUT_BUFFER);
+        writeMessageBytes(message, decoratorsLength);
+        OUTPUT_BUFFER.newline();
+        finishWrite();
     }
 
     private void finishWrite() {
-        if (!writeRaw(messageBuffer.getBuffer(), Word.unsigned(messageBuffer.getPosition()))) {
-            if (!writeErrorIsShown) {
+        int status = writeRaw(OUTPUT_BUFFER.getBuffer(), Word.unsigned(OUTPUT_BUFFER.getPosition()));
+        if (status != 0 && writeErrorIsShown.compareAndSet(false, true)) {
+            if ((status & WRITE_FAILED) != 0) {
                 Log.log().string("Could not write to log: ").string(name).newline();
-                writeErrorIsShown = true;
+            }
+            if ((status & ROTATION_RENAME_FAILED) != 0) {
+                Log.log().string("Could not rotate log file: ").string(name).newline();
+            }
+            if ((status & ROTATION_OPEN_FAILED) != 0) {
+                Log.log().string("Could not reopen log file: ").string(name).newline();
             }
         }
-        messageBuffer.reset();
-        finishRawLine();
+        OUTPUT_BUFFER.reset();
     }
 
     /// Copies a queued message into the output buffer, applying its multiline policy.
@@ -324,72 +338,71 @@ public abstract class LogOutput {
         for (int position = 0; position < message.getPosition(); position++) {
             char value = (char) message.getBuffer().read(position);
             if (foldMultilines && value == '\\') {
-                messageBuffer.character('\\').character('\\');
+                OUTPUT_BUFFER.character('\\').character('\\');
             } else if (foldMultilines && value == '\n') {
-                messageBuffer.character('\\').character('n');
+                OUTPUT_BUFFER.character('\\').character('n');
             } else if (!foldMultilines && value == '\n') {
-                messageBuffer.newline();
+                OUTPUT_BUFFER.newline();
                 if (prefixLength != 0) {
-                    messageBuffer.character('[').spaces(prefixLength - 3).string("] ");
+                    OUTPUT_BUFFER.character('[').spaces(prefixLength - 3).string("] ");
                 }
             } else {
-                messageBuffer.character(value);
+                OUTPUT_BUFFER.character(value);
             }
         }
     }
 
-    /// Writes [#decorators] to [#messageBuffer] and returns their total display width.
+    /// Writes [#decorators] to the thread-local output buffer and returns their display width.
     private int writeDecorators(LogDecorations decorations, LogLevel level) {
         int decoratorsLength = 0;
         boolean decorated = false;
         for (LogDecorators.Decorator decorator : LogDecorators.VALUES) {
             if (decorators.contains(decorator)) {
                 decorated = true;
-                messageBuffer.character('[');
-                decoratorValueBuffer.reset();
-                decorations.value(decorator, level, decoratorValueBuffer);
-                int length = decoratorValueBuffer.getPosition();
+                OUTPUT_BUFFER.character('[');
+                DECORATOR_BUFFER.reset();
+                decorations.value(decorator, level, DECORATOR_BUFFER);
+                int length = DECORATOR_BUFFER.getPosition();
                 int index = decorator.ordinal();
-                decoratorPadding[index] = Math.max(decoratorPadding[index], length);
-                decoratorValueBuffer.writeTo(messageBuffer);
-                messageBuffer.spaces(decoratorPadding[index] - length).character(']');
-                decoratorsLength += length + decoratorPadding[index] - length + 2;
+                int padding;
+                do {
+                    padding = decoratorPadding[index].get();
+                    if (padding >= length) {
+                        break;
+                    }
+                } while (!decoratorPadding[index].compareAndSet(padding, length));
+                padding = Math.max(padding, length);
+                DECORATOR_BUFFER.writeTo(OUTPUT_BUFFER);
+                OUTPUT_BUFFER.spaces(padding - length).character(']');
+                decoratorsLength += padding + 2;
             }
         }
         if (decorated) {
-            messageBuffer.character(' ');
+            OUTPUT_BUFFER.character(' ');
             decoratorsLength++;
         }
         return decoratorsLength;
     }
 
-    /// Performs output-specific work after a complete normal-path line is written.
-    protected void finishRawLine() {
-    }
-
     /// Writes bytes already formatted by an allocation-free `Log` operation.
     ///
-    /// @return false if the low-level write operation was attempted and failed, otherwise true
-    protected abstract boolean writeRaw(CCharPointer bytes, UnsignedWord length);
+    /// @return a bit mask describing failures encountered while writing or rotating the output:
+    /// - `0` when the bytes were successfully written or this is a file output whose
+    /// file descriptor was 0 prior to this due to an earlier error.
+    /// - `WRITE_FAILED` when writing the bytes failed.
+    /// - `ROTATION_RENAME_FAILED` when renaming an archived file failed during rotation.
+    /// - `ROTATION_OPEN_FAILED` when reopening the active file failed after rotation.
+    ///
+    /// Multiple failures are combined with a bitwise OR, so callers can test each status bit
+    /// independently.
+    protected abstract int writeRaw(CCharPointer bytes, UnsignedWord length);
 
     /// Releases the native buffers retained while formatting log output.
     public final void close() {
-        mutex.lock();
-        try {
-            closeOutput();
-            messageBuffer.clear();
-            decoratorValueBuffer.clear();
-        } finally {
-            mutex.unlock();
-        }
+        closeOutput();
     }
 
-    /// Releases output-specific resources while the output mutex is held.
+    /// Releases output-specific resources owned by this destination.
     protected void closeOutput() {
-    }
-
-    public void logNativeBufferUsage(LogTagSet tagSet, LogLevel logLevel) {
-        messageBuffer.logNativeBufferUsage(name + ":messageBuffer", tagSet, logLevel);
-        decoratorValueBuffer.logNativeBufferUsage(name + ":decoratorValueBuffer", tagSet, logLevel);
     }
 }

@@ -26,7 +26,7 @@ package com.oracle.svm.core.logging;
 
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.log.NativeMemoryLog;
+import com.oracle.svm.core.thread.VMOperation;
 
 /// Transfers prepared log message parts to a dedicated output thread.
 final class LogAsyncWriter {
@@ -80,16 +80,21 @@ final class LogAsyncWriter {
         worker.start();
     }
 
-    /// Enqueues every selected message part, copying its native bytes before returning.
+    /// Enqueues every selected message part, copying its native bytes before returning. Returns
+    /// `false` when the caller must use synchronous output instead.
     boolean enqueue(LogOutput output, LogDecorations decorations, LogMessage message, LogLevel outputLevel) {
-        if (Thread.currentThread() == worker) {
+        if (Thread.currentThread() == worker || VMOperation.isInProgress()) {
+            /* A VM operation must not wait for a lock owned by a thread stopped at a safepoint. */
             return false;
         }
 
-        LogMessage.LineIterator iterator = message.iterator(outputLevel);
         PRODUCER_LOCK.lock();
         try {
-            while (!iterator.isAtEnd()) {
+            int lineCount = message.lineCount();
+            for (int index = 0; index < lineCount; index++) {
+                if (!outputLevel.enables(message.lineLevel(index))) {
+                    continue;
+                }
                 Record record;
                 CONSUMER_LOCK.lock();
                 try {
@@ -107,15 +112,14 @@ final class LogAsyncWriter {
                     record = records[tail];
                     tail = (tail + 1) % records.length;
                     record.output = output;
-                    record.level = iterator.level();
+                    record.level = message.lineLevel(index);
                     record.decorations.copyFrom(decorations);
-                    iterator.writeCurrentLineTo(record.message);
+                    message.writeLineTo(index, record.message);
                     size++;
                     CONSUMER_CONDITION.broadcast();
                 } finally {
                     CONSUMER_LOCK.unlock();
                 }
-                iterator.next();
             }
             return true;
         } finally {
@@ -167,6 +171,8 @@ final class LogAsyncWriter {
 
     /// Runs the single consumer that performs formatting and native output writes.
     private void run() {
+        /* LogOutput formats records into buffers owned by the current platform thread. */
+        LogThreadLocal.get();
         for (;;) {
             Record record;
             CONSUMER_LOCK.lock();

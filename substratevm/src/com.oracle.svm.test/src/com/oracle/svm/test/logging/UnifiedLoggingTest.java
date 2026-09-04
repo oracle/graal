@@ -39,7 +39,9 @@ import org.graalvm.word.UnsignedWord;
 import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.LogConfiguration;
@@ -52,13 +54,19 @@ import com.oracle.svm.core.logging.LogSelection;
 import com.oracle.svm.core.logging.LogSelectionList;
 import com.oracle.svm.core.logging.LogTag;
 import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 /// Exercises the SVM unified logging implementation through the native JUnit runner.
 @NativeImageBuildArgs({
+                "-H:+UnlockExperimentalVMOptions",
                 "-H:+StrictRuntimeJavaOptions",
+                "-H:-UnlockExperimentalVMOptions",
                 "--add-exports=jdk.jfr/jdk.jfr.internal=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.jdk=ALL-UNNAMED"
 })
@@ -294,32 +302,71 @@ public final class UnifiedLoggingTest {
         }
     }
 
-    /// Verifies that a synchronous multi-line message is written contiguously after a nested log.
+    /// Verifies that concurrent platform threads keep each synchronous event contiguous.
     @Test
     public void testSynchronousMessageAtomicity() throws IOException {
         String logFile = testLogFile("synchronous-message-atomicity");
         LogConfiguration.disableLogging();
         delete(logFile);
-        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug,logging=debug:file=" + logFile + ":none"), "synchronous message configuration should be accepted");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + logFile + ":none"), "synchronous message configuration should be accepted");
 
-        String[] lines = {"synchronous line 1", "synchronous line 2", "synchronous line 3"};
-        StringBuilder expectedBlock = new StringBuilder();
-        try (LogMessage message = LogTagSet.class_load.message()) {
-            for (String line : lines) {
-                message.line(LogLevel.DEBUG).string(line);
-                expectedBlock.append(line).append('\n');
-                if (line.equals(lines[0])) {
-                    // Use a different tag set so this is a separate message on the same thread.
-                    LogTagSet.logging.debug("nested synchronous message");
-                }
-            }
+        AtomicInteger ready = new AtomicInteger();
+        AtomicBoolean start = new AtomicBoolean();
+        Thread first = new Thread(new ConcurrentMessageWriter("first", ready, start));
+        Thread second = new Thread(new ConcurrentMessageWriter("second", ready, start));
+        first.start();
+        second.start();
+        while (ready.get() != 2) {
+            Thread.onSpinWait();
+        }
+        start.set(true);
+        try {
+            first.join();
+            second.join();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted while waiting for concurrent log writers", ex);
         }
 
         String output = read(logFile);
-        checkContains(output, expectedBlock.toString(), "synchronous multi-line message should be written as one unbroken block");
-        checkContains(output, "nested synchronous message", "nested synchronous message should be written");
+        for (String prefix : new String[]{"first", "second"}) {
+            String block = prefix + " line 1\n" + prefix + " line 2\n" + prefix + " line 3\n";
+            checkContains(output, block, "concurrent event should remain contiguous for " + prefix);
+        }
         LogConfiguration.disableLogging();
         delete(logFile);
+    }
+
+    /// Verifies that closing an empty message releases the thread-local event state.
+    @Test
+    public void testEmptyMessageScope() throws IOException {
+        String logFile = testLogFile("empty-message-scope");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":none"), "empty message configuration should be accepted");
+        // The empty scope must still be closed to release the carrier's event state.
+        LogMessage emptyMessage = LogTagSet.class_load.message();
+        emptyMessage.close();
+        LogTagSet.class_load.info("message after empty scope");
+        checkContains(read(logFile), "message after empty scope", "closing an empty scope should permit the next message");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+    }
+
+    /// Verifies that logging buffers from short-lived threads are released when NMT is available.
+    @Test
+    public void testThreadLocalBufferLifecycle() throws Exception {
+        Assume.assumeTrue("native memory tracking is unavailable", VMInspectionOptions.hasNativeMemoryTrackingSupport());
+        LogConfiguration.disableLogging();
+        long baseline = NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Logging);
+        Thread writer = new Thread(() -> {
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                message.debug().string("thread-local lifecycle message");
+            }
+        });
+        writer.start();
+        writer.join();
+        checkEquals(NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Logging), baseline, "thread-local logging buffers should be released after thread exit");
     }
 
     /// Verifies that asynchronous messages are copied before the producer scope is cleared.
@@ -388,9 +435,6 @@ public final class UnifiedLoggingTest {
             for (int index = 0; index < multiLineCount; index++) {
                 expectedLines[index] = "nonbreakable log message line-" + index;
                 message.line(LogLevel.DEBUG).string(expectedLines[index]);
-                if (index % 4 == 0) {
-                    LogTagSet.logging.debug("a noisy message for another tagset");
-                }
             }
         }
         LogTagSet.logging.debug("a noisy message from another logger");
@@ -398,7 +442,6 @@ public final class UnifiedLoggingTest {
 
         String output = read(logFile);
         checkSubstringsInOrder(output, expectedLines, "async message lines should remain in order");
-        checkContains(output, "a noisy message for another tagset", "interleaved async messages should be written");
         delete(logFile);
     }
 
@@ -418,6 +461,26 @@ public final class UnifiedLoggingTest {
         checkContains(output, "stall message " + (messageCount / 2), "stall mode should write a middle queued message");
         checkContains(output, "stall message " + (messageCount - 1), "stall mode should write the last queued message");
         delete(logFile);
+    }
+
+    /// Verifies that a VM operation bypasses asynchronous queue locks and writes synchronously.
+    @Test
+    public void testAsyncLoggingFromVMOperation() {
+        LogConfiguration.disableLogging();
+        ThreadRecordingLogOutput output = new ThreadRecordingLogOutput();
+        Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
+        Target_com_oracle_svm_core_logging_LogOutputList outputList = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) tagSet.outputList();
+        outputList.setOutputLevel(output, LogLevel.INFO);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:stall"), "async VM operation configuration should be accepted");
+            LogConfiguration.logInitializationComplete();
+            LoggingVMOperation operation = new LoggingVMOperation();
+            operation.enqueue();
+            LogConfiguration.disableLogging();
+            checkSame(output.writingThread, operation.executingThread, "VM operation logging should use synchronous output");
+        } finally {
+            LogConfiguration.disableLogging();
+        }
     }
 
     /// Verifies quoted file names, file-size parsing, folding, rotation, and invalid options.
@@ -597,13 +660,45 @@ public final class UnifiedLoggingTest {
     /// Minimal output used when only routing identity is under test.
     private static final class TestLogOutput extends LogOutput {
         TestLogOutput(String name) {
-            super(name, null);
+            super(name);
         }
 
         /// Accepts bytes without performing I/O.
         @Override
-        protected boolean writeRaw(CCharPointer bytes, UnsignedWord length) {
-            return true;
+        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+            return 0;
+        }
+    }
+
+    /// Records the thread that performs output so synchronous VM operation logging can be tested.
+    private static final class ThreadRecordingLogOutput extends LogOutput {
+        private volatile Thread writingThread;
+
+        ThreadRecordingLogOutput() {
+            super("thread-recording");
+        }
+
+        /// Records the writer without performing I/O.
+        @Override
+        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+            writingThread = Thread.currentThread();
+            return 0;
+        }
+    }
+
+    /// Logs while executing at a safepoint and records the executing thread for comparison.
+    private static final class LoggingVMOperation extends JavaVMOperation {
+        private Thread executingThread;
+
+        LoggingVMOperation() {
+            super(VMOperationInfos.get(LoggingVMOperation.class, "Unified logging at safepoint", VMOperation.SystemEffect.SAFEPOINT));
+        }
+
+        /// Emits a message that must not enter the asynchronous queue.
+        @Override
+        protected void operate() {
+            executingThread = Thread.currentThread();
+            LogTagSet.class_load.info("message from VM operation");
         }
     }
 
@@ -628,6 +723,32 @@ public final class UnifiedLoggingTest {
                 for (int index = 0; index < 10; index++) {
                     LogTagSet.class_load.debug("allocation-free output");
                 }
+            }
+        }
+    }
+
+    /// Builds a three-line event after two platform threads are released together.
+    private static final class ConcurrentMessageWriter implements Runnable {
+        private final String prefix;
+        private final AtomicInteger ready;
+        private final AtomicBoolean start;
+
+        ConcurrentMessageWriter(String prefix, AtomicInteger ready, AtomicBoolean start) {
+            this.prefix = prefix;
+            this.ready = ready;
+            this.start = start;
+        }
+
+        @Override
+        public void run() {
+            ready.incrementAndGet();
+            while (!start.get()) {
+                Thread.onSpinWait();
+            }
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                message.debug().string(prefix + " line 1");
+                message.debug().string(prefix + " line 2");
+                message.debug().string(prefix + " line 3");
             }
         }
     }

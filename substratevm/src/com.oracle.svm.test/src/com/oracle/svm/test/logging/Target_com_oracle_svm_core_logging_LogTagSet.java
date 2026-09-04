@@ -22,34 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.logging;
+package com.oracle.svm.test.logging;
 
-import java.nio.charset.StandardCharsets;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.logging.LogOutputList;
+import com.oracle.svm.core.logging.LogTagSet;
 
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.UnsignedWord;
-
-/// Writes log messages to `stdout` or `stderr`.
-final class LogFileStreamOutput extends LogOutput {
-
-    /// Selects standard error instead of standard output.
-    private final boolean isStderr;
-
-    LogFileStreamOutput(boolean isStderr) {
-        super(isStderr ? "stderr" : "stdout");
-        this.isStderr = isStderr;
-    }
-
-    @Override
-    protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
-        /* Emergency logging cannot recover from a failed native stream write. */
-        return LoggingSupport.singleton().write(isStderr, bytes, length) ? 0 : WRITE_FAILED;
-    }
-
-    /// Writes undecorated text for configuration diagnostics and help output.
-    void writePlain(String text) {
-        if (!LoggingSupport.singleton().write(isStderr, text.getBytes(StandardCharsets.UTF_8))) {
-            throw new IllegalStateException("Could not write unified log output '" + name() + "'.");
-        }
-    }
+/// Exposes package-private tag-set state to the native JUnit logging tests.
+@TargetClass(LogTagSet.class)
+public final class Target_com_oracle_svm_core_logging_LogTagSet {
+    /// Gets the output list configured for this tag set.
+    @Alias
+    public native LogOutputList outputList();
 }

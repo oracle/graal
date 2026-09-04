@@ -41,17 +41,18 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.thread.VMOperation;
 
 /// Owns the startup configuration for unified logging.
 public final class LogConfiguration {
     /// Preserves command-line output insertion order for deterministic teardown and diagnostics.
-    private static final Map<String, LogFileOutput> OUTPUTS = HasULSupport.get() ? new LinkedHashMap<>() : null;
+    private static final Map<String, LogFileOutput> OUTPUTS = new LinkedHashMap<>();
 
     /// Native standard output destination created when runtime option parsing begins.
-    private static final LogFileStreamOutput stdout = HasULSupport.get() ? new LogFileStreamOutput(false) : null;
+    private static final LogFileStreamOutput stdout = new LogFileStreamOutput(false);
 
     /// Native standard error destination, disabled by the default configuration.
-    private static final LogFileStreamOutput stderr = HasULSupport.get() ? new LogFileStreamOutput(true) : null;
+    private static final LogFileStreamOutput stderr = new LogFileStreamOutput(true);
 
     /// Native host name cached before emergency logging can prohibit allocation.
     private static String hostname;
@@ -168,37 +169,28 @@ public final class LogConfiguration {
         }
     }
 
-    public static void disableLogging() {
-        disableLogging(false);
-    }
-
     /// Removes every configured output and closes file destinations.
-    public static synchronized void disableLogging(boolean onShutdown) {
-        if (onShutdown && logging.isDebug()) {
+    public static void disableLogging() {
+        // VMOperations must not block which make them incompatible
+        // with the locking done while disabling logging.
+        VMOperation.guaranteeNotInProgress("Cannot disable logging during a VM operation.");
+        synchronized (LogConfiguration.class) {
+            stopAsyncWriter();
             for (LogTagSet tagSet : LogTagSet.values()) {
-                tagSet.logNativeBufferUsage(logging, LogLevel.DEBUG);
+                tagSet.outputList().clear();
+                tagSet.updateDecorators();
             }
+            stdout.updateConfigString();
+            stderr.updateConfigString();
+            updateJfrLogLevels();
+            asyncRequested = false;
             for (LogOutput output : OUTPUTS.values()) {
-                output.logNativeBufferUsage(logging, LogLevel.DEBUG);
+                output.close();
             }
+            OUTPUTS.clear();
+            stdout.close();
+            stderr.close();
         }
-
-        stopAsyncWriter();
-        for (LogTagSet tagSet : LogTagSet.values()) {
-            tagSet.outputList().clear();
-            tagSet.updateDecorators();
-            tagSet.clear();
-        }
-        stdout.updateConfigString();
-        stderr.updateConfigString();
-        updateJfrLogLevels();
-        asyncRequested = false;
-        for (LogOutput output : OUTPUTS.values()) {
-            output.close();
-        }
-        OUTPUTS.clear();
-        stdout.close();
-        stderr.close();
     }
 
     /// Gets the initialized writer used to route log records asynchronously.
@@ -341,7 +333,7 @@ public final class LogConfiguration {
         return index < components.size() ? components.get(index) : null;
     }
 
-    private static final String HELP = HasULSupport.get() ? initHelp() : null;
+    private static final String HELP = initHelp();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String initHelp() {
@@ -391,7 +383,8 @@ public final class LogConfiguration {
 
                 Asynchronous logging (off by default):
                  -Xlog:async[:[mode]]
-                  All log messages are written to an intermediate buffer first and will then be flushed to the corresponding log outputs by a standalone thread. Write operations at logsites are guaranteed non-blocking.
+                  Log messages are written to an intermediate buffer first and will then be flushed to the corresponding log outputs by a standalone thread.
+                 Messages produced by VM operations use synchronous output to avoid blocking on a thread stopped at a safepoint.
                  A mode, either 'drop' or 'stall', may be provided. If 'drop' is provided then messages will be dropped if there is no room in the intermediate buffer.
                  If 'stall' is provided then the log operation will wait for room to be made by the output thread, without dropping any messages. The default mode is 'drop'.
 
@@ -437,7 +430,7 @@ public final class LogConfiguration {
     }
 
     /// Renders the available levels, decorators, tags, and descriptions for startup diagnostics.
-    private static final String[] AVAILABLE_DESCRIPTIONS = HasULSupport.get() ? initAvailableDescriptions() : null;
+    private static final String[] AVAILABLE_DESCRIPTIONS = initAvailableDescriptions();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String[] initAvailableDescriptions() {
@@ -450,12 +443,12 @@ public final class LogConfiguration {
         return descriptions.toArray(new String[0]);
     }
 
-    private static final String AVAILABLE_TAG_SETS = HasULSupport.get() ? "Available tag sets: " + //
+    private static final String AVAILABLE_TAG_SETS = "Available tag sets: " + //
                     Stream.of(LogTagSet.VALUES) //
                                     .map(LogTagSet::label) //
                                     .filter(s -> !s.isEmpty()) //
                                     .sorted() //
-                                    .collect(Collectors.joining(", ")) : null;
+                                    .collect(Collectors.joining(", "));
 
     /// Describes one output and the thresholds currently assigned to its tag sets.
     private static String describeOutput(int index, LogOutput output) {

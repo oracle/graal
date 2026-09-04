@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.log.NativeMemoryLog;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.AlwaysInline;
@@ -107,61 +106,41 @@ public enum LogTagSet {
     /// Union of decorators configured on all active outputs for this tag set.
     private LogDecorators decorators = LogDecorators.NONE;
 
-    /// Reusable event data supplies all decorators for this tag set.
-    private final LogDecorations decorations;
-
-    /// Native memory buffer for constructing a log message line.
-    private final NativeMemoryLog messageLineBuffer;
-
     /// Shared object for building a message for this tag set.
     private final LogMessage logMessage;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     LogTagSet() {
-        if (!HasULSupport.get()) {
-            outputList = null;
-            decorations = null;
-            messageLineBuffer = null;
-            logMessage = null;
-            label = null;
-            commaSeparatedLabel = null;
-            tags = null;
-            tagSet = null;
-            isGC = false;
+        /* A builder can create multiple images with different unified logging option values. */
+        outputList = new LogOutputList();
+        logMessage = new LogMessage(this);
+        String enumName = name();
+        String derivedLabel;
+        if (enumName.equals("_no_tag")) {
+            derivedLabel = "";
+        } else if (enumName.endsWith("_")) {
+            derivedLabel = enumName.substring(0, enumName.length() - 1);
         } else {
-            outputList = new LogOutputList();
-            decorations = new LogDecorations(this);
-            messageLineBuffer = new NativeMemoryLog();
-            logMessage = new LogMessage(this, messageLineBuffer);
-            String enumName = name();
-            String derivedLabel;
-            if (enumName.equals("_no_tag")) {
-                derivedLabel = "";
-            } else if (enumName.endsWith("_")) {
-                derivedLabel = enumName.substring(0, enumName.length() - 1);
-            } else {
-                derivedLabel = enumName.replace('_', '+');
-            }
-            label = derivedLabel;
-            commaSeparatedLabel = derivedLabel.replace('+', ',');
-            if (derivedLabel.isEmpty()) {
-                tags = List.of();
-                tagSet = EnumSet.noneOf(LogTag.class);
-            } else {
-                tags = Arrays.stream(derivedLabel.split("\\+")).map(LogTag::fromString).toList();
-                tagSet = EnumSet.copyOf(tags);
-            }
-            isGC = tagSet.contains(LogTag.gc);
+            derivedLabel = enumName.replace('_', '+');
         }
+        label = derivedLabel;
+        commaSeparatedLabel = derivedLabel.replace('+', ',');
+        if (derivedLabel.isEmpty()) {
+            tags = List.of();
+            tagSet = EnumSet.noneOf(LogTag.class);
+        } else {
+            tags = Arrays.stream(derivedLabel.split("\\+")).map(LogTag::fromString).toList();
+            tagSet = EnumSet.copyOf(tags);
+        }
+        isGC = tagSet.contains(LogTag.gc);
     }
 
     private final boolean isGC;
 
-    public Log writePrefix(Log log) {
+    public void writePrefix(Log log) {
         if (isGC) {
             Heap.getHeap().getGC().writeLogPrefix(this, log);
         }
-        return log;
     }
 
     public String label() {
@@ -187,11 +166,6 @@ public enum LogTagSet {
 
     LogOutputList outputList() {
         return outputList;
-    }
-
-    /// Releases the native buffer used to format messages for this tag set.
-    void clear() {
-        messageLineBuffer.clear();
     }
 
     /// Recomputes the decorator union from all currently active outputs.
@@ -262,18 +236,20 @@ public enum LogTagSet {
         }
     }
 
-    /// Gets the shared message object for this tag set. This must be used in a
-    /// try-with-resources or try-finally statement as documented in [LogMessage].
+    /// Gets the message facade for this tag set. Mutable event state is held by the current
+    /// carrier thread. This must be used in a try-with-resources or try-finally statement as
+    /// documented in [LogMessage].
     public LogMessage message() {
-        VMError.guarantee(!logMessage.inUseByCurrentThread(), "recursive logging on a LogTagSet not allowed");
+        VMError.guarantee(HasULSupport.get());
+        LogThreadLocal.activate(this);
         return logMessage;
     }
 
     /// Writes one complete native memory message to every output enabled for one of its lines.
     void write(LogMessage message) {
-        decorations.reset(decorators);
         LogOutput[] outputs = outputList.outputsFor(message.getMostSevereLevel());
         LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
+        LogDecorations decorations = LogDecorations.capture(decorators);
         for (LogOutput output : outputs) {
             LogLevel outputLevel = outputList.levelFor(output);
             if (asyncWriter == null || !asyncWriter.enqueue(output, decorations, message, outputLevel)) {
@@ -324,9 +300,5 @@ public enum LogTagSet {
 
     public LogLevel getMostDetailedLevel() {
         return outputList().getMostDetailedLevel();
-    }
-
-    public void logNativeBufferUsage(LogTagSet outputTagSet, LogLevel level) {
-        messageLineBuffer.logNativeBufferUsage(name() + ":messageLineBuffer", outputTagSet, level);
     }
 }

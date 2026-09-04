@@ -40,10 +40,13 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /// Writes unified logging stream output through the POSIX file descriptors.
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -63,11 +66,13 @@ final class PosixLoggingSupport implements LoggingSupport {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean delete(RawFileOperationSupport.RawFilePath path) {
         return Fcntl.NoTransitions.unlink((CCharPointer) path) == 0;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int rename(RawFileOperationSupport.RawFilePath source, RawFileOperationSupport.RawFilePath target) {
         return PosixFileNames.rename((CCharPointer) source, (CCharPointer) target);
     }

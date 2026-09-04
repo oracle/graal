@@ -22,34 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.logging;
+package com.oracle.svm.hosted;
 
-import java.nio.charset.StandardCharsets;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.logging.HasULSupport;
+import com.oracle.svm.core.logging.LogThreadLocal;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.UnsignedWord;
-
-/// Writes log messages to `stdout` or `stderr`.
-final class LogFileStreamOutput extends LogOutput {
-
-    /// Selects standard error instead of standard output.
-    private final boolean isStderr;
-
-    LogFileStreamOutput(boolean isStderr) {
-        super(isStderr ? "stderr" : "stdout");
-        this.isStderr = isStderr;
-    }
-
+/// Registers the thread-exit cleanup for unified logging buffers.
+@AutomaticallyRegisteredFeature
+public final class UnifiedLoggingFeature implements InternalFeature {
     @Override
-    protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
-        /* Emergency logging cannot recover from a failed native stream write. */
-        return LoggingSupport.singleton().write(isStderr, bytes, length) ? 0 : WRITE_FAILED;
-    }
-
-    /// Writes undecorated text for configuration diagnostics and help output.
-    void writePlain(String text) {
-        if (!LoggingSupport.singleton().write(isStderr, text.getBytes(StandardCharsets.UTF_8))) {
-            throw new IllegalStateException("Could not write unified log output '" + name() + "'.");
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (HasULSupport.get()) {
+            ThreadListenerSupport.get().register(new LogThreadLocal());
         }
     }
 }

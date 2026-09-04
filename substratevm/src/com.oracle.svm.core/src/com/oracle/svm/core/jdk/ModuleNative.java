@@ -273,7 +273,7 @@ public final class ModuleNative {
         return ModuleLayer.boot().modules().stream().anyMatch(m -> getName(m).equals(name));
     }
 
-    private static String getName(Module module) {
+    static String getName(Module module) {
         SubstrateUtil.guaranteeRuntimeOnly();
         return module.getName();
     }
