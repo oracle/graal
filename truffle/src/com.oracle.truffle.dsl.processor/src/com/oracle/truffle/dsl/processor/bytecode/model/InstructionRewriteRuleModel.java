@@ -62,6 +62,7 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
     private final RewriteSection[] sections;
     private final RewriteKind rewriteKind;
     private InstructionRewriterModel parent;
+    private int index = -1;
     private boolean endsWithReturn;
     private boolean returnFinalInstructionBci;
 
@@ -511,8 +512,19 @@ public class InstructionRewriteRuleModel implements Comparable<InstructionRewrit
         return result;
     }
 
-    public void setParent(InstructionRewriterModel parent) {
-        this.parent = parent;
+    public void initialize(InstructionRewriterModel newParent, int newIndex) {
+        if (this.parent != null || this.index != -1) {
+            throw new AssertionError("rule was already initialized");
+        }
+        this.parent = newParent;
+        this.index = newIndex;
+    }
+
+    public int getIndex() {
+        if (index == -1) {
+            throw new AssertionError("rule was not initialized");
+        }
+        return index;
     }
 
     public int compareTo(InstructionRewriteRuleModel other) {

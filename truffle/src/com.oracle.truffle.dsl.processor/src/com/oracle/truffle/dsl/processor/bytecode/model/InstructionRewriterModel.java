@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,8 +84,8 @@ public final class InstructionRewriterModel {
 
     public static InstructionRewriterModel create(String generatedTypeName, SequencedCollection<InstructionModel> instructionSet, InstructionRewriteRuleModel[] rules) {
         InstructionRewriterModel model = new InstructionRewriterModel(generatedTypeName, instructionSet, rules);
-        for (var rule : rules) {
-            rule.setParent(model);
+        for (int i = 0; i < rules.length; i++) {
+            rules[i].initialize(model, i);
         }
         return model;
     }
@@ -161,8 +161,8 @@ public final class InstructionRewriterModel {
     }
 
     public TreeMap<InstructionEncoding, List<InstructionModel>> getInstructionsByEncoding() {
-        return getInstructions().values().stream().collect(
-                        Collectors.groupingBy(InstructionModel::getInstructionEncoding, TreeMap::new, Collectors.toList()));
+        return getInstructions().values().stream().filter(i -> !i.isQuickening()) //
+                        .collect(Collectors.groupingBy(InstructionModel::getInstructionEncoding, TreeMap::new, Collectors.toList()));
     }
 
     public Comparator<InstructionModel> instructionComparator() {

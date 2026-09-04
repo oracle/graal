@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.bytecode.generator;
 import static com.oracle.truffle.dsl.processor.bytecode.model.DFABuilder.DFAModel.DFAState;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -62,6 +61,7 @@ import javax.lang.model.element.TypeElement;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriterModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.DFABuilder.RewriteRuleState;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionEncoding;
@@ -74,6 +74,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public class InstructionRewriterElement extends CodeTypeElement {
+    // For debugging only. Emitting verbose Javadoc can drastically increase file size.
+    private static final boolean EMIT_VERBOSE_JAVADOC = false;
+
     public final ProcessorContext context;
     public final InstructionRewriterModel model;
     private final Function<InstructionModel, CodeVariableElement> instructionConstantSupplier;
@@ -120,19 +123,24 @@ public class InstructionRewriterElement extends CodeTypeElement {
         field.createInitBuilder().string(state.id);
 
         CodeTreeBuilder docBuilder = field.createDocBuilder().startJavadoc();
-        docBuilder.string("Rewrite rule state:").newLine();
-        for (RewriteRuleState ruleState : state.getRewriteStates().stream().sorted().toList()) {
-            docBuilder.string("  ").string(ruleState.toString()).newLine();
+        if (!state.transitions.isEmpty()) {
+            docBuilder.string("Transitions:").newLine();
+            List<InstructionModel> orderedTransitions = state.transitions.keySet().stream().map(model::getInstruction).sorted(model.instructionComparator()).toList();
+            for (InstructionModel instruction : orderedTransitions) {
+                docBuilder.string("  ").string(instruction.getName()).string(" -> {@link #").string(fieldName(state.transitions.get(instruction.getName()))).string("}").newLine();
+            }
         }
-        docBuilder.string("Transitions:").newLine();
-        if (state.transitions.isEmpty()) {
-            docBuilder.string("  none").newLine();
+        if (EMIT_VERBOSE_JAVADOC) {
+            docBuilder.string("Rewrite rule state:").newLine();
+            for (RewriteRuleState ruleState : state.getRewriteStates().stream().sorted().toList()) {
+                docBuilder.string("  ").string(ruleState.toString()).newLine();
+            }
         }
-        List<InstructionModel> orderedTransitions = state.transitions.keySet().stream().map(model::getInstruction).sorted(model.instructionComparator()).toList();
-        for (InstructionModel instruction : orderedTransitions) {
-            docBuilder.string("  ").string(instruction.getName()).string(" -> ").string(fieldName(state.transitions.get(instruction.getName()))).newLine();
+        if (state.isAccepting()) {
+            InstructionRewriteRuleModel acceptingRule = state.getAcceptingRule();
+            docBuilder.string("Accepting rule (see {@link ", BuilderElement.RootStackElement.NAME, "#applyRewriteRule").string(acceptingRule.getIndex()).string("}):").newLine();
+            docBuilder.string("  ").string(acceptingRule.toString()).newLine();
         }
-
         docBuilder.end();
         stateConstants.put(state, add(field));
         return field;
@@ -157,52 +165,72 @@ public class InstructionRewriterElement extends CodeTypeElement {
 
         CodeTreeBuilder docBuilder = ex.createDocBuilder().startJavadoc();
         docBuilder.string("Instructions: ").string(instructionsString(instructions)).newLine();
-        docBuilder.string("Rewrite rules: ").newLine();
-        for (RewriteRuleState rewriteState : allRewriteStates) {
-            docBuilder.string("  ").string(rewriteState.toString()).newLine();
+        if (EMIT_VERBOSE_JAVADOC) {
+            docBuilder.string("Rewrite rules: ").newLine();
+            for (RewriteRuleState rewriteState : allRewriteStates) {
+                docBuilder.string("  ").string(rewriteState.toString()).newLine();
+            }
+            docBuilder.end();
         }
-        docBuilder.end();
 
         CodeTreeBuilder p = ex.createBuilder();
 
-        Map<EqualityCodeTree, List<Map.Entry<DFAState, List<RewriteRuleState>>>> stateGrouping = EqualityCodeTree.group(p, steppingStates.entrySet(), (entry, b) -> {
-            DFAState state = entry.getKey();
-            List<RewriteRuleState> rewriteStates = entry.getValue();
-
-            b.startSwitch().string("opcode").end().startBlock();
-            Set<String> seen = new HashSet<>();
-            for (var rewriteState : rewriteStates) {
-                InstructionModel instruction = rewriteState.getNextInstruction().instruction();
-                if (!seen.add(instruction.getName())) {
-                    continue; // case for this instruction was already emitted.
+        List<InstructionModel> transitioningInstructions = instructions.stream().filter(
+                        instruction -> model.dfa.states.stream().anyMatch(state -> state.transitions.containsKey(instruction.getName()))).toList();
+        Map<EqualityCodeTree, List<InstructionModel>> instructionGrouping = EqualityCodeTree.group(p, transitioningInstructions, (instruction, b) -> {
+            Map<DFAState, List<DFAState>> sourcesByDestination = new LinkedHashMap<>();
+            for (DFAState source : model.dfa.states) {
+                DFAState destination = source.transitions.get(instruction.getName());
+                if (destination == null) {
+                    destination = model.dfa.startState;
                 }
+                sourcesByDestination.computeIfAbsent(destination, unused -> new ArrayList<>()).add(source);
+            }
 
-                b.startCase().staticReference(getInstructionConstant(instruction)).end().startCaseBlock();
-                b.startReturn().staticReference(stateConstants.get(state.transitions.get(instruction.getName()))).end();
+            // Code size optimization: use the "default" case for whichever destination state has
+            // the most source states.
+            DFAState defaultDestination = null;
+            int defaultDestinationSourceCount = -1;
+            for (var entry : sourcesByDestination.entrySet()) {
+                if (entry.getValue().size() > defaultDestinationSourceCount) {
+                    defaultDestination = entry.getKey();
+                    defaultDestinationSourceCount = entry.getValue().size();
+                }
+            }
+
+            b.startSwitch().string("currentState").end().startBlock();
+            for (var entry : sourcesByDestination.entrySet()) {
+                if (entry.getKey() == defaultDestination) {
+                    continue;
+                }
+                for (DFAState source : entry.getValue()) {
+                    b.startCase().staticReference(stateConstants.get(source)).end();
+                }
+                b.startCaseBlock();
+                b.startReturn().staticReference(stateConstants.get(entry.getKey())).end();
                 b.end();
             }
             b.caseDefault().startCaseBlock();
-            b.startReturn().staticReference(startState).string(" /* reset */").end();
+            b.startReturn().staticReference(stateConstants.get(defaultDestination)).end();
             b.end();
-            b.end(); // switch(opcode)
+            b.end(); // switch(currentState)
         });
 
         CodeTreeBuilder b = p;
-        b.startSwitch().string("currentState").end().startBlock();
-        for (var group : stateGrouping.entrySet()) {
+        b.startSwitch().string("opcode").end().startBlock();
+        for (var group : instructionGrouping.entrySet()) {
             EqualityCodeTree key = group.getKey();
-            for (var entry : group.getValue()) {
-                b.startCase().staticReference(stateConstants.get(entry.getKey())).end();
+            for (InstructionModel instruction : group.getValue()) {
+                b.startCase().staticReference(getInstructionConstant(instruction)).end();
             }
             b.startCaseBlock();
             b.tree(key.getTree());
             b.end();
         }
-        // Accepting states have no transitions.
         b.caseDefault().startCaseBlock();
         b.startReturn().staticReference(startState).string(" /* reset */").end();
         b.end();
-        b.end(); // switch(currentState)
+        b.end(); // switch(opcode)
 
         return new StepMethod(ex, allRewriteStates, canRewrite);
     }
