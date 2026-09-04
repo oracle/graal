@@ -54,6 +54,7 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.vector.phases.VectorLoweringPhaseSuite;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
+import jdk.graal.compiler.virtual.phases.ea.LowTierReadEliminationPhase;
 
 public class LowTier extends BaseTier<LowTierContext> {
 
@@ -94,6 +95,10 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new FixReadsPhase(true,
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
+
+        if (GraalOptions.OptReadElimination.getValue(options)) {
+            appendPhase(new LowTierReadEliminationPhase(canonicalizerWithoutGVN));
+        }
 
         appendPhase(new WriteBarrierAdditionPhase(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION));
 

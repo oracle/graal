@@ -186,9 +186,9 @@ public enum CEOptimization {
     FloatingReads(GraalOptions.OptFloatingReads, FloatingReadPhase.class),
 
     /**
-     * {@link ReadEliminationPhase} tries to remove redundant memory access operations (e.g.,
-     * successive reads of the same Java field are redundant). Its uses a control-flow sensitive
-     * analysis.
+     * {@link ReadEliminationPhase} removes redundant memory access operations using a control-flow
+     * sensitive analysis. In addition to field reads, it handles indexed array accesses, reads from
+     * initialized arrays, and array clone operations.
      *
      * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#OptReadElimination}.

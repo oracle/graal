@@ -6,6 +6,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 * (GR-79029): Add `PullThroughPhiPhase` and `DuplicationPhase` to the community compiler configuration.
   The optimizations are enabled by default and can be disabled with `-Djdk.graal.OptPullThroughPhi=false` and
   `-Djdk.graal.OptDuplication=false`, respectively.
+* (GR-78871): Extended read elimination to handle indexed array accesses with nonconstant indices, reads from newly
+  allocated arrays whose elements contain default values, and array clone operations. Read elimination can now also
+  run after reads are fixed in the low tier.
 * (GR-78795): Extended `OptimizeDivPhase` with magic-number optimizations for unsigned integer division
   and remainder operations by constant values.
 

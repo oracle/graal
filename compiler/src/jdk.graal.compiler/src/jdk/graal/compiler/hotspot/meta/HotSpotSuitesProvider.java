@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot.meta;
 import java.util.ListIterator;
 import java.util.Optional;
 
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -60,6 +61,8 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.SuitesCreator;
+import jdk.graal.compiler.virtual.phases.ea.ObjectCloneRemovalPhase;
+import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 import jdk.vm.ci.code.Architecture;
 
 /**
@@ -96,6 +99,12 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
         if (ConstantBlindingPhase.Options.BlindConstants.getValue(options)) {
             addPhaseBefore(suites.getLowTier(), FinalSchedulePhase.class, new DefaultConstantBlindingPhase());
             addPhaseBefore(suites.getLowTier(), LoweringPhase.class, new ConstantPreBlindingPhase());
+        }
+        if (GraalOptions.OptReadElimination.getValue(options) && ReadEliminationPhase.Options.CloneReadElimination.getValue(options)) {
+            ListIterator<BasePhase<? super HighTierContext>> position = suites.getHighTier().findPhase(ReadEliminationPhase.class, true);
+            if (position != null) {
+                position.add(new ObjectCloneRemovalPhase());
+            }
         }
         return suites;
     }
