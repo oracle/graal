@@ -25,9 +25,9 @@
 package com.oracle.svm.interpreter.fieldlayout;
 
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserField;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 
@@ -78,6 +78,37 @@ final class GreedyFieldLayoutStrategy {
                         forStaticReferences.getTotalCount(), forStaticPrimitives.getTotalSize());
     }
 
+    /**
+     * Layouts fields in a byte array, largest kind first.
+     * <p>
+     * For example:
+     *
+     * <pre>
+     *     class C {
+     *         static long l;
+     *         static byte b;
+     *     }
+     * </pre>
+     * <p>
+     * Will provide the following byte array layout:
+     *
+     * <pre>
+     *        startMisalignment
+     *               v
+     *          +---------+
+     * +-----------------------------------------------+ . . .
+     * | header | padding | l  _  _  _  _  _  _  _ | b | . . .
+     * +-----------------------------------------------+ . . .
+     *          ^                                      ^
+     *    startOffset                           afterFieldsOffset
+     * </pre>
+     *
+     * Note: {@code startMisalignment} is not zero iff the array header length is not a multiple of
+     * the largest field kind that will be stored.
+     * <p>
+     * The array header length is obtained through
+     * {@code ObjectLayout.singleton().getArrayBaseOffset(jdk.vm.ci.meta.JavaKind.Byte)}.
+     */
     private abstract static class FieldLayoutImpl {
         private static final int[] SIZES_IN_BYTES = new int[]{
                         /* LONG, DOUBLE */ 8,
@@ -98,6 +129,7 @@ final class GreedyFieldLayoutStrategy {
         private static final int BB_INDEX = 4;
 
         private final long startOffset;
+        private final long startMisalignment;
         private final long afterFieldsOffset;
 
         private final int[] counts = new int[COUNT_LEN];
@@ -134,28 +166,42 @@ final class GreedyFieldLayoutStrategy {
             for (int i = 0; i < COUNT_LEN; i++) {
                 total += counts[i] * (long) SIZES_IN_BYTES[i];
             }
-            return NumUtil.safeToInt(total);
+            return NumUtil.safeToInt(total + startMisalignment);
         }
 
         FieldLayoutImpl(ParserField[] declaredParsedFields, long startOffset) {
+            initCounts(declaredParsedFields);
             this.startOffset = startOffset;
-            this.afterFieldsOffset = init(declaredParsedFields);
+            int firstCount = findLargestFieldIndex();
+            this.afterFieldsOffset = initOffsets(firstCount);
+            this.startMisalignment = initStartMisalignment(firstCount);
         }
 
-        private long init(ParserField[] declaredParsedFields) {
+        private void initCounts(ParserField[] declaredParsedFields) {
             for (ParserField f : declaredParsedFields) {
                 if (accepts(f)) {
                     int idx = indexOf(f.getKind());
                     counts[idx]++;
                 }
             }
+        }
 
+        private int findLargestFieldIndex() {
+            for (int i = 0; i < COUNT_LEN; i++) {
+                if (counts[i] > 0) {
+                    return i;
+                }
+            }
+            return NO_FIELDS;
+        }
+
+        private long initOffsets(int firstCount) {
             // Find the largest existing field, and align the starting offset to it.
-            int firstCount = findLargestFieldIndex();
             if (firstCount == NO_FIELDS) {
                 return startOffset;
             }
-            offsets[firstCount] = align(startOffset, SIZES_IN_BYTES[firstCount]);
+            long firstOffset = align(startOffset, SIZES_IN_BYTES[firstCount]);
+            offsets[firstCount] = firstOffset;
 
             // Compute first offset for remaining sizes
             for (int i = firstCount + 1; i < COUNT_LEN; i++) {
@@ -166,17 +212,15 @@ final class GreedyFieldLayoutStrategy {
             return offsetAfterKind(COUNT_LEN - 1);
         }
 
-        private long offsetAfterKind(int kind) {
-            return offsets[kind] + (counts[kind] * (long) SIZES_IN_BYTES[kind]);
+        private long initStartMisalignment(int firstCount) {
+            if (firstCount == NO_FIELDS) {
+                return 0L;
+            }
+            return offsets[firstCount] - startOffset;
         }
 
-        private int findLargestFieldIndex() {
-            for (int i = 0; i < COUNT_LEN; i++) {
-                if (counts[i] > 0) {
-                    return i;
-                }
-            }
-            return NO_FIELDS;
+        private long offsetAfterKind(int kind) {
+            return offsets[kind] + (counts[kind] * (long) SIZES_IN_BYTES[kind]);
         }
 
         private static int indexOf(JavaKind kind) {
