@@ -355,7 +355,8 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
 
     @Override
     public InterpreterResolvedJavaType resolveClassConstantInPool(int cpi) {
-        return getConstantPool().resolvedTypeAt(this, cpi);
+        // exceptions must not be remembered
+        return getConstantPool().resolvedTypeAt(this, cpi, false);
     }
 
     private boolean sameRuntimePackage(InterpreterResolvedJavaType other) {

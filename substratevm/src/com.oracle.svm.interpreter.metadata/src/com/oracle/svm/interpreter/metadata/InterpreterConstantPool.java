@@ -384,18 +384,29 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     public Object resolvedAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+        return resolvedAt(cpi, accessingClass, true);
+    }
+
+    public Object resolvedAt(int cpi, InterpreterResolvedObjectType accessingClass, boolean allowStickyFailure) {
         Object entry = cachedEntries[cpi];
         if (isUnresolved(entry)) {
-            entry = forceResolveAt(cpi, accessingClass);
+            entry = forceResolveAt(cpi, accessingClass, allowStickyFailure);
         }
         return entry;
     }
 
     @NeverInline("Interpreter handler slow path")
     private Object forceResolveAt(int cpi, InterpreterResolvedObjectType accessingClass) {
+        return forceResolveAt(cpi, accessingClass, true);
+    }
+
+    private Object forceResolveAt(int cpi, InterpreterResolvedObjectType accessingClass, boolean allowStickyFailure) {
         Object entry = cachedEntries[cpi];
         if (isUnresolved(entry)) {
             Object resolved = resolve(cpi, accessingClass);
+            if (!allowStickyFailure && resolved instanceof StickyConstantError) {
+                return resolved;
+            }
             Object witness = UNSAFE.compareAndExchangeReference(cachedEntries, objectArrayOffset(cpi), entry, resolved);
             if (witness != entry) {
                 return witness;
@@ -602,7 +613,11 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     public InterpreterResolvedObjectType resolvedTypeAt(InterpreterResolvedObjectType accessingKlass, int cpi) {
-        Object resolvedEntry = resolvedAt(cpi, accessingKlass);
+        return resolvedTypeAt(accessingKlass, cpi, true);
+    }
+
+    public InterpreterResolvedObjectType resolvedTypeAt(InterpreterResolvedObjectType accessingKlass, int cpi, boolean allowStickyFailures) {
+        Object resolvedEntry = resolvedAt(cpi, accessingKlass, allowStickyFailures);
         assert resolvedEntry != null;
         if (resolvedEntry instanceof StickyConstantError savedError) {
             throw savedError.throwOnAccess();
