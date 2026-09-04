@@ -66,9 +66,9 @@ final class SandboxThreadContext {
 
     final ThreadReference thread;
 
-    volatile long lastEntered;
+    volatile long lastEntered = -1;
     volatile long timeExecuted;
-    volatile long lastAllocatedBytesSnapshot;
+    volatile long lastAllocatedBytesSnapshot = -1;
     volatile long bytesAllocated;
     boolean deprioritized;
     int enteredCount;
@@ -111,7 +111,7 @@ final class SandboxThreadContext {
     Duration getTimeExecuted() {
         long totalTime = timeExecuted;
         long last = this.lastEntered;
-        if (last > 0) {
+        if (last >= 0) {
             totalTime += getTime(thread.get()) - last;
         }
         return Duration.ofNanos(totalTime);
@@ -132,7 +132,7 @@ final class SandboxThreadContext {
     long getAllocatedBytes() {
         long totalBytes = bytesAllocated;
         long last = this.lastAllocatedBytesSnapshot;
-        if (last > 0) {
+        if (last >= 0) {
             totalBytes += getThreadAllocatedBytes(thread.get(), last) - last;
         }
         return totalBytes;
@@ -154,8 +154,8 @@ final class SandboxThreadContext {
         assert Thread.currentThread() == thread.get() : "Allocation tracking for a thread must be paused only from that thread.";
         if (enteredCount > 0) {
             long lastBytes = lastAllocatedBytesSnapshot;
-            if (lastBytes > 0) {
-                lastAllocatedBytesSnapshot = 0;
+            if (lastBytes >= 0) {
+                lastAllocatedBytesSnapshot = -1;
                 long bytes = bytesAllocated + getThreadAllocatedBytes(Thread.currentThread(), lastBytes) - lastBytes;
                 bytesAllocated = bytes;
             }
@@ -166,7 +166,7 @@ final class SandboxThreadContext {
         assert Thread.currentThread() == thread.get() : "Allocation tracking for a thread must be resumed only from that thread.";
         if (enteredCount > 0) {
             long lastBytes = lastAllocatedBytesSnapshot;
-            if (lastBytes == 0) {
+            if (lastBytes < 0) {
                 lastAllocatedBytesSnapshot = getThreadAllocatedBytes(Thread.currentThread(), lastBytes);
             }
         }

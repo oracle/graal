@@ -141,6 +141,14 @@ final class SandboxActivationListener implements ThreadsActivationListener {
         int count = 0;
         if (priorityNeeded || timingNeeded || threadCountNeeded || memoryTrackingNeeded) {
             count = --threadContext.enteredCount;
+            if (count < 0) {
+                /*
+                 * The activation listener may be attached while this context is already entered,
+                 * in which case onLeaveThread is called without a matching onEnterThread.
+                 */
+                threadContext.enteredCount = 0;
+                return;
+            }
         }
 
         if ((timingNeeded || memoryTrackingNeeded || threadCountNeeded) && count == 0) {
@@ -153,15 +161,19 @@ final class SandboxActivationListener implements ThreadsActivationListener {
                 }
                 if (timingNeeded) {
                     long last = threadContext.lastEntered;
-                    threadContext.lastEntered = 0;
-                    long time = threadContext.timeExecuted + threadContext.getTime(Thread.currentThread()) - last;
-                    threadContext.timeExecuted = time;
+                    threadContext.lastEntered = -1;
+                    if (last >= 0) {
+                        long time = threadContext.timeExecuted + threadContext.getTime(Thread.currentThread()) - last;
+                        threadContext.timeExecuted = time;
+                    }
                 }
                 if (memoryTrackingNeeded) {
                     long lastBytes = threadContext.lastAllocatedBytesSnapshot;
-                    threadContext.lastAllocatedBytesSnapshot = 0;
-                    long bytes = threadContext.bytesAllocated + SandboxThreadContext.getThreadAllocatedBytes(Thread.currentThread(), lastBytes) - lastBytes;
-                    threadContext.bytesAllocated = bytes;
+                    threadContext.lastAllocatedBytesSnapshot = -1;
+                    if (lastBytes >= 0) {
+                        long bytes = threadContext.bytesAllocated + SandboxThreadContext.getThreadAllocatedBytes(Thread.currentThread(), lastBytes) - lastBytes;
+                        threadContext.bytesAllocated = bytes;
+                    }
                 }
             }
         }
