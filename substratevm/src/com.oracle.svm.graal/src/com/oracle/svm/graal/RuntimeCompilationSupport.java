@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -309,7 +309,7 @@ public class RuntimeCompilationSupport {
                         .build();
         PEGraphDecoder decoder = new PEGraphDecoder(SubstrateTarget.getArchitecture(), graph, get().runtimeConfig.getProviders(),
                         null, get().invocationPlugins, new InlineInvokePlugin[0], null, null,
-                        null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
+                        null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
             @Override
             protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, BytecodeProvider intrinsicBytecodeProvider) {
                 GraalError.guarantee(method.equals(lookupMethod), lookupMethod.getName());

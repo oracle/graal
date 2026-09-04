@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,7 +96,6 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
                     InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins,
-                    ResolvedJavaMethod peRootForInlining,
                     SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     BasePhase<? super CoreProviders> postParsingPhase,
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache,
@@ -106,7 +105,7 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
                     boolean needsExplicitException,
                     boolean forceLink) {
         super(architecture, graph, decodingProviders, loopExplosionPlugin,
-                        invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
+                        invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, sourceLanguagePositionProvider,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), needsExplicitException, forceLink);
 
         this.truffleTypes = truffleTypes;

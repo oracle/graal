@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,7 +74,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
                     NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
                     Supplier<AutoCloseable> createCachedGraphScope) {
         return new SubstratePEGraphDecoder(config.architecture(), context.graph, config.lastTier().providers().copyWith(this.constantFieldProvider), loopExplosionPlugin, invocationPlugins,
-                        inlineInvokePlugins, parameterPlugin, nodePlugins, types.OptimizedCallTarget_callInlined, sourceLanguagePositionProvider, specialCallTargetCache, invocationPluginsCache);
+                        inlineInvokePlugins, parameterPlugin, nodePlugins, sourceLanguagePositionProvider, specialCallTargetCache, invocationPluginsCache);
     }
 
     @Override

@@ -360,28 +360,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public final PEMethodScope methodScope;
         protected final Invoke invoke;
 
-        @Override
-        public ExternalInliningContext getExternalInliningContext() {
-            if (peRootForInlining == null) {
-                // No inlining context.
-                return null;
-            }
-            return new ExternalInliningContext() {
-                @Override
-                public int getInlinedDepth() {
-                    int count = 0;
-                    PEGraphDecoder.PEMethodScope scope = methodScope;
-                    while (scope != null) {
-                        if (scope.method.equals(peRootForInlining)) {
-                            count++;
-                        }
-                        scope = scope.caller;
-                    }
-                    return count;
-                }
-            };
-        }
-
         public PENonAppendGraphBuilderContext(PEMethodScope methodScope, Invoke invoke) {
             super(providers);
             this.methodScope = methodScope;
@@ -912,7 +890,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final NodePlugin[] nodePlugins;
     private final ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
     private final ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache;
-    private final ResolvedJavaMethod peRootForInlining;
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
     protected final boolean needsExplicitException;
     private final boolean forceLink;
@@ -925,7 +902,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
      */
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
+                    NodePlugin[] nodePlugins, SourceLanguagePositionProvider sourceLanguagePositionProvider,
                     ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
                     ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache, boolean needsExplicitException,
                     boolean forceLink) {
@@ -937,7 +914,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         this.nodePlugins = nodePlugins;
         this.specialCallTargetCache = specialCallTargetCache;
         this.invocationPluginCache = invocationPluginCache;
-        this.peRootForInlining = peRootForInlining;
         this.sourceLanguagePositionProvider = sourceLanguagePositionProvider;
         this.needsExplicitException = needsExplicitException;
         this.forceLink = forceLink;

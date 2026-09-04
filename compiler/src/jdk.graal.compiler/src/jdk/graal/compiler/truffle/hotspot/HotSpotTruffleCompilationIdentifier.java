@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,11 @@ package jdk.graal.compiler.truffle.hotspot;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.hotspot.HotSpotCompilationIdentifier;
 import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
+import jdk.graal.compiler.truffle.TruffleGraphContext;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.meta.JavaMethod;
 
@@ -40,11 +42,50 @@ public final class HotSpotTruffleCompilationIdentifier extends HotSpotCompilatio
 
     private final TruffleCompilationTask task;
     private final TruffleCompilable compilable;
+    /** The identifier of the graph from which this graph was derived, or {@code null} for the root. */
+    private final CompilationIdentifier parentCompilationId;
+    private final TruffleGraphContext graphContext;
 
     public HotSpotTruffleCompilationIdentifier(HotSpotCompilationRequest request, TruffleCompilationTask task, TruffleCompilable compilable) {
+        this(request, task, compilable, null, TruffleGraphContext.createRoot(compilable));
+    }
+
+    private HotSpotTruffleCompilationIdentifier(HotSpotCompilationRequest request, TruffleCompilationTask task, TruffleCompilable compilable,
+                    CompilationIdentifier parentCompilationId, TruffleGraphContext graphContext) {
         super(request);
         this.task = task;
         this.compilable = compilable;
+        this.parentCompilationId = parentCompilationId;
+        this.graphContext = graphContext;
+    }
+
+    /**
+     * Creates an identifier for a guest graph that will be inlined into a host compilation.
+     *
+     * @param request the host compilation request
+     * @param task the synthetic guest compilation task
+     * @param compilable the guest call target
+     * @param hostCompilationId the identifier of the host graph
+     * @return an identifier whose parent is the host compilation
+     */
+    public static HotSpotTruffleCompilationIdentifier createForHostToGuestInlining(HotSpotCompilationRequest request, TruffleCompilationTask task, TruffleCompilable compilable,
+                    CompilationIdentifier hostCompilationId) {
+        return new HotSpotTruffleCompilationIdentifier(request, task, compilable, hostCompilationId, TruffleGraphContext.createRoot(compilable));
+    }
+
+    @Override
+    public HotSpotTruffleCompilationIdentifier createGraphIdentifier(TruffleGraphContext context) {
+        return new HotSpotTruffleCompilationIdentifier(getRequest(), task, compilable, this, context);
+    }
+
+    @Override
+    public TruffleGraphContext getGraphContext() {
+        return graphContext;
+    }
+
+    @Override
+    public CompilationIdentifier getParentCompilationIdentifier() {
+        return parentCompilationId;
     }
 
     @Override

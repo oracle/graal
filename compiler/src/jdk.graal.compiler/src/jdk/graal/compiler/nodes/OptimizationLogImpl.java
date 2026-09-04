@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -755,7 +755,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      * @return a unique compilation identifier
      */
     private String parseCompilationID() {
-        String fullCompilationId = graph.compilationId().toString(CompilationIdentifier.Verbosity.ID);
+        String fullCompilationId = graph.compilationId().getRootCompilationIdentifier().toString(CompilationIdentifier.Verbosity.ID);
         int dash = fullCompilationId.indexOf('-');
         if (dash == -1) {
             return fullCompilationId;

@@ -95,7 +95,7 @@ public class TruffleInliningPolicy extends Expander.DefaultPolicy {
         OptionValues compilerOptions = compiler.getOrCreateCompilerOptions(compilable);
 
         TruffleCompilationTask task = new TruffleHostToGuestCompilationTask();
-        HotSpotTruffleCompilationIdentifier compilationId = new HotSpotTruffleCompilationIdentifier(request, task, compilable);
+        HotSpotTruffleCompilationIdentifier compilationId = HotSpotTruffleCompilationIdentifier.createForHostToGuestInlining(request, task, compilable, rootGraph.compilationId());
         DebugContext debug = rootGraph.getDebug();
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(runtime, compilerOptions);
                         Scope scope = debug.scope("Truffle", new TruffleDebugJavaMethod(task, compilable))) {
@@ -103,7 +103,7 @@ public class TruffleInliningPolicy extends Expander.DefaultPolicy {
             SpeculationLog log = rootGraph.getSpeculationLog();
             TruffleTierContext context = TruffleTierContext.createInitialContext(partialEvaluator,
                             compilerOptions, debug, compilable,
-                            compilationId, log, new TruffleHostToGuestCompilationTask(), handler);
+                            compilationId, log, task, handler);
             truffleTier.apply(context.graph, context);
             return context.graph;
         } catch (GraalBailoutException t) {

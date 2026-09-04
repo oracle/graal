@@ -877,7 +877,7 @@ public class CompileQueue {
             super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, null,
                             null,
                             new InlineInvokePlugin[]{inliningPlugin},
-                            null, null, null, null,
+                            null, null, null,
                             new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false);
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,16 +31,45 @@ import com.oracle.truffle.compiler.TruffleCompilationTask;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
+import jdk.graal.compiler.truffle.TruffleGraphContext;
 import jdk.vm.ci.meta.JavaMethod;
 
 public final class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationIdentifier implements TruffleCompilationIdentifier {
 
     private final TruffleCompilationTask task;
     private final TruffleCompilable compilable;
+    /** The identifier of the graph from which this graph was derived, or {@code null} for the root. */
+    private final SubstrateTruffleCompilationIdentifier parentCompilationId;
+    private final TruffleGraphContext graphContext;
 
     public SubstrateTruffleCompilationIdentifier(TruffleCompilationTask task, TruffleCompilable compilable) {
         this.task = task;
         this.compilable = compilable;
+        this.parentCompilationId = null;
+        this.graphContext = TruffleGraphContext.createRoot(compilable);
+    }
+
+    private SubstrateTruffleCompilationIdentifier(SubstrateTruffleCompilationIdentifier compilationId, TruffleGraphContext graphContext) {
+        super(compilationId);
+        this.task = compilationId.task;
+        this.compilable = compilationId.compilable;
+        this.parentCompilationId = compilationId;
+        this.graphContext = graphContext;
+    }
+
+    @Override
+    public SubstrateTruffleCompilationIdentifier createGraphIdentifier(TruffleGraphContext context) {
+        return new SubstrateTruffleCompilationIdentifier(this, context);
+    }
+
+    @Override
+    public TruffleGraphContext getGraphContext() {
+        return graphContext;
+    }
+
+    @Override
+    public SubstrateTruffleCompilationIdentifier getParentCompilationIdentifier() {
+        return parentCompilationId;
     }
 
     @Override

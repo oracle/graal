@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -238,7 +238,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
             GraphBuilderPhase.Instance instance = new TestGraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, null);
             KnownTruffleTypes types = new KnownTruffleTypes((TruffleCompilerRuntime) Truffle.getRuntime(), getMetaAccess(), getConstantReflection());
             CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getTarget().arch, targetGraph, getProviders(), getProviders(), types, graphBuilderConfig,
-                            null, null, new InlineInvokePlugin[]{new InlineAll()}, null, null, null, null, null, graphCache, () -> null, instance, false, false, true);
+                            null, null, new InlineInvokePlugin[]{new InlineAll()}, null, null, null, null, graphCache, () -> null, instance, false, false, true);
 
             decoder.decode(testMethod);
             debug.dump(DebugContext.BASIC_LEVEL, targetGraph, "Target Graph");
