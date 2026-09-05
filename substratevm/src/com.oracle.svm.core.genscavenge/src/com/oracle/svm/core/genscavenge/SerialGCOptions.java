@@ -32,10 +32,10 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -70,7 +70,7 @@ public final class SerialGCOptions {
     @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
 
-    @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
+    @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC or -Xlog:gc=debug. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Verify the remembered set if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
@@ -85,7 +85,7 @@ public final class SerialGCOptions {
     @Option(help = "Verify write barriers. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
 
-    @Option(help = "Trace heap chunks during collections, if +VerboseGC. Serial GC only.", type = OptionType.Debug) //
+    @Option(help = "Trace heap chunks during collections, if +VerboseGC -Xlog:gc=debug. Serial GC only.", type = OptionType.Debug) //
     public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
 
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//

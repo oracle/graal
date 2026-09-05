@@ -33,6 +33,7 @@ import java.util.Set;
 
 import javax.lang.model.SourceVersion;
 
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 public final class ModuleNative {
@@ -48,7 +49,7 @@ public final class ModuleNative {
     /**
      * {@code Modules::define_module}.
      */
-    public static void defineModule(Module module, boolean isOpen, Object[] pns) {
+    public static void defineModule(Module module, String location, boolean isOpen, Object[] pns) {
         SubstrateUtil.guaranteeRuntimeOnly();
         if (Objects.isNull(module)) {
             throw new NullPointerException("Null module object");
@@ -127,6 +128,7 @@ public final class ModuleNative {
         synchronized (moduleLock) {
             addDefinedModule(loader, module);
         }
+        LogTagSet.module_load.info(module.getName() + " location: " + location);
     }
 
     /**
@@ -271,7 +273,7 @@ public final class ModuleNative {
         return ModuleLayer.boot().modules().stream().anyMatch(m -> getName(m).equals(name));
     }
 
-    private static String getName(Module module) {
+    static String getName(Module module) {
         SubstrateUtil.guaranteeRuntimeOnly();
         return module.getName();
     }

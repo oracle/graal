@@ -47,6 +47,8 @@ public enum NmtCategory {
     JavaHeap("Java Heap"),
     /** Java Flight Recorder. */
     JFR("JFR"),
+    /** Unified logging. */
+    Logging("Logging"),
     /** Java Native Interface. */
     JNI("JNI"),
     /** JVM stat / perf data. */
