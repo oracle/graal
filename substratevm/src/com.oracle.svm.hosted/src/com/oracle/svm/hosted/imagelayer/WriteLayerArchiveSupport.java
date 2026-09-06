@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.hosted.NativeImageClassLoaderSupport.PathDigestEntry;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,8 +47,14 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 /* Builds an image layer, either initial or intermediate. */
 public class WriteLayerArchiveSupport extends LayerArchiveSupport {
+    private static final int CLASS_IDENTITY_HASH_CODES_MAGIC = 0x4A434948;
+
+    record ClassIdentityHashCode(int identityHashCode, String loaderName, String className) {
+    }
+
     private final List<String> builderArguments;
     private final List<PathDigestEntry> buildPathDigests;
+    private List<ClassIdentityHashCode> classIdentityHashCodes = List.of();
 
     public WriteLayerArchiveSupport(String layerName, NativeImageClassLoaderSupport classLoaderSupport, Path tempDir, ArchiveSupport archiveSupport, boolean enableLogging) {
         super(layerName, classLoaderSupport.getLayerFile(), tempDir.resolve(LAYER_TEMP_DIR_PREFIX + "write"), archiveSupport, enableLogging);
@@ -85,6 +92,36 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
         }
     }
 
+    public void setClassIdentityHashCodes(List<ClassIdentityHashCode> entries) {
+        classIdentityHashCodes = List.copyOf(entries);
+    }
+
+    /**
+     * Writes the binary input format required by HotSpot's {@code JVMCIClassIdentityHashCodeFile}
+     * option. The format is defined in {@code src/hotspot/share/jvmci/jvmci_globals.cpp}. Changes
+     * must remain compatible with that reader.
+     * <p>
+     * The file contains big-endian 32-bit integers for the magic {@code 0x4A434948} ({@code JCIH})
+     * and entry count, followed by each entry's positive 32-bit identity hash code, loader name,
+     * and class name. Both names use {@link DataOutputStream#writeUTF(String)}: a big-endian
+     * unsigned 16-bit encoded byte length followed by modified UTF-8 bytes. Names must be nonempty,
+     * and each pair of loader and class names must be unique. There is no padding, version field,
+     * or trailing data. An empty mapping consists of the magic and a zero entry count.
+     */
+    private void writeClassIdentityHashCodes(Path path) {
+        try (DataOutputStream out = new DataOutputStream(Files.newOutputStream(path))) {
+            out.writeInt(CLASS_IDENTITY_HASH_CODES_MAGIC);
+            out.writeInt(classIdentityHashCodes.size());
+            for (ClassIdentityHashCode entry : classIdentityHashCodes) {
+                out.writeInt(entry.identityHashCode());
+                out.writeUTF(entry.loaderName());
+                out.writeUTF(entry.className());
+            }
+        } catch (IOException e) {
+            throw UserError.abort("Unable to write class identity hash codes to file " + path);
+        }
+    }
+
     public void write(Platform current) {
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(layerFile), archiveSupport.createManifest())) {
             // disable compression for significant (un)archiving speedup at the cost of file size
@@ -104,6 +141,9 @@ public class WriteLayerArchiveSupport extends LayerArchiveSupport {
             // copy the layer snapshot file and its graphs file to the jar
             archiveSupport.addFileToJar(layerDir, getSnapshotPath(), layerFile, jarOutStream);
             archiveSupport.addFileToJar(layerDir, getSnapshotGraphsPath(), layerFile, jarOutStream);
+            Path classIdentityHashCodesPath = layerDir.resolve(CLASS_IDENTITY_HASH_CODES_FILE_NAME);
+            writeClassIdentityHashCodes(classIdentityHashCodesPath);
+            archiveSupport.addFileToJar(layerDir, classIdentityHashCodesPath, layerFile, jarOutStream);
             // copy the shared object file to the jar
             Path sharedLibFile = BuildArtifacts.singleton().get(BuildArtifacts.ArtifactType.IMAGE_LAYER).getFirst();
             archiveSupport.addFileToJar(NativeImageGenerator.getOutputDirectory(), sharedLibFile, layerFile, jarOutStream);
