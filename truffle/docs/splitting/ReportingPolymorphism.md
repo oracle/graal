@@ -86,10 +86,10 @@ A small part of the output from running one of the JavaScript benchmarks with th
 
 ```shell
 ...
-[engine] split   0-37d4349f-1     multiplyScalar |ASTSize      40/   40 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~441-444:12764-12993
-[engine] split   1-2ea41516-1     :anonymous |ASTSize       8/    8 |Calls/Thres       3/    3 |CallsAndLoop/Thres       3/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~269:7395-7446
-[engine] split   2-3a44431a-1     :anonymous |ASTSize      28/   28 |Calls/Thres       4/    5 |CallsAndLoop/Thres       4/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~35-37:1163-1226
-[engine] split   3-3c7f66c4-1     Function.prototype.apply |ASTSize      18/   18 |Calls/Thres       7/    8 |CallsAndLoop/Thres       7/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~36:1182-1219
+[engine] split   0-37d4349f  multiplyScalar |ASTSize      40/   40 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~441-444:12764-12993
+[engine] split   1-2ea41516  :anonymous |ASTSize       8/    8 |Calls/Thres       3/    3 |CallsAndLoop/Thres       3/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~269:7395-7446
+[engine] split   2-3a44431a  :anonymous |ASTSize      28/   28 |Calls/Thres       4/    5 |CallsAndLoop/Thres       4/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~35-37:1163-1226
+[engine] split   3-3c7f66c4  Function.prototype.apply |ASTSize      18/   18 |Calls/Thres       7/    8 |CallsAndLoop/Thres       7/ 1000 |Inval#              0 |SourceSection octane-raytrace.js~36:1182-1219
 ...
 ```
 #### Tracing a splitting summary

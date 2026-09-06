@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,10 +59,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     /*
      * Reflectively read by the Truffle compiler. See KnownTruffleTypes.
      */
-    private int callCount;
-    /*
-     * Reflectively read by the Truffle compiler. See KnownTruffleTypes.
-     */
     private boolean inliningForced;
     @CompilationFinal private Class<? extends Throwable> exceptionProfile;
 
@@ -84,9 +80,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     @Override
     public Object call(Object... arguments) {
         OptimizedCallTarget target = getCurrentCallTarget();
-        if (CompilerDirectives.hasNextTier()) {
-            incrementCallCount();
-        }
         if (HostCompilerDirectives.inInterpreterFastPath()) {
             target = onInterpreterCall(target);
         }
@@ -148,10 +141,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return getCallTarget().getRootNode().isCloningAllowed();
     }
 
-    public int getCallCount() {
-        return callCount;
-    }
-
     @Override
     public OptimizedCallTarget getCurrentCallTarget() {
         return currentCallTarget;
@@ -187,11 +176,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             return getCurrentCallTarget();
         }
         return target;
-    }
-
-    private void incrementCallCount() {
-        int calls = this.callCount;
-        this.callCount = calls == Integer.MAX_VALUE ? calls : ++calls;
     }
 
     /** Used by the splitting strategy to install new targets. */

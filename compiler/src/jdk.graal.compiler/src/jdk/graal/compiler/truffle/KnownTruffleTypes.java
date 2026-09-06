@@ -187,7 +187,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     public final ResolvedJavaType OptimizedDirectCallNode = lookupTypeCached("com.oracle.truffle.runtime.OptimizedDirectCallNode");
     public final ResolvedJavaField OptimizedDirectCallNode_inliningForced = findField(OptimizedDirectCallNode, "inliningForced");
-    public final ResolvedJavaField OptimizedDirectCallNode_callCount = findField(OptimizedDirectCallNode, "callCount");
 
     public final ResolvedJavaType OptimizedAssumption = lookupType("com.oracle.truffle.runtime.OptimizedAssumption");
     public final ResolvedJavaType[] skippedExceptionTypes = createSkippedExceptionTypes();
