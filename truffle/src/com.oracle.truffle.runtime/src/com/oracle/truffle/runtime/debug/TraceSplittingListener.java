@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,7 +66,7 @@ public final class TraceSplittingListener implements OptimizedTruffleRuntimeList
     public void onCompilationSplit(OptimizedDirectCallNode callNode) {
         OptimizedCallTarget callTarget = callNode.getCallTarget();
         if (callTarget.getOptionValue(OptimizedRuntimeOptions.TraceSplitting)) {
-            String label = String.format("split %3s-%s-%-4s ", splitCount++, callNode.getCurrentCallTarget().id, callNode.getCallCount());
+            String label = String.format("split %3s-%s ", splitCount++, callNode.getCurrentCallTarget().id);
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
             debugProperties.put("SourceSection", extractSourceSection(callNode));
             OptimizedTruffleRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);

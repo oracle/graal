@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.graal.compiler.core.common.GraalBailoutException;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -57,6 +58,7 @@ import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil.InlineeReturnAction;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
@@ -77,7 +79,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     private JavaConstant callNode;
     private final TruffleCompilable directCallTarget;
     private final int truffleCallees;
-    private final double rootRelativeFrequency;
+    private double rootRelativeFrequency;
     private final int depth;
     private final int id;
     // Should be final, but needs to be mutable to be corrected if the language marks a non-trivial
@@ -150,16 +152,18 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     private static void addChildren(TruffleTierContext context, CallNode node, EconomicSet<Invoke> directInvokes) {
+        ControlFlowGraph cfg = null;
         for (Invoke invoke : directInvokes) {
             if (!invoke.isAlive()) {
                 continue;
             }
+            if (cfg == null) {
+                cfg = ControlFlowGraph.newBuilder(invoke.asNode().graph()).connectBlocks(true).computeFrequency(true).build();
+            }
             ValueNode nodeArgument = invoke.callTarget().arguments().get(1);
-            Integer callNodeCount = getCallCount(context, nodeArgument);
             TruffleCompilable constantTarget = resolveTargetReceiver(context, invoke);
             boolean forced = isInliningForced(context, nodeArgument);
-            double relativeFrequency = callNodeCount == null ? 1.0D : calculateFrequency(node.directCallTarget, callNodeCount);
-            double childFrequency = relativeFrequency * node.rootRelativeFrequency;
+            double childFrequency = getLocalFrequency(cfg, invoke) * node.rootRelativeFrequency;
             CallNode callNode = new CallNode(nodeArgument.asJavaConstant(), constantTarget, childFrequency, node.depth + 1, node.getCallTree().nextId(), forced);
             node.getCallTree().add(callNode);
             node.children.add(callNode);
@@ -178,20 +182,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    static Integer getCallCount(TruffleTierContext context, ValueNode callNode) {
-        if (!callNode.isJavaConstant()) {
-            return null;
-        }
-        JavaConstant callCount = context.getConstantReflection().readFieldValue(context.types().OptimizedDirectCallNode_callCount, callNode.asJavaConstant());
-        if (callCount == null) {
-            // not a direct call node
-            return null;
-        } else {
-            return callCount.asInt();
-        }
-
-    }
-
     static boolean isInliningForced(TruffleTierContext context, ValueNode callNode) {
         if (!callNode.isJavaConstant()) {
             return false;
@@ -205,8 +195,23 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    private static double calculateFrequency(TruffleCompilable target, int callNodeCount) {
-        return (double) Math.max(1, callNodeCount) / (double) Math.max(1, target.getCallCount());
+    /**
+     * Matches the active frequency restriction in
+     * {@link jdk.graal.compiler.phases.common.priorityinline.InliningMath#restrictFrequency(double)}.
+     */
+    private static double restrictFrequency(double frequency) {
+        assert NumUtil.assertNonNegativeDouble(frequency);
+        if (frequency < 0.01D) {
+            return 0.01D;
+        }
+        if (frequency > 100.0D) {
+            return 100.0D;
+        }
+        return frequency;
+    }
+
+    static double getLocalFrequency(ControlFlowGraph cfg, Invoke invoke) {
+        return restrictFrequency(cfg.blockFor(invoke.asFixedNode()).getRelativeFrequency());
     }
 
     public TruffleCompilable getDirectCallTarget() {
@@ -519,6 +524,17 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     public double getRootRelativeFrequency() {
         return rootRelativeFrequency;
+    }
+
+    void setRootRelativeFrequency(double frequency) {
+        rootRelativeFrequency = frequency;
+    }
+
+    void adjustSubtreeFrequency(double factor) {
+        for (CallNode child : children) {
+            child.adjustSubtreeFrequency(factor);
+        }
+        rootRelativeFrequency *= factor;
     }
 
     public boolean isTrivial() {

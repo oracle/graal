@@ -395,7 +395,12 @@ public class AgnosticInliningPolicy implements InliningPolicy {
     }
 
     private void inline(CallTree tree) {
+        int inlinedBefore = tree.getInlinedCount();
         inline(tree.getRoot());
+        if (tree.getInlinedCount() != inlinedBefore) {
+            tree.updateRootFrequencies();
+            updateSubtreeData(tree.getRoot());
+        }
     }
 
     private void inline(CallNode root) {
@@ -463,13 +468,39 @@ public class AgnosticInliningPolicy implements InliningPolicy {
         return Math.exp(((x - 2 * baseBudget) * (scale * Math.log(10))) / baseBudget);
     }
 
+    /*
+     * TODO GR-79426 Replace this shape-specific check with an independently computed whole-subtree
+     * CostBenefit alongside the selective CostBenefit. It should start with the node's full local
+     * benefit and cost, recursively combine possible direct-child whole-subtree tuples, and add the
+     * call-boundary bonus once. Keep recursive unfolding as a separate guest-specific policy.
+     */
+    private static boolean hasSingleLiveDirectChild(CallNode node) {
+        CallNode liveChild = null;
+        for (CallNode child : node.getChildren()) {
+            CallNode.State childState = child.getState();
+            if (childState == CallNode.State.Removed || childState == CallNode.State.BailedOut) {
+                continue;
+            }
+            if (liveChild != null) {
+                return false;
+            }
+            liveChild = child;
+        }
+        return liveChild != null && liveChild.getState() != CallNode.State.Indirect;
+    }
+
     protected CostBenefit costBenefitForInlining(CallNode node) {
         CostBenefit costBenefit = data(node).costBenefit;
         final double frequency = node.getRootRelativeFrequency();
         if (data(node).isLeafCluster) {
             costBenefit = costBenefit.withBenefitBoostedBy(frequency);
         }
-        if (node.getParent().getChildren().size() == 1) {
+        /*
+         * A single direct child may carry the entire frequency of its parent, and recursive
+         * subtrees may distribute it among multiple children. Preserve the benefit of removing the
+         * current call boundary in both cases.
+         */
+        if (node.getParent().getChildren().size() == 1 || hasSingleLiveDirectChild(node) || node.getRecursionDepth() > 0) {
             costBenefit = costBenefit.withBenefitBoostedBy(frequency);
         }
         if (node.getDirectCallTarget().getKnownCallSiteCount() == 1) {
@@ -607,8 +638,36 @@ public class AgnosticInliningPolicy implements InliningPolicy {
         }
     }
 
+    private void updateSubtreeData(CallNode node) {
+        switch (node.getState()) {
+            case Removed:
+            case BailedOut:
+            case Indirect:
+                return;
+            case Cutoff:
+                updateExpansionPriority(node);
+                return;
+            case Expanded:
+            case Inlined:
+                for (CallNode child : node.getChildren()) {
+                    updateSubtreeData(child);
+                }
+                updateNodeData(node);
+                return;
+        }
+        throw GraalError.shouldNotReachHereUnexpectedValue(node.getState()); // ExcludeFromJacocoGeneratedReport
+    }
+
     protected void updateParentChain(CallNode callNode) {
         assert callNode.getState() != CallNode.State.Cutoff : "Node must not be a Cutoff: " + callNode;
+        updateNodeData(callNode);
+        final CallNode parent = callNode.getParent();
+        if (parent != null) {
+            updateParentChain(parent);
+        }
+    }
+
+    private void updateNodeData(CallNode callNode) {
         data(callNode).subtreeCallNodes = 1;
         data(callNode).subtreeCutoffCount = 0;
         data(callNode).subtreeIRNodeCount = callNode.getIR().getNodeCount();
@@ -629,13 +688,12 @@ public class AgnosticInliningPolicy implements InliningPolicy {
                 data(callNode).subtreeIRNodeCount += data(child).subtreeIRNodeCount;
             }
         }
-        data(callNode).intrinsicExpansionPriority = getIntrinsicExpansionPriority(callNode);
-        data(callNode).expansionPriority = getExpansionPriority(callNode);
+        updateExpansionPriority(callNode);
+    }
 
-        final CallNode parent = callNode.getParent();
-        if (parent != null) {
-            updateParentChain(parent);
-        }
+    private void updateExpansionPriority(CallNode node) {
+        data(node).intrinsicExpansionPriority = getIntrinsicExpansionPriority(node);
+        data(node).expansionPriority = getExpansionPriority(node);
     }
 
     private static double getExpansionPriority(CallNode node) {
