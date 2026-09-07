@@ -230,6 +230,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      *
      * @since 22.1
      */
+    @SuppressWarnings("unused")
     public abstract static class AppendByteNode extends AbstractPublicNode {
 
         AppendByteNode() {
@@ -248,7 +249,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF8 sb, byte value);
+        abstract void execute(TruffleStringBuilderUTF8 sb, byte value);
 
         @Specialization
         final void append(TruffleStringBuilderUTF8 sb, byte value,
@@ -322,7 +323,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 22.1
          */
-        public abstract void execute(TruffleStringBuilderUTF16 sb, char value);
+        public abstract void execute(TruffleStringBuilder sb, char value);
 
         @Specialization
         void append(TruffleStringBuilderUTF16 sb, char value,
@@ -385,7 +386,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      */
     @TruffleBoundary
     public final void appendCharUTF16Uncached(char value) {
-        AppendCharUTF16Node.getUncached().execute((TruffleStringBuilderUTF16) this, value);
+        AppendCharUTF16Node.getUncached().execute(this, value);
     }
 
     /**
@@ -393,6 +394,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      *
      * @since 22.1
      */
+    @SuppressWarnings("unused")
     public abstract static class AppendCodePointNode extends AbstractPublicNode {
 
         AppendCodePointNode() {
@@ -412,7 +414,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final void execute(TruffleStringBuilderUTF8 sb, int codepoint) {
+        final void execute(TruffleStringBuilderUTF8 sb, int codepoint) {
             execute(sb, codepoint, 1, false);
         }
 
@@ -421,7 +423,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final void execute(TruffleStringBuilderUTF16 sb, int codepoint) {
+        final void execute(TruffleStringBuilderUTF16 sb, int codepoint) {
             execute(sb, codepoint, 1, false);
         }
 
@@ -430,7 +432,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final void execute(TruffleStringBuilderUTF32 sb, int codepoint) {
+        final void execute(TruffleStringBuilderUTF32 sb, int codepoint) {
             execute(sb, codepoint, 1, false);
         }
 
@@ -448,7 +450,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final void execute(TruffleStringBuilderUTF8 sb, int codepoint, int repeat) {
+        final void execute(TruffleStringBuilderUTF8 sb, int codepoint, int repeat) {
             execute(sb, codepoint, repeat, false);
         }
 
@@ -457,7 +459,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final void execute(TruffleStringBuilderUTF16 sb, int codepoint, int repeat) {
+        final void execute(TruffleStringBuilderUTF16 sb, int codepoint, int repeat) {
             execute(sb, codepoint, repeat, false);
         }
 
@@ -466,7 +468,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final void execute(TruffleStringBuilderUTF32 sb, int codepoint, int repeat) {
+        final void execute(TruffleStringBuilderUTF32 sb, int codepoint, int repeat) {
             execute(sb, codepoint, repeat, false);
         }
 
@@ -488,7 +490,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF8 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
+        abstract void execute(TruffleStringBuilderUTF8 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, int, int, boolean)} for performance
@@ -496,7 +498,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF16 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
+        abstract void execute(TruffleStringBuilderUTF16 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, int, int, boolean)} for performance
@@ -504,7 +506,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF32 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
+        abstract void execute(TruffleStringBuilderUTF32 sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
 
         @Specialization
         void append(TruffleStringBuilder sb, int codepoint, int repeat, boolean allowUTF16Surrogates,
@@ -782,6 +784,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      *
      * @since 22.1
      */
+    @SuppressWarnings("unused")
     public abstract static class AppendIntNumberNode extends AbstractPublicNode {
 
         AppendIntNumberNode() {
@@ -800,21 +803,21 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF8 sb, int value);
+        abstract void execute(TruffleStringBuilderUTF8 sb, int value);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF16 sb, int value);
+        abstract void execute(TruffleStringBuilderUTF16 sb, int value);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, int)} for performance reasons.
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF32 sb, int value);
+        abstract void execute(TruffleStringBuilderUTF32 sb, int value);
 
         @Specialization
         void doAppend(TruffleStringBuilderUTF8 sb, int value,
@@ -922,6 +925,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      *
      * @since 22.1
      */
+    @SuppressWarnings("unused")
     public abstract static class AppendLongNumberNode extends AbstractPublicNode {
 
         AppendLongNumberNode() {
@@ -940,21 +944,21 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF8 sb, long value);
+        abstract void execute(TruffleStringBuilderUTF8 sb, long value);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, long)} for performance reasons.
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF16 sb, long value);
+        abstract void execute(TruffleStringBuilderUTF16 sb, long value);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, long)} for performance reasons.
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF32 sb, long value);
+        abstract void execute(TruffleStringBuilderUTF32 sb, long value);
 
         @Specialization
         void doAppend(TruffleStringBuilderUTF8 sb, long value,
@@ -1061,6 +1065,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      *
      * @since 22.1
      */
+    @SuppressWarnings("unused")
     public abstract static class AppendStringNode extends AbstractPublicNode {
 
         AppendStringNode() {
@@ -1073,11 +1078,11 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          */
         public abstract void execute(TruffleStringBuilder sb, AbstractTruffleString a);
 
-        public abstract void execute(TruffleStringBuilderUTF8 sb, AbstractTruffleString a);
+        abstract void execute(TruffleStringBuilderUTF8 sb, AbstractTruffleString a);
 
-        public abstract void execute(TruffleStringBuilderUTF16 sb, AbstractTruffleString a);
+        abstract void execute(TruffleStringBuilderUTF16 sb, AbstractTruffleString a);
 
-        public abstract void execute(TruffleStringBuilderUTF32 sb, AbstractTruffleString a);
+        abstract void execute(TruffleStringBuilderUTF32 sb, AbstractTruffleString a);
 
         @Specialization
         void append(TruffleStringBuilder sb, AbstractTruffleString a,
@@ -1315,6 +1320,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      *
      * @since 22.1
      */
+    @SuppressWarnings("unused")
     public abstract static class AppendSubstringByteIndexNode extends AbstractPublicNode {
 
         AppendSubstringByteIndexNode() {
@@ -1335,7 +1341,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF8 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
+        abstract void execute(TruffleStringBuilderUTF8 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, AbstractTruffleString, int, int)} for
@@ -1343,7 +1349,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF16 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
+        abstract void execute(TruffleStringBuilderUTF16 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, AbstractTruffleString, int, int)} for
@@ -1351,7 +1357,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract void execute(TruffleStringBuilderUTF32 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
+        abstract void execute(TruffleStringBuilderUTF32 sb, AbstractTruffleString a, int fromByteIndex, int byteLength);
 
         @Specialization
         final void append(TruffleStringBuilderUTF8 sb, AbstractTruffleString a, int fromIndex, int length,
@@ -1652,7 +1658,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 22.1
          */
-        public final void execute(TruffleStringBuilderUTF16 sb, String a) {
+        public final void execute(TruffleStringBuilder sb, String a) {
             execute(sb, a, 0, a.length());
         }
 
@@ -1663,7 +1669,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 22.1
          */
-        public abstract void execute(TruffleStringBuilderUTF16 sb, String a, int fromCharIndex, int charLength);
+        public abstract void execute(TruffleStringBuilder sb, String a, int fromCharIndex, int charLength);
 
         @Specialization
         final void append(TruffleStringBuilderUTF16 sb, String javaString, int fromIndex, int lengthStr,
@@ -1735,7 +1741,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      */
     @TruffleBoundary
     public final void appendJavaStringUTF16Uncached(String a) {
-        AppendJavaStringUTF16Node.getUncached().execute((TruffleStringBuilderUTF16) this, a);
+        AppendJavaStringUTF16Node.getUncached().execute(this, a);
     }
 
     /**
@@ -1745,7 +1751,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      */
     @TruffleBoundary
     public final void appendJavaStringUTF16Uncached(String a, int fromCharIndex, int charLength) {
-        AppendJavaStringUTF16Node.getUncached().execute((TruffleStringBuilderUTF16) this, a, fromCharIndex, charLength);
+        AppendJavaStringUTF16Node.getUncached().execute(this, a, fromCharIndex, charLength);
     }
 
     /**
@@ -1753,6 +1759,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      *
      * @since 22.1
      */
+    @SuppressWarnings("unused")
     public abstract static class ToStringNode extends AbstractPublicNode {
 
         ToStringNode() {
@@ -1772,7 +1779,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final TruffleString execute(TruffleStringBuilderUTF8 sb) {
+        final TruffleString execute(TruffleStringBuilderUTF8 sb) {
             return execute(sb, false);
         }
 
@@ -1781,7 +1788,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final TruffleString execute(TruffleStringBuilderUTF16 sb) {
+        final TruffleString execute(TruffleStringBuilderUTF16 sb) {
             return execute(sb, false);
         }
 
@@ -1790,7 +1797,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public final TruffleString execute(TruffleStringBuilderUTF32 sb) {
+        final TruffleString execute(TruffleStringBuilderUTF32 sb) {
             return execute(sb, false);
         }
 
@@ -1812,21 +1819,21 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
          *
          * @since 25.1
          */
-        public abstract TruffleString execute(TruffleStringBuilderUTF8 sb, boolean lazy);
+        abstract TruffleString execute(TruffleStringBuilderUTF8 sb, boolean lazy);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, boolean)} for performance reasons.
          *
          * @since 25.1
          */
-        public abstract TruffleString execute(TruffleStringBuilderUTF16 sb, boolean lazy);
+        abstract TruffleString execute(TruffleStringBuilderUTF16 sb, boolean lazy);
 
         /**
          * Overload of {@link #execute(TruffleStringBuilder, boolean)} for performance reasons.
          *
          * @since 25.1
          */
-        public abstract TruffleString execute(TruffleStringBuilderUTF32 sb, boolean lazy);
+        abstract TruffleString execute(TruffleStringBuilderUTF32 sb, boolean lazy);
 
         @Specialization
         final TruffleString createString(TruffleStringBuilder sb, boolean lazy,

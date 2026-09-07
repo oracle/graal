@@ -494,7 +494,7 @@ public class PythonTests extends RegexTestBase {
         // backreference, the characters are only tested by comparing their Lowercase mappings.
 
         // We used to mistakenly consider a character equivalent to the first character of its
-        // extended case mapping. The ligature \ufb00 uppercases to FF and and the ligature \ufb01
+        // extended case mapping. The ligature \ufb00 uppercases to FF and the ligature \ufb01
         // uppercases to FI. Both should be distinct from each other and from the letter F.
         test("\ufb00", "i", "\ufb01", 0, false);
         test("\ufb00", "i", "F", 0, false);

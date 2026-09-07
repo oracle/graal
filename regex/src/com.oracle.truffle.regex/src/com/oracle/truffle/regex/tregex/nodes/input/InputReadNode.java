@@ -64,19 +64,19 @@ public abstract class InputReadNode extends Node {
 
     @Specialization(guards = "isUTF16(encoding)")
     static int doTStringUTF16(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached TruffleString.ReadCharUTF16Node readRawNode) {
+                    @Cached(inline = false) TruffleString.ReadCharUTF16Node readRawNode) {
         return encoding == UTF_16BE ? readRawNode.executeBE(input, index) : readRawNode.execute(input, index);
     }
 
     @Specialization(guards = "isUTF32(encoding)")
     static int doTStringUTF32(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached TruffleString.CodePointAtIndexNode readRawNode) {
+                    @Cached(inline = false) TruffleString.CodePointAtIndexNode readRawNode) {
         return readRawNode.execute(input, index, encoding.getTStringEncoding());
     }
 
     @Fallback
     static int doByte(TruffleString input, int index, Encoding encoding,
-                    @Cached TruffleString.ReadByteNode readRawNode) {
+                    @Cached(inline = false) TruffleString.ReadByteNode readRawNode) {
         return readRawNode.execute(input, index, encoding.getTStringEncoding());
     }
 

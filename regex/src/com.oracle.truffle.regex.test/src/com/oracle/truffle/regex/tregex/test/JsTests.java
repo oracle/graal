@@ -244,7 +244,7 @@ public class JsTests extends RegexTestBase {
     public void classSetExpressionNestingLimit() {
         int depth = 10_000;
         String pattern = "[".repeat(depth) + "a" + "]".repeat(depth);
-        expectUnsupported(pattern, "v", Map.of());
+        expectUnsupported(pattern, "v");
     }
 
     @Test

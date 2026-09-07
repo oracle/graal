@@ -1487,18 +1487,12 @@ public class CaseFoldData {
                     0x001c86, 0x001c86, INTEGER_OFFSET, 0,
                     0x001c87, 0x001c87, INTEGER_OFFSET, 0,
                     0x001c88, 0x001c88, INTEGER_OFFSET, 0,
-                    0x001c89, 0x001c89, ALTERNATING_UL, 0,
                     0x001e9b, 0x001e9b, INTEGER_OFFSET, 0,
                     0x001fbe, 0x001fbe, INTEGER_OFFSET, 0,
                     0x001fd3, 0x001fd3, INTEGER_OFFSET, 0,
                     0x001fe3, 0x001fe3, INTEGER_OFFSET, 0,
-                    0x00a7cb, 0x00a7cb, INTEGER_OFFSET, -42343,
-                    0x00a7cc, 0x00a7da, ALTERNATING_AL, 0,
-                    0x00a7dc, 0x00a7dc, INTEGER_OFFSET, -42561,
                     0x00ab70, 0x00abbf, INTEGER_OFFSET, 0,
                     0x00fb05, 0x00fb05, INTEGER_OFFSET, 0,
-                    0x010d50, 0x010d65, INTEGER_OFFSET, 32,
-                    0x016ea0, 0x016eb8, INTEGER_OFFSET, 27,
     });
     private static final CaseFoldTable UNICODE_17_0_0_ODB_AI = new CaseFoldTable(null, new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,

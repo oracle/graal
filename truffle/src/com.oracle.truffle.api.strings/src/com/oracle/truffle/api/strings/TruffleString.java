@@ -3172,8 +3172,7 @@ public final class TruffleString extends AbstractTruffleString {
         static int maskZero(int rawHashCode) {
             int h = rawHashCode;
             if (h == 0) {
-                h--;
-                assert h == MASKED_ZERO_HASH_CODE;
+                h = MASKED_ZERO_HASH_CODE;
             }
             return h;
         }
@@ -3325,7 +3324,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Read a single char from a UTF-16LE string.
          *
-         * @since 26.0
+         * @since 25.1
          */
         public final char executeLE(AbstractTruffleString a, int charIndex) {
             a.checkEncoding(Encoding.UTF_16LE);
@@ -3335,7 +3334,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Read a single char from a UTF-16BE string.
          *
-         * @since 26.0
+         * @since 25.1
          */
         public final char executeBE(AbstractTruffleString a, int charIndex) {
             a.checkEncoding(Encoding.UTF_16BE);
@@ -3824,7 +3823,8 @@ public final class TruffleString extends AbstractTruffleString {
      *
      * @since 25.1
      */
-    public abstract static class CodePointAtIndexUTF32Node extends AbstractPublicNode {
+    @SuppressWarnings("unused")
+    abstract static class CodePointAtIndexUTF32Node extends AbstractPublicNode {
 
         CodePointAtIndexUTF32Node() {
         }
@@ -3838,7 +3838,7 @@ public final class TruffleString extends AbstractTruffleString {
          * 
          * @since 25.1
          */
-        public abstract int execute(AbstractTruffleString a, int i);
+        abstract int execute(AbstractTruffleString a, int i);
 
         @Specialization
         final int readCodePoint(AbstractTruffleString a, int i,
@@ -3884,7 +3884,7 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 25.1
          */
         @NeverDefault
-        public static CodePointAtIndexUTF32Node create() {
+        static CodePointAtIndexUTF32Node create() {
             return TruffleStringFactory.CodePointAtIndexUTF32NodeGen.create();
         }
 
@@ -3893,7 +3893,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 25.1
          */
-        public static CodePointAtIndexUTF32Node getUncached() {
+        static CodePointAtIndexUTF32Node getUncached() {
             return TruffleStringFactory.CodePointAtIndexUTF32NodeGen.getUncached();
         }
     }
