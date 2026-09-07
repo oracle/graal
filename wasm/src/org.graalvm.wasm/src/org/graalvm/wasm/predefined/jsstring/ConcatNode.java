@@ -6,9 +6,15 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 public class ConcatNode extends WasmBuiltinRootNode {
+
+    @Child
+    TruffleString.ConcatNode concatNode = TruffleString.ConcatNode.create();
+
     protected ConcatNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -23,8 +29,8 @@ public class ConcatNode extends WasmBuiltinRootNode {
         var args = WasmArguments.getArguments(frame.getArguments());
         var arg0 = args[0];
         var arg1 = args[1];
-        if (!(arg0 instanceof TruffleString s0)) throw new RuntimeException("Argument 0 was not a string");
-        if (!(arg1 instanceof TruffleString s1)) throw new RuntimeException("Argument 1 was not a string");
-        return s0.concatUncached(s1, TruffleString.Encoding.UTF_16, false);
+        if (!(arg0 instanceof TruffleString s0)) throw WasmException.create(Failure.TYPE_MISMATCH);
+        if (!(arg1 instanceof TruffleString s1)) throw WasmException.create(Failure.TYPE_MISMATCH);
+        return concatNode.execute(s0, s1, TruffleString.Encoding.UTF_16, false);
     }
 }

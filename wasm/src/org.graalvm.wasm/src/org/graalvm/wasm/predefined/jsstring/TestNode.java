@@ -9,6 +9,7 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 public class TestNode extends WasmBuiltinRootNode {
+
     protected TestNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }

@@ -10,6 +10,10 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 public class SubstringNode extends WasmBuiltinRootNode {
+
+    @Child
+    private TruffleString.SubstringByteIndexNode substringByteIndexNode = TruffleString.SubstringByteIndexNode.create();
+
     protected SubstringNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -28,6 +32,6 @@ public class SubstringNode extends WasmBuiltinRootNode {
         int start = Math.max(((Number)args[1]).intValue()*2,0); // indices times 2 to convert from codepoint length to byte length
         int end = Math.min(Math.max(((Number)args[2]).intValue()*2,0),strlenbytes);
         if (start > end || start > strlenbytes) return "";
-        return s.substringByteIndexUncached(start, end-start, TruffleString.Encoding.UTF_16, false);
+        return substringByteIndexNode.execute(s, start, end-start, TruffleString.Encoding.UTF_16, false);
     }
 }

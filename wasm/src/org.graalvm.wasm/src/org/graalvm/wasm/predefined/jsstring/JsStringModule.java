@@ -17,8 +17,8 @@ public class JsStringModule extends BuiltinModule {
         WasmModule module = WasmModule.createBuiltin(language, name);
         defineFunction(context, module, "cast", types(EXTERNREF_TYPE), types(EXTERNREF_TYPE), new CastNode(language, module));
         defineFunction(context, module, "test", types(EXTERNREF_TYPE), types(I32_TYPE), new TestNode(language, module));
-        defineFunction(context, module, "fromCharCodeArray", types(EXTERNREF_TYPE), types(EXTERNREF_TYPE), new FromCharCodeArrayNode(language, module));
-        defineFunction(context, module, "intoCharCodeArray", types(EXTERNREF_TYPE), types(EXTERNREF_TYPE), new IntoCharCodeArrayNode(language, module));
+        defineFunction(context, module, "fromCharCodeArray", types(EXTERNREF_TYPE, I32_TYPE, I32_TYPE), types(EXTERNREF_TYPE), new FromCharCodeArrayNode(language, module));
+        defineFunction(context, module, "intoCharCodeArray", types(EXTERNREF_TYPE, EXTERNREF_TYPE, I32_TYPE), types(I32_TYPE), new IntoCharCodeArrayNode(language, module));
         defineFunction(context, module, "fromCharCode", types(I32_TYPE), types(EXTERNREF_TYPE), new FromCharCodeNode(language, module));
         defineFunction(context, module, "fromCodePoint", types(I32_TYPE), types(EXTERNREF_TYPE), new FromCodePointNode(language, module));
         defineFunction(context, module, "charCodeAt", types(EXTERNREF_TYPE, I32_TYPE), types(I32_TYPE), new CharCodeAtNode(language, module));

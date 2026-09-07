@@ -2,10 +2,13 @@ package org.graalvm.wasm.test.suites;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Test;
 
@@ -21,7 +24,7 @@ public class WasmJsStringSuite extends WasmFileSuite {
     private Value execute(String wat, Object... arguments) throws IOException, InterruptedException {
         final ByteSequence binaryMain = ByteSequence.create(compileWat("main", wat));
         final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "main").build();
-        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.Builtins", "js-string").build()) {
+        try (Context context = Context.newBuilder(WasmLanguage.ID).option("wasm.Builtins", "js-string").allowHostAccess(HostAccess.ALL).build()) {
             Value exports = context.eval(sourceMain).newInstance().getMember("exports");
             final Value main = exports.getMember("_main");
             Object[] args = Arrays.stream(arguments).map(arg -> {
@@ -37,20 +40,20 @@ public class WasmJsStringSuite extends WasmFileSuite {
             assertEquals(expected, execute(wat, arguments).asString());
         }
         else if (expected instanceof Integer) {
-            assertEquals((int) expected, execute(wat, arguments).asInt());
+            assertEquals(expected, execute(wat, arguments).asInt());
         }
-        else if (expected instanceof Integer[]) {
+        /*else if (expected instanceof Integer[]) {
             var result = execute(wat, arguments);
             var host = result.asHostObject();
             assertEquals(expected, host);
-        }
+        }*/
         else {
             throw new UnsupportedOperationException(String.format("Type of %s is not supported in the test.", expected.getClass().getName()));
         }
     }
 
     private void testThrows(String wat, Object... arguments) {
-        assertThrows(RuntimeException.class, () -> execute(wat, arguments));
+        assertThrows(PolyglotException.class, () -> execute(wat, arguments));
     }
 
     @Test
@@ -65,9 +68,9 @@ public class WasmJsStringSuite extends WasmFileSuite {
     )
 )
         """;
-        testThrows(wat, null, 0);
-        testThrows(wat, new Object(), 0);
-        testThrows(wat, 1, 0);
+        testThrows(wat, (Object) null);
+        testThrows(wat, new Object());
+        testThrows(wat, 1);
 
         test(wat, 0, "");
         test(wat, 11, "hello world");
@@ -362,29 +365,84 @@ public class WasmJsStringSuite extends WasmFileSuite {
     public void FromCharCodeArray() throws IOException, InterruptedException {
         var wat = """
 (module
-    (import "js-string" "fromCharCodeArray" (func $fromCharCodeArray (param externref) (result externref)))
+    (import "js-string" "fromCharCodeArray" (func $fromCharCodeArray (param externref) (param i32) (param i32) (result externref)))
 
-    (func $main (export "_main") (param externref) (result externref)
+    (func $main (export "_main") (param externref) (param i32) (param i32) (result externref)
         local.get 0
+        local.get 1
+        local.get 2
         call $fromCharCodeArray
     )
 )
         """;
-        test(wat, "hello", (Object) new Integer[]{104, 101, 108, 108, 111});
+        test(wat, "hello", new Integer[]{104, 101, 108, 108, 111}, 0, 5);
+        test(wat, "ell", new Integer[]{104, 101, 108, 108, 111}, 1, 4);
+        test(wat, "h", new Integer[]{104, 101, 108, 108, 111}, 0, 1);
+        test(wat, "", new Integer[]{104, 101, 108, 108, 111}, 1, 1);
+        test(wat, "", new Integer[]{104, 101, 108, 108, 111}, 4, 4);
+        testThrows(wat, new Integer[]{104, 101, 108, 108, 111}, 0, 6);
+        testThrows(wat, new Integer[]{104, 101, 108, 108, 111}, -1, 5);
+        testThrows(wat, new Integer[]{104, 101, 108, 108, 111}, 4, 0);
+        testThrows(wat, new Integer[]{104, 101, 108, 108, 111}, 1, 0);
+        testThrows(wat, new Integer[]{104, 101, 108, 108, 111}, 4, -1);
+        test(wat, "", new Integer[0], 0, 0);
+        testThrows(wat, new Integer[0], 0, 1);
+        test(wat, "", new Integer[1], 0, 0);
+        testThrows(wat, new Integer[1], 0, 1);
+        test(wat, "h", new Integer[]{104}, 0, 1);
+        testThrows(wat, 0, 0, 1);
+        testThrows(wat, 0, 0, 0);
+        test(wat, "", new String[]{"hello"}, 0, 0);
+        testThrows(wat, new String[]{"hello"}, 0, 1);
+        testThrows(wat, null, 0, 0);
+        testThrows(wat, null, 0, 1);
     }
 
     @Test
     public void IntoCharCodeArray() throws IOException, InterruptedException {
         var wat = """
 (module
-    (import "js-string" "intoCharCodeArray" (func $intoCharCodeArray (param externref) (result externref)))
+    (import "js-string" "intoCharCodeArray" (func $intoCharCodeArray (param externref) (param externref) (param i32) (result i32)))
 
-    (func $main (export "_main") (param externref) (result externref)
+    (func $main (export "_main") (param externref) (param externref) (param i32) (result i32)
         local.get 0
+        local.get 1
+        local.get 2
         call $intoCharCodeArray
     )
 )
         """;
-        test(wat, new Integer[]{104, 101, 108, 108, 111}, "hello");
+        var expected = new Integer[]{104};
+        var arr = new Integer[1];
+        execute(wat, "h", arr, 0);
+        assertEquals(expected.length, arr.length);
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals(expected[i],arr[i]);
+        }
+        expected = new Integer[]{104, 101, 108, 108, 111};
+        arr = new Integer[5];
+        execute(wat, "hello", arr, 0);
+        assertEquals(expected.length, arr.length);
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals(expected[i],arr[i]);
+        }
+        expected = new Integer[1];
+        arr = new Integer[1];
+        execute(wat, "", arr, 0);
+        assertEquals(expected.length, arr.length);
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals(expected[i],arr[i]);
+        }
+        expected = new Integer[]{100, 100, 100, 104, 101, 108, 108, 111};
+        arr = new Integer[]{100, 100, 100, null, 3, 0, 108, 100};
+        execute(wat, "hello", arr, 3);
+        assertEquals(expected.length, arr.length);
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals(expected[i],arr[i]);
+        }
+        testThrows(wat, "hello", new Integer[5], -1);
+        testThrows(wat, "hello", new Integer[5], 5);
+        testThrows(wat, "", new Integer[0], -1);
+        testThrows(wat, "a", new Integer[0], 0);
     }
 }

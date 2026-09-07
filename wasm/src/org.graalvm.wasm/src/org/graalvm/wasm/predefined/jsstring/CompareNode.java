@@ -9,6 +9,10 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 public class CompareNode extends WasmBuiltinRootNode {
+
+    @Child
+    private TruffleString.CompareCharsUTF16Node compareCharsUTF16Node = TruffleString.CompareCharsUTF16Node.create();
+
     protected CompareNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
@@ -20,12 +24,10 @@ public class CompareNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        // TODO: confirm java compareTo method is the same as js `<` operator
         var args = WasmArguments.getArguments(frame.getArguments());
         TruffleString first = (TruffleString) args[0];
         TruffleString second = (TruffleString) args[1];
-        int comp = TruffleString.CompareCharsUTF16Node.create().execute(first,second);
-        // int comp = first.compareTo(second);
+        int comp = compareCharsUTF16Node.execute(first,second);
         return comp == 0 ? 0 : (comp < 0 ? -1 : 1);
     }
 }
