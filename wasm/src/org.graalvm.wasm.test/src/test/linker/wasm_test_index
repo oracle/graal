@@ -14,3 +14,4 @@ dynamic_data_offset/main;constant-pools-globals;constant-pools;runtime
 dynamic_elem_offset/main;virtual-tables;runtime-globals;runtime
 tail_call_in_start
 unsafe_passive_data_segment
+memory_import_requires_maximum/main;memory
