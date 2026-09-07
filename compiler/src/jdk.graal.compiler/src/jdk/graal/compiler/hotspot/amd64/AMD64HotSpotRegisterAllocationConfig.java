@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,8 +53,24 @@ import static jdk.vm.ci.amd64.AMD64.xmm12;
 import static jdk.vm.ci.amd64.AMD64.xmm13;
 import static jdk.vm.ci.amd64.AMD64.xmm14;
 import static jdk.vm.ci.amd64.AMD64.xmm15;
+import static jdk.vm.ci.amd64.AMD64.xmm16;
+import static jdk.vm.ci.amd64.AMD64.xmm17;
+import static jdk.vm.ci.amd64.AMD64.xmm18;
+import static jdk.vm.ci.amd64.AMD64.xmm19;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
+import static jdk.vm.ci.amd64.AMD64.xmm20;
+import static jdk.vm.ci.amd64.AMD64.xmm21;
+import static jdk.vm.ci.amd64.AMD64.xmm22;
+import static jdk.vm.ci.amd64.AMD64.xmm23;
+import static jdk.vm.ci.amd64.AMD64.xmm24;
+import static jdk.vm.ci.amd64.AMD64.xmm25;
+import static jdk.vm.ci.amd64.AMD64.xmm26;
+import static jdk.vm.ci.amd64.AMD64.xmm27;
+import static jdk.vm.ci.amd64.AMD64.xmm28;
+import static jdk.vm.ci.amd64.AMD64.xmm29;
 import static jdk.vm.ci.amd64.AMD64.xmm3;
+import static jdk.vm.ci.amd64.AMD64.xmm30;
+import static jdk.vm.ci.amd64.AMD64.xmm31;
 import static jdk.vm.ci.amd64.AMD64.xmm4;
 import static jdk.vm.ci.amd64.AMD64.xmm5;
 import static jdk.vm.ci.amd64.AMD64.xmm6;
@@ -67,6 +83,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 
@@ -87,15 +104,19 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
         /* r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, // APX registers */
         xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
         xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
+        xmm16, xmm17, xmm18, xmm19, xmm20, xmm21, xmm22, xmm23,
+        xmm24, xmm25, xmm26, xmm27, xmm28, xmm29, xmm30, xmm31,
         k1, k2, k3, k4, k5, k6, k7
     };
     // @formatter:on
 
     private final boolean preserveFramePointer;
+    private final boolean useExtendedAvx512Registers;
 
-    AMD64HotSpotRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, boolean preserveFramePointer) {
+    AMD64HotSpotRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, boolean preserveFramePointer, boolean useExtendedAvx512Registers) {
         super(registerConfig, allocationRestrictedTo);
         this.preserveFramePointer = preserveFramePointer;
+        this.useExtendedAvx512Registers = useExtendedAvx512Registers;
     }
 
     @Override
@@ -110,6 +131,9 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
 
         ArrayList<Register> allocatableRegisters = new ArrayList<>(registers.size());
         for (Register reg : registerAllocationOrder) {
+            if (!useExtendedAvx512Registers && reg.getRegisterCategory().equals(AMD64.XMM) && reg.encoding() >= 16) {
+                continue;
+            }
             if (regMap.get(reg.number)) {
                 allocatableRegisters.add(reg);
             }
