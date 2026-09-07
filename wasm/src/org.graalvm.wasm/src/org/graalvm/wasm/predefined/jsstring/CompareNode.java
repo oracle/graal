@@ -1,6 +1,7 @@
 package org.graalvm.wasm.predefined.jsstring;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -21,9 +22,10 @@ public class CompareNode extends WasmBuiltinRootNode {
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         // TODO: confirm java compareTo method is the same as js `<` operator
         var args = WasmArguments.getArguments(frame.getArguments());
-        String first = (String)args[0];
-        String second = (String)args[1];
-        int comp = first.compareTo(second);
-        return comp == 0 ? 0 : (comp < 0 ? -1 : 1); // docs say Integer.compare returns "a value less than 0"... so thats not even the same
+        TruffleString first = (TruffleString) args[0];
+        TruffleString second = (TruffleString) args[1];
+        int comp = TruffleString.CompareCharsUTF16Node.create().execute(first,second);
+        // int comp = first.compareTo(second);
+        return comp == 0 ? 0 : (comp < 0 ? -1 : 1);
     }
 }

@@ -20,9 +20,8 @@ public class FromCharCodeNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        // TODO: test edge cases, maybe use trufflestring also?
         var args = WasmArguments.getArguments(frame.getArguments());
-        int code = ((Number)args[1]).intValue();
-        return String.valueOf((char)code);
+        int code = ((Number)args[0]).intValue();
+        return TruffleString.fromJavaStringUncached(String.valueOf((char)code), TruffleString.Encoding.UTF_16);
     }
 }

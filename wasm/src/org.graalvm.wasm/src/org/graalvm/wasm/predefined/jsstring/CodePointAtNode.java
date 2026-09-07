@@ -20,13 +20,10 @@ public class CodePointAtNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        // TODO: check the following methods
-        // TruffleString.CodePointAtIndexNode
-        // TruffleString.CodePointAtByteIndexNode
-        // TruffleString.CodePointAtIndexUTF32Node
         var args = WasmArguments.getArguments(frame.getArguments());
-        TruffleString s = TruffleString.fromJavaStringUncached((String) args[0], TruffleString.Encoding.UTF_16);
-        int i = (int) args[1];
-        return TruffleString.CodePointAtIndexNode.create().execute(s, i, TruffleString.Encoding.UTF_16);
+        var arg = args[0];
+        if (!(arg instanceof TruffleString s)) throw new RuntimeException("Argument 0 was not a string");
+        int byteIndex = ((int) args[1]) * 2;
+        return TruffleString.CodePointAtByteIndexNode.create().execute(s, byteIndex, TruffleString.Encoding.UTF_16);
     }
 }

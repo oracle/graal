@@ -1,6 +1,7 @@
 package org.graalvm.wasm.predefined.jsstring;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -19,8 +20,6 @@ public class TestNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        var args = WasmArguments.getArguments(frame.getArguments());
-        Object s = args[0];
-        return s instanceof String ? 1 : 0;
+        return WasmArguments.getArguments(frame.getArguments())[0] instanceof TruffleString ? 1 : 0;
     }
 }

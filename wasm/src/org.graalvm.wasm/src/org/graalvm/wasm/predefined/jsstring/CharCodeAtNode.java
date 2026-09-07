@@ -21,11 +21,12 @@ public class CharCodeAtNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
         var args = WasmArguments.getArguments(frame.getArguments());
-        TruffleString s = TruffleString.fromJavaStringUncached((String) args[0], TruffleString.Encoding.UTF_16);
+        var arg = args[0];
+        if (!(arg instanceof TruffleString s)) throw new RuntimeException("Argument 0 was not a string");
         int i = (int) args[1];
-        if (i < 0 || i >= s.byteLength(TruffleString.Encoding.UTF_16)) {
-            return null;
-        }
+        /*if (Integer.compareUnsigned(i,s.byteLength(TruffleString.Encoding.UTF_16)) >= 0) {
+            throw new RuntimeException("Argument 1 out of bounds");
+        }*/
         return s.readCharUTF16Uncached(i);
     }
 }

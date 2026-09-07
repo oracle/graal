@@ -20,7 +20,8 @@ public class LengthNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        var args = WasmArguments.getArguments(frame.getArguments());
-        return ((TruffleString)args[0]).byteLength(TruffleString.Encoding.UTF_16)/2;
+        var arg = WasmArguments.getArguments(frame.getArguments())[0];
+        if (!(arg instanceof TruffleString s)) throw new RuntimeException("Argument 0 was not a string");
+        return s.byteLength(TruffleString.Encoding.UTF_16)/2;
     }
 }

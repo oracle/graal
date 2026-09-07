@@ -1,6 +1,8 @@
 package org.graalvm.wasm.predefined.jsstring;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -19,14 +21,13 @@ public class EqualsNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        // TODO: test when null is passed in
-        // TODO: runtime errors?
         var args = WasmArguments.getArguments(frame.getArguments());
-        String s0 = (String)args[0];
-        String s1 = (String)args[1];
-        if (s1 == null) {
-            if (s0 == null) return 1;
-        }
+        var s0 = args[0];
+        var s1 = args[1];
+        var interop = InteropLibrary.getUncached();
+        if (!interop.isNull(s0) && !(s0 instanceof TruffleString)) throw new RuntimeException("Argument 0 was not a string");
+        if (!interop.isNull(s1) && !(s1 instanceof TruffleString)) throw new RuntimeException("Argument 1 was not a string");
+        if (interop.isNull(s0)) return interop.isNull(s1) ? 1 : 0;
         return s0.equals(s1) ? 1 : 0;
     }
 }

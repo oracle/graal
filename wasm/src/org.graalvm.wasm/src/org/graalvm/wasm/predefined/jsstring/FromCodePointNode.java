@@ -20,8 +20,9 @@ public class FromCodePointNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithInstance(VirtualFrame frame, WasmInstance instance) {
-        // TODO: test edge cases
         var args = WasmArguments.getArguments(frame.getArguments());
-        return TruffleString.fromCodePointUncached((int)args[0], TruffleString.Encoding.UTF_16, true);
+        int codePoint = (int)args[0];
+        // if (codePoint > 0x10FFFF) throw new RuntimeException(String.format("RangeError: %d is not a valid code point", codePoint));
+        return TruffleString.fromCodePointUncached(codePoint, TruffleString.Encoding.UTF_16, true);
     }
 }
