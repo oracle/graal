@@ -58,7 +58,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
-import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
 import com.oracle.svm.graal.hosted.GraalCompilerFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.shared.option.HostedOptionValues;
@@ -76,7 +75,6 @@ import jdk.graal.compiler.debug.KeyRegistry;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimeSource;
-import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
@@ -384,13 +382,6 @@ final class Target_jdk_graal_compiler_lir_phases_LIRPhase {
         }
         return result;
     }
-}
-
-@TargetClass(value = Edges.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_graph_Edges {
-    @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.IterationMaskRecomputation.class)//
-    private long iterationMask;
 }
 
 @TargetClass(value = NamedLocationIdentity.class, innerClass = "DB", onlyWith = GraalCompilerFeature.IsEnabled.class)

@@ -88,7 +88,7 @@ public class FieldsOffsetsFeature implements Feature {
         }
     }
 
-    public static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
+    private static final class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
         // JVMCI migration blocked by GR-72589: Migrate GraalCompilerFeature to terminus
         @Override
         public boolean isAvailable() {
@@ -131,7 +131,10 @@ public class FieldsOffsetsFeature implements Feature {
 
         ImageSingletons.add(FieldsOffsetsReplacements.class, new FieldsOffsetsReplacements());
         var offsetsField = JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(Fields.class), "offsets");
-        FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(offsetsField, new OffsetsRecomputation());
+        var iterationMaskField = JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(Edges.class), "iterationMask");
+        FieldValueInterceptionSupport interceptionSupport = FieldValueInterceptionSupport.singleton();
+        interceptionSupport.registerFieldValueTransformer(offsetsField, new OffsetsRecomputation());
+        interceptionSupport.registerFieldValueTransformer(iterationMaskField, new IterationMaskRecomputation());
         access.registerClassReachabilityListener(FieldsOffsetsFeature::classReachabilityListener);
     }
 
