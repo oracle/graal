@@ -33,7 +33,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.word.Word;
 
