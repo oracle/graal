@@ -347,7 +347,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         } else if (LambdaUtils.isLambdaType(type)) {
             WrappedType.Lambda.Writer b = builder.getWrappedType().initLambda();
             b.setCapturingClass(LambdaUtils.capturingClass(type.toJavaName()));
-            b.setCaptureSite(LambdaParser.findLambdaCaptureSite(OriginalClassProvider.getJavaClass(type)));
+            String captureSite = LambdaParser.findLambdaCaptureSite(OriginalClassProvider.getJavaClass(type));
+            if (captureSite != null) {
+                b.setCaptureSite(captureSite);
+            }
         } else if (ProxyRenamingSubstitutionProcessor.isProxyType(type)) {
             builder.getWrappedType().setProxyType();
         }

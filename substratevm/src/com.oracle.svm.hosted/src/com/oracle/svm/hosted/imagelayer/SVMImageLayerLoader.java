@@ -371,9 +371,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             return true;
         } else if (wrappedType.isLambda()) {
             WrappedType.Lambda.Loader lambda = wrappedType.getLambda();
+            String captureSite = lambda.getCaptureSite();
+            if (captureSite.isEmpty()) {
+                /* A lambda without a discoverable capture site cannot be recreated here. */
+                return false;
+            }
             String capturingClassName = lambda.getCapturingClass();
             Class<?> capturingClass = imageLayerBuildingSupport.lookupClass(false, capturingClassName);
-            Class<?> lambdaClass = LambdaParser.findLambdaClassForCaptureSite(capturingClass, lambda.getCaptureSite());
+            Class<?> lambdaClass = LambdaParser.findLambdaClassForCaptureSite(capturingClass, captureSite);
             if (lambdaClass == null) {
                 return false;
             }
