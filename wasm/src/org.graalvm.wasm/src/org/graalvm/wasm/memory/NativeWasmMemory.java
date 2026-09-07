@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,8 @@ public final class NativeWasmMemory extends WasmMemory {
 
     @TruffleBoundary
     NativeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, MemoryContext memoryContext) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, memoryContext);
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(effectiveDeclaredMaxSize(declaredMaxSize, indexType64), MAX_ALLOWED_SIZE), indexType64,
+                        memoryContext);
     }
 
     private static long allocate(long newBufferSize) {

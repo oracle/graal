@@ -56,6 +56,7 @@ import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.WasmType.V128_TYPE;
+import static org.graalvm.wasm.constants.Sizes.NO_MEMORY_MAXIMUM;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -489,11 +490,12 @@ public class Linker {
                 importedMemory = importedInstance.memory(exportedMemoryIndex);
             }
             // Rules for limits matching:
-            // https://webassembly.github.io/spec/core/exec/modules.html#limits
-            // If no max size is declared, then declaredMaxSize value will be
-            // MAX_TABLE_DECLARATION_SIZE, so this condition will pass.
+            // https://webassembly.github.io/spec/core/valid/matching.html#limits
             assertUnsignedLongLessOrEqual(declaredMinSize, importedMemory.minSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
-            assertUnsignedLongGreaterOrEqual(declaredMaxSize, importedMemory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            if (declaredMaxSize != NO_MEMORY_MAXIMUM) {
+                Assert.assertTrue(importedMemory.hasDeclaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                assertUnsignedLongGreaterOrEqual(declaredMaxSize, importedMemory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+            }
             if (typeIndex64 != importedMemory.hasIndexType64()) {
                 Assert.fail(Failure.INCOMPATIBLE_IMPORT_TYPE, "index types of memory import do not match");
             }
