@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.Set;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -95,7 +96,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * method above the limit. On the other hand, the inlining depth is generous because we do not
  * need to limit it. Note that more experimentation is necessary to come up with the optimal
  * configuration.
- *
+ * <p>
+ * The {@link InlineBeforeAnalysis} phase is separate from compiler inlining. In particular,
+ * {@link AlwaysInline} and
+ * {@link ForceInline} are not generally mandatory directives here. Unless a method is selected by
+ * {@link #alwaysInlineInvoke(AnalysisMetaAccess, AnalysisMethod)}, it is subject to the regular
+ * policy and can intentionally remain uninlined. Therefore, these annotations do not guarantee
+ * constant folding or reachability pruning before analysis.
+ * <p>
  * Important: the implementation details of this class are publicly observable API. Since
  * {@link Method} constants can be produced by inlining lookup methods with constant arguments,
  * reducing inlining can break customer code. This means we can never reduce the amount of inlining
@@ -297,6 +305,13 @@ public class InlineBeforeAnalysisPolicyUtils {
         return true;
     }
 
+    /**
+     * Returns whether the regular heuristics used by {@link InlineBeforeAnalysis} should be
+     * overridden for this method. Hard restrictions checked by
+     * {@link #inliningAllowed(SVMHost, GraphBuilderContext, AnalysisMethod)}
+     * still take precedence. This phase-specific override is independent of the compiler directive
+     * represented by {@link AlwaysInline}.
+     */
     public boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") AnalysisMethod method) {
         return false;
     }

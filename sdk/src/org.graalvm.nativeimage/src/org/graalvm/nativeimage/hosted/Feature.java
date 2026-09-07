@@ -236,6 +236,11 @@ public interface Feature {
          * subtypes, is marked as reachable during heap scanning. The callback is executed before
          * the object is added to the shadow heap. The callback may be executed for the same object
          * by multiple worker threads concurrently.
+         * <p>
+         * Heap snapshot verification after analysis can scan and include an object in
+         * the image heap without marking it reachable through the analysis scanner. Consequently,
+         * this callback is not guaranteed for objects first encountered through such late
+         * verification.
          *
          * @since 24.2
          */

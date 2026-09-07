@@ -49,6 +49,13 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Internal representation of a field value transformation. Values returned by
+ * {@link JVMCIFieldValueTransformer#transform} are cached by {@link #readValue} for each receiver;
+ * all reads of a static field share one cache entry. Transformation computations for a field are
+ * serialized so that a transformer executes at most once for each receiver. Once a value is cached,
+ * later changes to the original hosted field are not observed through this transformation.
+ */
 public class FieldValueTransformation {
     protected final JVMCIFieldValueTransformer fieldValueTransformer;
     protected final ResolvedJavaType transformedValueAllowedType;
@@ -90,7 +97,7 @@ public class FieldValueTransformation {
             }
             /*
              * Note that the value computation must be inside the lock, because we want to guarantee
-             * that field-value computers are only executed once per unique receiver.
+             * that field-value transformers are only executed once per unique receiver.
              */
             result = computeValue(field, receiver);
             putCached(receiver, result);

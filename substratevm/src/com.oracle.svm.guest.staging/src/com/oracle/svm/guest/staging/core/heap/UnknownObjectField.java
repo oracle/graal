@@ -32,16 +32,24 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 /**
- * For fields with this annotation no static analysis is done.
- *
- * It is assumed that a field of type c may hold a reference to any subtype of c. It is also assumed
- * that any subtype of c is instantiated.
- *
- * This annotation is only necessary during the image build. It prevents the static analysis from
- * wrongly constant-folding a value that is initialized late during the image build and therefore
- * not available during analysis.
+ * Marks an object field whose hosted value is not available until a later image-build phase. The
+ * annotation prevents static analysis from reading and wrongly constant-folding the hosted value
+ * before {@link #availability()} returns {@code true}. Instead, analysis registers the concrete
+ * classes specified by {@link #types()} and {@link #fullyQualifiedTypes()} as instantiated and
+ * injects their type flows, together with the null state specified by {@link #canBeNull()}, into the
+ * field. If no class is specified, the declared field type must be concrete and is used as the
+ * field's analysis type. The specified classes must conservatively cover all values that the field
+ * can contain after it becomes available.
+ * <p>
+ * Making the value available does not automatically rescan the field. Late heap verification
+ * performed by {@code HeapSnapshotVerifier} can materialize, scan, and include an object value
+ * without guaranteeing that reachability callbacks registered through
+ * {@link Feature.DuringSetupAccess#registerObjectReachabilityHandler} are executed. Internal users
+ * that require these callbacks must arrange an explicit
+ * {@code ImageHeapScanner.rescanField(...)} at a supported phase after the value becomes available.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
@@ -49,12 +57,14 @@ import org.graalvm.nativeimage.Platforms;
 public @interface UnknownObjectField {
 
     /**
-     * Specify types that this field can take.
+     * Specifies concrete types that this field can take. Each type must be assignable to the
+     * declared field type.
      */
     Class<?>[] types() default {};
 
     /**
-     * Specify fully qualified names of types that this field can take.
+     * Specifies fully qualified names of concrete types that this field can take. Each type must be
+     * assignable to the declared field type.
      */
     String[] fullyQualifiedTypes() default {};
 
@@ -63,5 +73,9 @@ public @interface UnknownObjectField {
      */
     boolean canBeNull() default false;
 
+    /**
+     * Specifies the {@link BooleanSupplier}; its {@link BooleanSupplier#getAsBoolean()} result
+     * determines when the hosted field value can be read.
+     */
     Class<? extends BooleanSupplier> availability();
 }

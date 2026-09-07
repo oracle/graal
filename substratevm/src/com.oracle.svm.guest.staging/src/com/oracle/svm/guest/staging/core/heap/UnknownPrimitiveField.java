@@ -34,15 +34,18 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * For fields with this annotation no static analysis is done.
- *
- * This annotation is only necessary during the image build. It prevents the static analysis from
- * wrongly constant-folding a value that is initialized late during the image build and therefore
- * not available during analysis.
+ * Marks a primitive field whose hosted value is not available until a later image-build phase. The
+ * annotation prevents static analysis from reading and wrongly constant-folding the hosted value
+ * before {@link #availability()} returns {@code true}. Instead, analysis injects the field's
+ * declared primitive state.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 @Platforms(Platform.HOSTED_ONLY.class)
 public @interface UnknownPrimitiveField {
+    /**
+     * Specifies the {@link BooleanSupplier}; its {@link BooleanSupplier#getAsBoolean()} result
+     * determines when the hosted field value can be read.
+     */
     Class<? extends BooleanSupplier> availability();
 }

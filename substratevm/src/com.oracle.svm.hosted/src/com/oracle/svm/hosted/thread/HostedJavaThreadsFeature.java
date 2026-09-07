@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,17 +32,19 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
-import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.NewInstanceOfFixedClassFieldValueTransformer;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaThreadsFeature;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -53,9 +55,39 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 public class HostedJavaThreadsFeature extends JavaThreadsFeature {
+
+    /** Delays reading one transient thread-bookkeeping field and validates its final value. */
+    private static final class DeferredThreadFieldTransformer implements JVMCIFieldValueTransformerWithAvailability {
+        private final String fieldName;
+
+        private DeferredThreadFieldTransformer(ResolvedJavaField field) {
+            this.fieldName = field.format("%H.%n");
+        }
+
+        @Override
+        public boolean isAvailable() {
+            return BuildPhaseProvider.isAnalysisFinished();
+        }
+
+        @Override
+        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+            UserError.guarantee(originalValue.isNull(), "A transient thread-bookkeeping field cannot legally hold a thread reference after analysis has finished. " +
+                            "The field identifies the current owner or waiter of a concurrency primitive, but all application threads must have completed by this point. " +
+                            "A non-null value indicates that an application thread is still running or that the concurrency primitive was misused. Offending field: %s. Offending receiver: %s",
+                            fieldName,
+                            receiver);
+            return originalValue;
+        }
+    }
 
     /**
      * All {@link Thread} objects that are reachable in the image heap. Only unstarted threads,
@@ -123,6 +155,37 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
                 return reachableThreadGroups.get(group).groups;
             }
         });
+
+        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractOwnableSynchronizer", "exclusiveOwnerThread");
+        registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractQueuedSynchronizer$Node", "waiter");
+        registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractQueuedLongSynchronizer$Node", "waiter");
+
+        var trackerType = GuestAccess.get().lookupType(jdk.internal.misc.ThreadTracker.class);
+        resetThreadTracker(access, "java.net.URL$ThreadTrackHolder", "TRACKER", trackerType);
+        resetThreadTracker(access, "java.nio.charset.Charset$ThreadTrackHolder", "TRACKER", trackerType);
+        resetThreadTracker(access, "java.util.jar.JarFile$ThreadTrackHolder", "TRACKER", trackerType);
+        resetThreadTracker(access, "jdk.internal.event.EventHelper$ThreadTrackHolder", "TRACKER", trackerType);
+        resetThreadTracker(access, "sun.security.provider.certpath.ForwardBuilder$ThreadTrackerHolder", "AIA_TRACKER", trackerType);
+    }
+
+    /**
+     * Keeps a transient thread-bookkeeping field unavailable until
+     * {@link BuildPhaseProvider#isAnalysisFinished()} returns {@code true}, then requires its value
+     * to be {@code null}.
+     */
+    private static void registerDeferredThreadField(FeatureImpl.BeforeAnalysisAccessImpl access, String declaringClass, String fieldName) {
+        ResolvedJavaField field = JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(declaringClass), fieldName);
+        access.registerFieldValueTransformer(field, new DeferredThreadFieldTransformer(field));
+    }
+
+    /**
+     * Replaces one JDK-owned tracker with a fresh empty instance using
+     * {@link NewInstanceOfFixedClassFieldValueTransformer}.
+     */
+    private static void resetThreadTracker(FeatureImpl.BeforeAnalysisAccessImpl access, String declaringClass, String fieldName, ResolvedJavaType trackerType) {
+        access.registerFieldValueTransformer(JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(declaringClass), fieldName),
+                        new NewInstanceOfFixedClassFieldValueTransformer(trackerType, true));
     }
 
     private void collectReachableThreads(Thread thread) {

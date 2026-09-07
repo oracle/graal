@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Every thus annotated method is always inlined by the compiler.
+ * Marks a method or constructor that is always inlined by the compiler during the compilation
+ * phase.
+ * <p>
+ * This directive does not require inlining during graph processing before static analysis. The
+ * earlier {@code InlineBeforeAnalysis} phase uses a separate conservative policy and can inline an
+ * annotated method as an implementation consequence, but this annotation does not guarantee it.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
