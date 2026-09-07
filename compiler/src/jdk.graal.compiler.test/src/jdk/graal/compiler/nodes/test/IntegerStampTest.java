@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -333,6 +333,91 @@ public class IntegerStampTest extends GraphTest {
     public void testAnd() {
         assertEquals(IntegerStamp.create(32, Integer.MIN_VALUE, 0x40000000L, 0, 0xc0000000L),
                         IntegerStamp.OPS.getAnd().foldStamp(StampFactory.forKind(JavaKind.Int), StampFactory.forConstant(JavaConstant.forInt(0xc0000000))));
+    }
+
+    @Test
+    public void testAndRange() {
+        testAndRange(-20, -10, 10, 20, 0, 20);
+        testAndRange(88, 92, 75, 94, 68, 92);
+        testAndRange(10, 20, -8, -8, 8, 16);
+        testAndRange(-20, -10, -8, -8, -24, -16);
+    }
+
+    private static void testAndRange(long xLower, long xUpper, long yLower, long yUpper, long newLower, long newUpper) {
+        IntegerStamp x = IntegerStamp.create(32, xLower, xUpper);
+        IntegerStamp y = IntegerStamp.create(32, yLower, yUpper);
+        IntegerStamp result = (IntegerStamp) IntegerStamp.OPS.getAnd().foldStamp(x, y);
+        assertEquals(newLower, result.lowerBound());
+        assertEquals(newUpper, result.upperBound());
+        IntegerStamp reverseResult = (IntegerStamp) IntegerStamp.OPS.getAnd().foldStamp(y, x);
+        assertEquals(newLower, reverseResult.lowerBound());
+        assertEquals(newUpper, reverseResult.upperBound());
+    }
+
+    @Test
+    public void testOrRange() {
+        testOrRange(-20, -10, 10, 20, -20, -1);
+        testOrRange(10, 20, 10, 20, 10, 31);
+        testOrRange(-20, -10, -20, -10, -20, -1);
+        testOrRange(10, 20, 7, 7, 15, 23);
+        testOrRange(-20, -10, 7, 7, -17, -9);
+        testOrRange(10, 20, 0, 0, 10, 20);
+        testOrRange(-10, 10, 0, 0, -10, 10);
+        testOrRange(-10, 10, -1, -1, -1, -1);
+        testOrRange(-93, -89, -95, -76, -93, -69);
+        testOrRange(Integer.MIN_VALUE, Integer.MIN_VALUE + 2L, 1, 2, Integer.MIN_VALUE + 1L, Integer.MIN_VALUE + 3L);
+        testOrRange(Integer.MAX_VALUE - 4L, Integer.MAX_VALUE - 2L, 2, 3, Integer.MAX_VALUE - 4L, Integer.MAX_VALUE);
+    }
+
+    private static void testOrRange(long xLower, long xUpper, long yLower, long yUpper, long newLower, long newUpper) {
+        IntegerStamp x = IntegerStamp.create(32, xLower, xUpper);
+        IntegerStamp y = IntegerStamp.create(32, yLower, yUpper);
+        IntegerStamp result = (IntegerStamp) IntegerStamp.OPS.getOr().foldStamp(x, y);
+        assertEquals(newLower, result.lowerBound());
+        assertEquals(newUpper, result.upperBound());
+        IntegerStamp reverseResult = (IntegerStamp) IntegerStamp.OPS.getOr().foldStamp(y, x);
+        assertEquals(newLower, reverseResult.lowerBound());
+        assertEquals(newUpper, reverseResult.upperBound());
+    }
+
+    @Test
+    public void testXorRange() {
+        testXorRange(32, 10, 20, 10, 20, 0, 31);
+        testXorRange(32, -20, -10, 10, 20, -32, -1);
+        testXorRange(32, -20, -10, -20, -10, 0, 31);
+        testXorRange(32, 10, 20, -1, -1, -21, -11);
+        testXorRange(32, -20, -10, -1, -1, 9, 19);
+        testXorRange(32, -8, -8, -8, -6, 0, 2);
+        testXorRange(32, 10, 20, 0, 0, 10, 20);
+        testXorRange(32, 10, 20, 1, 1, 9, 21);
+        testXorRange(32, 0, 2, 0, 4, 0, 6);
+        testXorRange(32, 0, 2, 3, 4, 0, 6);
+        testXorRange(32, 128, 256, 256, 512, 0, 768);
+        testXorRange(32, Integer.MIN_VALUE, Integer.MAX_VALUE, 10, 20, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        testXorRange(32, Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void testXorRangeLong() {
+        testXorRange(64, 10, 20, 1, 1, 9, 21);
+        testXorRange(64, -8, -8, -8, -6, 0, 2);
+        testXorRange(64, 0, 2, 3, 4, 0, 6);
+        testXorRange(64, 10, 20, -1, -1, -21, -11);
+        testXorRange(64, Long.MIN_VALUE, Long.MAX_VALUE, 10, 20, Long.MIN_VALUE, Long.MAX_VALUE);
+
+        // Intermediate operations used for bounds refinement overflow:
+        testXorRange(64, Long.MAX_VALUE - 4, Long.MAX_VALUE - 2, 2, 3, Long.MAX_VALUE - 7, Long.MAX_VALUE);
+        long huge = 1L << 62;
+        testXorRange(64, -huge, -huge + 2, huge, huge, Long.MIN_VALUE, Long.MIN_VALUE + 3);
+        testXorRange(64, Long.MIN_VALUE, Long.MIN_VALUE + 2, 1, 2, Long.MIN_VALUE, Long.MIN_VALUE + 3);
+    }
+
+    private static void testXorRange(int bits, long xLower, long xUpper, long yLower, long yUpper, long newLower, long newUpper) {
+        IntegerStamp x = IntegerStamp.create(bits, xLower, xUpper);
+        IntegerStamp y = IntegerStamp.create(bits, yLower, yUpper);
+        IntegerStamp result = (IntegerStamp) IntegerStamp.OPS.getXor().foldStamp(x, y);
+        assertEquals(newLower, result.lowerBound());
+        assertEquals(newUpper, result.upperBound());
     }
 
     private static void testSignExtendShort(long lower, long upper) {
