@@ -185,11 +185,6 @@ public final class JavaRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected UnicodeProperties getUnicodeProperties() {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @Override
     protected boolean featureEnabledIgnoreCase() {
         return getLocalFlags().isCaseInsensitive();
     }

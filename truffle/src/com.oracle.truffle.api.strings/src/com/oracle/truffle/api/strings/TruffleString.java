@@ -2949,6 +2949,10 @@ public final class TruffleString extends AbstractTruffleString {
                     return stride == 0 ? CompactionLevel.S1 : CompactionLevel.S2;
                 } else if (isUTF32(expectedEncoding)) {
                     return CompactionLevel.fromStride(stride);
+                } else if (isUTF16FE(expectedEncoding)) {
+                    return CompactionLevel.S2;
+                } else if (isUTF32FE(expectedEncoding)) {
+                    return CompactionLevel.S4;
                 } else {
                     return CompactionLevel.S1;
                 }
