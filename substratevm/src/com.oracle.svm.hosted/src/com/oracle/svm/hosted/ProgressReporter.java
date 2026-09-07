@@ -820,7 +820,7 @@ public class ProgressReporter {
     }
 
     private void printWarningsCount() {
-        int warningsCount = LogUtils.getWarningsCount() + SubstrateOptions.DriverWarningsCount.getValue();
+        int warningsCount = getWarningsCount();
         if (warningsCount == 0) {
             return;
         }
@@ -830,8 +830,12 @@ public class ProgressReporter {
         l().println();
     }
 
+    private static int getWarningsCount() {
+        return SubstrateOptions.DriverWarningsCount.getValue() + LogUtils.getWarningsCount();
+    }
+
     private static void checkTreatWarningsAsError() {
-        if (SubstrateOptions.TreatWarningsAsError.getValue().contains("all")) {
+        if (getWarningsCount() > 0 && SubstrateOptions.TreatWarningsAsError.getValue().contains("all")) {
             deleteBuiltArtifacts();
             throw UserError.abort("Build failed: Warnings are treated as errors because the -Werror flag is set.");
         }
