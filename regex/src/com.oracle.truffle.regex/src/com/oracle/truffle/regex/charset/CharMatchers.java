@@ -174,11 +174,11 @@ public final class CharMatchers {
      */
     private static final int KIND_NULL_HIGH_BYTE_BIT_SET = 8;
     /**
-     * A matcher that uses a binary search over sorted ranges, like {@link #KIND_RANGE_TREE}, but can
-     * associate each range with a low-byte bit set. Specifically, if the character set contains many
-     * short ranges that differ only in the lowest byte, those ranges are converted to a bit set,
-     * which is checked when the binary search finds that the given character is in the range denoted
-     * by the bit set. The threshold for bit-set conversion is defined by
+     * A matcher that uses a binary search over sorted ranges, like {@link #KIND_RANGE_TREE}, but
+     * can associate each range with a low-byte bit set. Specifically, if the character set contains
+     * many short ranges that differ only in the lowest byte, those ranges are converted to a bit
+     * set, which is checked when the binary search finds that the given character is in the range
+     * denoted by the bit set. The threshold for bit-set conversion is defined by
      * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexRangeToBitSetConversionThreshold}.
      *
      * Example:
@@ -442,8 +442,8 @@ public final class CharMatchers {
      * Conservatively estimate the equivalent number of integer comparisons of calling
      * {@link #match}/{@link #matchPE}.
      *
-     * @return the number of integer comparisons one call to {@link #match} is roughly
-     *         equivalent to. Array loads are treated as two comparisons.
+     * @return the number of integer comparisons one call to {@link #match} is roughly equivalent
+     *         to. Array loads are treated as two comparisons.
      */
     public static int estimatedCost(int[] matchers, int matcherRecord) {
         return switch (matchers[matcherRecord] & KIND_MASK) {

@@ -1412,9 +1412,12 @@ public final class DFAGenerator implements JsonConvertible {
                         if (literalLastDFAState == null) {
                             literalLastDFAState = target;
                         } else if (literalLastDFAState != target) {
-                            // found a state containing the literal's end that is NOT dominated by the first occurrence
-                            // of such a state, implying that there are at least two parallel paths through the DFA that
-                            // could be taken on the literal's first occurrence, which is not supported by
+                            // found a state containing the literal's end that is NOT dominated by
+                            // the first occurrence
+                            // of such a state, implying that there are at least two parallel paths
+                            // through the DFA that
+                            // could be taken on the literal's first occurrence, which is not
+                            // supported by
                             // DFAFindInnerLiteralStateNode - bail out.
                             bfsTraversalNext.clear();
                             return;

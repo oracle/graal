@@ -86,8 +86,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.util.EmptyArrays;
 
 /**
- * This regex executor uses a backtracking algorithm on a compact NFA representation. It is used
- * for all expressions that cannot be matched with the DFA, such as expressions with backreferences.
+ * This regex executor uses a backtracking algorithm on a compact NFA representation. It is used for
+ * all expressions that cannot be matched with the DFA, such as expressions with backreferences.
  */
 public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSubExecutorNode {
 
@@ -140,8 +140,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private static final long GUARD_BOUNDARY_EFFECT_MASK = 0x3L;
 
     /**
-     * Compact backtracking NFA graph data. The first {@link #getStateDirectoryLength()} entries form
-     * the state directory. State directory values are offsets of state records in this array.
+     * Compact backtracking NFA graph data. The first {@link #getStateDirectoryLength()} entries
+     * form the state directory. State directory values are offsets of state records in this array.
      *
      * <pre>
      * nfa = [ state directory | state records... ]

@@ -56,9 +56,9 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     private final int maxSize;
     /**
      * A record of the paths that we are considering for our optimal match. Every path is
-     * represented as a frame which consists of the state record of the last state on the path and the capture
-     * group indices that have been set along the path. The paths in this array is sorted in
-     * priority order, from highest priority to lowest priority.
+     * represented as a frame which consists of the state record of the last state on the path and
+     * the capture group indices that have been set along the path. The paths in this array is
+     * sorted in priority order, from highest priority to lowest priority.
      */
     private int[] curStates;
     /**
