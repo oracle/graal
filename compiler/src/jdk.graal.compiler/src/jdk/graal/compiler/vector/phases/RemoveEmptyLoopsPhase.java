@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -163,7 +164,8 @@ public class RemoveEmptyLoopsPhase extends PostRunCanonicalizationPhase<CoreProv
             }
         }
 
-        if (!(node instanceof LoopEndNode) && loop.counted().loopMightBeEntered()) {
+        if (loop.counted().loopMightBeEntered() &&
+                        (!(node instanceof LoopEndNode) || loop.whole().nodes().filter(GuardNode.class).isNotEmpty())) {
             // loop is not empty and might be entered
             return false;
         }
