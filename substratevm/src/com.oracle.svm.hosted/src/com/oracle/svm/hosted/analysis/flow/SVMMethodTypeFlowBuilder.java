@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,16 @@
 
 package com.oracle.svm.hosted.analysis.flow;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
+import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -37,6 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.nodes.LoadImageSingletonNode;
+import com.oracle.svm.core.jdk.Target_java_util_ArrayList;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -51,8 +57,11 @@ import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.GetClassNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.vector.replacements.CopyOfNode;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
@@ -157,8 +166,71 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         } else if (n instanceof LoadImageSingletonNode node) {
             processLoadImageSingleton(state, node);
             return true;
+        } else if (n instanceof CopyOfNode node && specializeCopyOf(node, state)) {
+            return true;
         }
         return super.delegateNodeProcessing(n, state);
+    }
+
+    /**
+     * Specialization for {@link CopyOfNode} that speculates that {@code newType} argument of calls
+     * to {@link Arrays#copyOf(Object[], int, Class)} is either the result of a call to
+     * {@link Object#getClass()} or is a {@link Class} literal. In the first case the type state of
+     * the result is the same as the type state of the receiver of the {@link Object#getClass()}
+     * call. In the second case the type state is exactly the {@link Class} literal.
+     * <p>
+     * By specializing these cases the points-to analysis can prove that the calls to
+     * {@link Arrays#copyOf(Object[], int, Class)} in {@link ArrayList}, and in other collection
+     * classes, will always return {@code Object[]}, and conclude that {@code ArrayList.elementData}
+     * is always {@code Object[]}. To enable this optimization for {@link ArrayList} the
+     * {@link Target_java_util_ArrayList} substitution is also necessary.
+     */
+    private boolean specializeCopyOf(CopyOfNode node, TypeFlowsOfNodes state) {
+        if (node.getElementKind() != JavaKind.Object || bb.analysisPolicy().isContextSensitiveAnalysis()) {
+            /*
+             * Context-sensitive analysis would need a NewInstanceTypeFlow that retains the writes
+             * to the original object array.
+             */
+            return false;
+        }
+
+        ValueNode newObjectArrayType = node.getNewObjectArrayType();
+        if (newObjectArrayType instanceof GetClassNode getClassNode) {
+            ValueNode object = getClassNode.getObject();
+            /*
+             * The result has the same type as the receiver of GetClassNode. The source array does
+             * not need to be compatible with that type here: an incompatible copy throws at run
+             * time. A CloneTypeFlow discards a possible constant identity while retaining the type
+             * state.
+             */
+            TypeFlowBuilder<?> inputBuilder = state.lookup(object);
+            TypeFlowBuilder<?> cloneBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, CloneTypeFlow.class, () -> {
+                CloneTypeFlow cloneFlow = new CloneTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb.getObjectType(), inputBuilder.get());
+                flowsGraph.addMiscEntryFlow(cloneFlow);
+                return cloneFlow;
+            });
+            cloneBuilder.addObserverDependency(inputBuilder);
+            state.add(node, cloneBuilder);
+            /* Analyze the original invoke without installing its generic result. */
+            processMacroInvokable(state, node, false);
+            return true;
+        } else if (newObjectArrayType.isConstant()) {
+            AnalysisType newType = (AnalysisType) bb.getConstantReflectionProvider().asJavaType(newObjectArrayType.asJavaConstant());
+            /* A non-array type remains possible and makes the operation throw at run time. */
+            if (newType != null && newType.isArray()) {
+                newType.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+                TypeFlowBuilder<NewInstanceTypeFlow> newTypeBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, NewInstanceTypeFlow.class, () -> {
+                    NewInstanceTypeFlow newInstance = new NewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), newType, true);
+                    flowsGraph.addMiscEntryFlow(newInstance);
+                    return newInstance;
+                });
+                state.add(node, newTypeBuilder);
+                /* Analyze the original invoke without installing its generic result. */
+                processMacroInvokable(state, node, false);
+                return true;
+            }
+        }
+        return false;
     }
 
     private void storeVMThreadLocal(TypeFlowsOfNodes state, ValueNode storeNode, ValueNode value) {

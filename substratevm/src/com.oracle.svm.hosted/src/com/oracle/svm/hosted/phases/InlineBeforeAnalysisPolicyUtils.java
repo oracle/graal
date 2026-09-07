@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Set;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -305,6 +306,11 @@ public class InlineBeforeAnalysisPolicyUtils {
         return true;
     }
 
+    // GR-79411: Keep host-reflection matching until this policy uses guest-aware JVMCI metadata.
+    private static final Set<Executable> ALWAYS_INLINE_BEFORE_ANALYSIS = Set.of(
+                    ReflectionUtil.lookupMethod(Arrays.class, "copyOf", Object[].class, int.class),
+                    ReflectionUtil.lookupMethod(Arrays.class, "copyOfRange", Object[].class, int.class, int.class));
+
     /**
      * Returns whether the regular heuristics used by {@link InlineBeforeAnalysis} should be
      * overridden for this method. Hard restrictions checked by
@@ -312,8 +318,9 @@ public class InlineBeforeAnalysisPolicyUtils {
      * still take precedence. This phase-specific override is independent of the compiler directive
      * represented by {@link AlwaysInline}.
      */
-    public boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") AnalysisMethod method) {
-        return false;
+    public boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, AnalysisMethod method) {
+        Executable javaMethod = OriginalMethodProvider.getJavaMethod(method);
+        return javaMethod != null && ALWAYS_INLINE_BEFORE_ANALYSIS.contains(javaMethod);
     }
 
     enum InliningScopeType {
