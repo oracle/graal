@@ -214,7 +214,9 @@ final class ProcessIsolateThreadSupport {
             // host initiator
             try (SocketChannel s = local.accept()) {
                 String peerAddress = readConnectRequest(s);
-                peer = UnixDomainSocketAddress.of(peerAddress);
+                UnixDomainSocketAddress validatedAddress = UnixDomainSocketAddress.of(peerAddress);
+                writeConnectAcknowledgement(s);
+                peer = validatedAddress;
                 listenThread = Thread.currentThread();
                 state = State.CONNECTED;
                 return true;
@@ -226,9 +228,10 @@ final class ProcessIsolateThreadSupport {
             // isolate subprocess
             listenThread = Thread.currentThread();
             state = State.CONNECTED;
-            installParentProcessWatchDog();
             try (SocketChannel s = SocketChannel.open(peer)) {
                 writeConnectRequest(s, getLocalAddress().toString());
+                long parentPid = readConnectAcknowledgement(s);
+                installParentProcessWatchDog(parentPid);
                 return state == State.CONNECTED;
             } catch (Throwable t) {
                 state = State.CLOSED;
@@ -237,9 +240,9 @@ final class ProcessIsolateThreadSupport {
         }
     }
 
-    private static void installParentProcessWatchDog() {
+    private static void installParentProcessWatchDog(long parentPid) throws IOException {
         Optional<ProcessHandle> parentOpt = ProcessHandle.current().parent();
-        if (parentOpt.isPresent()) {
+        if (parentOpt.isPresent() && parentOpt.get().pid() == parentPid) {
             ProcessHandle parent = parentOpt.get();
             CompletableFuture<ProcessHandle> onExit = parent.onExit();
             /*
@@ -249,6 +252,12 @@ final class ProcessIsolateThreadSupport {
              * may be executing guest code and can block indefinitely during cancellation.
              */
             onExit.thenRun(() -> Runtime.getRuntime().halt(0));
+        } else {
+            /*
+             * Parent process terminated before the child isolate process was created and initialized.
+             * Exit by IOException which is translated to IsolateCreateException.
+             */
+            throw new IOException("Parent process " + parentPid + " exited.");
         }
     }
 
@@ -585,10 +594,10 @@ final class ProcessIsolateThreadSupport {
         header.put(RequestType.CONNECT.tag);
         header.putInt(bytes.length);
         /*
-         * Align the message size to ATTACH_HEADER_SIZE. For performance reasons, CONNECT, ATTACH,
-         * and CLOSE requests must have the same size. It is preferable to send a larger request for
-         * CONNECT and CLOSE, which are called only once, rather than performing two read syscalls
-         * when handling ATTACH.
+         * Align the message size to ATTACH_HEADER_SIZE. For performance reasons, CONNECT,
+         * CONNECT_ACK, ATTACH, and CLOSE requests must have the same size. It is preferable to send
+         * a larger request for CONNECT and CLOSE, which are called only once, rather than performing
+         * two read syscalls when handling ATTACH.
          */
         header.position(header.limit());
         header.flip();
@@ -611,6 +620,29 @@ final class ProcessIsolateThreadSupport {
             }
             case CLOSE -> throw new CloseException();
             default -> throw throwIllegalRequest(type, RequestType.CONNECT, RequestType.CLOSE);
+        }
+    }
+
+    private static void writeConnectAcknowledgement(SocketChannel c) throws IOException {
+        ByteBuffer header = ByteBuffer.allocate(ATTACH_HEADER_SIZE);
+        header.put(RequestType.CONNECT_ACK.tag);
+        header.putLong(ProcessHandle.current().pid());
+        header.position(header.limit());
+        header.flip();
+        writeFully(c, header);
+    }
+
+    private static long readConnectAcknowledgement(SocketChannel c) throws IOException {
+        ByteBuffer header = ByteBuffer.allocate(ATTACH_HEADER_SIZE);
+        readFully(c, header);
+        header.flip();
+        RequestType type = RequestType.fromTag(header.get());
+        switch (type) {
+            case CONNECT_ACK -> {
+                return header.getLong();
+            }
+            case CLOSE -> throw new CloseException();
+            default -> throw throwIllegalRequest(type, RequestType.CONNECT_ACK, RequestType.CLOSE);
         }
     }
 
@@ -788,10 +820,11 @@ final class ProcessIsolateThreadSupport {
 
     private enum RequestType {
         CONNECT(0),
-        ATTACH(1),
-        CLOSE(2),
-        CALL(3),
-        RESULT(4);
+        CONNECT_ACK(1),
+        ATTACH(2),
+        CLOSE(3),
+        CALL(4),
+        RESULT(5);
 
         private static final RequestType[] TYPES;
         static {
