@@ -26,10 +26,13 @@ package com.oracle.svm.hosted.phases;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -307,9 +310,18 @@ public class InlineBeforeAnalysisPolicyUtils {
     }
 
     // GR-79411: Keep host-reflection matching until this policy uses guest-aware JVMCI metadata.
+    /*
+     * Objects.requireNonNull methods are small and will be inlined after analysis anyway. Inlining
+     * them before analysis improves precision by propagating never-null information.
+     */
     private static final Set<Executable> ALWAYS_INLINE_BEFORE_ANALYSIS = Set.of(
+                    ReflectionUtil.lookupMethod(Objects.class, "requireNonNull", Object.class),
+                    ReflectionUtil.lookupMethod(Objects.class, "requireNonNull", Object.class, String.class),
+                    ReflectionUtil.lookupMethod(Objects.class, "requireNonNull", Object.class, Supplier.class),
                     ReflectionUtil.lookupMethod(Arrays.class, "copyOf", Object[].class, int.class),
-                    ReflectionUtil.lookupMethod(Arrays.class, "copyOfRange", Object[].class, int.class, int.class));
+                    ReflectionUtil.lookupMethod(Arrays.class, "copyOfRange", Object[].class, int.class, int.class),
+                    ReflectionUtil.lookupMethod(Array.class, "newInstance", Class.class, int.class),
+                    ReflectionUtil.lookupMethod(Array.class, "newArray", Class.class, int.class));
 
     /**
      * Returns whether the regular heuristics used by {@link InlineBeforeAnalysis} should be
