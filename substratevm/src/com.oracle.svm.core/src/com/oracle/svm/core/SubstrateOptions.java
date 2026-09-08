@@ -621,7 +621,8 @@ public class SubstrateOptions {
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter(GCOptionValue.Epsilon.getValue()));
-                } else if (((AccumulatingLocatableMultiOptionValue.Strings) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Epsilon.getValue())) {
+                } else if (values.containsKey(SubstrateOptions.SupportedGCs) &&
+                                ((ReplacingLocatableMultiOptionValue.DelimitedString) values.get(SubstrateOptions.SupportedGCs)).contains(GCOptionValue.Epsilon.getValue())) {
                     SubstrateOptions.SupportedGCs.update(values, ReplacingLocatableMultiOptionValue.DelimitedString.buildWithCommaDelimiter());
                 }
             }

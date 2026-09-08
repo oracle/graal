@@ -49,6 +49,10 @@ import jdk.graal.compiler.options.OptionType;
 /**
  * Garbage collection-specific options that are supported by all garbage collectors. Some of these
  * options don't have any effect on the epsilon GC because it does not collect any garbage.
+ * <p>
+ * Runtime options in this class are also passed to native GCs such as G1. They must either be
+ * immutable or use {@link NotifyGCRuntimeOptionKey} so that runtime changes are forwarded to the
+ * native code of the GC.
  */
 @DuplicatedInNativeCode
 public class SubstrateGCOptions {
@@ -97,7 +101,7 @@ public class SubstrateGCOptions {
     public static final RuntimeOptionKey<Boolean> ExitOnOutOfMemoryError = new RuntimeOptionKey<>(false, Immutable);
 
     @Option(help = "Report a fatal error on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> ReportFatalErrorOnOutOfMemoryError = new RuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> ReportFatalErrorOnOutOfMemoryError = new RuntimeOptionKey<>(false, Immutable);
 
     @Option(help = "Ignore calls to System.gc().", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new NotifyGCRuntimeOptionKey<>(false, Immutable);
@@ -128,7 +132,7 @@ public class SubstrateGCOptions {
 
     @Option(help = "This number of milliseconds multiplied by the free heap memory in MByte is the time span " +
                     "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
-    public static final RuntimeOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new NotifyGCRuntimeOptionKey<>(1000);
+    public static final RuntimeOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new NotifyGCRuntimeOptionKey<>(1000, NON_NEGATIVE, null);
 
     private static void verifyTLABUsagePolicy(@SuppressWarnings("unused") HostedOptionKey<?> key) {
         if (!UseTLAB.getValue() && TLABUsagePolicy.getValue() == TLABPolicy.Always) {

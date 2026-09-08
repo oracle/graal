@@ -241,11 +241,9 @@ public final class ThreadLocalAllocation {
         BooleanPointer allocatedOutsideTlab = StackValue.get(BooleanPointer.class);
         allocatedOutsideTlab.write(false);
 
-        try {
-            return allocateInstanceSlow(hub, size, allocatedOutsideTlab);
-        } finally {
-            JfrAllocationEvents.emit(startTicks, hub, size, getTlabSize(), allocatedOutsideTlab.read());
-        }
+        Object result = allocateInstanceSlow(hub, size, allocatedOutsideTlab);
+        JfrAllocationEvents.emit(startTicks, hub, size, getTlabSize(), allocatedOutsideTlab.read());
+        return result;
     }
 
     public static Object slowPathNewArrayLikeObject(Word objectHeader, int length, byte[] podReferenceMap) {
@@ -288,35 +286,34 @@ public final class ThreadLocalAllocation {
         BooleanPointer allocatedOutsideTlab = StackValue.get(BooleanPointer.class);
         allocatedOutsideTlab.write(false);
 
-        try {
-            if (!GenScavengeAllocationSupport.arrayAllocatedInAlignedChunk(size)) {
-                /*
-                 * Large arrays go into their own unaligned chunk. Only arrays and stored
-                 * continuations may be allocated in an unaligned chunk.
-                 */
-                int layoutEncoding = hub.getLayoutEncoding();
-                assert LayoutEncoding.isArray(layoutEncoding) || StoredContinuation.class.isAssignableFrom(DynamicHub.toClass(hub));
+        Object array;
+        if (!GenScavengeAllocationSupport.arrayAllocatedInAlignedChunk(size)) {
+            /*
+             * Large arrays go into their own unaligned chunk. Only arrays and stored continuations
+             * may be allocated in an unaligned chunk.
+             */
+            int layoutEncoding = hub.getLayoutEncoding();
+            assert LayoutEncoding.isArray(layoutEncoding) || StoredContinuation.class.isAssignableFrom(DynamicHub.toClass(hub));
 
-                boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
-                UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
-                tlabSize = HeapChunk.getSize(newTlabChunk);
-                return allocateLargeArrayLikeObjectInNewTlab(hub, length, size, newTlabChunk, needsZeroing, podReferenceMap);
-            }
-
+            boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
+            UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
+            tlabSize = HeapChunk.getSize(newTlabChunk);
+            array = allocateLargeArrayLikeObjectInNewTlab(hub, length, size, newTlabChunk, needsZeroing, podReferenceMap);
+        } else {
             /*
              * Small arrays go into the regular aligned chunk. We might have allocated in the caller
              * and acquired a TLAB with enough space already (but we need to check in an
              * uninterruptible method to be safe).
              */
-            Object array = allocateSmallArrayLikeObjectInCurrentTlab(hub, length, size, podReferenceMap);
+            array = allocateSmallArrayLikeObjectInCurrentTlab(hub, length, size, podReferenceMap);
             if (array == null) {
                 array = allocateArraySlow(hub, length, size, podReferenceMap, allocatedOutsideTlab);
             }
             tlabSize = getTlabSize();
-            return array;
-        } finally {
-            JfrAllocationEvents.emit(startTicks, hub, size, tlabSize, allocatedOutsideTlab.read());
         }
+
+        JfrAllocationEvents.emit(startTicks, hub, size, tlabSize, allocatedOutsideTlab.read());
+        return array;
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
