@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jfr;
 
 import java.util.Random;
-import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -37,15 +36,6 @@ import jdk.graal.compiler.nodes.extended.MembarNode;
 
 @TargetClass(className = "jdk.jfr.internal.settings.Throttler")
 public final class Target_jdk_jfr_internal_settings_Throttler {
-    /**
-     * The hosted JFR throttler can hold this lock while the image heap is scanned. Recompute it so
-     * the image heap never captures the hosted lock's owner thread. The same pattern is used for
-     * {@link Target_jdk_jfr_internal_periodic_JVMEventTask}.
-     */
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ReentrantLock.class) //
-    private ReentrantLock lock;
-
     @Alias //
     @InjectAccessors(ThrottlerRandomAccessor.class) //
     private Random randomGenerator;

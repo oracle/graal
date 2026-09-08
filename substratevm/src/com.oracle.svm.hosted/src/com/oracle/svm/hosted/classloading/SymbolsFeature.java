@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,12 +53,6 @@ public class SymbolsFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        /*
-         * This works around issues when analysis concurrently scans the readWriteLock in
-         * SymbolsImpl and might add a Thread to the image heap. It could be generalized (GR-62530).
-         */
-        Field readWriteLockField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "readWriteLock");
-        access.registerFieldValueTransformer(readWriteLockField, new NewInstanceFieldValueTransformer());
         Field strongMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "strongMap");
         access.registerFieldValueTransformer(strongMapField, new NewInstanceFieldValueTransformer());
         Field weakMapField = access.findField("com.oracle.svm.espresso.classfile.descriptors.SymbolsImpl", "weakMap");
