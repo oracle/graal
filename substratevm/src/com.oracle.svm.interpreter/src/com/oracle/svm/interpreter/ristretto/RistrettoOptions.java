@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.interpreter.ristretto;
 
-import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
-import org.graalvm.nativeimage.Platforms;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NON_NEGATIVE;
 
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -49,7 +46,7 @@ public class RistrettoOptions {
     public static final RuntimeOptionKey<Boolean> JITUseOnStackReplacement = new RuntimeOptionKey<>(true);
 
     @Option(help = "Number of loop backedges before OSR compilation is triggered for a method and target BCI.")//
-    public static final RuntimeOptionKey<Integer> JITCompilerOSRBackedgeThreshold = new RuntimeOptionKey<>(30000, RistrettoOptions::validateOSRBackedgeThreshold);
+    public static final RuntimeOptionKey<Integer> JITCompilerOSRBackedgeThreshold = new RuntimeOptionKey<>(30000, NON_NEGATIVE, null);
 
     @Option(help = "Disable invocation-entry Ristretto JIT compilations while leaving OSR compilations enabled.")//
     public static final RuntimeOptionKey<Boolean> JITDisableRootCompiles = new RuntimeOptionKey<>(false);
@@ -61,7 +58,7 @@ public class RistrettoOptions {
     public static final RuntimeOptionKey<Integer> JITCompilerThreadCount = new RuntimeOptionKey<>(1);
 
     @Option(help = "Report a diagnostic message for a Ristretto compilation that runs longer than this many seconds and prevent this watcher from exiting the VM (0 leaves the generic CompilationWatchDog configuration unchanged).")//
-    public static final RuntimeOptionKey<Integer> JITCompilationWatchdogTimeoutSeconds = new RuntimeOptionKey<>(0, RistrettoOptions::validateCompilationWatchdogTimeout);
+    public static final RuntimeOptionKey<Integer> JITCompilationWatchdogTimeoutSeconds = new RuntimeOptionKey<>(0, NON_NEGATIVE, null);
 
     @Option(help = "Trace decisions about when to compile what.")//
     public static final RuntimeOptionKey<Boolean> JITTraceCompilationQueuing = new RuntimeOptionKey<>(false);
@@ -92,32 +89,6 @@ public class RistrettoOptions {
 
     public static int getJITCompilerOSRBackedgeThreshold() {
         return JITCompilerOSRBackedgeThreshold.getValue();
-    }
-
-    @Platforms(HOSTED_ONLY.class)
-    public static void registerRuntimeOptionValidations() {
-        RuntimeOptionValidationSupport.singleton().register(new RuntimeOptionValidation<>(RistrettoOptions::validateOSRBackedgeThreshold, JITCompilerOSRBackedgeThreshold));
-        RuntimeOptionValidationSupport.singleton().register(new RuntimeOptionValidation<>(RistrettoOptions::validateCompilationWatchdogTimeout, JITCompilationWatchdogTimeoutSeconds));
-    }
-
-    private static void validateOSRBackedgeThreshold(RuntimeOptionKey<Integer> optionKey) {
-        validateOSRBackedgeThresholdValue(optionKey.getValue());
-    }
-
-    private static void validateOSRBackedgeThresholdValue(int threshold) {
-        if (threshold < 0) {
-            throw new IllegalArgumentException("Option '" + JITCompilerOSRBackedgeThreshold.getName() + "' must be greater than or equal to 0.");
-        }
-    }
-
-    private static void validateCompilationWatchdogTimeout(RuntimeOptionKey<Integer> optionKey) {
-        validateCompilationWatchdogTimeoutValue(optionKey.getValue());
-    }
-
-    static void validateCompilationWatchdogTimeoutValue(int value) {
-        if (value < 0) {
-            throw new IllegalArgumentException("Option '" + JITCompilationWatchdogTimeoutSeconds.getName() + "' must be greater than or equal to 0.");
-        }
     }
 
     public static final class ConcealedOptions {

@@ -54,19 +54,19 @@ import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
 import com.oracle.svm.core.debug.SubstrateDebugInfoProvider;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.shared.util.TimeUtils;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
@@ -76,26 +76,24 @@ public class JitdumpProvider {
     public static class Options {
         @Option(help = "Enable writing jitdump metadata for run-time compilations. " +
                         "Requires jitdump support to be built into the image with '-H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump'.")//
-        public static final RuntimeOptionKey<Boolean> RuntimeJitdump = new RuntimeOptionKey<>(true, Options::validateRuntimeJitdump, Immutable,
-                        RelevantForCompilationIsolates);
+        public static final RuntimeOptionKey<Boolean> RuntimeJitdump = new RuntimeOptionKey<>(true, null, Options::validateRuntimeJitdump, Immutable, RelevantForCompilationIsolates);
 
         @Option(help = "Directory where jitdump related files will be placed for perf. Defaults to './jitdump'.")//
-        public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", Options::validateRuntimeJitdumpDir, Immutable,
-                        RelevantForCompilationIsolates);
+        public static final RuntimeOptionKey<String> RuntimeJitdumpDir = new RuntimeOptionKey<>("jitdump", null, Options::validateRuntimeJitdumpDir, Immutable, RelevantForCompilationIsolates);
 
         private static void validateRuntimeJitdump(RuntimeOptionKey<Boolean> optionKey) {
             if (optionKey.hasBeenSet() && optionKey.getValue() && !OS.LINUX.isCurrent()) {
-                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+                throw RuntimeOptionValidation.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux");
             }
             if (optionKey.hasBeenSet() && optionKey.getValue() && !SubstrateDebugInfoInstaller.Options.hasRuntimeDebugInfoFormatSupport(SubstrateDebugInfoInstaller.DEBUG_INFO_JITDUMP_NAME)) {
-                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(),
-                                "The option requires jitdump support to be built into the image ('-H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump').");
+                throw RuntimeOptionValidation.invalidOptionValue(optionKey, optionKey.getValue(),
+                                "The option requires jitdump support to be built into the image ('-H:+RuntimeDebugInfo -H:RuntimeDebugInfoFormat=jitdump')");
             }
         }
 
         private static void validateRuntimeJitdumpDir(RuntimeOptionKey<String> optionKey) {
             if (optionKey.hasBeenSet() && !OS.LINUX.isCurrent()) {
-                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux.");
+                throw RuntimeOptionValidation.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux");
             }
         }
     }

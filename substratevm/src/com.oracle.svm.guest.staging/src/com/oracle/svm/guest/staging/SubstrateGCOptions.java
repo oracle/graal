@@ -27,15 +27,18 @@ package com.oracle.svm.guest.staging;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NON_NEGATIVE;
 import static com.oracle.svm.shared.option.HostedOptionKey.HostedOptionKeyFlag.DoNotPassToNativeGC;
+
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.guest.staging.util.UserError;
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
@@ -49,6 +52,8 @@ import jdk.graal.compiler.options.OptionType;
  */
 @DuplicatedInNativeCode
 public class SubstrateGCOptions {
+    private static final Consumer<? super RuntimeOptionKey<Boolean>> VALIDATE_VERIFY_GC_OPTION = SubstrateGCOptions::validateVerifyGCOption;
+
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> MinHeapSize = new NotifyGCRuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser) {
         @Override
@@ -138,6 +143,18 @@ public class SubstrateGCOptions {
         }
     }
 
+    private static void validateVerifyGCOption(RuntimeOptionKey<Boolean> optionKey) {
+        Boolean value = optionKey.getValue();
+        if (value != null && value) {
+            GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
+            if (dependencyBridge.useEpsilonGC()) {
+                throw RuntimeOptionValidation.invalidOptionValue(optionKey, true, "This option cannot be enabled if epsilon GC is used");
+            } else if (dependencyBridge.useSerialGC() && !VerifyHeap.getValue()) {
+                throw RuntimeOptionValidation.invalidOptionValue(optionKey, true, "This option can only be used together with -H:+VerifyHeap");
+            }
+        }
+    }
+
     @DuplicatedInNativeCode
     public static class ConcealedOptions {
         /** Use GC-specific accessors instead. */
@@ -149,25 +166,13 @@ public class SubstrateGCOptions {
         public static final RuntimeOptionKey<Long> TLABSize = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
         @Option(help = "Verify the heap before doing a garbage collection.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> VerifyBeforeGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+        public static final RuntimeOptionKey<Boolean> VerifyBeforeGC = new NotifyGCRuntimeOptionKey<>(null, null, VALIDATE_VERIFY_GC_OPTION);
 
         @Option(help = "Verify the heap during a garbage collection.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> VerifyDuringGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
+        public static final RuntimeOptionKey<Boolean> VerifyDuringGC = new NotifyGCRuntimeOptionKey<>(null, null, VALIDATE_VERIFY_GC_OPTION);
 
         @Option(help = "Verify the heap after doing a garbage collection.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> VerifyAfterGC = new NotifyGCRuntimeOptionKey<>(null, ConcealedOptions::validateVerifyGCOption);
-
-        public static void validateVerifyGCOption(RuntimeOptionKey<Boolean> key) {
-            Boolean value = key.getValue();
-            if (value != null && value) {
-                GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
-                if (dependencyBridge.useEpsilonGC()) {
-                    throw UserError.invalidOptionValue(key, true, "This option cannot be enabled if epsilon GC is used");
-                } else if (dependencyBridge.useSerialGC() && !VerifyHeap.getValue()) {
-                    throw UserError.invalidOptionValue(key, true, "This option can only be used together with " + SubstrateOptionsParser.commandArgument(VerifyHeap, "+"));
-                }
-            }
-        }
+        public static final RuntimeOptionKey<Boolean> VerifyAfterGC = new NotifyGCRuntimeOptionKey<>(null, null, VALIDATE_VERIFY_GC_OPTION);
     }
 
     public enum TLABPolicy {

@@ -71,11 +71,11 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
     @Platforms(Platform.HOSTED_ONLY.class)//
     private final BiConsumer<RuntimeOptionKey<T>, T> initialBeforeValueUpdateValidation;
     @Platforms(Platform.HOSTED_ONLY.class)//
-    private final Consumer<RuntimeOptionKey<T>> initialAfterParsingValidation;
+    private final Consumer<? super RuntimeOptionKey<T>> initialAfterParsingValidation;
 
     private final int flags;
     private BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation;
-    private Consumer<RuntimeOptionKey<T>> afterParsingValidation;
+    private Consumer<? super RuntimeOptionKey<T>> afterParsingValidation;
 
     private volatile Object cachedValue = OPTION_NOT_SET;
 
@@ -99,7 +99,8 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
      * </ul>
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeOptionKey(T defaultValue, BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation, Consumer<RuntimeOptionKey<T>> afterParsingValidation, RuntimeOptionKeyFlag... flags) {
+    public RuntimeOptionKey(T defaultValue, BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation, Consumer<? super RuntimeOptionKey<T>> afterParsingValidation,
+                    RuntimeOptionKeyFlag... flags) {
         super(defaultValue);
         this.initialBeforeValueUpdateValidation = beforeValueUpdateValidation;
         this.initialAfterParsingValidation = afterParsingValidation;
@@ -202,7 +203,7 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
      * {@link #hasBeenSet()} when an unused option should be ignored.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setAfterParsingValidation(Consumer<RuntimeOptionKey<T>> validation) {
+    public void setAfterParsingValidation(Consumer<? super RuntimeOptionKey<T>> validation) {
         assert !BuildPhaseProvider.isSetupFinished() : "validation registration must finish during setup";
         assert afterParsingValidation == null : "an after-parsing validation is already registered";
         assert validation != null : "validation must not be null";

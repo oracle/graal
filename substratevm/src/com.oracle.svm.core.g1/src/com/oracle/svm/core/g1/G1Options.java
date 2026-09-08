@@ -45,6 +45,7 @@ import com.oracle.svm.core.gc.shared.NativeGCOptions.NativeGCHostedOptionKey;
 import com.oracle.svm.core.gc.shared.NativeGCOptions.NativeGCRuntimeOptionKey;
 import com.oracle.svm.core.gc.shared.NativeGCOptions.RuntimeArgumentsSupplier;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
@@ -138,7 +139,7 @@ public class G1Options {
 
     private static void validateG1Option(SubstrateOptionKey<?> optionKey) {
         if (optionKey.hasBeenSet() && !SubstrateOptions.useG1GC()) {
-            throw UserError.abort("The option '%s' can only be used together with the G1 garbage collector ('--gc=G1').", optionKey.getName());
+            throw RuntimeOptionValidation.abort("The option '" + optionKey.getName() + "' can only be used together with the G1 garbage collector ('--gc=G1').");
         }
     }
 
@@ -160,21 +161,20 @@ public class G1Options {
         }
 
         @Override
-        public void validate() {
+        public void validateAfterParsing() {
             validateG1Option(this);
-            super.validate();
+            super.validateAfterParsing();
         }
     }
 
     private static class G1RuntimeOptionKey<T> extends NativeGCRuntimeOptionKey<T> {
         G1RuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-            super(defaultValue, flags);
+            super(defaultValue, G1RuntimeOptionKey::validateG1AndNativeGCOption, flags);
         }
 
-        @Override
-        public void validate() {
-            validateG1Option(this);
-            super.validate();
+        private static void validateG1AndNativeGCOption(RuntimeOptionKey<?> optionKey) {
+            validateG1Option(optionKey);
+            validateNativeGCOption(optionKey);
         }
     }
 }

@@ -38,7 +38,7 @@ public class NotifyGCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
         super(defaultValue, flags);
     }
 
-    public NotifyGCRuntimeOptionKey(T defaultValue, BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation, Consumer<RuntimeOptionKey<T>> afterParsingValidation,
+    public NotifyGCRuntimeOptionKey(T defaultValue, BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation, Consumer<? super RuntimeOptionKey<T>> afterParsingValidation,
                     RuntimeOptionKeyFlag... flags) {
         super(defaultValue, beforeValueUpdateValidation, afterParsingValidation, flags);
     }

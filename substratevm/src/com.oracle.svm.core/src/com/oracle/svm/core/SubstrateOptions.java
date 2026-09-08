@@ -29,6 +29,8 @@ import static com.oracle.svm.core.SubstrateOptions.OptimizationLevel.O3;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NON_NEGATIVE;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NOT_ENABLED_ON_WINDOWS;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
@@ -928,8 +930,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ZapNativeMemory = new HostedOptionKey<>(false, SubstrateOptions::validateZapNativeMemory);
 
     private static void validateZapNativeMemory(HostedOptionKey<Boolean> optionKey) {
-        boolean value = optionKey.getValue();
-        if (value && !VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+        if (optionKey.getValue() && !VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             throw UserError.abort("The option '" + optionKey.getName() + "' can only be enabled if NMT is enabled as well ('--enable-monitoring=nmt').");
         }
     }
@@ -1358,11 +1359,7 @@ public class SubstrateOptions {
 
         /** Use {@link SubstrateOptions#hasDumpRuntimeCompiledMethodsSupport()} instead. */
         @Option(help = "Dump the instructions of runtime compiled methods in temporary files.") //
-        public static final RuntimeOptionKey<Boolean> DumpRuntimeCompiledMethods = new RuntimeOptionKey<>(false, key -> {
-            if (key.hasBeenSet() && Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
-                throw UserError.invalidOptionValue(key, key.getValue(), "Dumping runtime compiled code is not supported on Windows.");
-            }
-        });
+        public static final RuntimeOptionKey<Boolean> DumpRuntimeCompiledMethods = new RuntimeOptionKey<>(false, null, NOT_ENABLED_ON_WINDOWS);
 
         @Option(help = "Avoid linker relocations for code and instead emit address computations.", type = OptionType.Expert) //
         @LayerVerifiedOption(severity = Severity.Error, kind = Kind.Changed, positional = false) //
@@ -1874,11 +1871,7 @@ public class SubstrateOptions {
 
     @Option(help = "Maximum random offset in bytes applied to entry points of runtime-installed methods, to make them less predictable. " +
                     "The effective padding is rounded up to architecture-specific alignment.", type = Expert) //
-    public static final RuntimeOptionKey<Integer> MaxRuntimeCodeOffset = new RuntimeOptionKey<>(0, optionKey -> {
-        if (optionKey.getValue() < 0) {
-            throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The value must be non-negative");
-        }
-    }, RelevantForCompilationIsolates);
+    public static final RuntimeOptionKey<Integer> MaxRuntimeCodeOffset = new RuntimeOptionKey<>(0, NON_NEGATIVE, null, RelevantForCompilationIsolates);
 
     @Option(help = "Emit fast path in monitor snippets", type = Expert) //
     public static final HostedOptionKey<Boolean> UseMonitorFastPath = new HostedOptionKey<>(true);

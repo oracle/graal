@@ -287,7 +287,6 @@ public class InterpreterFeature implements InternalFeature {
         nativeDowncallStub = metaAccess.lookupJavaMethod(nativeDowncallMethod);
         accessImpl.registerAsRoot(nativeDowncallStub, true, "low level native downcall entry point");
 
-        InterpreterOptions.registerInterpreterTraceOptionValidation();
     }
 
     @Override

@@ -24,11 +24,16 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.PERCENTAGE;
+
+import java.util.function.Consumer;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -41,6 +46,8 @@ import jdk.graal.compiler.options.OptionType;
  * options are validated at build-time in {@link HeapParameters#initialize}.
  */
 public final class SerialAndEpsilonGCOptions {
+    private static final Consumer<RuntimeOptionKey<?>> SERIAL_OR_EPSILON_GC_ONLY = SerialAndEpsilonGCOptions::validateSerialOrEpsilonRuntimeOption;
+
     @Option(help = "The maximum heap size as percent of physical memory. Serial and epsilon GC only.", type = OptionType.User) //
     public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new NotifyGCRuntimeOptionKey<>(80, SerialAndEpsilonGCOptions::validateSerialOrEpsilonRuntimeOption);
 

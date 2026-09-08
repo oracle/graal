@@ -26,22 +26,22 @@ package com.oracle.svm.core.genscavenge;
 
 import java.nio.charset.StandardCharsets;
 
-import com.oracle.svm.shared.util.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import org.graalvm.word.UnsignedWord;
 
 /**
  * Helper for creating, selecting, and validating serial GC {@link CollectionPolicy} instances.
@@ -148,24 +148,25 @@ final class CollectionPolicies {
         return -1;
     }
 
-    static void validatePolicyName(RuntimeOptionKey<String> optionKey) {
-        String name = optionKey.getValue();
+    static void validatePolicyName(RuntimeOptionKey<String> optionKey, String name) {
         if (name == null) {
             return;
         }
 
         /* Convert to CCharPointer so that we can use the same code at build-time and run-time. */
         byte[] bytes = (name + '\0').getBytes(StandardCharsets.US_ASCII);
+        if (!isValidPolicyName(bytes)) {
+            throw RuntimeOptionValidation.invalidOptionValue(optionKey, name, "The specified GC policy does not exist");
+        }
+    }
+
+    private static boolean isValidPolicyName(byte[] bytes) {
         if (SubstrateUtil.HOSTED) {
             CCharPointer cName = new HostedByteBufferPointer(bytes);
-            if (getPolicyIndex(cName) < 0) {
-                throw UserError.invalidOptionValue(optionKey, name, "The specified GC policy does not exist.");
-            }
+            return getPolicyIndex(cName) >= 0;
         } else {
             try (CCharPointerHolder cName = CTypeConversion.toCBytes(bytes)) {
-                if (getPolicyIndex(cName.get()) < 0) {
-                    throw new IllegalArgumentException("Invalid value for option '" + optionKey.getName() + "'. The specified GC policy ('" + optionKey.getValue() + "') does not exist.");
-                }
+                return getPolicyIndex(cName.get()) >= 0;
             }
         }
     }
