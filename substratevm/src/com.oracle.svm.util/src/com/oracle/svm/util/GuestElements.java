@@ -25,6 +25,7 @@
 package com.oracle.svm.util;
 
 import java.io.InputStream;
+import java.lang.invoke.MethodHandle;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -122,6 +123,22 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_ClassNotFoundException = lookupType(ClassNotFoundException.class);
 
+    public final ResolvedJavaType java_lang_invoke_DirectMethodHandle = lookupType("java.lang.invoke.DirectMethodHandle");
+    public final ResolvedJavaMethod java_lang_invoke_DirectMethodHandle_allocateInstance = lookupMethod(java_lang_invoke_DirectMethodHandle, "allocateInstance", Object.class);
+
+    public final ResolvedJavaType java_lang_invoke_DirectMethodHandle_Accessor = lookupType("java.lang.invoke.DirectMethodHandle$Accessor");
+    public final ResolvedJavaMethod java_lang_invoke_DirectMethodHandle_Accessor_checkCast = lookupMethod(java_lang_invoke_DirectMethodHandle_Accessor, "checkCast", Object.class);
+
+    public final ResolvedJavaType java_lang_invoke_DirectMethodHandle_StaticAccessor = lookupType("java.lang.invoke.DirectMethodHandle$StaticAccessor");
+    public final ResolvedJavaMethod java_lang_invoke_DirectMethodHandle_StaticAccessor_checkCast = lookupMethod(java_lang_invoke_DirectMethodHandle_StaticAccessor, "checkCast", Object.class);
+
+    public final ResolvedJavaType java_lang_invoke_Invokers = lookupType("java.lang.invoke.Invokers");
+    public final ResolvedJavaMethod java_lang_invoke_Invokers_maybeCustomize = lookupMethod(java_lang_invoke_Invokers, "maybeCustomize", MethodHandle.class);
+
+    public final ResolvedJavaType java_lang_invoke_MethodHandle = lookupType(MethodHandle.class);
+    public final ResolvedJavaMethod java_lang_invoke_MethodHandle_type = lookupMethod(java_lang_invoke_MethodHandle, "type");
+    public final ResolvedJavaMethod java_lang_invoke_MethodHandle_maybeCustomize = lookupMethod(java_lang_invoke_MethodHandle, "maybeCustomize");
+
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaMethod java_lang_Object_clone = lookupMethod(java_lang_Object, "clone");
     public final ResolvedJavaMethod java_lang_Object_equals = lookupMethod(java_lang_Object, "equals", Object.class);
@@ -193,6 +210,9 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_util_function_Predicate = lookupType(Predicate.class);
     public final ResolvedJavaMethod java_util_function_Predicate_test = lookupMethod(java_util_function_Predicate, "test", Object.class);
 
+    public final ResolvedJavaType jdk_internal_foreign_AbstractMemorySegmentImpl = lookupType("jdk.internal.foreign.AbstractMemorySegmentImpl");
+    public final ResolvedJavaMethod jdk_internal_foreign_AbstractMemorySegmentImpl_equals = lookupMethod(jdk_internal_foreign_AbstractMemorySegmentImpl, "equals", Object.class);
+
     public final ResolvedJavaType jdk_internal_foreign_abi_NativeEntryPoint = lookupType("jdk.internal.foreign.abi.NativeEntryPoint");
     public final ResolvedJavaMethod jdk_internal_foreign_abi_NativeEntryPoint_type = lookupMethod(jdk_internal_foreign_abi_NativeEntryPoint, "type");
     public final ResolvedJavaType jdk_internal_foreign_abi_SoftReferenceCache = lookupType("jdk.internal.foreign.abi.SoftReferenceCache");
@@ -225,6 +245,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType RuntimeOptionKey = lookupType("com.oracle.svm.guest.staging.option.RuntimeOptionKey");
     public final ResolvedJavaMethod RuntimeOptionKey_getValue = lookupMethod(RuntimeOptionKey, "getValue");
+
+    public final ResolvedJavaType sun_invoke_util_ValueConversions = lookupType("sun.invoke.util.ValueConversions");
     // Checkstyle: resume field name check
 
     public final Set<ResolvedJavaMethod> abstractMemorySegmentGetSetMethods = computeAbstractMemorySegmentGetSetMethods();
@@ -236,20 +258,19 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     protected abstract ResolvedJavaMethod lookupMethod(ResolvedJavaType type, String name, Class<?>... parameterTypes);
 
     private Set<ResolvedJavaMethod> computeAbstractMemorySegmentGetSetMethods() {
-        ResolvedJavaType abstractMemorySegment = lookupType("jdk.internal.foreign.AbstractMemorySegmentImpl");
         ResolvedJavaType longType = lookupType(long.class);
 
         Set<ResolvedJavaMethod> roots = new HashSet<>();
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive() && kind != JavaKind.Void) {
                 ResolvedJavaType valueLayoutType = lookupType("java.lang.foreign.ValueLayout$Of" + kind.name());
-                addGetSetMethods(roots, abstractMemorySegment, valueLayoutType, longType, lookupType(kind.toJavaClass()));
+                addGetSetMethods(roots, jdk_internal_foreign_AbstractMemorySegmentImpl, valueLayoutType, longType, lookupType(kind.toJavaClass()));
             }
         }
 
         ResolvedJavaType addressLayoutType = lookupType("java.lang.foreign.AddressLayout");
         ResolvedJavaType memorySegmentType = lookupType("java.lang.foreign.MemorySegment");
-        addGetSetMethods(roots, abstractMemorySegment, addressLayoutType, longType, memorySegmentType);
+        addGetSetMethods(roots, jdk_internal_foreign_AbstractMemorySegmentImpl, addressLayoutType, longType, memorySegmentType);
         return Collections.unmodifiableSet(roots);
     }
 

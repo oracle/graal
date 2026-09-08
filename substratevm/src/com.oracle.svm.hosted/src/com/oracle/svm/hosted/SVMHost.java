@@ -300,7 +300,7 @@ public class SVMHost extends HostVM {
             ImageSingletons.add(MethodVariantsAnalysisPolicy.class, DEFAULT_METHOD_VARIANTS_ANALYSIS_POLICY);
             methodVariantsAnalysisPolicy = DEFAULT_METHOD_VARIANTS_ANALYSIS_POLICY;
         }
-        InlineBeforeAnalysisPolicyUtils inliningUtils = getInlineBeforeAnalysisPolicyUtils();
+        InlineBeforeAnalysisPolicyUtils inliningUtils = new InlineBeforeAnalysisPolicyUtils();
         inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl(this, inliningUtils);
         if (ImageSingletons.contains(SVMParsingSupport.class)) {
             parsingSupport = ImageSingletons.lookup(SVMParsingSupport.class);
@@ -380,10 +380,6 @@ public class SVMHost extends HostVM {
     public boolean analyzedInPriorLayer(AnalysisMethod method) {
         SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
         return imageLayerLoader.hasStrengthenedGraph(method) || HostedDynamicLayerInfo.singleton().compiledInPriorLayer(method);
-    }
-
-    protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
-        return new InlineBeforeAnalysisPolicyUtils();
     }
 
     private static Map<String, Set<UsageKind>> setupForbiddenTypes(OptionValues options) {
