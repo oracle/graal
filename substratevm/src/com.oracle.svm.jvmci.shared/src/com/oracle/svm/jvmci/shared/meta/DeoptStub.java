@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.deopt;
+package com.oracle.svm.jvmci.shared.meta;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

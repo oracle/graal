@@ -50,13 +50,18 @@ public final class HostedModuleSupport {
                     "org.graalvm.nativeimage.builder",
                     "org.graalvm.nativeimage.guest.staging",
                     "org.graalvm.nativeimage.shared",
+                    "org.graalvm.nativeimage.jvmci.guest.staging",
+                    "org.graalvm.nativeimage.jvmci.shared",
                     "org.graalvm.truffle.compiler",
                     "org.graalvm.word");
 
     public static final Set<String> GUEST_MODULES = Set.of(
                     "org.graalvm.nativeimage.guest",
                     "org.graalvm.nativeimage.guest.staging",
-                    "org.graalvm.nativeimage.shared");
+                    "org.graalvm.nativeimage.shared",
+                    "org.graalvm.nativeimage.jvmci.guest",
+                    "org.graalvm.nativeimage.jvmci.guest.staging",
+                    "org.graalvm.nativeimage.jvmci.shared");
 
     public static Set<String> parseModuleSetModifierProperty(String prop) {
         Set<String> specifiedModules = new HashSet<>(); // noEconomicSet(streaming)
