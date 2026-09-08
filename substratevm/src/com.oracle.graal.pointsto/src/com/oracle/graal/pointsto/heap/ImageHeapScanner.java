@@ -104,6 +104,9 @@ public abstract class ImageHeapScanner {
     /** Reserved for constants that are only known late, e.g., like interned strings array. */
     public static final ScanReason LATE_SCAN = new OtherReason("Constant scanned manually after sealing the heap.");
 
+    /** Used when creating a constant for immutable-object registration. */
+    public static final ScanReason IMMUTABLE_REGISTRATION = new OtherReason("Constant created for immutable-object registration.");
+
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider aHostedValuesProvider) {
         this.bb = bb;
