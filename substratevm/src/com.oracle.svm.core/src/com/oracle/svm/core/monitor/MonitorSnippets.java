@@ -43,6 +43,7 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -238,7 +239,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
                      */
                     ResolvedJavaType constantType = tool.getConstantReflection().asJavaType(node.object().asJavaConstant());
                     if (constantType != null) {
-                        DynamicHubCompanion replacedObject = ((SharedType) constantType).getHub().getCompanion();
+                        DynamicHubCompanion replacedObject = DynamicHubProvider.getHub((SharedType) constantType).getCompanion();
                         /*
                          * For wrapping the replaced object, we can use the
                          * SnippetReflectionProvider because all DynamicHubCompanion objects are in

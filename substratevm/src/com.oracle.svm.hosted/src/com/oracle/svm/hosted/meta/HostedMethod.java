@@ -45,9 +45,11 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.SkipStackOverflowCheck;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
@@ -85,7 +87,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public final class HostedMethod extends HostedElement implements SharedMethod, WrappedJavaMethod, JavaMethodContext, OriginalMethodProvider, MethodVariant {
+public final class HostedMethod extends HostedElement implements SharedMethod, ImageCodeInfoProvider, WrappedJavaMethod, JavaMethodContext, OriginalMethodProvider, MethodVariant {
 
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
@@ -308,6 +310,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ImageCodeInfo getImageCodeInfo() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }

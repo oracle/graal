@@ -121,7 +121,7 @@ public class CodeInfoTable {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodeInfo getImageCodeInfo(SharedMethod method) {
-        return getImageCodeInfo(method.getImageCodeInfo().getCodeStart());
+        return getImageCodeInfo(ImageCodeInfoProvider.getImageCodeInfo(method).getCodeStart());
     }
 
     public static CodeInfoQueryResult lookupCodeInfoQueryResult(CodeInfo info, CodePointer absoluteIP) {

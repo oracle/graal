@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.meta;
 
 import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
-import com.oracle.svm.core.code.ImageCodeInfo;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.DeoptTargetTier;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 /**
  * The method interface used at runtime.
  */
-public interface SharedRuntimeMethod extends SharedMethod {
+public interface SharedRuntimeMethod extends SharedMethod, ImageCodeInfoProvider {
 
     int getEncodedGraphStartOffset();
 
@@ -57,10 +57,6 @@ public interface SharedRuntimeMethod extends SharedMethod {
     default SubstrateCallingConventionType getCustomCallingConventionType() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    ImageCodeInfo getImageCodeInfo();
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

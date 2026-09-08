@@ -41,6 +41,7 @@ import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -60,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
-public class SubstrateType implements SharedType, RuntimeAnnotated {
+public class SubstrateType implements SharedType, DynamicHubProvider, RuntimeAnnotated {
     private final JavaKind kind;
     private final DynamicHub hub;
 

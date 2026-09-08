@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.meta;
 
-import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -42,10 +39,10 @@ public interface SharedField extends ResolvedJavaField {
      * <ul>
      * <li>instance fields: the offset (in bytes) from the origin of the instance.
      * <li>static fields of primitive type: the offset (in bytes) into the static primitive data
-     * array {@link StaticFieldsSupport#getStaticPrimitiveFieldsAtRuntime} of the
+     * array {@code StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime} of the
      * {@linkplain #getInstalledLayerNum layer it was installed in}.
      * <li>static reference fields: the offset (in bytes) into the static object data array
-     * {@link StaticFieldsSupport#getStaticObjectFieldsAtRuntime} of the
+     * {@code StaticFieldsSupport.getStaticObjectFieldsAtRuntime} of the
      * {@linkplain #getInstalledLayerNum layer it was installed in}.
      * <li>static fields that are never written (including but not limited to static final fields):
      * unused, this method must not be called.
@@ -82,7 +79,7 @@ public interface SharedField extends ResolvedJavaField {
     /**
      * Returns which layer's static field array this field was installed in. This is only applicable
      * for layered image builds. For traditional builds this should always return
-     * {@link MultiLayeredImageSingleton#UNUSED_LAYER_NUMBER}.
+     * {@code MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER}.
      */
     int getInstalledLayerNum();
 

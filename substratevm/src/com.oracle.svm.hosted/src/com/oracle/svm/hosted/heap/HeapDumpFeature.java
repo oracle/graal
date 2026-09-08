@@ -51,6 +51,7 @@ import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
@@ -175,7 +176,7 @@ public class HeapDumpFeature implements InternalFeature {
         SymbolEncoder symbolEncoder = SymbolEncoder.singleton();
         for (SharedType type : types) {
             if (type.isInstanceClass()) {
-                int typeId = type.getHub().getTypeID();
+                int typeId = DynamicHubProvider.getHub(type).getTypeID();
                 if (typeId <= prevLayersMaxTypeId) {
                     /* This type's information has been installed in a prior layer. */
                     continue;

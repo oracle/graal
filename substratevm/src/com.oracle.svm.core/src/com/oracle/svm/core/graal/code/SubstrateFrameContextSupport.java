@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.SkipEpilogueSafepointCheck;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.snippets.StackOverflowCheckImpl;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
@@ -197,7 +198,7 @@ public final class SubstrateFrameContextSupport {
         assert !SubstrateUtil.HOSTED;
 
         SharedMethod targetMethod = (SharedMethod) callTarget;
-        long callTargetStart = targetMethod.getImageCodeInfo().getCodeStart().rawValue() + targetMethod.getImageCodeOffset();
+        long callTargetStart = ImageCodeInfoProvider.getImageCodeInfo(targetMethod).getCodeStart().rawValue() + targetMethod.getImageCodeOffset();
         if (callTargetStart == 0) {
             throw VMError.shouldNotReachHere("target method not compiled: " + targetMethod.format("%H.%n(%p)"));
         }

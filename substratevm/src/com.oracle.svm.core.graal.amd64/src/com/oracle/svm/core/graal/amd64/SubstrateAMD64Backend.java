@@ -54,6 +54,7 @@ import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.InterpreterJNIUpcallStubGuestValue;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
@@ -771,7 +772,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 }
             }
             Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(targetMethod.getImageCodeOffset()));
-            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
+            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(ImageCodeInfoProvider.getImageCodeInfo(targetMethod)));
             Value codeStartField = new AMD64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo), KnownOffsets.singleton().getImageCodeInfoCodeStartOffset());
             Value codeStart = getArithmetic().emitLoad(getLIRKindTool().getWordKind(), codeStartField, null, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
             return getArithmetic().emitAdd(codeStart, codeOffsetInImage, false);

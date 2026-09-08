@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -205,7 +206,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         ResolvedJavaType type = ObjectClone.getConcreteType(alias.stamp(NodeView.DEFAULT));
         if (type instanceof SharedType) {
             // Hybrids are instances with array-like encoding; cloning virtually is unimplemented.
-            int encoding = ((SharedType) type).getHub().getLayoutEncoding();
+            int encoding = DynamicHubProvider.getHub((SharedType) type).getLayoutEncoding();
             return !LayoutEncoding.isHybrid(encoding);
         }
         if (type != null && type.isArray()) {

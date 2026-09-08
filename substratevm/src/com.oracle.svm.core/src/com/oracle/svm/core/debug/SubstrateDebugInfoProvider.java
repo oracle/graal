@@ -40,6 +40,7 @@ import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -212,7 +213,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     @Override
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
         if (type instanceof SharedType sharedType) {
-            String value = sharedType.getHub().getPackageName();
+            String value = DynamicHubProvider.getHub(sharedType).getPackageName();
             String[] packageElements = StringUtil.split(value, ".");
             String fileName = sharedType.getSourceFileName();
             if (fileName != null && !fileName.isEmpty()) {

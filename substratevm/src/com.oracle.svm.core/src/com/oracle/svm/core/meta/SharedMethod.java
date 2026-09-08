@@ -28,7 +28,6 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -107,18 +106,13 @@ public interface SharedMethod extends ResolvedJavaMethod {
      */
     Deoptimizer.StubType getDeoptStubType();
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    ImageCodeInfo getImageCodeInfo();
-
     boolean hasImageCodeOffset();
 
     int getImageCodeOffset();
 
     /**
-     * Returns the encoded relative IP of this method's deoptimization entry point in image code.
-     *
-     * @see com.oracle.svm.core.code.CodeInfoAccess#relativeIP(com.oracle.svm.core.code.CodeInfo,
-     *      org.graalvm.nativeimage.c.function.CodePointer)
+     * Returns the encoded relative IP of this method's deoptimization entry point in image code. See
+     * {@code CodeInfoAccess.relativeIP(CodeInfo, CodePointer)}.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int getImageCodeDeoptOffset();

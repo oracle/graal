@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.InterpreterJNIUpcallStubGuestValue;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
@@ -654,7 +655,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
             LIRKind wordKind = getLIRKindTool().getWordKind();
             Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getImageCodeOffset()));
-            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
+            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(ImageCodeInfoProvider.getImageCodeInfo(targetMethod)));
             int wordBits = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = KnownOffsets.singleton().getImageCodeInfoCodeStartOffset();
             Value codeStartField = AArch64AddressValue.makeAddress(wordKind, wordBits, asAllocatable(codeInfo), codeStartFieldOffset);
