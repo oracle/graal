@@ -38,6 +38,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidationException;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.option.CommonOptionParser.OptionParseResult;
@@ -131,6 +132,8 @@ public class HostedOptionParser implements HostedOptionProvider {
                 }
             } catch (InterruptImageBuilding e) {
                 interrupt = e;
+            } catch (RuntimeOptionValidationException e) {
+                errors.add(e.getMessage());
             }
         }
         if (interrupt != null) {

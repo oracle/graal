@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +24,13 @@
  */
 package com.oracle.svm.guest.staging.option;
 
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import java.io.Serial;
 
-import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
-import com.oracle.svm.shared.util.SubstrateUtil;
+/** Reports an invalid option before hosted user-error reporting is available. */
+public final class RuntimeOptionValidationException extends IllegalArgumentException {
+    @Serial private static final long serialVersionUID = 2936656240431528191L;
 
-/**
- * Notifies the {@code Heap} implementation after the value of the option has changed.
- */
-public class NotifyGCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public NotifyGCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, flags);
-    }
-
-    public NotifyGCRuntimeOptionKey(T defaultValue, BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation, Consumer<RuntimeOptionKey<T>> afterParsingValidation,
-                    RuntimeOptionKeyFlag... flags) {
-        super(defaultValue, beforeValueUpdateValidation, afterParsingValidation, flags);
-    }
-
-    @Override
-    protected void afterValueUpdate() {
-        super.afterValueUpdate();
-        if (!SubstrateUtil.HOSTED) {
-            GuestStagingDependencyBridge.singleton().heapOptionValueChanged(this);
-        }
+    RuntimeOptionValidationException(String message) {
+        super(message);
     }
 }

@@ -41,6 +41,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
+import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
 import com.oracle.svm.shared.meta.GuestFold;
@@ -169,6 +171,9 @@ public final class RuntimeOptionParser {
 
     /** All reachable options. */
     private final EconomicMap<String, OptionDescriptor> options = ImageHeapMap.createNonLayeredMap();
+    /** Reachable options that require validation after parsing. */
+    @SuppressWarnings("unchecked") //
+    private final AbstractImageHeapList<RuntimeOptionKey<?>> optionsWithAfterParsingValidation = (AbstractImageHeapList<RuntimeOptionKey<?>>) ImageHeapList.createGeneric(RuntimeOptionKey.class);
 
     /**
      * Returns the singleton instance that is created during native image generation and stored in
@@ -181,7 +186,11 @@ public final class RuntimeOptionParser {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addDescriptor(OptionDescriptor optionDescriptor) {
-        options.putIfAbsent(optionDescriptor.getName(), optionDescriptor);
+        if (options.putIfAbsent(optionDescriptor.getName(), optionDescriptor) == null &&
+                        optionDescriptor.getOptionKey() instanceof RuntimeOptionKey<?> runtimeOptionKey &&
+                        runtimeOptionKey.hasAfterParsingValidation()) {
+            optionsWithAfterParsingValidation.add(runtimeOptionKey);
+        }
     }
 
     public Optional<OptionDescriptor> getDescriptor(String optionName) {
@@ -190,6 +199,13 @@ public final class RuntimeOptionParser {
 
     public Iterable<OptionDescriptor> getDescriptors() {
         return options.getValues();
+    }
+
+    /** Runs validations that require the complete run-time option configuration. */
+    public void validateOptionsAfterParsing() {
+        for (RuntimeOptionKey<?> runtimeOptionKey : optionsWithAfterParsingValidation) {
+            runtimeOptionKey.validateAfterParsing();
+        }
     }
 
     /// Parse and consume all standard options and system properties supported by Substrate VM. The

@@ -39,11 +39,16 @@ import jdk.graal.compiler.options.OptionKey;
 /**
  * Defines a hosted {@link Option} that is used during native image generation, in contrast to a
  * {@code RuntimeOptionKey runtime option}.
+ * <p>
+ * Do not use {@link #onValueUpdate} for validation. It is called after the option map has been
+ * modified, so throwing from it leaves the map with the invalid value. Use the constructor that
+ * accepts a build-time validation callback instead. The callback runs after all hosted options
+ * have been parsed.
  *
  * See {@code com.oracle.svm.core.option}.
  */
 public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
-    private final Consumer<HostedOptionKey<T>> buildTimeValidation;
+    private final Consumer<HostedOptionKey<T>> afterParsingValidation;
     private final int flags;
     private OptionOrigin lastOrigin;
 
@@ -53,12 +58,12 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
 
     /**
      * Hosted option with build-time validation.
-     * <p/>
+     * <p>
      * Note: <code>buildTimeValidation</code> is called even when the option is not passed in.
      */
-    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> buildTimeValidation, HostedOptionKeyFlag... flags) {
+    public HostedOptionKey(T defaultValue, Consumer<HostedOptionKey<T>> afterParsingValidation, HostedOptionKeyFlag... flags) {
         super(defaultValue);
-        this.buildTimeValidation = buildTimeValidation;
+        this.afterParsingValidation = afterParsingValidation;
         this.flags = EnumBitmask.computeBitmask(flags);
     }
 
@@ -111,9 +116,9 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
     }
 
     @Override
-    public void validate() {
-        if (buildTimeValidation != null) {
-            buildTimeValidation.accept(this);
+    public void validateAfterParsing() {
+        if (afterParsingValidation != null) {
+            afterParsingValidation.accept(this);
         }
     }
 
