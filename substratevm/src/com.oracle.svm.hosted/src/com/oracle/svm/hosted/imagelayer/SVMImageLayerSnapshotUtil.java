@@ -32,6 +32,7 @@ import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProce
 import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
 import java.io.IOException;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.net.URI;
@@ -63,9 +64,9 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.hosted.ForeignHostedSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.VMFeature;
@@ -135,6 +136,7 @@ public class SVMImageLayerSnapshotUtil {
 
     static final ResolvedJavaType STRING = GuestAccess.get().lookupType(String.class);
     static final ResolvedJavaType ENUM = GuestAccess.get().lookupType(Enum.class);
+    static final ResolvedJavaType METHOD_TYPE = GuestAccess.get().lookupType(MethodType.class);
 
     protected static final Set<ResolvedJavaField> DYNAMIC_HUB_RELINKED_FIELDS = Set.of(COMPANION, NAME, COMPONENT_TYPE);
     protected static final Set<ResolvedJavaField> DYNAMIC_HUB_COMPANION_RELINKED_FIELDS = Set.of(CLASS_INITIALIZATION_INFO, SUPER_HUB, ARRAY_HUB);
