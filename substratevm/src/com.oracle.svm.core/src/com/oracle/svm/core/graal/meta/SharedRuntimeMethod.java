@@ -28,8 +28,8 @@ import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 
 import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.DeoptTargetTier;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 

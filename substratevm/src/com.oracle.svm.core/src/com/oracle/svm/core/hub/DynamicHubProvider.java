@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 
 /**
  * Provides access to the {@link DynamicHub} associated with a shared type.

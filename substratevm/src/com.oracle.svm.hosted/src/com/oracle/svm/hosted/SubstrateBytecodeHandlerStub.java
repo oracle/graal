@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.deopt.DeoptStub.StubType.NoDeoptStub;
-import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.IMMUTABLE;
-import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.VALUE_REFERENCE;
+import static com.oracle.svm.jvmci.shared.meta.DeoptStub.StubType.NoDeoptStub;
+import static com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.IMMUTABLE;
+import static com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.VALUE_REFERENCE;
 import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
 
 import java.util.ArrayList;
@@ -44,13 +44,13 @@ import com.oracle.svm.core.SkipStackOverflowCheck;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.deopt.DeoptStub;
-import com.oracle.svm.core.graal.code.AssignedLocation;
-import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
+import com.oracle.svm.jvmci.shared.meta.DeoptStub;
+import com.oracle.svm.jvmci.shared.code.AssignedLocation;
+import com.oracle.svm.jvmci.shared.code.CustomCallingConventionMethod;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;

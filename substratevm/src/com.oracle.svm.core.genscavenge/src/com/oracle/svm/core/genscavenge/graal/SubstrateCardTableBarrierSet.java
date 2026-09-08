@@ -29,7 +29,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.DynamicHubProvider;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.memory.BarrierType;

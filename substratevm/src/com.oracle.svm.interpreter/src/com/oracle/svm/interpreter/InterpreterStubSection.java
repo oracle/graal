@@ -50,7 +50,7 @@ import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.deopt.DeoptStub;
+import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.graal.code.PreparedSignature.ArgumentAdaptation;

@@ -118,7 +118,7 @@ public final class OpenTypeWorldSupport {
     }
 
     /**
-     * see {@link com.oracle.svm.core.meta.SharedMethod#getIndirectCallTarget}.
+     * see {@link com.oracle.svm.jvmci.shared.meta.SharedMethod#getIndirectCallTarget}.
      */
     public void computeIndirectCallTargets(HostedUniverse hUniverse, Map<AnalysisMethod, HostedMethod> methods) {
         Map<HostedType, HostedType[]> allInterfacesMap = new HashMap<>();
