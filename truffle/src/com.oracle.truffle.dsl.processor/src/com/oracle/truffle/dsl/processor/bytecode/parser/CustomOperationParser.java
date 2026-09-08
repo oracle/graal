@@ -332,13 +332,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         produceConstantOperandWarnings(customOperation, signature, mirror);
 
-        List<String> constantOperandBeforeNames = mergeConstantOperandNames(customOperation, constantOperands.before(), signatures, 0);
-        List<String> constantOperandAfterNames = mergeConstantOperandNames(customOperation, constantOperands.after(), signatures,
+        operation.operationBeginArguments = createOperationConstantArguments(customOperation, constantOperands.before(), signatures, 0);
+        operation.operationEndArguments = createOperationConstantArguments(customOperation, constantOperands.after(), signatures,
                         constantOperands.before().size() + signature.dynamicOperandCount());
-        operation.constantOperandBeforeNames = constantOperandBeforeNames;
-        operation.constantOperandAfterNames = constantOperandAfterNames;
-        operation.operationBeginArguments = createOperationConstantArguments(constantOperands.before(), constantOperandBeforeNames);
-        operation.operationEndArguments = createOperationConstantArguments(constantOperands.after(), constantOperandAfterNames);
 
         createCustomInstruction(customOperation, generatedNode, signature, name);
 
@@ -448,23 +444,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 }
             }
         }
-    }
-
-    private static List<String> mergeConstantOperandNames(CustomOperationModel customOperation, List<ConstantOperandModel> constantOperands, List<Signature> signatures,
-                    int operandOffset) {
-        List<String> result = new ArrayList<>();
-        for (int i = 0; i < constantOperands.size(); i++) {
-            ConstantOperandModel constantOperand = constantOperands.get(i);
-            List<String> operandNames = getConstantOperandNames(signatures, constantOperand, operandOffset + i);
-            if (operandNames.size() > 1) {
-                customOperation.addWarning(constantOperand.mirror(), null,
-                                "Specializations use multiple different names for this operand (%s). It is recommended to use the same name in each specialization or to explicitly provide a name for the operand.",
-                                operandNames);
-            }
-            // Take the first name.
-            result.add(operandNames.getFirst());
-        }
-        return result;
     }
 
     private void produceConstantOperandWarnings(CustomOperationModel customOperation, Signature polymorphicSignature, AnnotationMirror mirror) {
@@ -664,14 +643,18 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
     }
 
-    private OperationArgument[] createOperationConstantArguments(List<ConstantOperandModel> operands, List<String> operandNames) {
-        if (operands.size() != operandNames.size()) {
-            throw new AssertionError("Operands and operand names have different sizes (%d vs. %d)".formatted(operands.size(), operandNames.size()));
-        }
-        OperationArgument[] arguments = new OperationArgument[operandNames.size()];
-        for (int i = 0; i < operandNames.size(); i++) {
-            ConstantOperandModel constantOperand = operands.get(i);
-            String argumentName = operandNames.get(i);
+    private OperationArgument[] createOperationConstantArguments(CustomOperationModel customOperation, List<ConstantOperandModel> constantOperands, List<Signature> signatures, int operandOffset) {
+        OperationArgument[] arguments = new OperationArgument[constantOperands.size()];
+        for (int i = 0; i < arguments.length; i++) {
+            ConstantOperandModel constantOperand = constantOperands.get(i);
+            List<String> operandNames = getConstantOperandNames(signatures, constantOperand, operandOffset + i);
+            if (operandNames.size() > 1) {
+                customOperation.addWarning(constantOperand.mirror(), null,
+                                "Specializations use multiple different names for this operand (%s). It is recommended to use the same name in each specialization or to explicitly provide a name for the operand.",
+                                operandNames);
+            }
+            // Take the first name.
+            String logicalName = operandNames.getFirst();
             TypeMirror builderType;
             OperationArgument.Encoding encoding;
             // Special cases: local accessors are supplied by BytecodeLocal builder arguments.
@@ -685,7 +668,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 builderType = constantOperand.type();
                 encoding = OperationArgument.Encoding.CONSTANT;
             }
-            arguments[i] = new OperationArgument(builderType, encoding, sanitizeConstantArgumentName(argumentName), constantOperand.doc(), Optional.of(constantOperand));
+            arguments[i] = new OperationArgument(builderType, encoding, sanitizeConstantArgumentName(logicalName), logicalName, constantOperand.doc(), Optional.of(constantOperand));
         }
         return arguments;
     }
@@ -1051,21 +1034,28 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         OperationModel operation = customOperation.operation;
-        List<ConstantOperandModel> constantOperandsBefore = operation.constantOperands.before();
-        for (int i = 0; i < constantOperandsBefore.size(); i++) {
-            Operand operand = signature.constantOperands().get(i);
-            if (!operand.isConstant() || operand.constant() != constantOperandsBefore.get(i)) {
-                throw new AssertionError("Operand should be the i-th constant operand before, but was " + operand);
+        int operandIndex = 0;
+        for (OperationArgument argument : operation.operationBeginArguments) {
+            if (argument.constantOperand().isEmpty()) {
+                continue;
             }
-            instr.addConstantOperandImmediate(operand, operation.getConstantOperandBeforeName(i));
+            ConstantOperandModel constantOperand = argument.constantOperand().get();
+            Operand operand = signature.constantOperands().get(operandIndex++);
+            if (!operand.isConstant() || operand.constant() != constantOperand) {
+                throw new AssertionError("Operand should be a constant operand before, but was " + operand);
+            }
+            instr.addConstantOperandImmediate(operand, argument.logicalName());
         }
-        List<ConstantOperandModel> constantOperandsAfter = operation.constantOperands.after();
-        for (int i = 0; i < constantOperandsAfter.size(); i++) {
-            Operand operand = signature.constantOperands().get(constantOperandsBefore.size() + i);
-            if (!operand.isConstant() || operand.constant() != constantOperandsAfter.get(i)) {
-                throw new AssertionError("Operand should be the i-th constant operand after, but was " + operand);
+        for (OperationArgument argument : operation.operationEndArguments) {
+            if (argument.constantOperand().isEmpty()) {
+                continue;
             }
-            instr.addConstantOperandImmediate(operand, operation.getConstantOperandAfterName(i));
+            ConstantOperandModel constantOperand = argument.constantOperand().get();
+            Operand operand = signature.constantOperands().get(operandIndex++);
+            if (!operand.isConstant() || operand.constant() != constantOperand) {
+                throw new AssertionError("Operand should be a constant operand after, but was " + operand);
+            }
+            instr.addConstantOperandImmediate(operand, argument.logicalName());
         }
 
         if (customOperation.isCustomYield()) {

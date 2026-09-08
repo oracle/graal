@@ -96,11 +96,18 @@ public class OperationModel implements PrettyPrintable {
 
     /**
      * Models an argument to a begin/emit/end method.
+     *
+     * @param builderType the Java type of the builder method parameter
+     * @param kind the serialization encoding of the argument
+     * @param name the Java variable name used in generated code
+     * @param logicalName the logical operand name, which defaults to {@code name}
+     * @param doc the builder method parameter documentation
+     * @param constantOperand the declared constant operand, if this argument represents one
      */
-    public record OperationArgument(TypeMirror builderType, Encoding kind, String name, String doc, Optional<ConstantOperandModel> constantOperand) {
+    public record OperationArgument(TypeMirror builderType, Encoding kind, String name, String logicalName, String doc, Optional<ConstantOperandModel> constantOperand) {
 
         OperationArgument(TypeMirror builderType, Encoding kind, String name, String doc) {
-            this(builderType, kind, name, doc, Optional.empty());
+            this(builderType, kind, name, name, doc, Optional.empty());
         }
 
         public CodeVariableElement toVariableElement() {
@@ -186,10 +193,6 @@ public class OperationModel implements PrettyPrintable {
     // Dynamic operand data supplied by builtin specs / parsed from operation specializations.
     public DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[0];
 
-    // Operand names parsed from operation specializations.
-    public List<String> constantOperandBeforeNames;
-    public List<String> constantOperandAfterNames;
-
     public OperationArgument[] operationBeginArguments = EMPTY_ARGUMENTS;
     public OperationArgument[] operationEndArguments = EMPTY_ARGUMENTS;
 
@@ -243,14 +246,6 @@ public class OperationModel implements PrettyPrintable {
     public OperationModel setVoid(boolean isVoid) {
         this.isVoid = isVoid;
         return this;
-    }
-
-    public String getConstantOperandBeforeName(int i) {
-        return constantOperandBeforeNames.get(i);
-    }
-
-    public String getConstantOperandAfterName(int i) {
-        return constantOperandAfterNames.get(i);
     }
 
     public OperationModel setDynamicOperands(DynamicOperandModel... dynamicOperands) {
