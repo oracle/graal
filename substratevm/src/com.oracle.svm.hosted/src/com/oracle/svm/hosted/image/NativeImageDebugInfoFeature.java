@@ -96,14 +96,16 @@ class NativeImageDebugInfoFeature implements InternalFeature {
      */
     public static final Set<Class<?>> foreignTypeEntryClasses = Set.of(PrimitiveTypeEntry.class, PointerToTypeEntry.class, ForeignStructTypeEntry.class);
 
-    /*
-     * A set of fields accessed during run-time debug info generation that are not seen as written
-     * during analysis, but still reachable through the SubstrateDebugTypeEntrySupport singleton.
-     */
-    public static final Set<ResolvedJavaField> foreignTypeEntryFields = Set.of(
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(TypeEntry.class), "typeName"),
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(TypeEntry.class), "typeSignature"),
-                    JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(ForeignStructTypeEntry.class), "typedefName"));
+    private static Set<ResolvedJavaField> foreignTypeEntryFields() {
+        /*
+         * A set of fields accessed during run-time debug info generation that are not seen as written
+         * during analysis, but still reachable through the SubstrateDebugTypeEntrySupport singleton.
+         */
+        return Set.of(
+                        JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(TypeEntry.class), "typeName"),
+                        JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(TypeEntry.class), "typeSignature"),
+                        JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(ForeignStructTypeEntry.class), "typedefName"));
+    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -168,7 +170,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         for (Class<?> foreignTypeEntryClass : foreignTypeEntryClasses) {
             accessImpl.registerAsInHeap(foreignTypeEntryClass);
         }
-        for (ResolvedJavaField foreignTypeEntryField : foreignTypeEntryFields) {
+        for (ResolvedJavaField foreignTypeEntryField : foreignTypeEntryFields()) {
             accessImpl.registerFieldValueTransformer(foreignTypeEntryField, new JVMCIFieldValueTransformerWithAvailability() {
 
                 @Override

@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.driver.APIOptionHandler.HostedOptionInfo;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
-import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.shared.option.APIOption;
 import com.oracle.svm.shared.option.APIOption.APIOptionKind;
@@ -810,11 +809,10 @@ final class APIOptionFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         Map<String, GroupInfo> groupInfos = new HashMap<>();
         Map<String, APIOptionHandler.PathsOptionInfo> pathOptions = new HashMap<>();
         Map<String, HostedOptionInfo> allOptionNames = new HashMap<>();
-        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(accessImpl.getImageClassLoader().getClassLoader());
+        Iterable<OptionDescriptors> optionDescriptors = OptionsContainer.getDiscoverableOptions(access.getApplicationClassLoader());
         SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos, pathOptions, allOptionNames);
         ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options, pathOptions, allOptionNames));
     }

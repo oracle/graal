@@ -57,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * contained with {@link TransformedValueState}.
  */
 public class LayeredFieldValueTransformerImpl extends JVMCIFieldValueTransformerWithReceiverBasedAvailability {
-    private static final ResolvedJavaType OBJECT = GuestAccess.get().lookupType(Object.class);
+    private static final ResolvedJavaType OBJECT = GuestAccess.get().elements.java_lang_Object;
     private static final ResolvedJavaType LAYERED_FIELD_VALUE_TRANSFORMER = GuestAccess.get().lookupType(LayeredFieldValueTransformer.class);
     private static final ResolvedJavaMethod IS_VALUE_AVAILABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "isValueAvailable", OBJECT);
     private static final ResolvedJavaMethod IS_UPDATE_AVAILABLE = JVMCIReflectionUtil.getUniqueDeclaredMethod(LAYERED_FIELD_VALUE_TRANSFORMER, "isUpdateAvailable", OBJECT);

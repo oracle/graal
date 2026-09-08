@@ -378,6 +378,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     method("com.oracle.svm.core.libjvm.WhiteBoxEntryPoints$SourceGenerator", "existingWhiteBoxMethods", SVM_CONFIGURE_TOOL),
                     clazz("com.oracle.svm.graal.meta.SubstrateConstantReflectionProvider", SVM_RUN_TIME_ONLY),
                     pkg("com.oracle.svm.guest", GUEST_CONTEXT_ONLY),
+                    clazz("com.oracle.svm.hosted.AutomaticallyRegisteredClassSupport", NI_HOSTED_IMPLEMENTATION),
                     method("com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport", "validateSingletonRegistration", NI_HOSTED_IMPLEMENTATION),
                     clazz("com.oracle.svm.hosted.ModuleLayerFeature", TERMINUS_OBSOLETED),
                     clazz("com.oracle.svm.interpreter.CremaSubstitutions", NI_HOSTED_IMPLEMENTATION),

@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.ServiceLoader;
 
 import com.oracle.svm.core.service.AutomaticallyRegisteredServiceRegistration;
-import com.oracle.svm.util.GuestAccess;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
@@ -118,10 +117,10 @@ abstract class AutomaticallyRegisteredClassSupport<S extends AutomaticallyRegist
         }
     }
 
-    final List<Class<?>> findMostSpecificClasses(Class<?> baseClass, Iterable<Class<?>> candidateClasses) {
+    static final List<Class<?>> findMostSpecificClasses(Class<?> baseClass, Iterable<Class<?>> candidateClasses) {
         ArrayList<Class<?>> candidates = new ArrayList<>();
         for (Class<?> candidateClass : candidateClasses) {
-            if (isAssignableFrom(baseClass, candidateClass)) {
+            if (baseClass.isAssignableFrom(candidateClass)) {
                 candidates.add(candidateClass);
             }
         }
@@ -129,17 +128,13 @@ abstract class AutomaticallyRegisteredClassSupport<S extends AutomaticallyRegist
         return candidates;
     }
 
-    private boolean hasMoreSpecificCandidate(Class<?> candidate, List<Class<?>> candidates) {
+    private static boolean hasMoreSpecificCandidate(Class<?> candidate, List<Class<?>> candidates) {
         for (Class<?> other : candidates) {
-            if (candidate != other && isAssignableFrom(candidate, other)) {
+            if (candidate != other && candidate.isAssignableFrom(other)) {
                 return true;
             }
         }
         return false;
     }
 
-    @SuppressWarnings("static-method")
-    private boolean isAssignableFrom(Class<?> supertype, Class<?> subtype) {
-        return GuestAccess.get().lookupType(supertype).isAssignableFrom(GuestAccess.get().lookupType(subtype));
-    }
 }

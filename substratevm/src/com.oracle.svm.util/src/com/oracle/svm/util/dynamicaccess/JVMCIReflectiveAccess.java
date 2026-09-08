@@ -26,6 +26,7 @@ package com.oracle.svm.util.dynamicaccess;
 
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -52,15 +53,15 @@ public interface JVMCIReflectiveAccess {
     /**
      * See {@code ReflectiveAccess#registerForSerialization(AccessCondition, Class...)}.
      */
-    void registerForSerialization(AccessCondition condition, ResolvedJavaType... types);
+    void registerForSerialization(JavaConstant condition, ResolvedJavaType... types);
 
     /**
      * See {@code ReflectiveAccess#registerProxy(AccessCondition, Class...)}.
      */
-    ResolvedJavaType registerProxy(AccessCondition condition, ResolvedJavaType... interfaces);
+    ResolvedJavaType registerProxy(JavaConstant condition, ResolvedJavaType... interfaces);
 
     /**
      * See {@code ReflectiveAccess#registerForUnsafeAllocation(AccessCondition, Class...)}.
      */
-    void registerForUnsafeAllocation(AccessCondition condition, ResolvedJavaType... types);
+    void registerForUnsafeAllocation(JavaConstant condition, ResolvedJavaType... types);
 }

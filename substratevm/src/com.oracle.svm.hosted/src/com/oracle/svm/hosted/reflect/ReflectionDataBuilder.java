@@ -1197,7 +1197,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
             case ResolvedJavaType type -> typeConsumer.accept(type);
             case EnumElement el -> typeConsumer.accept(el.enumType);
-            case String _ -> typeConsumer.accept(GuestAccess.get().lookupType(String.class));
+            case String _ -> typeConsumer.accept(GuestAccess.get().elements.java_lang_String);
             case List<?> list -> {
                 for (Object element : list) {
                     visitTypesForMemberValue(element, typeConsumer);

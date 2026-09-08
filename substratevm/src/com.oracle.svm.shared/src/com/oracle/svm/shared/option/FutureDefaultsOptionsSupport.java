@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util.dynamicaccess;
+package com.oracle.svm.shared.option;
 
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-
-import com.oracle.svm.util.OriginalClassProvider;
-
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
- * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.AccessCondition} using JVMCI types.
+ * Provides guest-context access to hosted future-default queries.
  */
-public class JVMCIAccessCondition {
-
-    public static AccessCondition guestAccessCondition(@SuppressWarnings("unused") JavaConstant condition) {
-        // TODO GR-79409: Implement guest access-condition decoding.
-        throw new UnsupportedOperationException("Guest access-condition decoding is not implemented.");
-    }
+public interface FutureDefaultsOptionsSupport {
 
     /**
-     * @see AccessCondition#typeReached(Class)
+     * Returns the support for querying future-default options from guest-context code. In fully
+     * isolated builds, this singleton is installed only in the guest context. Builder-context code
+     * must query {@code com.oracle.svm.core.FutureDefaultsOptions} directly.
      */
-    public static AccessCondition typeReached(ResolvedJavaType type) {
-        return AccessCondition.typeReached(OriginalClassProvider.getJavaClass(type));
+    static FutureDefaultsOptionsSupport singleton() {
+        return ImageSingletons.lookup(FutureDefaultsOptionsSupport.class);
     }
+
+    boolean allFutureDefaults();
+
+    boolean securityProvidersInitializedAtRunTime();
+
+    boolean fileSystemProvidersInitializedAtRunTime();
+
+    boolean resourceBundlesInitializedAtRunTime();
+
+    boolean exactReflection();
+
+    boolean explicitFeatureSingletonRegistration();
 }

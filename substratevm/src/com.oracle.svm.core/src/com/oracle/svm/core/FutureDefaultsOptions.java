@@ -41,16 +41,23 @@ import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.option.APIOption;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.FutureDefaultsOptionsSupport;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.LocatableMultiOptionValue;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Enables the --future-defaults=value flag that is used for evolution of Native Image semantics.
@@ -167,6 +174,7 @@ public class FutureDefaultsOptions {
         for (String retiredFutureDefault : RETIRED_FUTURE_DEFAULTS) {
             setSystemProperty(retiredFutureDefault);
         }
+        FutureDefaultsOptionsSupportImpl.init();
     }
 
     private static LinkedHashSet<String> computeFutureDefaults(Stream<LocatableMultiOptionValue.ValueWithOrigin<String>> valuesWithOrigin) {
@@ -271,5 +279,49 @@ public class FutureDefaultsOptions {
      */
     public static boolean explicitFeatureSingletonRegistration() {
         return getFutureDefaults().contains(EXPLICIT_FEATURE_SINGLETON_REGISTRATION);
+    }
+
+    /** Keep in sync with the static query methods from {@link #allFutureDefaults()} to the end of this class. */
+    @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static final class FutureDefaultsOptionsSupportImpl implements FutureDefaultsOptionsSupport {
+
+        private static void init() {
+            FutureDefaultsOptionsSupportImpl support = new FutureDefaultsOptionsSupportImpl();
+            GuestAccess access = GuestAccess.get();
+            ResolvedJavaType key = access.lookupType(FutureDefaultsOptionsSupport.class);
+            JavaConstant hostProxy = access.createHostProxy(support, key);
+            GuestImageSingletonSupport.add(key, hostProxy);
+        }
+
+        @Override
+        public boolean allFutureDefaults() {
+            return FutureDefaultsOptions.allFutureDefaults();
+        }
+
+        @Override
+        public boolean securityProvidersInitializedAtRunTime() {
+            return FutureDefaultsOptions.securityProvidersInitializedAtRunTime();
+        }
+
+        @Override
+        public boolean fileSystemProvidersInitializedAtRunTime() {
+            return FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime();
+        }
+
+        @Override
+        public boolean resourceBundlesInitializedAtRunTime() {
+            return FutureDefaultsOptions.resourceBundlesInitializedAtRunTime();
+        }
+
+        @Override
+        public boolean exactReflection() {
+            return FutureDefaultsOptions.exactReflection();
+        }
+
+        @Override
+        public boolean explicitFeatureSingletonRegistration() {
+            return FutureDefaultsOptions.explicitFeatureSingletonRegistration();
+        }
     }
 }

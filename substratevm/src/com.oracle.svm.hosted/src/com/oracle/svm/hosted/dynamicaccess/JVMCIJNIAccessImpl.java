@@ -27,22 +27,25 @@ package com.oracle.svm.hosted.dynamicaccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.hosted.JNIAccessImpl;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestInvoked;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
+import com.oracle.svm.util.dynamicaccess.JVMCIAccessCondition;
 import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class JVMCIJNIAccessImpl implements JVMCIJNIAccess {
 
-    private final JNIAccessImpl jniInstance;
+    private JNIAccessImpl jniInstance;
     private static JVMCIJNIAccess instance;
 
     private JVMCIJNIAccessImpl() {
-        jniInstance = JNIAccessImpl.singleton();
     }
 
     public static JVMCIJNIAccess singleton() {
@@ -52,24 +55,71 @@ public final class JVMCIJNIAccessImpl implements JVMCIJNIAccess {
         return instance;
     }
 
+    private JNIAccessImpl jniInstance() {
+        if (jniInstance == null) {
+            jniInstance = JNIAccessImpl.singleton();
+        }
+        return jniInstance;
+    }
+
+    public void register(JavaConstant condition, ResolvedJavaType... types) {
+        register(JVMCIAccessCondition.guestAccessCondition(condition), types);
+    }
+
     @Override
     public void register(AccessCondition condition, ResolvedJavaType... types) {
         for (ResolvedJavaType type : types) {
-            jniInstance.register(condition, OriginalClassProvider.getJavaClass(type));
+            jniInstance().register(condition, OriginalClassProvider.getJavaClass(type));
         }
     }
 
     @Override
     public void register(AccessCondition condition, ResolvedJavaMethod... methods) {
         for (ResolvedJavaMethod method : methods) {
-            jniInstance.register(condition, OriginalMethodProvider.getJavaMethod(method));
+            jniInstance().register(condition, OriginalMethodProvider.getJavaMethod(method));
         }
     }
 
     @Override
     public void register(AccessCondition condition, ResolvedJavaField... fields) {
         for (ResolvedJavaField field : fields) {
-            jniInstance.register(condition, OriginalFieldProvider.getJavaField(field));
+            jniInstance().register(condition, OriginalFieldProvider.getJavaField(field));
         }
+    }
+
+    /**
+     * Guest-invoked method for
+     * {@link org.graalvm.nativeimage.dynamicaccess.JNIAccess#register(AccessCondition, Class[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
+     */
+    @GuestInvoked
+    public void registerClasses(JavaConstant condition, JavaConstant classes) {
+        register(condition, GuestAccess.get().asResolvedJavaTypes(classes));
+    }
+
+    /**
+     * Guest-invoked method for
+     * {@link org.graalvm.nativeimage.dynamicaccess.JNIAccess#register(AccessCondition, java.lang.reflect.Executable[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param executables a {@link JavaConstant} representing the guest {@code Executable[]} to register
+     */
+    @GuestInvoked
+    public void registerExecutables(JavaConstant condition, JavaConstant executables) {
+        register(JVMCIAccessCondition.guestAccessCondition(condition), GuestAccess.get().asResolvedJavaMethods(executables));
+    }
+
+    /**
+     * Guest-invoked method for
+     * {@link org.graalvm.nativeimage.dynamicaccess.JNIAccess#register(AccessCondition, java.lang.reflect.Field[])}.
+     *
+     * @param condition a {@link JavaConstant} representing the guest {@link AccessCondition}
+     * @param fields a {@link JavaConstant} representing the guest {@code Field[]} to register
+     */
+    @GuestInvoked
+    public void registerFields(JavaConstant condition, JavaConstant fields) {
+        register(JVMCIAccessCondition.guestAccessCondition(condition), GuestAccess.get().asResolvedJavaFields(fields));
     }
 }

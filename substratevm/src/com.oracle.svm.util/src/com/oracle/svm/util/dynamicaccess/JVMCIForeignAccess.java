@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,26 +25,26 @@
 package com.oracle.svm.util.dynamicaccess;
 
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-
-import com.oracle.svm.util.OriginalClassProvider;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.AccessCondition} using JVMCI types.
+ * Mirror of {@link ForeignAccess} using JVMCI types.
  */
-public class JVMCIAccessCondition {
-
-    public static AccessCondition guestAccessCondition(@SuppressWarnings("unused") JavaConstant condition) {
-        // TODO GR-79409: Implement guest access-condition decoding.
-        throw new UnsupportedOperationException("Guest access-condition decoding is not implemented.");
-    }
+public interface JVMCIForeignAccess {
+    /**
+     * See {@link ForeignAccess#registerForDowncall(AccessCondition, Object, Object...)}.
+     */
+    void registerForDowncall(AccessCondition condition, JavaConstant desc, JavaConstant... options);
 
     /**
-     * @see AccessCondition#typeReached(Class)
+     * See {@link ForeignAccess#registerForUpcall(AccessCondition, Object, Object...)}.
      */
-    public static AccessCondition typeReached(ResolvedJavaType type) {
-        return AccessCondition.typeReached(OriginalClassProvider.getJavaClass(type));
-    }
+    void registerForUpcall(AccessCondition condition, JavaConstant desc, JavaConstant... options);
+
+    /**
+     * See {@link ForeignAccess#registerForDirectUpcall(AccessCondition, java.lang.invoke.MethodHandle, Object, Object...)}.
+     */
+    void registerForDirectUpcall(AccessCondition condition, JavaConstant target, JavaConstant desc, JavaConstant... options);
 }

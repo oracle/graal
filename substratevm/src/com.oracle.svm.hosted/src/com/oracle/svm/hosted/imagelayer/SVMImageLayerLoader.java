@@ -484,7 +484,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             String sourceFileName = td.hasSourceFileName() ? td.getSourceFileName() : null;
             ResolvedJavaType enclosingType = getResolvedJavaTypeForBaseLayerId(td.getEnclosingTypeId());
             ResolvedJavaType componentType = getResolvedJavaTypeForBaseLayerId(td.getComponentTypeId());
-            ResolvedJavaType objectType = GuestAccess.get().lookupType(Object.class);
+            ResolvedJavaType objectType = GuestAccess.get().elements.java_lang_Object;
             AnnotationValue[] annotations = getAnnotations(td.getAnnotationList());
 
             return new BaseLayerType(className, tid, td.getModifiers(), td.getIsInterface(), td.getIsEnum(), td.getIsRecord(), td.getIsInitialized(), td.getIsLinked(), sourceFileName,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util.dynamicaccess;
+package com.oracle.svm.util;
 
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.svm.util.OriginalClassProvider;
-
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.graal.compiler.vmaccess.VMAccess;
 
 /**
- * Mirror of {@link org.graalvm.nativeimage.dynamicaccess.AccessCondition} using JVMCI types.
+ * Marks a host method invoked by the guest context through a host proxy (see
+ * {@link VMAccess#createHostProxy}).
+ * <p>
+ * Users of this annotation must add a Javadoc to each annotated method. The Javadoc
+ * must include an {@code @param} entry for every parameter, documenting the guest
+ * type it represents, and a link to the corresponding guest interface method.
  */
-public class JVMCIAccessCondition {
-
-    public static AccessCondition guestAccessCondition(@SuppressWarnings("unused") JavaConstant condition) {
-        // TODO GR-79409: Implement guest access-condition decoding.
-        throw new UnsupportedOperationException("Guest access-condition decoding is not implemented.");
-    }
-
-    /**
-     * @see AccessCondition#typeReached(Class)
-     */
-    public static AccessCondition typeReached(ResolvedJavaType type) {
-        return AccessCondition.typeReached(OriginalClassProvider.getJavaClass(type));
-    }
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface GuestInvoked {
 }
