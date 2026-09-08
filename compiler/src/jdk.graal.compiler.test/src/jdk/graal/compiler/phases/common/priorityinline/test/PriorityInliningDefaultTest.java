@@ -202,6 +202,32 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
     }
 
     @Test
+    public void testForceInliningDeletesSiblingInvoke() {
+        OptionValues options = new OptionValues(getInitialOptions(),
+                        AbstractPriorityInliningPhase.Options.PriorityForceInline, "constantFalseTarget,deletedForceInlineTarget",
+                        PriorityInliningPhase.Options.InlinedCompilerNodeLimit, 1,
+                        BytecodeParserOptions.InlineDuringParsing, false);
+        StructuredGraph graph = getGraph("forceInliningDeletesSiblingSnippet", options);
+        Assert.assertEquals(0, countInvokesTo(graph, getResolvedJavaMethod("constantFalseTarget")));
+        Assert.assertEquals(0, countInvokesTo(graph, getResolvedJavaMethod("deletedForceInlineTarget")));
+    }
+
+    public int forceInliningDeletesSiblingSnippet(int value) {
+        if (constantFalseTarget()) {
+            return deletedForceInlineTarget(value);
+        }
+        return value;
+    }
+
+    private static boolean constantFalseTarget() {
+        return false;
+    }
+
+    private static int deletedForceInlineTarget(int value) {
+        return value + 1;
+    }
+
+    @Test
     public void testPriorityNeverInliningTracingUsesNotUsedForInliningCause() {
         OptionValues options = new OptionValues(getInitialOptions(),
                         GraalOptions.TraceInlining, true,

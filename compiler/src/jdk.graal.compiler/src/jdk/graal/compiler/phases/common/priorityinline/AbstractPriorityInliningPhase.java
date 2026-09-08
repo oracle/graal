@@ -561,6 +561,13 @@ public abstract class AbstractPriorityInliningPhase extends AbstractInliningPhas
                 changed = false;
 
                 for (CallTreeNode child : callTree.root().children().snapshot()) {
+                    if (child.isDeleted()) {
+                        /*
+                         * Inlining can canonicalize and delete other root invokes. Skip such stale
+                         * entries from the snapshot.
+                         */
+                        continue;
+                    }
                     if (directedRules.inlineRules() != null &&
                                     child instanceof InlineCacheNode inlineCacheNode &&
                                     markForceInlinedInlineCacheChildren(inlineCacheNode, coreProviders)) {
