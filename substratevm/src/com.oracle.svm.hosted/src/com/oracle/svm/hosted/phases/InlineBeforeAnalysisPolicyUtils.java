@@ -26,13 +26,9 @@ package com.oracle.svm.hosted.phases;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -309,19 +305,26 @@ public class InlineBeforeAnalysisPolicyUtils {
         return true;
     }
 
-    // GR-79411: Keep host-reflection matching until this policy uses guest-aware JVMCI metadata.
-    /*
-     * Objects.requireNonNull methods are small and will be inlined after analysis anyway. Inlining
-     * them before analysis improves precision by propagating never-null information.
-     */
-    private static final Set<Executable> ALWAYS_INLINE_BEFORE_ANALYSIS = Set.of(
-                    ReflectionUtil.lookupMethod(Objects.class, "requireNonNull", Object.class),
-                    ReflectionUtil.lookupMethod(Objects.class, "requireNonNull", Object.class, String.class),
-                    ReflectionUtil.lookupMethod(Objects.class, "requireNonNull", Object.class, Supplier.class),
-                    ReflectionUtil.lookupMethod(Arrays.class, "copyOf", Object[].class, int.class),
-                    ReflectionUtil.lookupMethod(Arrays.class, "copyOfRange", Object[].class, int.class, int.class),
-                    ReflectionUtil.lookupMethod(Array.class, "newInstance", Class.class, int.class),
-                    ReflectionUtil.lookupMethod(Array.class, "newArray", Class.class, int.class));
+    private final Set<ResolvedJavaMethod> alwaysInlineBeforeAnalysisMethods = Set.of(
+                    /*
+                     * Objects.requireNonNull methods are small and will be inlined after analysis
+                     * anyway. Inlining them before analysis propagates never-null information.
+                     */
+                    GuestAccess.elements().java_util_Objects_requireNonNull,
+                    GuestAccess.elements().java_util_Objects_requireNonNull_withMessage,
+                    GuestAccess.elements().java_util_Objects_requireNonNull_withMessageSupplier,
+                    /*
+                     * Expose Arrays.copyOf and copyOfRange to the CopyOfNode optimization so the
+                     * analysis can preserve precise array types.
+                     */
+                    GuestAccess.elements().java_util_Arrays_copyOf,
+                    GuestAccess.elements().java_util_Arrays_copyOfRange,
+                    /*
+                     * Array.newInstance delegates one-dimensional allocations to newArray. Inline
+                     * both so a constant component type reaches the allocation.
+                     */
+                    GuestAccess.elements().java_lang_reflect_Array_newInstance,
+                    GuestAccess.elements().java_lang_reflect_Array_newArray);
 
     /**
      * Returns whether the regular heuristics used by {@link InlineBeforeAnalysis} should be
@@ -331,8 +334,8 @@ public class InlineBeforeAnalysisPolicyUtils {
      * represented by {@link AlwaysInline}.
      */
     public boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, AnalysisMethod method) {
-        Executable javaMethod = OriginalMethodProvider.getJavaMethod(method);
-        return javaMethod != null && ALWAYS_INLINE_BEFORE_ANALYSIS.contains(javaMethod);
+        ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
+        return originalMethod != null && alwaysInlineBeforeAnalysisMethods.contains(originalMethod);
     }
 
     enum InliningScopeType {

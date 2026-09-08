@@ -26,9 +26,11 @@ package com.oracle.svm.util;
 
 import java.io.InputStream;
 import java.lang.ref.Reference;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -39,6 +41,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -134,6 +137,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_lang_ref_Reference = lookupType(Reference.class);
     public final ResolvedJavaMethod java_lang_ref_Reference_refersTo = lookupMethod(java_lang_ref_Reference, "refersTo", Object.class);
 
+    public final ResolvedJavaType java_lang_reflect_Array = lookupType(Array.class);
+    public final ResolvedJavaMethod java_lang_reflect_Array_newInstance = lookupMethod(java_lang_reflect_Array, "newInstance", Class.class, int.class);
+    public final ResolvedJavaMethod java_lang_reflect_Array_newArray = lookupMethod(java_lang_reflect_Array, "newArray", Class.class, int.class);
+
     public final ResolvedJavaType java_lang_reflect_Field = lookupType(Field.class);
     public final ResolvedJavaMethod java_lang_reflect_Field_setAccessible = lookupMethod(java_lang_reflect_Field, "setAccessible", boolean.class);
     public final ResolvedJavaMethod java_lang_reflect_Field_set = lookupMethod(java_lang_reflect_Field, "set", Object.class, Object.class);
@@ -147,6 +154,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_io_InputStream = lookupType(InputStream.class);
     public final ResolvedJavaMethod java_io_Input_Stream_readAllBytesMethod = lookupMethod(java_io_InputStream, "readAllBytes");
+
+    public final ResolvedJavaType java_util_Arrays = lookupType(Arrays.class);
+    public final ResolvedJavaMethod java_util_Arrays_copyOf = lookupMethod(java_util_Arrays, "copyOf", Object[].class, int.class);
+    public final ResolvedJavaMethod java_util_Arrays_copyOfRange = lookupMethod(java_util_Arrays, "copyOfRange", Object[].class, int.class, int.class);
 
     public final ResolvedJavaType java_util_Collection = lookupType(Collection.class);
     public final ResolvedJavaMethod java_util_Collection_toArray = lookupMethod(java_util_Collection, "toArray");
@@ -166,6 +177,9 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_util_Objects = lookupType(Objects.class);
     public final ResolvedJavaMethod java_util_Objects_deepEquals = lookupMethod(java_util_Objects, "deepEquals", Object.class, Object.class);
+    public final ResolvedJavaMethod java_util_Objects_requireNonNull = lookupMethod(java_util_Objects, "requireNonNull", Object.class);
+    public final ResolvedJavaMethod java_util_Objects_requireNonNull_withMessage = lookupMethod(java_util_Objects, "requireNonNull", Object.class, String.class);
+    public final ResolvedJavaMethod java_util_Objects_requireNonNull_withMessageSupplier = lookupMethod(java_util_Objects, "requireNonNull", Object.class, Supplier.class);
 
     public final ResolvedJavaType java_util_function_BooleanSupplier = lookupType(BooleanSupplier.class);
     public final ResolvedJavaMethod java_util_function_BooleanSupplier_getAsBoolean = lookupMethod(java_util_function_BooleanSupplier, "getAsBoolean");
