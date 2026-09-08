@@ -1301,25 +1301,62 @@ public class FeatureImpl {
 
         @Override
         public void registerAsImmutable(Object object) {
-            heap.registerAsImmutable(object);
+            // GR-79002: migrate builder-side clients to JavaConstant-based registration.
+            JavaConstant constant = aUniverse.getHostedValuesProvider().forObject(object);
+            registerResolvedAsImmutable(constant);
         }
 
         @Override
         public void registerAsImmutable(JavaConstant object) {
-            heap.registerAsImmutable(hUniverse.getSnippetReflection().asObject(Object.class, object));
+            registerResolvedAsImmutable(object);
+        }
+
+        /** Resolves and registers {@code constant} unless it represents null. */
+        private void registerResolvedAsImmutable(JavaConstant constant) {
+            ImageHeapConstant imageHeapConstant = resolveImageHeapConstant(constant);
+            if (imageHeapConstant != null) {
+                heap.registerAsImmutable(imageHeapConstant);
+            }
         }
 
         @Override
         public void registerAsImmutable(Object root, Predicate<Object> includeObject) {
-            heap.registerAsImmutable(root, includeObject);
+            // GR-79002: migrate builder-side clients to JavaConstant-based registration.
+            JavaConstant rootConstant = aUniverse.getHostedValuesProvider().forObject(root);
+            ImageHeapConstant imageHeapConstant = resolveImageHeapConstant(rootConstant);
+            if (imageHeapConstant == null) {
+                return;
+            }
+            heap.registerAsImmutable(imageHeapConstant, constant -> {
+                JavaConstant hostedObject = constant.getHostedObject();
+                AnalysisError.guarantee(hostedObject != null, "Cannot materialize an unbacked image heap constant: %s", constant);
+                return includeObject.test(aUniverse.getHostedValuesProvider().asObject(Object.class, hostedObject));
+            });
         }
 
         @Override
         @SuppressWarnings("overloads")
         public void registerAsImmutable(JavaConstant root, Predicate<JavaConstant> includeObject) {
-            // GR-72922: Temporarily convert through snippet reflection until NativeImageHeap supports JavaConstants directly.
-            heap.registerAsImmutable(hUniverse.getSnippetReflection().asObject(Object.class, root),
-                            object -> includeObject.test(hUniverse.getSnippetReflection().forObject(object)));
+            ImageHeapConstant imageHeapConstant = resolveImageHeapConstant(root);
+            if (imageHeapConstant == null) {
+                return;
+            }
+            heap.registerAsImmutable(imageHeapConstant, constant -> {
+                JavaConstant hostedObject = constant.getHostedObject();
+                AnalysisError.guarantee(hostedObject != null, "Cannot expose an unbacked image heap constant: %s", constant);
+                return includeObject.test(hostedObject);
+            });
+        }
+
+        /** Returns the image-heap snapshot corresponding to {@code constant}, or {@code null} for a null constant. */
+        private ImageHeapConstant resolveImageHeapConstant(JavaConstant constant) {
+            if (constant == null || constant.isNull()) {
+                return null;
+            }
+            AnalysisError.guarantee(constant.getJavaKind().isObject(), "Cannot register a primitive constant as immutable: %s", constant);
+            JavaConstant imageHeapConstant = constant instanceof ImageHeapConstant ? constant : aUniverse.getHeapScanner().createImageHeapConstant(constant, ImageHeapScanner.IMMUTABLE_REGISTRATION);
+            AnalysisError.guarantee(imageHeapConstant instanceof ImageHeapConstant, "Cannot register a constant without an image-heap representation as immutable: %s", constant);
+            return (ImageHeapConstant) imageHeapConstant;
         }
 
         /**

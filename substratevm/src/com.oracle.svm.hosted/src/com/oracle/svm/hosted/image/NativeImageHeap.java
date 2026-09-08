@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,15 +52,17 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerObject;
@@ -70,8 +73,8 @@ import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
-import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -79,7 +82,6 @@ import com.oracle.svm.core.jdk.strings.StringInternSupport;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
@@ -99,12 +101,17 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
+import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -172,8 +179,8 @@ public final class NativeImageHeap implements ImageHeap {
      */
     private final List<AddLateToObjectReachabilityInfoData> addLateToObjectReachabilityInfoWorklist = new ArrayList<>();
 
-    /** Objects that are known to be immutable in the native image heap. */
-    private final Set<Object> knownImmutableObjects = Collections.newSetFromMap(new IdentityHashMap<>());
+    /** Constants for objects that are known to be immutable in the image heap. */
+    private final Set<ImageHeapConstant> knownImmutableObjects = new HashSet<>();
 
     /** For diagnostic purpose only. */
     Map<ObjectInfo, ObjectReachabilityInfo> objectReachabilityInfo = null;
@@ -372,50 +379,78 @@ public final class NativeImageHeap implements ImageHeap {
         return hostedValuesProvider.asObject(Object.class, replacedConstant);
     }
 
-    public void registerAsImmutable(Object object) {
+    /** Registers {@code object} as immutable. */
+    public void registerAsImmutable(ImageHeapConstant object) {
         assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
-        knownImmutableObjects.add(object);
+        AnalysisError.guarantee(object != null && object.isBackedByHostedObject(), "Cannot register a null or unbacked image heap constant as immutable: %s", object);
+        registerImageHeapConstantAsImmutable(object);
     }
 
-    public void registerAsImmutable(Object root, Predicate<Object> includeObject) {
-        Deque<Object> worklist = new ArrayDeque<>();
-        IdentityHashMap<Object, Boolean> registeredObjects = new IdentityHashMap<>();
+    /** Records an image-heap constant as immutable. */
+    private void registerImageHeapConstantAsImmutable(ImageHeapConstant object) {
+        knownImmutableObjects.add((ImageHeapConstant) CompressibleConstant.uncompress(object));
+    }
 
-        worklist.push(root);
+    /**
+     * Registers {@code root} and the transitively included objects reachable through its fields and
+     * array elements as immutable.
+     */
+    public void registerAsImmutable(ImageHeapConstant root, Predicate<ImageHeapConstant> includeObject) {
+        assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
+        AnalysisError.guarantee(root != null && root.isBackedByHostedObject(), "Cannot register a null or unbacked image heap constant as immutable: %s", root);
+        Deque<ImageHeapConstant> worklist = new ArrayDeque<>();
+        Set<ImageHeapConstant> registeredObjects = new HashSet<>();
 
+        ImageHeapConstant uncompressedRoot = (ImageHeapConstant) CompressibleConstant.uncompress(root);
+        registeredObjects.add(uncompressedRoot);
+        worklist.push(uncompressedRoot);
         while (!worklist.isEmpty()) {
-            Object cur = worklist.pop();
-            registerAsImmutable(cur);
+            ImageHeapConstant current = worklist.pop();
+            registerImageHeapConstantAsImmutable(current);
+            current.ensureReaderInstalled();
 
-            if (hMetaAccess.optionalLookupJavaType(cur.getClass()).isEmpty()) {
-                throw VMError.shouldNotReachHere("Type missing from static analysis: " + cur.getClass().getTypeName());
-            } else if (cur instanceof Object[]) {
-                for (Object element : ((Object[]) cur)) {
-                    addToWorklist(replaceObject(element), includeObject, worklist, registeredObjects);
-                }
-            } else {
-                JavaConstant constant = hUniverse.getSnippetReflection().forObject(cur);
-                for (HostedField field : hMetaAccess.lookupJavaType(constant).getInstanceFields(true)) {
-                    if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                        Object fieldValue = hUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, constant));
-                        addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
+            AnalysisType currentType = current.getType();
+            if (current instanceof ImageHeapArray array) {
+                if (!currentType.getComponentType().getJavaKind().isPrimitive()) {
+                    for (int index = 0; index < array.getLength(); index++) {
+                        addToWorklist(array.readElementValue(index), includeObject, worklist, registeredObjects);
                     }
                 }
+            } else if (current instanceof ImageHeapInstance instance) {
+                for (ResolvedJavaField javaField : currentType.getInstanceFields(true)) {
+                    AnalysisField field = (AnalysisField) javaField;
+                    if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
+                        addToWorklist(instance.readFieldValue(field), includeObject, worklist, registeredObjects);
+                    }
+                }
+            } else {
+                throw VMError.shouldNotReachHere("Unexpected image heap constant: " + current);
             }
         }
     }
 
-    private static void addToWorklist(Object object, Predicate<Object> includeObject, Deque<Object> worklist, IdentityHashMap<Object, Boolean> registeredObjects) {
-        if (object == null || registeredObjects.containsKey(object)) {
-            return;
-        } else if (object instanceof DynamicHub || object instanceof Class) {
-            /* Classes are handled specially, some fields of it are immutable and some not. */
-            return;
-        } else if (!includeObject.test(object)) {
+    private void addToWorklist(JavaConstant constant, Predicate<ImageHeapConstant> includeObject, Deque<ImageHeapConstant> worklist, Set<ImageHeapConstant> registeredObjects) {
+        if (!(constant instanceof ImageHeapConstant imageHeapConstant) || !imageHeapConstant.isBackedByHostedObject()) {
             return;
         }
-        registeredObjects.put(object, Boolean.TRUE);
-        worklist.push(object);
+        imageHeapConstant = (ImageHeapConstant) CompressibleConstant.uncompress(imageHeapConstant);
+        if (registeredObjects.contains(imageHeapConstant)) {
+            return;
+        }
+        AnalysisType type = imageHeapConstant.getType();
+        /*
+         * GR-78110 tracks making DynamicHub guest-visible, which must happen before this path can
+         * execute with external JVMCI.
+         */
+        if (GuestAccess.elements().java_lang_Class.isAssignableFrom(type) || hConstantReflection.asJavaType(imageHeapConstant) != null ||
+                        GuestAccess.get().lookupType(DynamicHub.class).isAssignableFrom(OriginalClassProvider.getOriginalType(type))) {
+            /* Classes are handled specially, some fields of them are immutable and some are not. */
+            return;
+        }
+        if (includeObject.test(imageHeapConstant)) {
+            registeredObjects.add(imageHeapConstant);
+            worklist.push(imageHeapConstant);
+        }
     }
 
     /**
@@ -833,12 +868,19 @@ public final class NativeImageHeap implements ImageHeap {
      * Determine if a constant will be immutable in the native image heap.
      */
     private boolean isKnownImmutableConstant(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
-            /* A simulated ImageHeapConstant cannot be marked as immutable. */
+        if (!(constant instanceof ImageHeapConstant imageHeapConstant) || !imageHeapConstant.isBackedByHostedObject()) {
+            /* Only image-heap constants backed by hosted objects can be recognized as immutable. */
             return false;
         }
+        if (knownImmutableObjects.contains(CompressibleConstant.uncompress(imageHeapConstant))) {
+            return true;
+        }
+        /*
+         * GR-79047 tracks migrating the immutable-type registry to JVMCI types and removing this
+         * builder-object materialization.
+         */
         Object obj = hUniverse.getSnippetReflection().asObject(Object.class, constant);
-        return UniverseBuilder.isKnownImmutableType(obj.getClass()) || knownImmutableObjects.contains(obj);
+        return UniverseBuilder.isKnownImmutableType(obj.getClass());
     }
 
     /** Add an object to the model of the native image heap. */
