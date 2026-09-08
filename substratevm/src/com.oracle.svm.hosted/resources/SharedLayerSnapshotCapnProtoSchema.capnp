@@ -216,6 +216,10 @@ struct PersistedConstant {
           originFieldId @13 :FieldId;
           requiresLateLoading @14 :Bool;
         }
+        methodTypeConstant :group {
+          returnTypeId @19 :TypeId;
+          parameterTypeIds @20 :List(TypeId);
+        }
       }
     }
     primitiveData @15 :PrimitiveArray;

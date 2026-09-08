@@ -59,6 +59,7 @@ import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -114,7 +115,8 @@ public class MethodHandleFeature implements InternalFeature {
      * unidentical objects are not equal. This breaks if an object is created at runtime because an
      * equivalent image heap object is not part of the table and subsequently fails a comparison.
      * In layered builds, this table is created only in the application layer, where MethodType's
-     * static fields are installed.
+     * static fields are installed. It includes persisted MethodTypes from prior layers as well as
+     * objects reached during the current analysis.
      */
     private Object runtimeMethodTypeInternTable;
     private Method referencedKeySetAdd;
@@ -212,6 +214,14 @@ public class MethodHandleFeature implements InternalFeature {
             access.registerFieldValueTransformer(
                             ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.MethodType"), "internTable"),
                             (receiver, originalValue) -> runtimeMethodTypeInternTable);
+            if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+                /*
+                 * Shared layer code can use MethodTypes that are never visited by this layer's
+                 * reachability callbacks. Keep them in the runtime intern table so that runtime
+                 * lookups return the same objects as those embedded in shared layer code.
+                 */
+                HostedImageLayerBuildingSupport.singleton().getLoader().forEachPersistedMethodType(this::registerHeapMethodType);
+            }
         }
 
         // We initialize most of method-handle-related classes eagerly.
