@@ -1928,7 +1928,6 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
 
                             int shiftMask = getShiftAmountMask(stamp);
-                            int shiftBits = Integer.bitCount(shiftMask);
                             if (shift.lowerBound() == shift.upperBound()) {
                                 int shiftAmount = (int) (shift.lowerBound() & shiftMask);
                                 if (shiftAmount == 0) {
@@ -1947,19 +1946,51 @@ public final class IntegerStamp extends PrimitiveStamp {
                                                     (value.mustBeSet() << shiftAmount) & CodeUtil.mask(bits), (value.mayBeSet() << shiftAmount) & CodeUtil.mask(bits));
                                 }
                             }
-                            if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
-                                long defaultMask = CodeUtil.mask(bits);
-                                long mustBeSet = defaultMask;
-                                long mayBeSet = 0;
-                                for (long i = shift.lowerBound(); i <= shift.upperBound(); i++) {
-                                    if (shift.contains(i)) {
-                                        mustBeSet &= value.mustBeSet() << (i & shiftMask);
-                                        mayBeSet |= value.mayBeSet() << (i & shiftMask);
+                            long defaultMask = CodeUtil.mask(bits);
+                            long mustBeSet = defaultMask;
+                            long mayBeSet = 0;
+                            long lowerBound = CodeUtil.maxValue(bits);
+                            long upperBound = CodeUtil.minValue(bits);
+
+                            /*
+                             * The loop below checks the shift stamp range, but some values in the range may not be in
+                             * the actual stamp based on its mayBeSet mask, so we check shift.contains() every iteration.
+                             * But since the loop is capped at shiftMask+1 iterations, for longer intervals, we need to
+                             * check every shift amount because we only iterate through [shift.lowerBound, shift.lowerBound+shiftMask]
+                             */
+                            boolean coversAllShiftAmounts = Long.compareUnsigned(shift.upperBound() - shift.lowerBound(), shiftMask) > 0;
+                            if ((coversAllShiftAmounts || shift.contains(0)) && value.isUnrestricted()) {
+                                // unrestricted << [0, x] => unrestricted
+                                return value;
+                            }
+                            // Iterate over the possible shift amounts combining the resulting masks and bounds
+                            long sh = shift.lowerBound();
+                            for (int iterations = 0; iterations <= shiftMask; iterations++) {
+                                if (coversAllShiftAmounts || shift.contains(sh)) {
+                                    int shiftAmount = (int) (sh & shiftMask);
+                                    long shiftedMustBeSet = (value.mustBeSet() << shiftAmount) & defaultMask;
+                                    long shiftedMayBeSet = (value.mayBeSet() << shiftAmount) & defaultMask;
+                                    mustBeSet &= shiftedMustBeSet;
+                                    mayBeSet |= shiftedMayBeSet;
+                                    /* Try to improve the signed bounds for this shift. Shifting the input
+                                     * bounds is valid if no significant bits are lost and the sign does not
+                                     * change. Otherwise, calculate bounds from the shifted masks.
+                                     */
+                                    if (shiftAmount < bits && testNoSignChangeAfterShifting(bits, value.lowerBound(), shiftAmount) &&
+                                                    testNoSignChangeAfterShifting(bits, value.upperBound(), shiftAmount)) {
+                                        lowerBound = Math.min(lowerBound, value.lowerBound() << shiftAmount);
+                                        upperBound = Math.max(upperBound, value.upperBound() << shiftAmount);
+                                    } else {
+                                        lowerBound = Math.min(lowerBound, minValueForMasks(bits, shiftedMustBeSet, shiftedMayBeSet));
+                                        upperBound = Math.max(upperBound, maxValueForMasks(bits, shiftedMustBeSet, shiftedMayBeSet));
                                     }
                                 }
-                                return IntegerStamp.stampForMask(bits, mustBeSet, mayBeSet & defaultMask);
+                                if (sh == shift.upperBound()) {
+                                    break;
+                                }
+                                sh++;
                             }
-                            return value.unrestricted();
+                            return IntegerStamp.create(bits, lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -2013,8 +2044,40 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 long mayBeSet = (value.mayBeSet() << extraBits) >> signExtendShift & defaultMask;
                                 return IntegerStamp.create(bits, value.lowerBound() >> shiftCount, value.upperBound() >> shiftCount, mustBeSet, mayBeSet);
                             }
-                            long mask = IntegerStamp.mayBeSetFor(bits, value.lowerBound(), value.upperBound());
-                            return IntegerStamp.stampForMask(bits, 0, mask);
+                            int shiftMask = getShiftAmountMask(stamp);
+                            int shiftBits = Integer.bitCount(shiftMask);
+                            int minShift = 0;
+                            int maxShift = shiftMask;
+                            if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
+                                /* The bounds can be masked without losing information when only the lower shiftBits
+                                 * of the range are variable. For example, the shift range [0xAC2, 0xAC5] for a 32-bit shift:
+                                 * lowerBound: 1010110|00010
+                                 * upperBound: 1010110|00101
+                                 * shiftMask:          11111 (shiftBits = 5)
+                                 * Since the discarded upper bits are equal, the range of masked shifts is continuous,
+                                 * (in this case, [minShift=2, maxShift=5]), so we only need to consider those when
+                                 * refining the operation's bounds.
+                                 * When this isn't the case, the masked shift amounts are discontinuous, for example,
+                                 * with >> [0x1E, 0x21]:
+                                 * lowerBound: 0|11110
+                                 * upperBound: 1|00001
+                                 * The actual masked shifts are {30, 31, 0, 1}. In that case we use the full shift
+                                 * range of [0, 31].
+                                 */
+                                minShift = (int) (shift.lowerBound() & shiftMask);
+                                maxShift = (int) (shift.upperBound() & shiftMask);
+                            }
+                            /*
+                             * For nonnegative values of x, x >> s decreases as s increases. For negative values,
+                             * it increases (toward -1). So the shift amount (min/max) used for the signed bounds
+                             * depends on each bound's sign. For example:
+                             * With positive bounds: [10, 20] >> [1, 2] = [10 >> 2, 20 >> 1]
+                             * With negative bounds: [-20, -10] >> [1, 2] = [-20 >> 1, -10 >> 2]
+                             * With a range that crosses zero: [-10, 10] >> [1, 2] = [-10 >> 1, 10 >> 1]
+                             */
+                            long lowerBound = value.lowerBound() >> (value.lowerBound() < 0 ? minShift : maxShift);
+                            long upperBound = value.upperBound() >> (value.upperBound() < 0 ? maxShift : minShift);
+                            return IntegerStamp.create(bits, lowerBound, upperBound);
                         }
 
                         @Override
@@ -2087,14 +2150,27 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                                 mustBeSet = value.mustBeSet() >>> shiftCount;
                                 mayBeSet = value.mayBeSet() >>> shiftCount;
-                                if (value.lowerBound() < 0) {
-                                    return IntegerStamp.create(bits, mustBeSet, mayBeSet, mustBeSet, mayBeSet);
-                                } else {
-                                    return IntegerStamp.create(bits, value.lowerBound() >>> shiftCount, value.upperBound() >>> shiftCount, mustBeSet, mayBeSet);
-                                }
+                                return IntegerStamp.create(bits, value.unsignedLowerBound() >>> shiftCount, value.unsignedUpperBound() >>> shiftCount, mustBeSet, mayBeSet);
                             }
-                            long mask = IntegerStamp.mayBeSetFor(bits, value.lowerBound(), value.upperBound());
-                            return IntegerStamp.stampForMask(bits, 0, mask);
+                            if (bits < Integer.SIZE) {
+                                long mask = IntegerStamp.mayBeSetFor(bits, value.lowerBound(), value.upperBound());
+                                return IntegerStamp.stampForMask(bits, 0, mask);
+                            }
+                            int shiftMask = getShiftAmountMask(stamp);
+                            int shiftBits = Integer.bitCount(shiftMask);
+                            int minShift = 0;
+                            int maxShift = shiftMask;
+                            if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
+                                minShift = (int) (shift.lowerBound() & shiftMask);
+                                maxShift = (int) (shift.upperBound() & shiftMask);
+                            }
+                            if (maxShift == 0) {
+                                return value;
+                            }
+                            // The result can only be negative if the (masked) shift stamp includes zero, treat it separately
+                            int minPositiveShift = Math.max(1, minShift);
+                            Stamp result = IntegerStamp.create(bits, value.unsignedLowerBound() >>> maxShift, value.unsignedUpperBound() >>> minPositiveShift);
+                            return minShift == 0 ? result.meet(value) : result;
                         }
 
                         @Override

@@ -461,19 +461,35 @@ public class IntegerStampTest extends GraphTest {
     @Test
     public void testShiftLeft() {
         ShiftOp<?> shl = IntegerStamp.OPS.getShl();
-        assertEquals(IntegerStamp.create(32, 0, 0x1ff, 0, 0x1ff), shl.foldStamp(IntegerStamp.create(32, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
+        assertEquals(IntegerStamp.create(32, 0, 0x1fe, 0, 0x1ff), shl.foldStamp(IntegerStamp.create(32, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
         assertEquals(IntegerStamp.create(32, 0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(IntegerStamp.create(32, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(32, 0x1e0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(32, -4096, -4096, -4096, -4096), shl.foldStamp(IntegerStamp.create(32, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Int), shl.foldStamp(StampFactory.empty(JavaKind.Int), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(StampFactory.empty(JavaKind.Int), shl.foldStamp(IntegerStamp.create(32, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
 
-        assertEquals(IntegerStamp.create(64, 0, 0x1ff, 0, 0x1ff), shl.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
+        assertEquals(IntegerStamp.create(64, 0, 0x1fe, 0, 0x1ff), shl.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
         assertEquals(IntegerStamp.create(64, 0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(IntegerStamp.create(64, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(64, 0x1e0, 0x1fe0, 0, 0x1fe0), shl.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(IntegerStamp.create(64, -4096, -4096, -4096, -4096), shl.foldStamp(IntegerStamp.create(64, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Long), shl.foldStamp(StampFactory.empty(JavaKind.Long), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(StampFactory.empty(JavaKind.Long), shl.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
+    }
+
+    @Test
+    public void testShlRange() {
+        testShlRange(32, 10, 20, 1, 2, 20, 80);
+        testShlRange(32, -20, -10, 1, 2, -80, -20);
+        testShlRange(32, 1, 1, 31, 32, Integer.MIN_VALUE, 1);
+        testShlRange(64, 1, 1, 63, 64, Long.MIN_VALUE, 1);
+    }
+
+    private static void testShlRange(int bits, long valueLower, long valueUpper, long shiftLower, long shiftUpper, long newLower, long newUpper) {
+        IntegerStamp value = IntegerStamp.create(bits, valueLower, valueUpper);
+        IntegerStamp shift = IntegerStamp.create(32, shiftLower, shiftUpper);
+        IntegerStamp result = (IntegerStamp) IntegerStamp.OPS.getShl().foldStamp(value, shift);
+        assertEquals(newLower, result.lowerBound());
+        assertEquals(newUpper, result.upperBound());
     }
 
     @Test
@@ -496,6 +512,29 @@ public class IntegerStampTest extends GraphTest {
     }
 
     @Test
+    public void testUShrRange() {
+        testUShrRange(32, -20, -10, 1, 1, 0x7ffffff6L, 0x7ffffffbL);
+        testUShrRange(32, 10, 20, 1, 2, 2, 10);
+        testUShrRange(32, -20, -10, 1, 2, 0x3ffffffbL, 0x7ffffffbL);
+        testUShrRange(32, -20, -10, 0, 1, -20, 0x7ffffffbL);
+        testUShrRange(32, -10, 10, 1, 2, 0, Integer.MAX_VALUE);
+        testUShrRange(32, 1, 1, 31, 32, 0, 1);
+        testUShrRange(32, 10, 20, 33, 34, 2, 10);
+        testUShrRange(32, -1, -1, -2, -1, 1, 3);
+        testUShrRange(64, -20, -10, 1, 2, 0x3ffffffffffffffbL, 0x7ffffffffffffffbL);
+        testUShrRange(64, -20, -10, 0, 1, -20, 0x7ffffffffffffffbL);
+        testUShrRange(64, 1, 1, 63, 64, 0, 1);
+    }
+
+    private static void testUShrRange(int bits, long valueLower, long valueUpper, long shiftLower, long shiftUpper, long newLower, long newUpper) {
+        IntegerStamp value = IntegerStamp.create(bits, valueLower, valueUpper);
+        IntegerStamp shift = IntegerStamp.create(32, shiftLower, shiftUpper);
+        IntegerStamp result = (IntegerStamp) IntegerStamp.OPS.getUShr().foldStamp(value, shift);
+        assertEquals(newLower, result.lowerBound());
+        assertEquals(newUpper, result.upperBound());
+    }
+
+    @Test
     public void testShiftRight() {
         ShiftOp<?> shr = IntegerStamp.OPS.getShr();
         assertEquals(IntegerStamp.create(32, 0, 0xff, 0, 0xff), shr.foldStamp(IntegerStamp.create(32, 0, 0xff, 0, 0xff), IntegerStamp.create(32, 0, 1, 0, 1)));
@@ -511,6 +550,23 @@ public class IntegerStampTest extends GraphTest {
         assertEquals(IntegerStamp.create(64, -1, -1, -1, -1), shr.foldStamp(IntegerStamp.create(64, -16, -16, -16, -16), IntegerStamp.create(32, 8, 8, 8, 8)));
         assertEquals(StampFactory.empty(JavaKind.Long), shr.foldStamp(StampFactory.empty(JavaKind.Long), IntegerStamp.create(32, 5, 5, 5, 5)));
         assertEquals(StampFactory.empty(JavaKind.Long), shr.foldStamp(IntegerStamp.create(64, 0xf, 0xff, 0, 0xff), StampFactory.empty(JavaKind.Int)));
+    }
+
+    @Test
+    public void testShrRange() {
+        testShrRange(32, 10, 20, 1, 2, 2, 10);
+        testShrRange(32, -20, -10, 1, 2, -10, -3);
+        testShrRange(32, -10, 10, 1, 2, -5, 5);
+        testShrRange(32, 1, 1, 31, 32, 0, 1);
+        testShrRange(64, 1, 1, 63, 64, 0, 1);
+    }
+
+    private static void testShrRange(int bits, long valueLower, long valueUpper, long shiftLower, long shiftUpper, long newLower, long newUpper) {
+        IntegerStamp value = IntegerStamp.create(bits, valueLower, valueUpper);
+        IntegerStamp shift = IntegerStamp.create(32, shiftLower, shiftUpper);
+        IntegerStamp result = (IntegerStamp) IntegerStamp.OPS.getShr().foldStamp(value, shift);
+        assertEquals(newLower, result.lowerBound());
+        assertEquals(newUpper, result.upperBound());
     }
 
     @Test
