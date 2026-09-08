@@ -22,6 +22,18 @@
       "allDeclaredFields": true
     },
     {
+      "type": "com.sun.tools.javac.Main",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.sun.tools.javac.launcher.SourceLauncher",
       "jniAccessible": true,
       "methods": [
