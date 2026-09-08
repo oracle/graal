@@ -31,12 +31,14 @@ import java.util.Set;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.reflect.CremaConstructorAccessor;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
+import com.oracle.svm.core.reflect.FallbackCallerSensitiveCremaMethodAccessor;
 import com.oracle.svm.espresso.classfile.ExceptionHandler;
 import com.oracle.svm.espresso.classfile.ParserMethod;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
@@ -51,6 +53,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMethod implements CremaResolvedJavaMethod, FilteredAttributedElement {
@@ -226,8 +229,14 @@ public class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMethod i
     public Object getAccessor(Class<?> declaringClass, Class<?>[] parameterTypes) {
         if (isConstructor()) {
             return new CremaConstructorAccessor(this, declaringClass, parameterTypes);
+        } else if (isCallerSensitive()) {
+            ResolvedJavaMethod adapter = CremaSupport.singleton().findCallerSensitiveAdapter(this);
+            if (adapter != null) {
+                return new CremaMethodAccessor(adapter, declaringClass, parameterTypes, true);
+            }
+            return new FallbackCallerSensitiveCremaMethodAccessor(this, declaringClass, parameterTypes);
         } else {
-            return new CremaMethodAccessor(this, declaringClass, parameterTypes);
+            return new CremaMethodAccessor(this, declaringClass, parameterTypes, false);
         }
     }
 

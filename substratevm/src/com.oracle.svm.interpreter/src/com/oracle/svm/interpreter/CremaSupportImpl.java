@@ -2260,4 +2260,40 @@ public class CremaSupportImpl implements CremaSupport {
         }
         return InterpreterResolvedJavaMethod.EMPTY_ARRAY;
     }
+
+    @Override
+    public ResolvedJavaMethod findCallerSensitiveAdapter(ResolvedJavaMethod callerSensitiveMethod) {
+        InterpreterResolvedJavaMethod callerSensitiveInterpreterMethod = (InterpreterResolvedJavaMethod) callerSensitiveMethod;
+        assert callerSensitiveInterpreterMethod.isCallerSensitive();
+        Symbol<Signature> signature = callerSensitiveInterpreterMethod.getSymbolicSignature();
+        // insert j.l.Class as last argument
+        // we cannot use lastIndexOf since `)` is valid in class names
+        int parameterEnd = 1;
+        while (signature.byteAt(parameterEnd) != ')') {
+            if (signature.byteAt(parameterEnd) == 'L') {
+                parameterEnd = signature.indexOf((byte) ';', parameterEnd);
+            } else {
+                parameterEnd += 1;
+            }
+        }
+        int jlClassLength = ParserSymbols.ParserTypes.java_lang_Class.length();
+        int newLen = signature.length() + jlClassLength;
+        byte[] adapterSignatureBytes = new byte[newLen];
+        signature.writeTo(adapterSignatureBytes, 0);
+        System.arraycopy(adapterSignatureBytes, parameterEnd, adapterSignatureBytes, parameterEnd + jlClassLength, signature.length() - parameterEnd);
+        ParserSymbols.ParserTypes.java_lang_Class.writeTo(adapterSignatureBytes, parameterEnd);
+
+        Symbol<Signature> adapterSignature = SymbolsSupport.getSignatures().lookupValidSignature(ByteSequence.wrap(adapterSignatureBytes));
+        if (adapterSignature == null) {
+            return null;
+        }
+
+        InterpreterResolvedObjectType declaringType = callerSensitiveInterpreterMethod.getDeclaringClass();
+        Symbol<Name> name = callerSensitiveInterpreterMethod.getSymbolicName();
+        InterpreterResolvedJavaMethod candidate = declaringType.lookupDeclaredMethod(name, adapterSignature);
+        if (candidate == null || candidate.isStatic() != callerSensitiveInterpreterMethod.isStatic()) {
+            return null;
+        }
+        return candidate;
+    }
 }
