@@ -30,6 +30,11 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
+/// Makes JShell use its local execution engine by default with the Native Image-built `libjvm`.
+///
+/// JShell normally defaults to JDI execution engines that require JDWP, which Crema does not yet
+/// support. Explicitly configured execution engines are preserved. This substitution can be removed
+/// once Crema has proper JDWP support.
 @TargetClass(className = "jdk.jshell.JShell", innerClass = "Builder")
 final class Target_jdk_jshell_JShell_Builder {
 
