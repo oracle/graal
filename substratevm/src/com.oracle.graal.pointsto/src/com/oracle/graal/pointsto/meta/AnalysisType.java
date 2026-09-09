@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -242,6 +243,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         super(universe.hostVM.enableTrackAcrossLayers());
         this.universe = universe;
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(javaType);
+        AnalysisError.guarantee(originalType == null || originalType instanceof BaseLayerType || GuestAccess.get().owns(originalType),
+                        "Analysis type is not owned by the guest context: %s", javaType);
         this.wrapped = javaType;
         qualifiedName = wrapped.toJavaName(true);
         unqualifiedName = wrapped.toJavaName(false);
