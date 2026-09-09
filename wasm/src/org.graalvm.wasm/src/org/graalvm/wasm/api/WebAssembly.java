@@ -121,6 +121,7 @@ public class WebAssembly extends Dictionary {
 
         addMember("mem_alloc", new Executable(WebAssembly::memAlloc));
         addMember("mem_grow", new Executable(WebAssembly::memGrow));
+        addMember("mem_max", new Executable(WebAssembly::memMax));
         addMember("mem_set_grow_callback", new Executable(WebAssembly::memSetGrowCallback));
         addMember("mem_as_byte_buffer", new Executable(WebAssembly::memAsByteBuffer));
         addMember("mem_set_notify_callback", new Executable(WebAssembly::memSetNotifyCallback));
@@ -803,6 +804,18 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, exceedsDeclaredMaximum ? "Cannot grow memory above max limit" : "Cannot grow memory above implementation limit");
         }
         return previousSize;
+    }
+
+    private static Object memMax(Object[] args) {
+        checkArgumentCount(args, 1);
+        if (!(args[0] instanceof WasmMemory memory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        return memMax(memory);
+    }
+
+    public static long memMax(WasmMemory memory) {
+        return memory.declaredMaxSize();
     }
 
     private static Object memSetGrowCallback(Object[] args) {
