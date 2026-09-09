@@ -2684,6 +2684,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     ValueNode receiver = invocationPluginReceiver.init(targetMethod, args).get(true);
                     ResolvedJavaField resolvedField = (ResolvedJavaField) field;
                     try (DebugCloseable context = openNodeContext(targetMethod, 1)) {
+                        // A nested BytecodeParser would record this dependency in build().
+                        graph.recordMethod(targetMethod);
                         genGetField(resolvedField, receiver);
                         notifyBeforeInline(targetMethod);
                         String reason = "inline accessor method (bytecode parsing)";
