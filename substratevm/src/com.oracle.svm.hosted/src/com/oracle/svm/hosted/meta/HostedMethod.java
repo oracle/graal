@@ -50,7 +50,7 @@ import com.oracle.svm.core.SkipStackOverflowCheck;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.code.ImageCodeInfoProvider;
-import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.deopt.DeoptStub;
 import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
@@ -431,12 +431,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, I
     }
 
     @Override
-    public Deoptimizer.StubType getDeoptStubType() {
+    public DeoptStub.StubType getDeoptStubType() {
         DeoptStubGuestValue stubAnnotation = DeoptStubGuestValue.get(this);
         if (stubAnnotation != null) {
             return stubAnnotation.stubType();
         }
-        return Deoptimizer.StubType.NoDeoptStub;
+        return DeoptStub.StubType.NoDeoptStub;
     }
 
     /**

@@ -1116,7 +1116,7 @@ public class AArch64InterpreterStubs {
 
     /**
      * Frame context for
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#InterpreterDeoptEntryPointStub}. This
+     * {@link com.oracle.svm.core.deopt.DeoptStub.StubType#InterpreterDeoptEntryPointStub}. This
      * transition restores the source-frame stack/base pointers and return address, then jumps to
      * the interpreter deoptimization entry point.
      */

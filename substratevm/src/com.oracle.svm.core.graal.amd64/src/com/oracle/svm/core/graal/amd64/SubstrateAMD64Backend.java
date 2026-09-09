@@ -66,7 +66,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.deopt.DeoptStub;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
@@ -1689,7 +1689,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
     }
 
     /**
-     * Generates the prologue of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EntryStub}
+     * Generates the prologue of a {@link com.oracle.svm.core.deopt.DeoptStub.StubType#EntryStub}
      * method.
      */
     protected static class DeoptEntryStubContext extends SubstrateAMD64FrameContext {
@@ -1738,11 +1738,11 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
     }
 
     /**
-     * Generates the epilogue of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#ExitStub}
+     * Generates the epilogue of a {@link com.oracle.svm.core.deopt.DeoptStub.StubType#ExitStub}
      * method.
      *
      * Note no special handling is necessary for CFI as this will be a direct call from the
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EntryStub}.
+     * {@link com.oracle.svm.core.deopt.DeoptStub.StubType#EntryStub}.
      */
     protected static class DeoptExitStubContext extends SubstrateAMD64FrameContext {
         protected DeoptExitStubContext(SharedMethod method, CallingConvention callingConvention) {
@@ -2236,7 +2236,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                         registerAllocationConfig, method);
 
         FrameMap frameMap = ((FrameMapBuilderTool) lirGenerationResult.getFrameMapBuilder()).getFrameMap();
-        Deoptimizer.StubType stubType = method.getDeoptStubType();
+        DeoptStub.StubType stubType = method.getDeoptStubType();
 
         /*
          * Ristretto currently makes this path reachable during analysis. Avoid accessing the
@@ -2253,10 +2253,10 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 ((SubstrateAMD64FrameMap) frameMap).allocateInterpreterFFMUpcallData();
             }
         }
-        if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
+        if (stubType == DeoptStub.StubType.InterpreterEnterStub) {
             assert InterpreterSupport.isEnabled();
             frameMap.reserveOutgoing(AMD64InterpreterStubs.additionalFrameSizeEnterStub());
-        } else if (stubType == Deoptimizer.StubType.InterpreterLeaveStub || stubType == Deoptimizer.StubType.InterpreterNativeDowncallStub) {
+        } else if (stubType == DeoptStub.StubType.InterpreterLeaveStub || stubType == DeoptStub.StubType.InterpreterNativeDowncallStub) {
             assert InterpreterSupport.isEnabled();
             frameMap.reserveOutgoing(AMD64InterpreterStubs.additionalFrameSizeLeaveStub());
         }
@@ -2404,7 +2404,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         }
         masm.setCodePatchingAnnotationConsumer(patchConsumerFactory.newConsumer(compilationResult));
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenResult).getMethod();
-        Deoptimizer.StubType stubType = method.getDeoptStubType();
+        DeoptStub.StubType stubType = method.getDeoptStubType();
         DataBuilder dataBuilder = new SubstrateDataBuilder();
         CallingConvention callingConvention = lirGenResult.getCallingConvention();
         FrameContext frameContext = createFrameContext(method, stubType, callingConvention);
@@ -2434,9 +2434,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         return new SubstrateAMD64MacroAssembler(getTarget(), options, true);
     }
 
-    protected FrameContext createFrameContext(SharedMethod method, Deoptimizer.StubType stubType, CallingConvention callingConvention) {
+    protected FrameContext createFrameContext(SharedMethod method, DeoptStub.StubType stubType, CallingConvention callingConvention) {
         // GR-60556: This should compose better with custom stub frame contexts.
-        if (stubType == Deoptimizer.StubType.NoDeoptStub && frameContextSupport.canEmitTailCalls(method)) {
+        if (stubType == DeoptStub.StubType.NoDeoptStub && frameContextSupport.canEmitTailCalls(method)) {
             return new TailCallSubstrateAMD64FrameContext(method, callingConvention);
         }
         return switch (stubType) {

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.deopt.Deoptimizer.StubType.NoDeoptStub;
+import static com.oracle.svm.core.deopt.DeoptStub.StubType.NoDeoptStub;
 import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.IMMUTABLE;
 import static com.oracle.svm.core.graal.code.SubstrateCallingConventionType.SubstrateCallingConventionArgumentKind.VALUE_REFERENCE;
 import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
@@ -44,7 +44,7 @@ import com.oracle.svm.core.SkipStackOverflowCheck;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.deopt.DeoptStub;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
@@ -361,7 +361,7 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
                                     "value", "Keep bytecode handler stubs as standalone compilations to ease register pressure in caller and enable tail call threading"),
                     newAnnotationValue(ExplicitCallingConvention.class,
                                     "value", SubstrateCallingConventionKind.Custom),
-                    newAnnotationValue(Deoptimizer.DeoptStub.class,
+                    newAnnotationValue(DeoptStub.class,
                                     "stubType", NoDeoptStub));
 
     @Override

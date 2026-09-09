@@ -1144,7 +1144,7 @@ public class AMD64InterpreterStubs {
 
     /**
      * Frame context for
-     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#InterpreterDeoptEntryPointStub}. This
+     * {@link com.oracle.svm.core.deopt.DeoptStub.StubType#InterpreterDeoptEntryPointStub}. This
      * transition restores the source-frame stack/base pointers, recreates the original return
      * address edge, and jumps to the interpreter deoptimization entry point.
      */

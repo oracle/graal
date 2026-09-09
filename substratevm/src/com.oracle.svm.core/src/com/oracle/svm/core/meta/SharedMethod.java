@@ -28,7 +28,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.deopt.DeoptStub;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.shared.Uninterruptible;
@@ -101,10 +101,10 @@ public interface SharedMethod extends ResolvedJavaMethod {
     SharedMethod getIndirectCallTarget();
 
     /**
-     * Returns the deopt stub type for the stub methods in {@link Deoptimizer}. Only used when
+     * Returns the deopt stub type for the stub methods in {@code Deoptimizer}. Only used when
      * compiling the deopt stubs during image generation.
      */
-    Deoptimizer.StubType getDeoptStubType();
+    DeoptStub.StubType getDeoptStubType();
 
     boolean hasImageCodeOffset();
 

@@ -72,7 +72,7 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.c.libc.LibCSpecific;
-import com.oracle.svm.core.deopt.Deoptimizer.DeoptStub;
+import com.oracle.svm.core.deopt.DeoptStub;
 import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
 import com.oracle.svm.core.hub.Hybrid;

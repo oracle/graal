@@ -27,10 +27,6 @@ package com.oracle.svm.core.deopt;
 import static com.oracle.svm.core.stack.JavaFrameAnchors.verifyTopFrameAnchor;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 
@@ -794,7 +790,7 @@ public final class Deoptimizer {
      *            completion of the stub.
      */
     @StubCallingConvention
-    @DeoptStub(stubType = StubType.EntryStub)
+    @DeoptStub(stubType = DeoptStub.StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack; gpReturnValue holds object reference.")
     public static UnsignedWord lazyDeoptStubObjectReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         /*
@@ -829,7 +825,7 @@ public final class Deoptimizer {
 
     /** See {@link #lazyDeoptStubObjectReturn}. */
     @StubCallingConvention
-    @DeoptStub(stubType = StubType.EntryStub)
+    @DeoptStub(stubType = DeoptStub.StubType.EntryStub)
     @Uninterruptible(reason = "Rewriting stack.")
     public static UnsignedWord lazyDeoptStubPrimitiveReturn(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         /* Establish the correct return address for this stub to make the stack walkable. */
@@ -965,7 +961,7 @@ public final class Deoptimizer {
      * this stub is fully uninterruptible because no allocations are needed, and does not use
      * {@link StubCallingConvention}, because access to any callee-saved registers is not required.
      */
-    @DeoptStub(stubType = StubType.EntryStub)
+    @DeoptStub(stubType = DeoptStub.StubType.EntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     public static UnsignedWord eagerDeoptStub(Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         /* Establish the correct return address for this stub to make the stack walkable. */
@@ -1033,7 +1029,7 @@ public final class Deoptimizer {
      * The custom epilogue of this method restores the return value registers from the returned
      * frame handle.
      */
-    @DeoptStub(stubType = StubType.ExitStub)
+    @DeoptStub(stubType = DeoptStub.StubType.ExitStub)
     @NeverInline("Custom prologue modifies stack pointer register")
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     private static UnsignedWord rewriteStackStub(Pointer newSp, UnsignedWord gpReturnValue, @SuppressWarnings("unused") UnsignedWord fpReturnValue, DeoptimizedBaselineCompiledFrame frame) {

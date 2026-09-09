@@ -36,7 +36,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.deopt.DeoptStub;
 import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
@@ -182,7 +182,7 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
     @Override
     public List<AnnotationValue> getInjectedAnnotations() {
         List<AnnotationValue> annotations = new ArrayList<>(super.getInjectedAnnotations());
-        annotations.add(newAnnotationValue(Deoptimizer.DeoptStub.class, "stubType", Deoptimizer.StubType.InterpreterJNIUpcallStub));
+        annotations.add(newAnnotationValue(DeoptStub.class, "stubType", DeoptStub.StubType.InterpreterJNIUpcallStub));
         annotations.add(newAnnotationValue(InterpreterJNIUpcallStub.class, "callVariant", callVariant, "nonVirtual", nonVirtual));
         return annotations;
     }

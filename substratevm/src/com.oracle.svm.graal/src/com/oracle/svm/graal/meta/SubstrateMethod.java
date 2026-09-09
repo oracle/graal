@@ -44,7 +44,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.deopt.DeoptStub;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
@@ -346,8 +346,8 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
-    public Deoptimizer.StubType getDeoptStubType() {
-        return Deoptimizer.StubType.NoDeoptStub;
+    public DeoptStub.StubType getDeoptStubType() {
+        return DeoptStub.StubType.NoDeoptStub;
     }
 
     @Override
