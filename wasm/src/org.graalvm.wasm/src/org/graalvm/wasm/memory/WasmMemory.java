@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
+import static org.graalvm.wasm.constants.Sizes.NO_MEMORY_MAXIMUM;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -86,7 +87,8 @@ public abstract class WasmMemory implements TruffleObject, EmbedderDataHolder {
     protected final long declaredMinSize;
 
     /**
-     * @see #declaredMaxSize()
+     * The declared maximum size, or {@link Sizes#NO_MEMORY_MAXIMUM} if no maximum was
+     * declared.
      */
     protected final long declaredMaxSize;
 
@@ -99,10 +101,11 @@ public abstract class WasmMemory implements TruffleObject, EmbedderDataHolder {
      * The maximum practical size of this memory instance (measured in number of
      * {@link Sizes#MEMORY_PAGE_SIZE pages}).
      * <p>
-     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary} and
-     * the limit imposed by the implementation.
+     * It is the minimum between the effective declared limit (the memory index type's maximum when
+     * no maximum was declared) and the limit imposed by the implementation.
      * <p>
-     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     * Unlike {@link #declaredMaxSize()}, this always contains an effective numeric limit and can be
+     * lower than an explicitly declared maximum.
      */
     protected final long maxAllowedSize;
 
@@ -122,13 +125,14 @@ public abstract class WasmMemory implements TruffleObject, EmbedderDataHolder {
     protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         assertUnsignedLongLessOrEqual(initialSize, maxAllowedSize, Failure.MEMORY_SIZE_LIMIT_EXCEEDED, "Initial memory size exceeds implementation limit");
 
+        final long effectiveMaxSize = effectiveDeclaredMaxSize(declaredMaxSize, indexType64);
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
-        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, effectiveMaxSize) <= 0;
         assert indexType64 || compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
-        assert indexType64 || compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+        assert indexType64 || compareUnsigned(effectiveMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
         assert !indexType64 || compareUnsigned(maxAllowedSize, MAX_MEMORY_64_INSTANCE_SIZE) <= 0;
-        assert !indexType64 || compareUnsigned(declaredMaxSize, MAX_MEMORY_64_DECLARATION_SIZE) <= 0;
+        assert !indexType64 || compareUnsigned(effectiveMaxSize, MAX_MEMORY_64_DECLARATION_SIZE) <= 0;
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
@@ -152,12 +156,28 @@ public abstract class WasmMemory implements TruffleObject, EmbedderDataHolder {
      * The maximum size of this memory as declared in the binary (measured in number of
      * {@link Sizes#MEMORY_PAGE_SIZE pages}).
      * <p>
-     * This is an upper bound on this memory's size. This memory can only be imported with a greater
-     * or equal maximum size.
+     * If the binary did not declare a maximum, this returns {@link Sizes#NO_MEMORY_MAXIMUM}.
+     * <p>
+     * When present, this is an upper bound on this memory's size. This memory can only be imported
+     * with a greater or equal maximum size.
      * <p>
      * This is different from the internal maximum allowed size, which can be lower.
      */
     public final long declaredMaxSize() {
+        return declaredMaxSize;
+    }
+
+    /**
+     * @return Whether the maximum size was explicitly declared.
+     */
+    public final boolean hasDeclaredMaxSize() {
+        return declaredMaxSize != NO_MEMORY_MAXIMUM;
+    }
+
+    static long effectiveDeclaredMaxSize(long declaredMaxSize, boolean indexType64) {
+        if (declaredMaxSize == NO_MEMORY_MAXIMUM) {
+            return indexType64 ? MAX_MEMORY_64_DECLARATION_SIZE : MAX_MEMORY_DECLARATION_SIZE;
+        }
         return declaredMaxSize;
     }
 

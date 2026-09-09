@@ -179,7 +179,7 @@ public class WasmInstantiator {
         for (int i = 0; i < module.memoryCount(); i++) {
             final int memoryIndex = i;
             final long memoryMinSize = module.memoryInitialSize(memoryIndex);
-            final long memoryMaxSize = module.memoryMaximumSize(memoryIndex);
+            final long memoryMaxSize = module.memoryDeclaredMaximumSize(memoryIndex);
             final boolean memoryIndexType64 = module.memoryHasIndexType64(memoryIndex);
             final boolean memoryShared = module.memoryIsShared(memoryIndex);
             final ImportDescriptor memoryDescriptor = module.importedMemory(memoryIndex);

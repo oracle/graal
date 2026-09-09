@@ -45,6 +45,9 @@ import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.WasmMath.maxUnsigned;
 import static org.graalvm.wasm.WasmMath.minUnsigned;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.NO_MEMORY_MAXIMUM;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -129,10 +132,12 @@ public abstract class SymbolTable {
 
     /**
      * @param initialSize Lower bound on memory size (in pages of 64 kiB).
-     * @param maximumSize Upper bound on memory size (in pages of 64 kiB).
+     * @param maximumSize Upper bound on memory size (in pages of 64 kiB), or
+     *            {@link org.graalvm.wasm.constants.Sizes#NO_MEMORY_MAXIMUM} when no maximum was
+     *            declared.
      *            <p>
-     *            <em>Note:</em> this is the upper bound defined by the module. A memory instance
-     *            might have a lower internal max allowed size in practice.
+     *            <em>Note:</em> a memory instance might have a lower internal max allowed size in
+     *            practice.
      * @param indexType64 If the memory uses index type 64.
      * @param shared Whether the memory is shared (modifications are visible to other threads).
      */
@@ -1468,7 +1473,8 @@ public abstract class SymbolTable {
             final WasmMemory wasmMemory;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty memory when in memory overhead mode.
-                wasmMemory = WasmMemoryFactory.createMemory(0, 0, false, false, useUnsafeMemory, directByteBufferMemoryAccess, context);
+                long overheadMaximum = declaredMaxSize == NO_MEMORY_MAXIMUM ? NO_MEMORY_MAXIMUM : 0;
+                wasmMemory = WasmMemoryFactory.createMemory(0, overheadMaximum, false, false, useUnsafeMemory, directByteBufferMemoryAccess, context);
             } else {
                 wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, indexType64, shared, useUnsafeMemory, directByteBufferMemoryAccess, context);
             }
@@ -1542,7 +1548,20 @@ public abstract class SymbolTable {
 
     public long memoryMaximumSize(int index) {
         final MemoryInfo memory = memories[index];
+        if (memory.maximumSize == NO_MEMORY_MAXIMUM) {
+            return memory.indexType64 ? MAX_MEMORY_64_DECLARATION_SIZE : MAX_MEMORY_DECLARATION_SIZE;
+        }
         return memory.maximumSize;
+    }
+
+    long memoryDeclaredMaximumSize(int index) {
+        final MemoryInfo memory = memories[index];
+        return memory.maximumSize;
+    }
+
+    public boolean memoryHasMaximumSize(int index) {
+        final MemoryInfo memory = memories[index];
+        return memory.maximumSize != NO_MEMORY_MAXIMUM;
     }
 
     public boolean memoryHasIndexType64(int index) {

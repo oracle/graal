@@ -91,6 +91,7 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.NO_MEMORY_MAXIMUM;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -4394,7 +4395,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readMemoryLimits(long[] longOut, boolean[] boolOut) {
-        readLongLimits(longOut, boolOut, MAX_MEMORY_DECLARATION_SIZE, MAX_MEMORY_64_DECLARATION_SIZE);
+        final boolean hasMaximum = readLongLimits(longOut, boolOut, MAX_MEMORY_DECLARATION_SIZE, MAX_MEMORY_64_DECLARATION_SIZE);
         final boolean is64Bit = boolOut[0];
         if (is64Bit) {
             assertTrue(memory64, "64-bit indexed memory used without setting --wasm.Memory64", Failure.MALFORMED_LIMITS_FLAGS);
@@ -4406,16 +4407,21 @@ public class BinaryParser extends BinaryStreamParser {
             assertUnsignedIntLessOrEqual((int) longOut[1], MAX_MEMORY_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
             assertUnsignedIntLessOrEqual((int) longOut[0], (int) longOut[1], Failure.LIMIT_MINIMUM_GREATER_THAN_MAXIMUM);
         }
+        if (!hasMaximum) {
+            longOut[1] = NO_MEMORY_MAXIMUM;
+        }
     }
 
-    private void readLongLimits(long[] longOut, boolean[] boolOut, int max32Bit, long max64Bit) {
+    private boolean readLongLimits(long[] longOut, boolean[] boolOut, int max32Bit, long max64Bit) {
         final byte limitsPrefix = readLimitsPrefix();
+        boolean hasMaximum = true;
         switch (limitsPrefix) {
             case 0x00: {
                 longOut[0] = Integer.toUnsignedLong(readUnsignedInt32());
                 longOut[1] = Integer.toUnsignedLong(max32Bit);
                 boolOut[0] = false; // not 64-bit
                 boolOut[1] = false; // not shared
+                hasMaximum = false;
                 break;
             }
             case 0x01: {
@@ -4430,6 +4436,7 @@ public class BinaryParser extends BinaryStreamParser {
                 longOut[1] = max64Bit;
                 boolOut[0] = true;
                 boolOut[1] = false;
+                hasMaximum = false;
                 break;
             }
             case 0x05: {
@@ -4469,6 +4476,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
             }
         }
+        return hasMaximum;
     }
 
     private byte readLimitsPrefix() {

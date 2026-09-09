@@ -1496,6 +1496,25 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testMemoryWithoutDeclaredMaximum() throws IOException {
+        runMemoryTest(context -> {
+            WasmMemory memory = WebAssembly.memAlloc(1, Sizes.NO_MEMORY_MAXIMUM, false);
+            Assert.assertFalse(memory.hasDeclaredMaxSize());
+            Assert.assertEquals(Sizes.NO_MEMORY_MAXIMUM, memory.declaredMaxSize());
+            Assert.assertEquals(Sizes.NO_MEMORY_MAXIMUM, WebAssembly.memMax(memory));
+            Assert.assertEquals(1, WebAssembly.memGrow(memory, 1));
+        });
+    }
+
+    @Test
+    public void testMemoryWithDeclaredMaximum() throws IOException {
+        runMemoryTest(context -> {
+            WasmMemory memory = WebAssembly.memAlloc(1, 2, false);
+            Assert.assertEquals(2, WebAssembly.memMax(memory));
+        });
+    }
+
+    @Test
     public void testInitialTableSizeOutOfBounds() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
