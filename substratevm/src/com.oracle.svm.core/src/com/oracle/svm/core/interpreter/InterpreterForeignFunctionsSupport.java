@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.core.interpreter;
 
+import java.lang.invoke.MethodHandle;
+
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.shared.Uninterruptible;
@@ -37,6 +40,22 @@ import jdk.graal.compiler.api.replacements.Fold;
 public interface InterpreterForeignFunctionsSupport {
 
     String ACCESS_REASON = "Accessed while preparing an interpreter foreign downcall.";
+
+    /** Data pinned by an upcall trampoline and recovered after entering the isolate. */
+    interface ForeignUpcallData {
+        MethodHandle target();
+
+        ForeignUpcallPlan plan();
+    }
+
+    /** Immutable ABI description consumed by the universal Crema upcall entry point. */
+    record ForeignUpcallPlan(PreparedSignature signature, int[] preparedReturns) {
+        public static final int MAX_RETURN_BUFFER_SIZE = 64;
+
+        public boolean buffersReturn() {
+            return preparedReturns != null;
+        }
+    }
 
     /**
      * Immutable runtime counterpart of the argument-list part of
@@ -83,4 +102,8 @@ public interface InterpreterForeignFunctionsSupport {
     }
 
     Object linkToNative(ForeignDowncallPlan plan, Object[] arguments, int captureMask);
+
+    CFunctionPointer getUpcallStubPointer();
+
+    void setUpcallStubPointer(CFunctionPointer pointer);
 }

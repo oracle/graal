@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jni;
+package com.oracle.svm.interpreter.hosted;
 
 import static com.oracle.svm.util.GuestAnnotationAccess.newAnnotationValue;
 
@@ -43,6 +43,7 @@ import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
+import com.oracle.svm.hosted.jni.JNIGraphKit;
 import com.oracle.svm.interpreter.InterpreterStubSection;
 
 import jdk.graal.compiler.annotation.AnnotationValue;

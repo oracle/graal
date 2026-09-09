@@ -39,6 +39,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller.RuntimeCodeInstallerPlatformHelper;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallData;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -48,7 +49,7 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.core.common.NumUtil;
 
 /**
- * A set of trampolines that can be assigned to specific upcall stubs with specific method handles.
+ * A set of trampolines that can be assigned to specific upcall stubs and runtime arguments.
  */
 final class TrampolineSet {
     private static UnsignedWord allocationSize() {
@@ -84,17 +85,18 @@ final class TrampolineSet {
     private int freed = 0;
     private final int trampolineCount = maxTrampolineCount();
     /**
-     * Each element corresponds to a trampoline by index. An element either refers to
-     * {@link MethodHandle} or to the {@link MethodHandle} and the first object argument (aggregated
-     * in {@link TrampolineObjects}). If pinning is not necessary for any of the referred objects,
-     * those are stored directly. Otherwise, the {@link PinnedObject} is stored.
+     * Each element corresponds to a trampoline by index. An element either refers to a
+     * {@link MethodHandle} or {@link ForeignUpcallData}, or aggregates a method handle and a direct
+     * upcall's first object argument in {@link TrampolineObjects}. If pinning is not necessary for
+     * any of the referred objects, those are stored directly. Otherwise, the {@link PinnedObject}
+     * is stored.
      */
     private final Object[] objs = new Object[trampolineCount];
     /**
      * Array of run-time object arguments passed by each trampoline. This contains the addresses of
-     * (pinned) {@link MethodHandle} instances for regular upcalls, or for direct upcalls with an
-     * object argument, the addresses of the (pinned) objects passed for the argument. Those objects
-     * or pins are stored in {@link #objs}.
+     * (pinned) {@link MethodHandle} or {@link ForeignUpcallData} instances, or for direct upcalls
+     * with an object argument, the addresses of the (pinned) objects passed for the argument. Those
+     * objects or pins are stored in {@link #objs}.
      */
     private final PointerBase[] runtimeArguments = new PointerBase[trampolineCount];
     private final CFunctionPointer[] stubs = new CFunctionPointer[trampolineCount];
@@ -117,17 +119,27 @@ final class TrampolineSet {
         return res;
     }
 
-    private PointerBase maybePinMethodHandle(int trampolineIdx, MethodHandle methodHandle) {
+    private static boolean isExpectedRuntimeArgument(Object value) {
+        Object runtimeArgument = value instanceof PinnedObject pinnedObject ? pinnedObject.getObject() : value;
+        return runtimeArgument instanceof MethodHandle || runtimeArgument instanceof ForeignUpcallData;
+    }
+
+    private static boolean isMethodHandleOrPin(Object value) {
+        return value instanceof MethodHandle || value instanceof PinnedObject pinnedObject && pinnedObject.getObject() instanceof MethodHandle;
+    }
+
+    private PointerBase maybePinRuntimeArgument(int trampolineIdx, Object runtimeArgument) {
         assert 0 <= trampolineIdx && trampolineIdx < trampolineCount;
         assert objs[trampolineIdx] == null;
+        assert isExpectedRuntimeArgument(runtimeArgument);
         PointerBase result;
-        if (AbstractPinnedObjectSupport.needsPinning(methodHandle)) {
-            PinnedObject pinned = PinnedObject.create(methodHandle);
+        if (AbstractPinnedObjectSupport.needsPinning(runtimeArgument)) {
+            PinnedObject pinned = PinnedObject.create(runtimeArgument);
             objs[trampolineIdx] = pinned;
             result = pinned.addressOfObject();
         } else {
-            objs[trampolineIdx] = methodHandle;
-            result = Word.objectToUntrackedPointer(methodHandle);
+            objs[trampolineIdx] = runtimeArgument;
+            result = Word.objectToUntrackedPointer(runtimeArgument);
         }
         return result;
     }
@@ -135,11 +147,8 @@ final class TrampolineSet {
     private PointerBase maybePinFirstObjectArgument(int trampolineIdx, Object firstObjectArgument) {
         assert patchedStubs.get(trampolineIdx);
         assert 0 <= trampolineIdx && trampolineIdx < trampolineCount;
-        /*
-         * If this method is called, method 'maybePinMethodHandle' was always called first. We
-         * therefore either expect a MethodHandle (if it doesn't need pinning) or a PinnedObject.
-         */
-        assert objs[trampolineIdx] instanceof MethodHandle || objs[trampolineIdx] instanceof PinnedObject pinnedObject && pinnedObject.getObject() instanceof MethodHandle;
+        /* The originally assigned runtime argument remains owned until the trampoline is freed. */
+        assert isMethodHandleOrPin(objs[trampolineIdx]);
 
         Object methodHandleOrPin = objs[trampolineIdx];
         Object firstObjectArgumentOrPin;
@@ -180,10 +189,10 @@ final class TrampolineSet {
         return UnsignedUtils.safeToInt(trampolinePointer.subtract(trampolines).unsignedDivide(AbiUtils.singleton().trampolineSize()));
     }
 
-    Pointer assignTrampoline(MethodHandle methodHandle, CFunctionPointer upcallStubPointer) {
+    Pointer assignTrampoline(Object runtimeArgument, CFunctionPointer upcallStubPointer) {
         int idx = assigned++;
 
-        runtimeArguments[idx] = maybePinMethodHandle(idx, methodHandle);
+        runtimeArguments[idx] = maybePinRuntimeArgument(idx, runtimeArgument);
         stubs[idx] = upcallStubPointer;
         assert !patchedStubs.get(idx);
 
@@ -235,19 +244,18 @@ final class TrampolineSet {
 
     boolean freeTrampoline(Pointer trampolineAddress) {
         int idx = getTrampolineIndex(trampolineAddress);
-        Object methodHandlePinOrTrampolinePins = objs[idx];
+        Object runtimeArgumentPinOrTrampolineObjects = objs[idx];
         objs[idx] = null;
 
-        if (methodHandlePinOrTrampolinePins instanceof TrampolineObjects trampolineObjects) {
+        if (runtimeArgumentPinOrTrampolineObjects instanceof TrampolineObjects trampolineObjects) {
             assert patchedStubs.get(idx);
-            assert trampolineObjects.methodHandle != null;
+            assert isMethodHandleOrPin(trampolineObjects.methodHandle);
             assert trampolineObjects.firstObjectArgument != null;
             unpinIfNecessary(trampolineObjects.methodHandle);
             unpinIfNecessary(trampolineObjects.firstObjectArgument);
         } else {
-            assert methodHandlePinOrTrampolinePins instanceof MethodHandle ||
-                            methodHandlePinOrTrampolinePins instanceof PinnedObject pinnedObject && pinnedObject.getObject() instanceof MethodHandle;
-            unpinIfNecessary(methodHandlePinOrTrampolinePins);
+            assert isExpectedRuntimeArgument(runtimeArgumentPinOrTrampolineObjects);
+            unpinIfNecessary(runtimeArgumentPinOrTrampolineObjects);
         }
 
         runtimeArguments[idx] = Word.nullPointer();

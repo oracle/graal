@@ -2146,6 +2146,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
         private int framePointerSaveAreaOffset = -1;
 
         private StackSlot interpreterJNIUpcallData;
+        private StackSlot interpreterFFMUpcallData;
 
         SubstrateAMD64FrameMap(CodeCacheProvider codeCache, SubstrateAMD64RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, SharedMethod method) {
             super(codeCache, registerConfig, referenceMapFactory, registerConfig.shouldUseBasePointer());
@@ -2163,6 +2164,15 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         StackSlot getInterpreterJNIUpcallData() {
             return interpreterJNIUpcallData;
+        }
+
+        void allocateInterpreterFFMUpcallData() {
+            assert interpreterFFMUpcallData == null;
+            interpreterFFMUpcallData = allocateStackMemory(AMD64InterpreterStubs.sizeOfInterpreterData(), getTarget().wordSize);
+        }
+
+        StackSlot getInterpreterFFMUpcallData() {
+            return interpreterFFMUpcallData;
         }
 
         private boolean finalized;
@@ -2232,10 +2242,14 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
          * hosted-only CallVariant in that case until GR-74744 is fixed.
          */
         if (SubstrateUtil.HOSTED) {
-            InterpreterJNIUpcallStubGuestValue annotation = InterpreterJNIUpcallStubGuestValue.get(method);
-            if (annotation != null && annotation.callVariant() == CallVariant.VARARGS) {
+            InterpreterJNIUpcallStubGuestValue jniAnnotation = InterpreterJNIUpcallStubGuestValue.get(method);
+            if (jniAnnotation != null && jniAnnotation.callVariant() == CallVariant.VARARGS) {
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAMD64FrameMap) frameMap).allocateInterpreterJNIUpcallData();
+            }
+            if (stubType == Deoptimizer.StubType.InterpreterFFMUpcallStub) {
+                assert InterpreterSupport.isEnabled();
+                ((SubstrateAMD64FrameMap) frameMap).allocateInterpreterFFMUpcallData();
             }
         }
         if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
@@ -2441,6 +2455,14 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                     yield new AMD64InterpreterStubs.InterpreterJNIUpcallStubContext(method, callingConvention);
                 } else {
                     throw VMError.shouldNotReachHere("JNI interpreter stubs cannot be generated at run-time");
+                }
+            }
+            case InterpreterFFMUpcallStub -> {
+                if (SubstrateUtil.HOSTED) {
+                    assert InterpreterSupport.isEnabled();
+                    yield new AMD64InterpreterStubs.InterpreterFFMUpcallStubContext(method, callingConvention);
+                } else {
+                    throw VMError.shouldNotReachHere("FFM interpreter stubs cannot be generated at run-time");
                 }
             }
             case InterpreterLeaveStub -> {

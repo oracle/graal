@@ -32,12 +32,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
@@ -66,6 +68,8 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignDowncallPlan;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallData;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.JNIMethodSupport;
 import com.oracle.svm.core.jni.JNIObjectHandles;
@@ -82,8 +86,12 @@ import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
@@ -135,6 +143,8 @@ public abstract class InterpreterStubSection {
     public static final SectionName SVM_INTERP = new SectionName.ProgbitsSectionName("svm_interp");
 
     private static final CGlobalData<Pointer> BASE = CGlobalDataFactory.forSymbol(nameForVTableIndex(0));
+
+    private static final CGlobalData<CCharPointer> FFM_UPCALL_ENTER_ERROR = CGlobalDataFactory.createCString("Could not enter isolate for FFM upcall.");
 
     private static final String REASON_REFERENCES_ON_STACK = "stack frame might contain object references that are not known to the GC";
 
@@ -294,13 +304,120 @@ public abstract class InterpreterStubSection {
         InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
 
         /* assuming that this is a virtual method, i.e. has a 'this' argument */
-        Object receiver = ((Pointer) Word.pointer(accessHelper.getGpArgumentAt(PreparedSignature.getDefaultArgumentType(), enterData, 0))).toObject();
+        Object receiver = ((Pointer) Word.pointer(accessHelper.getGpArgumentAt(PreparedSignature.encodeArgumentType(JavaKind.Object, 0, true), enterData))).toObject();
 
         DynamicHub hub = DynamicHub.fromClass(receiver.getClass());
         InterpreterResolvedObjectType thisType = (InterpreterResolvedObjectType) hub.getInterpreterType();
         InterpreterResolvedJavaMethod interpreterMethod = thisType.getVtable()[vTableIndex];
 
         return enterHelper(interpreterMethod, enterData);
+    }
+
+    public static final class FFMUpcallEnterPrologue implements CEntryPointOptions.Prologue {
+        @Uninterruptible(reason = "prologue")
+        public static void enter(Isolate isolate) {
+            int enterResult = CEntryPointActions.enterAttachThread(isolate, true);
+            if (enterResult != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(enterResult, FFM_UPCALL_ENTER_ERROR.get());
+            }
+        }
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(prologue = FFMUpcallEnterPrologue.class)
+    public static long enterInterpreterForFFMUpcall(Pointer runtimeData, Isolate isolate, Pointer enterData) throws Throwable {
+        /* The trampoline keeps the runtime data pinned, explicitly when necessary, for its lifetime. */
+        ForeignUpcallData data = (ForeignUpcallData) runtimeData.toObject();
+        ForeignUpcallPlan plan = data.plan();
+        InterpreterAccessStubData accessHelper = ImageSingletons.lookup(InterpreterAccessStubData.class);
+        Pointer upcallData = accessHelper.getFFMUpcallData();
+        int[] argumentTypes = plan.signature().getArgumentTypes();
+        Object[] arguments = new Object[argumentTypes.length];
+        Pointer returnBuffer = Word.nullPointer();
+        for (int i = 0; i < argumentTypes.length; i++) {
+            int argumentType = argumentTypes[i];
+            if (PreparedSignature.isStubLocation(argumentType)) {
+                VMError.guarantee(PreparedSignature.getStubLocation(argumentType) == PreparedSignature.STUB_LOCATION_RETURN_BUFFER && returnBuffer.isNull(),
+                                "Unexpected stub location for a foreign upcall argument");
+                returnBuffer = accessHelper.getFFMUpcallReturnBuffer(upcallData);
+                arguments[i] = returnBuffer.rawValue();
+            } else {
+                arguments[i] = readIncomingArgument(accessHelper, enterData, argumentType, PreparedSignature.getKind(argumentType), ObjectArgumentKind.NONE);
+            }
+        }
+
+        VMError.guarantee(plan.buffersReturn() == returnBuffer.isNonNull(), "Unexpected foreign upcall return buffer");
+        Object result = data.target().invokeWithArguments(arguments);
+        if (plan.buffersReturn()) {
+            copyReturnBufferToUpcallData(accessHelper, upcallData, returnBuffer, plan.preparedReturns());
+        } else {
+            long rawResult = encodeReturnValue(plan.signature().getReturnKind(), result, ObjectReturnKind.NONE);
+            if (plan.signature().getReturnKind().isNumericFloat()) {
+                int returnLocation = PreparedSignature.encodeArgumentType(JavaKind.Double, 0, true);
+                accessHelper.setFpArgumentAt(returnLocation, upcallData, rawResult);
+            } else {
+                int returnLocation = PreparedSignature.encodeArgumentType(JavaKind.Long, 0, true);
+                writeUpcallGpResultToUpcallData(accessHelper, returnLocation, upcallData, rawResult);
+            }
+        }
+        return upcallData.rawValue();
+    }
+
+    @AlwaysInline("Performance")
+    private static Object readIncomingArgument(InterpreterAccessStubData accessHelper, Pointer enterData, int argumentType, JavaKind targetKind, ObjectArgumentKind objectKind) {
+        JavaKind sourceKind = PreparedSignature.getKind(argumentType);
+        long raw;
+        if (sourceKind.isNumericFloat()) {
+            raw = accessHelper.getFpArgumentAt(argumentType, enterData);
+        } else {
+            raw = readIncomingGpArgument(accessHelper, argumentType, enterData);
+        }
+        return switch (targetKind) {
+            case Boolean -> (raw & 0xff) != 0;
+            case Byte -> (byte) raw;
+            case Short -> (short) raw;
+            case Char -> (char) raw;
+            case Int -> (int) raw;
+            case Long -> raw;
+            case Object -> switch (objectKind) {
+                case JNI_HANDLE -> JNIObjectHandles.getObject(Word.pointer(raw));
+                case INTERPRETER_HANDLE -> {
+                    ThreadLocalInterpreterHandle handle = Word.pointer(raw);
+                    yield handle.rawValue() == 0L ? null : tlsHandles().getObject(handle);
+                }
+                default -> throw VMError.shouldNotReachHereAtRuntime();
+            };
+            // JNI varargs promote float arguments to double.
+            case Float -> sourceKind == JavaKind.Double ? (float) Double.longBitsToDouble(raw) : Float.intBitsToFloat((int) raw);
+            case Double -> Double.longBitsToDouble(raw);
+            default -> throw VMError.shouldNotReachHereAtRuntime();
+        };
+    }
+
+    private static void copyReturnBufferToUpcallData(InterpreterAccessStubData accessHelper, Pointer upcallData, Pointer returnBuffer, int[] preparedReturns) {
+        int offset = 0;
+        for (int preparedReturn : preparedReturns) {
+            JavaKind kind = PreparedSignature.getKind(preparedReturn);
+            long value = returnBuffer.readLong(offset);
+            if (kind == JavaKind.Double) {
+                accessHelper.setFpArgumentAt(preparedReturn, upcallData, value);
+                offset += 16;
+            } else {
+                VMError.guarantee(kind == JavaKind.Long);
+                writeUpcallGpResultToUpcallData(accessHelper, preparedReturn, upcallData, value);
+                offset += 8;
+            }
+        }
+    }
+
+    @Uninterruptible(reason = SWITCH_TO_UNINTERRUPTIBLE)
+    private static long readIncomingGpArgument(InterpreterAccessStubData accessHelper, int argumentType, Pointer enterData) {
+        return accessHelper.getGpArgumentAt(argumentType, enterData);
+    }
+
+    @Uninterruptible(reason = SWITCH_TO_UNINTERRUPTIBLE)
+    private static void writeUpcallGpResultToUpcallData(InterpreterAccessStubData accessHelper, int argumentType, Pointer upcallData, long value) {
+        accessHelper.setGpArgumentAtIncoming(argumentType, upcallData, value);
     }
 
     public static long enterInterpreterForJNIUpcallArrayVirtual(JNIObjectHandle receiverOrClass, JNIMethodId methodId, Pointer array) throws InstantiationException {
@@ -354,20 +471,19 @@ public abstract class InterpreterStubSection {
     }
 
     private static long enterInterpreterForJNIUpcallVirtual(InterpreterResolvedJavaMethod method, Object[] args) {
-        Object result = CremaSupport.singleton().execute(method, args, CallKind.getCallKind(method));
-        return encodeJNIResult(method, args, result);
+        return enterInterpreterForJNIUpcall(method, args, CallKind.getCallKind(method));
     }
 
     private static long enterInterpreterForJNIUpcallNonVirtual(InterpreterResolvedJavaMethod method, Object[] args) {
-        Object result = CremaSupport.singleton().execute(method, args, CallKind.DIRECT);
-        return encodeJNIResult(method, args, result);
+        return enterInterpreterForJNIUpcall(method, args, CallKind.DIRECT);
     }
 
-    private static long encodeJNIResult(InterpreterResolvedJavaMethod method, Object[] args, Object result) {
+    private static long enterInterpreterForJNIUpcall(InterpreterResolvedJavaMethod method, Object[] args, CallKind callKind) {
+        Object result = CremaSupport.singleton().execute(method, args, callKind);
         if (method.isConstructor()) {
-            return JNIObjectHandles.createLocal(args[0]).rawValue();
+            return encodeReturnValue(JavaKind.Object, args[0], ObjectReturnKind.HANDLE);
         }
-        return encodeJNIReturn(method.getPreparedSignature().getReturnKind(), result);
+        return encodeReturnValue(method.getPreparedSignature().getReturnKind(), result, ObjectReturnKind.HANDLE);
     }
 
     private static Object[] createJNIArgs(InterpreterResolvedJavaMethod method) {
@@ -444,26 +560,10 @@ public abstract class InterpreterStubSection {
         int sourceArgumentIndex = (nonVirtual ? 4 : 3);
         for (; targetArgumentIndex < targetArgumentTypes.length; targetArgumentIndex++, sourceArgumentIndex++) {
             int sourceArgType = sourceArgumentTypes[sourceArgumentIndex];
-            args[targetArgumentIndex] = readVarargs(jniEnterData, sourceArgType, PreparedSignature.getKind(targetArgumentTypes[targetArgumentIndex]), accessHelper);
+            JavaKind targetKind = PreparedSignature.getKind(targetArgumentTypes[targetArgumentIndex]);
+            args[targetArgumentIndex] = readIncomingArgument(accessHelper, jniEnterData, sourceArgType, targetKind, ObjectArgumentKind.JNI_HANDLE);
         }
         return args;
-    }
-
-    @AlwaysInline("Performance")
-    private static Object readVarargs(Pointer jniEnterData, int sourceArgType, JavaKind kind, InterpreterAccessStubData accessHelper) {
-        int pos = PreparedSignature.isRegister(sourceArgType) ? PreparedSignature.getRegister(sourceArgType) : -1;
-        return switch (kind) {
-            case Boolean -> readJNIVarargsGpArgument(jniEnterData, sourceArgType, pos, accessHelper) != 0;
-            case Byte -> (byte) readJNIVarargsGpArgument(jniEnterData, sourceArgType, pos, accessHelper);
-            case Short -> (short) readJNIVarargsGpArgument(jniEnterData, sourceArgType, pos, accessHelper);
-            case Char -> (char) readJNIVarargsGpArgument(jniEnterData, sourceArgType, pos, accessHelper);
-            case Int -> (int) readJNIVarargsGpArgument(jniEnterData, sourceArgType, pos, accessHelper);
-            case Long -> readJNIVarargsGpArgument(jniEnterData, sourceArgType, pos, accessHelper);
-            case Object -> JNIObjectHandles.getObject(Word.pointer(readJNIVarargsGpArgument(jniEnterData, sourceArgType, pos, accessHelper)));
-            case Float -> (float) Double.longBitsToDouble(readJNIVarargsFpArgument(jniEnterData, sourceArgType, pos, accessHelper));
-            case Double -> Double.longBitsToDouble(readJNIVarargsFpArgument(jniEnterData, sourceArgType, pos, accessHelper));
-            default -> throw VMError.shouldNotReachHereAtRuntime();
-        };
     }
 
     private static Object[] prepareJNIArgsFromVaList(JNIObjectHandle receiverOrClass, InterpreterResolvedJavaMethod method, Pointer vaList) throws InstantiationException {
@@ -490,18 +590,6 @@ public abstract class InterpreterStubSection {
             case Double -> readVaListDouble(vaList);
             default -> throw VMError.shouldNotReachHereAtRuntime();
         };
-    }
-
-    @Uninterruptible(reason = SWITCH_TO_UNINTERRUPTIBLE)
-    @NeverInline("")
-    private static long readJNIVarargsGpArgument(Pointer jniEnterData, int cArgType, int pos, InterpreterAccessStubData accessHelper) {
-        return accessHelper.getGpArgumentAt(cArgType, jniEnterData, pos);
-    }
-
-    @Uninterruptible(reason = SWITCH_TO_UNINTERRUPTIBLE)
-    @NeverInline("")
-    private static long readJNIVarargsFpArgument(Pointer jniEnterData, int cArgType, int pos, InterpreterAccessStubData accessHelper) {
-        return accessHelper.getFpArgumentAt(cArgType, jniEnterData, pos);
     }
 
     @AlwaysInline("Performance")
@@ -544,7 +632,21 @@ public abstract class InterpreterStubSection {
         return VaListNextArgNode.vaListNextDouble(JavaKind.Double, vaList);
     }
 
-    private static long encodeJNIReturn(JavaKind returnKind, Object retVal) {
+    private enum ObjectReturnKind {
+        NONE,
+        HANDLE,
+        OOP
+    }
+
+    private enum ObjectArgumentKind {
+        NONE,
+        JNI_HANDLE,
+        INTERPRETER_HANDLE
+    }
+
+    @AlwaysInline("Performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static long encodeReturnValue(JavaKind returnKind, Object retVal, ObjectReturnKind objectKind) {
         /*
          * A return-type mismatch violates an interpreter invariant. Fail with a fatal VM error from
          * the explicit assertions instead of leaking a ClassCastException from this internal VM
@@ -583,7 +685,23 @@ public abstract class InterpreterStubSection {
                 InterpreterUtil.assertion(retVal instanceof Double, "invalid return type");
                 yield Double.doubleToRawLongBits((double) retVal);
             }
-            case Object -> JNIObjectHandles.createLocal(retVal).rawValue();
+            case Object -> switch (objectKind) {
+                case HANDLE -> JNIObjectHandles.createLocal(retVal).rawValue();
+                case OOP -> {
+                    /*
+                     * A tracked non-null reference cannot be merged with the primitive results at
+                     * the method-end infopoint. Dropping the tracking is safe because no safepoint
+                     * is possible between this conversion and the ABI handoff. However, the
+                     * untracked conversion maps the compiled null representation to zero, so
+                     * return the heap base which represents null in compiled code.
+                     */
+                    if (retVal == null) {
+                        yield KnownIntrinsics.heapBase().rawValue();
+                    }
+                    yield Word.objectToUntrackedPointer(retVal).rawValue();
+                }
+                default -> throw VMError.shouldNotReachHereAtRuntime();
+            };
             case Void -> 0;
             default -> throw VMError.shouldNotReachHereAtRuntime();
         };
@@ -623,7 +741,6 @@ public abstract class InterpreterStubSection {
         VMError.guarantee(handles.getHandleCount() == 0);
         int handleFrameId = handles.pushFrameUninterruptible(InterpreterAccessStubData.MAX_ARGUMENT_HANDLES - 1);
 
-        int gpIdx = 0;
         int handleCount = 0;
         for (int i = 0; i < argumentTypes.length; i++) {
             int cArgType = argumentTypes[i];
@@ -633,28 +750,16 @@ public abstract class InterpreterStubSection {
                  * The GC is not aware of references in enterData, therefore they are replaced with
                  * object handles before allowing safepoints again.
                  */
-                long rawAddr = accessHelper.getGpArgumentAt(cArgType, enterData, gpIdx);
+                long rawAddr = readIncomingGpArgument(accessHelper, cArgType, enterData);
                 Object obj = ((Pointer) Word.pointer(rawAddr)).toObject();
                 if (obj == null) {
-                    accessHelper.setGpArgumentAtIncoming(cArgType, enterData, gpIdx, 0L);
+                    accessHelper.setGpArgumentAtIncoming(cArgType, enterData, 0L);
                 } else {
                     ThreadLocalInterpreterHandle threadLocalInterpreterHandle = handles.tryCreateNonNullUninterruptible(obj);
                     VMError.guarantee(threadLocalInterpreterHandle.isNonNull());
-                    accessHelper.setGpArgumentAtIncoming(cArgType, enterData, gpIdx, threadLocalInterpreterHandle.rawValue());
+                    accessHelper.setGpArgumentAtIncoming(cArgType, enterData, threadLocalInterpreterHandle.rawValue());
                     handleCount++;
                 }
-            }
-
-            switch (argKind) {
-                case Float:
-                case Double:
-                    break;
-                case Void:
-                case Illegal:
-                    throw VMError.shouldNotReachHereAtRuntime();
-                default:
-                    gpIdx++;
-                    break;
             }
         }
 
@@ -665,48 +770,7 @@ public abstract class InterpreterStubSection {
          * a virtual thread to migrate, so enterData must not be accessed after the interpreter
          * returns. Return the raw result directly instead.
          */
-        return switch (compiledSignature.getReturnKind()) {
-            case Boolean:
-                InterpreterUtil.assertion(retVal instanceof Boolean, "invalid return type");
-                yield ((Boolean) retVal) ? 1 : 0;
-            case Byte:
-                InterpreterUtil.assertion(retVal instanceof Byte, "invalid return type");
-                yield ((Byte) retVal).longValue();
-            case Short:
-                InterpreterUtil.assertion(retVal instanceof Short, "invalid return type");
-                yield ((Short) retVal).longValue();
-            case Char:
-                InterpreterUtil.assertion(retVal instanceof Character, "invalid return type");
-                yield ((Character) retVal).charValue();
-            case Int:
-                InterpreterUtil.assertion(retVal instanceof Integer, "invalid return type");
-                yield ((Integer) retVal).longValue();
-            case Long:
-                InterpreterUtil.assertion(retVal instanceof Long, "invalid return type");
-                yield (Long) retVal;
-            case Float:
-                InterpreterUtil.assertion(retVal instanceof Float, "invalid return type");
-                yield Float.floatToRawIntBits((float) retVal);
-            case Double:
-                InterpreterUtil.assertion(retVal instanceof Double, "invalid return type");
-                yield Double.doubleToRawLongBits((double) retVal);
-            case Object:
-                /*
-                 * A tracked non-null reference cannot be merged with the primitive results at the
-                 * method-end infopoint. Dropping the tracking is safe because no safepoint is
-                 * possible between this conversion and the ABI handoff. However, the untracked
-                 * conversion maps the compiled null representation to zero, so return the heap
-                 * base which represents null in compiled code.
-                 */
-                if (retVal == null) {
-                    yield KnownIntrinsics.heapBase().rawValue();
-                }
-                yield Word.objectToUntrackedPointer(retVal).rawValue();
-            case Void:
-                yield 0;
-            default:
-                throw VMError.shouldNotReachHereAtRuntime();
-        };
+        return encodeReturnValue(compiledSignature.getReturnKind(), retVal, ObjectReturnKind.OOP);
     }
 
     @Uninterruptible(reason = "Switch to interruptible code.", mayBeInlined = true, calleeMustBe = false)
@@ -721,52 +785,12 @@ public abstract class InterpreterStubSection {
         int[] argumentTypes = compiledSignature.getArgumentTypes();
         int count = argumentTypes.length;
 
-        int interpSlot = 0;
-        int gpIdx = 0;
-        int fpIdx = 0;
-
         Object[] args = new Object[count + (interpreterMethod.hasReceiver() ? 1 : 0)];
 
         for (int i = 0; i < count; i++) {
-            long arg = 0;
-            assert gpIdx + fpIdx == i;
             int cArgType = argumentTypes[i];
             JavaKind argKind = PreparedSignature.getKind(cArgType);
-            switch (argKind) {
-                case Float:
-                case Double:
-                    arg = accessHelper.getFpArgumentAt(cArgType, enterData, fpIdx);
-                    fpIdx++;
-                    break;
-                case Object:
-                    args[interpSlot] = popReferenceFromEnterData(accessHelper, cArgType, enterData, gpIdx);
-                    gpIdx++;
-                    break;
-                case Void:
-                case Illegal:
-                    throw VMError.shouldNotReachHereAtRuntime();
-                default:
-                    arg = popPrimitiveFromEnterData(accessHelper, cArgType, enterData, gpIdx);
-                    gpIdx++;
-                    break;
-            }
-
-            switch (argKind) {
-                // @formatter:off
-                case Boolean: args[interpSlot] = (arg & 0xff) != 0; break;
-                case Byte:    args[interpSlot] = (byte) arg; break;
-                case Short:   args[interpSlot] = (short) arg; break;
-                case Char:    args[interpSlot] = (char) arg; break;
-                case Int:     args[interpSlot] = (int) arg; break;
-                case Long:    args[interpSlot] = arg; break;
-                case Float:   args[interpSlot] = Float.intBitsToFloat((int) arg); break;
-                case Double:  args[interpSlot] = Double.longBitsToDouble(arg); break;
-                case Object: /* already handled */ break;
-                // @formatter:on
-                default:
-                    throw VMError.shouldNotReachHereAtRuntime();
-            }
-            interpSlot++;
+            args[i] = readIncomingArgument(accessHelper, enterData, cArgType, argKind, ObjectArgumentKind.INTERPRETER_HANDLE);
         }
 
         VMError.guarantee(handles.getHandleCount() == handleCount);
@@ -781,25 +805,6 @@ public abstract class InterpreterStubSection {
         }
 
         return call(interpreterMethod, args, true);
-    }
-
-    @Uninterruptible(reason = "Raw object pointer.")
-    private static Object popReferenceFromEnterData(InterpreterAccessStubData accessHelper, int cArgType, Pointer enterData, int gpIdx) {
-        long arg = accessHelper.getGpArgumentAt(cArgType, enterData, gpIdx);
-
-        /* reference in `enterData` has been replaced with a handle */
-        ThreadLocalInterpreterHandle handle = Word.pointer(arg);
-
-        if (handle.rawValue() == 0L) {
-            return null;
-        } else {
-            return tlsHandles().getObject(handle);
-        }
-    }
-
-    @Uninterruptible(reason = "Wrapping of getter, no raw object pointer involved in this case.")
-    private static long popPrimitiveFromEnterData(InterpreterAccessStubData accessHelper, int cArgType, Pointer enterData, int gpIdx) {
-        return accessHelper.getGpArgumentAt(cArgType, enterData, gpIdx);
     }
 
     /**
@@ -873,12 +878,6 @@ public abstract class InterpreterStubSection {
         return stackSize;
     }
 
-    private enum ObjectReturnKind {
-        NONE,
-        HANDLE,
-        OOP
-    }
-
     @AlwaysInline("Performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Object decodeReturnValue(JavaKind returnKind, long rawReturnValue, ObjectReturnKind objectKind) {
@@ -905,56 +904,44 @@ public abstract class InterpreterStubSection {
     @Uninterruptible(reason = "References are put on the stack which the GC is unaware of.")
     private static Object leaveInterpreter0(CFunctionPointer compiledEntryPoint, Object[] args, PreparedSignature compiledSignature, InterpreterAccessStubData accessHelper, Pointer leaveData) {
         int[] argumentTypes = compiledSignature.getArgumentTypes();
-        int gpIdx = 0;
-        int fpIdx = 0;
 
         if (args != null) {
             int argCount = argumentTypes.length;
             for (int i = 0; i < argCount; i++) {
                 Object arg = args[i];
-                assert gpIdx + fpIdx == i;
                 int cArgType = argumentTypes[i];
                 JavaKind argKind = PreparedSignature.getKind(cArgType);
                 switch (argKind) {
                     case Boolean:
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (boolean) arg ? 1 : 0);
-                        gpIdx++;
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, (boolean) arg ? 1 : 0);
                         break;
                     case Byte:
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (byte) arg);
-                        gpIdx++;
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, (byte) arg);
                         break;
                     case Short:
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (short) arg);
-                        gpIdx++;
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, (short) arg);
                         break;
                     case Char:
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (char) arg);
-                        gpIdx++;
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, (char) arg);
                         break;
                     case Int:
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (int) arg);
-                        gpIdx++;
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, (int) arg);
                         break;
                     case Long:
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, (long) arg);
-                        gpIdx++;
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, (long) arg);
                         break;
                     case Object: {
                         // objectToUntrackedPointer converts `null` to 0L but, the Java ABI expects
                         // it to be the heap-base null representation
                         Pointer val = arg == null ? KnownIntrinsics.heapBase() : Word.objectToUntrackedPointer(arg);
-                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, gpIdx, val.rawValue());
-                        gpIdx++;
+                        accessHelper.setGpArgumentAtOutgoing(cArgType, leaveData, val.rawValue());
                         break;
                     }
                     case Float:
-                        accessHelper.setFpArgumentAt(cArgType, leaveData, fpIdx, Float.floatToRawIntBits((float) arg));
-                        fpIdx++;
+                        accessHelper.setFpArgumentAt(cArgType, leaveData, Float.floatToRawIntBits((float) arg));
                         break;
                     case Double:
-                        accessHelper.setFpArgumentAt(cArgType, leaveData, fpIdx, Double.doubleToRawLongBits((double) arg));
-                        fpIdx++;
+                        accessHelper.setFpArgumentAt(cArgType, leaveData, Double.doubleToRawLongBits((double) arg));
                         break;
 
                     default:
@@ -1047,60 +1034,41 @@ public abstract class InterpreterStubSection {
                     Object receiverOrClass, boolean hasReceiver, JNIEnvironment jniEnvironment) {
         Pointer leaveData = leaveDataOnEntry;
         int[] argumentTypes = jniSignature.getArgumentTypes();
-        int gpPos = 0;
-        accessHelper.setGpArgumentAtOutgoingNative(argumentTypes[0], leaveData, gpPos++, jniEnvironment.rawValue());
-        accessHelper.setGpArgumentAtOutgoingNative(argumentTypes[1], leaveData, gpPos++, JNIMethodSupport.boxObjectInLocalHandle(receiverOrClass).rawValue());
-        int fpPos = 0;
+        accessHelper.setGpArgumentAtOutgoingNative(argumentTypes[0], leaveData, jniEnvironment.rawValue());
+        accessHelper.setGpArgumentAtOutgoingNative(argumentTypes[1], leaveData, JNIMethodSupport.boxObjectInLocalHandle(receiverOrClass).rawValue());
         int argCount = argumentTypes.length;
         int argsIndex = hasReceiver ? 1 : 0;
         for (int i = 2; i < argCount; i++) {
-            if (Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && Platform.includedIn(Platform.AMD64.class)) {
-                /*
-                 * Windows AMD64 native calls consume GP and FP register positions strictly by
-                 * argument index.
-                 */
-                gpPos = i;
-                fpPos = i;
-            }
             Object arg = args[argsIndex++];
             int cArgType = argumentTypes[i];
             JavaKind argKind = PreparedSignature.getKind(cArgType);
             switch (argKind) {
                 case Boolean:
-                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (boolean) arg ? 1 : 0);
-                    gpPos++;
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, (boolean) arg ? 1 : 0);
                     break;
                 case Byte:
-                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (byte) arg);
-                    gpPos++;
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, (byte) arg);
                     break;
                 case Short:
-                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (short) arg);
-                    gpPos++;
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, (short) arg);
                     break;
                 case Char:
-                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (char) arg);
-                    gpPos++;
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, (char) arg);
                     break;
                 case Int:
-                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (int) arg);
-                    gpPos++;
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, (int) arg);
                     break;
                 case Long:
-                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, (long) arg);
-                    gpPos++;
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, (long) arg);
                     break;
                 case Object:
-                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, gpPos, JNIMethodSupport.boxObjectInLocalHandle(arg).rawValue());
-                    gpPos++;
+                    accessHelper.setGpArgumentAtOutgoingNative(cArgType, leaveData, JNIMethodSupport.boxObjectInLocalHandle(arg).rawValue());
                     break;
                 case Float:
-                    accessHelper.setFpArgumentAtNative(cArgType, leaveData, fpPos, Float.floatToRawIntBits((float) arg));
-                    fpPos++;
+                    accessHelper.setFpArgumentAtNative(cArgType, leaveData, Float.floatToRawIntBits((float) arg));
                     break;
                 case Double:
-                    accessHelper.setFpArgumentAtNative(cArgType, leaveData, fpPos, Double.doubleToRawLongBits((double) arg));
-                    fpPos++;
+                    accessHelper.setFpArgumentAtNative(cArgType, leaveData, Double.doubleToRawLongBits((double) arg));
                     break;
 
                 default:
@@ -1221,27 +1189,26 @@ public abstract class InterpreterStubSection {
         JavaKind kind = PreparedSignature.getKind(argumentType);
         Object arg = args[argumentIndex];
         ArgumentAdaptation adaptation = PreparedSignature.getArgumentAdaptation(argumentType);
-        int registerIndex = PreparedSignature.isRegister(argumentType) ? PreparedSignature.getRegister(argumentType) : -1;
         switch (kind) {
             case Boolean -> {
                 VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
-                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (boolean) arg ? 1 : 0);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, (boolean) arg ? 1 : 0);
             }
             case Byte -> {
                 VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
-                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (byte) arg);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, (byte) arg);
             }
             case Short -> {
                 VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
-                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (short) arg);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, (short) arg);
             }
             case Char -> {
                 VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
-                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (char) arg);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, (char) arg);
             }
             case Int -> {
                 VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
-                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, (int) arg);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, (int) arg);
             }
             case Long -> {
                 long value = switch (adaptation) {
@@ -1251,15 +1218,15 @@ public abstract class InterpreterStubSection {
                     case HEAP_ADDRESS -> Word.objectToUntrackedPointer(arg).rawValue() + (long) args[argumentIndex + 1];
                     default -> throw VMError.shouldNotReachHereAtRuntime();
                 };
-                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, registerIndex, value);
+                accessHelper.setGpArgumentAtOutgoingNative(argumentType, leaveData, value);
             }
             case Float -> {
                 VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
-                accessHelper.setFpArgumentAtNative(argumentType, leaveData, registerIndex, Float.floatToRawIntBits((float) arg));
+                accessHelper.setFpArgumentAtNative(argumentType, leaveData, Float.floatToRawIntBits((float) arg));
             }
             case Double -> {
                 VMError.guarantee(adaptation == ArgumentAdaptation.NONE);
-                accessHelper.setFpArgumentAtNative(argumentType, leaveData, registerIndex, Double.doubleToRawLongBits((double) arg));
+                accessHelper.setFpArgumentAtNative(argumentType, leaveData, Double.doubleToRawLongBits((double) arg));
             }
             default -> throw VMError.shouldNotReachHereAtRuntime();
         }
@@ -1402,8 +1369,21 @@ public abstract class InterpreterStubSection {
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 @InternalVMMethod
 final class InterpreterForeignFunctionsSupportImpl implements InterpreterForeignFunctionsSupport {
+    @UnknownPrimitiveField(availability = com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer upcallStubPointer;
+
     @Override
     public Object linkToNative(ForeignDowncallPlan plan, Object[] arguments, int captureMask) {
         return InterpreterStubSection.leaveInterpreterForForeignDowncall(plan, arguments, captureMask);
+    }
+
+    @Override
+    public CFunctionPointer getUpcallStubPointer() {
+        return upcallStubPointer;
+    }
+
+    @Override
+    public void setUpcallStubPointer(CFunctionPointer pointer) {
+        upcallStubPointer = pointer;
     }
 }
