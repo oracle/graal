@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.0.5
+* GR-69853: TruffleStrings: Added explicit little-endian and big-endian methods to `ReadCharUTF16Node`.
+
 ## Version 25.0.4
 * GR-73900: Added `Engine.persistCache(Engine.CancellationCallback)` to persist the auxiliary engine cache into an in-memory `ByteBuffer` with callback-based cancellation support.
 
