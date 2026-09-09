@@ -397,7 +397,8 @@ public class AgnosticInliningPolicy implements InliningPolicy {
     private void inline(CallTree tree) {
         int inlinedBefore = tree.getInlinedCount();
         inline(tree.getRoot());
-        if (tree.getInlinedCount() != inlinedBefore) {
+        beenInlining = tree.getInlinedCount() != inlinedBefore;
+        if (beenInlining) {
             tree.updateRootFrequencies();
             updateSubtreeData(tree.getRoot());
         }
@@ -533,11 +534,7 @@ public class AgnosticInliningPolicy implements InliningPolicy {
 
     @Override
     public void afterAddChildren(CallNode callNode) {
-        for (CallNode child : callNode.getChildren()) {
-            if (child.getState() != CallNode.State.Removed && child.getState() != CallNode.State.BailedOut) {
-                data(callNode).expandQueue.add(child);
-            }
-        }
+        resetExpandQueue(callNode);
     }
 
     @Override
@@ -549,7 +546,12 @@ public class AgnosticInliningPolicy implements InliningPolicy {
     public void afterExpand(CallNode callNode) {
         expandTrivialChildren(callNode);
         tryEnhancement(callNode);
-        updateParentChain(callNode);
+        callNode.updateChildFrequencies();
+        updateSubtreeData(callNode);
+        CallNode parent = callNode.getParent();
+        if (parent != null) {
+            updateParentChain(parent);
+        }
     }
 
     private void tryEnhancement(CallNode node) {
@@ -558,11 +560,6 @@ public class AgnosticInliningPolicy implements InliningPolicy {
             data(node).enhanced = true;
             canonicalizer.applyIncremental(node.getIR(), providers, enhancedNodes);
             enhance(node);
-            for (CallNode child : node.getChildren()) {
-                if (child.getInvoke() == null || !child.getInvoke().isAlive()) {
-                    child.remove();
-                }
-            }
         }
     }
 

@@ -58,6 +58,7 @@ import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil.InlineeReturnAction;
@@ -147,30 +148,25 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         addChildren(context, root, directInvokes);
         root.state = State.Inlined;
         callTree.getPolicy().afterExpand(root);
+        callTree.getPolicy().afterAddChildren(root);
         callTree.frontierSize = root.children.size();
         return root;
     }
 
     private static void addChildren(TruffleTierContext context, CallNode node, EconomicSet<Invoke> directInvokes) {
-        ControlFlowGraph cfg = null;
         for (Invoke invoke : directInvokes) {
             if (!invoke.isAlive()) {
                 continue;
             }
-            if (cfg == null) {
-                cfg = ControlFlowGraph.newBuilder(invoke.asNode().graph()).connectBlocks(true).computeFrequency(true).build();
-            }
             ValueNode nodeArgument = invoke.callTarget().arguments().get(1);
             TruffleCompilable constantTarget = resolveTargetReceiver(context, invoke);
             boolean forced = isInliningForced(context, nodeArgument);
-            double childFrequency = getLocalFrequency(cfg, invoke) * node.rootRelativeFrequency;
-            CallNode callNode = new CallNode(nodeArgument.asJavaConstant(), constantTarget, childFrequency, node.depth + 1, node.getCallTree().nextId(), forced);
+            CallNode callNode = new CallNode(nodeArgument.asJavaConstant(), constantTarget, node.rootRelativeFrequency, node.depth + 1, node.getCallTree().nextId(), forced);
             node.getCallTree().add(callNode);
             node.children.add(callNode);
             callNode.policyData = node.getPolicy().newCallNodeData(callNode);
             callNode.setInvokeOrRemove(invoke);
         }
-        node.getPolicy().afterAddChildren(node);
     }
 
     static TruffleCompilable resolveTargetReceiver(TruffleTierContext context, Invoke invoke) {
@@ -212,6 +208,30 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     static double getLocalFrequency(ControlFlowGraph cfg, Invoke invoke) {
         return restrictFrequency(cfg.blockFor(invoke.asFixedNode()).getRelativeFrequency());
+    }
+
+    /**
+     * Computes the frequencies of the direct children after graph enhancement. Trivial children
+     * may already have been expanded at this point, so their complete subtrees need to be rescaled.
+     */
+    public void updateChildFrequencies() {
+        ControlFlowGraph cfg = null;
+        for (CallNode child : children) {
+            if (child.state == State.Indirect || child.state == State.Removed) {
+                continue;
+            }
+            Invoke childInvoke = child.invoke;
+            if (childInvoke == null || !childInvoke.isAlive()) {
+                child.remove();
+                continue;
+            }
+            assert childInvoke.asNode().graph() == ir : "Invoke is not in the expanded graph: " + childInvoke;
+            if (cfg == null) {
+                cfg = ControlFlowGraph.newBuilder(ir).connectBlocks(true).computeFrequency(true).build();
+            }
+            double newFrequency = getLocalFrequency(cfg, childInvoke) * rootRelativeFrequency;
+            child.adjustSubtreeFrequency(newFrequency / child.rootRelativeFrequency);
+        }
     }
 
     public TruffleCompilable getDirectCallTarget() {
@@ -306,7 +326,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                     continue;
                 }
             }
-            if (usage instanceof FrameState) {
+            if (usage instanceof FrameState || usage instanceof VirtualObjectState) {
                 continue;
             }
             if (usage instanceof LoadIndexedNode) {
@@ -400,6 +420,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         irAfterPE = entry.graphAfterPEForDebugDump;
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
+        getPolicy().afterAddChildren(this);
     }
 
     private void verifyTrivial(GraphManager.Entry entry) {
