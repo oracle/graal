@@ -231,7 +231,7 @@ public final class SubprocessTestUtils {
 
     private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions,
                     List<String> postfixVmOptions, boolean removeOptimizedRuntimeOptions, Duration timeout, Consumer<ProcessHandle> onStart,
-                    List<Object> parameterizedBy) throws IOException, InterruptedException {
+                    Consumer<String> onOutput, List<Object> parameterizedBy) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
         if (parameterizedBy != null) {
@@ -245,7 +245,7 @@ public final class SubprocessTestUtils {
                         configure(getVmArgs(), prefixVMOptions, postfixVmOptions, removeOptimizedRuntimeOptions),
                         null, null,
                         List.of("com.oracle.mxtool.junit.MxJUnitWrapper", String.format("%s#%s", enclosingElement, testName)),
-                        timeout, onStart);
+                        timeout, onStart, onOutput);
         if (failOnNonZeroExitCode && subprocess.exitCode != 0) {
             Assert.fail(String.format("Subprocess produced non-0 exit code %d%n%s", subprocess.exitCode, subprocess.preserveArgFile()));
         }
@@ -529,6 +529,8 @@ public final class SubprocessTestUtils {
         private Duration timeout = DEFAULT_TIMEOUT;
         private Consumer<Subprocess> onExit;
         private Consumer<ProcessHandle> onStart;
+        private Consumer<String> onOutput = (s) -> {
+        };
         private boolean removeOptimizedRuntimeOptions;
         private List<Object> parameterizedBy = List.of();
 
@@ -610,6 +612,24 @@ public final class SubprocessTestUtils {
         }
 
         /**
+         * Registers a callback invoked once for each line read from the subprocess output. Standard
+         * output and standard error are merged into a single stream, so the callback receives lines
+         * from both streams in their observed order.
+         * <p>
+         * Unless the subprocess timeout is disabled with {@link SubprocessTestUtils#NO_TIMEOUT},
+         * the callback is invoked on the subprocess output-reader thread. With no timeout, it is
+         * invoked on the thread calling {@link #run()}. The callback should return promptly and must
+         * provide any synchronization needed when communicating with other threads.
+         *
+         * @param callback the callback invoked for each output line
+         * @return this builder
+         */
+        public Builder onOutput(Consumer<String> callback) {
+            this.onOutput = Objects.requireNonNull(callback, "callback must be non-null");
+            return this;
+        }
+
+        /**
          * Associates the JUnit parameterized test arguments with this subprocess invocation.
          * <p>
          * When running a {@code @RunWith(Parameterized.class)} test, each test instance is
@@ -629,7 +649,7 @@ public final class SubprocessTestUtils {
             if (isSubprocess()) {
                 runnable.run();
             } else {
-                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart, parameterizedBy);
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs, removeOptimizedRuntimeOptions, timeout, onStart, onOutput, parameterizedBy);
                 if (onExit != null) {
                     try {
                         onExit.accept(process);
@@ -803,9 +823,10 @@ public final class SubprocessTestUtils {
      * @param timeout the duration to wait for the process to finish. If null, the calling thread
      *            waits for the process indefinitely.
      * @param onStart a callback invoked immediately after the subprocess has successfully started
+     * @param onOutput a callback invoked when the subprocess emits output to stdout/stderr
      */
     private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs,
-                    Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
+                    Duration timeout, Consumer<ProcessHandle> onStart, Consumer<String> onOutput) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(vmArgs.size());
         for (String vmArg : vmArgs) {
             if (vmArg == PACKAGE_OPENING_OPTIONS) {
@@ -819,7 +840,7 @@ public final class SubprocessTestUtils {
             System.err.println("The subprocess will wait for a debugger to be attached on port 8000");
         }
         command.addAll(mainClassAndArgs);
-        return process(command, env, workingDir, timeout, onStart);
+        return process(command, env, workingDir, timeout, onStart, onOutput);
     }
 
     /**
@@ -834,9 +855,10 @@ public final class SubprocessTestUtils {
      *            the subprocess is terminated forcefully. If the timeout is null, the calling
      *            thread waits for the process indefinitely.
      * @param onStart a callback invoked immediately after the subprocess has successfully started
+     * @param onOutput a callback invoked when the subprocess emits output to stdout/stderr
      */
     private static Subprocess process(List<String> command, Map<String, String> env, File workingDir,
-                    Duration timeout, Consumer<ProcessHandle> onStart) throws IOException, InterruptedException {
+                    Duration timeout, Consumer<ProcessHandle> onStart, Consumer<String> onOutput) throws IOException, InterruptedException {
         Path argfile = makeArgfile(command);
         ProcessBuilder processBuilder = new ProcessBuilder(argfile == null ? command : List.of(command.get(0), "@" + argfile));
         if (workingDir != null) {
@@ -853,26 +875,23 @@ public final class SubprocessTestUtils {
         }
         InputStream processInputStream = process.getInputStream();
         BufferedReader stdout = new BufferedReader(new InputStreamReader(processInputStream));
-        List<String> output = new ArrayList<>();
         if (timeout == NO_TIMEOUT) {
+            List<String> output = new ArrayList<>();
             String line;
             while ((line = stdout.readLine()) != null) {
                 output.add(line);
+                try {
+                    onOutput.accept(line);
+                } catch (Throwable t) {
+                    process.destroyForcibly();
+                    throw t;
+                }
             }
             return new Subprocess(processBuilder.command(), env, process.pid(), process.waitFor(), output, false, argfile);
         } else {
             // The subprocess might produce output forever. We need to grab the output in a
             // separate thread, so we can terminate the process after the timeout if necessary.
-            Thread outputReader = new Thread(() -> {
-                try {
-                    String line;
-                    while ((line = stdout.readLine()) != null) {
-                        output.add(line);
-                    }
-                } catch (IOException e) {
-                    // happens when the process ends
-                }
-            });
+            OutputReaderThread outputReader = new OutputReaderThread(process, stdout, onOutput);
             outputReader.setDaemon(true);
             outputReader.start();
             boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
@@ -894,7 +913,16 @@ public final class SubprocessTestUtils {
             if (outputReader.isAlive()) {
                 throw new AssertionError("Failed to stop subprocess output reader");
             }
-            return new Subprocess(processBuilder.command(), env, process.pid(), process.exitValue(), output, !finishedOnTime, argfile);
+            if (outputReader.exception != null) {
+                if (outputReader.exception instanceof Error error) {
+                    throw error;
+                } else if (outputReader.exception instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                } else {
+                    throw new AssertionError("Unexpected checked exception", outputReader.exception);
+                }
+            }
+            return new Subprocess(processBuilder.command(), env, process.pid(), process.exitValue(), outputReader.output, !finishedOnTime, argfile);
         }
     }
 
@@ -1313,6 +1341,41 @@ public final class SubprocessTestUtils {
                 return !toRemove.contains(key);
             }
             return true;
+        }
+    }
+
+    private static final class OutputReaderThread extends Thread {
+
+        private final Process process;
+        private final BufferedReader stdout;
+        private final Consumer<String> onOutput;
+        final List<String> output;
+        Throwable exception;
+
+        OutputReaderThread(Process process, BufferedReader stdout, Consumer<String> onOutput) {
+            this.process = process;
+            this.stdout = stdout;
+            this.onOutput = onOutput;
+            this.output = new ArrayList<>();
+        }
+
+        @Override
+        public void run() {
+            try {
+                String line;
+                while ((line = stdout.readLine()) != null) {
+                    output.add(line);
+                    try {
+                        onOutput.accept(line);
+                    } catch (Throwable t) {
+                        process.destroyForcibly();
+                        exception = t;
+                        return;
+                    }
+                }
+            } catch (IOException e) {
+                // happens when the process ends
+            }
         }
     }
 }
