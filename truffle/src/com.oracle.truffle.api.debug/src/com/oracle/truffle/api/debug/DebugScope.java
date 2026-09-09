@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -211,63 +211,6 @@ public final class DebugScope {
         } catch (Throwable ex) {
             throw DebugException.create(session, ex, language);
         }
-    }
-
-    /**
-     * Get arguments of this scope. If this scope is a {@link #isFunctionScope() function} scope,
-     * function arguments are returned.
-     * <p>
-     * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
-     * another thread than it was created with.
-     *
-     * @return an iterable of arguments, or <code>null</code> when this scope does not have a
-     *         concept of arguments.
-     * @throws DebugException when guest language code throws an exception
-     * @since 0.26
-     * @deprecated since 20.3 Use {@link #getDeclaredValues()} on the {@link SourceElement#ROOT}.
-     */
-    @Deprecated(since = "20.3")
-    public Iterable<DebugValue> getArguments() throws DebugException {
-        verifyValidState();
-        if (node == null) {
-            return null;
-        }
-        try {
-            Node argNode = node;
-            while (argNode != null && (!(argNode instanceof InstrumentableNode) || !((InstrumentableNode) argNode).hasTag(StandardTags.RootTag.class))) {
-                argNode = argNode.getParent();
-            }
-            if (argNode == null || !NODE.hasScope(argNode, frame)) {
-                return null;
-            }
-            Object argumentsObj;
-            try {
-                argumentsObj = NODE.getScope(argNode, frame, true);
-                if (INTEROP.hasScopeParent(argumentsObj)) {
-                    argumentsObj = new SubtractedVariables(argumentsObj, INTEROP.getScopeParent(argumentsObj));
-                }
-            } catch (UnsupportedMessageException e) {
-                return null;
-            }
-            if (argumentsObj != null) {
-                String receiverName = null;
-                if (NODE.hasReceiverMember(argNode, frame)) {
-                    receiverName = INTEROP.asString(NODE.getReceiverMember(argNode, frame));
-                }
-                ValuePropertiesCollection properties = DebugValue.getProperties(argumentsObj, receiverName, session, getLanguage(), this);
-                if (properties != null) {
-                    return properties;
-                }
-                if (ValueInteropList.INTEROP.hasArrayElements(argumentsObj)) {
-                    return new ValueInteropList(session, getLanguage(), argumentsObj);
-                }
-            }
-        } catch (ThreadDeath td) {
-            throw td;
-        } catch (Throwable ex) {
-            throw DebugException.create(session, ex, language);
-        }
-        return null;
     }
 
     /**

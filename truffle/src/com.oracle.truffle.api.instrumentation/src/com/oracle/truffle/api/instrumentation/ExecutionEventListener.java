@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,26 +62,6 @@ public interface ExecutionEventListener {
      * @since 0.12
      */
     void onEnter(EventContext context, VirtualFrame frame);
-
-    /**
-     * Invoked immediately after each return value event of child nodes that match the
-     * {@link Instrumenter#attachExecutionEventListener(SourceSectionFilter, SourceSectionFilter, ExecutionEventListener)
-     * input filter}. Event listeners cannot save input values for later events. If that is required
-     * attach an event node factory instead.
-     *
-     * @param context indicating the current location in the guest language AST
-     * @param frame the current frame in use
-     * @param inputContext the event context of the input child node
-     * @param inputIndex the child index of the input
-     * @param inputValue the return value of the input child
-     * @since 0.30
-     * @deprecated in 20.0. input value notifications are not functional for
-     *             {@link ExecutionEventListener listeners}. Use {@link ExecutionEventNodeFactory
-     *             event node factories} instead.
-     */
-    @Deprecated(since = "20.0")
-    default void onInputValue(EventContext context, VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
-    }
 
     /**
      * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} is

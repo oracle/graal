@@ -59,7 +59,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -84,7 +83,6 @@ public class HostAdapterTest extends AbstractPolyglotTest {
     public enum Using {
         HostSymbol,
         HostClass,
-        Deprecated,
     }
 
     @Parameter(0) public Using using;
@@ -148,20 +146,12 @@ public class HostAdapterTest extends AbstractPolyglotTest {
         return hostAdapterClass;
     }
 
-    @SuppressWarnings("deprecation")
     Object createHostAdapterClass(TruffleLanguage.Env env, Class<?>[] classes) {
-        if (using == Using.Deprecated) {
-            return verifyHostAdapterClass(env, env.createHostAdapterClass(classes));
-        }
         Object[] hostTypes = Arrays.stream(classes).map(c -> asHostType(env, c)).toArray();
         return verifyHostAdapterClass(env, env.createHostAdapter(hostTypes));
     }
 
-    @SuppressWarnings("deprecation")
     Object createHostAdapterClassWithClassOverrides(TruffleLanguage.Env env, Class<?>[] classes, Object classOverrides) {
-        if (using == Using.Deprecated) {
-            return verifyHostAdapterClass(env, env.createHostAdapterClassWithStaticOverrides(classes, classOverrides));
-        }
         Object[] hostTypes = Arrays.stream(classes).map(c -> asHostType(env, c)).toArray();
         return verifyHostAdapterClass(env, env.createHostAdapterWithClassOverrides(hostTypes, classOverrides));
     }
@@ -312,7 +302,6 @@ public class HostAdapterTest extends AbstractPolyglotTest {
 
     @Test
     public void testCreateHostAdapterIllegalArgumentType() {
-        Assume.assumeFalse(using == Using.Deprecated);
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.EXPLICIT))) {
             final String expectedMessage = "Types must be host symbols or host classes";
             TruffleLanguage.Env env = c.env;

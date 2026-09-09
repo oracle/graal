@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,6 +87,16 @@ public abstract class DOTestAsserts {
         return superclasses.flatMap(superclass -> Arrays.stream(superclass.getDeclaredMethods()));
     }
 
+    public static Property newProperty(Object key, Location location, int flags) {
+        try {
+            var constructor = Property.class.getDeclaredConstructor(Object.class, Location.class, int.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(key, location, flags);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     public static void assertLocationFields(Location location, int prims, int objects) {
         int primitiveFieldCount = invokeGetter("primitiveFieldCount", location);
         int objectFieldCount = invokeGetter("objectFieldCount", location);
@@ -167,7 +177,7 @@ public abstract class DOTestAsserts {
     public static Map<Object, Object> archive(DynamicObject object) {
         Map<Object, Object> archive = new HashMap<>();
         for (Property property : object.getShape().getPropertyList()) {
-            archive.put(property.getKey(), property.get(object, false));
+            archive.put(property.getKey(), property.getLocation().get(object, false));
         }
         return archive;
     }
@@ -177,7 +187,7 @@ public abstract class DOTestAsserts {
         for (Property property : object.getShape().getPropertyList()) {
             Object key = property.getKey();
             Object before = archive.get(key);
-            Object after = property.get(object, false);
+            Object after = property.getLocation().get(object, false);
             assertEquals("before != after for key: " + key, after, before);
         }
         return true;

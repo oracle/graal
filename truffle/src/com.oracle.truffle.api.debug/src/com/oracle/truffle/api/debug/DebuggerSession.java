@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -876,23 +876,6 @@ public final class DebuggerSession implements Closeable {
     }
 
     /**
-     * Set whether breakpoints are active in this session. This has no effect on breakpoints
-     * enabled/disabled state. Breakpoints need to be active to actually break the execution. The
-     * breakpoints are active by default.
-     *
-     * @param active <code>true</code> to make all breakpoints active, <code>false</code> to make
-     *            all breakpoints inactive.
-     * @since 0.24
-     * @deprecated Use {@link #setBreakpointsActive(Breakpoint.Kind, boolean)} instead.
-     */
-    @Deprecated(since = "19.0")
-    public void setBreakpointsActive(boolean active) {
-        for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
-            setBreakpointsActive(kind, active);
-        }
-    }
-
-    /**
      * Set whether breakpoints of the given kind are active in this session. This has no effect on
      * breakpoints enabled/disabled state. Breakpoints need to be active to actually break the
      * execution. The breakpoints are active by default.
@@ -917,23 +900,6 @@ public final class DebuggerSession implements Closeable {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Unhandled breakpoint kind: " + breakpointKind);
         }
-    }
-
-    /**
-     * Test whether breakpoints are active in this session. Breakpoints do not break execution when
-     * not active.
-     *
-     * @since 0.24
-     * @deprecated Use {@link #isBreakpointsActive(Breakpoint.Kind)} instead.
-     */
-    @Deprecated(since = "19.0")
-    public boolean isBreakpointsActive() {
-        for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
-            if (isBreakpointsActive(kind)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  * <pre>
  * class LoopNode extends Node {
  *
- *     final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
+ *     final LoopConditionProfile loopProfile = LoopConditionProfile.create();
  *
  *     void execute() {
  *         // loop count cannot be predicted
@@ -75,7 +75,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  * <pre>
  * class CountedLoopNode extends Node {
  *
- *     final LoopConditionProfile loopProfile = LoopConditionProfile.createCountingProfile();
+ *     final LoopConditionProfile loopProfile = LoopConditionProfile.create();
  *
  *     void execute(int length) {
  *         // loop count can be predicted
@@ -247,21 +247,6 @@ public final class LoopConditionProfile extends ConditionProfile {
     }
 
     /**
-     * @since 0.10
-     * @deprecated use {@link #create()} instead.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @NeverDefault
-    public static LoopConditionProfile createCountingProfile() {
-        if (isProfilingEnabled()) {
-            return new LoopConditionProfile();
-        } else {
-            return DISABLED;
-        }
-    }
-
-    /**
      * Returns a {@link LoopConditionProfile} that speculates on loop conditions to be never
      * <code>true</code>. It also captures loop probabilities for the compiler. Loop condition
      * profiles are intended to be used for loop conditions.
@@ -270,7 +255,11 @@ public final class LoopConditionProfile extends ConditionProfile {
      */
     @NeverDefault
     public static LoopConditionProfile create() {
-        return createCountingProfile();
+        if (isProfilingEnabled()) {
+            return new LoopConditionProfile();
+        } else {
+            return DISABLED;
+        }
     }
 
     /**

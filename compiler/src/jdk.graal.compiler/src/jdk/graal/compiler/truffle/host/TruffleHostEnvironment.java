@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -186,7 +186,8 @@ public abstract class TruffleHostEnvironment {
         boolean isBytecodeInterpreterSwitch = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitch));
         boolean isBytecodeInterpreterHandler = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterHandler));
         boolean isBytecodeInterpreterHandlerConfig = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterHandlerConfig));
-        boolean isBytecodeInterpreterSwitchBoundary = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitchBoundary));
+        boolean isBytecodeInterpreterSwitchBoundary = hostTypes.BytecodeInterpreterSwitchBoundary != null &&
+                        declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.BytecodeInterpreterSwitchBoundary));
         boolean isInliningCutoff = declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningCutoff));
         boolean isInliningRoot = hostTypes.InliningRoot != null && declaredAnnotationValues.containsKey(unwrapType.apply(hostTypes.InliningRoot));
         return new HostMethodInfo(isTruffleBoundary, isBytecodeInterpreterSwitch, isBytecodeInterpreterHandler, isBytecodeInterpreterHandlerConfig, isBytecodeInterpreterSwitchBoundary,

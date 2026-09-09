@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ public abstract class InteropException extends Exception {
     }
 
     InteropException(String message) {
-        super(message);
+        super(message, null);
     }
 
     /**
@@ -67,26 +67,11 @@ public abstract class InteropException extends Exception {
      *
      * @since 20.2
      */
+    @SuppressWarnings("sync-override")
     @Override
     @TruffleBoundary
-    // GR-23961 - after language adoption we should make this non-synchronized as initCause is not
-    // longer used
-    public final synchronized Throwable getCause() {
+    public final Throwable getCause() {
         return super.getCause();
-    }
-
-    /**
-     * Initializes the casue for an interop exception. Will no longer be supported as of 20.3. Pass
-     * in the cause using the interop constructors instead.
-     *
-     * @deprecated Do no longer use the cause will be initialized finally.
-     * @since 20.2
-     */
-    @Override
-    @Deprecated(since = "20.2")
-    @TruffleBoundary
-    public final synchronized Throwable initCause(Throwable cause) {
-        return super.initCause(cause);
     }
 
     /**

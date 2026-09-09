@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.util.Objects;
  *
  * @since 0.8 or earlier
  */
-@SuppressWarnings("deprecation")
 public final class Property {
 
     private final Object key;
@@ -69,20 +68,6 @@ public final class Property {
     }
 
     /**
-     * Create a new property.
-     *
-     * @param key the key of the property
-     * @param location location of the property
-     * @param flags for language-specific use
-     * @return new instance of the property
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "22.2")
-    public static Property create(Object key, Location location, int flags) {
-        return new Property(key, location, flags);
-    }
-
-    /**
      * Get property identifier.
      *
      * @since 0.8 or earlier
@@ -98,35 +83,6 @@ public final class Property {
      */
     public int getFlags() {
         return flags;
-    }
-
-    /**
-     * Gets the value of this property of the object.
-     *
-     * @param store the store that this property resides in
-     * @param shape the current shape of the object, which must contain this location
-     * @see DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)}.
-     */
-    @Deprecated(since = "22.2")
-    public Object get(DynamicObject store, Shape shape) {
-        return getLocation().get(store, shape);
-    }
-
-    /**
-     * Gets the value of this property of the object.
-     *
-     * @param store the store that this property resides in
-     * @param condition the result of a shape check or {@code false}
-     * @see DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)
-     * @see #get(DynamicObject, Shape)
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)}.
-     */
-    @Deprecated(since = "22.2")
-    public Object get(DynamicObject store, boolean condition) {
-        return getLocation().get(store, condition);
     }
 
     /**

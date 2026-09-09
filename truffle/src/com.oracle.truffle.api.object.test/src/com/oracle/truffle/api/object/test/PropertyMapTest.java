@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api.object.test;
 
 import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeGetter;
 import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeMethod;
+import static com.oracle.truffle.api.object.test.DOTestAsserts.newProperty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
@@ -77,7 +78,7 @@ public class PropertyMapTest {
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation(id), 0);
+            Property value = newProperty(key, newLocation(id), 0);
             map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
             assertEqualsOrdered(referenceMap, map);
@@ -88,7 +89,7 @@ public class PropertyMapTest {
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation(id), 0);
+            Property value = newProperty(key, newLocation(id), 0);
             map = copyAndPut(map, key, value);
             assertSame(initial, map);
         }
@@ -98,7 +99,7 @@ public class PropertyMapTest {
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation((double) id), 0);
+            Property value = newProperty(key, newLocation((double) id), 0);
             map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
         }
@@ -106,7 +107,7 @@ public class PropertyMapTest {
         for (int i = size - 1; i >= 0; i--) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation((double) id), 0);
+            Property value = newProperty(key, newLocation((double) id), 0);
             map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
         }
@@ -116,7 +117,7 @@ public class PropertyMapTest {
         for (int i = 0; i < size; i++) {
             int id = shuffledSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, newLocation((long) id), 0);
+            Property value = newProperty(key, newLocation((long) id), 0);
             map = copyAndPut(map, key, value);
             referenceMap.put(key, value);
         }

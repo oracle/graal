@@ -3,6 +3,13 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 25.4
+* GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.
+* GR-77721: Removed Truffle Strings methods deprecated in 23.0 or earlier.
+* GR-77721: Removed `InteropException.initCause(Throwable)`, deprecated since 20.2.
+* GR-77721: Removed debugger APIs deprecated in 21.2 or earlier.
+* GR-77721: Removed instrumentation APIs deprecated in 23.0 or earlier.
+* GR-77721: Removed core Truffle APIs deprecated in 23.0 or earlier.
+* GR-77721: Removed profile factory methods deprecated in 23.0.
 * GR-79122: Added host interoperability for `java.time.OffsetDateTime` and `java.time.OffsetTime`.
 * GR-79418: Guest-language inlining now uses Graal IR call-site frequencies instead of runtime direct-call counters. Language implementations should ensure that injected branch probabilities are accurate because inaccurate probabilities are likely to cause peak-performance regressions.
 * GR-61178: Bytecode DSL: Added support for `StackValue`s, handles to temporary stack operands. Languages can use `BindStackValue` to obtain a `StackValue` and then access the current operand value with `LoadStackValue` and `StoreStackValue`. Stack values are useful for supporting common subexpressions/temporary values without using locals.

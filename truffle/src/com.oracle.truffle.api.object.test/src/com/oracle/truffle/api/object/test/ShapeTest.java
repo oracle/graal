@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,11 @@
  */
 package com.oracle.truffle.api.object.test;
 
-import static com.oracle.truffle.api.object.test.DOTestAsserts.invokeMethod;
-import static com.oracle.truffle.api.object.test.DOTestAsserts.locationForValue;
-
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -79,36 +75,47 @@ public class ShapeTest {
     public void testToString() {
         Shape rootShape = makeRootShape();
         DOTestAsserts.assertShape(new String[]{}, rootShape);
+        DynamicObject.PutNode putNode = DynamicObject.PutNode.getUncached();
 
-        Shape aInt = rootShape.defineProperty("a", 1, 0);
+        DynamicObject object = new TestDynamicObjectDefault(rootShape);
+        putNode.execute(object, "a", 1);
+        Shape aInt = object.getShape();
         DOTestAsserts.assertShape(new String[]{"\"a\":int@0"}, aInt);
 
-        Shape aObj = aInt.defineProperty("a", new Object(), 0);
+        putNode.execute(object, "a", new Object());
+        Shape aObj = object.getShape();
         DOTestAsserts.assertShape(new String[]{"\"a\":Object@0"}, aObj);
 
-        Shape aObjBInt = aObj.defineProperty("b", 2, 0);
+        putNode.execute(object, "b", 2);
+        Shape aObjBInt = object.getShape();
         DOTestAsserts.assertShape(new String[]{
                         "\"b\":int@0",
                         "\"a\":Object@0"}, aObjBInt);
 
-        Shape aIntBObj = aInt.defineProperty("b", new Object(), 0);
+        object = new TestDynamicObjectDefault(rootShape);
+        putNode.execute(object, "a", 1);
+        putNode.execute(object, "b", new Object());
+        Shape aIntBObj = object.getShape();
         DOTestAsserts.assertShape(new String[]{
                         "\"b\":Object@1",
                         "\"a\":Object@0"}, aIntBObj);
 
-        Location boolLocation = locationForValue(rootShape, true);
-        Shape bool = DOTestAsserts.invokeMethod("addProperty", rootShape, Property.create("bool", boolLocation, 0));
-        DOTestAsserts.assertShape(new String[]{"\"bool\":Object@0"}, bool);
+        object = new TestDynamicObjectDefault(rootShape);
+        putNode.execute(object, "bool", true);
+        DOTestAsserts.assertShape(new String[]{"\"bool\":Object@0"}, object.getShape());
 
-        Location strLocation = locationForValue(rootShape, "");
-        Shape str = invokeMethod("addProperty", rootShape, Property.create("str", strLocation, 0));
-        DOTestAsserts.assertShape(new String[]{"\"str\":Object@0"}, str);
+        object = new TestDynamicObjectDefault(rootShape);
+        putNode.execute(object, "str", "");
+        DOTestAsserts.assertShape(new String[]{"\"str\":Object@0"}, object.getShape());
 
-        Shape shapeWithManyFields = aIntBObj.//
-                        defineProperty("c", true, 0).//
-                        defineProperty("d", 3.14, 0).//
-                        defineProperty("e", 1L << 44, 0).//
-                        defineProperty("f", 9001, 0);
+        object = new TestDynamicObjectDefault(rootShape);
+        putNode.execute(object, "a", 1);
+        putNode.execute(object, "b", new Object());
+        putNode.execute(object, "c", true);
+        putNode.execute(object, "d", 3.14);
+        putNode.execute(object, "e", 1L << 44);
+        putNode.execute(object, "f", 9001);
+        Shape shapeWithManyFields = object.getShape();
         DOTestAsserts.assertShape(new String[]{
                         "\"f\":int@2",
                         "\"e\":long@1",
@@ -117,13 +124,14 @@ public class ShapeTest {
                         "\"b\":Object@1",
                         "\"a\":Object@0"}, shapeWithManyFields);
 
-        Shape shapeWithExtArray = makeRootShape().//
-                        defineProperty("a", 1, 0).//
-                        defineProperty("b", new Object(), 0).//
-                        defineProperty("c", true, 0).//
-                        defineProperty("d", 3.14, 0).//
-                        defineProperty("e", 1L << 33, 0).//
-                        defineProperty("f", 1L << 44, 0);
+        object = new TestDynamicObjectDefault(makeRootShape());
+        putNode.execute(object, "a", 1);
+        putNode.execute(object, "b", new Object());
+        putNode.execute(object, "c", true);
+        putNode.execute(object, "d", 3.14);
+        putNode.execute(object, "e", 1L << 33);
+        putNode.execute(object, "f", 1L << 44);
+        Shape shapeWithExtArray = object.getShape();
         DOTestAsserts.assertShape(new String[]{
                         "\"f\":long[0]",
                         "\"e\":long@2",

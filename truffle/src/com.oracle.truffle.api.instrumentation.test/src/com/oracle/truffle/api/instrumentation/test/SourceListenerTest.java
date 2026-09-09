@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,7 +86,6 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -409,69 +408,6 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
                     throw new TestLoadSourceExceptionClass();
                 }
             }, true);
-        }
-
-        @Override
-        protected void onDispose(Env env) {
-        }
-    }
-
-    @Test
-    public void testAllowOnlySourceQueries() throws IOException {
-        Instrument instrument = engine.getInstruments().get("testAllowOnlySourceQueries");
-        assureEnabled(instrument);
-        Source source = lines("");
-        run(source);
-
-        TestAllowOnlySourceQueries impl = instrument.lookup(TestAllowOnlySourceQueries.class);
-        Assert.assertTrue(impl.success);
-    }
-
-    @Registration(id = "testAllowOnlySourceQueries", services = {Object.class, TestAllowOnlySourceQueries.class})
-    @SuppressWarnings("deprecation")
-    public static class TestAllowOnlySourceQueries extends TruffleInstrument {
-
-        boolean success;
-
-        @Override
-        protected void onCreate(Env env) {
-            LoadSourceListener dummySourceListener = new LoadSourceListener() {
-                public void onLoad(LoadSourceEvent source) {
-                }
-            };
-            env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().sourceIs(linesImpl("")).build(), dummySourceListener, true);
-            env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().sourceIs(linesImpl("")).build(), dummySourceListener, true);
-            env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().sourceIs((s) -> true).build(), dummySourceListener, true);
-            env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().languageIs(InstrumentationTestLanguage.ID).build(), dummySourceListener, true);
-            env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().includeInternal(false).build(), dummySourceListener, true);
-
-            try {
-                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().indexIn(IndexRange.between(0, 1)).build(), dummySourceListener, true);
-                throw new AssertionError();
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().indexNotIn(IndexRange.between(1, 2)).build(), dummySourceListener, true);
-            } catch (IllegalArgumentException e) {
-            }
-            SourceSection unavailable = com.oracle.truffle.api.source.Source.newBuilder("", "", "a").build().createUnavailableSection();
-            try {
-                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().sourceSectionEquals(unavailable).build(), dummySourceListener, true);
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().rootSourceSectionEquals(unavailable).build(), dummySourceListener,
-                                true);
-            } catch (IllegalArgumentException e) {
-            }
-            try {
-                env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.newBuilder().lineIs(1).build(), dummySourceListener, true);
-            } catch (IllegalArgumentException e) {
-            }
-
-            success = true;
-
-            env.registerService(this);
         }
 
         @Override

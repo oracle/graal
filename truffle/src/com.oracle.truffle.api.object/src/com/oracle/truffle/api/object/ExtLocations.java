@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -464,17 +464,7 @@ abstract class ExtLocations {
         }
     }
 
-    /**
-     * Non-sealed because there used to be BooleanFieldLocation and Graal.js still uses
-     * {@link com.oracle.truffle.api.object.BooleanLocation}. If sealed it would cause a javac
-     * error:
-     *
-     * <pre>
-     * .../PropertySetNode.java:577: error: incompatible types: Location cannot be converted to BooleanLocation
-     *             this.location = (com.oracle.truffle.api.object.BooleanLocation) property.getLocation();
-     * </pre>
-     */
-    abstract static non-sealed class AbstractPrimitiveLocation extends InstanceLocation {
+    abstract static sealed class AbstractPrimitiveLocation extends InstanceLocation {
 
         AbstractPrimitiveLocation(int index, AbstractAssumption finalAssumption) {
             super(index, null, finalAssumption);
@@ -596,12 +586,6 @@ abstract class ExtLocations {
             } else {
                 locationVisitor.visitPrimitiveField(getIndex(), 1);
             }
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public int getInt(DynamicObject store, Shape shape) {
-            return getInt(store, store.getShape() == shape);
         }
 
         @SuppressWarnings("deprecation")
@@ -751,18 +735,12 @@ abstract class ExtLocations {
 
         @SuppressWarnings("deprecation")
         @Override
-        public double getDouble(DynamicObject store, Shape shape) {
-            return getDouble(store, checkShape(store, shape));
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
         public void setDouble(DynamicObject store, double value, Shape shape) {
             setDouble(store, value, store.getShape() == shape, false);
         }
     }
 
-    static final class LongLocation extends AbstractPrimitiveLocation implements com.oracle.truffle.api.object.LongLocation {
+    static final class LongLocation extends AbstractPrimitiveLocation {
         private final boolean allowInt;
 
         LongLocation(int index, boolean allowInt, AbstractAssumption finalAssumption) {
@@ -789,7 +767,7 @@ abstract class ExtLocations {
         }
 
         @Override
-        public long getLong(DynamicObject store, boolean guard) {
+        protected long getLong(DynamicObject store, boolean guard) {
             if (field == null) {
                 return getLongArray(store, guard);
             } else {
@@ -810,7 +788,7 @@ abstract class ExtLocations {
         }
 
         @Override
-        public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
+        void setLong(DynamicObject store, long value, boolean guard, boolean init) {
             if (!init) {
                 maybeInvalidateFinalAssumption();
             }
@@ -900,17 +878,6 @@ abstract class ExtLocations {
             return allowInt;
         }
 
-        @SuppressWarnings("deprecation")
-        @Override
-        public long getLong(DynamicObject store, Shape shape) {
-            return getLong(store, store.getShape() == shape);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public void setLong(DynamicObject store, long value, Shape shape) {
-            setLong(store, value, store.getShape() == shape, false);
-        }
     }
 
     /**

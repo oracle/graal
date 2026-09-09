@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -156,33 +156,6 @@ public class ConditionProfile extends Profile {
     }
 
     /**
-     * @since 0.10
-     * @deprecated use {@link CountingConditionProfile} instead
-     */
-    @Deprecated
-    public static ConditionProfile createCountingProfile() {
-        if (isProfilingEnabled()) {
-            return Counting.createLazyLoadClass();
-        } else {
-            return Disabled.INSTANCE;
-        }
-    }
-
-    /**
-     * @since 0.10
-     * @deprecated use {@link ConditionProfile#create()} instead.
-     */
-    @Deprecated
-    @NeverDefault
-    public static ConditionProfile createBinaryProfile() {
-        if (isProfilingEnabled()) {
-            return new ConditionProfile();
-        } else {
-            return DISABLED;
-        }
-    }
-
-    /**
      * Returns a {@link ConditionProfile} that speculates on conditions to be never
      * <code>true</code> or to be never <code>false</code>. Condition profiles are intended to be
      * used as part of if conditions.
@@ -191,7 +164,11 @@ public class ConditionProfile extends Profile {
      */
     @NeverDefault
     public static ConditionProfile create() {
-        return createBinaryProfile();
+        if (isProfilingEnabled()) {
+            return new ConditionProfile();
+        } else {
+            return DISABLED;
+        }
     }
 
     /**
@@ -211,126 +188,6 @@ public class ConditionProfile extends Profile {
      */
     public static InlinedConditionProfile inline(InlineTarget target) {
         return InlinedConditionProfile.inline(target);
-    }
-
-    static final class Disabled extends ConditionProfile {
-
-        static final ConditionProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public boolean profile(boolean value) {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled();
-        }
-
-    }
-
-    /*
-     * Code to be removed with deprecated API. New code lives in CountingConditionProfile.
-     */
-    static final class Counting extends ConditionProfile {
-
-        @CompilationFinal private int trueCount;
-        @CompilationFinal private int falseCount;
-
-        /**
-         * A constant holding the maximum value an {@code int} can have, 2<sup>30</sup>-1. The sum
-         * of the true and false count must not overflow. This constant is used to check whether one
-         * of the counts does not exceed the required maximum value.
-         */
-        public static final int MAX_VALUE = 0x3fffffff;
-
-        Counting() {
-        }
-
-        @Override
-        public boolean profile(boolean value) {
-            // locals required to guarantee no overflow in multi-threaded environments
-            int t = trueCount;
-            int f = falseCount;
-            boolean val = value;
-            if (val) {
-                if (t == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                if (f == 0) {
-                    // Make this branch fold during PE
-                    val = true;
-                }
-                if (CompilerDirectives.inInterpreter()) {
-                    if (t < MAX_VALUE) {
-                        trueCount = t + 1;
-                    }
-                }
-            } else {
-                if (f == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                if (t == 0) {
-                    // Make this branch fold during PE
-                    val = false;
-                }
-                if (CompilerDirectives.inInterpreter()) {
-                    if (f < MAX_VALUE) {
-                        falseCount = f + 1;
-                    }
-                }
-            }
-            if (CompilerDirectives.inInterpreter()) {
-                // no branch probability calculation in the interpreter
-                return val;
-            } else {
-                int sum = t + f;
-                return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
-            }
-        }
-
-        @Override
-        public void disable() {
-            if (this.trueCount == 0) {
-                this.trueCount = 1;
-            }
-            if (this.falseCount == 0) {
-                this.falseCount = 1;
-            }
-        }
-
-        @Override
-        public void reset() {
-            this.trueCount = 0;
-            this.falseCount = 0;
-        }
-
-        int getTrueCount() {
-            return trueCount;
-        }
-
-        int getFalseCount() {
-            return falseCount;
-        }
-
-        @Override
-        public String toString() {
-            int t = trueCount;
-            int f = falseCount;
-            int sum = t + f;
-            String details = String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", (double) t / (double) sum, t, f);
-            return toString(ConditionProfile.class, sum == 0, false, details);
-        }
-
-        /* Needed for lazy class loading. */
-        static ConditionProfile createLazyLoadClass() {
-            return new Counting();
-        }
     }
 
 }

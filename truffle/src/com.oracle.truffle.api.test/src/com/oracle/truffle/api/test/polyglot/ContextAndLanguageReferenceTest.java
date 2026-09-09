@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -160,21 +160,12 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
 
     }
 
-    @SuppressWarnings("deprecation")
     @Registration(id = LANGUAGE1, name = LANGUAGE1)
     public static class Language1 extends TruffleLanguage<Env> {
 
         @Override
         protected Env createContext(Env env) {
             return env;
-        }
-
-        public static <T extends TruffleLanguage<C>, C> C getContext(Class<T> language) {
-            return getCurrentContext(language);
-        }
-
-        public static <T extends TruffleLanguage<?>> T getLanguage(Class<T> language) {
-            return getCurrentLanguage(language);
         }
 
     }

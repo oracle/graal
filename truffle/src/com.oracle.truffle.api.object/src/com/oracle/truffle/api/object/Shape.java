@@ -259,12 +259,14 @@ public final class Shape {
      * @see Shape#newBuilder()
      * @since 20.2.0
      */
-    @SuppressWarnings({"hiding", "deprecation"})
+    @SuppressWarnings("hiding")
     public static final class Builder extends AbstractBuilder<Builder> {
+
+        private static final Object DEFAULT_DYNAMIC_TYPE = new Object();
 
         private Class<? extends DynamicObject> layoutClass = DynamicObject.class;
         private MethodHandles.Lookup layoutLookup = DynamicObject.internalLookup();
-        private Object dynamicType = ObjectType.DEFAULT;
+        private Object dynamicType = DEFAULT_DYNAMIC_TYPE;
         private int shapeFlags;
         private boolean allowImplicitCastIntToDouble;
         private boolean allowImplicitCastIntToLong;
@@ -714,20 +716,6 @@ public final class Shape {
     @TruffleBoundary
     protected Shape addProperty(Property property) {
         return ObsolescenceStrategy.addProperty(this, property, true);
-    }
-
-    /**
-     * Add or change property in the map, yielding a new or cached Shape object.
-     *
-     * @return the shape after defining the property
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
-     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)}.
-     */
-    @Deprecated(since = "22.2")
-    @TruffleBoundary
-    public Shape defineProperty(Object key, Object value, int propertyFlags) {
-        return ObsolescenceStrategy.defineProperty(this, key, value, propertyFlags);
     }
 
     /**
