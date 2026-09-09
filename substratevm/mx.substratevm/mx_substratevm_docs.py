@@ -259,9 +259,12 @@ def update_build_options_table():
         # Extract table content from generated markdown
         table_content = _extract_table_from_markdown(generated_content)
 
-        # Replace content between markers
+        # Replace content between markers. The blank lines around the table are
+        # required: kramdown (used by the GraalVM website) only recognizes a table
+        # that starts after a block boundary, so a table directly following the
+        # HTML comment marker would be rendered as a paragraph.
         new_content = (content[:begin_idx + len(begin_marker)] +
-                   '\n' + table_content + '\n' +
+                   '\n\n' + table_content + '\n\n' +
                    content[end_idx:])
 
     # Write updated content

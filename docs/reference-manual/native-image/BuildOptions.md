@@ -37,6 +37,7 @@ Use reachability metadata instead.
 These deprecated URL protocol options are omitted from the generated table; see [URL Protocols in Native Image](URLProtocols.md).
 
 <!-- BEGIN: build-options-table -->
+
 | Command | Type | Description | Default | Usage |
 |---------|------|-------------|---------|-------|
 | `--add-exports` | String | value <module>/<package>=<target-module>(,<target-module>)* updates <module> to export <package> to <target-module>, regardless of module declaration. <target-module> can be ALL-UNNAMED to export to all unnamed modules. | None | `--add-exports=add-exports` |
@@ -109,6 +110,7 @@ These deprecated URL protocol options are omitted from the generated table; see 
 | `-cp` | Path | class search path of directories and zip/jar files |  | `-cp <class search path of directories and zip/jar files>` |
 | `-p` | Path | module path |  | `-p <module path>` |
 | `@argument` | String | one or more argument files containing options |  | `@argument files` |
+
 <!-- END: build-options-table -->
 
 ## List of Useful Options
