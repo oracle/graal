@@ -34,6 +34,18 @@
       ]
     },
     {
+      "type": "jdk.internal.jshell.tool.JShellToolProvider",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.sun.tools.javac.launcher.SourceLauncher",
       "jniAccessible": true,
       "methods": [
@@ -53,7 +65,12 @@
     { "module": "java.base", "bundle": "sun.launcher.resources.launcher" },
     { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.compiler" },
     { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.launcher" },
-    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.javac" }
+    { "module": "jdk.compiler", "bundle": "com.sun.tools.javac.resources.javac" },
+    { "module": "jdk.jshell", "bundle": "jdk.internal.jshell.tool.resources.l10n" },
+    { "module": "jdk.jshell", "bundle": "jdk.internal.jshell.tool.resources.version" },
+    { "module": "jdk.jshell", "bundle": "jdk.internal.shellsupport.doc.resources.javadocformatter" },
+    { "module": "jdk.jshell", "bundle": "jdk.jshell.resources.l10n" },
+    { "module": "jdk.jshell", "glob": "jdk/jshell/tool/resources/*.jsh" }
   ],
   "foreign": {
     "downcalls": [
