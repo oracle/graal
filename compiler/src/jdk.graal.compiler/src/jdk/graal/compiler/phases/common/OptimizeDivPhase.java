@@ -132,7 +132,12 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         return 5.0f;
     }
 
-    protected static boolean isDivByNonZeroConstantNonOverflowingAbs(Canonicalizable.Binary<ValueNode> divRemNode) {
+    /**
+     * Determines whether this phase will replace {@code divRemNode} with equivalent arithmetic.
+     * This requires a nonzero constant divisor whose absolute value is representable in its integer
+     * type.
+     */
+    public static boolean isDivByNonZeroConstantNonOverflowingAbs(Canonicalizable.Binary<ValueNode> divRemNode) {
         if (divRemNode.getY().isConstant()) {
             ValueNode divisor = divRemNode.getY();
             long constantVal = divisor.asJavaConstant().asLong();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,6 +144,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
@@ -151,6 +152,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
+import jdk.graal.compiler.phases.common.OptimizeDivPhase;
 import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopyWithDelayedLoweringNode;
@@ -1075,12 +1077,8 @@ public final class LoopVectorizationAnalysis {
                 loop.loopBegin().getDebug().log(DebugContext.DETAILED_LEVEL, "can't vectorize phi %s flowing to %s", node, value);
                 return false;
             }
-            if (node instanceof FloatingIntegerDivRemNode && ((FloatingIntegerDivRemNode<?>) node).getGuard() != null) {
-                // inner nodes with guard edges are not vectorizable currently
-                return false;
-            }
             if (isDivRem(node)) {
-                if (isSimdifiableDivRemByConstant(node, arch)) {
+                if (isSimdifiableDivRemByConstant(node, arch, preVectorizationCheck)) {
                     flood.addAll(node.inputs());
                     continue;
                 } else {
@@ -1098,7 +1096,7 @@ public final class LoopVectorizationAnalysis {
                 flood.addAll(node.inputs());
                 continue;
             }
-            if (isSimdifiableDivRemByConstant(node, arch)) {
+            if (isSimdifiableDivRemByConstant(node, arch, preVectorizationCheck)) {
                 flood.addAll(node.inputs());
                 continue;
             }
@@ -1199,31 +1197,45 @@ public final class LoopVectorizationAnalysis {
     }
 
     @SuppressWarnings("unused")
-    private static boolean isSimdifiableDivRemByConstant(Node value, VectorArchitecture arch) {
+    private static boolean isSimdifiableDivRemByConstant(Node value, VectorArchitecture arch, boolean preVectorizationCheck) {
         ValueNode divisorNode = null;
         Stamp stamp = null;
+        Canonicalizable.Binary<ValueNode> divRemNode = null;
         if (value instanceof IntegerDivRemNode) {
+            divRemNode = (IntegerDivRemNode) value;
             divisorNode = ((IntegerDivRemNode) value).getY();
             stamp = ((IntegerDivRemNode) value).stamp(NodeView.DEFAULT);
         } else if (value instanceof FloatingIntegerDivRemNode) {
+            divRemNode = (FloatingIntegerDivRemNode<?>) value;
             divisorNode = ((FloatingIntegerDivRemNode<?>) value).getY();
             stamp = ((FloatingIntegerDivRemNode<?>) value).stamp(NodeView.DEFAULT);
         }
         if (divisorNode != null && divisorNode.isJavaConstant()) {
             long divisor = divisorNode.asJavaConstant().asLong();
-            if (CodeUtil.isPowerOf2(divisor)) {
+            boolean powerOfTwo = CodeUtil.isPowerOf2(divisor);
+            boolean guarded = value instanceof FloatingIntegerDivRemNode<?> divRem && divRem.getGuard() != null;
+            boolean willOptimize = (guarded || !powerOfTwo) && GraalOptions.OptimizeDiv.getValue(value.getOptions()) &&
+                            OptimizeDivPhase.isDivByNonZeroConstantNonOverflowingAbs(divRemNode);
+            if (guarded && (!preVectorizationCheck || !willOptimize)) {
+                // inner nodes with guard edges are not vectorizable currently
+                return false;
+            }
+            if (powerOfTwo) {
                 // This will be expanded to some shifting/masking and simple arithmetic.
                 return true;
-            } else if (arch != null) {
+            } else if (arch != null && willOptimize) {
                 // Division by a constant can be optimized to multiplication by a magic constant and
                 // some further fiddling. However, the multiplication needs the *high* bits. Try to
                 // predict how this will be optimized. If the div/rem is on int or smaller, it uses
-                // a long multiply; if it's a long div/rem, it uses mulHigh.
+                // a long multiply; if it's a long div/rem, it uses mulHigh. Both expansions also
+                // require an arithmetic long shift.
                 Stamp divRemStamp = stamp;
                 Stamp longStamp = StampFactory.forKind(JavaKind.Long);
                 ArithmeticOpTable longTable = ArithmeticOpTable.forStamp(longStamp);
-                ArithmeticOpTable.Op op = (PrimitiveStamp.getBits(divRemStamp) <= 32 ? longTable.getMul() : longTable.getMulHigh());
-                return arch.getSupportedVectorArithmeticLength(longStamp, arch.getMaxVectorLength(longStamp), op) > 1;
+                ArithmeticOpTable.Op multiply = (PrimitiveStamp.getBits(divRemStamp) <= 32 ? longTable.getMul() : longTable.getMulHigh());
+                int maxLength = arch.getMaxVectorLength(longStamp);
+                return arch.getSupportedVectorArithmeticLength(longStamp, maxLength, multiply) > 1 &&
+                                (!guarded || arch.getSupportedVectorArithmeticLength(longStamp, maxLength, longTable.getShr()) > 1);
             }
         }
 
@@ -1252,11 +1264,7 @@ public final class LoopVectorizationAnalysis {
         if (value instanceof ValueNode && ((ValueNode) value).stamp(NodeView.DEFAULT) instanceof SimdStamp) {
             return false;
         }
-        if (value instanceof FloatingIntegerDivRemNode && ((FloatingIntegerDivRemNode<?>) value).getGuard() != null) {
-            // inner nodes with guard edges are not vectorizable currently
-            return false;
-        }
-        if (isDivRem(value) && !isSimdifiableDivRemByConstant(value, arch)) {
+        if (isDivRem(value) && !isSimdifiableDivRemByConstant(value, arch, preVectorizationCheck)) {
             return false;
         }
         if (preVectorizationCheck && value instanceof FloatConvertNode floatConvert) {
