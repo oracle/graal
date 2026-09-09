@@ -444,6 +444,30 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.core.auximage": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+            ],
+            "dependencies": [
+                "com.oracle.svm.core.genscavenge",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance" : "24+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
             "sourceDirs": [
@@ -1993,6 +2017,7 @@ suite = {
                 "com.oracle.svm.core.graal.riscv64",
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.windows",
+                "com.oracle.svm.core.auximage",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.g1",
                 "com.oracle.svm.jdwp.resident",

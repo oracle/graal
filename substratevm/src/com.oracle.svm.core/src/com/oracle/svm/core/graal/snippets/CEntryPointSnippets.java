@@ -335,13 +335,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getParsedArgsSize());
         arguments.setParsedArgs(parsedArgs);
 
-        IsolateArgumentParser.singleton().parse(parameters, arguments);
+        IsolateArgumentParser.parse(parameters, arguments);
 
         /* Create the isolate and map the image heap. */
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
         int error = Isolates.create(isolatePtr, arguments);
         if (error != CEntryPointErrors.NO_ERROR) {
-            IsolateArgumentParser.singleton().tearDown(arguments);
+            IsolateArgumentParser.tearDown(arguments);
             return error;
         }
 
@@ -352,7 +352,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         /* Finish isolate creation and attach the current thread. */
         error = createIsolate0(isolate, arguments);
         if (error != CEntryPointErrors.NO_ERROR) {
-            IsolateArgumentParser.singleton().tearDown(arguments);
+            IsolateArgumentParser.tearDown(arguments);
         }
         return error;
     }

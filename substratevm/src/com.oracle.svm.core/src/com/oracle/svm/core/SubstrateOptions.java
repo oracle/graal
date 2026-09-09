@@ -52,6 +52,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
@@ -64,6 +66,7 @@ import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.APIOption;
@@ -1879,4 +1882,25 @@ public class SubstrateOptions {
 
     @Option(help = "Map the runtime code cache at pseudo-random addresses. This fragments the virtual address space, which can make subsequent reservations of very large contiguous ranges harder to satisfy.", type = Expert) //
     public static final HostedOptionKey<Boolean> RandomizeRuntimeCodeCache = new HostedOptionKey<>(true);
+
+    @Option(help = "Size in bytes of an address space to reserve for auxiliary images.", stability = OptionStability.STABLE)//
+    public static final HostedOptionKey<Long> ReservedAuxiliaryImageBytes = new HostedOptionKey<>(0L, option -> {
+        UserError.guarantee(option.getValue() == 0L || !useG1GC(), "The G1 garbage collector ('--gc=G1') does not support auxiliary images.");
+    });
+
+    /**
+     * Note that the number of reserved bytes may be different at run-time (see
+     * {@link CEntryPointCreateIsolateParameters#auxiliaryImageReservedSpaceSize()}).
+     */
+    @Fold
+    public static UnsignedWord getReservedAuxiliaryImageBytes() {
+        Long value = ReservedAuxiliaryImageBytes.getValue();
+        return Word.unsigned((value != null && value > 0) ? (long) value : 0L);
+    }
+
+    @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = Expert)//
+    public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
+
+    @Option(help = "Internal, instead use 'auxiliary_image_path' in 'graal_create_isolate_params_t'.", type = Expert)//
+    public static final RuntimeOptionKey<String> AuxiliaryImagePathIsolateArgument = new RuntimeOptionKey<>(null, RegisterForIsolateArgumentParser);
 }

@@ -361,6 +361,8 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.configure.filters.ModuleFilterTools", SVM_CONFIGURE_TOOL),
                     clazz("com.oracle.svm.configure.ReflectionConfigurationParser", SVM_CONFIGURE_TOOL),
                     clazz("com.oracle.svm.configure.UnresolvedAccessCondition", SVM_CONFIGURE_TOOL),
+                    clazz("com.oracle.svm.core.auximage.AuxiliaryImageBuilder", SVM_RUN_TIME_ONLY),
+                    clazz("com.oracle.svm.core.auximage.ImmutableAuxiliaryImage", SVM_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.core.BuilderUtil", NI_HOSTED_IMPLEMENTATION),
                     clazz("com.oracle.svm.core.gc.shared.NativeGCOptions", NI_HOSTED_IMPLEMENTATION),
                     clazz("com.oracle.svm.core.gc.shared.NativeGCOptions$HostedArgumentsSupplier", NI_HOSTED_IMPLEMENTATION),
