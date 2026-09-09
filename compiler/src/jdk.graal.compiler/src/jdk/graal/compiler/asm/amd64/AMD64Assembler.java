@@ -6528,11 +6528,11 @@ public class AMD64Assembler extends AMD64BaseAssembler implements MemoryReadInte
     }
 
     public final void vcvtph2ps(Register dst, Register src) {
-        VexRMOp.VCVTPH2PS.emit(this, AVXSize.XMM, dst, src);
+        VexRMOp.VCVTPH2PS.encoding(avxEncoding).emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void vcvtps2ph(Register dst, Register src, int imm8) {
-        VexMRIOp.VCVTPS2PH.emit(this, AVXSize.XMM, dst, src, imm8);
+        VexMRIOp.VCVTPS2PH.encoding(avxEncoding).emit(this, AVXSize.XMM, dst, src, imm8);
     }
 
     public final void vmovdqu(Register dst, AMD64Address src) {
