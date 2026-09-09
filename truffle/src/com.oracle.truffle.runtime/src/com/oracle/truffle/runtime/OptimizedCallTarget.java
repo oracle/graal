@@ -62,6 +62,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
@@ -626,6 +627,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     @TruffleCallBoundary
+    @HostCompilerDirectives.InliningRoot
     protected final Object callBoundary(Object[] args) {
         /*
          * Note this method compiles without any inlining or other optimizations. It is therefore
@@ -713,6 +715,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
+    @HostCompilerDirectives.InliningCutoff
     protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
         if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
@@ -748,6 +751,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return compileQueuedByHotness(true);
     }
 
+    @HostCompilerDirectives.InliningCutoff
     private boolean compileQueuedByHotness(boolean lastTierCompilation) {
         return compile(lastTierCompilation, CompilationTask.SubmissionReason.HOTNESS);
     }
