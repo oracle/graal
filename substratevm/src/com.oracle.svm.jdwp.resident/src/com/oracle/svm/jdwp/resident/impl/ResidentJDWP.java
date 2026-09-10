@@ -51,7 +51,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.interpreter.DebuggerSupport;
 import com.oracle.svm.interpreter.InterpreterFrame;
-import com.oracle.svm.interpreter.InterpreterFrameUtil;
 import com.oracle.svm.interpreter.InterpreterToVM;
 import com.oracle.svm.interpreter.SemanticJavaException;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
@@ -1278,7 +1277,7 @@ public final class ResidentJDWP implements JDWP {
                 thisObject = null;
             } else {
                 InterpreterFrame interpreterFrame = getLiveInterpreterFrame(interpreterJavaFrameInfo);
-                thisObject = InterpreterFrameUtil.getThis(interpreterFrame);
+                thisObject = interpreterFrame.getThis();
             }
         } else {
             FrameInfoQueryResult frameInfoQueryResult = (FrameInfoQueryResult) frameSourceInfo;
@@ -1701,42 +1700,42 @@ public final class ResidentJDWP implements JDWP {
         InterpreterFrame interpreterFrame = getLiveInterpreterFrame(interpreterJavaFrameInfo);
         switch (tag) {
             case TagConstants.BYTE -> {
-                int value = InterpreterFrameUtil.getLocalInt(interpreterFrame, slot);
+                int value = interpreterFrame.getLocalInt(slot);
                 writer.writeByte(TagConstants.BYTE);
                 writer.writeByte((byte) value);
             }
             case TagConstants.BOOLEAN -> {
-                int value = InterpreterFrameUtil.getLocalInt(interpreterFrame, slot);
+                int value = interpreterFrame.getLocalInt(slot);
                 writer.writeByte(TagConstants.BOOLEAN);
                 writer.writeBoolean(value != 0);
             }
             case TagConstants.SHORT -> {
-                int value = InterpreterFrameUtil.getLocalInt(interpreterFrame, slot);
+                int value = interpreterFrame.getLocalInt(slot);
                 writer.writeByte(TagConstants.SHORT);
                 writer.writeShort((short) value);
             }
             case TagConstants.CHAR -> {
-                int value = InterpreterFrameUtil.getLocalInt(interpreterFrame, slot);
+                int value = interpreterFrame.getLocalInt(slot);
                 writer.writeByte(TagConstants.CHAR);
                 writer.writeChar((char) value);
             }
             case TagConstants.INT -> {
-                int value = InterpreterFrameUtil.getLocalInt(interpreterFrame, slot);
+                int value = interpreterFrame.getLocalInt(slot);
                 writer.writeByte(TagConstants.INT);
                 writer.writeInt(value);
             }
             case TagConstants.LONG -> {
-                long value = InterpreterFrameUtil.getLocalLong(interpreterFrame, slot);
+                long value = interpreterFrame.getLocalLong(slot);
                 writer.writeByte(TagConstants.LONG);
                 writer.writeLong(value);
             }
             case TagConstants.FLOAT -> {
-                float value = InterpreterFrameUtil.getLocalFloat(interpreterFrame, slot);
+                float value = interpreterFrame.getLocalFloat(slot);
                 writer.writeByte(TagConstants.FLOAT);
                 writer.writeFloat(value);
             }
             case TagConstants.DOUBLE -> {
-                double value = InterpreterFrameUtil.getLocalDouble(interpreterFrame, slot);
+                double value = interpreterFrame.getLocalDouble(slot);
                 writer.writeByte(TagConstants.DOUBLE);
                 writer.writeDouble(value);
             }
@@ -1745,7 +1744,7 @@ public final class ResidentJDWP implements JDWP {
                 // Write nothing here.
             }
             default -> {
-                Object value = InterpreterFrameUtil.getLocalObject(interpreterFrame, slot);
+                Object value = interpreterFrame.getLocalObject(slot);
                 writeTaggedObject(writer, value);
             }
         }
@@ -1925,20 +1924,20 @@ public final class ResidentJDWP implements JDWP {
         InterpreterFrame interpreterFrame = getLiveInterpreterFrame(interpreterJavaFrameInfo);
         // @formatter:off
         switch (tag) {
-            case TagConstants.BYTE    -> InterpreterFrameUtil.setLocalInt(interpreterFrame, slot, (byte) reader.readByte());
-            case TagConstants.BOOLEAN -> InterpreterFrameUtil.setLocalInt(interpreterFrame, slot, reader.readBoolean() ? 1 : 0);
-            case TagConstants.SHORT   -> InterpreterFrameUtil.setLocalInt(interpreterFrame, slot, reader.readShort());
-            case TagConstants.CHAR    -> InterpreterFrameUtil.setLocalInt(interpreterFrame, slot, reader.readChar());
-            case TagConstants.INT     -> InterpreterFrameUtil.setLocalInt(interpreterFrame, slot, reader.readInt());
-            case TagConstants.LONG    -> InterpreterFrameUtil.setLocalLong(interpreterFrame, slot, reader.readLong());
-            case TagConstants.FLOAT   -> InterpreterFrameUtil.setLocalFloat(interpreterFrame, slot, reader.readFloat());
-            case TagConstants.DOUBLE  -> InterpreterFrameUtil.setLocalDouble(interpreterFrame, slot, reader.readDouble());
+            case TagConstants.BYTE    -> interpreterFrame.setLocalInt(slot, (byte) reader.readByte());
+            case TagConstants.BOOLEAN -> interpreterFrame.setLocalInt(slot, reader.readBoolean() ? 1 : 0);
+            case TagConstants.SHORT   -> interpreterFrame.setLocalInt(slot, reader.readShort());
+            case TagConstants.CHAR    -> interpreterFrame.setLocalInt(slot, reader.readChar());
+            case TagConstants.INT     -> interpreterFrame.setLocalInt(slot, reader.readInt());
+            case TagConstants.LONG    -> interpreterFrame.setLocalLong(slot, reader.readLong());
+            case TagConstants.FLOAT   -> interpreterFrame.setLocalFloat(slot, reader.readFloat());
+            case TagConstants.DOUBLE  -> interpreterFrame.setLocalDouble(slot, reader.readDouble());
             case TagConstants.VOID -> { } // nothing
             default -> {
                 ReferenceValue referenceValue = readReferenceValue(reader);
                 Object value = referenceValue.value;
                 try {
-                    InterpreterFrameUtil.setLocalObject(interpreterFrame, slot, value);
+                    interpreterFrame.setLocalObject(slot, value);
                     releaseDebuggerCreatedObject(referenceValue.objectId);
                 } finally {
                     // Keep debugger-provided object values live through the local write.

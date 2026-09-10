@@ -26,254 +26,524 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.interpreter.debug.DebuggerEvents;
+import com.oracle.svm.interpreter.debug.EventKind;
+import com.oracle.svm.interpreter.debug.SteppingControl;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.JavaKind;
 
-/// Stores JVM locals and operand stack slots for one interpreted frame.
+/// Stores JVM locals, operand stack slots, and execution state for one interpreted frame.
 ///
 /// Each logical JVM slot has parallel primitive and reference storage:
 ///
 /// * [#primitives] stores primitive values as raw `long` bits.
 /// * [#references] stores object references.
 ///
-/// The `Static` suffix on methods such as [#getObjectStatic(long)] and
-/// [#setIntStatic(long, int)] does **not** refer to Java static fields or static methods. It means
-/// the caller statically knows which storage kind is valid for the slot and wants direct typed
-/// access to the underlying arrays. The slot must be within the frame bounds established from the
-/// verified method metadata because these raw accesses do not perform array bounds checks.
-/// Higher-level helpers in [InterpreterFrameUtil] provide the semantic local-variable and operand
-/// stack operations built on top of these raw slot accessors.
+/// The typed accessors directly access the underlying primitive or reference array. The slot must
+/// be within the frame bounds established from the verified method metadata because these raw
+/// accesses do not perform array bounds checks. Accessors that omit the offset operate on the
+/// specified slot; accessors with an offset operate on `slot + constantOffset`.
+/// Classes in this package use these accessors directly. Code outside this package uses the public
+/// semantic accessors for locals, operand-stack slots, locks, and stack-walking state.
+/// The profiling and debugger state is installed when interpretation starts because frames
+/// reconstructed for deoptimization exist before their interpreter execution begins.
 public final class InterpreterFrame {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     private final long[] primitives;
     private final Object[] references;
 
+    final InterpreterResolvedJavaMethod method;
+    final byte[] code;
+    MethodProfile methodProfile;
+    boolean forceStayInInterpreter;
+    DebugState debugState;
+
     private final Object[] arguments;
     private Object[] locks;
     private int lockCount;
     private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
     private boolean hiddenFromStackWalking;
-    /**
-     * BCI reported while delivering a debugger event. Threaded dispatch delivers the event while
-     * the enclosing bytecode handler still carries the preceding BCI, so stack walking uses this
-     * value as a temporary override. The value is {@link BytecodeFrame#UNKNOWN_BCI} outside the
-     * event callback.
-     */
-    private int debuggerEventBCI;
 
     private static final Object[] EMPTY = new Object[0];
 
-    private InterpreterFrame(int slotCount, Object[] arguments) {
+    // region Frame lifecycle and arguments
+
+    private InterpreterFrame(InterpreterResolvedJavaMethod method, Object[] arguments) {
+        int slotCount = method.getMaxLocals() + method.getMaxStackSize();
+        this.method = method;
+        this.code = method.getInterpretedCode();
         this.primitives = new long[slotCount];
         this.references = new Object[slotCount];
         this.arguments = arguments;
         this.lockCount = 0;
         this.locks = EMPTY;
         this.hiddenFromStackWalking = false;
-        this.debuggerEventBCI = BytecodeFrame.UNKNOWN_BCI;
     }
 
-    static InterpreterFrame create(int slotCount, Object... arguments) {
-        return new InterpreterFrame(slotCount, arguments);
+    /**
+     * Creates an interpreter frame for a method.
+     *
+     * @param method the interpreted method
+     * @param arguments the method arguments
+     * @return the new interpreter frame
+     */
+    public static InterpreterFrame create(InterpreterResolvedJavaMethod method, Object... arguments) {
+        return new InterpreterFrame(method, arguments);
+    }
+
+    /**
+     * Initializes the local slots from this frame's invocation arguments.
+     */
+    public void initializeLocals() {
+        boolean hasReceiver = !method.isStatic();
+        int receiverSlot = hasReceiver ? 1 : 0;
+        int curSlot = 0;
+        if (hasReceiver) {
+            Object receiver = uncheckedArgumentAt(0);
+            InterpreterUtil.assertion(receiver != null, "null receiver in init arguments !");
+            setLocalObject(curSlot, receiver);
+            curSlot += JavaKind.Object.getSlotCount();
+        }
+
+        InterpreterUnresolvedSignature methodSignature = method.getSignature();
+        for (int i = 0; i < methodSignature.getParameterCount(false); ++i) {
+            JavaKind argType = methodSignature.getParameterKind(i);
+            Object argument = uncheckedArgumentAt(i + receiverSlot);
+            // @formatter:off
+            switch (argType) {
+                case Boolean: setLocalInt(curSlot, ((boolean) argument) ? 1 : 0);    break;
+                case Byte:    setLocalInt(curSlot, (byte) argument);                 break;
+                case Short:   setLocalInt(curSlot, (short) argument);                break;
+                case Char:    setLocalInt(curSlot, (char) argument);                 break;
+                case Int:     setLocalInt(curSlot, (int) argument);                  break;
+                case Float:   setLocalFloat(curSlot, (float) argument);              break;
+                case Long:    setLocalLong(curSlot, (long) argument);     ++curSlot; break;
+                case Double:  setLocalDouble(curSlot, (double) argument); ++curSlot; break;
+                case Object:  setLocalObject(curSlot, argument);                     break;
+                default:
+                    throw VMError.shouldNotReachHereAtRuntime();
+            }
+            // @formatter:on
+            ++curSlot;
+        }
     }
 
     Object[] getArguments() {
         return arguments;
     }
 
-    void publishDebuggerEventBCI(int bci) {
-        assert debuggerEventBCI == BytecodeFrame.UNKNOWN_BCI;
-        debuggerEventBCI = bci;
+    Object uncheckedArgumentAt(long index) {
+        return UNSAFE.getReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (index * Unsafe.ARRAY_OBJECT_INDEX_SCALE));
     }
 
-    void clearDebuggerEventBCI() {
-        debuggerEventBCI = BytecodeFrame.UNKNOWN_BCI;
+    // endregion Frame lifecycle and arguments
+
+    // region Debugger state
+
+    void installState(MethodProfile newMethodProfile, boolean newForceStayInInterpreter, int debuggerEventFlags, int indent) {
+        this.methodProfile = newMethodProfile;
+        this.forceStayInInterpreter = newForceStayInInterpreter;
+        this.debugState = new DebugState(debuggerEventFlags, indent);
+    }
+
+    /** Holds debugger and tracing state installed when interpretation starts. */
+    static final class DebugState {
+        private SteppingControl steppingControl;
+        private boolean stepEventDisabled;
+        int debuggerEventFlags;
+        int opcode;
+        final int indent;
+        /**
+         * BCI reported while delivering a debugger event. Threaded dispatch delivers the event
+         * while the enclosing bytecode handler still carries the preceding BCI, so stack walking
+         * uses this value as a temporary override. The value is
+         * {@link BytecodeFrame#UNKNOWN_BCI} outside the event callback.
+         */
+        private int debuggerEventBCI;
+
+        DebugState(int debuggerEventFlags, int indent) {
+            this.debuggerEventFlags = debuggerEventFlags;
+            this.indent = indent;
+            this.opcode = -1;
+            this.debuggerEventBCI = BytecodeFrame.UNKNOWN_BCI;
+        }
+
+        void publishDebuggerEventBCI(int bci) {
+            assert debuggerEventBCI == BytecodeFrame.UNKNOWN_BCI;
+            debuggerEventBCI = bci;
+        }
+
+        void clearDebuggerEventBCI() {
+            debuggerEventBCI = BytecodeFrame.UNKNOWN_BCI;
+        }
+
+        @NeverInline("Keep debugger stepping setup out of bytecode-handler stubs")
+        boolean beforeInvoke() {
+            steppingControl = null;
+            stepEventDisabled = false;
+
+            boolean preferStayInInterpreter = false;
+            Thread currentThread = Thread.currentThread();
+            if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+                // Disable stepping for inner frames, except for step into, where we must force
+                // interpreter execution.
+                steppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
+                if (steppingControl != null) {
+                    steppingControl.pushFrame();
+                    if (!steppingControl.isActiveAtCurrentFrameDepth()) {
+                        DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, false);
+                        stepEventDisabled = true;
+                    }
+                    if (steppingControl.getDepth() == SteppingControl.STEP_INTO) {
+                        // For now force the callee to stay in interpreter.
+                        preferStayInInterpreter = true;
+                    }
+                }
+            }
+            return preferStayInInterpreter;
+        }
+
+        @NeverInline("Keep debugger stepping cleanup out of bytecode-handler stubs")
+        void afterInvoke() {
+            Thread currentThread = Thread.currentThread();
+            SteppingControl newSteppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
+            if (newSteppingControl != null) {
+                if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+                    newSteppingControl.popFrame();
+                } else if (steppingControl == newSteppingControl && stepEventDisabled) {
+                    // Re-enable stepping events that could have been disabled by step outer/out
+                    // into inner frames.
+                    DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, true);
+                    newSteppingControl.popFrame();
+                }
+            }
+        }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int getDebuggerEventBCI() {
-        return debuggerEventBCI;
+        DebugState state = debugState;
+        return state != null ? state.debuggerEventBCI : BytecodeFrame.UNKNOWN_BCI;
     }
 
-    int getIntStatic(long slot) {
-        return getIntStatic(slot, 0);
-    }
+    // endregion Debugger state
 
-    int getIntStatic(long slot, long slotOffset) {
-        return (int) getPrimitiveStatic(slot, slotOffset);
-    }
+    // region Raw slot accessors
 
-    Object getObjectStatic(long slot) {
-        return getObjectStatic(slot, 0);
-    }
-
-    Object getObjectStatic(long slot, long slotOffset) {
-        return getReferenceStatic(slot, slotOffset);
-    }
-
-    float getFloatStatic(long slot) {
-        return getFloatStatic(slot, 0);
-    }
-
-    float getFloatStatic(long slot, long slotOffset) {
-        return Float.intBitsToFloat((int) getPrimitiveStatic(slot, slotOffset));
-    }
-
-    long getLongStatic(long slot) {
-        return getLongStatic(slot, 0);
-    }
-
-    long getLongStatic(long slot, long slotOffset) {
-        return getPrimitiveStatic(slot, slotOffset);
-    }
-
-    double getDoubleStatic(long slot) {
-        return getDoubleStatic(slot, 0);
-    }
-
-    double getDoubleStatic(long slot, long slotOffset) {
-        return Double.longBitsToDouble(getPrimitiveStatic(slot, slotOffset));
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    long getPrimitive(long slot, long constantOffset) {
+        return UNSAFE.getLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + (constantOffset * Unsafe.ARRAY_LONG_INDEX_SCALE) + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setObjectStatic(long slot, Object value) {
-        setObjectStatic(slot, 0, value);
+    void setPrimitive(long slot, long constantOffset, long value) {
+        UNSAFE.putLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + (constantOffset * Unsafe.ARRAY_LONG_INDEX_SCALE) + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE), value);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setObjectStatic(long slot, long slotOffset, Object value) {
-        setReferenceStatic(slot, slotOffset, value);
+    Object getReference(long slot, long constantOffset) {
+        return UNSAFE.getReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (constantOffset * Unsafe.ARRAY_OBJECT_INDEX_SCALE) + (slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setIntStatic(long slot, int value) {
-        setIntStatic(slot, 0, value);
+    void setReference(long slot, long constantOffset, Object value) {
+        UNSAFE.putReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (constantOffset * Unsafe.ARRAY_OBJECT_INDEX_SCALE) + (slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE), value);
     }
 
+    // endregion Raw slot accessors
+
+    // region Local accessors
+
+    /**
+     * Returns the receiver in local slot zero.
+     *
+     * @return the receiver
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setIntStatic(long slot, long slotOffset, int value) {
-        setPrimitiveStatic(slot, slotOffset, value);
+    public Object getThis() {
+        return getReference(0, 0);
     }
 
+    /**
+     * Returns the int in a local slot.
+     *
+     * @param localSlot the local slot
+     * @return the int in the slot
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setFloatStatic(long slot, float value) {
-        setFloatStatic(slot, 0, value);
+    public int getLocalInt(long localSlot) {
+        return (int) getPrimitive(localSlot, 0);
     }
 
+    /**
+     * Stores an int in a local slot.
+     *
+     * @param localSlot the local slot
+     * @param value the int to store
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setFloatStatic(long slot, long slotOffset, float value) {
-        setPrimitiveStatic(slot, slotOffset, Float.floatToRawIntBits(value));
+    public void setLocalInt(long localSlot, int value) {
+        setPrimitive(localSlot, 0, value);
     }
 
+    /**
+     * Increments the int in a local slot.
+     *
+     * @param localSlot the local slot
+     * @param increment the value to add
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setLongStatic(long slot, long value) {
-        setLongStatic(slot, 0, value);
+    public void incrementLocalInt(long localSlot, int increment) {
+        /*
+         * IINC operates on a 32-bit int. Access the low 32 bits of the long-backed primitive slot
+         * directly, accounting for their target-dependent position within the slot. The folded
+         * offset avoids loading and storing the unused upper half.
+         */
+        long offset = Unsafe.ARRAY_LONG_BASE_OFFSET + (localSlot * Unsafe.ARRAY_LONG_INDEX_SCALE) + intOffsetWithinLong();
+        UNSAFE.putInt(primitives, offset, UNSAFE.getInt(primitives, offset) + increment);
     }
 
+    @Fold
+    static int intOffsetWithinLong() {
+        return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.BIG_ENDIAN ? Long.BYTES - Integer.BYTES : 0;
+    }
+
+    /**
+     * Returns the float in a local slot.
+     *
+     * @param localSlot the local slot
+     * @return the float in the slot
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setLongStatic(long slot, long slotOffset, long value) {
-        setPrimitiveStatic(slot, slotOffset, value);
+    public float getLocalFloat(long localSlot) {
+        return Float.intBitsToFloat((int) getPrimitive(localSlot, 0));
     }
 
+    /**
+     * Stores a float in a local slot.
+     *
+     * @param localSlot the local slot
+     * @param value the float to store
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setDoubleStatic(long slot, double value) {
-        setDoubleStatic(slot, 0, value);
+    public void setLocalFloat(long localSlot, float value) {
+        setPrimitive(localSlot, 0, Float.floatToRawIntBits(value));
     }
 
+    /**
+     * Returns the long in a local slot.
+     *
+     * @param localSlot the local slot
+     * @return the long in the slot
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void setDoubleStatic(long slot, long slotOffset, double value) {
-        setPrimitiveStatic(slot, slotOffset, Double.doubleToRawLongBits(value));
+    public long getLocalLong(long localSlot) {
+        return getPrimitive(localSlot, 0);
     }
 
-    void clearObjectStatic(long slot) {
-        clearObjectStatic(slot, 0);
-    }
-
-    void clearObjectStatic(long slot, long slotOffset) {
-        setReferenceStatic(slot, slotOffset, null);
-    }
-
-    void clearPrimitiveStatic(long slot) {
-        clearPrimitiveStatic(slot, 0);
-    }
-
-    void clearPrimitiveStatic(long slot, long slotOffset) {
-        setPrimitiveStatic(slot, slotOffset, 0);
-    }
-
-    void clearStatic(long slot) {
-        clearStatic(slot, 0);
-    }
-
-    void clearStatic(long slot, long slotOffset) {
-        clearObjectStatic(slot, slotOffset);
-        clearPrimitiveStatic(slot, slotOffset);
-    }
-
-    void swapStatic(long src, long dst) {
-        swapStatic(src, 0, dst, 0);
-    }
-
-    void swapStatic(long src, long srcOffset, long dst, long dstOffset) {
-        long tmp = getPrimitiveStatic(src, srcOffset);
-        setPrimitiveStatic(src, srcOffset, getPrimitiveStatic(dst, dstOffset));
-        setPrimitiveStatic(dst, dstOffset, tmp);
-
-        Object otmp = getReferenceStatic(src, srcOffset);
-        setReferenceStatic(src, srcOffset, getReferenceStatic(dst, dstOffset));
-        setReferenceStatic(dst, dstOffset, otmp);
-    }
-
-    void copyStatic(long src, long dst) {
-        copyStatic(src, 0, dst, 0);
-    }
-
-    void copyStatic(long src, long srcOffset, long dst, long dstOffset) {
-        setPrimitiveStatic(dst, dstOffset, getPrimitiveStatic(src, srcOffset));
-        setReferenceStatic(dst, dstOffset, getReferenceStatic(src, srcOffset));
-    }
-
-    private long getPrimitiveStatic(long slot, long slotOffset) {
-        return UNSAFE.getLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_LONG_INDEX_SCALE));
-    }
-
+    /**
+     * Stores a long in a local slot.
+     *
+     * @param localSlot the local slot
+     * @param value the long to store
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void setPrimitiveStatic(long slot, long value) {
-        setPrimitiveStatic(slot, 0, value);
+    public void setLocalLong(long localSlot, long value) {
+        setPrimitive(localSlot, 0, value);
     }
 
+    /**
+     * Returns the double in a local slot.
+     *
+     * @param localSlot the local slot
+     * @return the double in the slot
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void setPrimitiveStatic(long slot, long slotOffset, long value) {
-        UNSAFE.putLong(primitives, Unsafe.ARRAY_LONG_BASE_OFFSET + (slot * Unsafe.ARRAY_LONG_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_LONG_INDEX_SCALE), value);
+    public double getLocalDouble(long localSlot) {
+        return Double.longBitsToDouble(getPrimitive(localSlot, 0));
     }
 
-    private Object getReferenceStatic(long slot, long slotOffset) {
-        return UNSAFE.getReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_OBJECT_INDEX_SCALE));
-    }
-
+    /**
+     * Stores a double in a local slot.
+     *
+     * @param localSlot the local slot
+     * @param value the double to store
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void setReferenceStatic(long slot, Object value) {
-        setReferenceStatic(slot, 0, value);
+    public void setLocalDouble(long localSlot, double value) {
+        setPrimitive(localSlot, 0, Double.doubleToRawLongBits(value));
     }
 
+    /**
+     * Returns the object in a local slot.
+     *
+     * @param localSlot the local slot
+     * @return the object in the slot
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void setReferenceStatic(long slot, long slotOffset, Object value) {
-        UNSAFE.putReference(references, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (slot * Unsafe.ARRAY_OBJECT_INDEX_SCALE) + (slotOffset * Unsafe.ARRAY_OBJECT_INDEX_SCALE), value);
+    public Object getLocalObject(long localSlot) {
+        return getReference(localSlot, 0);
+    }
+
+    int getLocalReturnAddress(long localSlot) {
+        Object result = getReference(localSlot, 0);
+        assert result != null;
+        return ((ReturnAddress) result).bci();
+    }
+
+    /**
+     * Stores an object in a local slot.
+     *
+     * @param localSlot the local slot
+     * @param value the object to store
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setLocalObject(long localSlot, Object value) {
+        setReference(localSlot, 0, value);
+    }
+
+    // endregion Local accessors
+
+    // region Operand stack accessors
+
+    /**
+     * Returns the first operand stack slot.
+     *
+     * @return the number of local slots in this frame
+     */
+    public int getOperandStackStart() {
+        return method.getMaxLocals();
+    }
+
+    /**
+     * Stores an int in an operand stack slot.
+     *
+     * @param slot the operand stack slot
+     * @param value the int to store
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setStackInt(long slot, int value) {
+        setPrimitive(slot, 0, value);
+    }
+
+    /**
+     * Stores a float in an operand stack slot.
+     *
+     * @param slot the operand stack slot
+     * @param value the float to store
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setStackFloat(long slot, float value) {
+        setPrimitive(slot, 0, Float.floatToRawIntBits(value));
+    }
+
+    /**
+     * Stores a long in two consecutive operand stack slots.
+     * <p>
+     * The value is written to {@code slot + 1}; {@code slot} is the first slot occupied by the
+     * category-2 value.
+     *
+     * @param slot the first operand stack slot
+     * @param value the long to store
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setStackLong(long slot, long value) {
+        setPrimitive(slot, 1, value);
+    }
+
+    /**
+     * Stores a double in two consecutive operand stack slots.
+     * <p>
+     * The value is written to {@code slot + 1}; {@code slot} is the first slot occupied by the
+     * category-2 value.
+     *
+     * @param slot the first operand stack slot
+     * @param value the double to store
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setStackDouble(long slot, double value) {
+        setPrimitive(slot, 1, Double.doubleToRawLongBits(value));
+    }
+
+    /**
+     * Returns the object in an operand stack slot.
+     *
+     * @param slot the operand stack slot
+     * @return the object in the slot
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Object getStackObject(long slot) {
+        return getReference(slot, 0);
+    }
+
+    /**
+     * Stores an object in an operand stack slot.
+     *
+     * @param slot the operand stack slot
+     * @param value the object to store
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void setStackObject(long slot, Object value) {
+        setReference(slot, 0, value);
+    }
+
+    /**
+     * Clears the primitive and reference values in an operand stack slot.
+     *
+     * @param slot the operand stack slot to clear
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void clearStackSlot(long slot) {
+        setReference(slot, 0, null);
+        setPrimitive(slot, 0, 0);
+    }
+
+    /**
+     * Clears the active operand stack slots in this frame.
+     *
+     * @param top the exclusive upper bound of the active operand stack
+     */
+    public void clearOperandStack(long top) {
+        long stackStart = method.getMaxLocals();
+        for (long slot = top - 1; slot >= stackStart; --slot) {
+            clearStackSlot(slot);
+        }
+    }
+
+    // endregion Operand stack accessors
+
+    // region Lock accessors
+
+    /**
+     * Returns the object stored in the specified lock slot.
+     *
+     * @param index the lock slot index
+     * @return the lock object, or {@code null} if the slot is empty
+     */
+    public Object getLock(int index) {
+        return locks[index];
     }
 
     @NeverInline("Keep lock-array growth out of bytecode-handler stubs")
     private void ensureLocksCapacity(int capacity) {
         int oldLength = locks.length;
-        Object[] newLocks = Arrays.copyOf(locks, Math.max(capacity, (oldLength * 2) + 1));
-        this.locks = newLocks;
+        this.locks = Arrays.copyOf(locks, Math.max(capacity, (oldLength * 2) + 1));
     }
 
     void addLock(Object ref) {
@@ -325,21 +595,24 @@ public final class InterpreterFrame {
         return locks;
     }
 
-    public Object getLock(int index) {
-        return locks[index];
+    Object getSynchronizedMethodLock() {
+        assert method.isSynchronized();
+        return method.isStatic() ? method.getDeclaringClass().getJavaClass() : getThis();
     }
 
-    boolean isHiddenFromStackWalking() {
-        return hiddenFromStackWalking;
-    }
+    // endregion Lock accessors
 
+    // region Stack walking
+
+    /**
+     * Marks this frame so that stack walking omits it.
+     */
     public void hideFromStackWalking() {
         hiddenFromStackWalking = true;
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    InterpreterFrameSourceInfo getStackTraceCallerInfo() {
-        return syntheticStackTraceCallerInfo;
+    boolean isHiddenFromStackWalking() {
+        return hiddenFromStackWalking;
     }
 
     /**
@@ -353,4 +626,12 @@ public final class InterpreterFrame {
     public void setStackTraceCallerInfo(InterpreterFrameSourceInfo callerInfo) {
         this.syntheticStackTraceCallerInfo = callerInfo;
     }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    InterpreterFrameSourceInfo getStackTraceCallerInfo() {
+        return syntheticStackTraceCallerInfo;
+    }
+
+    // endregion Stack walking
+
 }
