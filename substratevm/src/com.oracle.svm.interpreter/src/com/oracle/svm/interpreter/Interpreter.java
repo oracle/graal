@@ -3775,7 +3775,7 @@ public final class Interpreter {
         LinkedInvoke linkedInvoke = getOrLinkInvoke(method, code, curBCI, opcode);
         boolean hasReceiver = opcode != INVOKESTATIC && linkedInvoke.hasReceiver;
         Object appendix = linkedInvoke.appendix;
-        Object[] calleeArgs = virtualStack.popArguments(callerFrame, hasReceiver, linkedInvoke.signature, appendix);
+        Object[] calleeArgs = virtualStack.popArguments(callerFrame, linkedInvoke.argumentKinds, linkedInvoke.argumentCount, appendix);
         if (hasReceiver) {
             Object receiver = calleeArgs[0];
             profileType(methodProfile, curBCI, receiver);
@@ -3790,7 +3790,7 @@ public final class Interpreter {
         }
 
         Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, forceStayInInterpreter, preferStayInInterpreter, false);
-        virtualStack.pushKind(callerFrame, retObj, linkedInvoke.returnKind);
+        virtualStack.pushBasicType(callerFrame, retObj, linkedInvoke.returnKind);
     }
 
     @NeverInline("Keep INVOKEDYNAMIC first-link work out of the bytecode-handler stub")
