@@ -160,6 +160,7 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
         registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractOwnableSynchronizer", "exclusiveOwnerThread");
         registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractQueuedSynchronizer$Node", "waiter");
         registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractQueuedLongSynchronizer$Node", "waiter");
+        registerDeferredThreadField(access, "java.util.concurrent.locks.ReentrantReadWriteLock$Sync", "firstReader");
 
         var trackerType = GuestAccess.get().lookupType(jdk.internal.misc.ThreadTracker.class);
         resetThreadTracker(access, "java.net.URL$ThreadTrackHolder", "TRACKER", trackerType);
