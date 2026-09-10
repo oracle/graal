@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
@@ -42,8 +43,8 @@ public final class InterpreterFrameUtil {
         throw VMError.shouldNotReachHere("private constructor");
     }
 
-    public static InterpreterFrame allocate(int maxLocals, int maxStackSize, Object... arguments) {
-        return InterpreterFrame.create(maxLocals + maxStackSize, arguments);
+    public static InterpreterFrame allocate(InterpreterResolvedJavaMethod method, Object... arguments) {
+        return InterpreterFrame.create(method, arguments);
     }
 
     // region Operand stack accessors

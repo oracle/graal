@@ -30,13 +30,18 @@ import java.util.Arrays;
 
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.interpreter.debug.DebuggerEvents;
+import com.oracle.svm.interpreter.debug.EventKind;
+import com.oracle.svm.interpreter.debug.SteppingControl;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BytecodeFrame;
 
-/// Stores JVM locals and operand stack slots for one interpreted frame.
+/// Stores JVM locals, operand stack slots, and execution state for one interpreted frame.
 ///
 /// Each logical JVM slot has parallel primitive and reference storage:
 ///
@@ -56,6 +61,12 @@ public final class InterpreterFrame {
     private final long[] primitives;
     private final Object[] references;
 
+    final InterpreterResolvedJavaMethod method;
+    final byte[] code;
+    MethodProfile methodProfile;
+    boolean forceStayInInterpreter;
+    DebugState debugState;
+
     private final Object[] arguments;
     private Object[] locks;
     private int lockCount;
@@ -71,7 +82,10 @@ public final class InterpreterFrame {
 
     private static final Object[] EMPTY = new Object[0];
 
-    private InterpreterFrame(int slotCount, Object[] arguments) {
+    private InterpreterFrame(InterpreterResolvedJavaMethod method, Object[] arguments) {
+        int slotCount = method.getMaxLocals() + method.getMaxStackSize();
+        this.method = method;
+        this.code = method.getInterpretedCode();
         this.primitives = new long[slotCount];
         this.references = new Object[slotCount];
         this.arguments = arguments;
@@ -81,8 +95,71 @@ public final class InterpreterFrame {
         this.debuggerEventBCI = BytecodeFrame.UNKNOWN_BCI;
     }
 
-    static InterpreterFrame create(int slotCount, Object... arguments) {
-        return new InterpreterFrame(slotCount, arguments);
+    static InterpreterFrame create(InterpreterResolvedJavaMethod method, Object... arguments) {
+        return new InterpreterFrame(method, arguments);
+    }
+
+    void installExecutionState(MethodProfile newMethodProfile, boolean newForceStayInInterpreter, DebugState newDebugState) {
+        this.methodProfile = newMethodProfile;
+        this.forceStayInInterpreter = newForceStayInInterpreter;
+        this.debugState = newDebugState;
+    }
+
+    /** Holds debugger and tracing state installed when interpretation starts. */
+    static final class DebugState {
+        private SteppingControl steppingControl;
+        private boolean stepEventDisabled;
+        int debuggerEventFlags;
+        int opcode;
+        final int indent;
+
+        DebugState(int debuggerEventFlags, int indent) {
+            this.debuggerEventFlags = debuggerEventFlags;
+            this.indent = indent;
+            this.opcode = -1;
+        }
+
+        @NeverInline("Keep debugger stepping setup out of bytecode-handler stubs")
+        boolean beforeInvoke() {
+            steppingControl = null;
+            stepEventDisabled = false;
+
+            boolean preferStayInInterpreter = false;
+            Thread currentThread = Thread.currentThread();
+            if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+                // Disable stepping for inner frames, except for step into, where we must force
+                // interpreter execution.
+                steppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
+                if (steppingControl != null) {
+                    steppingControl.pushFrame();
+                    if (!steppingControl.isActiveAtCurrentFrameDepth()) {
+                        DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, false);
+                        stepEventDisabled = true;
+                    }
+                    if (steppingControl.getDepth() == SteppingControl.STEP_INTO) {
+                        // For now force the callee to stay in interpreter.
+                        preferStayInInterpreter = true;
+                    }
+                }
+            }
+            return preferStayInInterpreter;
+        }
+
+        @NeverInline("Keep debugger stepping cleanup out of bytecode-handler stubs")
+        void afterInvoke() {
+            Thread currentThread = Thread.currentThread();
+            SteppingControl newSteppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
+            if (newSteppingControl != null) {
+                if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+                    newSteppingControl.popFrame();
+                } else if (steppingControl == newSteppingControl && stepEventDisabled) {
+                    // Re-enable stepping events that could have been disabled by step outer/out
+                    // into inner frames.
+                    DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, true);
+                    newSteppingControl.popFrame();
+                }
+            }
+        }
     }
 
     Object[] getArguments() {

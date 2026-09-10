@@ -470,7 +470,7 @@ public class RistrettoDeoptimizationSupport {
         if (!interpreterMethod.hasBytecodes()) {
             throw VMError.shouldNotReachHere("Ristretto deoptimization requires an interpreter bytecode body for " + interpreterMethod);
         }
-        InterpreterFrame interpreterFrame = InterpreterFrameUtil.allocate(interpreterMethod.getMaxLocals(), interpreterMethod.getMaxStackSize());
+        InterpreterFrame interpreterFrame = InterpreterFrameUtil.allocate(interpreterMethod);
 
         final int numLocals = compiledFrame.getNumLocals();
         final int numStack = compiledFrame.getNumStack();
