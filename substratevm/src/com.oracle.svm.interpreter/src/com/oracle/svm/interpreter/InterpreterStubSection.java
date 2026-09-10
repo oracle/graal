@@ -143,7 +143,7 @@ public abstract class InterpreterStubSection {
     private static final String SWITCH_TO_UNINTERRUPTIBLE = "switch to uninterruptible";
 
     /* '-3' to reduce padding due to alignment in .svm_interp section */
-    static final int MAX_VTABLE_STUBS = 2 * 1024 - 3;
+    static final int MAX_VTABLE_STUBS = 2319;
 
     protected final SubstrateTarget target;
     protected final RegisterConfig registerConfig;
