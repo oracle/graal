@@ -141,10 +141,11 @@ interpreter again into compiled code or falls through to
 `InterpreterStubSection.java`: `enterInterpreterStub0`, `enterInterpreterStubCore`,
 `InterpreterStubSection.java`: `leaveInterpreter`, `leaveInterpreter0`, `call`).
 
-The frame model is heap-based. `InterpreterFrame` stores parallel primitive and reference slot arrays plus monitor
-state, and `InterpreterFrameUtil` overlays the JVM local-variable and operand-stack layout on top of that
-storage (`InterpreterFrame.java`: constructor, `create`, slot accessors/mutators, and lock management,
-[InterpreterFrameUtil.java](../src/com.oracle.svm.interpreter/src/com/oracle/svm/interpreter/InterpreterFrameUtil.java)).
+The frame model is heap-based.
+`InterpreterFrame` stores parallel primitive and reference slot arrays plus monitor state.
+It also owns the JVM local-variable and operand-stack layout through its semantic accessors
+([InterpreterFrame.java](../src/com.oracle.svm.interpreter/src/com/oracle/svm/interpreter/InterpreterFrame.java):
+constructor, `create`, slot accessors and mutators, and lock management).
 `Interpreter.execute` initializes the frame from the Java arguments, acquires synchronized locks when needed, and runs
 the bytecode
 loop (`Interpreter.java`: `initArguments`, `initializeFrame`, `execute`, `execute0`).

@@ -38,7 +38,6 @@ import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.InterpreterFrame;
-import com.oracle.svm.interpreter.InterpreterFrameUtil;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -304,7 +303,7 @@ public class InterpreterDeoptEntryPoints {
         }
 
         // in crema locals and expression stack are in the same array, stack[0]<==> array[maxLocals]
-        int startTop = InterpreterFrameUtil.startingStackOffset(current.getMethod().getMaxLocals()) + current.getNumStack();
+        int startTop = current.getFrame().getOperandStackStart() + current.getNumStack();
         int targetBci = current.getTargetBci();
         if (pendingException == null && current.isRethrowException()) {
             /*
@@ -314,7 +313,7 @@ public class InterpreterDeoptEntryPoints {
              * reconstructed single stack slot instead of from pendingException.
              */
             VMError.guarantee(current.getNumStack() == 1, "Rethrow frame must carry exactly one pending exception");
-            Object exceptionObject = InterpreterFrameUtil.peekObject(current.getFrame(), startTop - 1);
+            Object exceptionObject = current.getFrame().getStackObject(startTop - 1);
             VMError.guarantee(exceptionObject instanceof Throwable, "Rethrow frame must carry a Throwable");
             pendingException = (Throwable) exceptionObject;
         }
@@ -340,12 +339,11 @@ public class InterpreterDeoptEntryPoints {
                  * had just thrown. Clear any stale operand-stack state and rebuild the handler
                  * entry stack, which is exactly one Throwable.
                  */
-                Interpreter.clearOperandStack(current.getFrame(), current.getMethod(), startTop);
-                startTop = InterpreterFrameUtil.startingStackOffset(current.getMethod().getMaxLocals());
-                InterpreterFrameUtil.putObject(current.getFrame(), startTop, pendingException);
+                current.getFrame().clearOperandStack(startTop);
+                startTop = current.getFrame().getOperandStackStart();
+                current.getFrame().setStackObject(startTop, pendingException);
                 startTop++;
-                targetBci = Interpreter.beforeJumpChecks(current.getFrame(), targetBci, handler.getHandlerBCI(),
-                                startTop);
+                targetBci = Interpreter.beforeJumpSafepoint(targetBci, handler.getHandlerBCI());
             }
         } else {
             if (!inject && hasPendingReturnValue) {
@@ -368,7 +366,7 @@ public class InterpreterDeoptEntryPoints {
             }
         }
 
-        return Interpreter.execute(current.getMethod(), current.getFrame(), targetBci, startTop);
+        return Interpreter.execute(current.getFrame(), targetBci, startTop);
     }
 
     private static void logInjectedReturnValue(JavaKind returnKind, Object returnValue, int slot) {
@@ -445,53 +443,53 @@ public class InterpreterDeoptEntryPoints {
                 assert returnValue instanceof Integer;
                 int calleeIntReturnValue = (Integer) returnValue;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putInt(interpreterFrame, calleeReturnValueSlot, calleeIntReturnValue);
+                interpreterFrame.setStackInt(calleeReturnValueSlot, calleeIntReturnValue);
                 return stackDelta + 1;
             case Boolean:
                 assert returnValue instanceof Boolean;
                 int calleeBooleanReturnValue = ((Boolean) returnValue) ? 1 : 0;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putInt(interpreterFrame, calleeReturnValueSlot, calleeBooleanReturnValue);
+                interpreterFrame.setStackInt(calleeReturnValueSlot, calleeBooleanReturnValue);
                 return stackDelta + 1;
             case Byte:
                 assert returnValue instanceof Byte;
                 int calleeByteReturnValue = (Byte) returnValue;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putInt(interpreterFrame, calleeReturnValueSlot, calleeByteReturnValue);
+                interpreterFrame.setStackInt(calleeReturnValueSlot, calleeByteReturnValue);
                 return stackDelta + 1;
             case Short:
                 assert returnValue instanceof Short;
                 int calleeShortReturnValue = (Short) returnValue;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putInt(interpreterFrame, calleeReturnValueSlot, calleeShortReturnValue);
+                interpreterFrame.setStackInt(calleeReturnValueSlot, calleeShortReturnValue);
                 return stackDelta + 1;
             case Char:
                 assert returnValue instanceof Character;
                 int calleeCharReturnValue = (Character) returnValue;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putInt(interpreterFrame, calleeReturnValueSlot, calleeCharReturnValue);
+                interpreterFrame.setStackInt(calleeReturnValueSlot, calleeCharReturnValue);
                 return stackDelta + 1;
             case Long:
                 assert returnValue instanceof Long;
                 long calleeLongReturnValue = (Long) returnValue;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putLong(interpreterFrame, calleeReturnValueSlot, calleeLongReturnValue);
+                interpreterFrame.setStackLong(calleeReturnValueSlot, calleeLongReturnValue);
                 return stackDelta + 2;
             case Float:
                 assert returnValue instanceof Float;
                 float calleeFloatReturnValue = (Float) returnValue;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putFloat(interpreterFrame, calleeReturnValueSlot, calleeFloatReturnValue);
+                interpreterFrame.setStackFloat(calleeReturnValueSlot, calleeFloatReturnValue);
                 return stackDelta + 1;
             case Double:
                 assert returnValue instanceof Double;
                 double calleeDoubleReturnValue = (Double) returnValue;
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putDouble(interpreterFrame, calleeReturnValueSlot, calleeDoubleReturnValue);
+                interpreterFrame.setStackDouble(calleeReturnValueSlot, calleeDoubleReturnValue);
                 return stackDelta + 2;
             case Object:
                 logInjectedReturnValue(returnKind, returnValue, calleeReturnValueSlot);
-                InterpreterFrameUtil.putObject(interpreterFrame, calleeReturnValueSlot, returnValue);
+                interpreterFrame.setStackObject(calleeReturnValueSlot, returnValue);
                 return stackDelta + 1;
             default:
                 throw VMError.shouldNotReachHere("entrypoint: unsupported return kind: " + returnKind);
@@ -500,7 +498,7 @@ public class InterpreterDeoptEntryPoints {
 
     private static void clearConsumedInvokeArguments(InterpreterFrame interpreterFrame, int newTop, int callerTop) {
         for (int slot = callerTop - 1; slot >= newTop; --slot) {
-            InterpreterFrameUtil.clear(interpreterFrame, slot);
+            interpreterFrame.clearStackSlot(slot);
         }
     }
 

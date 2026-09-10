@@ -31,7 +31,6 @@ import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.Interpreter.OSRResult;
 import com.oracle.svm.interpreter.InterpreterFrame;
-import com.oracle.svm.interpreter.InterpreterFrameUtil;
 import com.oracle.svm.interpreter.InterpreterStubSection;
 import com.oracle.svm.interpreter.SemanticJavaException;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -97,7 +96,7 @@ public final class RistrettoOSRSupport {
         if (methodProfile == null || !RistrettoProfileSupport.isEnabled() || !RistrettoOptions.JITEnableCompilation.getValue() || !RistrettoOptions.JITUseOnStackReplacement.getValue()) {
             return null;
         }
-        if (top != InterpreterFrameUtil.startingStackOffset(method.getMaxLocals())) {
+        if (top != frame.getOperandStackStart()) {
             /*
              * Reject OSR when the backedge has live operand-stack values. Ristretto's OSR entry
              * reconstructs locals and monitors from the interpreter frame, but it does not reconstruct
@@ -189,23 +188,23 @@ public final class RistrettoOSRSupport {
      * OSR graphs; ordinary Java call-site searches only see the lookup strings.
      */
     public static int getIntLocal(int slot) {
-        return InterpreterFrameUtil.getLocalInt(currentFrame(), slot);
+        return currentFrame().getLocalInt(slot);
     }
 
     public static float getFloatLocal(int slot) {
-        return InterpreterFrameUtil.getLocalFloat(currentFrame(), slot);
+        return currentFrame().getLocalFloat(slot);
     }
 
     public static long getLongLocal(int slot) {
-        return InterpreterFrameUtil.getLocalLong(currentFrame(), slot);
+        return currentFrame().getLocalLong(slot);
     }
 
     public static double getDoubleLocal(int slot) {
-        return InterpreterFrameUtil.getLocalDouble(currentFrame(), slot);
+        return currentFrame().getLocalDouble(slot);
     }
 
     public static Object getObjectLocal(int slot) {
-        return InterpreterFrameUtil.getLocalObject(currentFrame(), slot);
+        return currentFrame().getLocalObject(slot);
     }
 
     public static Object getLockObject(int index) {
