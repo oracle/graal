@@ -76,6 +76,11 @@ public final class LogicValueStamp extends ArithmeticStamp {
     }
 
     @Override
+    public boolean isConstant() {
+        return mask == MASK_FALSE || mask == MASK_TRUE;
+    }
+
+    @Override
     public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
         throw GraalError.shouldNotReachHere("logic value stamp has no Java type"); // ExcludeFromJacocoGeneratedReport
     }
