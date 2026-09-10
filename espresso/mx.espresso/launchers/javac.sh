@@ -42,7 +42,7 @@ process_arg() {
     if [[ "$1" == -J* ]]; then
         jvm_args+=("${1#-J}")
     else
-        launcher_args+=("$1")
+        javac_args+=("$1")
     fi
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,8 +129,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
              * Only save LinkageErrors in the constant pool. This is in line with HotSpot behaviour.
              * Needs clarification to section 5.4.3 of the VM spec (see JDK-6308271).
              */
-            this.cachedEntries[cpi] = new DynamicConstantError(e);
-            throw e;
+            return new StickyConstantError(e);
         }
     }
 
@@ -198,7 +197,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return (InterpreterResolvedJavaType) hub.getInterpreterType();
     }
 
-    private InterpreterResolvedJavaType resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
+    private Object resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
         assert accessingKlass != null;
         assert tagAt(classIndex) == Tag.CLASS;
 
@@ -212,13 +211,15 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             type = SymbolsSupport.getTypes().fromClassNameEntry(className);
             allowArbitraryClassLoading = true;
         } else if (entry instanceof UnresolvedJavaType unresolvedJavaType) {
-            Throwable cause = unresolvedJavaType.getCause();
-            if (cause != null) {
-                throw uncheckedThrow(cause);
-            }
             // CP comes from build-time JVMCI type, derive type from UnresolvedJavaType.
             type = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaType.getName());
             allowArbitraryClassLoading = false;
+        } else if (entry instanceof InterpreterResolvedJavaType resolved) {
+            // concurrent resolution
+            return resolved;
+        } else if (entry instanceof StickyConstantError resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved type, but got " + entry);
         }
@@ -233,8 +234,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             // Just throw the exception and don't prevent these classes from being loaded for
             // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
             // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
-            this.cachedEntries[classIndex] = UnresolvedJavaType.create(type.toString(), e);
-            throw e;
+            return new StickyConstantError(e);
         }
     }
 
@@ -253,7 +253,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             fieldName = this.fieldName(fieldIndex);
             fieldType = this.fieldType(fieldIndex);
             int memberClassIndex = this.memberClassIndex(fieldIndex);
-            holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
+            holder = resolvedTypeAt(accessingClass, memberClassIndex);
         } else if (entry instanceof UnresolvedJavaField unresolvedJavaField) {
             Throwable cause = unresolvedJavaField.getCause();
             if (cause != null) {
@@ -266,6 +266,9 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             assert !TypeSymbols.isPrimitive(holderType) && !TypeSymbols.isArray(holderType);
             // Perf. note: The holder is re-resolved every-time (never cached).
             holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
+        } else if (entry instanceof InterpreterResolvedJavaField resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved field, but got " + entry);
         }
@@ -274,7 +277,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return result;
     }
 
-    private InterpreterResolvedJavaMethod resolveClassMethodRefConstant(int methodIndex, InterpreterResolvedObjectType accessingClass) {
+    private Object resolveClassMethodRefConstant(int methodIndex, InterpreterResolvedObjectType accessingClass) {
         assert accessingClass != null;
         assert tagAt(methodIndex) == Tag.METHOD_REF;
 
@@ -289,7 +292,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodName = this.methodName(methodIndex);
             methodSignature = this.methodSignature(methodIndex);
             int memberClassIndex = this.memberClassIndex(methodIndex);
-            holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
+            holder = resolvedTypeAt(accessingClass, memberClassIndex);
         } else if (entry instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
             Throwable cause = unresolvedJavaMethod.getCause();
             if (cause != null) {
@@ -301,6 +304,12 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
             holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
+        } else if (entry instanceof InterpreterResolvedJavaMethod resolved) {
+            // concurrent resolution
+            return resolved;
+        } else if (entry instanceof LinkedInvokeCacheEntry resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }
@@ -315,7 +324,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
         return classMethod;
     }
 
-    private InterpreterResolvedJavaMethod resolveInterfaceMethodRefConstant(int interfaceMethodIndex, InterpreterResolvedObjectType accessingClass) {
+    private Object resolveInterfaceMethodRefConstant(int interfaceMethodIndex, InterpreterResolvedObjectType accessingClass) {
         assert tagAt(interfaceMethodIndex) == Tag.INTERFACE_METHOD_REF;
 
         Object entry = this.cachedEntries[interfaceMethodIndex];
@@ -329,7 +338,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             methodName = this.methodName(interfaceMethodIndex);
             methodSignature = this.methodSignature(interfaceMethodIndex);
             int memberClassIndex = this.memberClassIndex(interfaceMethodIndex);
-            holder = (InterpreterResolvedJavaType) resolvedAt(memberClassIndex, accessingClass);
+            holder = resolvedTypeAt(accessingClass, memberClassIndex);
         } else if (entry instanceof UnresolvedJavaMethod unresolvedJavaMethod) {
             Throwable cause = unresolvedJavaMethod.getCause();
             if (cause != null) {
@@ -341,6 +350,12 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             Symbol<Type> holderType = SymbolsSupport.getTypes().getOrCreateValidType(unresolvedJavaMethod.getDeclaringClass().getName());
             // Perf. note: The holder is re-resolved every-time (never cached).
             holder = resolveSymbolAndAccessCheck(holderType, accessingClass);
+        } else if (entry instanceof InterpreterResolvedJavaMethod resolved) {
+            // concurrent resolution
+            return resolved;
+        } else if (entry instanceof LinkedInvokeCacheEntry resolved) {
+            // concurrent resolution
+            return resolved;
         } else {
             throw VMError.shouldNotReachHere("Invalid cached CP entry, expected unresolved method, but got " + entry);
         }

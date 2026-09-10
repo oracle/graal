@@ -311,7 +311,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.interpreter.InterpreterToVM"),
                     clazz("com.oracle.svm.interpreter.metadata.Bytecodes"),
                     clazz("com.oracle.svm.interpreter.metadata.CremaResolvedObjectType"),
-                    clazz("com.oracle.svm.interpreter.metadata.InterpreterConstantPool$DynamicConstantError"),
+                    clazz("com.oracle.svm.interpreter.metadata.InterpreterConstantPool$StickyConstantError"),
                     clazz("com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType"),
                     clazz("com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType"),
                     clazz("com.oracle.svm.interpreter.metadata.serialization.ReaderImpl"),

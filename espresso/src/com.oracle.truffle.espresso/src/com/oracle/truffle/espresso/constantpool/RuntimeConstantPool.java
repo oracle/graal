@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,9 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
@@ -63,6 +65,10 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class RuntimeConstantPool extends ConstantPool {
+    private static final VarHandle OBJECT_ARRAY_VARHANDLE;
+    static {
+        OBJECT_ARRAY_VARHANDLE = MethodHandles.arrayElementVarHandle(ResolvedConstant[].class);
+    }
 
     private final ObjectKlass holder;
 
@@ -88,26 +94,6 @@ public final class RuntimeConstantPool extends ConstantPool {
         resolvedConstants[idx] = new ResolvedClassMethodRefConstant(m);
     }
 
-    private ResolvedConstant outOfLockResolvedAt(ObjectKlass accessingKlass, int index) {
-        ResolvedConstant c = resolvedConstants[index];
-        if (c == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // double check: deopt is a heavy operation.
-            c = resolvedConstants[index];
-            if (c == null) {
-                ResolvedConstant locallyResolved = resolve(index, accessingKlass);
-                synchronized (this) {
-                    // Triple check: non-trivial resolution
-                    c = resolvedConstants[index];
-                    if (c == null) {
-                        resolvedConstants[index] = c = locallyResolved;
-                    }
-                }
-            }
-        }
-        return c;
-    }
-
     /**
      * Returns the resolved, non-primitive, constant pool entry.
      */
@@ -120,13 +106,15 @@ public final class RuntimeConstantPool extends ConstantPool {
         if (c == null) {
             if (CompilerDirectives.isPartialEvaluationConstant(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            synchronized (this) {
+                // double check: deopt is a heavy operation.
                 c = resolvedConstants[index];
-                if (c == null) {
-                    c = resolve(index, accessingKlass);
-                    if (allowStickyFailures || c.isSuccess()) {
-                        resolvedConstants[index] = c;
+            }
+            if (c == null) {
+                c = resolve(index, accessingKlass);
+                if (allowStickyFailures || c.isSuccess()) {
+                    ResolvedConstant witness = (ResolvedConstant) OBJECT_ARRAY_VARHANDLE.compareAndExchange(resolvedConstants, index, null, c);
+                    if (witness != null) {
+                        return witness;
                     }
                 }
             }
@@ -160,9 +148,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         } catch (NeedsFreshResolutionException e) {
             // clear the constants cache and re-resolve
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                resolvedConstants[index] = null;
-            }
+            resolvedConstants[index] = null;
             return resolvedFieldAt(accessingKlass, index);
         }
     }
@@ -172,9 +158,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         try {
             ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index);
             // a compatible field was found, so update the entry
-            synchronized (this) {
-                resolvedConstants[index] = resolved;
-            }
+            resolvedConstants[index] = resolved;
             return ((Field) resolved.value());
         } catch (EspressoException e) {
             Field realField = field;
@@ -186,12 +170,10 @@ public final class RuntimeConstantPool extends ConstantPool {
             // To avoid a de-opt loop here, we create a compatible delegation
             // field that actually uses the latest known resolved field
             // underneath.
-            synchronized (this) {
-                Field delegationField = getContext().getClassRedefinition().createDelegationFrom(realField);
-                ResolvedConstant resolved = new ResolvedFieldRefConstant(delegationField);
-                resolvedConstants[index] = resolved;
-                return delegationField;
-            }
+            Field delegationField = getContext().getClassRedefinition().createDelegationFrom(realField);
+            ResolvedConstant resolved = new ResolvedFieldRefConstant(delegationField);
+            resolvedConstants[index] = resolved;
+            return (Field) resolved.value();
         }
     }
 
@@ -208,9 +190,7 @@ public final class RuntimeConstantPool extends ConstantPool {
     public Method resolveMethodAndUpdate(ObjectKlass accessingKlass, int index) {
         CompilerAsserts.neverPartOfCompilation();
         ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index);
-        synchronized (this) {
-            resolvedConstants[index] = resolved;
-        }
+        resolvedConstants[index] = resolved;
         return ((Method) resolved.value());
     }
 
@@ -246,8 +226,7 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public ResolvedDynamicConstant resolvedDynamicConstantAt(ObjectKlass accessingKlass, int index) {
-        ResolvedDynamicConstant dynamicConstant = (ResolvedDynamicConstant) outOfLockResolvedAt(accessingKlass, index);
-        return dynamicConstant;
+        return (ResolvedDynamicConstant) resolvedAt(accessingKlass, index, true);
     }
 
     public StaticObject getClassLoader() {
