@@ -1004,6 +1004,70 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static int findVirtualMethodInvocation(JNIObjectHandle clazz, JNIMethodId method, String methodName, String signature) {
+        CIntPointer lengthPtr = StackValue.get(CIntPointer.class);
+        CCharPointerPointer bytecodesPtr = StackValue.get(CCharPointerPointer.class);
+        guarantee(jvmtiFunctions().GetBytecodes().invoke(jvmtiEnv(), method, lengthPtr, bytecodesPtr) == JvmtiError.JVMTI_ERROR_NONE);
+        CCharPointer bytecodes = bytecodesPtr.read();
+        byte[] code = new byte[lengthPtr.read()];
+        try {
+            for (int i = 0; i < code.length; i++) {
+                code[i] = bytecodes.read(i);
+            }
+        } finally {
+            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), bytecodes);
+        }
+
+        CIntPointer constantPoolCountPtr = StackValue.get(CIntPointer.class);
+        CIntPointer constantPoolByteCountPtr = StackValue.get(CIntPointer.class);
+        CCharPointerPointer constantPoolBytesPtr = StackValue.get(CCharPointerPointer.class);
+        guarantee(jvmtiFunctions().GetConstantPool().invoke(jvmtiEnv(), clazz, constantPoolCountPtr, constantPoolByteCountPtr, constantPoolBytesPtr) == JvmtiError.JVMTI_ERROR_NONE);
+        CCharPointer constantPool = constantPoolBytesPtr.read();
+        try {
+            ByteBuffer buffer = CTypeConversion.asByteBuffer(constantPool, constantPoolByteCountPtr.read());
+            buffer.order(ByteOrder.BIG_ENDIAN);
+            ConstantPoolTool constantPoolTool = new ConstantPoolTool(buffer);
+            for (int bci = 0; bci < code.length; bci = nextBytecodeIndex(code, bci)) {
+                if (Byte.toUnsignedInt(code[bci]) == 0xb6) { // invokevirtual
+                    int cpi = (Byte.toUnsignedInt(code[bci + 1]) << 8) | Byte.toUnsignedInt(code[bci + 2]);
+                    MethodReference ref = constantPoolTool.readMethodReference(cpi);
+                    if (methodName.contentEquals(ref.name) && signature.contentEquals(ref.descriptor)) {
+                        return bci;
+                    }
+                }
+            }
+        } finally {
+            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), constantPool);
+        }
+        return -1;
+    }
+
+    private static int nextBytecodeIndex(byte[] code, int bci) {
+        int opcode = Byte.toUnsignedInt(code[bci]);
+        if (opcode == 0xaa || opcode == 0xab) { // tableswitch or lookupswitch
+            int aligned = (bci + 4) & ~3;
+            int entries = opcode == 0xaa ? readInt(code, aligned + 8) - readInt(code, aligned + 4) + 1 : readInt(code, aligned + 4);
+            return aligned + (opcode == 0xaa ? 12 + entries * 4 : 8 + entries * 8);
+        } else if (opcode == 0xc4) { // wide
+            return bci + (Byte.toUnsignedInt(code[bci + 1]) == 0x84 ? 6 : 4);
+        } else if (opcode == 0x10 || opcode == 0x12 || opcode >= 0x15 && opcode <= 0x19 || opcode >= 0x36 && opcode <= 0x3a || opcode == 0xa9 || opcode == 0xbc) {
+            return bci + 2;
+        } else if (opcode == 0x11 || opcode == 0x13 || opcode == 0x14 || opcode == 0x84 || opcode >= 0x99 && opcode <= 0xa8 || opcode >= 0xb2 && opcode <= 0xb8 ||
+                        opcode == 0xbb || opcode == 0xbd || opcode == 0xc0 || opcode == 0xc1 || opcode == 0xc6 || opcode == 0xc7) {
+            return bci + 3;
+        } else if (opcode == 0xc5) {
+            return bci + 4;
+        } else if (opcode == 0xb9 || opcode == 0xba || opcode == 0xc8 || opcode == 0xc9) {
+            return bci + 5;
+        }
+        return bci + 1;
+    }
+
+    private static int readInt(byte[] code, int index) {
+        return Byte.toUnsignedInt(code[index]) << 24 | Byte.toUnsignedInt(code[index + 1]) << 16 |
+                        Byte.toUnsignedInt(code[index + 2]) << 8 | Byte.toUnsignedInt(code[index + 3]);
+    }
+
     private static boolean isLoadClassInvocation(JNIObjectHandle clazz, JNIMethodId method, int bci, String methodName, String signature) {
         CIntPointer lengthPtr = StackValue.get(CIntPointer.class);
         CCharPointerPointer bytecodesPtr = StackValue.get(CCharPointerPointer.class);
@@ -1546,6 +1610,8 @@ final class BreakpointInterceptor {
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
         capabilities.setCanGenerateBreakpointEvents(1);
         capabilities.setCanAccessLocalVariables(1);
+        capabilities.setCanGetBytecodes(1);
+        capabilities.setCanGetConstantPool(1);
 
         if (exptlUnsafeAllocationSupport) {
             capabilities.setCanGenerateNativeMethodBindEvents(1);
@@ -1553,14 +1619,9 @@ final class BreakpointInterceptor {
             BreakpointInterceptor.boundNativeMethods = new HashMap<>();
         }
 
-        if (exptlClassLoaderSupport) {
-            capabilities.setCanGetBytecodes(1);
-            capabilities.setCanGetConstantPool(1);
-
-            CIntPointer formatPtr = StackValue.get(CIntPointer.class);
-            guarantee(jvmti.getFunctions().GetJLocationFormat().invoke(jvmti, formatPtr) == JvmtiError.JVMTI_ERROR_NONE &&
-                            formatPtr.read() == JvmtiLocationFormat.JVMTI_JLOCATION_JVMBCI.getCValue(), "Expecting BCI locations");
-        }
+        CIntPointer formatPtr = StackValue.get(CIntPointer.class);
+        guarantee(jvmti.getFunctions().GetJLocationFormat().invoke(jvmti, formatPtr) == JvmtiError.JVMTI_ERROR_NONE &&
+                        formatPtr.read() == JvmtiLocationFormat.JVMTI_JLOCATION_JVMBCI.getCValue(), "Expecting BCI locations");
         check(jvmti.getFunctions().AddCapabilities().invoke(jvmti, capabilities));
         UnmanagedMemory.free(capabilities);
 
@@ -1715,7 +1776,12 @@ final class BreakpointInterceptor {
             }
         }
         JNIMethodId method = resolveBreakpointMethod(jni, clazz, br.methodName, br.signature, br.optional);
-        JvmtiError result = jvmtiFunctions().SetBreakpoint().invoke(jvmtiEnv(), method, 0L);
+        long location = 0L;
+        if (br.invokedMethodName != null) {
+            location = findVirtualMethodInvocation(clazz, method, br.invokedMethodName, br.invokedMethodSignature);
+            guarantee(location >= 0, "Could not find breakpoint target invocation");
+        }
+        JvmtiError result = jvmtiFunctions().SetBreakpoint().invoke(jvmtiEnv(), method, location);
         if (result != JvmtiError.JVMTI_ERROR_NONE) {
             guarantee(br.optional, "Setting breakpoint failed");
             return null;
@@ -1838,7 +1904,9 @@ final class BreakpointInterceptor {
                      * NOTE: get(System)ResourceAsStream() generallys call get(System)Resource(), no
                      * additional breakpoints necessary
                      */
-                    brk("java/util/zip/ZipFile", "getEntry", "(Ljava/lang/String;)Ljava/util/zip/ZipEntry;", BreakpointInterceptor::getZipEntry),
+                    /* Break after the lookup succeeds, immediately before getZipEntry is invoked. */
+                    brkAtInvocation("java/util/zip/ZipFile", "getEntry", "(Ljava/lang/String;)Ljava/util/zip/ZipEntry;",
+                                    "getZipEntry", "(Ljava/lang/String;I)Ljava/util/zip/ZipEntry;", BreakpointInterceptor::getZipEntry),
 
                     brk("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", BreakpointInterceptor::getProxyClass),
                     brk("java/lang/reflect/Proxy", "newProxyInstance",
@@ -2091,6 +2159,11 @@ final class BreakpointInterceptor {
         return new BreakpointSpecification(className, methodName, signature, handler, false);
     }
 
+    private static BreakpointSpecification brkAtInvocation(String className, String methodName, String signature,
+                    String invokedMethodName, String invokedMethodSignature, BreakpointHandler handler) {
+        return new BreakpointSpecification(className, methodName, signature, invokedMethodName, invokedMethodSignature, handler, false);
+    }
+
     private static BreakpointSpecification optionalBrk(String className, String methodName, String signature, BreakpointHandler handler) {
         return new BreakpointSpecification(className, methodName, signature, handler, true);
     }
@@ -2125,10 +2198,18 @@ final class BreakpointInterceptor {
     }
 
     private static class BreakpointSpecification extends AbstractBreakpointSpecification {
+        final String invokedMethodName;
+        final String invokedMethodSignature;
         final BreakpointHandler handler;
 
         BreakpointSpecification(String className, String methodName, String signature, BreakpointHandler handler, boolean optional) {
+            this(className, methodName, signature, null, null, handler, optional);
+        }
+
+        BreakpointSpecification(String className, String methodName, String signature, String invokedMethodName, String invokedMethodSignature, BreakpointHandler handler, boolean optional) {
             super(className, methodName, signature, optional);
+            this.invokedMethodName = invokedMethodName;
+            this.invokedMethodSignature = invokedMethodSignature;
             this.handler = handler;
         }
     }
