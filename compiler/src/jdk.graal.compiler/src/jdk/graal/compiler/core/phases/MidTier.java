@@ -47,6 +47,7 @@ import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
 import jdk.graal.compiler.phases.common.GuardLoweringPhase;
 import jdk.graal.compiler.phases.common.InsertGuardFencesPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
+import jdk.graal.compiler.phases.common.LateLockEliminationPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
 import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
 import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
@@ -134,6 +135,9 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(new FrameStateAssignmentPhase());
+
+        // Frame states enable nested elimination and lock coarsening across control flow.
+        appendPhase(new LateLockEliminationPhase());
 
         if (PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options)) {
             appendPhase(new PullThroughPhiPhase(canonicalizer));
