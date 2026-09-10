@@ -224,7 +224,7 @@ public class HotSpotPoly1305Test extends HotSpotGraalCompilerTest {
     public void testGraphLoweringToNodeSupported() {
         StructuredGraph graph = getIntrinsicGraph(processMultipleBlocks);
         boolean foundNode = graph != null && graph.getNodes().filter(Poly1305ProcessBlocksNode.class).isNotEmpty();
-        boolean shouldUseNode = Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(getTarget().arch);
+        boolean shouldUseNode = Poly1305ProcessBlocksNode.isSupported(getTarget().arch);
         Assert.assertEquals("Unexpected Poly1305 node activation state", shouldUseNode, foundNode);
     }
 
@@ -233,11 +233,9 @@ public class HotSpotPoly1305Test extends HotSpotGraalCompilerTest {
         for (var arch : List.of(
                         amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX_IFMA),
                         amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512_IFMA, AMD64.CPUFeature.AVX512VL, AMD64.CPUFeature.AVX512BW, AMD64.CPUFeature.AVX512F))) {
-            Assert.assertTrue(Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(arch));
             Assert.assertTrue(Poly1305ProcessBlocksNode.isSupported(arch));
         }
         for (var arch : List.of(amd64With(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2))) {
-            Assert.assertFalse(Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(arch));
             Assert.assertFalse(Poly1305ProcessBlocksNode.isSupported(arch));
         }
     }

@@ -190,7 +190,6 @@ import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
-import jdk.graal.compiler.replacements.nodes.Poly1305ProcessBlocksNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
@@ -1101,15 +1100,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerPoly1305Plugin(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.Poly1305");
-        r.register(new HotSpotPoly1305ProcessBlocksPlugin());
-    }
-
-    private static final class HotSpotPoly1305ProcessBlocksPlugin extends Poly1305ProcessBlocksPlugin {
-
-        @Override
-        public boolean isApplicable(Architecture arch) {
-            return Poly1305ProcessBlocksNode.isSupportedForRuntimeCheckedStub(arch);
-        }
+        r.register(new Poly1305ProcessBlocksPlugin());
     }
 
     private static void registerIntegerPolynomialPlugins(InvocationPlugins plugins) {

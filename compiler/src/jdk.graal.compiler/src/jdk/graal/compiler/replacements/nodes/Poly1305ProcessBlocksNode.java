@@ -115,15 +115,6 @@ public class Poly1305ProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         };
     }
 
-    @SuppressWarnings("unlikely-arg-type")
-    public static boolean isSupportedForRuntimeCheckedStub(Architecture arch) {
-        return switch (arch) {
-            case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64()) || amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            case AArch64 aarch64 -> true;
-            default -> false;
-        };
-    }
-
     @NodeIntrinsic
     @GenerateStub(name = "poly1305ProcessBlocks", minimumCPUFeaturesAMD64 = {"minFeaturesAMD64AVX512Variant", "minFeaturesAMD64AVX2Variant"})
     public static native void apply(Pointer input, int length, Pointer accumulator, Pointer r);
