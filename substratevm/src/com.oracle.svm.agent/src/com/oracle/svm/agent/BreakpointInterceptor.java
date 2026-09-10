@@ -580,6 +580,10 @@ final class BreakpointInterceptor {
     }
 
     private static boolean accessFieldUnsafe(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        /* sun.misc.Unsafe delegates to this method; its breakpoint records the application caller. */
+        if (state.getCallerMethod(1).equal(agent.handles().getSunMiscUnsafeObjectFieldOffset(jni))) {
+            return true;
+        }
         JNIObjectHandle field = getObjectArgument(thread, 1);
         return accessFieldInternal(jni, state, field);
     }
@@ -1856,6 +1860,7 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getBundleImpl),
 
                     // In Java 9+, these are Java methods that call private methods
+                    optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/reflect/Field;)J", BreakpointInterceptor::accessFieldUnsafe),
                     optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),
 
                     brk("sun/misc/Unsafe", "allocateInstance", "(Ljava/lang/Class;)Ljava/lang/Object;", BreakpointInterceptor::allocateInstance),
