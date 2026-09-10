@@ -97,7 +97,7 @@ public class NativeGCOptions {
     protected static final RuntimeOptionKey<Integer> ConcGCThreads = new NativeGCRuntimeOptionKey<>(0, IsolateCreationOnly);
 
     @Option(help = "Determines if System.gc() invokes a concurrent collection.", type = OptionType.Expert)//
-    protected static final RuntimeOptionKey<Boolean> ExplicitGCInvokesConcurrent = new NativeGCRuntimeOptionKey<>(false, IsolateCreationOnly);
+    public static final RuntimeOptionKey<Boolean> ExplicitGCInvokesConcurrent = new NativeGCRuntimeOptionKey<>(false, IsolateCreationOnly);
 
     @Option(help = "Wasted fraction of parallel allocation buffer.", type = OptionType.Expert)//
     protected static final RuntimeOptionKey<Integer> ParallelGCBufferWastePct = new NativeGCRuntimeOptionKey<>(10, IsolateCreationOnly);
