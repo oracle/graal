@@ -682,7 +682,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         public Object[] get() {
             try {
                 Method values = getMethod("values");
-                values.setAccessible(true);
+                // Class.getEnumConstants is a trusted java.base operation and must invoke values()
+                // even when the enum package is not exported or open.
+                SubstrateUtil.cast(values, Target_java_lang_reflect_AccessibleObject.class).override = true;
                 return (Object[]) values.invoke(null);
             } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | NullPointerException | ClassCastException ex) {
                 // These can happen when users concoct enum-like classes
