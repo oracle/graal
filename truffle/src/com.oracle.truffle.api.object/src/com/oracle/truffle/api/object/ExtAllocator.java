@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,8 @@ import static com.oracle.truffle.api.object.ObjectStorageOptions.LongLocations;
 import static com.oracle.truffle.api.object.ObjectStorageOptions.NewFinalSpeculation;
 import static com.oracle.truffle.api.object.ObjectStorageOptions.NewTypeSpeculation;
 import static com.oracle.truffle.api.object.ObjectStorageOptions.PrimitiveLocations;
+
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.impl.AbstractAssumption;
@@ -134,10 +136,12 @@ final class ExtAllocator extends BaseAllocator {
         return (value != NO_VALUE && oldLocation == null) || (oldLocation instanceof ObjectLocation);
     }
 
+    // Suppress ECJ's dead code warning when LAZY_TYPE_ASSUMPTION is false.
+    @SuppressWarnings("unused")
     private static TypeAssumption getTypeAssumption(Location oldLocation, Object value) {
         if (NewTypeSpeculation && allowTypeSpeculation(oldLocation, value)) {
             if (value != NO_VALUE && oldLocation == null) {
-                if (ObjectLocation.LAZY_TYPE_ASSUMPTION) {
+                if (!ImageInfo.inImageBuildtimeCode() && ObjectLocation.LAZY_TYPE_ASSUMPTION) {
                     return null;
                 }
                 return ObjectLocation.createTypeAssumptionFromValue(value);
@@ -151,7 +155,7 @@ final class ExtAllocator extends BaseAllocator {
     private static AbstractAssumption getFinalAssumption(Location oldLocation, boolean allowFinalSpeculation) {
         if (NewFinalSpeculation && allowFinalSpeculation) {
             if (oldLocation == null) {
-                if (InstanceLocation.LAZY_FINAL_ASSUMPTION) {
+                if (!ImageInfo.inImageBuildtimeCode() && InstanceLocation.LAZY_FINAL_ASSUMPTION) {
                     return null;
                 }
                 return InstanceLocation.createFinalAssumption();

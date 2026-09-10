@@ -65,6 +65,7 @@ import java.util.function.Predicate;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1270,6 +1271,9 @@ public final class Shape {
         }
 
         this.validAssumption = createValidAssumption();
+        if (ImageInfo.inImageBuildtimeCode()) {
+            this.leafAssumption = createLeafAssumption();
+        }
 
         int allFlags = flags;
         if ((allFlags & FLAG_HAS_INSTANCE_PROPERTIES) == 0) {
