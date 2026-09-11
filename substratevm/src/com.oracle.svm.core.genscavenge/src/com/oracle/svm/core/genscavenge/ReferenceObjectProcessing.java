@@ -33,23 +33,23 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 final class ReferenceObjectProcessing {
@@ -186,10 +186,10 @@ final class ReferenceObjectProcessing {
         return pendingHead;
     }
 
-    static void afterCollection(UnsignedWord freeBytes) {
+    static void afterCollection(UnsignedWord headroomBytes) {
         assert rememberedRefsList == null;
-        UnsignedWord unused = freeBytes.unsignedDivide(1024 * 1024 /* MB */);
-        maxSoftRefAccessIntervalMs = unused.multiply(SubstrateGCOptions.SoftRefLRUPolicyMSPerMB.getValue());
+        UnsignedWord headroomMB = headroomBytes.unsignedDivide(1024 * 1024 /* MB */);
+        maxSoftRefAccessIntervalMs = headroomMB.multiply(SubstrateGCOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
         if (initialSoftRefClock == 0) {
             initialSoftRefClock = ReferenceInternals.getSoftReferenceClock();

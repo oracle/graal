@@ -34,12 +34,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
@@ -132,7 +132,7 @@ final class SizeParameters {
     @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
     public UnsignedWord getYoungSize() {
         assert isInitialized();
-        return sizes.getYoungSize();
+        return computeYoungSize(sizes);
     }
 
     @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
@@ -200,14 +200,23 @@ final class SizeParameters {
     }
 
     @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
-    public UnsignedWord getHeapSize() {
+    public UnsignedWord getCurrentHeapSizeTarget() {
         assert isInitialized();
         assert VMOperation.isGCInProgress() : "use only during GC";
-
-        return sizes.getHeapSize();
+        return computeCurrentHeapSizeTarget(sizes);
     }
 
-    /** The caller needs to ensure that . */
+    @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
+    private static UnsignedWord computeYoungSize(RawSizeParameters current) {
+        return current.getEdenSize().add(current.getSurvivorSize());
+    }
+
+    @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
+    private static UnsignedWord computeCurrentHeapSizeTarget(RawSizeParameters current) {
+        return computeYoungSize(current).add(current.getOldSize());
+    }
+
+    /** The caller must initialize {@code newValuesOnStack} before invoking this method. */
     @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
     void update(RawSizeParameters newValuesOnStack) {
         RawSizeParameters prevValues = sizes;
@@ -237,6 +246,14 @@ final class SizeParameters {
         assert getMaxYoungSize().add(getMaxOldSize()).equal(getMaxHeapSize());
         assert getInitialEdenSize().add(getInitialSurvivorSize().multiply(2)).equal(getInitialYoungSize());
         assert getInitialYoungSize().add(getInitialOldSize()).equal(sizes.getInitialHeapSize());
+
+        UnsignedWord youngSize = computeYoungSize(newValuesOnHeap);
+        assert newValuesOnHeap.getEdenSize().belowOrEqual(youngSize);
+        assert newValuesOnHeap.getSurvivorSize().belowOrEqual(youngSize);
+
+        UnsignedWord heapSizeTarget = computeCurrentHeapSizeTarget(newValuesOnHeap);
+        assert youngSize.belowOrEqual(heapSizeTarget);
+        assert newValuesOnHeap.getOldSize().belowOrEqual(heapSizeTarget);
     }
 
     /**
@@ -282,7 +299,6 @@ final class SizeParameters {
                         a.getMaxSurvivorSize() == b.getMaxSurvivorSize() &&
 
                         a.getInitialYoungSize() == b.getInitialYoungSize() &&
-                        a.getYoungSize() == b.getYoungSize() &&
                         a.getMaxYoungSize() == b.getMaxYoungSize() &&
 
                         a.getInitialOldSize() == b.getInitialOldSize() &&
@@ -293,7 +309,6 @@ final class SizeParameters {
 
                         a.getMinHeapSize() == b.getMinHeapSize() &&
                         a.getInitialHeapSize() == b.getInitialHeapSize() &&
-                        a.getHeapSize() == b.getHeapSize() &&
                         a.getMaxHeapSize() == b.getMaxHeapSize();
     }
 }

@@ -64,8 +64,8 @@ final class BasicCollectionPolicies {
                             Word.zero(), Word.zero(), Word.zero(),
                             maxOld, maxOld, maxOld,
                             Word.zero(),
-                            maxYoung, maxYoung, maxYoung,
-                            minHeap, maxHeap, maxHeap, maxHeap);
+                            maxYoung, maxYoung,
+                            minHeap, maxHeap, maxHeap);
         }
 
         @Override

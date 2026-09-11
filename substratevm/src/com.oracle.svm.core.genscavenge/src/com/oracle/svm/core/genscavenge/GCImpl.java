@@ -43,17 +43,16 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.AssertionsSupport;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -76,7 +75,6 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
@@ -86,11 +84,9 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalk;
@@ -103,8 +99,12 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
@@ -386,11 +386,27 @@ public final class GCImpl implements GC {
         }
 
         accounting.afterCollectOnce(completeCollection);
+
+        /* Notify the GC policy. This may update the heap size target. */
+        UnsignedWord prevHeapSizeTarget = policy.getCurrentHeapSizeTarget();
         policy.onCollectionEnd(completeCollection, cause);
 
+        /* Determine how much headroom is left for soft-reference retention. */
         UnsignedWord usedBytes = getChunkBytes();
-        UnsignedWord freeBytes = policy.getCurrentHeapCapacity().subtract(usedBytes);
-        ReferenceObjectProcessing.afterCollection(freeBytes);
+        UnsignedWord newHeapSizeTarget = policy.getCurrentHeapSizeTarget();
+        UnsignedWord headroomBytes;
+        /*
+         * If the previous heap size target was already reached, do not treat a heap size target
+         * increase performed by onCollectionEnd() as soft-reference headroom.
+         */
+        if (usedBytes.aboveOrEqual(prevHeapSizeTarget) || usedBytes.aboveOrEqual(newHeapSizeTarget)) {
+            /* Allow the next GC to collect soft references. */
+            headroomBytes = Word.zero();
+        } else {
+            /* Base soft-reference retention on how much headroom is left. */
+            headroomBytes = newHeapSizeTarget.subtract(usedBytes);
+        }
+        ReferenceObjectProcessing.afterCollection(headroomBytes);
 
         return usedBytes.aboveThan(policy.getMaximumHeapSize()); // out of memory?
     }
