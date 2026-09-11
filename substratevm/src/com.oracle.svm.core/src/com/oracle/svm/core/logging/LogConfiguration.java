@@ -46,6 +46,8 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
@@ -266,6 +268,7 @@ public final class LogConfiguration {
         }
         output.updateConfigString();
         synchronizeLegacyGCOptions();
+        updateJfrLogLevels();
         if (initializationComplete) {
             initializeAsyncWriter();
         }
@@ -403,6 +406,12 @@ public final class LogConfiguration {
         }
     }
 
+    private static void updateJfrLogLevels() {
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.getLogging().updateLogLevels();
+        }
+    }
+
     /// Flushes asynchronous records, reports fallback statistics, and removes every output
     /// configuration.
     public static void disableLogging() {
@@ -448,6 +457,7 @@ public final class LogConfiguration {
         stdout.updateConfigString();
         stderr.updateConfigString();
         synchronizeLegacyGCOptions();
+        updateJfrLogLevels();
         if (resetAsyncRequest) {
             asyncRequested = false;
         }
