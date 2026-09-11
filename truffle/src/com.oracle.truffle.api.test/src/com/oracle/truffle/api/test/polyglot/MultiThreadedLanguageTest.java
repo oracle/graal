@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,6 +159,44 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
         } catch (ClassCastException e) {
         } catch (IllegalArgumentException e) {
         } catch (NullPointerException e) {
+        }
+    }
+
+    @Test
+    public void testSingleThreadedAccessErrorIncludesActiveThread() throws Exception {
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> req.singleThreaded;
+        ExecutorService executor = createExecutor(1, vthreads);
+        for (boolean seenThread : new boolean[]{false, true}) {
+            try (Context context = Context.create(MultiThreadedLanguage.ID)) {
+                context.initialize(MultiThreadedLanguage.ID);
+                if (seenThread) {
+                    executor.submit(() -> {
+                        context.enter();
+                        context.leave();
+                    }).get(10, TimeUnit.SECONDS);
+                }
+                Thread activeThread = Thread.currentThread();
+                context.enter();
+                try {
+                    executor.submit(() -> {
+                        Thread.currentThread().setName("requesting-thread");
+                        AbstractPolyglotTest.assertFails(() -> {
+                            context.enter();
+                            context.leave();
+                        }, IllegalStateException.class, (e) -> {
+                            assertTrue(e.getMessage(), e.getMessage().contains("Multi threaded access requested by thread "));
+                            assertTrue(e.getMessage(), e.getMessage().contains("requesting-thread"));
+                            assertTrue(e.getMessage(), e.getMessage().contains("Currently active thread(s): [" + activeThread + "]."));
+                        });
+                    }).get(10, TimeUnit.SECONDS);
+                } finally {
+                    context.leave();
+                }
+                executor.submit(() -> {
+                    context.enter();
+                    context.leave();
+                }).get(10, TimeUnit.SECONDS);
+            }
         }
     }
 
@@ -684,6 +722,7 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
                 AbstractPolyglotTest.assertFails(() -> env.newTruffleThreadBuilder(() -> {
                 }).virtual(vthreads).build(), IllegalStateException.class, (ise) -> {
                     assertTrue(ise.getMessage().contains("Multi threaded access requested by thread"));
+                    assertTrue(ise.getMessage(), ise.getMessage().contains("Currently active thread(s): [" + Thread.currentThread() + "]."));
                 });
                 return null;
             });

@@ -1596,7 +1596,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return threadInfo;
     }
 
-    static RuntimeException throwDeniedThreadAccess(Thread current, boolean accessSingleThreaded, List<PolyglotLanguage> deniedLanguages) throws PolyglotThreadAccessException {
+    RuntimeException throwDeniedThreadAccess(Thread current, boolean accessSingleThreaded, List<PolyglotLanguage> deniedLanguages) throws PolyglotThreadAccessException {
+        assert Thread.holdsLock(this);
         String message;
         StringBuilder languagesString = new StringBuilder("");
         for (PolyglotLanguage language : deniedLanguages) {
@@ -1608,7 +1609,16 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (accessSingleThreaded) {
             message = String.format("Single threaded access requested by thread %s but is not allowed for language(s) %s.", current, languagesString);
         } else {
-            message = String.format("Multi threaded access requested by thread %s but is not allowed for language(s) %s.", current, languagesString);
+            List<Thread> activeThreads = new ArrayList<>();
+            // Threads can leave concurrently, so this is a best-effort snapshot.
+            for (PolyglotThreadInfo threadInfo : threads.values()) {
+                Thread thread = threadInfo.getThread();
+                if (thread != null && threadInfo.isActive()) {
+                    activeThreads.add(thread);
+                }
+            }
+            message = String.format("Multi threaded access requested by thread %s but is not allowed for language(s) %s. Currently active thread(s): %s.",
+                            current, languagesString, activeThreads);
         }
         throw new PolyglotThreadAccessException(message);
     }
