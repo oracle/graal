@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @NodeChild(value = "level", type = LLVMExpressionNode.class)
+@NodeChild(value = "subleaf", type = LLVMExpressionNode.class)
 public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
     public static final String BRAND = "Sulong"; // at most 48 characters
     public static final String VENDOR_ID = "SulongLLVM64"; // exactly 12 characters
@@ -82,6 +83,7 @@ public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
     public static final int RDRND_IS_SUPPORTED = 1 << 30;
     // FN=7/0: EBX
     public static final int RDSEED_IS_SUPPORTED = 1 << 18;
+    public static final int EBX_AVX2_SUPPORTED = 1 << 5;
     // FN=80000001h: EDX
     public static final int LM_IS_SUPPORTED = (1 << 29);
     // FN=80000001h: ECX
@@ -90,6 +92,13 @@ public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
     public static final int EDX_SSE_SUPPORTED = 1 << 25;
     public static final int EDX_SSE2_SUPPORTED = 1 << 26;
     public static final int ECX_SSE3_SUPPORTED = 1 << 0;
+    public static final int ECX_SSSE3_SUPPORTED = 1 << 9;
+    public static final int ECX_FMA_SUPPORTED = 1 << 12;
+    public static final int ECX_SSE41_SUPPORTED = 1 << 19;
+    public static final int ECX_SSE42_SUPPORTED = 1 << 20;
+    public static final int ECX_XSAVE_SUPPORTED = 1 << 26;
+    public static final int ECX_OSXSAVE_SUPPORTED = 1 << 27;
+    public static final int ECX_AVX_SUPPORTED = 1 << 28;
 
     public LLVMAMD64CpuidNode(LLVMAMD64WriteValueNode eax, LLVMAMD64WriteValueNode ebx, LLVMAMD64WriteValueNode ecx, LLVMAMD64WriteValueNode edx) {
         this.eax = eax;
@@ -100,7 +109,7 @@ public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
     }
 
     @Specialization
-    protected void doOp(VirtualFrame frame, int level) {
+    protected void doOp(VirtualFrame frame, int level, int subleaf) {
         int a;
         int b;
         int c;
@@ -124,13 +133,18 @@ public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
                 // 27:20 - Extended Family
                 a = 0;
                 b = 0;
-                c = RDRND_IS_SUPPORTED | ECX_SSE3_SUPPORTED;
+                c = RDRND_IS_SUPPORTED | ECX_SSE3_SUPPORTED | ECX_SSSE3_SUPPORTED | ECX_FMA_SUPPORTED | ECX_SSE41_SUPPORTED | ECX_SSE42_SUPPORTED |
+                                ECX_XSAVE_SUPPORTED | ECX_OSXSAVE_SUPPORTED | ECX_AVX_SUPPORTED;
                 d = TSC_IS_SUPPORTED | EDX_SSE_SUPPORTED | EDX_SSE2_SUPPORTED;
                 break;
             case 7:
-                // Extended Features (FIXME: assumption is ECX=0)
-                a = 0;
-                b = RDSEED_IS_SUPPORTED;
+                // Extended Features
+                a = 0; // max supported subleaf
+                if (subleaf == 0) {
+                    b = RDSEED_IS_SUPPORTED | EBX_AVX2_SUPPORTED;
+                } else {
+                    b = 0;
+                }
                 c = 0;
                 d = 0;
                 break;
