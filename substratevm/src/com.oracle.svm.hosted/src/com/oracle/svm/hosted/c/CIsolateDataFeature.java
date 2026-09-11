@@ -30,9 +30,9 @@ import java.util.Map;
 
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataStorage;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -51,6 +51,10 @@ public class CIsolateDataFeature implements InternalFeature {
     private void collectCIsolateData(CIsolateData<?> data) {
         usedEntries.compute(data.getName(), (key, old) -> {
             VMError.guarantee(old == null || old == data, "The isolate data section already contains an entry for %s", key);
+
+            // Reinitialize offsets for this image.
+            data.resetOffset();
+
             return data;
         });
     }
