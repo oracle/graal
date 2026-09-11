@@ -27,6 +27,7 @@ package com.oracle.svm.guest.staging.option;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -34,13 +35,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.collections.EnumBitmask;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionKey;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
@@ -54,26 +56,70 @@ import jdk.graal.compiler.options.OptionKey;
  * ensure that options don't carry over between image builds. Note that for layered images, we need
  * to initialize the cache at run-time (see {@link RuntimeOptionValues#copyBuildTimeValuesToCache}).
  * <p>
+ * Do not use {@link #onValueUpdate} for validation. When it is called, the option update may have
+ * already modified the option map or cached value. Throwing from it can therefore leave the option
+ * stores inconsistent. Use a before-value-update validation callback to reject individual
+ * candidate values and an after-parsing validation callback for checks that need the complete
+ * option configuration, including the values of other options. After-parsing validation stops at
+ * the first callback that throws. Validation errors are not collected.
+ * <p>
  * Related core option package: {@code com.oracle.svm.core.option}.
  */
 public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
     public static final Object OPTION_NOT_SET = new Object();
 
     @Platforms(Platform.HOSTED_ONLY.class)//
-    private final Consumer<RuntimeOptionKey<T>> buildTimeValidation;
+    private final BiConsumer<RuntimeOptionKey<T>, T> initialBeforeValueUpdateValidation;
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private final Consumer<? super RuntimeOptionKey<T>> initialAfterParsingValidation;
+
     private final int flags;
+    private BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation;
+    private Consumer<? super RuntimeOptionKey<T>> afterParsingValidation;
+
     private volatile Object cachedValue = OPTION_NOT_SET;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
-        this(defaultValue, null, flags);
+        this(defaultValue, null, null, flags);
+    }
+
+    /**
+     * Creates an option with validation callbacks that run during image building and at run time.
+     *
+     * <ul>
+     * <li>{@code beforeValueUpdateValidation} validates each candidate value before it is applied.
+     * During initial builder argument parsing, hosted option values and image singletons are not yet
+     * available. At build-time, this callback must therefore perform only self-contained checks,
+     * such as range validation. At run-time, it may execute more complex checks.</li>
+     * <li>{@code afterParsingValidation} validates the resolved option state after option parsing
+     * has finished. This callback can query other options as needed. It runs even if no option
+     * value was specified explicitly, so it must check {@link #hasBeenSet()} if the default value
+     * should not be validated.</li>
+     * </ul>
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public RuntimeOptionKey(T defaultValue, BiConsumer<RuntimeOptionKey<T>, T> beforeValueUpdateValidation, Consumer<? super RuntimeOptionKey<T>> afterParsingValidation,
+                    RuntimeOptionKeyFlag... flags) {
+        super(defaultValue);
+        this.initialBeforeValueUpdateValidation = beforeValueUpdateValidation;
+        this.initialAfterParsingValidation = afterParsingValidation;
+        this.beforeValueUpdateValidation = initialBeforeValueUpdateValidation;
+        this.afterParsingValidation = initialAfterParsingValidation;
+        this.flags = EnumBitmask.computeBitmask(flags);
+    }
+
+    /** Resets hosted state before another image is built in the same process. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void resetHostedState() {
+        cachedValue = OPTION_NOT_SET;
+        beforeValueUpdateValidation = initialBeforeValueUpdateValidation;
+        afterParsingValidation = initialAfterParsingValidation;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeOptionKey(T defaultValue, Consumer<RuntimeOptionKey<T>> buildTimeValidation, RuntimeOptionKeyFlag... flags) {
-        super(defaultValue);
-        this.buildTimeValidation = buildTimeValidation;
-        this.flags = EnumBitmask.computeBitmask(flags);
+    final boolean hasAfterParsingValidation() {
+        return afterParsingValidation != null;
     }
 
     @GuestFold
@@ -116,9 +162,11 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
      */
     @Override
     public final void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-        if (!SubstrateUtil.HOSTED && isImmutable() && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && !Objects.equals(getValue(), newValue)) {
-            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + getValue() + ", new value: " + newValue);
-        }
+        validateValueBeforeUpdate(newValue);
+        updateAfterValidation(values, newValue);
+    }
+
+    final void updateAfterValidation(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
         super.update(values, newValue);
     }
 
@@ -128,17 +176,47 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
      */
     @Override
     public final void putIfAbsent(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-        if (!SubstrateUtil.HOSTED && isImmutable() && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && !Objects.equals(getValue(), newValue)) {
-            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + getValue() + ", new value: " + newValue);
-        }
+        validateValueBeforeUpdate(newValue);
         super.putIfAbsent(values, newValue);
     }
 
+    /** Runs validation that needs the complete option configuration. */
     @Override
+    public final void validateAfterParsing() {
+        if (afterParsingValidation != null) {
+            afterParsingValidation.accept(this);
+        }
+    }
+
+    /** Registers validation for a candidate value before it is applied. */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void validate() {
-        if (buildTimeValidation != null) {
-            buildTimeValidation.accept(this);
+    public void setBeforeValueUpdateValidation(BiConsumer<RuntimeOptionKey<T>, T> validation) {
+        assert !BuildPhaseProvider.isSetupFinished() : "validation registration must finish during setup";
+        assert beforeValueUpdateValidation == null : "a before-value-update validation is already registered";
+        assert validation != null : "validation must not be null";
+        beforeValueUpdateValidation = validation;
+    }
+
+    /**
+     * Registers validation that runs after all options have been parsed during image building and
+     * VM startup. The validation runs even if the option was not specified, so it must check
+     * {@link #hasBeenSet()} when an unused option should be ignored.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setAfterParsingValidation(Consumer<? super RuntimeOptionKey<T>> validation) {
+        assert !BuildPhaseProvider.isSetupFinished() : "validation registration must finish during setup";
+        assert afterParsingValidation == null : "an after-parsing validation is already registered";
+        assert validation != null : "validation must not be null";
+        afterParsingValidation = validation;
+    }
+
+    @SuppressWarnings("unchecked")
+    final void validateValueBeforeUpdate(Object value) {
+        if (!SubstrateUtil.HOSTED && isImmutable() && !ImageSingletons.lookup(RuntimeSupport.class).isUninitialized() && !Objects.equals(getValue(), value)) {
+            throw new IllegalStateException("The runtime option '" + this.getName() + "' is immutable and can only be set during startup. Current value: " + getValue() + ", new value: " + value);
+        }
+        if (beforeValueUpdateValidation != null) {
+            beforeValueUpdateValidation.accept(this, (T) value);
         }
     }
 

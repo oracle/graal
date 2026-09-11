@@ -24,27 +24,26 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.guest.staging.SubstrateGCOptions.ConcealedOptions.MinTLABSize;
+import static com.oracle.svm.guest.staging.SubstrateGCOptions.ConcealedOptions.TLABSize;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -70,12 +69,6 @@ public class TlabOptionCache {
         return ImageSingletons.lookup(TlabOptionCache.class);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void validateHostedOptionValues() {
-        validateMinTlabSize(SubstrateGCOptions.ConcealedOptions.MinTLABSize);
-        validateTlabSize(SubstrateGCOptions.ConcealedOptions.TLABSize);
-    }
-
     /** The minimum size that a TLAB must have. Anything smaller than that could crash the VM. */
     @Fold
     static long getAbsoluteMinTlabSize() {
@@ -87,7 +80,7 @@ public class TlabOptionCache {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getMinTlabSize() {
         if (SubstrateUtil.HOSTED) {
-            return Math.max(getAbsoluteMinTlabSize(), SubstrateGCOptions.ConcealedOptions.MinTLABSize.getHostedValue());
+            return Math.max(getAbsoluteMinTlabSize(), MinTLABSize.getHostedValue());
         }
 
         var minTlabSize = singleton().minTlabSize;
@@ -116,7 +109,7 @@ public class TlabOptionCache {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void cacheMinTlabSize(long maxTlabSize) {
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ConcealedOptions.MinTLABSize);
+        int optionIndex = IsolateArgumentParser.getOptionIndex(MinTLABSize);
         long optionValue = IsolateArgumentParser.singleton().getLongOptionValue(optionIndex);
         optionValue = UninterruptibleUtils.Math.clamp(optionValue, getAbsoluteMinTlabSize(), maxTlabSize);
         minTlabSize = ObjectLayout.singleton().alignUp(optionValue);
@@ -124,7 +117,7 @@ public class TlabOptionCache {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void cacheTlabSize(long maxTlabSize) {
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ConcealedOptions.TLABSize);
+        int optionIndex = IsolateArgumentParser.getOptionIndex(TLABSize);
         long optionValue = IsolateArgumentParser.singleton().getLongOptionValue(optionIndex);
         if (optionValue == 0) {
             optionValue = UninterruptibleUtils.Math.clamp(DEFAULT_INITIAL_TLAB_SIZE, minTlabSize, maxTlabSize);
@@ -134,40 +127,58 @@ public class TlabOptionCache {
         tlabSize = ObjectLayout.singleton().alignUp(optionValue);
     }
 
+    /**
+     * Registers validations here because they depend on collector-specific TLAB sizing and cannot
+     * be declared with the shared TLAB options. Values parsed before registration are validated
+     * immediately.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerOptionValidations() {
-        RuntimeOptionValidationSupport validationSupport = RuntimeOptionValidationSupport.singleton();
-        validationSupport.register(new RuntimeOptionValidation<>(TlabOptionCache::validateMinTlabSize, SubstrateGCOptions.ConcealedOptions.MinTLABSize));
-        validationSupport.register(new RuntimeOptionValidation<>(TlabOptionCache::validateTlabSize, SubstrateGCOptions.ConcealedOptions.TLABSize));
+        MinTLABSize.setBeforeValueUpdateValidation(TlabOptionCache::validateMinTlabSizeValue);
+        MinTLABSize.setAfterParsingValidation(TlabOptionCache::validateMinTlabSize);
+        TLABSize.setBeforeValueUpdateValidation(TlabOptionCache::validateTlabSizeValue);
+        TLABSize.setAfterParsingValidation(TlabOptionCache::validateTlabSize);
+
+        /*
+         * The option validation is registered after option parsing has already finished. So, we
+         * need to execute it right away because the current option values could be invalid.
+         */
+        validateMinTlabSize(MinTLABSize);
+        validateTlabSize(TLABSize);
     }
 
     private static void validateMinTlabSize(RuntimeOptionKey<Long> optionKey) {
-        long optionValue = optionKey.getValue();
-        if (optionKey.hasBeenSet() && optionValue < getAbsoluteMinTlabSize()) {
-            throw invalidOptionValue("Option 'MinTLABSize' (" + optionValue + ") must not be smaller than " + getAbsoluteMinTlabSize());
+        if (optionKey.hasBeenSet()) {
+            validateMinTlabSizeValue(optionKey, optionKey.getValue());
         }
+    }
 
+    private static void validateMinTlabSizeValue(RuntimeOptionKey<Long> optionKey, long optionValue) {
+        long minSize = getAbsoluteMinTlabSize();
+        if (optionValue < minSize) {
+            throw RuntimeOptionValidation.invalidOptionValue(optionKey, optionValue, "The value must not be smaller than " + minSize);
+        }
         long maxSize = TlabSupport.maxSize().rawValue();
         if (optionValue > maxSize) {
-            throw invalidOptionValue("Option 'MinTLABSize' (" + optionValue + ") must not be larger than " + maxSize);
+            throw RuntimeOptionValidation.invalidOptionValue(optionKey, optionValue, "The value must not be larger than " + maxSize);
         }
     }
 
     private static void validateTlabSize(RuntimeOptionKey<Long> optionKey) {
-        long optionValue = optionKey.getValue();
-        if (optionKey.hasBeenSet() && optionValue < getMinTlabSize()) {
-            throw invalidOptionValue("Option 'TLABSize' (" + optionValue + ") must not be smaller than 'MinTLABSize' (" + getMinTlabSize() + ").");
+        if (optionKey.hasBeenSet()) {
+            validateTlabSizeValue(optionKey, optionKey.getValue());
+        }
+    }
+
+    private static void validateTlabSizeValue(RuntimeOptionKey<Long> optionKey, long optionValue) {
+        long minSize = getMinTlabSize();
+        if (optionValue != 0 && optionValue < minSize) {
+            throw RuntimeOptionValidation.invalidOptionValue(optionKey, optionValue, "The value must not be smaller than '" + MinTLABSize.getName() + "' (" + minSize + ")");
         }
 
         long maxSize = TlabSupport.maxSize().rawValue();
         if (optionValue > maxSize) {
-            throw invalidOptionValue("Option 'TLABSize' (" + optionValue + ") must not be larger than " + maxSize);
+            throw RuntimeOptionValidation.invalidOptionValue(optionKey, optionValue, "The value must not be larger than " + maxSize);
         }
-    }
-
-    private static RuntimeException invalidOptionValue(String msg) {
-        if (SubstrateUtil.HOSTED) {
-            throw UserError.abort(msg);
-        }
-        throw new IllegalArgumentException(msg);
     }
 }

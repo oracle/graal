@@ -32,16 +32,13 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidators;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -104,38 +101,11 @@ public class AMD64MemoryMaskingAndFencing {
 
     public static class Options {
         @Option(help = "AMD64 only spectre mitigation for runtime compiled code (masking or fencing before accesses).", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
-        public static final RuntimeOptionKey<Boolean> MemoryMaskingAndFencing = new RuntimeOptionKey<>(false, Options::validateOptionAtBuildTime,
-                        RelevantForCompilationIsolates);
+        public static final RuntimeOptionKey<Boolean> MemoryMaskingAndFencing = new RuntimeOptionKey<>(false, null, Options::validateMemoryMaskingAndFencing, RelevantForCompilationIsolates);
 
-        @Platforms(Platform.HOSTED_ONLY.class)
-        private static void validateOptionAtBuildTime(RuntimeOptionKey<Boolean> optionKey) {
-            /*
-             * Checking if "hasBeenSet" allows us to catch any usage at build time and fail if the
-             * option is used on unsupported platforms. Setting the options will make it reachable,
-             * also on non-supported platforms.
-             */
-            if (optionKey.hasBeenSet() && !Platform.includedIn(Platform.AMD64.class)) {
-                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only available on AMD64");
-            }
-
-            if (optionKey.getValue()) {
-                if (SubstrateOptions.useG1GC()) {
-                    throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is not supported when using G1");
-                }
-            }
-        }
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        static void registerRuntimeOptionValidation() {
-            RuntimeOptionValidationSupport.singleton().register(new RuntimeOptionValidation<>(runtimeOptionKey -> {
-                if (runtimeOptionKey.getValue()) {
-                    if (SubstrateOptions.useG1GC()) {
-                        throw new IllegalArgumentException("Option " + runtimeOptionKey.getName() + " is not supported when using G1");
-                    } else if (!Platform.includedIn(Platform.AMD64.class)) {
-                        throw new IllegalArgumentException("Option " + runtimeOptionKey.getName() + " is only available on AMD64");
-                    }
-                }
-            }, Options.MemoryMaskingAndFencing));
+        private static void validateMemoryMaskingAndFencing(RuntimeOptionKey<Boolean> optionKey) {
+            RuntimeOptionValidators.onlyEnabledOnAMD64(optionKey);
+            RuntimeOptionValidators.notEnabledWithG1(optionKey);
         }
     }
 }
@@ -143,13 +113,6 @@ public class AMD64MemoryMaskingAndFencing {
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
 class AMD64MemoryMaskingAndFencingFeature implements InternalFeature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
-            AMD64MemoryMaskingAndFencing.Options.registerRuntimeOptionValidation();
-        }
-    }
 
     @Override
     public void registerGraalPhases(Providers providers, Suites suites, boolean hosted, boolean fallback) {

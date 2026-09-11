@@ -136,8 +136,6 @@ public final class RistrettoFeature implements InternalFeature {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoDirectives.class);
         RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoOSRSupport.class);
-        RistrettoOptions.registerRuntimeOptionValidations();
-
         /*
          * The low-level Ristretto fast path reads these fields via offsets recorded in
          * InterpreterExecutionOffsets. Analysis does not necessarily observe those reads as normal

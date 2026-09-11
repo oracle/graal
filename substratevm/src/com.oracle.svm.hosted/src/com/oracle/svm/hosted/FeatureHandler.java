@@ -64,6 +64,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.VMError.HostedError;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.vmaccess.guest.HostProxyException;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -275,8 +276,8 @@ public class FeatureHandler extends FeatureHandlerBase {
 
     private static Throwable tryUnwrapWellKnownException(Throwable throwable) {
         Throwable cause = null;
-        if (throwable instanceof InvocationTargetException invocationException) {
-            cause = invocationException.getCause();
+        if (throwable instanceof InvocationTargetException || throwable instanceof HostProxyException) {
+            cause = throwable.getCause();
         }
         return isWellKnownException(cause) ? cause : throwable;
     }

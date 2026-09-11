@@ -465,8 +465,8 @@ public class TlabSupport {
     private static void accumulateAndResetStatistics(IsolateThread thread) {
         assert VMOperation.isGCInProgress();
 
-        UnsignedWord remaining = availableTlabMemory(getTlab());
-        gcWaste.set(thread, gcWaste.get() + UnsignedUtils.safeToInt(remaining));
+        UnsignedWord remaining = availableTlabMemory(getTlab(thread));
+        gcWaste.set(thread, gcWaste.get(thread) + UnsignedUtils.safeToInt(remaining));
 
         UnsignedWord totalAlignedAllocated = ThreadLocalAllocation.getAlignedAllocatedBytes(thread);
         UnsignedWord allocatedAlignedSinceLastGC = totalAlignedAllocated.subtract(tlabAllocatedAlignedBytesBeforeLastGC.get(thread));

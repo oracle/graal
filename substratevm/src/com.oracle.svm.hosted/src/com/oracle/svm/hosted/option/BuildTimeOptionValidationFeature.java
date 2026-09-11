@@ -25,10 +25,10 @@
 package com.oracle.svm.hosted.option;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.SubstrateOptionKey;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -61,7 +61,7 @@ public class BuildTimeOptionValidationFeature implements InternalFeature {
 
     private static void validate(OptionDescriptor desc) {
         if (desc.getOptionKey() instanceof SubstrateOptionKey<?> option) {
-            option.validate();
+            option.validateAfterParsing();
         }
     }
 }

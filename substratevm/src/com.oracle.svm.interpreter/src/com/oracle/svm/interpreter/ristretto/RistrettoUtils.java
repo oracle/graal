@@ -780,7 +780,6 @@ public class RistrettoUtils {
 
     private static CompilationWatchDog watchCompilation(SubstrateCompilationIdentifier compilationId, OptionValues options) {
         int ristrettoDelaySeconds = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue();
-        RistrettoOptions.validateCompilationWatchdogTimeoutValue(ristrettoDelaySeconds);
         if (ristrettoDelaySeconds == 0) {
             return CompilationWatchDog.watch(compilationId, options, false, SubstrateGraalUtils.COMPILATION_WATCH_DOG_EVENT_HANDLER, null);
         }

@@ -88,6 +88,7 @@ public class RuntimeOptionValues {
 
     public void update(OptionKey<?> key, Object value) {
         if (key instanceof RuntimeOptionKey<?> r) {
+            r.validateValueBeforeUpdate(value);
             /*
              * RuntimeOptionKey reads go through the per-key cache, so keep the old publication
              * order and update that cache before publishing the new snapshot.
@@ -101,7 +102,11 @@ public class RuntimeOptionValues {
         do {
             expect = v.get();
             newMap = EconomicMap.create(expect.getMap());
-            key.update(newMap, value);
+            if (key instanceof RuntimeOptionKey<?> runtimeOptionKey) {
+                runtimeOptionKey.updateAfterValidation(newMap, value);
+            } else {
+                key.update(newMap, value);
+            }
             newValues = new OptionValues(newMap);
         } while (!v.compareAndSet(expect, newValues));
 
@@ -115,6 +120,7 @@ public class RuntimeOptionValues {
             return;
         }
 
+        validateValues(values);
         updateCache(values);
 
         OptionValues expect;
@@ -127,7 +133,11 @@ public class RuntimeOptionValues {
             while (cursor.advance()) {
                 OptionKey<?> key = cursor.getKey();
                 Object value = cursor.getValue();
-                key.update(newMap, value);
+                if (key instanceof RuntimeOptionKey<?> runtimeOptionKey) {
+                    runtimeOptionKey.updateAfterValidation(newMap, value);
+                } else {
+                    key.update(newMap, value);
+                }
             }
             newValues = new OptionValues(newMap);
         } while (!v.compareAndSet(expect, newValues));
@@ -176,6 +186,15 @@ public class RuntimeOptionValues {
         while (cursor.advance()) {
             if (cursor.getKey() instanceof RuntimeOptionKey<?> runtimeOptionKey) {
                 runtimeOptionKey.setRawCachedValue(cursor.getValue());
+            }
+        }
+    }
+
+    private static void validateValues(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+        var cursor = values.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getKey() instanceof RuntimeOptionKey<?> runtimeOptionKey) {
+                runtimeOptionKey.validateValueBeforeUpdate(cursor.getValue());
             }
         }
     }

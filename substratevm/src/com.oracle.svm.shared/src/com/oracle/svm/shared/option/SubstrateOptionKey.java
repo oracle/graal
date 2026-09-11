@@ -25,7 +25,7 @@
 package com.oracle.svm.shared.option;
 
 public interface SubstrateOptionKey<T> {
-    void validate();
+    void validateAfterParsing();
 
     boolean hasBeenSet();
 

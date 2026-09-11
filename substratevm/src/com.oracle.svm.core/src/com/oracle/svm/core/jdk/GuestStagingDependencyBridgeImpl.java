@@ -77,6 +77,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public boolean useG1GC() {
+        return SubstrateOptions.useG1GC();
+    }
+
+    @Override
     public UnsignedWord getMaxHeapAddressSpaceSize() {
         return ReferenceAccess.singleton().getMaxAddressSpaceSize();
     }

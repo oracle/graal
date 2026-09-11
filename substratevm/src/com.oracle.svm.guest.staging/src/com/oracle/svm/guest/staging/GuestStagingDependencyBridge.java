@@ -69,6 +69,13 @@ public interface GuestStagingDependencyBridge {
     boolean useSerialGC();
 
     /**
+     * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useG1GC()}.
+     * <p>
+     * Remove this method when GC selection becomes guest-owned.
+     */
+    boolean useG1GC();
+
+    /**
      * Delegates to
      * {@code com.oracle.svm.core.heap.ReferenceAccess.singleton().getMaxAddressSpaceSize()}.
      * <p>

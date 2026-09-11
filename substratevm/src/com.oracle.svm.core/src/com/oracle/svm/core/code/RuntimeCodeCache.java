@@ -25,12 +25,12 @@
 package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
-import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode.WRITE;
 import static com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE;
 import static com.oracle.svm.guest.staging.core.graal.KnownIntrinsics.readCallerStackPointer;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NOT_ENABLED_ON_AARCH64;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -41,23 +41,23 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -67,7 +67,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
@@ -78,14 +77,7 @@ public class RuntimeCodeCache {
         public static final RuntimeOptionKey<Boolean> TraceCodeCache = new RuntimeOptionKey<>(false);
 
         @Option(help = "Allocate code cache with write access, allowing inlining of objects", type = OptionType.Expert)//
-        public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                if (newValue && !SubstrateUtil.HOSTED && Platform.includedIn(Platform.AARCH64.class)) {
-                    throw new IllegalArgumentException("Enabling " + getName() + " is not supported on this platform.");
-                }
-            }
-        };
+        public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(false, null, NOT_ENABLED_ON_AARCH64, RelevantForCompilationIsolates);
     }
 
     private final Counter.Group counters = new Counter.Group(CodeInfoTable.Options.CodeCacheCounters, "RuntimeCodeInfo");

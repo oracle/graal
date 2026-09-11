@@ -175,7 +175,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserErrorSupportImpl;
 import com.oracle.svm.guest.staging.config.SubstrateGuestLibC;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.guest.staging.option.SharedLayerRuntimeOptionsValues;
 import com.oracle.svm.guest.staging.util.LayeredHostedImageHeapMapCollector;
@@ -599,7 +598,6 @@ public class NativeImageGenerator {
                  */
                 ImageSingletons.add(VMRuntimeSupport.class, runtimeSupport);
                 ImageSingletons.add(RuntimeSupport.class, runtimeSupport);
-                ImageSingletons.add(RuntimeOptionValidationSupport.class, new RuntimeOptionValidationSupport());
             }
             if (ImageLayerBuildingSupport.lastImageBuild()) {
                 ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));

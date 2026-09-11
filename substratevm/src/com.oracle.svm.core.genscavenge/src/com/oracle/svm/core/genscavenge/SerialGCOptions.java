@@ -26,19 +26,17 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 
+import java.util.function.Consumer;
+
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport.RuntimeOptionValidation;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
-import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
@@ -47,8 +45,11 @@ import jdk.graal.compiler.options.OptionType;
 
 /** Options that are only valid for the serial GC (and not for the epsilon GC). */
 public final class SerialGCOptions {
+    private static final Consumer<RuntimeOptionKey<?>> SERIAL_GC_ONLY = SerialGCOptions::validateSerialRuntimeOption;
+
     @Option(help = "The garbage collection policy. Default: 'Adaptive2'. Former default: 'Adaptive' (deprecated). Serial GC only.", type = OptionType.User)//
-    public static final RuntimeOptionKey<String> InitialCollectionPolicy = new RuntimeOptionKey<>(null, SerialGCOptions::validateInitialCollectionPolicy, RegisterForIsolateArgumentParser) {
+    public static final RuntimeOptionKey<String> InitialCollectionPolicy = new RuntimeOptionKey<>(null,
+                    CollectionPolicies::validatePolicyName, SerialGCOptions::validateInitialCollectionPolicy, RegisterForIsolateArgumentParser) {
         @Override
         public boolean shouldRegisterForIsolateArgumentParser() {
             return SubstrateOptions.useSerialGC() && super.shouldRegisterForIsolateArgumentParser();
@@ -56,22 +57,22 @@ public final class SerialGCOptions {
     };
 
     @Option(help = "Percentage of total collection time that should be spent on young generation collections. Serial GC with collection policy 'BySpaceAndTime' only.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50, SerialGCOptions::validateSerialRuntimeOption);
+    public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50, null, SERIAL_GC_ONLY);
 
     @Option(help = "The maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy). Serial GC only.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L, SerialGCOptions::validateSerialRuntimeOption);
+    public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L, null, SERIAL_GC_ONLY);
 
     @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation. Serial GC only.", type = OptionType.Expert) //
-    public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null, SerialGCOptions::validateSerialRuntimeOption);
+    public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null, null, SERIAL_GC_ONLY);
 
     @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
-    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
+    public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, null, SERIAL_GC_ONLY);
 
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
-    public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
+    public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, null, SERIAL_GC_ONLY);
 
     @Option(help = "Verify the remembered set if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
@@ -86,7 +87,7 @@ public final class SerialGCOptions {
     public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Trace heap chunks during collections, if +VerboseGC. Serial GC only.", type = OptionType.Debug) //
-    public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, SerialGCOptions::validateSerialRuntimeOption);
+    public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, null, SERIAL_GC_ONLY);
 
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
@@ -121,11 +122,6 @@ public final class SerialGCOptions {
     private SerialGCOptions() {
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerRuntimeOptionValidations() {
-        RuntimeOptionValidationSupport.singleton().register(new RuntimeOptionValidation<>(SerialGCOptions::validateInitialCollectionPolicyValue, InitialCollectionPolicy));
-    }
-
     private static void validateSerialHostedOption(HostedOptionKey<?> optionKey) {
         if (optionKey.hasBeenSet() && !SubstrateOptions.useSerialGC()) {
             throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
@@ -134,28 +130,15 @@ public final class SerialGCOptions {
 
     private static void validateInitialCollectionPolicy(RuntimeOptionKey<String> optionKey) {
         validateSerialRuntimeOption(optionKey);
-        validateInitialCollectionPolicyValue(optionKey);
+        if (optionKey.hasBeenSet() && !SerialGCOptions.useRememberedSet()) {
+            throw RuntimeOptionValidation.abort("Collection policies cannot be used when 'UseRememberedSet' is disabled (attempted to set via '" + optionKey.getName() + "').");
+        }
     }
 
     private static void validateSerialRuntimeOption(RuntimeOptionKey<?> optionKey) {
         if (optionKey.hasBeenSet() && !SubstrateOptions.useSerialGC()) {
-            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
+            throw RuntimeOptionValidation.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
-    }
-
-    private static void validateInitialCollectionPolicyValue(RuntimeOptionKey<String> optionKey) {
-        CollectionPolicies.validatePolicyName(optionKey);
-
-        if (optionKey.hasBeenSet() && !SerialGCOptions.useRememberedSet()) {
-            throw invalidOptionValue("Collection policies cannot be used when 'UseRememberedSet' is disabled (attempted to set via '%s').", optionKey.getName());
-        }
-    }
-
-    private static RuntimeException invalidOptionValue(String message, Object... args) {
-        if (SubstrateUtil.HOSTED) {
-            throw UserError.abort(message, args);
-        }
-        throw new IllegalArgumentException(String.format(message, args));
     }
 
     private static void validateCompactingOldGen(HostedOptionKey<Boolean> compactingOldGen) {

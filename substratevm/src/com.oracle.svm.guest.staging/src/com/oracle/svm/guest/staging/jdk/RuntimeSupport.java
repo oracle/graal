@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValidationSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -97,7 +97,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     public void initialize() {
         boolean shouldInitialize = initializationState.compareAndSet(InitializationState.Uninitialized, InitializationState.InProgress);
         if (shouldInitialize) {
-            RuntimeOptionValidationSupport.singleton().validate();
+            RuntimeOptionParser.singleton().validateOptionsAfterParsing();
 
             GuestStagingDependencyBridge.singleton().verifyIsolateArgumentOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
