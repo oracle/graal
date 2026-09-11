@@ -216,8 +216,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
-    public final UnsignedWord getCurrentHeapCapacity() {
-        return sizes.getHeapSize();
+    public final UnsignedWord getCurrentHeapSizeTarget() {
+        return sizes.getCurrentHeapSizeTarget();
     }
 
     @Override
@@ -253,7 +253,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         /*
          * Keep chunks ready for allocations in eden as well as for copying the objects currently in
          * survivor spaces in a future collection. We could alternatively return
-         * getCurrentHeapCapacity() to have chunks ready during full GCs as well.
+         * getCurrentHeapSizeTarget() to have chunks ready during full GCs as well.
          */
         UnsignedWord total = sizes.getEdenSize().add(HeapImpl.getAccounting().getSurvivorUsedBytes());
         double alignedFraction = Math.min(1, Math.max(0, avgYoungGenAlignedChunkFraction.getAverage()));
@@ -388,16 +388,13 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
             promoSize = UnsignedUtils.min(edenSize, oldSize);
         }
 
-        UnsignedWord youngSize = edenSize.add(survivorSize);
-        UnsignedWord heapSize = edenSize.add(survivorSize).add(oldSize);
-
         RawSizeParametersOnStackAccess.initialize(newParamsOnStack,
                         initialEden, edenSize, maxEdenSize,
                         initialSurvivor, survivorSize, maxSurvivorSize,
                         initialOldSize, oldSize, maxOldSize,
                         promoSize,
-                        initialYoung, youngSize, maxYoung,
-                        minHeap, initialHeap, heapSize, maxHeap);
+                        initialYoung, maxYoung,
+                        minHeap, initialHeap, maxHeap);
     }
 
     protected static UnsignedWord getMinYoungSpacesSize() {

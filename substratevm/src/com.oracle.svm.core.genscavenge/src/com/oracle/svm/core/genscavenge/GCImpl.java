@@ -389,7 +389,7 @@ public final class GCImpl implements GC {
         policy.onCollectionEnd(completeCollection, cause);
 
         UnsignedWord usedBytes = getChunkBytes();
-        UnsignedWord freeBytes = policy.getCurrentHeapCapacity().subtract(usedBytes);
+        UnsignedWord freeBytes = policy.getCurrentHeapSizeTarget().subtract(usedBytes);
         ReferenceObjectProcessing.afterCollection(freeBytes);
 
         return usedBytes.aboveThan(policy.getMaximumHeapSize()); // out of memory?

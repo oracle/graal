@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,10 @@ final class RawSizeParametersOnStackAccess {
                     UnsignedWord initialSurvivorSize, UnsignedWord survivorSize, UnsignedWord maxSurvivorSize,
                     UnsignedWord initialOldSize, UnsignedWord oldSize, UnsignedWord maxOldSize,
                     UnsignedWord promoSize,
-                    UnsignedWord initialYoungSize, UnsignedWord youngSize, UnsignedWord maxYoungSize,
-                    UnsignedWord minHeapSize, UnsignedWord initialHeapSize, UnsignedWord heapSize, UnsignedWord maxHeapSize) {
+                    UnsignedWord initialYoungSize, UnsignedWord maxYoungSize,
+                    UnsignedWord minHeapSize, UnsignedWord initialHeapSize, UnsignedWord maxHeapSize) {
+        UnsignedWord youngSize = edenSize.add(survivorSize);
+        UnsignedWord heapSizeTarget = youngSize.add(oldSize);
         assert isAligned(maxHeapSize) && isAligned(maxYoungSize) && isAligned(initialHeapSize) && isAligned(initialEdenSize) && isAligned(initialSurvivorSize);
 
         assert initialEdenSize.belowOrEqual(initialYoungSize);
@@ -55,16 +57,16 @@ final class RawSizeParametersOnStackAccess {
         assert maxSurvivorSize.belowOrEqual(maxYoungSize);
 
         assert initialOldSize.belowOrEqual(initialHeapSize);
-        assert oldSize.belowOrEqual(heapSize);
+        assert oldSize.belowOrEqual(heapSizeTarget);
         assert maxOldSize.belowOrEqual(maxHeapSize);
 
         assert initialYoungSize.belowOrEqual(initialHeapSize);
-        assert youngSize.belowOrEqual(heapSize);
+        assert youngSize.belowOrEqual(heapSizeTarget);
         assert maxYoungSize.belowOrEqual(maxHeapSize);
 
         assert minHeapSize.belowOrEqual(initialHeapSize);
         assert initialHeapSize.belowOrEqual(maxHeapSize);
-        assert heapSize.belowOrEqual(maxHeapSize);
+        assert heapSizeTarget.belowOrEqual(maxHeapSize);
         assert maxHeapSize.belowOrEqual(ReferenceAccess.singleton().getMaxAddressSpaceSize());
 
         valuesOnStack.setInitialEdenSize(initialEdenSize);
@@ -76,7 +78,6 @@ final class RawSizeParametersOnStackAccess {
         valuesOnStack.setMaxSurvivorSize(maxSurvivorSize);
 
         valuesOnStack.setInitialYoungSize(initialYoungSize);
-        valuesOnStack.setYoungSize(youngSize);
         valuesOnStack.setMaxYoungSize(maxYoungSize);
 
         valuesOnStack.setInitialOldSize(initialOldSize);
@@ -87,7 +88,6 @@ final class RawSizeParametersOnStackAccess {
 
         valuesOnStack.setMinHeapSize(minHeapSize);
         valuesOnStack.setInitialHeapSize(initialHeapSize);
-        valuesOnStack.setHeapSize(heapSize);
         valuesOnStack.setMaxHeapSize(maxHeapSize);
 
         valuesOnStack.setNext(Word.nullPointer());

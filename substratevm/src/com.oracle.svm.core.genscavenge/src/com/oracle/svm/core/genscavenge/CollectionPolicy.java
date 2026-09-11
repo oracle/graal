@@ -79,12 +79,20 @@ public interface CollectionPolicy {
     boolean shouldCollectCompletely(boolean followingIncrementalCollection, boolean forcedCompleteCollection);
 
     /**
-     * The current limit for the size of the entire heap, which is less than or equal to
-     * {@link #getMaximumHeapSize}.
-     *
-     * NOTE: this can currently be exceeded during a collection with {@link CopyingOldGeneration}.
+     * Returns the current heap size target. This is a policy value, not the amount of memory that
+     * is currently committed.
+     * <p>
+     * The size of allocated heap chunks may temporarily exceed the heap size target. A single
+     * allocation or promotion may cross the heap size target before the next collection. During a
+     * collection, copying young objects may require additional chunks because objects can grow or
+     * their new placement may use chunks differently.
+     * <p>
+     * Committed memory may exceed the heap size target because it also includes unused chunks kept
+     * for future allocations, see {@link HeapAccounting#getCommittedBytes}. The heap size target
+     * may also exceed {@link #getMaximumHeapSize} when live objects do not fit within the maximum
+     * heap size.
      */
-    UnsignedWord getCurrentHeapCapacity();
+    UnsignedWord getCurrentHeapSizeTarget();
 
     /** May be {@link #UNDEFINED}. */
     UnsignedWord getInitialEdenSize();
