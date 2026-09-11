@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -322,15 +323,16 @@ final class BuildTimeConstantPool {
         processLDC(allDeclaredMethods);
 
         for (InterpreterResolvedJavaMethod method : allDeclaredMethods) {
-            ResolvedJavaMethod originalMethod = method.getOriginalMethod();
+            AnalysisMethod originalMethod = method.getOriginalMethod();
             method.setExceptionHandlers(processExceptionHandlers(originalMethod.getExceptionHandlers()));
 
-            LocalVariableTable hostLocalVariableTable = method.getOriginalMethod().getLocalVariableTable();
+            LocalVariableTable hostLocalVariableTable = originalMethod.getLocalVariableTable();
             if (hostLocalVariableTable != null) {
                 method.setLocalVariableTable(BuildTimeInterpreterUniverse.processLocalVariableTable(hostLocalVariableTable));
             }
-
-            if (!method.needsMethodBody()) {
+            boolean needsMethodBody = method.needsMethodBody();
+            method.setLineNumberTable(needsMethodBody ? originalMethod.getLineNumberTable() : null);
+            if (!needsMethodBody) {
                 VMError.guarantee(method.getInterpretedCode() == null);
             }
 

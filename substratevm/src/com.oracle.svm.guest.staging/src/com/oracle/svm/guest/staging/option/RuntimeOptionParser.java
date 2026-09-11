@@ -117,6 +117,7 @@ public final class RuntimeOptionParser {
     @GuaranteeFolded private static final String HOTSPOT_OPTION_COMPATIBILITY_NAME = "CREMA_HOTSPOT_OPTION_COMPATIBILITY";
     private static final String PATCH_MODULE_OPTION = "--patch-module";
     private static final String RESERVED_INTERNAL_MODULE_PROPERTY_WARNING = "Ignoring system property options whose names match '-Djdk.module.*', which is reserved for internal use.";
+    private static final String VERIFY_NONE_WARNING = "Options -Xverify:none and -noverify were deprecated in JDK 13 and will likely be removed in a future release.";
 
     private static final Set<String> SYSTEM_ASSERTION_OPTIONS = Set.of(
                     "-esa",
@@ -159,10 +160,6 @@ public final class RuntimeOptionParser {
                     "-Xshare:on",
                     "-Xshare:auto",
                     "-Xshare:off",
-                    "-Xverify",
-                    "-Xverify:all",
-                    "-Xverify:remote",
-                    "-Xverify:none",
                     "-Xdebug",
                     "-Xcheck:jni");
     private static final Set<String> UNIMPLEMENTED_VERBOSE_OPTIONS = Set.of(
@@ -368,6 +365,7 @@ public final class RuntimeOptionParser {
             if (parseProperty(arg, context) ||
                             (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
+                                            parseVerifyOption(arg) ||
                                             parseXBootClasspathAppendOption(arg, context) ||
                                             parseRecognizedJavaOption(arg)))) {
                 continue;
@@ -382,6 +380,26 @@ public final class RuntimeOptionParser {
         initializeProperties(context.properties);
 
         return newIdx == args.length ? args : Arrays.copyOf(args, newIdx);
+    }
+
+    private static boolean parseVerifyOption(String arg) {
+        if (!arg.startsWith("-Xverify")) {
+            return false;
+        }
+        String mode = switch (arg.substring("-Xverify".length())) {
+            case "", ":all" -> "ALL";
+            case ":remote" -> "REMOTE";
+            case ":none" -> {
+                Log.log().string("Substrate VM warning: ").string(VERIFY_NONE_WARNING).newline();
+                yield "NONE";
+            }
+            default -> null;
+        };
+        if (mode == null) {
+            return false;
+        }
+        GuestStagingDependencyBridge.singleton().setVerifyMode(mode);
+        return true;
     }
 
     /// Initializes system properties derived from recognized Java VM options.

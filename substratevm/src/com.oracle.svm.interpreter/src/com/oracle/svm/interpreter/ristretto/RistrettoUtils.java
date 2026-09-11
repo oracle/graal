@@ -289,11 +289,11 @@ public class RistrettoUtils {
     }
 
     private static ResolvedJavaMethod resolveOSRGetter(String methodName, String descriptor) {
-        InterpreterResolvedJavaType osrSupportType = (InterpreterResolvedJavaType) DynamicHub.fromClass(RistrettoOSRSupport.class).getInterpreterType();
+        InterpreterResolvedObjectType osrSupportType = (InterpreterResolvedObjectType) DynamicHub.fromClass(RistrettoOSRSupport.class).getInterpreterType();
         if (osrSupportType == null) {
             throw VMError.shouldNotReachHere("Ristretto OSR support type is not preserved for runtime compilation.");
         }
-        for (InterpreterResolvedJavaMethod method : osrSupportType.getDeclaredMethods(true)) {
+        for (InterpreterResolvedJavaMethod method : osrSupportType.getAllDeclaredMethods()) {
             if (method.getName().equals(methodName) && method.getSignature().toMethodDescriptor().equals(descriptor)) {
                 return RistrettoMethod.getOrCreate(method);
             }
@@ -1048,8 +1048,8 @@ public class RistrettoUtils {
     }
 
     public static RistrettoMethod toRMethodOrNull(SubstrateMethod substrateMethod) {
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
-        for (var iMeth : iType.getDeclaredMethods()) {
+        InterpreterResolvedObjectType iType = (InterpreterResolvedObjectType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
+        for (var iMeth : iType.getAllDeclaredMethods()) {
             if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toMethodDescriptor().equals(substrateMethod.getSignature().toMethodDescriptor())) {
                 RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMeth);
                 rMethod.setOriginalRuntimeMethod(substrateMethod);
@@ -1068,7 +1068,7 @@ public class RistrettoUtils {
                 }
             }
         } else {
-            for (var iField : iType.getInstanceFields(true)) {
+            for (var iField : iType.getInstanceFields(false)) {
                 if (iField.getName().equals(substrateField.getName())) {
                     return RistrettoField.getOrCreate((InterpreterResolvedJavaField) iField, substrateField);
                 }

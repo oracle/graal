@@ -221,9 +221,9 @@ public final class BuildTimeInterpreterUniverse {
             }
         }
 
-        LineNumberTable lineNumberTable = originalMethod.getLineNumberTable();
+        LineNumberTable lineNumberTable = retainMethodCode ? originalMethod.getLineNumberTable() : null;
         return InterpreterResolvedJavaMethod.createAtBuildTime(
-                        originalMethod,
+                        analysisMethod,
                         name,
                         maxLocals,
                         maxStackSize,
@@ -769,7 +769,7 @@ public final class BuildTimeInterpreterUniverse {
     }
 
     static boolean isReachable(InterpreterResolvedJavaMethod method) {
-        AnalysisMethod originalMethod = (AnalysisMethod) method.getOriginalMethod();
+        AnalysisMethod originalMethod = method.getOriginalMethod();
         return originalMethod.isReachable() && originalMethod.getDeclaringClass().isReachable();
     }
 
@@ -808,7 +808,7 @@ public final class BuildTimeInterpreterUniverse {
             }
 
             if (!isReachable(interpreterMethod)) {
-                AnalysisMethod analysisMethod = (AnalysisMethod) interpreterMethod.getOriginalMethod();
+                AnalysisMethod analysisMethod = interpreterMethod.getOriginalMethod();
                 boolean isRoot = analysisMethod.isDirectRootMethod() || analysisMethod.isVirtualRootMethod() || analysisMethod.isInvoked();
                 int implementations = analysisMethod.collectMethodImplementations(true).size();
                 if (!isRoot && (next.getValue().isStatic() || implementations <= 1)) {

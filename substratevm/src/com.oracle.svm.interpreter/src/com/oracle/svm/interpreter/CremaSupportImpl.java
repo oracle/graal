@@ -210,18 +210,20 @@ public class CremaSupportImpl implements CremaSupport {
         /* query type from universe, maybe already exists (due to method creation) */
         InterpreterResolvedJavaType interpreterType = btiUniverse.getOrCreateType(analysisType);
 
-        ResolvedJavaMethod[] declaredMethods = interpreterType.getDeclaredMethods(false);
-        assert declaredMethods == null || declaredMethods == InterpreterResolvedJavaMethod.EMPTY_ARRAY : "should only be set once";
-
         if (analysisType.isPrimitive()) {
             return interpreterType;
         }
 
+        InterpreterResolvedObjectType objectType = (InterpreterResolvedObjectType) interpreterType;
+
+        ResolvedJavaMethod[] declaredMethods = objectType.getAllDeclaredMethods();
+        assert declaredMethods == null || declaredMethods == InterpreterResolvedJavaMethod.EMPTY_ARRAY : "should only be set once";
+
         List<InterpreterResolvedJavaMethod> methods = buildInterpreterMethods(analysisType, analysisUniverse, btiUniverse);
         List<InterpreterResolvedJavaField> fields = buildInterpreterFields(analysisType, analysisUniverse, btiUniverse);
 
-        ((InterpreterResolvedObjectType) interpreterType).setDeclaredMethods(methods.toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY));
-        ((InterpreterResolvedObjectType) interpreterType).setDeclaredFields(fields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY));
+        objectType.setDeclaredMethods(methods.toArray(InterpreterResolvedJavaMethod.EMPTY_ARRAY));
+        objectType.setDeclaredFields(fields.toArray(InterpreterResolvedJavaField.EMPTY_ARRAY));
 
         return interpreterType;
     }
@@ -2248,5 +2250,14 @@ public class CremaSupportImpl implements CremaSupport {
                 return hash;
             }
         }
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public InterpreterResolvedJavaMethod[] getAllDeclaredMethods(ResolvedJavaType interpreterType) {
+        if (interpreterType instanceof InterpreterResolvedObjectType objectType) {
+            return objectType.getAllDeclaredMethods();
+        }
+        return InterpreterResolvedJavaMethod.EMPTY_ARRAY;
     }
 }

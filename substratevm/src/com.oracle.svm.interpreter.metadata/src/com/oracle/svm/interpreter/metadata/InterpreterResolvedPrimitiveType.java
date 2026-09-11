@@ -170,6 +170,11 @@ public final class InterpreterResolvedPrimitiveType extends InterpreterResolvedJ
     }
 
     @Override
+    public InterpreterResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+        return InterpreterResolvedJavaMethod.EMPTY_ARRAY;
+    }
+
+    @Override
     public List<InterpreterResolvedJavaMethod> getDeclaredMethodsList() {
         return Collections.emptyList();
     }

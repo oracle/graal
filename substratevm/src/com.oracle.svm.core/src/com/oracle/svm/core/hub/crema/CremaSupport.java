@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -233,4 +233,13 @@ public interface CremaSupport {
      */
     void verifySuperAccesses(String externalName, Symbol<Name> internalName, int classModifiers, ClassLoader loader, ByteSequence pkgName, Module module,
                     Class<?> superClass, Class<?>[] superInterfaces);
+
+    /**
+     * Returns the complete method table for an interpreter type, including constructors,
+     * class initializers, and internal dispatch methods.
+     *
+     * <p>This is a hosted-only operation used to rescan the method objects after creating a hub.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    ResolvedJavaMethod[] getAllDeclaredMethods(ResolvedJavaType interpreterType);
 }

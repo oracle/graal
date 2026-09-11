@@ -578,6 +578,64 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         if (link) {
             link();
         }
+        int numMethods = 0;
+        for (InterpreterResolvedJavaMethod method : declaredMethods) {
+            if (isReflectionDeclaredMethod(method)) {
+                numMethods++;
+            }
+        }
+        if (numMethods == declaredMethods.length) {
+            return declaredMethods;
+        }
+        if (numMethods == 0) {
+            return InterpreterResolvedJavaMethod.EMPTY_ARRAY;
+        }
+        InterpreterResolvedJavaMethod[] methods = new InterpreterResolvedJavaMethod[numMethods];
+        int index = 0;
+        for (InterpreterResolvedJavaMethod method : declaredMethods) {
+            if (isReflectionDeclaredMethod(method)) {
+                methods[index++] = method;
+            }
+        }
+        return methods;
+    }
+
+    private static boolean isReflectionDeclaredMethod(InterpreterResolvedJavaMethod method) {
+        return !method.isConstructor() && !method.isClassInitializer() && !method.isInternal();
+    }
+
+    @Override
+    public InterpreterResolvedJavaMethod[] getDeclaredConstructors(boolean link) {
+        if (link) {
+            link();
+        }
+        int numConstructors = 0;
+        for (InterpreterResolvedJavaMethod method : declaredMethods) {
+            if (method.isConstructor()) {
+                numConstructors++;
+            }
+        }
+        if (numConstructors == declaredMethods.length) {
+            return declaredMethods;
+        }
+        if (numConstructors == 0) {
+            return InterpreterResolvedJavaMethod.EMPTY_ARRAY;
+        }
+        InterpreterResolvedJavaMethod[] constructors = new InterpreterResolvedJavaMethod[numConstructors];
+        int index = 0;
+        for (InterpreterResolvedJavaMethod method : declaredMethods) {
+            if (method.isConstructor()) {
+                constructors[index++] = method;
+            }
+        }
+        return constructors;
+    }
+
+    /**
+     * Returns all methods in the underlying table, including constructors, class initializers, and
+     * internal dispatch methods.
+     */
+    public InterpreterResolvedJavaMethod[] getAllDeclaredMethods() {
         return declaredMethods;
     }
 
