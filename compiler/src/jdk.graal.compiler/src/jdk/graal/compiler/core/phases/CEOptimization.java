@@ -50,6 +50,7 @@ import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
+import jdk.graal.compiler.phases.common.LateLockEliminationPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
 import jdk.graal.compiler.phases.common.OptimizeDivPhase;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
@@ -214,12 +215,13 @@ public enum CEOptimization {
     PartialEscapeAnalysis(GraalOptions.PartialEscapeAnalysis, PartialEscapePhase.class),
 
     /**
-     * {@link LockEliminationPhase} tries to reduce Java monitor enter/exit overhead of an
-     * application. Java {@code synchronized} blocks mark critical regions which can only be entered
-     * if a thread acquires an object monitor (enter operation). A monitor is held until the region
-     * is exited (monitor exit). Lock elimination (also known as lock coarsening) tries to merge
-     * adjacent synchronized regions into larger ones by removing enters that are directly followed
-     * by exits on the same locked object. It thus removes redundant unlock-lock operations.
+     * {@link LockEliminationPhase} and {@link LateLockEliminationPhase} try to reduce Java monitor
+     * enter/exit overhead of an application. Java {@code synchronized} blocks mark critical regions
+     * which can only be entered if a thread acquires an object monitor (enter operation). A monitor
+     * is held until the region is exited (monitor exit). Lock elimination (also known as lock
+     * coarsening) tries to merge synchronized regions into larger ones by removing redundant
+     * unlock-lock operations. The late phase can coarsen locks across simple control flow and
+     * eliminate nested locking of the same object.
      *
      * This phase is unconditionally enabled.
      */

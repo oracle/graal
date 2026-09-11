@@ -2,6 +2,10 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## GraalVM 25.5 (Internal Version 25.5.5)
+* (GR-79526): Extended lock elimination to coarsen locks across simple control flow and eliminate
+  nested locking of the same object.
+
 ## GraalVM 25.4 (Internal Version 25.4.4.1.1)
 * (GR-79029): Add `PullThroughPhiPhase` and `DuplicationPhase` to the community compiler configuration.
   The optimizations are enabled by default and can be disabled with `-Djdk.graal.OptPullThroughPhi=false` and
