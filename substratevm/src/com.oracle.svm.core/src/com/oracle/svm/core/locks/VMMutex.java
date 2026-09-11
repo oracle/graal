@@ -81,6 +81,15 @@ public class VMMutex extends VMLockingPrimitive {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
 
+    /// Attempts to acquire the lock without blocking and records the current isolate thread as its
+    /// owner when successful. Recursive locking is not allowed.
+    ///
+    /// @return `true` if the lock was acquired, or `false` if it is already held
+    @Uninterruptible(reason = "The mutex acquisition and owner update must not be interrupted.")
+    public boolean tryLock() {
+        throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
+    }
+
     /**
      * Like {@linkplain #lock()}, but without a thread status transition. Please note that this
      * method may only be called if the whole critical section is fully uninterruptible!
@@ -234,6 +243,17 @@ final class RuntimeVMMutex extends VMMutex {
         PlatformLockingSupport.singleton().lockMutex(getPlatformMutex());
         setOwnerToCurrentThread();
         return this;
+    }
+
+    @Override
+    @Uninterruptible(reason = "The mutex acquisition and owner update must not be interrupted.")
+    public boolean tryLock() {
+        assert !isOwner() : "Recursive locking is not supported";
+        if (!PlatformLockingSupport.singleton().tryLockMutex(getPlatformMutex())) {
+            return false;
+        }
+        setOwnerToCurrentThread();
+        return true;
     }
 
     @Override

@@ -61,6 +61,12 @@ public interface PlatformLockingSupport {
     /** Acquires the given mutex. */
     void lockMutex(PlatformMutex mutex);
 
+    /// Attempts to acquire `mutex` without blocking.
+    ///
+    /// @return `true` if the mutex was acquired, or `false` if it is already held
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean tryLockMutex(PlatformMutex mutex);
+
     /** Like {@link #lockMutex} but without a thread status transition. */
     @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     void lockMutexNoTransition(PlatformMutex mutex);
