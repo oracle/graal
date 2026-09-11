@@ -54,7 +54,10 @@ public final class CallTree extends Graph {
     int frontierSize;
     private int nextId = 0;
 
-    CallTree(PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext context, InliningPolicy policy) {
+    /**
+     * Creates the call tree used to make guest-inlining decisions for {@code context}.
+     */
+    public CallTree(PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext context, InliningPolicy policy) {
         super(context.graph.getOptions(), context.debug);
         this.policy = policy;
         this.context = context;

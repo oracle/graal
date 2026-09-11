@@ -24,16 +24,19 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.PostPartialEvaluationSuite;
 import jdk.graal.compiler.truffle.TruffleCompilation;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleTierContext;
+import jdk.graal.compiler.truffle.inlining.AgnosticInliningPolicyProvider;
 import jdk.graal.compiler.truffle.phases.inlining.AgnosticInliningPhase;
 import jdk.graal.compiler.truffle.phases.inlining.CallNode;
 import jdk.graal.compiler.truffle.phases.inlining.CallTree;
@@ -46,10 +49,10 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
@@ -62,14 +65,15 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
 
     @Before
     public void before() {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.InliningPolicy", "Agnostic").option(
-                        "compiler.InliningInliningBudget", "1").build());
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("compiler.LogInlinedTargets", "true").option(
+                        "compiler.InliningPolicy", "Agnostic").option("compiler.InliningExpansionBudget", "130").option("compiler.InliningInliningBudget", "100").build());
     }
 
-    protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) {
+    private RecordingCompilationTask runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget, Object... arguments) {
+        warm(callTarget, arguments);
         TruffleCompilerImpl compiler = getTruffleCompiler(callTarget);
         final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
-        final TruffleCompilationTask task = newTask();
+        final RecordingCompilationTask task = new RecordingCompilationTask();
         final CompilationIdentifier compilationIdentifier = compiler.createCompilationIdentifier(task, callTarget);
         final TruffleTierContext context = TruffleTierContext.createInitialContext(
                         partialEvaluator,
@@ -80,7 +84,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(
                         new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(callTarget), false));
         agnosticInliningPhase.apply(context.graph, context);
-        return context.graph;
+        return task;
     }
 
     @Test
@@ -150,10 +154,98 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         Assert.assertEquals(0.2D, leafCall.getRootRelativeFrequency(), DELTA);
     }
 
+    @Test
+    public void testFrequencyAfterConstantArgumentEnhancement() {
+        OptimizedCallTarget live = createDummyNode();
+        OptimizedCallTarget dead = createDummyNode();
+        Object constantArgument = new Object();
+        OptimizedCallTarget callee = callTarget(new ConstantBranchCallRootNode(live, dead, constantArgument, 0.25D));
+        CallTree tree = createAgnosticCallTree(callTarget(new ConstantCallRootNode(callee, constantArgument)), true);
+
+        CallNode calleeCall = onlyChild(tree.getRoot());
+        calleeCall.expand();
+
+        Assert.assertEquals(0.25D, childForTarget(calleeCall, live).getRootRelativeFrequency(), DELTA);
+        Assert.assertEquals(CallNode.State.Removed, childForTarget(calleeCall, dead).getState());
+    }
+
+    @Test
+    public void testConstantDispatchInliningDecisions() {
+        OptimizedCallTarget hotLeaf = createDummyNode();
+        OptimizedCallTarget deadLeaf = createDummyNode();
+        Object constantCallback = new Object();
+        OptimizedCallTarget dispatch = callTarget(new ConstantBranchCallRootNode(hotLeaf, deadLeaf, constantCallback, 0.25D));
+        OptimizedCallTarget root = callTarget(new ConstantCallRootNode(dispatch, constantCallback));
+        warm(dispatch, new Object(), true);
+
+        RecordingCompilationTask task = runLanguageAgnosticInliningPhase(root, true);
+
+        assertInlined(task, dispatch, hotLeaf);
+        assertNotInlined(task, deadLeaf);
+    }
+
+    @Test
+    public void testCompetingHelpersInliningDecisions() {
+        OptimizedCallTarget hotHelper = createDummyNode();
+        OptimizedCallTarget coldHelper = createDummyNode();
+        OptimizedCallTarget worker = callTarget(new TwoBranchCallsRootNode(hotHelper, coldHelper));
+        OptimizedCallTarget deadWorker = createDummyNode();
+        Object constantCallback = new Object();
+        OptimizedCallTarget dispatch = callTarget(new ConstantDispatchRootNode(worker, deadWorker, constantCallback));
+        OptimizedCallTarget root = callTarget(new ConstantCallRootNode(dispatch, constantCallback));
+        warm(dispatch, new Object(), true);
+
+        RecordingCompilationTask task = runLanguageAgnosticInliningPhase(root, true);
+
+        assertInlined(task, dispatch, worker, hotHelper);
+        assertNotInlined(task, deadWorker, coldHelper);
+    }
+
+    @Test
+    public void testIndirectCallIsNotInlined() {
+        OptimizedCallTarget target = createDummyNode();
+        OptimizedCallTarget indirect = callTarget(new IndirectCallRootNode());
+        OptimizedCallTarget root = callTarget(new ConstantCallRootNode(indirect, target));
+
+        RecordingCompilationTask task = runLanguageAgnosticInliningPhase(root, true);
+
+        assertInlined(task, indirect);
+        assertNotInlined(task, target);
+    }
+
+    @Test
+    public void testWrapperChainInliningDecisions() {
+        OptimizedCallTarget leaf = createDummyNode();
+        OptimizedCallTarget deadLeaf = createDummyNode();
+        Object constantCallback = new Object();
+        OptimizedCallTarget inner = callTarget(new ConstantDispatchRootNode(leaf, deadLeaf, constantCallback));
+        OptimizedCallTarget middle = callTarget(new ForwardingCallRootNode(inner));
+        OptimizedCallTarget outer = callTarget(new ForwardingCallRootNode(middle));
+        OptimizedCallTarget root = callTarget(new ConstantCallRootNode(outer, constantCallback));
+        warm(outer, new Object(), true);
+
+        RecordingCompilationTask task = runLanguageAgnosticInliningPhase(root, true);
+
+        assertInlined(task, outer, middle, inner, leaf);
+        assertNotInlined(task, deadLeaf);
+    }
+
+    private static void warm(OptimizedCallTarget target, Object... arguments) {
+        target.call(arguments);
+        target.call(arguments);
+        target.call(arguments);
+    }
+
     private CallTree createCallTree(OptimizedCallTarget target, Object... arguments) {
-        target.call(arguments);
-        target.call(arguments);
-        target.call(arguments);
+        return createCallTree(target, arguments, false);
+    }
+
+    private CallTree createAgnosticCallTree(OptimizedCallTarget target, Object... arguments) {
+        return createCallTree(target, arguments, true);
+    }
+
+    private CallTree createCallTree(OptimizedCallTarget target, Object[] arguments, boolean useAgnosticPolicy) {
+        warm(target, arguments);
         TruffleCompilerImpl compiler = getTruffleCompiler(target);
         TruffleCompilationTask task = newTask();
         try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
@@ -163,15 +255,37 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             getDebugContext(), target,
                             compilation.getCompilationId(), getSpeculationLog(),
                             task, null);
-            return ReflectionUtils.newInstance(CallTree.class, new Class<?>[]{PostPartialEvaluationSuite.class, TruffleTierContext.class, InliningPolicy.class},
-                            new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(target), false), context, new InliningPolicy() {
-                            });
+            InliningPolicy policy = useAgnosticPolicy ? new AgnosticInliningPolicyProvider().get(compiler.getOrCreateCompilerOptions(target), context) : new InliningPolicy() {
+            };
+            return new CallTree(new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(target), false), context, policy);
         }
     }
 
     private static CallNode onlyChild(CallNode parent) {
         Assert.assertEquals(1, parent.getChildren().size());
         return parent.getChildren().get(0);
+    }
+
+    private static CallNode childForTarget(CallNode parent, OptimizedCallTarget target) {
+        for (CallNode child : parent.getChildren()) {
+            if (child.getDirectCallTarget() == target) {
+                return child;
+            }
+        }
+        Assert.fail("No child for target " + target);
+        return null;
+    }
+
+    private static void assertInlined(RecordingCompilationTask task, OptimizedCallTarget... targets) {
+        for (OptimizedCallTarget target : targets) {
+            Assert.assertTrue("Expected target to be inlined: " + target, task.inlinedTargets.contains(target));
+        }
+    }
+
+    private static void assertNotInlined(RecordingCompilationTask task, OptimizedCallTarget... targets) {
+        for (OptimizedCallTarget target : targets) {
+            Assert.assertFalse("Expected target not to be inlined: " + target, task.inlinedTargets.contains(target));
+        }
     }
 
     private static OptimizedCallTarget callTarget(RootNode root) {
@@ -221,6 +335,26 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return callNode.call(frame.getArguments());
             }
             return null;
+        }
+    }
+
+    private static final class TwoBranchCallsRootNode extends RootNode {
+
+        @Child private OptimizedDirectCallNode firstCallNode;
+        @Child private OptimizedDirectCallNode secondCallNode;
+
+        TwoBranchCallsRootNode(RootCallTarget firstTarget, RootCallTarget secondTarget) {
+            super(null);
+            this.firstCallNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(firstTarget);
+            this.secondCallNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(secondTarget);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (CompilerDirectives.injectBranchProbability(0.75D, (boolean) frame.getArguments()[0])) {
+                return firstCallNode.call();
+            }
+            return secondCallNode.call();
         }
     }
 
@@ -276,6 +410,124 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         @Override
         public Object execute(VirtualFrame frame) {
             return callNode.call(frame.getArguments());
+        }
+    }
+
+    private static final class IndirectCallRootNode extends RootNode {
+
+        IndirectCallRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return ((RootCallTarget) frame.getArguments()[0]).call();
+        }
+    }
+
+    private static final class ForwardingCallRootNode extends RootNode {
+
+        @Child private OptimizedDirectCallNode callNode;
+
+        ForwardingCallRootNode(RootCallTarget target) {
+            super(null);
+            this.callNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(target);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return callNode.call(frame.getArguments()[0], frame.getArguments()[1]);
+        }
+    }
+
+    private static final class ConstantCallRootNode extends RootNode {
+
+        @Child private OptimizedDirectCallNode callNode;
+        private final Object constant;
+
+        ConstantCallRootNode(RootCallTarget target, Object constant) {
+            super(null);
+            this.callNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(target);
+            this.constant = constant;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return callNode.call(constant, frame.getArguments()[0]);
+        }
+    }
+
+    private static final class ConstantDispatchRootNode extends RootNode {
+
+        @Child private OptimizedDirectCallNode selectedCallNode;
+        @Child private OptimizedDirectCallNode deadCallNode;
+        private final Object expectedValue;
+
+        ConstantDispatchRootNode(RootCallTarget selectedTarget, RootCallTarget deadTarget, Object expectedValue) {
+            super(null);
+            this.selectedCallNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(selectedTarget);
+            this.deadCallNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(deadTarget);
+            this.expectedValue = expectedValue;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (CompilerDirectives.injectBranchProbability(0.01D, frame.getArguments()[0] == expectedValue)) {
+                return selectedCallNode.call(frame.getArguments()[1]);
+            }
+            return deadCallNode.call(frame.getArguments()[1]);
+        }
+    }
+
+    private static final class ConstantBranchCallRootNode extends RootNode {
+
+        @Child private OptimizedDirectCallNode liveCallNode;
+        @Child private OptimizedDirectCallNode deadCallNode;
+        private final Object expectedValue;
+        private final double dynamicProbability;
+
+        ConstantBranchCallRootNode(RootCallTarget liveTarget, RootCallTarget deadTarget, Object expectedValue, double dynamicProbability) {
+            super(null);
+            this.liveCallNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(liveTarget);
+            this.deadCallNode = (OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(deadTarget);
+            this.expectedValue = expectedValue;
+            this.dynamicProbability = dynamicProbability;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (CompilerDirectives.injectBranchProbability(0.01D, frame.getArguments()[0] == expectedValue)) {
+                if (CompilerDirectives.injectBranchProbability(dynamicProbability, (boolean) frame.getArguments()[1])) {
+                    return liveCallNode.call(frame.getArguments()[1]);
+                }
+                return null;
+            }
+            return deadCallNode.call();
+        }
+    }
+
+    private static final class RecordingCompilationTask implements TruffleCompilationTask {
+
+        private final EconomicSet<TruffleCompilable> inlinedTargets = EconomicSet.create(Equivalence.IDENTITY);
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isLastTier() {
+            return true;
+        }
+
+        @Override
+        public boolean hasNextTier() {
+            return false;
+        }
+
+        @Override
+        public void addInlinedTarget(TruffleCompilable target) {
+            inlinedTargets.add(target);
         }
     }
 
