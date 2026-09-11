@@ -618,7 +618,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      * Builds the compiler-visible bytecode snapshot from the live interpreter bytecodes.
      *
      * <p>
-     * Runtime linking mutates only {@link #interpretedCode}. This snapshot rewrites quickened field
+     * Runtime linking mutates only {@link #interpretedCode}. This snapshot rewrites quickened
      * opcodes and each runtime {@code invokedynamic} operand into a stable compiler view so compiler
      * consumers never observe interpreter-only bytecode rewrites or torn extra-CPI publication.
      */
@@ -627,12 +627,12 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         InterpreterConstantPool constantPool = getConstantPool();
         for (int bci = 0; bci < BytecodeStream.endBCI(result); bci = BytecodeStream.nextBCI(result, bci)) {
             int opcode = BytecodeStream.opcode(result, bci);
-            if (Bytecodes.isQuickenedFieldAccess(opcode)) {
+            if (Bytecodes.isQuickened(opcode)) {
                 /*
-                 * Quickened field bytecodes are only meaningful to the interpreter; JVMCI clients
-                 * must keep seeing the original class-file opcode and operands.
+                 * Quickened bytecodes are only meaningful to the interpreter; JVMCI clients must
+                 * keep seeing the original class-file opcode and operands.
                  */
-                BytecodeStream.patchOpcodeOpaque(result, bci, Bytecodes.unquickenedFieldAccess(opcode));
+                BytecodeStream.patchOpcodeOpaque(result, bci, Bytecodes.unquickened(opcode));
                 continue;
             }
             if (opcode != Bytecodes.INVOKEDYNAMIC) {
@@ -675,7 +675,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
             int currentBC = BytecodeStream.currentBC(code, bci);
             VMError.guarantee(BREAKPOINT != currentBC);
-            VMError.guarantee(!Bytecodes.isQuickenedFieldAccess(currentBC));
+            VMError.guarantee(!Bytecodes.isQuickened(currentBC));
         }
     }
 

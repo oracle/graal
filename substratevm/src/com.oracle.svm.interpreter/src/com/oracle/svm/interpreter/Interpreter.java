@@ -223,10 +223,14 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.POP;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.POP2;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTFIELD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTSTATIC;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_BALOAD;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_BASTORE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_GETFIELD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_GETSTATIC;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_PUTFIELD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_PUTSTATIC;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_ZALOAD;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.QUICK_ZASTORE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.RET;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.RETURN;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.SALOAD;
@@ -736,7 +740,7 @@ public final class Interpreter {
     public static final class Root {
 
         @NeverInline("needed for stack walking")
-        @BytecodeInterpreterHandlerConfig(maximumOperationCode = QUICK_PUTFIELD, arguments = {
+        @BytecodeInterpreterHandlerConfig(maximumOperationCode = QUICK_ZASTORE, arguments = {
                         @BytecodeInterpreterHandlerConfig.Argument(returnValue = true),
                         @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.MATERIALIZED, fields = {
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "code"),
@@ -1073,6 +1077,10 @@ public final class Interpreter {
                         case QUICK_GETFIELD  : curBCI = quickGetfieldHandler(curBCI, frame, virtualStack); break;
                         case QUICK_PUTSTATIC : curBCI = quickPutstaticHandler(curBCI, frame, virtualStack); break;
                         case QUICK_PUTFIELD  : curBCI = quickPutfieldHandler(curBCI, frame, virtualStack); break;
+                        case QUICK_BALOAD    : curBCI = quickBaloadHandler(curBCI, frame, virtualStack); break;
+                        case QUICK_ZALOAD    : curBCI = quickZaloadHandler(curBCI, frame, virtualStack); break;
+                        case QUICK_BASTORE   : curBCI = quickBastoreHandler(curBCI, frame, virtualStack); break;
+                        case QUICK_ZASTORE   : curBCI = quickZastoreHandler(curBCI, frame, virtualStack); break;
 
                         case INVOKEVIRTUAL  : curBCI = invokevirtualHandler(curBCI, frame, virtualStack); break;
                         case INVOKESPECIAL  : curBCI = invokespecialHandler(curBCI, frame, virtualStack); break;
@@ -2088,15 +2096,45 @@ public final class Interpreter {
             int index = virtualStack.peekInt(frame, -1);
             int value;
             if (nonNullReceiver instanceof byte[] byteArray) {
+                quickenArrayAccess(frame.code, curBCI, QUICK_BALOAD);
                 value = InterpreterToVM.getArrayByteInternal(index, byteArray);
             } else {
                 boolean[] booleanArray = uncheckedCast(nonNullReceiver, boolean[].class);
+                quickenArrayAccess(frame.code, curBCI, QUICK_ZALOAD);
                 value = InterpreterToVM.getArrayBooleanInternal(index, booleanArray);
             }
             virtualStack.pop1(frame, false);
             virtualStack.pop1(frame);
             virtualStack.pushInt(frame, value);
             return advanceToNextBytecode(curBCI, BALOAD, frame, virtualStack);
+        }
+
+        @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
+        @BytecodeInterpreterHandler(value = QUICK_BALOAD, safepoint = false)
+        private static long quickBaloadHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
+            Object receiver = virtualStack.peekObject(frame, -2);
+            Object nonNullReceiver = nullCheck(receiver);
+            byte[] byteArray = uncheckedCast(nonNullReceiver, byte[].class);
+            int index = virtualStack.peekInt(frame, -1);
+            int value = InterpreterToVM.getArrayByteInternal(index, byteArray);
+            virtualStack.pop1(frame, false);
+            virtualStack.pop1(frame);
+            virtualStack.pushInt(frame, value);
+            return advanceToNextBytecode(curBCI, QUICK_BALOAD, frame, virtualStack);
+        }
+
+        @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
+        @BytecodeInterpreterHandler(value = QUICK_ZALOAD, safepoint = false)
+        private static long quickZaloadHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
+            Object receiver = virtualStack.peekObject(frame, -2);
+            Object nonNullReceiver = nullCheck(receiver);
+            boolean[] booleanArray = uncheckedCast(nonNullReceiver, boolean[].class);
+            int index = virtualStack.peekInt(frame, -1);
+            int value = InterpreterToVM.getArrayBooleanInternal(index, booleanArray);
+            virtualStack.pop1(frame, false);
+            virtualStack.pop1(frame);
+            virtualStack.pushInt(frame, value);
+            return advanceToNextBytecode(curBCI, QUICK_ZALOAD, frame, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
@@ -2229,15 +2267,55 @@ public final class Interpreter {
             int index = virtualStack.peekInt(frame, -2);
             byte value = (byte) virtualStack.peekInt(frame, -1);
             if (nonNullReceiver instanceof byte[] byteArray) {
+                quickenArrayAccess(frame.code, curBCI, QUICK_BASTORE);
                 InterpreterToVM.setArrayByteInternal(value, index, byteArray);
             } else {
                 boolean[] booleanArray = uncheckedCast(nonNullReceiver, boolean[].class);
+                quickenArrayAccess(frame.code, curBCI, QUICK_ZASTORE);
                 InterpreterToVM.setArrayBooleanInternal(value, index, booleanArray);
             }
             virtualStack.pop1(frame, false);
             virtualStack.pop1(frame, false);
             virtualStack.pop1(frame);
             return advanceToNextBytecode(curBCI, BASTORE, frame, virtualStack);
+        }
+
+        @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
+        @BytecodeInterpreterHandler(value = QUICK_BASTORE, safepoint = false)
+        private static long quickBastoreHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
+            Object receiver = virtualStack.peekObject(frame, -3);
+            Object nonNullReceiver = nullCheck(receiver);
+            byte[] byteArray = uncheckedCast(nonNullReceiver, byte[].class);
+            int index = virtualStack.peekInt(frame, -2);
+            int length = byteArray.length;
+            if (Integer.compareUnsigned(index, length) >= 0) {
+                throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
+            }
+            byte value = (byte) virtualStack.peekInt(frame, -1);
+            InterpreterToVM.setArrayByteInternal(value, index, byteArray);
+            virtualStack.pop1(frame, false);
+            virtualStack.pop1(frame, false);
+            virtualStack.pop1(frame);
+            return advanceToNextBytecode(curBCI, QUICK_BASTORE, frame, virtualStack);
+        }
+
+        @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
+        @BytecodeInterpreterHandler(value = QUICK_ZASTORE, safepoint = false)
+        private static long quickZastoreHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
+            Object receiver = virtualStack.peekObject(frame, -3);
+            Object nonNullReceiver = nullCheck(receiver);
+            boolean[] booleanArray = uncheckedCast(nonNullReceiver, boolean[].class);
+            int index = virtualStack.peekInt(frame, -2);
+            int length = booleanArray.length;
+            if (Integer.compareUnsigned(index, length) >= 0) {
+                throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
+            }
+            byte value = (byte) virtualStack.peekInt(frame, -1);
+            InterpreterToVM.setArrayBooleanInternal(value, index, booleanArray);
+            virtualStack.pop1(frame, false);
+            virtualStack.pop1(frame, false);
+            virtualStack.pop1(frame);
+            return advanceToNextBytecode(curBCI, QUICK_ZASTORE, frame, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
@@ -4031,6 +4109,18 @@ public final class Interpreter {
     private static void quickenFieldAccess(byte[] code, long bci, int opcode) {
         // Patch only the opcode: the CPI operand and BCI layout stay identical.
         BytecodeStream.patchOpcodeOpaque(code, bci, Bytecodes.quickenedFieldAccess(opcode));
+    }
+
+    private static void quickenArrayAccess(byte[] code, long bci, int quickenedOpcode) {
+        /*
+         * Verification fixes each BALOAD/BASTORE site's array type to either byte[] or boolean[],
+         * so racing executions select the same opcode. With verification disabled, this relies on
+         * the existing contract that the bytecode is trusted. Do not replace an active breakpoint;
+         * after it is removed, the restored JVM opcode can quicken on its next execution.
+         */
+        if (BytecodeStream.opaqueOpcode(code, bci) != BREAKPOINT) {
+            BytecodeStream.patchOpcodeOpaque(code, bci, quickenedOpcode);
+        }
     }
 
     // endregion Class/Field/Method resolution
