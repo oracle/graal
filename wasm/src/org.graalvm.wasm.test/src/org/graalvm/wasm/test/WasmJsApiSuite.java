@@ -2442,6 +2442,10 @@ public class WasmJsApiSuite {
             Assert.assertEquals("Value written to pre-grow buffer not seen in post-grow buffer", 42, postGrowBuffer.get(0));
             postGrowBuffer.put(1, (byte) 21);
             Assert.assertEquals("Value written to post-grow buffer not seen in pre-grow buffer", 21, preGrowBuffer.get(1));
+            preGrowBuffer.put(Sizes.MEMORY_PAGE_SIZE, (byte) 42);
+            Assert.assertEquals("Value written to pre-grow buffer not seen in post-grow buffer in grown section", 42, postGrowBuffer.get(Sizes.MEMORY_PAGE_SIZE));
+            postGrowBuffer.put(Sizes.MEMORY_PAGE_SIZE + 1, (byte) 21);
+            Assert.assertEquals("Value written to post-grow buffer not seen in pre-grow buffer in grown section", 21, preGrowBuffer.get(Sizes.MEMORY_PAGE_SIZE + 1));
         });
     }
 
