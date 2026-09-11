@@ -134,8 +134,8 @@ public final class RistrettoFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        RistrettoUtils.forcePreserveType(RistrettoDirectives.class);
-        RistrettoUtils.forcePreserveType(RistrettoOSRSupport.class);
+        RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoDirectives.class);
+        RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoOSRSupport.class);
         RistrettoOptions.registerRuntimeOptionValidations();
 
         /*

@@ -38,17 +38,15 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
-import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
@@ -57,7 +55,9 @@ import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -74,23 +74,24 @@ import com.oracle.svm.interpreter.ristretto.compile.RistrettoSpeculationLog;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoSpeculationLog.CompilationSpeculationLog;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoConstantReflectionProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
-import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethodHandleAccessProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethodHandleAccessProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoReplacements;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoStampProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoType;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager;
 import com.oracle.svm.interpreter.ristretto.verify.RistrettoGraphJVMCITypeVerifier;
-import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.CommonOptionParser;
+import com.oracle.svm.shared.util.VMError;
 
-import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.GraalCompiler;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -158,9 +159,9 @@ public class RistrettoUtils {
      * @see org.graalvm.nativeimage.impl.RuntimeReflectionSupport
      * @see com.oracle.svm.hosted.image.PreserveOptionsSupport
      */
-    public static void forcePreserveType(Class<?> c) {
+    public static void forcePreserveType(BigBang bb, Class<?> c) {
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        PreserveOptionsSupport.registerType(reflection, c);
+        PreserveOptionsSupport.registerType(bb, reflection, c);
     }
 
     /**
