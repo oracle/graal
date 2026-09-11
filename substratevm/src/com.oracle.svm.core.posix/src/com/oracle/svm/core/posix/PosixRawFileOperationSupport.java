@@ -113,7 +113,14 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static RawFileDescriptor open0(CCharPointer cPath, int flags) {
         int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
-        return Word.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
+        int fd = Fcntl.NoTransitions.open(cPath, flags, permissions);
+        if (fd == 0) {
+            /* Preserve zero as the cross-platform invalid sentinel without leaking a valid file. */
+            int duplicate = Unistd.NoTransitions.dup(fd);
+            Unistd.NoTransitions.close(fd);
+            fd = duplicate;
+        }
+        return Word.signed(fd);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -174,6 +181,14 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
         }
         int posixFd = getPosixFileDescriptor(fd);
         return PosixUtils.writeUninterruptibly(posixFd, data, size);
+    }
+
+    @Override
+    public boolean writeSafepointable(RawFileDescriptor fd, Pointer data, UnsignedWord size) {
+        if (!isValid(fd)) {
+            return false;
+        }
+        return PosixUtils.writeSafepointable(getPosixFileDescriptor(fd), data, size);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

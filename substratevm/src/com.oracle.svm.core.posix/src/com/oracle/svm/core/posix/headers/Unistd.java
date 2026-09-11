@@ -117,6 +117,9 @@ public class Unistd {
 
     public static class NoTransitions {
         @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int dup(int fd);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
         public static native int close(int fd);
 
         @CFunction(transition = Transition.NO_TRANSITION)

@@ -163,6 +163,25 @@ public class PosixUtils {
         return true;
     }
 
+    /// Writes native memory through transition-capable system calls so a blocked write does not
+    /// prevent a safepoint.
+    public static boolean writeSafepointable(int fd, Pointer data, UnsignedWord size) {
+        Pointer position = data;
+        UnsignedWord remaining = size;
+        while (remaining.notEqual(0)) {
+            SignedWord writtenBytes = Unistd.write(fd, position, remaining);
+            if (writtenBytes.equal(-1)) {
+                if (LibC.errno() == Errno.EINTR()) {
+                    continue;
+                }
+                return false;
+            }
+            position = position.add((UnsignedWord) writtenBytes);
+            remaining = remaining.subtract((UnsignedWord) writtenBytes);
+        }
+        return true;
+    }
+
     @Uninterruptible(reason = "Array must not move.")
     public static boolean writeUninterruptibly(int fd, byte[] data) {
         DynamicHub hub = DynamicHubIntrinsics.readHub(data);
