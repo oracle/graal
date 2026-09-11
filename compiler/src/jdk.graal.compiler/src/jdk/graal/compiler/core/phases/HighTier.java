@@ -193,13 +193,11 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
     }
 
-    /// Creates the control flow duplication phases that clean up and iteratively expose escape
-    /// analysis opportunities.
+    /// Creates the box optimization and optional control flow duplication phases that clean up and
+    /// iteratively expose escape analysis opportunities.
     protected final PhaseSuite<CoreProviders> createFinalPEACleanup(OptionValues options, CanonicalizerPhase canonicalizer) {
-        if (!isControlFlowDuplicationEnabled(options)) {
-            return null;
-        }
         PhaseSuite<CoreProviders> cleanup = new PhaseSuite<>();
+        cleanup.appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
         this.<CoreProviders> appendControlFlowDuplicationPhases(cleanup::appendPhase, options, canonicalizer);
         return cleanup;
     }
