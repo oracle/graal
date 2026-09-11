@@ -531,6 +531,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             } catch (IllegalArgumentException e) {
                 Log.logStream().println("Error: " + e.getMessage());
+                for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+                    Log.logStream().println("Caused by: " + cause.getMessage());
+                }
                 if (forJavaMainCall) {
                     System.exit(1);
                 } else {
