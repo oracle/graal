@@ -32,6 +32,7 @@ import static com.oracle.svm.core.metadata.MetadataTracer.Options.MetadataTracin
 import static com.oracle.svm.hosted.SecurityServicesFeature.Options.AdditionalSecurityProviders;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.AddAllCharsets;
 import static com.oracle.svm.hosted.jdk.localization.LocalizationFeature.Options.IncludeAllLocales;
+import static com.oracle.svm.hosted.reflect.ReflectionFeature.findCallerSensitiveAdapterMethod;
 
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
@@ -61,6 +62,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.ClassInclusionPolicy.DefaultAllInclusionPolicy;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.GuestTypes;
@@ -224,7 +226,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
         classesToPreserve.forEach(c -> {
             preservedClassNames.add(c.getName());
-            registerPreservedClass(reflection, resources, proxy, always, c);
+            registerPreservedClass(bb, reflection, resources, proxy, always, c);
         });
 
         if (SubstrateOptions.JNI.getValue() && SubstrateOptions.PreserveIncludesJNI.getValue()) {
@@ -242,7 +244,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 if (!preservedClassNames.contains(capturingClass)) {
                     return;
                 }
-                registerPreservedClass(reflection, resources, proxy, always, reachedClass);
+                registerPreservedClass(bb, reflection, resources, proxy, always, reachedClass);
                 registerPreservedClassHierarchyMetadata(reflection, serialization, always, reachedClass);
                 if (Serializable.class.isAssignableFrom(reachedClass)) {
                     serialization.registerIncludingAssociatedClasses(always, reachedClass);
@@ -269,14 +271,14 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         }
     }
 
-    private static void registerPreservedClass(RuntimeReflectionSupport reflection,
+    private static void registerPreservedClass(BigBang bb, RuntimeReflectionSupport reflection,
                     RuntimeResourceSupport<AccessCondition> resources, RuntimeProxyRegistrySupport proxy,
                     AccessCondition always, Class<?> c) {
-        registerType(reflection, c);
+        registerType(bb, reflection, c);
 
         /* Register array types for each type up to dimension 2 */
-        registerType(reflection, c.arrayType());
-        registerType(reflection, c.arrayType().arrayType());
+        registerType(bb, reflection, c.arrayType());
+        registerType(bb, reflection, c.arrayType().arrayType());
 
         /* Register every single-interface proxy */
         // GR-62293 can't register proxies from named JDK modules.
@@ -334,15 +336,28 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         serialization.register(always, true, c);
     }
 
-    public static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
+    public static void registerType(BigBang bb, RuntimeReflectionSupport reflection, Class<?> c) {
         AccessCondition always = AccessCondition.unconditional();
         reflection.register(always, true, c);
         try {
             reflection.register(always, false, true, c.getDeclaredFields());
-            reflection.register(always, true, c.getDeclaredMethods());
+            Method[] declaredMethods = c.getDeclaredMethods();
+            reflection.register(always, true, declaredMethods);
+            if (!SubstrateOptions.PreserveIncludesJNI.getValue() && RuntimeClassLoading.isSupported()) {
+                registerAdaptedCallerSensitiveMethods(bb, declaredMethods);
+            }
             reflection.register(always, true, c.getDeclaredConstructors());
         } catch (LinkageError e) {
             /* If we can't link we can not register fields and methods */
+        }
+    }
+
+    private static void registerAdaptedCallerSensitiveMethods(BigBang bb, Method[] declaredMethods) {
+        for (Method declaredMethod : declaredMethods) {
+            if (findCallerSensitiveAdapterMethod(declaredMethod) != null) {
+                // Reflection only preserves the caller-sensitive adapter method as an entry point
+                bb.addRootMethod(declaredMethod, false, "Preserved CallerSensitive method for which an adapter exists with Crema enabled and -PreserveIncludesJNI");
+            }
         }
     }
 }
