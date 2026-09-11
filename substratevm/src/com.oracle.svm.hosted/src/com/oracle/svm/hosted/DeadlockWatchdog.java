@@ -45,19 +45,33 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class DeadlockWatchdog implements Closeable {
 
+    private static final int NUM_INTERVALS_UNTIL_TIMEOUT = 10;
+
     private final int watchdogInterval;
+    private final long watchdogCheckIntervalNanos;
     private final boolean watchdogExitOnTimeout;
     private final Thread thread;
 
-    private volatile long nextDeadline;
+    /*
+     * This intentionally coalesces activity notifications. Once an observer cycle has seen
+     * activity, further notifications do not need to publish anything until the observer clears
+     * the flag again. The watchdog only uses the flag as a liveness indication for the current
+     * sampling interval and does not try to reconstruct when the activity happened.
+     */
+    private volatile boolean activityObserved;
     private volatile boolean stopped;
     private volatile boolean enabled;
 
     DeadlockWatchdog(int watchdogInterval, boolean watchdogExitOnTimeout) {
+        this(watchdogInterval, watchdogExitOnTimeout, true);
+    }
+
+    DeadlockWatchdog(int watchdogInterval, boolean watchdogExitOnTimeout, boolean startThread) {
         this.watchdogInterval = watchdogInterval;
+        this.watchdogCheckIntervalNanos = TimeUnit.MINUTES.toNanos(watchdogInterval) / NUM_INTERVALS_UNTIL_TIMEOUT;
         this.watchdogExitOnTimeout = watchdogExitOnTimeout;
         enabled = true;
-        if (this.watchdogInterval > 0) {
+        if (this.watchdogInterval > 0 && startThread) {
             thread = new Thread(this::watchdogThread);
             thread.setDaemon(true);
             thread.start();
@@ -71,7 +85,9 @@ public class DeadlockWatchdog implements Closeable {
     }
 
     public void recordActivity() {
-        nextDeadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(watchdogInterval);
+        if (watchdogInterval > 0 && !activityObserved) {
+            activityObserved = true;
+        }
     }
 
     @Override
@@ -83,23 +99,45 @@ public class DeadlockWatchdog implements Closeable {
     }
 
     void watchdogThread() {
-        recordActivity();
+        long nextCheck = System.nanoTime() + watchdogCheckIntervalNanos;
+        long intervalsWithoutActivity = 0;
 
         while (!stopped) {
             long now = System.nanoTime();
-            if (enabled && now >= nextDeadline) {
-                reportFailureState();
-                if (!watchdogExitOnTimeout) {
-                    recordActivity();
+            if (!enabled) {
+                intervalsWithoutActivity = 0;
+                nextCheck = now + watchdogCheckIntervalNanos;
+            } else if (now >= nextCheck) {
+                if (consumeActivity()) {
+                    intervalsWithoutActivity = 0;
+                } else {
+                    intervalsWithoutActivity++;
+                }
+                nextCheck = now + watchdogCheckIntervalNanos;
+
+                if (intervalsWithoutActivity >= NUM_INTERVALS_UNTIL_TIMEOUT) {
+                    reportFailureState();
+                    if (!watchdogExitOnTimeout) {
+                        intervalsWithoutActivity = 0;
+                        nextCheck = System.nanoTime() + watchdogCheckIntervalNanos;
+                    }
                 }
             }
 
             try {
-                Thread.sleep(Math.max(Math.min(TimeUnit.NANOSECONDS.toMillis(nextDeadline - now), TimeUnit.SECONDS.toMillis(1)), 1));
+                Thread.sleep(Math.max(Math.min(TimeUnit.NANOSECONDS.toMillis(nextCheck - now), TimeUnit.SECONDS.toMillis(1)), 1));
             } catch (InterruptedException e) {
                 /* Nothing to do, when close() was called then we will exit the loop. */
             }
         }
+    }
+
+    boolean consumeActivity() {
+        if (!activityObserved) {
+            return false;
+        }
+        activityObserved = false;
+        return true;
     }
 
     public void reportFailureState() {
