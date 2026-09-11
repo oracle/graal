@@ -90,6 +90,23 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
                         iterator();
     }
 
+    /**
+     * Returns whether any foreign calls have been registered.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean hasForeignCalls() {
+        return !foreignCalls.isEmpty() || !runtimeCheckedForeignCalls.isEmpty();
+    }
+
+    /**
+     * Returns whether an ordinary or CPU-feature variant is registered for {@code descriptor}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean hasForeignCall(ForeignCallDescriptor descriptor) {
+        ForeignCallSignature signature = descriptor.getSignature();
+        return foreignCalls.containsKey(signature) || runtimeCheckedForeignCalls.containsKey(signature);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void register(SubstrateForeignCallDescriptor... descriptors) {
         for (SubstrateForeignCallDescriptor descriptor : descriptors) {
