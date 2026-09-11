@@ -50,11 +50,13 @@ public interface GC {
     @Platforms(Platform.HOSTED_ONLY.class)
     String getDefaultMaxHeapSize();
 
-    /// Writes a prefix to a log line being emitted for `logTagSet`. The prefix
-    /// comes before the rest of the line content but after the line decorators.
+    /// Writes a prefix to a log line being emitted for `logTagSet`. The prefix comes before the
+    /// rest of the line content but after the line decorators. `previousCollection` selects the
+    /// collection that most recently completed instead of the collection currently in progress.
     ///
     /// @param logTagSet tag set for log line
     /// @param log the buffer to which the line's content will be written
-    default void writeLogPrefix(LogTagSet logTagSet, Log log) {
+    /// @param previousCollection whether the message describes work after the collection completed
+    default void writeLogPrefix(LogTagSet logTagSet, Log log, boolean previousCollection) {
     }
 }
