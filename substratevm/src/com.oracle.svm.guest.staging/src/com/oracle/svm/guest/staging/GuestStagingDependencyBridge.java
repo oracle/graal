@@ -180,6 +180,17 @@ public interface GuestStagingDependencyBridge {
      */
     void configureLogFile(String optionPrefix, String logFile);
 
+    /// Parses and applies one unified logging option.
+    ///
+    /// @param arg a value that starts with `-Xlog`
+    boolean parseXLogOption(String arg);
+
+    /// Initializes unified logging before command-line properties and runtime options are parsed.
+    void initializeLogging();
+
+    /// Releases logging resources when isolate startup does not complete.
+    void abortLoggingInitialization();
+
     /**
      * Returns whether runtime arguments must be parsed in the current isolate.
      * <p>

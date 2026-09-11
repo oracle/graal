@@ -503,6 +503,14 @@ def truffle_unittest_task(extra_build_args=None):
 
 
 def svm_gate_body(args, tasks):
+    with Task('LogTagSetGenerator', tasks, tags=[GraalTags.build]) as t:
+        if t:
+            source_path = pathlib.Path(suite.dir) / 'src' / 'com.oracle.svm.core' / 'src' / 'com' / 'oracle' / 'svm' / 'core' / 'logging' / 'LogTagSetGenerator.java'
+            exitcode = mx.run([mx.get_jdk().java, '-Xlog:disable', str(source_path)], nonZeroIsFatal=False)
+            if exitcode != 0:
+                git_output = suite.vc.git_command(suite.vc_dir, ["diff", str(source_path.parent.relative_to(suite.vc_dir))])
+                mx.abort(f"{source_path} updated {exitcode} files\n{git_output}")
+
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
             hellomodule(args.extra_image_builder_arguments)
