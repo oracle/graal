@@ -24,10 +24,23 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Boolean;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Byte;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Char;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Double;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Float;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Int;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Long;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Object;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Short;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Void;
+
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -52,6 +65,8 @@ import jdk.vm.ci.meta.JavaKind;
  * frame-state value.
  */
 final class InterpreterOperandStack {
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
     /** First stack slot above the operand stack. */
     private long top;
 
@@ -163,61 +178,76 @@ final class InterpreterOperandStack {
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    private Object popKind(InterpreterFrame frame, JavaKind kind) {
-        return switch (kind) {
-            case Boolean -> popInt(frame) != 0;
-            case Byte -> (byte) popInt(frame);
-            case Short -> (short) popInt(frame);
-            case Char -> (char) popInt(frame);
-            case Int -> popInt(frame);
-            case Float -> popFloat(frame);
-            case Long -> popLong(frame);
-            case Double -> popDouble(frame);
-            case Object -> popObject(frame);
+    private Object popBasicType(InterpreterFrame frame, int basicType) {
+        return switch (basicType) {
+            case JVM_ArrayType_Boolean -> popInt(frame) != 0;
+            case JVM_ArrayType_Byte -> (byte) popInt(frame);
+            case JVM_ArrayType_Short -> (short) popInt(frame);
+            case JVM_ArrayType_Char -> (char) popInt(frame);
+            case JVM_ArrayType_Int -> popInt(frame);
+            case JVM_ArrayType_Float -> popFloat(frame);
+            case JVM_ArrayType_Long -> popLong(frame);
+            case JVM_ArrayType_Double -> popDouble(frame);
+            case JVM_ArrayType_Object -> popObject(frame);
             default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
         };
     }
 
     @AlwaysInline("Keep invocation return stack transitions in bytecode-handler stubs")
-    void pushKind(InterpreterFrame frame, Object value, JavaKind kind) {
-        switch (kind) {
-            case Boolean -> pushInt(frame, (boolean) value ? 1 : 0);
-            case Byte -> pushInt(frame, (byte) value);
-            case Short -> pushInt(frame, (short) value);
-            case Char -> pushInt(frame, (char) value);
-            case Int -> pushInt(frame, (int) value);
-            case Float -> pushFloat(frame, (float) value);
-            case Long -> pushLong(frame, (long) value);
-            case Double -> pushDouble(frame, (double) value);
-            case Object -> pushObject(frame, value);
-            case Void -> {
+    void pushBasicType(InterpreterFrame frame, Object value, int basicType) {
+        switch (basicType) {
+            case JVM_ArrayType_Boolean -> pushInt(frame, (boolean) value ? 1 : 0);
+            case JVM_ArrayType_Byte -> pushInt(frame, (byte) value);
+            case JVM_ArrayType_Short -> pushInt(frame, (short) value);
+            case JVM_ArrayType_Char -> pushInt(frame, (char) value);
+            case JVM_ArrayType_Int -> pushInt(frame, (int) value);
+            case JVM_ArrayType_Float -> pushFloat(frame, (float) value);
+            case JVM_ArrayType_Long -> pushLong(frame, (long) value);
+            case JVM_ArrayType_Double -> pushDouble(frame, (double) value);
+            case JVM_ArrayType_Object -> pushObject(frame, value);
+            case JVM_ArrayType_Void -> {
             }
             default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    Object[] popArguments(InterpreterFrame frame, boolean hasReceiver, InterpreterUnresolvedSignature signature, Object appendix) {
-        return popArguments(frame, hasReceiver, signature, appendix, appendix != null);
+    Object[] popArguments(InterpreterFrame frame, byte[] argumentKinds, int argumentCount, Object appendix) {
+        Object[] arguments = allocateArguments(argumentCount);
+        long argumentIndex = argumentCount - 1L;
+        if (appendix != null) {
+            assert UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE) == JVM_ArrayType_Object;
+            UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, appendix);
+            argumentIndex--;
+        }
+        for (; GraalDirectives.injectBranchProbability(GraalDirectives.UNLIKELY_PROBABILITY, argumentIndex >= 0); argumentIndex--) {
+            int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+            Object value = popBasicType(frame, basicType);
+            UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
+        }
+        return arguments;
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    private Object popKind(InterpreterFrame frame, JavaKind kind) {
+        return popBasicType(frame, kind.getBasicType());
+    }
+
+    @AlwaysInline("Keep invocation return stack transitions in bytecode-handler stubs")
+    void pushKind(InterpreterFrame frame, Object value, JavaKind kind) {
+        pushBasicType(frame, value, kind.getBasicType());
     }
 
     @AlwaysInline("Keep materialized invocation argument stack transitions together")
     Object[] popArgumentsWithAppendix(InterpreterFrame frame, boolean hasReceiver, InterpreterUnresolvedSignature signature, Object appendix) {
-        return popArguments(frame, hasReceiver, signature, appendix, true);
-    }
-
-    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    private Object[] popArguments(InterpreterFrame frame, boolean hasReceiver, InterpreterUnresolvedSignature signature, Object appendix, boolean hasAppendix) {
         int argumentCount = signature.getParameterCount(false);
         int receiverCount = hasReceiver ? 1 : 0;
         Object[] arguments = allocateArguments(argumentCount + receiverCount);
 
         int lastStackArgument = argumentCount - 1;
-        if (hasAppendix) {
-            assert signature.getParameterKind(lastStackArgument) == JavaKind.Object;
-            arguments[lastStackArgument + receiverCount] = appendix;
-            lastStackArgument--;
-        }
+        assert signature.getParameterKind(lastStackArgument) == JavaKind.Object;
+        arguments[lastStackArgument + receiverCount] = appendix;
+        lastStackArgument--;
         for (int index = lastStackArgument; index >= 0; index--) {
             arguments[index + receiverCount] = popKind(frame, signature.getParameterKind(index));
         }

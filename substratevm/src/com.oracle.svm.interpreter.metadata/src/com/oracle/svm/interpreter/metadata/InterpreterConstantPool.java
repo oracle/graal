@@ -503,19 +503,20 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         };
     }
 
+    /**
+     * Cached invoke linkage together with the handler-ready call shape. {@link #argumentKinds}
+     * contains one {@link JavaKind#getBasicType() basic type} per Java argument, including the
+     * receiver at index zero when {@link #hasReceiver} is true, and {@link #returnKind} uses the
+     * same encoding.
+     */
     public static final class LinkedInvoke {
         public final InterpreterResolvedJavaType symbolicHolder;
         public final InterpreterResolvedJavaMethod seedMethod;
         public final CallKind callKind;
         public final Object appendix;
-        /*
-         * Call-shape data derived from the linked seed method and invoke opcode. Cached here so the
-         * cached invoke path can use the published LinkedInvoke without re-querying stable method
-         * and signature metadata on every execution.
-         */
-        public final InterpreterUnresolvedSignature signature;
-        public final JavaKind returnKind;
-        public final int parameterSlots;
+        public final byte[] argumentKinds;
+        public final byte returnKind;
+        public final short argumentCount;
         public final boolean hasReceiver;
         public final boolean requiresSymbolicTypeCheck;
 
@@ -524,11 +525,22 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             this.seedMethod = seedMethod;
             this.callKind = callKind;
             this.appendix = appendix;
-            this.signature = seedMethod.getSignature();
-            this.returnKind = signature.getReturnKind();
+            InterpreterUnresolvedSignature signature = seedMethod.getSignature();
+            this.returnKind = (byte) signature.getReturnKind().getBasicType();
             this.hasReceiver = !seedMethod.isStatic();
-            this.parameterSlots = signature.slotsForParameters(hasReceiver);
             this.requiresSymbolicTypeCheck = requiresInterfaceReceiverCheck;
+
+            int count = signature.getParameterCount(hasReceiver);
+            assert count <= 256;
+            this.argumentCount = (short) count;
+            this.argumentKinds = new byte[count];
+            int argumentIndex = 0;
+            if (hasReceiver) {
+                argumentKinds[argumentIndex++] = (byte) JavaKind.Object.getBasicType();
+            }
+            for (int parameterIndex = 0; parameterIndex < signature.getParameterCount(false); parameterIndex++) {
+                argumentKinds[argumentIndex++] = (byte) signature.getParameterKind(parameterIndex).getBasicType();
+            }
         }
     }
 
