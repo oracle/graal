@@ -121,23 +121,16 @@ public class RuntimeClassLoading {
         @Option(help = "Verification mode for runtime class loading.") //
         public static final RuntimeOptionKey<VerifyMode> ClassVerification = new RuntimeOptionKey<>(VerifyMode.REMOTE, Immutable);
 
-        @Option(help = "Trace runtime class loading events.") //
-        public static final RuntimeOptionKey<Boolean> TraceClassLoading = new RuntimeOptionKey<>(false, null, Options::validateTraceRuntimeClassLoading);
-
         @Option(help = "Logs a stack trace when a class is defined. " +
                         "The logging is applied to all classes whose fully qualified name contains this string. " +
                         "(\"*\" matches any class.)") //
         public static final RuntimeOptionKey<String> LogClassLoadingCauseFor = new RuntimeOptionKey<>(null, null, Options::validateLogClassLoadingCauseFor);
 
-        private static void validateTraceRuntimeClassLoading(RuntimeOptionKey<Boolean> optionKey) {
-            if (optionKey.getValue() && !isSupported()) {
-                throw RuntimeOptionValidation.abort("Option '" + optionKey.getName() + "' requires runtime class-loading support to be enabled via '-H:+RuntimeClassLoading'.");
-            }
-        }
-
         private static void validateLogClassLoadingCauseFor(RuntimeOptionKey<String> optionKey) {
-            if (optionKey.getValue() != null && !isSupported()) {
-                throw RuntimeOptionValidation.abort("Option '" + optionKey.getName() + "' requires runtime class-loading support to be enabled via '-H:+RuntimeClassLoading'.");
+            if (optionKey.hasBeenSet() && (!RuntimeClassLoading.getValue() || !SubstrateOptions.StrictRuntimeJavaOptions.getValue())) {
+                throw RuntimeOptionValidation.abort("Option '" + optionKey.getName() + "' requires runtime class-loading support and strict runtime Java options to be enabled via '" +
+                                SubstrateOptionsParser.commandArgument(RuntimeClassLoading, "+") + "' and '" +
+                                SubstrateOptionsParser.commandArgument(SubstrateOptions.StrictRuntimeJavaOptions, "+") + "'.");
             }
         }
     }
@@ -187,7 +180,8 @@ public class RuntimeClassLoading {
                      Note that this is an experimental feature and that it does not guarantee success. Furthermore, the resulting classes can contain entries\
                      from the classpath that should be manually filtered out to reduce image size. The agent should be used only in cases where modifying the source of the project is not possible.
                     """
-                    .replace("\n", System.lineSeparator());
+                    .replace(
+                                    "\n", System.lineSeparator());
 
     public static RuntimeException throwNoBytecodeClasses(String className) {
         assert !PredefinedClassesSupport.hasBytecodeClasses() && !RuntimeClassLoading.isSupported();

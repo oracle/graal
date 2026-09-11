@@ -224,13 +224,6 @@ public interface GuestStagingDependencyBridge {
      */
     boolean isRuntimeClassLoadingSupported();
 
-    /**
-     * Enables tracing of class loading. Enabled through {@code --verbose} or {@code --verbose:class}.
-     * <p>
-     * Remove this method when runtime class loading (aka Crema) options move to guest/staging.
-     */
-    void enableTraceClassLoading();
-
     /// Applies a runtime assertion directive to a class, package, or the application default.
     ///
     /// Remove this method when runtime assertion support moves to guest/staging.

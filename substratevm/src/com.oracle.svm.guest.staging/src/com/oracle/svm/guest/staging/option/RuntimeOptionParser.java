@@ -439,7 +439,7 @@ public final class RuntimeOptionParser {
                 }
                 continue;
             }
-            if (parseProperty(arg, context) || parseLegacyGCOption(arg) || parseLegacyVerboseOption(arg) ||
+            if (parseProperty(arg, context) || parseLegacyGCOption(arg) ||
                             (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
                                             parseVerifyOption(arg) ||
@@ -486,15 +486,6 @@ public final class RuntimeOptionParser {
         if (arg.equals("-XX:+PrintGC") || arg.equals("-XX:-PrintGC") || arg.equals("-XX:+VerboseGC") || arg.equals("-XX:-VerboseGC")) {
             String[] remaining = singleton().parse(new String[]{arg}, false);
             assert remaining.length == 0;
-            return true;
-        }
-        return false;
-    }
-
-    /// Preserves the non-strict `-verbose` class-loading behavior that predates `-Xlog` support.
-    private static boolean parseLegacyVerboseOption(String arg) {
-        if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (arg.equals("-verbose") || arg.equals("-verbose:class"))) {
-            GuestStagingDependencyBridge.singleton().enableTraceClassLoading();
             return true;
         }
         return false;
