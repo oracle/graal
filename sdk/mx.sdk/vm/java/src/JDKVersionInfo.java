@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,15 +57,9 @@
 public class JDKVersionInfo {
     public static void main(String[] args) {
         Runtime.Version v = Runtime.version();
-
-        String version = v.patch() != 0 ? "." + v.patch() : "";
-        if (version != "" || v.update() != 0) {
-            version = "." + v.update() + version;
-        }
-        if (version != "" || v.interim() != 0) {
-            version = "." + v.interim() + version;
-        }
-        version = v.feature() + version;
+        String version = v.version().stream()
+                        .map(String::valueOf)
+                        .collect(java.util.stream.Collectors.joining("."));
 
         System.out.printf("JDK_VERSION_INFO=\"%s|%s|%s|%s\"",
             version,
