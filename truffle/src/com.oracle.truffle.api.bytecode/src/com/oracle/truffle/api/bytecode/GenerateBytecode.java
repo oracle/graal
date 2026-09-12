@@ -58,6 +58,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -111,6 +112,26 @@ public @interface GenerateBytecode {
      * @since 24.2
      */
     Class<? extends TruffleLanguage<?>> languageClass();
+
+    /**
+     * Specifies exception types that unwind the bytecode interpreter through guest {@code finally}
+     * handlers.
+     * <p>
+     * An exception that is an instance of one of the specified types bypasses exception
+     * interception hooks, guest exception handlers, and {@link EpilogExceptional}. Instrumentation
+     * is still notified, and {@code finally} handlers are executed before the original exception
+     * instance is rethrown. If a {@code finally} handler yields, the continuation preserves the
+     * pending exception and continues unwinding after the handler resumes. A return or exception
+     * from a {@code finally} handler supersedes the pending exception.
+     * <p>
+     * It is recommended to use {@link ControlFlowException} subtypes
+     * for unwind exceptions, but any {@link Throwable} subtype is permitted. {@link ThreadDeath}
+     * and its subtypes remain reserved for instrumentation unwinds and are not affected by this
+     * configuration.
+     *
+     * @since 25.4
+     */
+    Class<? extends Throwable>[] unwindExceptions() default {};
 
     /**
      * Whether to generate an uncached interpreter.
