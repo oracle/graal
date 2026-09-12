@@ -97,32 +97,12 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
         }
     }
 
-    @Snippet
-    protected static SubstrateIntrinsics.Any instanceOfSnippet(
-                    Object object,
-                    SubstrateIntrinsics.Any trueValue,
-                    SubstrateIntrinsics.Any falseValue,
-                    @Snippet.ConstantParameter boolean allowsNull,
-                    short start, short range, short slot,
-                    @Snippet.ConstantParameter int typeIDSlotOffset) {
-        if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
-            if (allowsNull) {
-                return trueValue;
-            }
-            return falseValue;
-        }
-        GuardingNode guard = SnippetAnchorNode.anchor();
-        Object nonNullObject = PiNode.piCastNonNull(object, guard);
-        DynamicHub nonNullHub = loadHub(nonNullObject);
-        return slotTypeCheck(start, range, slot, typeIDSlotOffset, nonNullHub, trueValue, falseValue);
-    }
-
     /**
-     * Performs an inexact type check using exact-hub profile hints before the generic closed-world
-     * check.
+     * Performs an inexact type check, using any exact-hub profile hints before the generic
+     * closed-world check.
      */
     @Snippet
-    protected static SubstrateIntrinsics.Any instanceOfWithProfileSnippet(
+    protected static SubstrateIntrinsics.Any instanceOfSnippet(
                     @Snippet.VarargsParameter DynamicHub[] hints,
                     @Snippet.VarargsParameter boolean[] hintIsPositive,
                     Object object,
@@ -264,7 +244,6 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
     protected final KnownOffsets knownOffsets;
 
     final SnippetTemplate.SnippetInfo instanceOf;
-    final SnippetTemplate.SnippetInfo instanceOfWithProfile;
     final SnippetTemplate.SnippetInfo instanceOfDynamic;
     final SnippetTemplate.SnippetInfo typeEquality;
     final SnippetTemplate.SnippetInfo assignableTypeCheck;
@@ -275,7 +254,6 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
 
         this.knownOffsets = KnownOffsets.singleton();
         this.instanceOf = snippet(providers, TypeSnippets.class, "instanceOfSnippet");
-        this.instanceOfWithProfile = snippet(providers, TypeSnippets.class, "instanceOfWithProfileSnippet");
         this.instanceOfDynamic = snippet(providers, TypeSnippets.class, "instanceOfDynamicSnippet");
         this.typeEquality = snippet(providers, TypeSnippets.class, "typeEqualitySnippet");
         this.assignableTypeCheck = snippet(providers, TypeSnippets.class, "classIsAssignableFromSnippet");
@@ -318,26 +296,10 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
 
         protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
             assert !type.isInterface() || type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
-            if (node.profile() != null) {
-                JavaTypeProfile profile = node.profile();
-                OptionValues optionValues = node.getOptions();
-                Assumptions assumptions = node.graph().getAssumptions();
-                TypeCheckHints hintInfo = new TypeCheckHints(node.type(), profile, assumptions, getTypeCheckMinProfileHitProbability(optionValues), getTypeCheckMaxHints(optionValues));
-                Hints hints = createHints(hintInfo, false);
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOfWithProfile, node.graph(), tool.getLoweringStage());
-                args.addVarargs("hints", DynamicHub.class, StampFactory.forKind(JavaKind.Object), hints.hubs());
-                args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive());
-                args.add("object", node.getValue());
-                args.add("trueValue", replacer.trueValue);
-                args.add("falseValue", replacer.falseValue);
-                args.add("allowsNull", node.allowsNull());
-                args.add("start", hub.getTypeCheckStart());
-                args.add("range", hub.getTypeCheckRange());
-                args.add("slot", hub.getTypeCheckSlot());
-                args.add("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
-                return args;
-            }
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
+            Hints hints = createHints(node);
+            args.addVarargs("hints", DynamicHub.class, StampFactory.forKind(JavaKind.Object), hints.hubs());
+            args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive());
             args.add("object", node.getValue());
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
@@ -347,6 +309,18 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
             args.add("slot", hub.getTypeCheckSlot());
             args.add("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
             return args;
+        }
+
+        /** Creates exact-hub hints for a type check, or an empty set if no profile is available. */
+        private Hints createHints(InstanceOfNode node) {
+            if (node.profile() == null) {
+                return new Hints(new DynamicHub[0], new boolean[0]);
+            }
+            JavaTypeProfile profile = node.profile();
+            OptionValues optionValues = node.getOptions();
+            Assumptions assumptions = node.graph().getAssumptions();
+            TypeCheckHints hintInfo = new TypeCheckHints(node.type(), profile, assumptions, getTypeCheckMinProfileHitProbability(optionValues), getTypeCheckMaxHints(optionValues));
+            return TypeSnippets.createHints(hintInfo, false);
         }
     }
 

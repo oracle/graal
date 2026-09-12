@@ -126,38 +126,12 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         }
     }
 
-    @Snippet
-    protected static SubstrateIntrinsics.Any instanceOfSnippet(
-                    Object object,
-                    SubstrateIntrinsics.Any trueValue,
-                    SubstrateIntrinsics.Any falseValue,
-                    @Snippet.ConstantParameter boolean allowsNull,
-                    @Snippet.ConstantParameter int typeID,
-                    @Snippet.ConstantParameter int typeIDDepth,
-                    @Snippet.ConstantParameter boolean useInterfaceHashing,
-                    @Snippet.ConstantParameter int interfaceID) {
-        if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
-            if (allowsNull) {
-                return trueValue;
-            }
-            return falseValue;
-        }
-        GuardingNode guard = SnippetAnchorNode.anchor();
-        Object nonNullObject = PiNode.piCastNonNull(object, guard);
-        DynamicHub nonNullHub = loadHub(nonNullObject);
-        if (typeIDDepth >= 0) {
-            return classTypeCheck(typeID, typeIDDepth, nonNullHub, trueValue, falseValue);
-        } else {
-            return interfaceTypeCheckHelper(interfaceID, nonNullHub, trueValue, falseValue, useInterfaceHashing);
-        }
-    }
-
     /**
-     * Performs an inexact type check using exact-hub profile hints before the generic open-world
-     * check.
+     * Performs a subtype-aware check for a non-exact target type, using any exact-hub profile hints
+     * before the generic open-world check.
      */
     @Snippet
-    protected static SubstrateIntrinsics.Any instanceOfWithProfileSnippet(
+    protected static SubstrateIntrinsics.Any instanceOfSnippet(
                     @Snippet.VarargsParameter DynamicHub[] hints,
                     @Snippet.VarargsParameter boolean[] hintIsPositive,
                     Object object,
@@ -358,7 +332,6 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
     }
 
     final SnippetTemplate.SnippetInfo instanceOf;
-    final SnippetTemplate.SnippetInfo instanceOfWithProfile;
     final SnippetTemplate.SnippetInfo instanceOfDynamic;
     final SnippetTemplate.SnippetInfo typeEquality;
     final SnippetTemplate.SnippetInfo assignableTypeCheck;
@@ -368,7 +341,6 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         super(options, providers);
 
         this.instanceOf = snippet(providers, OpenTypeWorldSnippets.class, "instanceOfSnippet");
-        this.instanceOfWithProfile = snippet(providers, OpenTypeWorldSnippets.class, "instanceOfWithProfileSnippet");
         this.instanceOfDynamic = snippet(providers, OpenTypeWorldSnippets.class, "instanceOfDynamicSnippet");
         this.typeEquality = snippet(providers, OpenTypeWorldSnippets.class, "typeEqualitySnippet");
         this.assignableTypeCheck = snippet(providers, OpenTypeWorldSnippets.class, "classIsAssignableFromSnippet");
@@ -411,27 +383,10 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
 
         protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
             assert !type.isInterface() || type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
-            if (node.profile() != null) {
-                JavaTypeProfile profile = node.profile();
-                OptionValues optionValues = node.getOptions();
-                Assumptions assumptions = node.graph().getAssumptions();
-                final int maxHints = getTypeCheckMaxHints(node.getCheckedStamp().type().isInterface(), optionValues);
-                TypeCheckHints hintInfo = new TypeCheckHints(node.type(), profile, assumptions, getTypeCheckMinProfileHitProbability(optionValues), maxHints);
-                TypeSnippets.Hints hints = TypeSnippets.createHints(hintInfo, false);
-                SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOfWithProfile, node.graph(), tool.getLoweringStage());
-                args.addVarargs("hints", DynamicHub.class, StampFactory.forKind(JavaKind.Object), hints.hubs());
-                args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive());
-                args.add("object", node.getValue());
-                args.add("trueValue", replacer.trueValue);
-                args.add("falseValue", replacer.falseValue);
-                args.add("allowsNull", node.allowsNull());
-                args.add("typeID", hub.getTypeID());
-                args.add("typeIDDepth", hub.getTypeIDDepth());
-                args.add("useInterfaceHashing", SubstrateOptions.useInterfaceHashing());
-                args.add("interfaceID", hub.getInterfaceID());
-                return args;
-            }
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
+            TypeSnippets.Hints hints = createHints(node);
+            args.addVarargs("hints", DynamicHub.class, StampFactory.forKind(JavaKind.Object), hints.hubs());
+            args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive());
             args.add("object", node.getValue());
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
@@ -441,6 +396,19 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
             args.add("useInterfaceHashing", SubstrateOptions.useInterfaceHashing());
             args.add("interfaceID", hub.getInterfaceID());
             return args;
+        }
+
+        /** Creates exact-hub hints for a type check, or an empty set if no profile is available. */
+        private TypeSnippets.Hints createHints(InstanceOfNode node) {
+            if (node.profile() == null) {
+                return new TypeSnippets.Hints(new DynamicHub[0], new boolean[0]);
+            }
+            JavaTypeProfile profile = node.profile();
+            OptionValues optionValues = node.getOptions();
+            Assumptions assumptions = node.graph().getAssumptions();
+            int maxHints = getTypeCheckMaxHints(node.getCheckedStamp().type().isInterface(), optionValues);
+            TypeCheckHints hintInfo = new TypeCheckHints(node.type(), profile, assumptions, getTypeCheckMinProfileHitProbability(optionValues), maxHints);
+            return TypeSnippets.createHints(hintInfo, false);
         }
     }
 
