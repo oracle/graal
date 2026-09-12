@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -115,6 +116,9 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
         this.position = -1;
 
+        ResolvedJavaField originalField = OriginalFieldProvider.getOriginalField(wrappedField);
+        AnalysisError.guarantee(originalField == null || originalField instanceof BaseLayerField || GuestAccess.get().owns(originalField),
+                        "Analysis field is not owned by the guest context: %s", wrappedField);
         this.wrapped = wrappedField;
 
         boolean trackAccessChain = universe.analysisPolicy().trackAccessChain();

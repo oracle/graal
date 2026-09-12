@@ -68,6 +68,7 @@ import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -217,6 +218,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MethodVariantKey methodVariantKey, Map<MethodVariantKey, MethodVariant> methodVariantsMap) {
         super(universe.hostVM.enableTrackAcrossLayers());
         HostVM hostVM = universe.hostVM();
+        ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(wrapped);
+        AnalysisError.guarantee(originalMethod == null || originalMethod instanceof BaseLayerMethod || GuestAccess.get().owns(originalMethod),
+                        "Analysis method is not owned by the guest context: %s", wrapped);
         this.wrapped = wrapped;
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());

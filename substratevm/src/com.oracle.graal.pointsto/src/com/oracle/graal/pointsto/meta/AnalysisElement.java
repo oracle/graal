@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
@@ -56,6 +57,17 @@ import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.Annotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
+/**
+ * Base class for analysis-time representations of JVMCI elements. The original element underlying
+ * the wrapped value must be one of:
+ * <ul>
+ * <li>{@code null}, when Native Image synthesized the element without a corresponding JVMCI element
+ * in the guest context;</li>
+ * <li>a {@link BaseLayerType}, {@link BaseLayerMethod}, or {@link BaseLayerField}; or</li>
+ * <li>an element owned by {@link GuestAccess}.</li>
+ * </ul>
+ * This invariant is enforced when each concrete analysis element is constructed.
+ */
 public abstract class AnalysisElement extends AbstractAnnotated {
 
     protected static final AtomicReferenceFieldUpdater<AnalysisElement, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
