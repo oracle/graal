@@ -86,4 +86,10 @@ public final class CIsolateData<T extends PointerBase> {
         assert this.offset == -1;
         this.offset = offset;
     }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void resetOffset() {
+        /* Hosted static data can be reused when several images are built in one JVM. */
+        offset = -1;
+    }
 }

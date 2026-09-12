@@ -1611,11 +1611,13 @@ public class NativeImageGenerator {
             NativeLibraries nativeLibs = new NativeLibraries(providers, SubstrateTarget.singleton(), classInitializationSupport,
                             ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), debug);
             cEnumProcessor.setNativeLibraries(nativeLibs);
-            processNativeLibraryImports(nativeLibs, classInitializationSupport);
 
+            // SizeOfSupport and friends might be needed by processNativeLibraryImports
             ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(nativeLibs));
             ImageSingletons.add(OffsetOf.Support.class, new OffsetOfSupportImpl(nativeLibs));
             ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(nativeLibs));
+
+            processNativeLibraryImports(nativeLibs, classInitializationSupport);
 
             if (CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue()) {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration, "+"));

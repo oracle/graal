@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+/// Creates entries in the per-isolate native data section. All memory allocated for entries created
+/// by this factory is initially zeroed separately in each isolate.
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class CIsolateDataFactory {
 

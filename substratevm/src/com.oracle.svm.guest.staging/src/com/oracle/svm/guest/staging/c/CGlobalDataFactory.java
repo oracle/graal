@@ -42,6 +42,9 @@ import com.oracle.svm.shared.util.Utf8;
  * objects} can be used to access the data by address at runtime. In order for the data to be
  * actually allocated in the native image, it must be reachable during the static analysis.
  * <p>
+ * All allocated memory is initially zeroed. Factory methods that accept initial content then
+ * overwrite the corresponding bytes, while any remaining bytes stay zero.
+ * <p>
  * All methods of this class can only be used at native image build time, and not at run time. It is
  * not possible to extend the data section of an executable or define new symbols in an executable
  * at run time.

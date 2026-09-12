@@ -142,6 +142,9 @@ public class Process {
         public static native void EnterCriticalSection(PCRITICAL_SECTION mutex);
 
         @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int TryEnterCriticalSection(PCRITICAL_SECTION mutex);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
         public static native void LeaveCriticalSection(PCRITICAL_SECTION mutex);
 
         @CFunction(transition = Transition.NO_TRANSITION)

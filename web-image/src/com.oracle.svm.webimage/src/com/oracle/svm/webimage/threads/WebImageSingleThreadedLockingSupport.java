@@ -65,6 +65,12 @@ final class WebImageSingleThreadedLockingSupport implements PlatformLockingSuppo
     }
 
     @Override
+    public boolean tryLockMutex(PlatformMutex mutex) {
+        /* A mutex cannot be contended in this single-threaded implementation. */
+        return true;
+    }
+
+    @Override
     @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockMutexNoTransition(PlatformMutex mutex) {
     }

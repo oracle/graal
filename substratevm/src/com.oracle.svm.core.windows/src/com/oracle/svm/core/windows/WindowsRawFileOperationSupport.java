@@ -248,6 +248,14 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     }
 
     @Override
+    public boolean writeSafepointable(RawFileDescriptor fd, Pointer data, UnsignedWord size) {
+        if (!isValid(fd)) {
+            return false;
+        }
+        return WindowsUtils.write(asHandle(fd), (CCharPointer) data, size);
+    }
+
+    @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long read(RawFileDescriptor fd, Pointer buffer, UnsignedWord bufferSize) {
         if (!isValid(fd)) {
