@@ -27,18 +27,17 @@ package com.oracle.svm.core.logging;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
+import com.oracle.svm.core.logging.LogAsyncWriterStructures.QueueState;
+import com.oracle.svm.core.logging.LogAsyncWriterStructures.Record;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
@@ -681,103 +680,4 @@ final class LogAsyncWriter {
         return UnsignedUtils.roundUp(SizeOf.unsigned(Record.class), Word.unsigned(SubstrateTarget.getWordSize()));
     }
 
-    // @formatter:off
-    /// A variable-sized queue entry whose raw header is followed immediately by inline prefix and
-    /// message bytes. The complete allocation is contiguous and never wraps around the end of the
-    /// [queue][QueueState] chunk.
-    @RawStructure
-    interface Record extends PointerBase {
-        @RawField int  getAllocationSize();
-        @RawField void setAllocationSize(int value);
-
-        @RawField int  getMessageLength();
-        @RawField void setMessageLength(int value);
-
-        @RawField int  getPrefixLength();
-        @RawField void setPrefixLength(int value);
-
-        @RawField int  getOutputSlot();
-        @RawField void setOutputSlot(int value);
-
-        @RawField int  getLevelOrdinal();
-        @RawField void setLevelOrdinal(int value);
-
-        @RawField int  getTagSetOrdinal();
-        @RawField void setTagSetOrdinal(int value);
-
-        @RawField long getSystemMillis();
-        @RawField void setSystemMillis(long value);
-
-        @RawField long getSystemNanos();
-        @RawField void setSystemNanos(long value);
-
-        @RawField long getUptimeNanos();
-        @RawField void setUptimeNanos(long value);
-
-        @RawField long getThreadId();
-        @RawField void setThreadId(long value);
-    }
-
-    /// Native ownership and byte-ring state accessed by both producers and the native consumer.
-    /// The diagrams linearize the chunk; its left and right ends are adjacent in the ring. `head`
-    /// identifies the next record for the consumer, while `tail` identifies the next producer
-    /// insertion point.
-    ///
-    /// The logical queue can cross the chunk boundary, but an individual `Record` never does.
-    /// Keeping each header and its inline bytes contiguous lets the consumer access the complete
-    /// entry as one native memory range without temporary storage. When a record does not fit
-    /// between `tail` and the end of the chunk, the producer stores the old `tail` in `wrapOffset`
-    /// and resumes allocation at offset zero. The skipped suffix from `wrapOffset` to `capacity` is
-    /// the wrap pad. It contains no record, but remains part of `usedBytes` so producers cannot
-    /// overcommit the queue. After the consumer finishes the last record before `wrapOffset`, it
-    /// reclaims the wrap pad, moves `head` to zero, and resets `wrapOffset` to `-1`.
-    ///
-    /// ```text
-    /// tail > head (queued records are contiguous)
-    ///
-    /// 0              head                              tail capacity
-    /// +----------------+===================================+--------+
-    /// |      free      |          queued records           |  free  |
-    /// +----------------+===================================+--------+
-    ///                 ^ head                              ^ tail
-    /// <--------------  capacity ------------------------------------>
-    ///
-    /// tail < head (queued records wrap around the end)
-    ///
-    /// 0              tail         head              wrapOffset capacity
-    /// +===============+------------+===================+...........+
-    /// | queued records|    free    |  queued records   | wrap pad  |
-    /// +===============+------------+===================+...........+
-    ///                 ^ tail       ^ head
-    /// ```
-    @RawStructure
-    public interface QueueState extends PointerBase {
-        @RawField Pointer getBuffer();
-        @RawField void    setBuffer(Pointer value);
-
-        @RawField int     getCapacity();
-        @RawField void    setCapacity(int value);
-
-        @RawField int     getHead();
-        @RawField void    setHead(int value);
-
-        @RawField int     getTail();
-        @RawField void    setTail(int value);
-
-        @RawField int     getUsedBytes();
-        @RawField void    setUsedBytes(int value);
-
-        @RawField int     getWrapOffset();
-        @RawField void    setWrapOffset(int value);
-
-        @RawField int     getQueuedRecords();
-        @RawField void    setQueuedRecords(int value);
-
-        @RawField boolean getInFlight();
-        @RawField void    setInFlight(boolean value);
-
-        @RawField boolean getShutdownRequested();
-        @RawField void    setShutdownRequested(boolean value);
-    }
-    // @formatter:on
 }
