@@ -242,6 +242,8 @@ public final class RuntimeOptionParser {
             dependencyBridge.initializeLogging();
             initializeJavaVMProperties(initialArgs, context);
             String[] args = parseJavaVMOptions(initialArgs, context);
+            // The full parse adds normalized module properties that are absent from the early -D prepass.
+            initializeProperties(context.properties);
             args = consumeCompatibilityOptions(args);
             args = singleton().parse(args, ignoreUnrecognized);
             if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
