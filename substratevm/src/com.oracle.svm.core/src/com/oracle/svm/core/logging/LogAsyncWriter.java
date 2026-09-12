@@ -751,7 +751,7 @@ final class LogAsyncWriter {
     ///                 ^ tail       ^ head
     /// ```
     @RawStructure
-    interface QueueState extends PointerBase {
+    public interface QueueState extends PointerBase {
         @RawField Pointer getBuffer();
         @RawField void    setBuffer(Pointer value);
 
