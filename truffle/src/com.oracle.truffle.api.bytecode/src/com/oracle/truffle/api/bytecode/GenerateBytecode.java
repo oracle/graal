@@ -58,6 +58,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -123,7 +124,7 @@ public @interface GenerateBytecode {
      * pending exception and continues unwinding after the handler resumes. A return or exception
      * from a {@code finally} handler supersedes the pending exception.
      * <p>
-     * It is recommended to use {@link com.oracle.truffle.api.nodes.ControlFlowException} subtypes
+     * It is recommended to use {@link ControlFlowException} subtypes
      * for unwind exceptions, but any {@link Throwable} subtype is permitted. {@link ThreadDeath}
      * and its subtypes remain reserved for instrumentation unwinds and are not affected by this
      * configuration.

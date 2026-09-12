@@ -514,7 +514,6 @@ If cleanup suspends, the continuation preserves the pending exception and resume
 A return or replacement exception from cleanup supersedes the pending exception.
 
 Instrumentation retains its existing exceptional-exit notifications.
-Language unwind exceptions do not initiate the tool-controlled unwind protocol created by `EventContext.createUnwind`.
 With the default empty configuration, exception handling is unchanged.
 
 ### Intercepting exceptions
