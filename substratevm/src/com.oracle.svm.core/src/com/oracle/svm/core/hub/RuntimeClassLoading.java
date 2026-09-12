@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -127,10 +128,10 @@ public class RuntimeClassLoading {
         public static final RuntimeOptionKey<String> LogClassLoadingCauseFor = new RuntimeOptionKey<>(null, null, Options::validateLogClassLoadingCauseFor);
 
         private static void validateLogClassLoadingCauseFor(RuntimeOptionKey<String> optionKey) {
-            if (optionKey.hasBeenSet() && (!RuntimeClassLoading.getValue() || !SubstrateOptions.StrictRuntimeJavaOptions.getValue())) {
+            // Hosted option access must stay behind folded predicates because this validator runs in the image.
+            if (optionKey.hasBeenSet() && (!isSupported() || !HasXlogSupport.get())) {
                 throw RuntimeOptionValidation.abort("Option '" + optionKey.getName() + "' requires runtime class-loading support and strict runtime Java options to be enabled via '" +
-                                SubstrateOptionsParser.commandArgument(RuntimeClassLoading, "+") + "' and '" +
-                                SubstrateOptionsParser.commandArgument(SubstrateOptions.StrictRuntimeJavaOptions, "+") + "'.");
+                                "-H:+RuntimeClassLoading' and '-H:+StrictRuntimeJavaOptions'.");
             }
         }
     }
