@@ -370,7 +370,7 @@ public final class LanguageServerImpl extends LanguageServer {
                 if (extensionCommand != null) {
                     return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(extensionCommand));
                 } else {
-                    err.println("Unkown command: " + params.getCommand());
+                    err.println("Unknown command: " + params.getCommand());
                     return CompletableFuture.completedFuture(new Object());
                 }
         }

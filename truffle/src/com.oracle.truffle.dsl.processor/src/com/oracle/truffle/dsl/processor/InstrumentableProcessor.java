@@ -321,7 +321,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
 
         if (constructor == null) {
-            emitError(sourceType, "No suiteable constructor found for wrapper factory generation. At least one default or copy constructor must be visible.");
+            emitError(sourceType, "No suitable constructor found for wrapper factory generation. At least one default or copy constructor must be visible.");
             return null;
         }
 

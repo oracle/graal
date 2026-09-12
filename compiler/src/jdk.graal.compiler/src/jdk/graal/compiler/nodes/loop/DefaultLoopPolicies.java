@@ -87,9 +87,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
         public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(40.0);
         @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
-        @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Debug)
+        @Option(help = "Maximum value for the frequency factor of an invariant.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyMaxFactor = new OptionKey<>(0.95);
-        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Debug)
+        @Option(help = "Lower bound for the minimum frequency of an invariant condition to be unswitched.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchMinSplitFrequency = new OptionKey<>(1.0);
         @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Debug)
         public static final OptionKey<Double> DefaultLoopFrequency = new OptionKey<>(100.0);

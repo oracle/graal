@@ -143,7 +143,7 @@ void *dlopen(const char *filename, int flags) {
 
     // glibc yields a loading error if the file doesn't exists.
     if (is_absolute_path(filename) && access(filename, R_OK) != 0) {
-        LOG("dlopen(%s, %d): File not accesible\n", filename, flags);
+        LOG("dlopen(%s, %d): File not accessible\n", filename, flags);
         return NULL;
     }
 
@@ -206,7 +206,7 @@ static __attribute__((constructor)) void initialize(void) {
         FATAL("initialize Error obtaining namespace (dlinfo): %s\n", dlerror());
     }
     if (!namespace_id) {
-        FATAL("initialize libeden.so should't be loaded in the default namespace\n");
+        FATAL("initialize libeden.so shouldn't be loaded in the default namespace\n");
     }
     LOG("initialize &__ctype_b_loc: %p\n", &__ctype_b_loc);
     LOG("initialize *__ctype_b_loc() = %p\n", *__ctype_b_loc());
