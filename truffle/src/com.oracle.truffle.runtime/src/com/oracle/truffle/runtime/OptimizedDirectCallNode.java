@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
@@ -66,7 +65,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
      * Reflectively read by the Truffle compiler. See KnownTruffleTypes.
      */
     @CompilationFinal private OptimizedCallTarget currentCallTarget;
-    private volatile boolean splitDecided;
 
     /*
      * Should be instantiated with the runtime.
@@ -78,11 +76,15 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     }
 
     @Override
+    public OptimizedDirectCallNode copy() {
+        OptimizedDirectCallNode copy = (OptimizedDirectCallNode) super.copy();
+        copy.getCurrentCallTarget().addDirectCallNode(copy);
+        return copy;
+    }
+
+    @Override
     public Object call(Object... arguments) {
         OptimizedCallTarget target = getCurrentCallTarget();
-        if (HostCompilerDirectives.inInterpreterFastPath()) {
-            target = onInterpreterCall(target);
-        }
         try {
             return target.callDirect(this, arguments);
         } catch (Throwable t) {
@@ -163,47 +165,25 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return (OptimizedCallTarget) super.getCallTarget();
     }
 
-    /**
-     * @return The current call target (ie. getCurrentCallTarget) In case a splitting decision was
-     *         made during this interpreter call, the argument target otherwise.
-     */
-    private OptimizedCallTarget onInterpreterCall(OptimizedCallTarget target) {
-        if (target.isNeedsSplit() && !splitDecided) {
-            // We intentionally avoid locking here because worst case is a double decision printed
-            // and preventing that is not worth the performance impact of locking
-            splitDecided = true;
-            TruffleSplittingStrategy.beforeCall(this, target);
-            return getCurrentCallTarget();
-        }
-        return target;
-    }
-
-    /** Used by the splitting strategy to install new targets. */
-    void split() {
+    /** Transfers caller registrations before publishing the cloned target. */
+    boolean installClonedCallTarget(OptimizedCallTarget expectedTarget, OptimizedCallTarget clonedTarget) {
         CompilerAsserts.neverPartOfCompilation();
 
         // Synchronize with atomic() as replace() also takes the same lock
         // and we only want to take one lock to avoid deadlocks.
-        atomic(() -> {
-            if (currentCallTarget != callTarget) {
-                // already split
-                return;
+        return atomic(() -> {
+            if (currentCallTarget != expectedTarget) {
+                return false;
             }
-
-            assert isCallTargetCloningAllowed();
-            OptimizedCallTarget currentTarget = getCallTarget();
-
-            OptimizedCallTarget splitTarget = currentTarget.cloneUninitialized();
-            currentTarget.removeDirectCallNode(this);
-            splitTarget.addDirectCallNode(this);
-            assert splitTarget.getCallSiteForSplit() == this;
 
             if (getParent() != null) {
                 // dummy replace to report the split, irrelevant if this node is not adopted
                 replace(this, "Split call node");
             }
-            currentCallTarget = splitTarget;
-            OptimizedCallTarget.runtime().getListener().onCompilationSplit(this);
+            expectedTarget.removeDirectCallNode(this);
+            clonedTarget.addDirectCallNode(this);
+            currentCallTarget = clonedTarget;
+            return true;
         });
     }
 

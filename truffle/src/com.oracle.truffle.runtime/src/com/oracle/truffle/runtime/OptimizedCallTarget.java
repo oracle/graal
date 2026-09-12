@@ -66,6 +66,7 @@ import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -427,16 +428,33 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             return false;
         }
 
-        boolean result = OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
-        if (result) {
-            if (nodeRewritingAssumption == null) {
-                initializeNodeRewritingAssumption();
+        TruffleLanguage<?> language = engine.getLanguage(this);
+        Object previous = language == null ? null : engine.enterLanguage(language);
+        try {
+            if (rootCompilation && engine.splitting && TruffleSplittingStrategy.splitForCompilation(this)) {
+                /*
+                 * Installing a split rewrites this root and cancels the current compilation. Do
+                 * not run regular preparation for this obsolete compilation; the retry prepares
+                 * the rewritten root.
+                 */
+                return false;
             }
-            if (validRootAssumption == null) {
-                initializeValidRootAssumption();
+
+            boolean result = OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
+            if (result) {
+                if (nodeRewritingAssumption == null) {
+                    initializeNodeRewritingAssumption();
+                }
+                if (validRootAssumption == null) {
+                    initializeValidRootAssumption();
+                }
+            }
+            return result;
+        } finally {
+            if (language != null) {
+                engine.leaveLanguage(language, previous);
             }
         }
-        return result;
     }
 
     @Override

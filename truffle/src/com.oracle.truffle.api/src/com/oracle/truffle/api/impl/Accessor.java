@@ -134,6 +134,7 @@ import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.provider.InternalResourceProvider;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
@@ -229,6 +230,8 @@ public abstract class Accessor {
         public abstract boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled);
 
         public abstract boolean prepareForCompilation(RootNode rootNode, boolean rootCompilation, int compilationTier, boolean lastTier);
+
+        public abstract void visitCloneableNodes(RootNode rootNode, NodeVisitor visitor);
 
         public abstract Node findInstrumentableCallNode(RootNode root, Node callNode, Frame frame, int bytecodeIndex);
     }
