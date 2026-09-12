@@ -2194,9 +2194,12 @@ final class BytecodeNodeElement extends AbstractElement {
         b.startWhile().string("(handler = resolveHandler(bci, handler + EXCEPTION_HANDLER_LENGTH, handlerTable)) != -1").end().startBlock();
 
         boolean hasSpecialHandler = parent.model.enableTagInstrumentation || parent.model.epilogExceptional != null;
+        boolean hasHandlerSwitch = hasSpecialHandler || !parent.model.unwindExceptions.isEmpty();
 
         if (hasSpecialHandler) {
             b.startTryBlock();
+        }
+        if (hasHandlerSwitch) {
             b.startSwitch().string("handlerTable[handler + EXCEPTION_HANDLER_OFFSET_KIND]").end().startBlock();
             if (parent.model.epilogExceptional != null) {
                 b.startCase().string("HANDLER_EPILOG_EXCEPTIONAL").end().startCaseBlock();
@@ -2335,14 +2338,15 @@ final class BytecodeNodeElement extends AbstractElement {
             }
 
             if (!parent.model.unwindExceptions.isEmpty()) {
+                b.startCase().string("HANDLER_CUSTOM").end().startCaseBlock();
+                b.startIf().string("unwind").end().startBlock();
+                b.statement("continue");
+                b.end();
+                b.end(); // case custom
+                b.lineComment("fall through");
                 b.startCase().string("HANDLER_FINALLY").end();
             }
             b.caseDefault().startCaseBlock();
-        }
-        if (!parent.model.unwindExceptions.isEmpty()) {
-            b.startIf().string("unwind && handlerTable[handler + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_FINALLY").end().startBlock();
-            b.statement("continue");
-            b.end();
         }
         b.startIf().string("throwable instanceof ").type(type(ThreadDeath.class)).end().startBlock();
         b.statement("continue");
@@ -2359,10 +2363,12 @@ final class BytecodeNodeElement extends AbstractElement {
         }
         b.statement(BytecodeRootNodeElement.setFrameObject("targetSp - 1", "throwable"));
 
-        if (hasSpecialHandler) {
+        if (hasHandlerSwitch) {
             b.statement("break");
             b.end(); // case block
             b.end(); // switch
+        }
+        if (hasSpecialHandler) {
             b.end(); // try
             b.startCatchBlock(type(Throwable.class), "t");
             b.startIf().string("t != throwable").end().startBlock();
