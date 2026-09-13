@@ -81,9 +81,11 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
         Assert.assertNotNull(highTier.findPhase(InliningPhase.class));
     }
 
+    /// Verifies that the high tier includes a [MethodDuplicationPhase] exactly when
+    /// [MethodDuplicationPhase.Options#OptMethodDuplication] is enabled. This protects the
+    /// imperative option-to-phase wiring rather than the behavior of the phase itself.
     @Test
-    public void testMethodDuplicationCanBeSelected() {
-        // Keep both assertions independent of the inherited method duplication setting.
+    public void testMethodDuplicationPhaseFollowsOption() {
         OptionValues disabledOptions = new OptionValues(getInitialOptions(),
                         MethodDuplicationPhase.Options.OptMethodDuplication, false);
         Assert.assertNull(createSuites(disabledOptions).getHighTier().findPhase(MethodDuplicationPhase.class));
