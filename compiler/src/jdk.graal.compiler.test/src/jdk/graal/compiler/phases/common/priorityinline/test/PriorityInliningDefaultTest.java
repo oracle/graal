@@ -83,9 +83,12 @@ public class PriorityInliningDefaultTest extends PriorityInliningTest {
 
     @Test
     public void testMethodDuplicationCanBeSelected() {
-        Assert.assertNull(createSuites(getInitialOptions()).getHighTier().findPhase(MethodDuplicationPhase.class));
-        OptionValues options = new OptionValues(getInitialOptions(), MethodDuplicationPhase.Options.OptMethodDuplication, true);
-        Assert.assertNotNull(createSuites(options).getHighTier().findPhase(MethodDuplicationPhase.class));
+        // Keep both assertions independent of the inherited method duplication setting.
+        OptionValues disabledOptions = new OptionValues(getInitialOptions(),
+                        MethodDuplicationPhase.Options.OptMethodDuplication, false);
+        Assert.assertNull(createSuites(disabledOptions).getHighTier().findPhase(MethodDuplicationPhase.class));
+        OptionValues enabledOptions = new OptionValues(getInitialOptions(), MethodDuplicationPhase.Options.OptMethodDuplication, true);
+        Assert.assertNotNull(createSuites(enabledOptions).getHighTier().findPhase(MethodDuplicationPhase.class));
     }
 
     @Test
