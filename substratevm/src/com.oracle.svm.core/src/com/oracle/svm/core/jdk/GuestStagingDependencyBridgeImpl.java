@@ -41,6 +41,8 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
@@ -154,6 +156,26 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public boolean parseXLogOption(String arg) {
+        HasXlogSupport.require();
+        boolean parsed = LogConfiguration.parseCommandLineArgument(arg);
+        if (arg.equalsIgnoreCase("-Xlog:help")) {
+            System.exit(0);
+        }
+        return parsed;
+    }
+
+    @Override
+    public void initializeLogging() {
+        LogConfiguration.initialize();
+    }
+
+    @Override
+    public void abortLoggingInitialization() {
+        LogConfiguration.abortInitialization();
+    }
+
+    @Override
     public boolean shouldParseRuntimeOptions() {
         return SubstrateOptions.ParseRuntimeOptions.getValue() ||
                         RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
@@ -181,11 +203,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public void enableTraceClassLoading() {
-        RuntimeClassLoading.Options.TraceClassLoading.update(true);
-    }
-
-    @Override
     public void updateRuntimeAssertionStatus(String classOrPackage, boolean enable) {
         AssertionsSupport.singleton().updateRuntimeAssertionStatus(classOrPackage, enable);
     }
@@ -202,6 +219,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void endOfParsing() {
+        LogConfiguration.logInitializationComplete();
         maybeReportImageClasses();
     }
 
