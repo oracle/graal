@@ -42,6 +42,12 @@ public abstract class LogOutput {
     /// Status bit indicating that the native write failed.
     protected static final int WRITE_FAILED = 1;
 
+    /// Status bit indicating that rotating the old file name failed.
+    protected static final int ROTATION_RENAME_FAILED = 2;
+
+    /// Status bit indicating that reopening the active file failed.
+    protected static final int ROTATION_OPEN_FAILED = 4;
+
     /// Configuration name used to identify repeated output arguments.
     private final String name;
 
@@ -316,6 +322,12 @@ public abstract class LogOutput {
             if ((unreported & WRITE_FAILED) != 0) {
                 Log.log().string("Could not write to log: ").string(name).newline();
             }
+            if ((unreported & ROTATION_RENAME_FAILED) != 0) {
+                Log.log().string("Could not rotate log file: ").string(name).newline();
+            }
+            if ((unreported & ROTATION_OPEN_FAILED) != 0) {
+                Log.log().string("Could not reopen log file: ").string(name).newline();
+            }
         }
         OUTPUT_BUFFER.reset();
     }
@@ -380,9 +392,14 @@ public abstract class LogOutput {
 
     /// Writes bytes already formatted in native memory by a `Log` operation.
     ///
-    /// @return a bit mask describing failures encountered while writing the output:
+    /// @return a bit mask describing failures encountered while writing or rotating the output:
     /// - `0` when the bytes were successfully written.
     /// - `WRITE_FAILED` when writing the bytes failed.
+    /// - `ROTATION_RENAME_FAILED` when renaming an archived file failed during rotation.
+    /// - `ROTATION_OPEN_FAILED` when reopening the active file failed after rotation.
+    ///
+    /// Multiple failures are combined with a bitwise OR, so callers can test each status bit
+    /// independently.
     protected abstract int writeRaw(CCharPointer bytes, UnsignedWord length);
 
     /// Releases resources owned by this destination.
