@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -131,6 +132,16 @@ public class RemoveEmptyLoopsPhase extends PostRunCanonicalizationPhase<CoreProv
     @SuppressWarnings("try")
     private static boolean tryRemoveEmptyLoop(StructuredGraph graph, final Loop loop) {
         if (loop.loopBegin().loopEnds().count() > 1) {
+            return false;
+        }
+
+        /*
+         * A floating guard may depend on an IV even when its anchor precedes the loop. Walking
+         * only the fixed nodes and their usages misses such guards. Replacing the IV by its exit
+         * value would skip checks from earlier iterations. LoopFragment includes these guards
+         * in the loop even if they have no usages.
+         */
+        if (loop.whole().nodes().filter(GuardNode.class).isNotEmpty()) {
             return false;
         }
 
