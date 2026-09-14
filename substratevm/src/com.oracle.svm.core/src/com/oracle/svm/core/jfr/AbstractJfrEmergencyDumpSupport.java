@@ -301,12 +301,12 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
         }
         Pointer filenameCopy = copyChunkFilename(filename, filenameLength);
         if (filenameCopy.isNull()) {
-            SubstrateJVM.getLogging().logJfrSystemError("Unable to copy chunk filename during jfr emergency dump");
+            SubstrateJVM.getLogging().logJfrSystemError("Unable to copy chunk filename during jfr emergency dump", false);
             return false;
         }
         if (!GrowableWordArrayAccess.add(chunkFilenames, (Word) filenameCopy, NmtCategory.JFR)) {
             freeChunkFilename(filenameCopy);
-            SubstrateJVM.getLogging().logJfrSystemError("Unable to add chunk filename to list during jfr emergency dump");
+            SubstrateJVM.getLogging().logJfrSystemError("Unable to add chunk filename to list during jfr emergency dump", false);
             return false;
         }
         return true;
@@ -426,7 +426,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     private RawFileDescriptor openEmergencyDumpFile() {
         RawFileDescriptor fd = createEmergencyDumpFile();
         if (!getFileSupport().isValid(fd)) {
-            SubstrateJVM.getLogging().logJfrWarning(openFileWarning);
+            SubstrateJVM.getLogging().logJfrWarning(openFileWarning, false);
             useCurrentDirectoryDumpPath();
             fd = createEmergencyDumpFile();
         }
@@ -482,15 +482,15 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
     }
 
     protected final void logOpenDirectoryWarning() {
-        SubstrateJVM.getLogging().logJfrSystemError(openDirectoryWarning);
+        SubstrateJVM.getLogging().logJfrSystemError(openDirectoryWarning, false);
     }
 
     private void writeEmergencyDumpFile(RawFileDescriptor fd, GrowableWordArray sortedChunkFilenames) {
         UnsignedWord blockSize = Word.unsigned(1024 * 1024);
         Pointer copyBlock = NullableNativeMemory.malloc(blockSize, NmtCategory.JFR);
         if (copyBlock.isNull()) {
-            SubstrateJVM.getLogging().logJfrSystemError("Unable to malloc memory during jfr emergency dump.");
-            SubstrateJVM.getLogging().logJfrSystemError("Unable to write jfr emergency dump file.");
+            SubstrateJVM.getLogging().logJfrSystemError("Unable to malloc memory during jfr emergency dump.", false);
+            SubstrateJVM.getLogging().logJfrSystemError("Unable to write jfr emergency dump file.", false);
             return;
         }
 
@@ -501,7 +501,7 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
                     long chunkFileSize = getFileSupport().size(chunkFd);
                     long bytesRead = 0;
                     if (!getFileSupport().seek(chunkFd, 0)) {
-                        SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, seek failed.");
+                        SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, seek failed.", false);
                         getFileSupport().close(chunkFd);
                         continue;
                     }
@@ -509,13 +509,13 @@ public abstract class AbstractJfrEmergencyDumpSupport implements JfrEmergencyDum
                         long readResult = getFileSupport().read(chunkFd, copyBlock, blockSize);
                         if (readResult <= 0) {
                             if (readResult < 0) {
-                                SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, read failed.");
+                                SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, read failed.", false);
                             }
                             break;
                         }
                         bytesRead += readResult;
                         if (!getFileSupport().write(fd, copyBlock, Word.unsigned(readResult))) {
-                            SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, write failed.");
+                            SubstrateJVM.getLogging().logJfrInfo("Unable to recover JFR data, write failed.", false);
                             break;
                         }
                     }
