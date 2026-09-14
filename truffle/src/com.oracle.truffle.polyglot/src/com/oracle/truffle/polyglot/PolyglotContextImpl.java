@@ -996,11 +996,12 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                                  */
                                 setCachedThreadInfo(PolyglotThreadInfo.NULL);
                             }
-                            boolean transitionToMultiThreading = isSingleThreaded() && hasActiveOtherThread(true, false);
+                            Thread activeOtherThread = isSingleThreaded() ? getFirstActiveOtherThread(true, false) : null;
+                            boolean transitionToMultiThreading = activeOtherThread != null;
 
                             if (transitionToMultiThreading) {
                                 // recheck all thread accesses
-                                checkAllThreadAccesses(Thread.currentThread(), false);
+                                checkAllThreadAccesses(Thread.currentThread(), false, activeOtherThread);
                             }
 
                             if (transitionToMultiThreading) {
@@ -1214,10 +1215,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     synchronized void checkMultiThreadedAccess(Thread newThread) throws PolyglotThreadAccessException {
         boolean singleThread = singleThreaded ? !isActiveNotCancelled() : false;
-        checkAllThreadAccesses(newThread, singleThread);
+        checkAllThreadAccesses(newThread, singleThread, null);
     }
 
-    private void checkAllThreadAccesses(Thread enteringThread, boolean singleThread) throws PolyglotThreadAccessException {
+    private void checkAllThreadAccesses(Thread enteringThread, boolean singleThread, Thread activeOtherThread) throws PolyglotThreadAccessException {
         assert Thread.holdsLock(this);
         List<PolyglotLanguage> deniedLanguages = null;
         for (PolyglotLanguageContext context : contexts) {
@@ -1244,7 +1245,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
         }
         if (deniedLanguages != null) {
-            throw throwDeniedThreadAccess(enteringThread, singleThread, deniedLanguages);
+            throw throwDeniedThreadAccess(enteringThread, singleThread, deniedLanguages, activeOtherThread);
         }
     }
 
@@ -1589,15 +1590,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
 
         if (deniedLanguages != null) {
-            throw throwDeniedThreadAccess(current, singleThread, deniedLanguages);
+            throw throwDeniedThreadAccess(current, singleThread, deniedLanguages, null);
         }
         singleThreadValue.update(threadInfo);
 
         return threadInfo;
     }
 
-    RuntimeException throwDeniedThreadAccess(Thread current, boolean accessSingleThreaded, List<PolyglotLanguage> deniedLanguages) throws PolyglotThreadAccessException {
-        assert Thread.holdsLock(this);
+    static RuntimeException throwDeniedThreadAccess(Thread current, boolean accessSingleThreaded, List<PolyglotLanguage> deniedLanguages, Thread activeOtherThread)
+                    throws PolyglotThreadAccessException {
         String message;
         StringBuilder languagesString = new StringBuilder("");
         for (PolyglotLanguage language : deniedLanguages) {
@@ -1609,16 +1610,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (accessSingleThreaded) {
             message = String.format("Single threaded access requested by thread %s but is not allowed for language(s) %s.", current, languagesString);
         } else {
-            List<Thread> activeThreads = new ArrayList<>();
-            // Threads can leave concurrently, so this is a best-effort snapshot.
-            for (PolyglotThreadInfo threadInfo : threads.values()) {
-                Thread thread = threadInfo.getThread();
-                if (thread != null && threadInfo.isActive()) {
-                    activeThreads.add(thread);
-                }
+            message = String.format("Multi threaded access requested by thread %s but is not allowed for language(s) %s.", current, languagesString);
+            if (activeOtherThread != null) {
+                message += String.format(" Thread %s was already active.", activeOtherThread);
             }
-            message = String.format("Multi threaded access requested by thread %s but is not allowed for language(s) %s. Currently active thread(s): %s.",
-                            current, languagesString, activeThreads);
         }
         throw new PolyglotThreadAccessException(message);
     }
@@ -2449,17 +2444,22 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     boolean hasActiveOtherThread(boolean includePolyglotThreads, boolean includeLeaveAndEnterThreads) {
+        return getFirstActiveOtherThread(includePolyglotThreads, includeLeaveAndEnterThreads) != null;
+    }
+
+    private Thread getFirstActiveOtherThread(boolean includePolyglotThreads, boolean includeLeaveAndEnterThreads) {
         assert Thread.holdsLock(this);
         // send enters and leaves into a lock by setting the lastThread to null.
         for (PolyglotThreadInfo otherInfo : threads.values()) {
             if (!includePolyglotThreads && otherInfo.isPolyglotThread()) {
                 continue;
             }
-            if (!otherInfo.isCurrent() && (otherInfo.isActive() || (includeLeaveAndEnterThreads && otherInfo.isInLeaveAndEnter()))) {
-                return true;
+            Thread otherThread = otherInfo.getThread();
+            if (otherThread != null && otherThread != Thread.currentThread() && (otherInfo.isActive() || (includeLeaveAndEnterThreads && otherInfo.isInLeaveAndEnter()))) {
+                return otherThread;
             }
         }
-        return false;
+        return null;
     }
 
     boolean hasAliveOtherPolyglotThread() {
