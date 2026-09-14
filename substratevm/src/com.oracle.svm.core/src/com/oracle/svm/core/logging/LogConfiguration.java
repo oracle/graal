@@ -42,13 +42,19 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.util.TimeUtils;
 
 /// Owns the configuration for `-Xlog`. Runtime changes wait for active log sites before mutable
 /// output state is replaced.
 public final class LogConfiguration {
+    /// Preserves configuration insertion order for deterministic teardown and diagnostics.
+    private static final List<LogFileOutput> OUTPUTS = new ArrayList<>();
+
     private static final LogFileStreamOutput stdout = new LogFileStreamOutput(STDOUT);
 
     private static final LogFileStreamOutput stderr = new LogFileStreamOutput(STDERR);
@@ -153,9 +159,21 @@ public final class LogConfiguration {
 
         LogSelectionList selections = LogSelectionList.parse(selectionsText);
         LogDecorators decorators = LogDecorators.parse(decoratorsText);
-        LogOutput output = findOutput(outputText);
-        if (!output.parseOptionsIfFirstConfiguration(outputOptions) && outputOptions != null && !outputOptions.isEmpty()) {
-            warn("Output options for existing outputs are ignored.");
+        LogOutput output = findOrCreateOutput(outputText);
+        boolean initializeFileOutput = output instanceof LogFileOutput fileOutput && !fileOutput.isInitialized();
+        try {
+            if (!output.parseOptionsIfFirstConfiguration(outputOptions) && outputOptions != null && !outputOptions.isEmpty()) {
+                warn("Output options for existing outputs are ignored.");
+            }
+            if (initializeFileOutput) {
+                ((LogFileOutput) output).initialize();
+            }
+        } catch (RuntimeException | Error ex) {
+            if (initializeFileOutput) {
+                OUTPUTS.remove(output);
+                output.close();
+            }
+            throw ex;
         }
 
         configureOutput(selections, output, decorators);
@@ -230,6 +248,9 @@ public final class LogConfiguration {
                 int index = 0;
                 logging.info(describeOutput(index++, stdout));
                 logging.info(describeOutput(index++, stderr));
+                for (LogFileOutput output : OUTPUTS) {
+                    logging.info(describeOutput(index++, output));
+                }
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.tearDownLogging());
         }
@@ -273,11 +294,15 @@ public final class LogConfiguration {
         }
         stdout.updateConfigString();
         stderr.updateConfigString();
+        for (LogOutput output : OUTPUTS) {
+            output.close();
+        }
+        OUTPUTS.clear();
         stdout.close();
         stderr.close();
     }
 
-    /// Disables logging before isolate teardown.
+    /// Disables logging and releases file outputs before isolate teardown.
     private static void tearDownLogging() {
         synchronized (LogConfiguration.class) {
             disableLoggingLocked();
@@ -330,7 +355,7 @@ public final class LogConfiguration {
         stderr.writePlain("[warning][logging] " + message + System.lineSeparator());
     }
 
-    private static LogOutput findOutput(String value) {
+    private static LogOutput findOrCreateOutput(String value) {
         String normalized = value == null || value.isEmpty() ? "stdout" : value;
         if (normalized.startsWith("#")) {
             return findOutputByIndex(normalized);
@@ -342,7 +367,31 @@ public final class LogConfiguration {
             return stderr;
         }
 
-        throw new IllegalArgumentException("Unsupported log output '" + normalized + "'.");
+        String rawFilename = normalized.startsWith("file=") ? normalized.substring("file=".length()) : normalized;
+        String filename = stripQuotes(rawFilename);
+        if (filename.isEmpty()) {
+            throw new IllegalArgumentException("Log output filename must not be empty.");
+        }
+        String expandedFilename = LogFileOutput.expandFilename(filename);
+        RawFileOperationSupport fileSupport = RawFileOperationSupport.nativeByteOrder();
+        RawFilePath path = fileSupport.allocatePath(expandedFilename);
+        if (path.isNull()) {
+            throw new IllegalArgumentException("Could not allocate native path for unified log file '" + expandedFilename + "'.");
+        }
+        for (LogFileOutput output : OUTPUTS) {
+            /*
+             * After a successful open, output.path() is guaranteed to denote an existing file, so
+             * sameFiles can recognize aliases. If opening failed, an identical raw path still
+             * finds the output.
+             */
+            if (fileSupport.sameFiles(output.path(), path)) {
+                UntrackedNullableNativeMemory.free(path);
+                return output;
+            }
+        }
+        LogFileOutput output = new LogFileOutput(filename, expandedFilename, path);
+        OUTPUTS.add(output);
+        return output;
     }
 
     /// Resolves the numeric identifiers emitted by the configuration description.
@@ -359,21 +408,37 @@ public final class LogConfiguration {
         if (index == 1) {
             return stderr;
         }
+        int fileIndex = index - 2;
+        if (fileIndex >= 0 && fileIndex < OUTPUTS.size()) {
+            return OUTPUTS.get(fileIndex);
+        }
         throw new IllegalArgumentException("Invalid log output index '" + value + "'.");
+    }
+
+    private static String stripQuotes(String value) {
+        if (value.startsWith("\"") || value.endsWith("\"")) {
+            if (value.length() < 2 || !value.startsWith("\"") || !value.endsWith("\"")) {
+                throw new IllegalArgumentException("Output name has an unmatched quotation mark.");
+            }
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     private static List<String> splitComponents(String value) {
         List<String> result = new ArrayList<>(4);
         StringBuilder current = new StringBuilder();
         boolean quoted = false;
+        int componentStart = 0;
         for (int index = 0; index < value.length(); index++) {
             char c = value.charAt(index);
             if (c == '"') {
                 quoted = !quoted;
                 current.append(c);
-            } else if (c == ':' && !quoted) {
+            } else if (c == ':' && !quoted && !isWindowsPathColon(value, componentStart, index)) {
                 result.add(current.toString());
                 current.setLength(0);
+                componentStart = index + 1;
             } else {
                 current.append(c);
             }
@@ -386,6 +451,16 @@ public final class LogConfiguration {
             throw new IllegalArgumentException("Too many ':' separated -Xlog components.");
         }
         return result;
+    }
+
+    /// Keeps a Windows drive-letter colon inside the output component.
+    private static boolean isWindowsPathColon(String value, int componentStart, int index) {
+        if (!Platform.includedIn(Platform.WINDOWS.class) || index + 1 >= value.length()) {
+            return false;
+        }
+        char next = value.charAt(index + 1);
+        return (next == '\\' || next == '/') &&
+                        (index == componentStart + 1 || value.startsWith("file=", componentStart));
     }
 
     private static String component(List<String> components, int index) {
@@ -431,11 +506,17 @@ public final class LogConfiguration {
 
                 Available log outputs:
                  stdout/stderr
+                 file=<filename>
+                  If the filename contains %p, %i, %t and/or %hn, they will expand to the JVM's PID, isolate ID, startup timestamp and host name, respectively.
 
                 Available log output options:
                  foldmultilines=.. - If set to true, a log event that consists of multiple lines will be folded into a single line by replacing newline characters with the sequence '\\' and 'n' in the output.
                  Existing single backslash characters will also be replaced with a sequence of two backslashes so that the conversion can be reversed. This option is safe to use with UTF-8 character encodings, \
                  but other encodings may not work.
+
+                Additional file output options:
+                 filesize=..       - Target byte size for log rotation (supports K/M/G suffix). If set to 0, log rotation is disabled.
+                 filecount=..      - Number of files to keep in rotation (not counting the active file). If set to 0, log rotation is disabled. The active file is overwritten when logging starts.
 
                 Some examples:
                  -Xlog
@@ -453,12 +534,23 @@ public final class LogConfiguration {
                         Log messages tagged with both 'jfr' and 'setting' tags, up to 'debug' level, to stdout, with default decorations.
                         (Messages tagged only with one of the two tags will not be logged.)
 
+                 -Xlog:gc=debug:file=gc.txt:none
+                        Log messages tagged with 'gc' tag up to 'debug' level to file 'gc.txt' with no decorations.
+
+                 -Xlog:gc=trace:file=gctrace.txt:uptimemillis,pid:filecount=5,filesize=1m
+                        Log messages tagged with 'gc' tag up to 'trace' level to a rotating fileset of 5 files of size 1MB,
+                        using the base name 'gctrace.txt', with 'uptimemillis' and 'pid' decorations.
+
                  -Xlog:gc::uptime,tid
                         Log messages tagged with 'gc' tag up to 'info' level to output 'stdout', using 'uptime' and 'tid' decorations.
 
                  -Xlog:gc*=info,safepoint*=off
                         Log messages tagged with at least 'gc' up to 'info' level, but turn off logging of messages tagged with 'safepoint'.
                         (Messages tagged with both 'gc' and 'safepoint' will not be logged.)
+
+                 -Xlog:disable -Xlog:safepoint=trace:safepointtrace.txt
+                        Turn off all logging, including warnings and errors,
+                        and then enable messages tagged with 'safepoint' up to 'trace' level to file 'safepointtrace.txt'.
 
                 """;
         // @formatter:on

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,11 @@ int openSII(const char *pathname, int flags, int mode)
 int openatISII(int dirfd, const char *pathname, int flags, int mode)
 {
     return openat(dirfd, pathname, flags, mode);
+}
+
+int fcntlIII(int fd, int command, int argument)
+{
+    return fcntl(fd, command, argument);
 }
 
 #ifdef __linux__

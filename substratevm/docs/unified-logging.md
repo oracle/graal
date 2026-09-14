@@ -38,3 +38,18 @@ The focused native JUnit coverage is in `UnifiedLoggingTest` and can be run with
 ```text
 mx native-unittest com.oracle.svm.test.logging.UnifiedLoggingTest
 ```
+
+
+## File output and failure handling
+
+`LogFileOutput` expands `%p`, `%i`, `%t`, and `%hn`, converts the result to an
+absolute native path, and opens the active file when the output is created. `%i`
+is an SVM extension for separating isolate-local descriptors, counters, and
+rotation state. A preexisting active file is truncated on first open regardless
+of whether rotation is enabled.
+
+Writes, byte accounting, rotation, and reopen are serialized by the output's
+prebuilt mutex. Rotation closes the descriptor, shifts archives, renames the
+active file to `.0`, and reopens it. Open and write failures are diagnosed but do
+not abort the VM. On POSIX, an unlinked open output remains writable through its
+descriptor; Windows follows its native sharing rules.
