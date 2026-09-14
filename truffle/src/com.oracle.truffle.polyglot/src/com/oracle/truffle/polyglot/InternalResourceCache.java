@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
@@ -81,6 +82,7 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.provider.InternalResourceProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
@@ -88,6 +90,8 @@ import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 final class InternalResourceCache {
 
     private static final char[] FILE_SYSTEM_SPECIAL_CHARACTERS = {'/', '\\', ':'};
+    private static final int MAX_RESOURCE_MOVE_RETRIES = 5;
+    private static final long INITIAL_RESOURCE_MOVE_RETRY_DELAY_MILLIS = 50;
     private static final Map<AbstractClassLoaderSupplier, Map<String, Map<String, Supplier<InternalResourceCache>>>> optionalInternalResourcesCaches = new HashMap<>();
     private static final Map<String, Map<String, Supplier<InternalResourceCache>>> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
 
@@ -281,20 +285,10 @@ final class InternalResourceCache {
             } else {
                 env.unpackResourceFiles(aggregatedFileListResource, tmpDir, Path.of("META-INF", "resources", sanitize(id), sanitize(resourceId)));
             }
-            try {
-                Files.move(tmpDir, target, StandardCopyOption.ATOMIC_MOVE);
-            } catch (FileAlreadyExistsException existsException) {
-                // race with other process that already moved the folder just unlink the tmp
-                // directory
-                unlink(tmpDir);
-            } catch (FileSystemException fsException) {
-                // On some filesystem implementations, the generic FileSystemException is thrown
-                // instead of FileAlreadyExistsException. We need to check if this is the case.
-                if (Files.isDirectory(target)) {
-                    unlink(tmpDir);
-                } else {
-                    throw fsException;
-                }
+            if (OS.getCurrent() == OS.WINDOWS) {
+                moveResourceWithRetry(tmpDir, target);
+            } else {
+                moveResource(tmpDir, target);
             }
             verifyResourceRoot(target);
         } else {
@@ -467,7 +461,7 @@ final class InternalResourceCache {
                     byte[] resourceBytes = Files.readAllBytes(f);
                     digest.update(resourceBytes);
                     resourceLocationConsumer.accept(resource.getClass().getModule(), Pair.create(resourceName, resourceBytes));
-                    String fileListEntry = resourceName + "=" + (env.getOS() != InternalResource.OS.WINDOWS ? PosixFilePermissions.toString(Files.getPosixFilePermissions(f))
+                    String fileListEntry = resourceName + "=" + (env.getOS() != OS.WINDOWS ? PosixFilePermissions.toString(Files.getPosixFilePermissions(f))
                                     : PosixFilePermissions.toString(Collections.emptySet()));
                     fileList.append(fileListEntry).append(System.lineSeparator());
                 }
@@ -587,6 +581,51 @@ final class InternalResourceCache {
     private static boolean isEmpty(Path folder) throws IOException {
         try (Stream<Path> children = Files.list(folder)) {
             return children.findAny().isEmpty();
+        }
+    }
+
+    private static void moveResourceWithRetry(Path source, Path target) throws IOException {
+        int retries = 0;
+        long retryDelayMillis = INITIAL_RESOURCE_MOVE_RETRY_DELAY_MILLIS;
+        while (true) {
+            try {
+                moveResource(source, target);
+                return;
+            } catch (AccessDeniedException accessDeniedException) {
+                // Antivirus and other filesystem filters can temporarily open newly extracted
+                // executables or libraries without sharing delete access, preventing a directory
+                // rename on Windows.
+                if (retries == MAX_RESOURCE_MOVE_RETRIES) {
+                    throw accessDeniedException;
+                }
+                try {
+                    Thread.sleep(retryDelayMillis);
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                    accessDeniedException.addSuppressed(interruptedException);
+                    throw accessDeniedException;
+                }
+                retries++;
+                retryDelayMillis *= 2;
+            }
+        }
+    }
+
+    private static void moveResource(Path source, Path target) throws IOException {
+        try {
+            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+        } catch (FileAlreadyExistsException existsException) {
+            // Race with another process that already moved the folder; just unlink the temporary
+            // directory.
+            unlink(source);
+        } catch (FileSystemException fsException) {
+            // On some filesystem implementations, the generic FileSystemException is thrown
+            // instead of FileAlreadyExistsException. We need to check if this is the case.
+            if (Files.isDirectory(target)) {
+                unlink(source);
+            } else {
+                throw fsException;
+            }
         }
     }
 
