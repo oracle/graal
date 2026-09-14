@@ -38,21 +38,20 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.collections.RingBuffer;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -60,6 +59,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -907,11 +907,11 @@ public final class VMOperationControl {
                 if (allowJavaHeapAccess) {
                     log.string(" ").string(name);
                 }
-                log.string(" (safepoint: ").bool(causesSafepoint)
-                                .string(", queueingThread: ").zhex(queueingThread)
-                                .string(", executingThread: ").zhex(executingThread)
-                                .string(", safepointId: ").unsigned(safepointId)
-                                .string(")").newline();
+                log.string(" (safepoint: ").bool(causesSafepoint) //
+                                .string(", queueingThread: ").zhex(queueingThread) //
+                                .string(", executingThread: ").zhex(executingThread) //
+                                .string(", safepointId: ").unsigned(safepointId).string(")") //
+                                .newline();
             }
         }
     }
