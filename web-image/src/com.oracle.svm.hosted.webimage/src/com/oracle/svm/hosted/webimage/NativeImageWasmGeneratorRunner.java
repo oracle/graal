@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.ExitStatus;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.MainEntryPoint;
 import com.oracle.svm.hosted.NativeImageGenerator;
@@ -147,6 +148,13 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
         if (!optionProvider.getHostedValues().containsKey(SubstrateOptions.ParseRuntimeOptions)) {
             optionProvider.getHostedValues().put(SubstrateOptions.ParseRuntimeOptions, false);
         }
+
+        /*
+         * Strict parsing enables -Xlog support. Making it compatible would require Web Image to
+         * register an implementation of LoggingSupport.
+         */
+        UserError.guarantee(!SubstrateOptions.StrictRuntimeJavaOptions.getValue(new OptionValues(optionProvider.getHostedValues())),
+                        "Strict runtime Java option parsing is not supported by Web Image.");
 
         // GR-71032 support open type world hub layout
         // force closed type world and hub layout
