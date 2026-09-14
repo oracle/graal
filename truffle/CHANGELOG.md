@@ -3,6 +3,9 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 25.4
+* (breaking-change) GR-79412: Changed automatic splitting to clone marked direct-call targets during root compilation preparation instead of direct-call execution. `RootNode.cloneUninitialized` is now invoked without an entered language context during automatic splitting; the root language remains entered, so implementations can still use `LanguageReference`. See [Splitting](docs/splitting/Splitting.md) for details.
+* GR-79412: Added `RootNode.visitCloneableNodes` so roots can expose node trees stored outside ordinary child fields.
+* GR-79412: The root node's language is now entered during root and inline compilation preparation, allowing implementations of `RootNode.prepareForCompilation` to use `LanguageReference`.
 * GR-79122: Added host interoperability for `java.time.OffsetDateTime` and `java.time.OffsetTime`.
 * GR-79418: Guest-language inlining now uses Graal IR call-site frequencies instead of runtime direct-call counters. Language implementations should ensure that injected branch probabilities are accurate because inaccurate probabilities are likely to cause peak-performance regressions.
 * GR-61178: Bytecode DSL: Added support for `StackValue`s, handles to temporary stack operands. Languages can use `BindStackValue` to obtain a `StackValue` and then access the current operand value with `LoadStackValue` and `StoreStackValue`. Stack values are useful for supporting common subexpressions/temporary values without using locals.

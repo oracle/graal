@@ -454,6 +454,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         this.add(createPrepareForCall());
         this.addOptional(createPrepareForInstrumentation());
         this.addOptional(createPrepareForCompilation());
+        this.add(createVisitCloneableNodes());
 
         if (model.enableTagInstrumentation) {
             this.add(createFindInstrumentableCallNode());
@@ -1779,6 +1780,24 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             // Delegate to the parent impl.
             b.string(" && ").startCall("super.prepareForCompilation").variables(ex.getParameters()).end();
         }
+        b.end();
+        return ex;
+    }
+
+    private CodeExecutableElement createVisitCloneableNodes() {
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "visitCloneableNodes", new String[]{"visitor"});
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.statement("super.visitCloneableNodes(visitor)");
+        b.lineComment("Visit the captured bytecode version without locking or retrying concurrent updates.");
+        b.declaration(arrayOf(types.Node), "cachedNodes", "this.bytecode.getCachedNodes()");
+        b.startIf().string("cachedNodes != null").end().startBlock();
+        b.startFor().string("int i = 0; i < cachedNodes.length; i++").end().startBlock();
+        b.declaration(types.Node, "cachedNode", "cachedNodes[i]");
+        b.startIf().string("cachedNode != null").end().startBlock();
+        b.statement("cachedNode.accept(visitor)");
+        b.end();
+        b.end();
         b.end();
         return ex;
     }
