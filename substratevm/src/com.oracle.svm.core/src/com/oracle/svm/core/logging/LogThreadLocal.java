@@ -167,6 +167,16 @@ public final class LogThreadLocal implements ThreadListener {
         return get().getThreadId();
     }
 
+    /// Allocates logging state before the thread can execute a log site when async output has been
+    /// requested.
+    @Override
+    @Uninterruptible(reason = "Only uninterruptible code may run before the thread is fully started.")
+    public void afterThreadStart(IsolateThread isolateThread, Thread javaThread) {
+        if (LogConfiguration.isAsyncLoggingRequested()) {
+            initialize(isolateThread);
+        }
+    }
+
     @Override
     @Uninterruptible(reason = "Release native logging buffers after the thread exits.")
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {

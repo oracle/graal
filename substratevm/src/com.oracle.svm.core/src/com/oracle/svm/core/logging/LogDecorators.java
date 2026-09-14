@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.logging;
 
+import static com.oracle.svm.core.logging.LogDecorators.Decorator.UPTIME;
+
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 /// Represents a selection of decorators that should be prepended to
@@ -87,6 +89,9 @@ public final class LogDecorators {
     /// Cached declaration-order values avoid enum-array allocation on allocation-restricted
     /// logging paths.
     static final Decorator[] VALUES = Decorator.values();
+
+    /// Complete decorator set used for internal asynchronous logging diagnostics.
+    static final LogDecorators DROPPED_MESSAGE = new LogDecorators(UPTIME.bit() | Decorator.LEVEL.bit() | Decorator.TIME.bit() | Decorator.PID.bit() | Decorator.TID.bit());
 
     /// Explicit configuration with no decorations.
     public static final LogDecorators NONE = new LogDecorators(0);
