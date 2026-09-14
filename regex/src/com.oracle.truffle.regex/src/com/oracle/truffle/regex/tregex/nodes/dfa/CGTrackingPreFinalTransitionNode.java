@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,25 +44,26 @@ import com.oracle.truffle.api.CompilerAsserts;
 
 public final class CGTrackingPreFinalTransitionNode extends CGTrackingAbstractTransitionNode {
 
-    private final DFACaptureGroupLazyTransition transition;
+    /** Reference to a {@link DFACaptureGroupLazyTransition}. */
+    private final int transitionRef;
 
-    private CGTrackingPreFinalTransitionNode(short id, short successor, DFACaptureGroupLazyTransition transition) {
+    private CGTrackingPreFinalTransitionNode(short id, short successor, int transitionRef) {
         super(id, successor);
-        this.transition = transition;
+        this.transitionRef = transitionRef;
     }
 
-    public static CGTrackingPreFinalTransitionNode create(short id, short successor, DFACaptureGroupLazyTransition transition) {
-        return new CGTrackingPreFinalTransitionNode(id, successor, transition);
+    public static CGTrackingPreFinalTransitionNode create(short id, short successor, int transitionRef) {
+        return new CGTrackingPreFinalTransitionNode(id, successor, transitionRef);
     }
 
     @Override
-    public int getCGTrackingCost() {
-        return transition.getCost();
+    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
+        return DFACaptureGroupLazyTransition.getCost(transitionRef, executor);
     }
 
     @Override
     public void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        transition.apply(locals, executor, true);
+        DFACaptureGroupLazyTransition.apply(transitionRef, locals, executor, true);
     }
 }

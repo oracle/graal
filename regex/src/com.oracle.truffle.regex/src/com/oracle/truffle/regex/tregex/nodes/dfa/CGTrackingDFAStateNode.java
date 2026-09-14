@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,12 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 public final class CGTrackingDFAStateNode extends DFAStateNode {
 
-    private final DFACaptureGroupLazyTransition preUnAnchoredFinalStateTransition;
-    private final DFACaptureGroupPartialTransition unAnchoredFinalStateTransition;
-    private final DFACaptureGroupPartialTransition cgLoopToSelf;
+    /** Reference to a {@link DFACaptureGroupLazyTransition}. */
+    private final int preUnAnchoredFinalStateTransitionRef;
+    /** Reference to a {@link DFACaptureGroupPartialTransition}. */
+    private final int unAnchoredFinalStateTransitionRef;
+    /** Reference to a {@link DFACaptureGroupPartialTransition}. */
+    private final int cgLoopToSelfRef;
     private final boolean cgLoopToSelfHasDependency;
 
     public CGTrackingDFAStateNode(short id,
@@ -58,19 +61,19 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
                     short[] successors,
                     Matchers matchers,
                     short anchoredFinalSuccessor,
-                    DFACaptureGroupLazyTransition preUnAnchoredFinalStateTransition,
-                    DFACaptureGroupPartialTransition unAnchoredFinalStateTransition,
-                    DFACaptureGroupPartialTransition cgLoopToSelf,
+                    int preUnAnchoredFinalStateTransitionRef,
+                    int unAnchoredFinalStateTransitionRef,
+                    int cgLoopToSelfRef,
                     boolean cgLoopToSelfHasDependency) {
         super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, anchoredFinalSuccessor);
-        this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
-        this.preUnAnchoredFinalStateTransition = preUnAnchoredFinalStateTransition;
-        this.cgLoopToSelf = cgLoopToSelf;
+        this.unAnchoredFinalStateTransitionRef = unAnchoredFinalStateTransitionRef;
+        this.preUnAnchoredFinalStateTransitionRef = preUnAnchoredFinalStateTransitionRef;
+        this.cgLoopToSelfRef = cgLoopToSelfRef;
         this.cgLoopToSelfHasDependency = cgLoopToSelfHasDependency;
     }
 
-    private DFACaptureGroupPartialTransition getCGTransitionToSelf() {
-        return cgLoopToSelf;
+    private int getCGTransitionToSelfRef() {
+        return cgLoopToSelfRef;
     }
 
     @Override
@@ -94,10 +97,11 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
             executor.inputSkip(locals, codeRange);
         }
         int secondIndex = locals.getIndex();
-        DFACaptureGroupPartialTransition transition = getCGTransitionToSelf();
-        if (transition.doesReorderResults()) {
+        int transitionRef = getCGTransitionToSelfRef();
+        byte[] partialTransitionRecords = executor.getCGPartialTransitionRecords();
+        if (DFACaptureGroupPartialTransition.doesReorderResults(partialTransitionRecords, transitionRef)) {
             while (locals.getIndex() < postLoopIndex) {
-                transition.apply(executor, locals.getCGData(), locals.getLastIndex());
+                DFACaptureGroupPartialTransition.apply(partialTransitionRecords, transitionRef, executor, locals.getCGData(), locals.getLastIndex());
                 locals.setLastIndex();
                 executor.inputSkip(locals, codeRange);
             }
@@ -111,11 +115,11 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
             if (cgLoopToSelfHasDependency && secondIndex < locals.getLastIndex()) {
                 int postLoopMinusTwoIndex = locals.getIndex();
                 executor.inputSkipReverse(locals, codeRange);
-                transition.apply(executor, locals.getCGData(), locals.getIndex());
+                DFACaptureGroupPartialTransition.apply(partialTransitionRecords, transitionRef, executor, locals.getCGData(), locals.getIndex());
                 locals.setIndex(postLoopMinusTwoIndex);
             }
             if (secondIndex < postLoopIndex) {
-                transition.apply(executor, locals.getCGData(), locals.getIndex());
+                DFACaptureGroupPartialTransition.apply(partialTransitionRecords, transitionRef, executor, locals.getCGData(), locals.getIndex());
             }
             locals.setIndex(postLoopIndex);
         }
@@ -138,8 +142,8 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
     private void checkFinalStateCG(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isFinalState()) {
-            preUnAnchoredFinalStateTransition.applyPreFinal(locals, executor);
-            unAnchoredFinalStateTransition.applyFinalStateTransition(executor, locals.getCGData(), locals.getIndex());
+            DFACaptureGroupLazyTransition.applyPreFinal(preUnAnchoredFinalStateTransitionRef, locals, executor);
+            DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(), unAnchoredFinalStateTransitionRef, executor, locals.getCGData(), locals.getIndex());
             storeResult(locals, executor);
         }
     }
@@ -151,15 +155,11 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
         locals.setResultInt(0);
     }
 
-    public int getCGTrackingCost() {
-        return getCost(preUnAnchoredFinalStateTransition) + getCost(unAnchoredFinalStateTransition);
-    }
-
-    private static int getCost(DFACaptureGroupLazyTransition t) {
-        return t == null ? 0 : t.getCost();
-    }
-
-    private static int getCost(DFACaptureGroupPartialTransition t) {
-        return t == null ? 0 : t.getCost();
+    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
+        int preFinalCost = preUnAnchoredFinalStateTransitionRef == DFACaptureGroupLazyTransition.NO_TRANSITION ? 0
+                        : DFACaptureGroupLazyTransition.getCost(preUnAnchoredFinalStateTransitionRef, executor);
+        int finalCost = unAnchoredFinalStateTransitionRef == DFACaptureGroupLazyTransition.NO_TRANSITION ? 0
+                        : DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), unAnchoredFinalStateTransitionRef);
+        return preFinalCost + finalCost;
     }
 }

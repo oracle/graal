@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -54,36 +53,42 @@ public final class DFACaptureGroupLazyTransitionBuilder implements JsonConvertib
     private static final int UNINITIALIZED = -2;
     public static final int DO_NOT_SET_LAST_TRANSITION = -1;
 
+    private final DFAGenerator dfaGen;
     private final short id;
-    private final DFACaptureGroupPartialTransition[] partialTransitions;
-    private final DFACaptureGroupPartialTransition transitionToFinalState;
-    private final DFACaptureGroupPartialTransition transitionToAnchoredFinalState;
+    /** Array of {@link DFACaptureGroupPartialTransition} records. */
+    private final byte[][] partialTransitionRecords;
+    /** A {@link DFACaptureGroupPartialTransition} record. */
+    private final byte[] transitionToFinalStateRecord;
+    /** A {@link DFACaptureGroupPartialTransition} record. */
+    private final byte[] transitionToAnchoredFinalStateRecord;
     private short lastTransitionIndex = UNINITIALIZED;
 
-    public DFACaptureGroupLazyTransitionBuilder(short id,
-                    DFACaptureGroupPartialTransition[] partialTransitions,
-                    DFACaptureGroupPartialTransition transitionToFinalState,
-                    DFACaptureGroupPartialTransition transitionToAnchoredFinalState) {
+    public DFACaptureGroupLazyTransitionBuilder(DFAGenerator dfaGen,
+                    short id,
+                    byte[][] partialTransitionRecords,
+                    byte[] transitionToFinalStateRecord,
+                    byte[] transitionToAnchoredFinalStateRecord) {
+        this.dfaGen = dfaGen;
         this.id = id;
-        this.partialTransitions = partialTransitions;
-        this.transitionToFinalState = transitionToFinalState;
-        this.transitionToAnchoredFinalState = transitionToAnchoredFinalState;
+        this.partialTransitionRecords = partialTransitionRecords;
+        this.transitionToFinalStateRecord = transitionToFinalStateRecord;
+        this.transitionToAnchoredFinalStateRecord = transitionToAnchoredFinalStateRecord;
     }
 
     public short getId() {
         return id;
     }
 
-    public DFACaptureGroupPartialTransition[] getPartialTransitions() {
-        return partialTransitions;
+    public byte[][] getPartialTransitionRecords() {
+        return partialTransitionRecords;
     }
 
-    public DFACaptureGroupPartialTransition getTransitionToFinalState() {
-        return transitionToFinalState;
+    public byte[] getTransitionToFinalStateRecord() {
+        return transitionToFinalStateRecord;
     }
 
-    public DFACaptureGroupPartialTransition getTransitionToAnchoredFinalState() {
-        return transitionToAnchoredFinalState;
+    public byte[] getTransitionToAnchoredFinalStateRecord() {
+        return transitionToAnchoredFinalStateRecord;
     }
 
     public short getLastTransitionIndex() {
@@ -100,12 +105,18 @@ public final class DFACaptureGroupLazyTransitionBuilder implements JsonConvertib
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        JsonObject json = Json.obj(Json.prop("partialTransitions", Arrays.asList(partialTransitions)));
-        if (transitionToAnchoredFinalState != null) {
-            json.append(Json.prop("transitionToAnchoredFinalState", transitionToAnchoredFinalState));
+        JsonArray partialTransitionsJson = Json.array();
+        for (byte[] partialTransitionRecord : partialTransitionRecords) {
+            partialTransitionsJson.append(DFACaptureGroupPartialTransition.toJson(partialTransitionRecord, dfaGen.getCGPartialTransitionId(partialTransitionRecord)));
         }
-        if (transitionToFinalState != null) {
-            json.append(Json.prop("transitionToFinalState", transitionToFinalState));
+        JsonObject json = Json.obj(Json.prop("partialTransitions", partialTransitionsJson));
+        if (transitionToAnchoredFinalStateRecord != null) {
+            json.append(Json.prop("transitionToAnchoredFinalState",
+                            DFACaptureGroupPartialTransition.toJson(transitionToAnchoredFinalStateRecord, dfaGen.getCGPartialTransitionId(transitionToAnchoredFinalStateRecord))));
+        }
+        if (transitionToFinalStateRecord != null) {
+            json.append(Json.prop("transitionToFinalState",
+                            DFACaptureGroupPartialTransition.toJson(transitionToFinalStateRecord, dfaGen.getCGPartialTransitionId(transitionToFinalStateRecord))));
         }
         return json;
     }

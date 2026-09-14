@@ -106,6 +106,21 @@ public class ByteArrayBuffer extends AbstractArrayBuffer {
         length++;
     }
 
+    public void addAll(byte[] values, int valuesLength) {
+        addAll(values, 0, valuesLength);
+    }
+
+    public void addAll(byte[] values, int fromIndex, int valuesLength) {
+        ensureCapacity(length + valuesLength);
+        System.arraycopy(values, fromIndex, buf, length, valuesLength);
+        length += valuesLength;
+    }
+
+    public int copyTo(byte[] target, int offset) {
+        System.arraycopy(buf, 0, target, offset, length);
+        return offset + length;
+    }
+
     public byte[] toArray() {
         return isEmpty() ? EmptyArrays.BYTE : Arrays.copyOf(buf, length);
     }

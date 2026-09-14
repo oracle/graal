@@ -80,7 +80,8 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     private long[][] unAnchoredFinalConstraints = null;
     private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
     private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
-    private DFACaptureGroupLazyTransition[] lazyTransitions;
+    /** Array of references to {@link DFACaptureGroupLazyTransition} records. */
+    private int[] lazyTransitionRefs;
 
     DFAStateNodeBuilder(int id, TransitionSet<NFA, NFAState, NFAStateTransition> nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState, boolean forward, boolean prioritySensitive) {
         super(id, EMPTY_TRANSITIONS);
@@ -153,12 +154,12 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
         return getFlag(FLAG_REACHABLE);
     }
 
-    public void setLazyTransitions(DFACaptureGroupLazyTransition[] lazyTransitions) {
-        this.lazyTransitions = lazyTransitions;
+    public void setLazyTransitionRefs(int[] lazyTransitionRefs) {
+        this.lazyTransitionRefs = lazyTransitionRefs;
     }
 
-    public DFACaptureGroupLazyTransition[] getLazyTransitions() {
-        return lazyTransitions;
+    public int[] getLazyTransitionRefs() {
+        return lazyTransitionRefs;
     }
 
     @Override

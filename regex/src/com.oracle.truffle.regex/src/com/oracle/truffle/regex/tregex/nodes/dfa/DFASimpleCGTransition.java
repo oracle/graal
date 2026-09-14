@@ -152,8 +152,8 @@ public final class DFASimpleCGTransition extends DFAAbstractTransitionNode imple
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(Json.prop("indexUpdates", DFACaptureGroupPartialTransition.IndexOperation.groupBoundariesToJsonObject(indexUpdates)),
-                        Json.prop("indexClears", DFACaptureGroupPartialTransition.IndexOperation.groupBoundariesToJsonObject(indexClears)),
+        return Json.obj(Json.prop("indexUpdates", DFACaptureGroupPartialTransition.groupBoundariesToJsonObject(indexUpdates)),
+                        Json.prop("indexClears", DFACaptureGroupPartialTransition.groupBoundariesToJsonObject(indexClears)),
                         Json.prop("lastGroup", lastGroup));
     }
 }
