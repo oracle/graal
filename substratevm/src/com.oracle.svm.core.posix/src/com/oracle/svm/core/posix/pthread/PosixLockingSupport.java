@@ -69,6 +69,17 @@ public abstract class PosixLockingSupport implements PlatformLockingSupport {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean tryLockMutex(PlatformMutex mutex) {
+        int result = Pthread.pthread_mutex_trylock_no_transition(asMutex(mutex));
+        if (result == Errno.EBUSY()) {
+            return false;
+        }
+        checkResult(result, "pthread_mutex_trylock");
+        return true;
+    }
+
+    @Override
     @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockMutexNoTransition(PlatformMutex mutex) {
         checkResult(Pthread.pthread_mutex_lock_no_transition(asMutex(mutex)), "pthread_mutex_lock");
