@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jfr;
 
 import java.util.Random;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -36,6 +37,15 @@ import jdk.graal.compiler.nodes.extended.MembarNode;
 
 @TargetClass(className = "jdk.jfr.internal.settings.Throttler")
 public final class Target_jdk_jfr_internal_settings_Throttler {
+    /**
+     * JFR can continue profiling the image generator after analysis has finished. The hosted JFR
+     * throttler can therefore legitimately hold this lock while the image heap is materialized.
+     * Recompute it so that hosted lock state and its owner thread cannot enter the runtime image.
+     */
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ReentrantLock.class) //
+    private ReentrantLock lock;
+
     @Alias //
     @InjectAccessors(ThrottlerRandomAccessor.class) //
     private Random randomGenerator;
