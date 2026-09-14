@@ -1663,34 +1663,66 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp b = (IntegerStamp) stamp2;
                             assert a.getBits() == b.getBits() : "Bits must match " + Assertions.errorMessageContext("a", a, "b", b);
 
+                            if (a.isUnrestricted() && b.isUnrestricted()) {
+                                return a;
+                            }
+
                             int bits = a.getBits();
                             long mustBeSet = a.mustBeSet & b.mustBeSet;
                             long mayBeSet = a.mayBeSet & b.mayBeSet;
-                            if (significantBit(bits, mayBeSet) == 0) {
-                                /*
-                                 * The result will be positive. Try to refine the bounds. We can
-                                 * only exploit positive bounds, and one of the inputs may be
-                                 * negative. For example, for [-20, -10] & [10, 20] we can use the
-                                 * positive 20 as an upper bound for the result, but the other
-                                 * value's upper bound -10 gives no useful information.
-                                 */
-                                long upperBound = maxValueForMasks(bits, mustBeSet, mayBeSet);
-                                if (a.lowerBound >= 0) {
-                                    upperBound = Math.min(upperBound, a.upperBound);
-                                }
-                                if (b.lowerBound >= 0) {
-                                    upperBound = Math.min(upperBound, b.upperBound);
-                                }
-                                return create(bits, 0, upperBound, mustBeSet, mayBeSet);
-                            } else if (significantBit(bits, mustBeSet) == 1) {
-                                /*
-                                 * The result will be negative. Try to refine the bounds. Both upper
-                                 * bounds must be negative, so we can exploit both.
-                                 */
-                                long upperBound = Math.min(maxValueForMasks(bits, mustBeSet, mayBeSet), Math.min(a.upperBound, b.upperBound));
-                                return create(bits, minValueForMasks(bits, mustBeSet, mayBeSet), upperBound, mustBeSet, mayBeSet);
+                            long lowerBound = minValueForMasks(bits, mustBeSet, mayBeSet);
+                            long upperBound = maxValueForMasks(bits, mustBeSet, mayBeSet);
+
+                            /*
+                             * Attempt to refine the bounds of (a & b) using the identity
+                             * (x & y) == x - (x & ~y).
+                             * Let R = x & ~y, calculate its bounds from its masks. Then:
+                             *
+                             * x.lowerBound - R.upperBound <= (x & y) <= x.upperBound - R.lowerBound
+                             *
+                             * And these bounds can be better than ones derived only from the masks of (x & y).
+                             * For example, consider [10, 20] & [-20, -10]:
+                             *
+                             * x.mustBeSet = 0x00000000    x.mayBeSet = 0x0000001F
+                             * y.mustBeSet = 0xFFFFFFE0    y.mayBeSet = 0xFFFFFFFF
+                             * initial result: stampForMask(32, 0x00000000, 0x0000001F) == [0, 31]
+                             * masks for R = x & ~y:
+                             *   R.mustBeSet = x.mustBeSet & ~y.mayBeSet = 0x00000000
+                             *   R.mayBeSet  = x.mayBeSet & ~y.mustBeSet = 0x0000001F
+                             *   stampForMask(32, 0x00000000, 0x0000001F) == [0, 31]
+                             * refining initial stamp with [x.lowerBound - R.upperBound, x.upperBound - R.lowerBound]
+                             *   = [0, 31] intersect [10 - 31, 20 - 0] = [0, 20]
+                             *
+                             * With reversed parameters (x: [-20, -10], y: [10, 20]), R may be negative,
+                             * but the same interval calculation remains valid. Therefore, both (x, y) and
+                             * (y, x) are considered because either operand order may provide an improvement.
+                             *
+                             * Another example: with [10, 20] & -8, the resulting stamp is [8, 16].
+                             * Similarly, for [-20, -10] & -8 we can obtain [-24, -16].
+                             *
+                             * Both operand permutations can independently improve the initial stamp, for example:
+                             *
+                             * x=[88, 92] & y=[75, 94]  (mask-based stamp = [64, 95])
+                             * for x - (x & ~y)
+                             *    R = x & ~y = [0, 31]
+                             *    x - R = [88 - 31, 92 - 0] = [57, 92]
+                             *    this improves the upper bound to 92
+                             * for y - (y & ~x)
+                             *    R = y & ~x = [0, 7]
+                             *    y - R = [75 - 7, 94 - 0] = [68, 94]
+                             *    this improves the lower bound to 68
+                             */
+                            for (int i = 0; i < 2; i++) {
+                                IntegerStamp x = i == 0 ? a : b;
+                                IntegerStamp y = i == 0 ? b : a;
+                                long rMustBeSet = x.mustBeSet & ~y.mayBeSet;
+                                long rMayBeSet = x.mayBeSet & ~y.mustBeSet;
+                                long rLower = minValueForMasks(bits, rMustBeSet, rMayBeSet);
+                                long rUpper = maxValueForMasks(bits, rMustBeSet, rMayBeSet);
+                                lowerBound = Math.max(lowerBound, NumUtil.subSaturatingSigned(bits, x.lowerBound, rUpper));
+                                upperBound = Math.min(upperBound, NumUtil.subSaturatingSigned(bits, x.upperBound, rLower));
                             }
-                            return stampForMask(bits, mustBeSet, mayBeSet);
+                            return create(bits, lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -1724,7 +1756,41 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp b = (IntegerStamp) stamp2;
                             assert a.getBits() == b.getBits() : "Bits must match " + Assertions.errorMessageContext("a", a, "b", b);
 
-                            return stampForMask(a.getBits(), a.mustBeSet() | b.mustBeSet(), a.mayBeSet() | b.mayBeSet());
+                            if (a.isUnrestricted() && b.isUnrestricted()) {
+                                return a;
+                            }
+
+                            int bits = a.getBits();
+                            long mustBeSet = a.mustBeSet | b.mustBeSet;
+                            long mayBeSet = a.mayBeSet | b.mayBeSet;
+                            long lowerBound = minValueForMasks(bits, mustBeSet, mayBeSet);
+                            long upperBound = maxValueForMasks(bits, mustBeSet, mayBeSet);
+
+                            /*
+                             * Attempt to refine the bounds of (a | b) using the identity
+                             * (x | y) == x + (~x & y). Let A = (~x & y) and calculate its mask-based
+                             * bounds. Then:
+                             *
+                             * x.lowerBound + A.lowerBound <= (x | y) <= x.upperBound + A.upperBound
+                             *
+                             * For example, for [-20, -10] | [10, 20]:
+                             *
+                             * initial mask-based bounds = [-32, -1]
+                             * A = ~x & y = [0, 31]
+                             * x + A = [-20 + 0, -10 + 31] = [-20, 21]
+                             * refined bounds = [-32, -1] intersect [-20, 21] = [-20, -1]
+                             */
+                            for (int i = 0; i < 2; i++) {
+                                IntegerStamp x = i == 0 ? a : b;
+                                IntegerStamp y = i == 0 ? b : a;
+                                long aMustBeSet = y.mustBeSet & ~x.mayBeSet;
+                                long aMayBeSet = y.mayBeSet & ~x.mustBeSet;
+                                long aLower = minValueForMasks(bits, aMustBeSet, aMayBeSet);
+                                long aUpper = maxValueForMasks(bits, aMustBeSet, aMayBeSet);
+                                lowerBound = Math.max(lowerBound, NumUtil.addSaturatingSigned(bits, x.lowerBound, aLower));
+                                upperBound = Math.min(upperBound, NumUtil.addSaturatingSigned(bits, x.upperBound, aUpper));
+                            }
+                            return create(bits, lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -1755,11 +1821,13 @@ public final class IntegerStamp extends PrimitiveStamp {
                             IntegerStamp a = (IntegerStamp) stamp1;
                             IntegerStamp b = (IntegerStamp) stamp2;
                             assert a.getBits() == b.getBits() : "Bits must match " + Assertions.errorMessageContext("a", a, "b", b);
+                            if (a.isUnrestricted() || b.isUnrestricted()) {
+                                return a.unrestricted();
+                            }
                             if (b.lowerBound == -1 && b.upperBound == -1) {
                                 /*
                                  * This is a bitwise negation. Fold with the Not op which takes
-                                 * bounds into account, unlike the code below which only uses the
-                                 * masks.
+                                 * bounds into account.
                                  */
                                 return OPS.getNot().foldStamp(a);
                             } else if (a.lowerBound == -1 && a.upperBound == -1) {
@@ -1769,7 +1837,42 @@ public final class IntegerStamp extends PrimitiveStamp {
                             long variableBits = (a.mustBeSet() ^ a.mayBeSet()) | (b.mustBeSet() ^ b.mayBeSet());
                             long newMustBeSet = (a.mustBeSet() ^ b.mustBeSet()) & ~variableBits;
                             long newMayBeSet = (a.mustBeSet() ^ b.mustBeSet()) | variableBits;
-                            return stampForMask(a.getBits(), newMustBeSet, newMayBeSet);
+                            long andMustBeSet = a.mustBeSet & b.mustBeSet;
+                            long andMayBeSet = a.mayBeSet & b.mayBeSet;
+                            int bits = a.getBits();
+                            long andLower = minValueForMasks(bits, andMustBeSet, andMayBeSet);
+                            long andUpper = maxValueForMasks(bits, andMustBeSet, andMayBeSet);
+
+                            /*
+                             * Refine the bounds using the identity (x ^ y) == (x + y) - 2 * (x & y).
+                             * Let A = (x & y) and calculate its mask-based bounds. Then:
+                             *
+                             * x.lowerBound + y.lowerBound - 2*A.upperBound <= x ^ y <= x.upperBound + y.upperBound - 2*A.lowerBound
+                             *
+                             * For example, for [10, 20] ^ 1
+                             * initial mask bounds = [0, 31]
+                             * A = [10, 20] & 1 = [0, 1]:
+                             * lower = 10 + 1 - 2 * 1 = 9
+                             * upper = 20 + 1 - 2 * 0 = 21
+                             * refined bounds = [0, 31] intersect [9, 21] = [9, 21].
+                             *
+                             * For [0, 2] ^ [0, 4]:
+                             * initial mask bounds = [0, 7]
+                             * A = [0, 2] & [0, 4] = [0, 3] (mask bounds)
+                             * lower = 0 + 0 - 2 * 3 = -6
+                             * upper = 2 + 4 - 2 * 0 = 6
+                             * refined bounds = [0, 7] intersect [-6, 6] = [0, 6].
+                             */
+                            try {
+                                long lowerBound = Math.subtractExact(Math.addExact(a.lowerBound, b.lowerBound), Math.multiplyExact(2L, andUpper));
+                                long upperBound = Math.subtractExact(Math.addExact(a.upperBound, b.upperBound), Math.multiplyExact(2L, andLower));
+                                lowerBound = Math.max(minValueForMasks(bits, newMustBeSet, newMayBeSet), lowerBound);
+                                upperBound = Math.min(maxValueForMasks(bits, newMustBeSet, newMayBeSet), upperBound);
+                                return create(bits, lowerBound, upperBound, newMustBeSet, newMayBeSet);
+                            } catch (ArithmeticException e) {
+                                // Keep the mask bounds if any intermediate calculation overflowed
+                                return stampForMask(bits, newMustBeSet, newMayBeSet);
+                            }
                         }
 
                         @Override
@@ -1825,7 +1928,6 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
 
                             int shiftMask = getShiftAmountMask(stamp);
-                            int shiftBits = Integer.bitCount(shiftMask);
                             if (shift.lowerBound() == shift.upperBound()) {
                                 int shiftAmount = (int) (shift.lowerBound() & shiftMask);
                                 if (shiftAmount == 0) {
@@ -1844,19 +1946,51 @@ public final class IntegerStamp extends PrimitiveStamp {
                                                     (value.mustBeSet() << shiftAmount) & CodeUtil.mask(bits), (value.mayBeSet() << shiftAmount) & CodeUtil.mask(bits));
                                 }
                             }
-                            if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
-                                long defaultMask = CodeUtil.mask(bits);
-                                long mustBeSet = defaultMask;
-                                long mayBeSet = 0;
-                                for (long i = shift.lowerBound(); i <= shift.upperBound(); i++) {
-                                    if (shift.contains(i)) {
-                                        mustBeSet &= value.mustBeSet() << (i & shiftMask);
-                                        mayBeSet |= value.mayBeSet() << (i & shiftMask);
+                            long defaultMask = CodeUtil.mask(bits);
+                            long mustBeSet = defaultMask;
+                            long mayBeSet = 0;
+                            long lowerBound = CodeUtil.maxValue(bits);
+                            long upperBound = CodeUtil.minValue(bits);
+
+                            /*
+                             * The loop below checks the shift stamp range, but some values in the range may not be in
+                             * the actual stamp based on its mayBeSet mask, so we check shift.contains() every iteration.
+                             * But since the loop is capped at shiftMask+1 iterations, for longer intervals, we need to
+                             * check every shift amount because we only iterate through [shift.lowerBound, shift.lowerBound+shiftMask]
+                             */
+                            boolean coversAllShiftAmounts = Long.compareUnsigned(shift.upperBound() - shift.lowerBound(), shiftMask) > 0;
+                            if ((coversAllShiftAmounts || shift.contains(0)) && value.isUnrestricted()) {
+                                // unrestricted << [0, x] => unrestricted
+                                return value;
+                            }
+                            // Iterate over the possible shift amounts combining the resulting masks and bounds
+                            long sh = shift.lowerBound();
+                            for (int iterations = 0; iterations <= shiftMask; iterations++) {
+                                if (coversAllShiftAmounts || shift.contains(sh)) {
+                                    int shiftAmount = (int) (sh & shiftMask);
+                                    long shiftedMustBeSet = (value.mustBeSet() << shiftAmount) & defaultMask;
+                                    long shiftedMayBeSet = (value.mayBeSet() << shiftAmount) & defaultMask;
+                                    mustBeSet &= shiftedMustBeSet;
+                                    mayBeSet |= shiftedMayBeSet;
+                                    /* Try to improve the signed bounds for this shift. Shifting the input
+                                     * bounds is valid if no significant bits are lost and the sign does not
+                                     * change. Otherwise, calculate bounds from the shifted masks.
+                                     */
+                                    if (shiftAmount < bits && testNoSignChangeAfterShifting(bits, value.lowerBound(), shiftAmount) &&
+                                                    testNoSignChangeAfterShifting(bits, value.upperBound(), shiftAmount)) {
+                                        lowerBound = Math.min(lowerBound, value.lowerBound() << shiftAmount);
+                                        upperBound = Math.max(upperBound, value.upperBound() << shiftAmount);
+                                    } else {
+                                        lowerBound = Math.min(lowerBound, minValueForMasks(bits, shiftedMustBeSet, shiftedMayBeSet));
+                                        upperBound = Math.max(upperBound, maxValueForMasks(bits, shiftedMustBeSet, shiftedMayBeSet));
                                     }
                                 }
-                                return IntegerStamp.stampForMask(bits, mustBeSet, mayBeSet & defaultMask);
+                                if (sh == shift.upperBound()) {
+                                    break;
+                                }
+                                sh++;
                             }
-                            return value.unrestricted();
+                            return IntegerStamp.create(bits, lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -1910,8 +2044,40 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 long mayBeSet = (value.mayBeSet() << extraBits) >> signExtendShift & defaultMask;
                                 return IntegerStamp.create(bits, value.lowerBound() >> shiftCount, value.upperBound() >> shiftCount, mustBeSet, mayBeSet);
                             }
-                            long mask = IntegerStamp.mayBeSetFor(bits, value.lowerBound(), value.upperBound());
-                            return IntegerStamp.stampForMask(bits, 0, mask);
+                            int shiftMask = getShiftAmountMask(stamp);
+                            int shiftBits = Integer.bitCount(shiftMask);
+                            int minShift = 0;
+                            int maxShift = shiftMask;
+                            if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
+                                /* The bounds can be masked without losing information when only the lower shiftBits
+                                 * of the range are variable. For example, the shift range [0xAC2, 0xAC5] for a 32-bit shift:
+                                 * lowerBound: 1010110|00010
+                                 * upperBound: 1010110|00101
+                                 * shiftMask:          11111 (shiftBits = 5)
+                                 * Since the discarded upper bits are equal, the range of masked shifts is continuous,
+                                 * (in this case, [minShift=2, maxShift=5]), so we only need to consider those when
+                                 * refining the operation's bounds.
+                                 * When this isn't the case, the masked shift amounts are discontinuous, for example,
+                                 * with >> [0x1E, 0x21]:
+                                 * lowerBound: 0|11110
+                                 * upperBound: 1|00001
+                                 * The actual masked shifts are {30, 31, 0, 1}. In that case we use the full shift
+                                 * range of [0, 31].
+                                 */
+                                minShift = (int) (shift.lowerBound() & shiftMask);
+                                maxShift = (int) (shift.upperBound() & shiftMask);
+                            }
+                            /*
+                             * For nonnegative values of x, x >> s decreases as s increases. For negative values,
+                             * it increases (toward -1). So the shift amount (min/max) used for the signed bounds
+                             * depends on each bound's sign. For example:
+                             * With positive bounds: [10, 20] >> [1, 2] = [10 >> 2, 20 >> 1]
+                             * With negative bounds: [-20, -10] >> [1, 2] = [-20 >> 1, -10 >> 2]
+                             * With a range that crosses zero: [-10, 10] >> [1, 2] = [-10 >> 1, 10 >> 1]
+                             */
+                            long lowerBound = value.lowerBound() >> (value.lowerBound() < 0 ? minShift : maxShift);
+                            long upperBound = value.upperBound() >> (value.upperBound() < 0 ? maxShift : minShift);
+                            return IntegerStamp.create(bits, lowerBound, upperBound);
                         }
 
                         @Override
@@ -1984,14 +2150,27 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                                 mustBeSet = value.mustBeSet() >>> shiftCount;
                                 mayBeSet = value.mayBeSet() >>> shiftCount;
-                                if (value.lowerBound() < 0) {
-                                    return IntegerStamp.create(bits, mustBeSet, mayBeSet, mustBeSet, mayBeSet);
-                                } else {
-                                    return IntegerStamp.create(bits, value.lowerBound() >>> shiftCount, value.upperBound() >>> shiftCount, mustBeSet, mayBeSet);
-                                }
+                                return IntegerStamp.create(bits, value.unsignedLowerBound() >>> shiftCount, value.unsignedUpperBound() >>> shiftCount, mustBeSet, mayBeSet);
                             }
-                            long mask = IntegerStamp.mayBeSetFor(bits, value.lowerBound(), value.upperBound());
-                            return IntegerStamp.stampForMask(bits, 0, mask);
+                            if (bits < Integer.SIZE) {
+                                long mask = IntegerStamp.mayBeSetFor(bits, value.lowerBound(), value.upperBound());
+                                return IntegerStamp.stampForMask(bits, 0, mask);
+                            }
+                            int shiftMask = getShiftAmountMask(stamp);
+                            int shiftBits = Integer.bitCount(shiftMask);
+                            int minShift = 0;
+                            int maxShift = shiftMask;
+                            if ((shift.lowerBound() >>> shiftBits) == (shift.upperBound() >>> shiftBits)) {
+                                minShift = (int) (shift.lowerBound() & shiftMask);
+                                maxShift = (int) (shift.upperBound() & shiftMask);
+                            }
+                            if (maxShift == 0) {
+                                return value;
+                            }
+                            // The result can only be negative if the (masked) shift stamp includes zero, treat it separately
+                            int minPositiveShift = Math.max(1, minShift);
+                            Stamp result = IntegerStamp.create(bits, value.unsignedLowerBound() >>> maxShift, value.unsignedUpperBound() >>> minPositiveShift);
+                            return minShift == 0 ? result.meet(value) : result;
                         }
 
                         @Override
