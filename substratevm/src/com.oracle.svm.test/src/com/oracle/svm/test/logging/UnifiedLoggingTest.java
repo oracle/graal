@@ -30,10 +30,13 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 import org.junit.Assume;
@@ -42,7 +45,6 @@ import org.junit.Test;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.core.logging.LogDecorators;
@@ -59,6 +61,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
@@ -66,10 +69,15 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:+StrictRuntimeJavaOptions",
-                "-H:-UnlockExperimentalVMOptions"
+                "-H:-UnlockExperimentalVMOptions",
+                "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.option=ALL-UNNAMED",
+                "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.jdk=ALL-UNNAMED"
 })
 @SuppressWarnings("static-method")
 public final class UnifiedLoggingTest {
+    /// Payload large enough to fill the byte queue with a modest number of records.
+    private static final String ASYNC_QUEUE_FILLER = "x".repeat(8 * 1024);
+
     /// Verifies level names, ordering, and threshold enablement.
     @Test
     public void testLevels() {
@@ -195,6 +203,23 @@ public final class UnifiedLoggingTest {
         }
     }
 
+    /// Verifies the asynchronous byte budget, bounds, alignment, and startup immutability.
+    @Test
+    public void testAsyncLogBufferOptionAndPacking() {
+        checkEquals(RuntimeOptions.get("AsyncLogBufferSize"), 2L * 1024 * 1024, "AsyncLogBufferSize should default to 2M");
+        Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(100L * 1024);
+        Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(50L * 1024 * 1024);
+        expectFailure(() -> Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(100L * 1024 - 1), "AsyncLogBufferSize accepted a value below 100K");
+        expectFailure(() -> Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(50L * 1024 * 1024 + 1), "AsyncLogBufferSize accepted a value above 50M");
+
+        int emptyRecordSize = Target_com_oracle_svm_core_logging_LogAsyncWriter.recordSize(0, 0);
+        int oneByteRecordSize = Target_com_oracle_svm_core_logging_LogAsyncWriter.recordSize(0, 1);
+        checkEquals(emptyRecordSize % Long.BYTES, 0, "empty asynchronous records should be word aligned");
+        checkEquals(oneByteRecordSize % Long.BYTES, 0, "nonempty asynchronous records should be word aligned");
+        checkTrue(oneByteRecordSize > emptyRecordSize, "the first payload byte should require another aligned word");
+        checkTrue(Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferSizeIsImmutable(), "AsyncLogBufferSize should be immutable after startup");
+    }
+
     /// Verifies that startup timestamp formatting uses its explicit native local offset.
     @Test
     public void testStartupTimestamp() {
@@ -222,6 +247,42 @@ public final class UnifiedLoggingTest {
             Target_com_oracle_svm_core_logging_LogConfiguration.initializationComplete = previousInitializationComplete;
             LogConfiguration.disableLogging();
         }
+    }
+
+    /// Verifies configuration defaults, stream aliases, parser diagnostics, and descriptions.
+    @Test
+    public void testConfiguration() {
+        LogConfiguration.disableLogging();
+        LogOutput stdout = (LogOutput) (Object) Target_com_oracle_svm_core_logging_LogConfiguration.stdout;
+        LogOutput stderr = (LogOutput) (Object) Target_com_oracle_svm_core_logging_LogConfiguration.stderr;
+        Target_com_oracle_svm_core_logging_LogOutput stdoutOutput = (Target_com_oracle_svm_core_logging_LogOutput) (Object) stdout;
+        checkEquals(stdout.name(), "stdout", "stdout alias should resolve to stdout");
+        checkEquals(stderr.name(), "stderr", "stderr alias should resolve to stderr");
+        checkContains(stdoutOutput.describe(), "all=off", "disabled stdout description should include all=off");
+        checkFalse(LogConfiguration.parseCommandLineArgument("-verbose"), "non-Xlog option should be rejected by the logger");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:stdout:none"), "stdout configuration should be accepted");
+        checkContains(stdoutOutput.describe(), "class+load=debug", "stdout description should include the configured selection");
+        checkTrue(LogTagSet.class_load.isDebug(), "configured class+load tag set should enable DEBUG");
+        checkFalse(LogTagSet.logging.isDebug(), "unconfigured logging tag set should not enable DEBUG");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=verbose"), "invalid configuration level was accepted");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:stdout:unknown"), "invalid configuration decorator was accepted");
+        TestLogOutput transactionalOutput = new TestLogOutput("transactional-options");
+        Target_com_oracle_svm_core_logging_LogOutput transactionalTarget = (Target_com_oracle_svm_core_logging_LogOutput) (Object) transactionalOutput;
+        expectFailure(() -> transactionalTarget.parseOptionsIfFirstConfiguration("foldmultilines=true,unknown=value"), "invalid output option was accepted");
+        checkTrue(transactionalTarget.parseOptionsIfFirstConfiguration("foldmultilines=false"), "rejected output options should not consume the first configuration");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:stall"), "stall-mode async configuration should be accepted");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:HELP"), "the help directive should be case-sensitive");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:DISABLE"), "the disable directive should be case-sensitive");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:ASYNC"), "the async directive should be case-sensitive");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:async:STALL"), "the async mode should be case-sensitive");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:async:invalid"), "invalid async mode was accepted");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:disable"), "disable configuration should be accepted");
+        checkTrue(Target_com_oracle_svm_core_logging_LogConfiguration.asyncRequested, "disable should preserve an earlier asynchronous logging request");
+        LogConfiguration.disableLogging();
+        LogOutput uppercaseStdout = Target_com_oracle_svm_core_logging_LogConfiguration.findOrCreateOutput("STDOUT");
+        checkFalse(uppercaseStdout == stdout, "the stdout output alias should be case-sensitive");
+        checkEquals(uppercaseStdout.name(), "file=STDOUT", "an uppercase output alias should denote a file name");
+        LogConfiguration.disableLogging();
     }
 
     /// Verifies level filtering, multiline filtering, and message-level decorations.
@@ -346,6 +407,326 @@ public final class UnifiedLoggingTest {
         writer.start();
         writer.join();
         awaitLoggingMemory(baseline);
+    }
+
+    /// Verifies that thread start eagerly allocates logging state only while async output is active.
+    @Test
+    public void testAsyncThreadLocalInitialization() throws Exception {
+        LogConfiguration.disableLogging();
+        AtomicBoolean initialized = new AtomicBoolean(true);
+        Thread synchronousThread = new Thread(() -> initialized.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized()));
+        synchronousThread.start();
+        synchronousThread.join();
+        checkFalse(initialized.get(), "synchronous-only thread start should not allocate logging state");
+
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async"), "async configuration should be accepted");
+            LogConfiguration.logInitializationComplete();
+            Thread asynchronousThread = new Thread(() -> initialized.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized()));
+            asynchronousThread.start();
+            asynchronousThread.join();
+            checkTrue(initialized.get(), "async thread start should allocate logging state before running Java code");
+        } finally {
+            LogConfiguration.disableLogging();
+        }
+    }
+
+    /// Verifies that asynchronous messages are copied before the producer scope is cleared.
+    @Test
+    public void testAsyncMessages() throws IOException {
+        String logFile = testLogFile("async-messages");
+        String foldedLogFile = testLogFile("async-messages-folded");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        delete(foldedLogFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":level,tags"), "async message configuration should be accepted");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + foldedLogFile + ":none:foldmultilines=true"),
+                        "folded async message configuration should be accepted");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async"), "async configuration should be accepted");
+        LogConfiguration.logInitializationComplete();
+        LogTagSet.class_load.info("asynchronous line 1\nasynchronous line 2\n");
+        LogTagSet.class_load.info("asynchronous CRLF line 1\r\nasynchronous CRLF line 2\r\n");
+        LogConfiguration.disableLogging();
+        String output = read(logFile);
+        checkContains(output, "[info][class,load] asynchronous line 1\n[info][class,load] asynchronous line 2\n",
+                        "asynchronous records should retain producer metadata and omit a trailing blank record");
+        checkContains(output, "asynchronous CRLF line 1\n[info][class,load] asynchronous CRLF line 2\n", "asynchronous CRLF should produce one separator");
+        checkNotContains(removePlatformLineSeparators(output), "\r", "asynchronous CRLF should not retain carriage returns");
+        String foldedOutput = read(foldedLogFile);
+        checkContains(foldedOutput, "asynchronous CRLF line 1\\nasynchronous CRLF line 2\\n", "folded asynchronous CRLF should produce one escaped separator");
+        checkNotContains(removePlatformLineSeparators(foldedOutput), "\r", "folded asynchronous CRLF should not retain carriage returns");
+        delete(logFile);
+        delete(foldedLogFile);
+    }
+
+    /// Verifies that queued mixed-level messages retain explicit line levels and event metadata.
+    @Test
+    public void testAsyncMixedLevelMessageRouting() throws IOException {
+        String debugLogFile = testLogFile("async-mixed-level-debug");
+        String infoLogFile = testLogFile("async-mixed-level-info");
+        configureMixedLevelOutputs(debugLogFile, infoLogFile);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:stall"), "stall-mode async configuration should be accepted");
+            LogConfiguration.logInitializationComplete();
+            writeMixedLevelMessage("asynchronous");
+            LogConfiguration.disableLogging();
+            assertMixedLevelOutputs(debugLogFile, infoLogFile, "asynchronous");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(debugLogFile);
+            delete(infoLogFile);
+        }
+    }
+
+    /// Verifies asynchronous level filtering and the raw message path.
+    @Test
+    public void testAsyncRawMessages() throws IOException {
+        String logFile = testLogFile("async-raw-messages");
+        startAsyncLogging(logFile, "class+load=debug", "drop");
+        LogTagSet.class_load.debug("1Debug");
+        LogTagSet.class_load.info("1Info");
+        LogTagSet.class_load.warning("1Warning");
+        LogTagSet.class_load.error("1Error");
+        LogTagSet.class_load.trace("1Trace");
+        LogConfiguration.disableLogging();
+
+        String output = read(logFile);
+        checkContains(output, "1Debug", "async DEBUG message should be written");
+        checkContains(output, "1Info", "async INFO message should be written");
+        checkContains(output, "1Warning", "async WARNING message should be written");
+        checkContains(output, "1Error", "async ERROR message should be written");
+        checkNotContains(output, "1Trace", "async TRACE message should be filtered");
+        delete(logFile);
+    }
+
+    /// Verifies that all lines of one asynchronous message remain ordered around other messages.
+    @Test
+    public void testAsyncMessageOrdering() throws IOException {
+        String logFile = testLogFile("async-message-ordering");
+        startAsyncLogging(logFile, "class+load=debug,logging=debug", "drop");
+        final int multiLineCount = 20;
+        String[] expectedLines = new String[multiLineCount];
+        try (LogMessage message = LogTagSet.class_load.message()) {
+            for (int index = 0; index < multiLineCount; index++) {
+                expectedLines[index] = "nonbreakable log message line-" + index;
+                message.line(LogLevel.DEBUG).string(expectedLines[index]);
+            }
+        }
+        LogTagSet.logging.debug("a noisy message from another logger");
+        LogConfiguration.disableLogging();
+
+        String output = read(logFile);
+        checkSubstringsInOrder(output, expectedLines, "async message lines should remain in order");
+        delete(logFile);
+    }
+
+    /// Verifies that stall mode drains a burst without dropping its first and last messages.
+    @Test
+    public void testAsyncStallMode() throws IOException {
+        String logFile = testLogFile("async-stall-mode");
+        startAsyncLogging(logFile, "class+load=info", "stall");
+        final int messageCount = 4096;
+        for (int index = 0; index < messageCount; index++) {
+            LogTagSet.class_load.info("stall message " + index);
+        }
+        LogConfiguration.disableLogging();
+
+        String output = read(logFile);
+        checkContains(output, "stall message 0", "stall mode should write the first queued message");
+        checkContains(output, "stall message " + (messageCount / 2), "stall mode should write a middle queued message");
+        checkContains(output, "stall message " + (messageCount - 1), "stall mode should write the last queued message");
+        delete(logFile);
+    }
+
+    /// Verifies that drop mode reports the number of discarded lines to the affected output.
+    @Test
+    public void testAsyncDropModeReportsDroppedMessages() throws InterruptedException {
+        LogConfiguration.disableLogging();
+        BlockingCapturingLogOutput firstOutput = new BlockingCapturingLogOutput();
+        CapturingLogOutput secondOutput = new CapturingLogOutput();
+        CountDownLatch configurationThreadReady = new CountDownLatch(1);
+        CountDownLatch disableRequested = new CountDownLatch(1);
+        AtomicBoolean initializedBeforeDisable = new AtomicBoolean();
+        AtomicBoolean initializedAfterDisable = new AtomicBoolean();
+        AtomicReference<Throwable> configurationFailure = new AtomicReference<>();
+        Thread configurationThread = new Thread(() -> {
+            initializedBeforeDisable.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized());
+            configurationThreadReady.countDown();
+            try {
+                disableRequested.await();
+                LogConfiguration.disableLogging();
+                initializedAfterDisable.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized());
+            } catch (Throwable throwable) {
+                configurationFailure.set(throwable);
+            }
+        });
+        configurationThread.start();
+        configurationThreadReady.await();
+        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(LogSelectionList.parse("class+load=info"), firstOutput, LogDecorators.NONE);
+        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(LogSelectionList.parse("module+load=info"), secondOutput, LogDecorators.NONE);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async drop-reporting mode should be accepted");
+            LogConfiguration.logInitializationComplete();
+            LogTagSet.class_load.info("blocked before filling the asynchronous queue");
+            firstOutput.awaitFirstWrite();
+            int bufferCapacity = Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferCapacity();
+            int lineCount = bufferCapacity / ASYNC_QUEUE_FILLER.length() * 2;
+            for (int index = 0; index < lineCount; index++) {
+                LogTagSet.class_load.info(ASYNC_QUEUE_FILLER + " drop-reporting line " + index);
+            }
+            LogTagSet.module_load.info(ASYNC_QUEUE_FILLER + " dropped without a preceding accepted record");
+
+            firstOutput.releaseFirstWrite();
+            disableRequested.countDown();
+            configurationThread.join();
+            if (configurationFailure.get() != null) {
+                throw new AssertionError("logging configuration thread failed", configurationFailure.get());
+            }
+            checkFalse(initializedBeforeDisable.get(), "a thread started before async logging should not eagerly allocate logging state");
+            checkTrue(initializedAfterDisable.get(), "reporting a pending drop should initialize logging state on the configuration thread");
+            checkContains(firstOutput.contents(), "messages dropped due to async logging", "first output should report lines discarded after its byte budget was exhausted");
+            checkContains(secondOutput.contents(), "messages dropped due to async logging", "second output should report lines discarded after the shared byte budget was exhausted");
+            checkNotContains(secondOutput.contents(), "dropped without a preceding accepted record", "the second output should have no accepted record to trigger its drop report");
+            checkFalse(firstOutput.wasInterrupted(), "asynchronous output thread interruption");
+        } finally {
+            firstOutput.releaseFirstWrite();
+            disableRequested.countDown();
+            configurationThread.join();
+            LogConfiguration.disableLogging();
+        }
+    }
+
+    /// Verifies that a record larger than the complete byte queue uses synchronous output in both
+    /// queue-full modes.
+    @Test
+    public void testAsyncOversizedRecordFallsBackSynchronously() {
+        for (String mode : new String[]{"drop", "stall"}) {
+            LogConfiguration.disableLogging();
+            ThreadRecordingLogOutput output = new ThreadRecordingLogOutput();
+            LogSelectionList selections = LogSelectionList.parse("class+load=info");
+            Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
+            try {
+                checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:" + mode), "async oversized-record mode should be accepted");
+                LogConfiguration.logInitializationComplete();
+                String oversized = "x".repeat(Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferCapacity());
+                Thread producer = Thread.currentThread();
+                LogTagSet.class_load.info(oversized);
+                checkSame(output.writingThread, producer, "an oversized record should use synchronous output in " + mode + " mode");
+                checkEquals(output.writeCount.get(), 1, "an oversized record should be written completely once in " + mode + " mode");
+            } finally {
+                LogConfiguration.disableLogging();
+            }
+        }
+    }
+
+    /// Verifies that a runtime disable does not discard the requested asynchronous mode.
+    @Test
+    public void testAsyncReactivationAfterRuntimeDisable() {
+        LogConfiguration.disableLogging();
+        ThreadRecordingLogOutput output = new ThreadRecordingLogOutput();
+        LogSelectionList selections = LogSelectionList.parse("class+load=info");
+        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async reactivation mode should be accepted");
+            LogConfiguration.logInitializationComplete();
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:disable"), "runtime disable should be accepted");
+            Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
+            LogTagSet.class_load.info("message after runtime reactivation");
+            LogConfiguration.disableLogging();
+            checkFalse(output.writingThread == Thread.currentThread(), "reactivated asynchronous output should use the consumer thread");
+            checkEquals(output.writeCount.get(), 1, "reactivated asynchronous output should write the record once");
+        } finally {
+            LogConfiguration.disableLogging();
+        }
+    }
+
+    /// Verifies that runtime reconfiguration drains records using the previous output state.
+    @Test
+    public void testAsyncReconfigurationFlushesQueuedRecords() throws Exception {
+        LogConfiguration.disableLogging();
+        BlockingThreadRecordingLogOutput output = new BlockingThreadRecordingLogOutput();
+        LogSelectionList selections = LogSelectionList.parse("class+load=info");
+        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
+        Thread reconfiguration = null;
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async reconfiguration test mode should be accepted");
+            LogConfiguration.logInitializationComplete();
+            LogTagSet.class_load.info("blocked before reconfiguration");
+            output.awaitFirstWrite();
+            LogTagSet.class_load.info("queued before reconfiguration");
+
+            AtomicBoolean reconfigurationFinished = new AtomicBoolean();
+            reconfiguration = new Thread(() -> {
+                Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.parse("uptimenanos"));
+                reconfigurationFinished.set(true);
+            });
+            reconfiguration.start();
+
+            Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
+            awaitDecorator(tagSet, LogDecorators.Decorator.UPTIMENANOS);
+            checkFalse(reconfigurationFinished.get(), "reconfiguration should wait for the blocked asynchronous record");
+
+            output.releaseFirstWrite();
+            reconfiguration.join();
+            checkTrue(reconfigurationFinished.get(), "reconfiguration should finish after the asynchronous queue drains");
+            checkEquals(output.writeCount.get(), 2, "reconfiguration should drain every record using the previous output state");
+        } finally {
+            output.releaseFirstWrite();
+            if (reconfiguration != null) {
+                reconfiguration.join();
+            }
+            LogConfiguration.disableLogging();
+        }
+    }
+
+    /// Verifies that a VM operation uses synchronous output when its complete message cannot fit
+    /// in the asynchronous queue.
+    @Test
+    public void testAsyncLoggingFromVMOperation() throws IOException, InterruptedException {
+        String logFile = testLogFile("async-vm-operation");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        BlockingThreadRecordingLogOutput output = new BlockingThreadRecordingLogOutput();
+        TestLogOutput secondOutput = new TestLogOutput("second-vm-operation-output");
+        Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
+        Target_com_oracle_svm_core_logging_LogOutputList outputList = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) tagSet.outputList();
+        outputList.setOutputLevel(output, LogLevel.INFO);
+        outputList.setOutputLevel(secondOutput, LogLevel.INFO);
+        try {
+            String loggingOption = "-Xlog:logging=debug:file=" + logFile + ":none";
+            checkTrue(LogConfiguration.parseCommandLineArgument(loggingOption), "logging statistics output should be accepted: " + loggingOption);
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async VM operation configuration should be accepted");
+            LogConfiguration.logInitializationComplete();
+
+            LoggingVMOperation queuedOperation = new LoggingVMOperation();
+            queuedOperation.enqueue();
+            output.awaitFirstWrite();
+            checkTrue(output.firstWritingThread != queuedOperation.executingThread, "a VM operation should use asynchronous output when its message fits in the queue");
+            /* More bytes than the queue can hold leave it full while the consumer is blocked. */
+            int lineCount = Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferCapacity() / ASYNC_QUEUE_FILLER.length() * 2;
+            for (int index = 0; index < lineCount; index++) {
+                LogTagSet.class_load.info(ASYNC_QUEUE_FILLER + " queued line " + index);
+            }
+            /* Small records consume any gap that was too short for another filler record. */
+            int smallLineCount = ASYNC_QUEUE_FILLER.length() / Target_com_oracle_svm_core_logging_LogAsyncWriter.recordSize(0, 0) * 2;
+            for (int index = 0; index < smallLineCount; index++) {
+                LogTagSet.class_load.info("x");
+            }
+
+            LoggingVMOperation operation = new LoggingVMOperation();
+            operation.enqueue();
+            checkSame(output.writingThread, operation.executingThread, "a VM operation must use synchronous output when the asynchronous queue is full");
+
+            output.releaseFirstWrite();
+            LogConfiguration.disableLogging();
+            checkFalse(output.wasInterrupted(), "asynchronous output thread interruption");
+            checkContains(read(logFile), "VM operation log messages that used synchronous mode because the asynchronous queue was unavailable: 1",
+                            "shutdown should report synchronous VM operation enqueue calls");
+        } finally {
+            output.releaseFirstWrite();
+            LogConfiguration.disableLogging();
+            delete(logFile);
+        }
     }
 
     /// Verifies quoted file names, file-size parsing, folding, rotation, and invalid options.
@@ -600,7 +981,118 @@ public final class UnifiedLoggingTest {
         return "logging-test-" + testName + ".log";
     }
 
-    /// Captures output for assertions about emitted startup diagnostics.
+    /// Minimal output used when only routing identity is under test.
+    private static final class TestLogOutput extends LogOutput {
+        TestLogOutput(String name) {
+            super(name);
+        }
+
+        /// Accepts bytes without performing I/O.
+        @Override
+        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+            return 0;
+        }
+    }
+
+    /// Records the thread and count for nonblocking synchronous-fallback assertions.
+    private static final class ThreadRecordingLogOutput extends LogOutput {
+        private volatile Thread writingThread;
+        private final AtomicInteger writeCount = new AtomicInteger();
+
+        ThreadRecordingLogOutput() {
+            super("thread-recording-nonblocking");
+        }
+
+        /// Records a complete output write without performing I/O.
+        @Override
+        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+            writingThread = Thread.currentThread();
+            writeCount.incrementAndGet();
+            return 0;
+        }
+    }
+
+    /// Blocks its first write so the asynchronous queue can be filled deterministically.
+    private static class BlockingThreadRecordingLogOutput extends LogOutput {
+        private final AtomicBoolean firstWrite = new AtomicBoolean(true);
+        private final CountDownLatch firstWriteStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseFirstWrite = new CountDownLatch(1);
+
+        private volatile Thread firstWritingThread;
+        private volatile Thread writingThread;
+        private volatile boolean interrupted;
+
+        /// Counts records that reached this output.
+        private final AtomicInteger writeCount = new AtomicInteger();
+
+        BlockingThreadRecordingLogOutput() {
+            super("thread-recording");
+        }
+
+        /// Blocks the asynchronous consumer on its first call and records subsequent writers.
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "The test output intentionally uses blocking JDK synchronization.")
+        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+            writeCount.incrementAndGet();
+            if (firstWrite.compareAndSet(true, false)) {
+                firstWritingThread = Thread.currentThread();
+                firstWriteStarted.countDown();
+                try {
+                    releaseFirstWrite.await();
+                } catch (InterruptedException exception) {
+                    interrupted = true;
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                writingThread = Thread.currentThread();
+            }
+            return 0;
+        }
+
+        /// Waits until the asynchronous consumer has entered its first output call.
+        void awaitFirstWrite() throws InterruptedException {
+            firstWriteStarted.await();
+        }
+
+        /// Returns whether the asynchronous consumer was interrupted while blocked.
+        boolean wasInterrupted() {
+            return interrupted;
+        }
+
+        /// Allows the asynchronous consumer to drain the queue.
+        void releaseFirstWrite() {
+            releaseFirstWrite.countDown();
+        }
+    }
+
+    /// Extends the blocking output with byte capture for asynchronous output assertions.
+    private static final class BlockingCapturingLogOutput extends BlockingThreadRecordingLogOutput {
+        /// Captures output bytes after the asynchronous writer releases the first blocked write.
+        private final StringBuilder contents = new StringBuilder();
+
+        /// Records bytes after applying the blocking behavior inherited from the test output.
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "The test output intentionally uses blocking JDK synchronization.")
+        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+            int status = super.writeRaw(bytes, length);
+            synchronized (contents) {
+                for (int index = 0; index < length.rawValue(); index++) {
+                    contents.append((char) Byte.toUnsignedInt(bytes.read(index)));
+                }
+            }
+            return status;
+        }
+
+        /// Gets all bytes written to this output as ASCII test content.
+        String contents() {
+            synchronized (contents) {
+                return contents.toString();
+            }
+        }
+    }
+
+    /// Captures output without blocking so unexpected accepted records produce an assertion rather
+    /// than stalling the drop-reporting test.
     private static final class CapturingLogOutput extends LogOutput {
         private final StringBuilder contents = new StringBuilder();
 
@@ -628,19 +1120,16 @@ public final class UnifiedLoggingTest {
         }
     }
 
-    /// Minimal output used when only routing identity is under test.
-    private static final class TestLogOutput extends LogOutput {
-        TestLogOutput(String name) {
-            super(name);
-        }
-
-        /// Accepts bytes without performing I/O.
-        @Override
-        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
-            return 0;
+    /// Waits until a reconfiguration publishes a transition containing `decorator`.
+    private static void awaitDecorator(Target_com_oracle_svm_core_logging_LogTagSet tagSet, LogDecorators.Decorator decorator) {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (!tagSet.decorators.contains(decorator)) {
+            if (System.nanoTime() >= deadline) {
+                throw new AssertionError("Timed out waiting for the " + decorator.label() + " decorator transition");
+            }
+            Thread.onSpinWait();
         }
     }
-
 
     /// Waits for post-termination thread listeners to release native logging state.
     private static void awaitLoggingMemory(long expected) {
@@ -660,6 +1149,8 @@ public final class UnifiedLoggingTest {
 
     /// Logs while executing at a safepoint and records the executing thread for comparison.
     private static final class LoggingVMOperation extends JavaVMOperation {
+        private Thread executingThread;
+
         LoggingVMOperation() {
             super(VMOperationInfos.get(LoggingVMOperation.class, "Unified logging at safepoint", VMOperation.SystemEffect.SAFEPOINT));
         }
@@ -667,6 +1158,7 @@ public final class UnifiedLoggingTest {
         /// Emits a class-loading message from the VM operation thread.
         @Override
         protected void operate() {
+            executingThread = Thread.currentThread();
             LogTagSet.class_load.info("message from VM operation");
         }
     }
@@ -722,6 +1214,14 @@ public final class UnifiedLoggingTest {
         }
     }
 
+    /// Configures a file-backed asynchronous writer for one test case.
+    private static void startAsyncLogging(String logFile, String selection, String mode) throws IOException {
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:" + selection + ":file=" + logFile + ":none"), "async test output configuration should be accepted");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:" + mode), "async test mode configuration should be accepted");
+        LogConfiguration.logInitializationComplete();
+    }
 
     /// Configures DEBUG and INFO file outputs with event identity and line decorators.
     private static void configureMixedLevelOutputs(String debugLogFile, String infoLogFile) throws IOException {
@@ -839,10 +1339,27 @@ public final class UnifiedLoggingTest {
         return value.replace("\r\n", "\n").replace('\r', '\n');
     }
 
+    /// Removes output separators so carriage returns originating in message content remain visible.
+    private static String removePlatformLineSeparators(String value) {
+        return value.replace(System.lineSeparator(), "");
+    }
+
     /// Fails the test when a target string contains a searched substring.
     private static void checkNotContains(String target, String searched, String comparison) {
         if (target.contains(searched)) {
             throw new AssertionError(comparison + ": expected target string <" + target + "> not to contain searched substring <" + searched + ">");
+        }
+    }
+
+    /// Fails when searched substrings do not occur in target in the requested order.
+    private static void checkSubstringsInOrder(String target, String[] searched, String comparison) {
+        int offset = 0;
+        for (String value : searched) {
+            int found = target.indexOf(value, offset);
+            if (found < 0) {
+                throw new AssertionError(comparison + ": expected target string <" + target + "> to contain searched substring <" + value + "> after index <" + offset + ">");
+            }
+            offset = found + value.length();
         }
     }
 }

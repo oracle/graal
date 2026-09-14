@@ -53,7 +53,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 @Platforms(WINDOWS_BASE.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-final class WindowsLoggingSupport implements LoggingSupport {
+final class WindowsLoggingSupport extends LoggingSupport {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length) {
@@ -115,5 +115,10 @@ final class WindowsLoggingSupportFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LoggingSupport.class, new WindowsLoggingSupport());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        LoggingSupport.singleton().initialize();
     }
 }

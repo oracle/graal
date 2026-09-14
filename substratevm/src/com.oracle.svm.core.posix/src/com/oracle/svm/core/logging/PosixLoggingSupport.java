@@ -52,7 +52,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 /// Provides POSIX stream output, file operations, and host name lookup for unified logging.
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-final class PosixLoggingSupport implements LoggingSupport {
+final class PosixLoggingSupport extends LoggingSupport {
     private static final int STDOUT_FILENO = 1;
     private static final int STDERR_FILENO = 2;
 
@@ -106,5 +106,10 @@ final class PosixLoggingSupportFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LoggingSupport.class, new PosixLoggingSupport());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        LoggingSupport.singleton().initialize();
     }
 }
