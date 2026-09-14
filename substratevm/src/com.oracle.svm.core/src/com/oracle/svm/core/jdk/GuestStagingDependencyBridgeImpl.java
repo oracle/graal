@@ -44,6 +44,8 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
@@ -129,6 +131,26 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     public void configureLogFile(String optionPrefix, String logFile) {
         RuntimeSupport.Hook closeLogFile = FunctionPointerLogHandler.configureLogFile(optionPrefix, logFile);
         RuntimeSupport.getRuntimeSupport().addTearDownHook(closeLogFile);
+    }
+
+    @Override
+    public boolean parseXLogOption(String arg) {
+        HasXlogSupport.require();
+        boolean parsed = LogConfiguration.parseCommandLineArgument(arg);
+        if (arg.equalsIgnoreCase("-Xlog:help")) {
+            System.exit(0);
+        }
+        return parsed;
+    }
+
+    @Override
+    public void initializeLogging() {
+        LogConfiguration.initialize();
+    }
+
+    @Override
+    public void abortLoggingInitialization() {
+        LogConfiguration.abortInitialization();
     }
 
     @Override
@@ -223,6 +245,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void endOfParsing() {
+        LogConfiguration.logInitializationComplete();
         maybeReportImageClasses();
     }
 

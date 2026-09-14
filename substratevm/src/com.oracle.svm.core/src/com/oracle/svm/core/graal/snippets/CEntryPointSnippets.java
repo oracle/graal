@@ -35,6 +35,8 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -496,29 +498,31 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         RuntimeOptionValues.singleton().copyBuildTimeValuesToCache();
         IsolateArgumentParser.singleton().copyToRuntimeOptions();
 
-        if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
-            boolean forJavaMainCall = false;
-            boolean ignoreUnrecognized = false;
-            if (parameters.version() >= 4) {
-                ignoreUnrecognized = parameters.getIgnoreUnrecognizedArgs();
-                forJavaMainCall = parameters.getForJavaMainCall();
-            }
+        boolean hasRuntimeArguments = parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull();
+        boolean forJavaMainCall = false;
+        boolean ignoreUnrecognized = false;
+        try {
+            if (hasRuntimeArguments) {
+                if (parameters.version() >= 4) {
+                    ignoreUnrecognized = parameters.getIgnoreUnrecognizedArgs();
+                    forJavaMainCall = parameters.getForJavaMainCall();
+                }
 
-            String[] initialArgs = ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
-            ArgsSupport.singleton().setInitialArgs(initialArgs);
-            try {
+                String[] initialArgs = ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
+                ArgsSupport.singleton().setInitialArgs(initialArgs);
                 if (forJavaMainCall) {
                     if (ImageSingletons.contains(JavaMainSupport.class)) {
                         JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
-                        javaMainSupport.mainArgs = RuntimeOptionParser.parseAndConsumeJavaMainOptions(initialArgs, ignoreUnrecognized);
+                        javaMainSupport.mainArgs = RuntimeOptionParser.parseAndConsumeJavaMainOptionsDuringIsolateInitialization(initialArgs, ignoreUnrecognized);
                     } else {
                         throw VMError.shouldNotReachHereAtRuntime();
                     }
                 } else {
-                    String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
+                    String[] remainingArgs = RuntimeOptionParser.parseAndConsumeAllOptionsDuringIsolateInitialization(initialArgs, ignoreUnrecognized);
                     if (!ignoreUnrecognized && remainingArgs.length != 0) {
                         if (SubstrateOptions.StrictRuntimeJavaOptions.getValue()) {
                             Log.logStream().println("Error: Unrecognized option: " + remainingArgs[0]);
+                            RuntimeOptionParser.abortLoggingInitialization();
                             return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
                         } else {
                             /*
@@ -529,13 +533,23 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                         }
                     }
                 }
-            } catch (IllegalArgumentException e) {
-                Log.logStream().println("Error: " + e.getMessage());
-                if (forJavaMainCall) {
-                    System.exit(1);
-                } else {
-                    return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
-                }
+            } else {
+                /* Argument-less and older isolate entry points still require default logging. */
+                RuntimeOptionParser.parseAndConsumeAllOptionsDuringIsolateInitialization(new String[0], false);
+            }
+        } catch (IllegalArgumentException e) {
+            RuntimeOptionParser.abortLoggingInitialization();
+            Log.logStream().println("Error: " + e.getMessage());
+            /* Throwable cause graphs are not guaranteed to be acyclic. */
+            EconomicSet<Throwable> reported = EconomicSet.create(Equivalence.IDENTITY);
+            reported.add(e);
+            for (Throwable cause = e.getCause(); cause != null && reported.add(cause); cause = cause.getCause()) {
+                Log.logStream().println("Caused by: " + cause.getMessage());
+            }
+            if (forJavaMainCall) {
+                System.exit(1);
+            } else {
+                return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
             }
         }
 
@@ -547,6 +561,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         if (!success) {
+            RuntimeOptionParser.abortLoggingInitialization();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
@@ -564,6 +579,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             System.err.println("Uncaught exception while running isolate initialization hooks:");
             t.printStackTrace(System.err);
             // Checkstyle: disallow System.err
+            RuntimeOptionParser.abortLoggingInitialization();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
@@ -573,6 +589,18 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         } catch (Throwable t) {
             // Checkstyle: allow System.err (run time code expected to print to stderr)
             System.err.println("Uncaught exception in beforeThreadRun():");
+            t.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
+            RuntimeOptionParser.abortLoggingInitialization();
+            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+        }
+
+        try {
+            RuntimeOptionParser.completeLoggingInitialization();
+        } catch (Throwable t) {
+            RuntimeOptionParser.abortLoggingInitialization();
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
+            System.err.println("Uncaught exception while completing logging initialization:");
             t.printStackTrace(System.err);
             // Checkstyle: disallow System.err
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
