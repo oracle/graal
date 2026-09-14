@@ -87,6 +87,12 @@ final class WindowsLockingSupport implements PlatformLockingSupport {
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean tryLockMutex(PlatformMutex mutex) {
+        return Process.NoTransitions.TryEnterCriticalSection(asMutex(mutex)) != 0;
+    }
+
+    @Override
     @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockMutexNoTransition(PlatformMutex mutex) {
         Process.NoTransitions.EnterCriticalSection(asMutex(mutex));
