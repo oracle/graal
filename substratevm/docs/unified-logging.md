@@ -340,6 +340,39 @@ directory entry. This behavior is covered by the native logging tests. Windows
 uses platform file-sharing rules, so tests requiring unlinking an open file are
 restricted to POSIX platforms.
 
+### JFR integration
+
+JFR has two independent logging sinks. The standalone SVM JFR logger remains
+configured by `-XX:FlightRecorderLogging` and writes its established
+`[level][tag set] message` format through the low-level SVM log. Its destination
+therefore remains the low-level log destination, which is normally standard
+error and can be changed with `-XX:LogFile` or an embedding log callback.
+
+JFR records are also offered to unified logging. The
+`com.oracle.svm.core.logging.jfr.JfrUnifiedLogging` bridge maps
+`jdk.jfr.internal.LogTag` values to `LogTagSet` instances. A regular JFR record
+becomes one unified message, while a JFR event containing several lines becomes
+one atomic `LogMessage`. The unified copy is written only when its `jfr` tag set
+is enabled by `-Xlog`. When both configurations enable a record, one copy
+appears in each sink using that sink's format and destination.
+
+The JDK performs a fast enablement check through the volatile `tagSetLevel`
+field on each `jdk.jfr.internal.LogTag`. SVM publishes the most detailed level
+required by either sink into this field. Each sink then checks its own threshold
+again before writing, so a level enabled only by `FlightRecorderLogging` cannot
+leak into unified output and a level enabled only by `-Xlog` cannot leak into
+the standalone output. Configuration changes recompute the combined JDK threshold.
+`FlightRecorderLogging=disable` disables only the standalone sink, and
+`-Xlog:disable` disables only unified logging.
+
+The standalone sink preserves its existing low-level write and synchronization
+behavior. The unified copy follows the synchronization rules described below:
+stream and file writes are protected by destination `VMMutex` instances, while
+asynchronous outputs copy the event into the
+preallocated queue. The bridge objects, tag maps,
+and per-sink threshold arrays are created in the image heap when `-Xlog` is
+supported; bridge calls fold to no-ops when it is absent. Routing a successful
+JFR record through either or both sinks does not allocate on the Java heap.
 
 ## Comparison with HotSpot unified logging
 
@@ -361,7 +394,8 @@ SVM uses the same broad configuration model but a smaller runtime design:
 | Asynchronous buffering and locking | Native ping-pong buffers and producer and consumer synchronization protect the queue. | One native chunk contains a variable number of word-aligned raw records with inline bytes. Native ring state, `VMMutex` producer and consumer locks, and a `VMCondition` coordinate publication, waiting, consumption, flushing, and VM teardown. The daemon consumer waits in native state and is terminated before the chunk is freed at isolate destruction. |
 | Decoration state | Resolved event decorations can remain in asynchronous messages. | Event-only decorations live in fast thread-local state and are copied into each asynchronous queue record; line levels remain explicit per line or record. |
 | File rotation | Native C++ file streams and rotation locks. An existing active file is archived at startup when rotation is enabled. | Precomputed native paths, native byte counters, and raw close/delete/rename/reopen operations. An existing active file is truncated at startup regardless of rotation settings. The `%i` filename placeholder separates isolate-local rotation state into distinct operating-system paths. |
-| Allocation contract | Native C++ allocation rules apply. | Successful event processing is explicitly Java-heap allocation-free; native buffers may grow. |
+| JFR integration | JFR writes directly through HotSpot unified logging. | SVM preserves its standalone `FlightRecorderLogging` output and optionally emits a second copy through unified logging. |
+| Allocation contract | Native C++ allocation rules apply. | Successful event processing, including dual JFR routing, is explicitly Java-heap allocation-free; native buffers may grow. |
 
 SVM's design is optimized for a native image whose tag sets and output routing
 are known from startup configuration. It avoids dynamic reader reclamation in
@@ -376,5 +410,5 @@ The native JUnit coverage is in `UnifiedLoggingTest`. It can be run with:
 mx native-unittest com.oracle.svm.test.logging.UnifiedLoggingTest
 ```
 
-`JfrStandaloneLoggingTest` covers fallback GC logging in an image without
-`-Xlog` support.
+`JfrStandaloneLoggingTest` covers standalone JFR and fallback GC logging in an
+image without `-Xlog` support.
