@@ -34,6 +34,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
@@ -48,6 +49,10 @@ import com.oracle.svm.guest.staging.log.Log;
 ///
 /// Multi-line messages are logged by [#message]. See [LogMessage] for
 /// more details.
+///
+/// In an image without `-Xlog` support, the `gc` tag set can be routed to the low-level VM log by
+/// the legacy `VerboseGC` and `PrintGC` options. The same level predicates and message APIs apply
+/// to configured and fallback routes.
 ///
 /// @see LogTagSetGenerator
 public enum LogTagSet {
@@ -129,9 +134,15 @@ public enum LogTagSet {
             tags = Arrays.stream(derivedLabel.split("\\+")).map(LogTag::fromString).toList();
             tagSet = EnumSet.copyOf(tags);
         }
+        isGC = tagSet.contains(LogTag.gc);
     }
 
+    private final boolean isGC;
+
     public void writePrefix(Log log) {
+        if (isGC) {
+            Heap.getHeap().getGC().writeLogPrefix(this, log);
+        }
     }
 
     public String label() {
@@ -184,7 +195,7 @@ public enum LogTagSet {
         outputList.allowReaders();
     }
 
-    /// Returns whether `level` is enabled on any configured output.
+    /// Returns whether `level` is enabled on any configured or fallback output.
     public boolean isLevel(LogLevel level) {
         return outputList.isLevel(level);
     }
@@ -250,6 +261,11 @@ public enum LogTagSet {
          * synchronous write or asynchronous copy has released the output reference.
          */
         LogOutput[][] configuration = outputList.startReading();
+        if (configuration == null) {
+            /* A VM operation cannot wait for a reconfiguration thread stopped at its safepoint. */
+            LogConfiguration.writeVMOperationReconfigurationFallback(this, message);
+            return;
+        }
         try {
             LogOutput[] outputs = LogOutputList.outputsFor(configuration, message.getMostSevereLevel());
             LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();

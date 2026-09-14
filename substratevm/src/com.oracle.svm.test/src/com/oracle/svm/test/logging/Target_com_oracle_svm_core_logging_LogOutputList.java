@@ -33,6 +33,9 @@ import com.oracle.svm.core.logging.LogOutputList;
 /// Exposes package-private output-list operations to the native JUnit test.
 @TargetClass(LogOutputList.class)
 public final class Target_com_oracle_svm_core_logging_LogOutputList {
+    /// Aliases the flag used to stop new readers during a route transition.
+    @Alias public boolean readersBlocked;
+
     /// Sets the threshold for `output` to `level`.
     @Alias
     public native void setOutputLevel(LogOutput output, LogLevel level);

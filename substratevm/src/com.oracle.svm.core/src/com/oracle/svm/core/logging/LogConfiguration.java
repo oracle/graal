@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.logging;
 
+import static com.oracle.svm.core.logging.LogDecorators.Decorator.UPTIME;
 import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.STDERR;
 import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.STDOUT;
+import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.VMLOG;
 import static com.oracle.svm.core.logging.LogTagSet.logging;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -47,13 +49,16 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
 
-/// Owns the configuration for `-Xlog`. Runtime changes wait for active log sites and drain
-/// asynchronous records before mutable output state is replaced.
+/// Owns the configuration for `-Xlog` and the GC logging fallback used when that command line
+/// interface is unavailable. Runtime changes wait for active log sites and drain asynchronous
+/// records before mutable output state is replaced.
 public final class LogConfiguration {
     /// Preserves configuration insertion order for deterministic teardown and diagnostics.
     private static final List<LogFileOutput> OUTPUTS = new ArrayList<>();
@@ -61,6 +66,9 @@ public final class LogConfiguration {
     private static final LogFileStreamOutput stdout = new LogFileStreamOutput(STDOUT);
 
     private static final LogFileStreamOutput stderr = new LogFileStreamOutput(STDERR);
+
+    /// Redirects fallback logging to `Log.log()`. This output is not selectable through `-Xlog`.
+    private static final LogFileStreamOutput vmlog = new LogFileStreamOutput(VMLOG);
 
     /// Native host name.
     private static String hostname;
@@ -94,9 +102,13 @@ public final class LogConfiguration {
     /// Records whether startup option parsing and logging initialization have completed.
     private static volatile boolean initializationComplete;
 
+    /// Prevents the legacy GC option updates used for synchronization from reconfiguring logging.
+    private static volatile boolean synchronizingLegacyGCOptions;
+
     /// Counts VM operation log messages that required synchronous output because the async queue
     /// could not be used without blocking.
     private static final AtomicLong VM_OPERATION_SYNCHRONOUS_ENQUEUE_COUNT = new AtomicLong();
+
     private LogConfiguration() {
     }
 
@@ -115,6 +127,10 @@ public final class LogConfiguration {
             stdout.updateConfigString();
             stderr.updateConfigString();
 
+            LogLevel legacyLevel = legacyGCLogLevel();
+            if (legacyLevel != LogLevel.OFF) {
+                updateGCLoggingLocked(legacyLevel);
+            }
         }
     }
 
@@ -252,13 +268,15 @@ public final class LogConfiguration {
             }
         }
         output.updateConfigString();
+        synchronizeLegacyGCOptions();
         if (initializationComplete) {
             initializeAsyncWriter();
         }
     }
 
-    /// Completes logging startup once by starting requested asynchronous output, emitting
-    /// initialization diagnostics, and registering teardown when `-Xlog` is supported.
+    /// Completes logging startup once. When `-Xlog` is supported, this starts requested
+    /// asynchronous output, emits initialization diagnostics, and registers teardown. Otherwise it
+    /// installs the legacy GC logging fallback.
     public static synchronized void logInitializationComplete() {
         if (initializationComplete) {
             return;
@@ -289,8 +307,113 @@ public final class LogConfiguration {
                 }
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.tearDownLogging());
+        } else {
+            /*
+             * Do the equivalent of -Xlog:gc=[debug|info]:vmlog:uptime
+             * if VerboseGC or PrintGC is enabled.
+             */
+            LogLevel level = SubstrateGCOptions.VerboseGC.getValue() ? LogLevel.DEBUG : //
+                            SubstrateGCOptions.PrintGC.getValue() ? LogLevel.INFO : null;
+            if (level != null) {
+                updateGCLogging(level);
+            }
         }
         initializationComplete = true;
+    }
+
+    /// Sets the GC logging threshold to `level` on standard output when `-Xlog` is supported, or on
+    /// the low-level VM log otherwise. The fallback preserves the uptime-only decoration used by
+    /// legacy `VerboseGC` and `PrintGC` output.
+    public static void updateGCLogging(LogLevel level) {
+        VMOperation.guaranteeNotInProgress("Cannot reconfigure GC logging within a VM operation.");
+        synchronized (LogConfiguration.class) {
+            updateGCLoggingLocked(level);
+        }
+    }
+
+    /// Updates the GC threshold while holding the configuration monitor.
+    private static void updateGCLoggingLocked(LogLevel level) {
+        boolean hasXlogSupport = HasXlogSupport.get();
+        LogOutput output = hasXlogSupport ? stdout : vmlog;
+        registerAsyncOutput(output);
+        LogDecorators decorators = !hasXlogSupport && level != LogLevel.OFF ? new LogDecorators(UPTIME.bit()) : output.decorators();
+        if (level != LogLevel.OFF) {
+            /* A concurrent log site can safely observe either side of the transition. */
+            LogTagSet.gc.updateDecorators(output.decorators().union(decorators));
+        }
+        /* Publish the formatting state before making a newly enabled output visible. */
+        output.setDecorators(decorators);
+        LogTagSet.gc.outputList().setOutputLevel(output, level);
+        LogTagSet.gc.waitUntilNoReaders();
+        try {
+            drainAsyncWriter();
+            LogTagSet.gc.updateDecorators();
+        } finally {
+            LogTagSet.gc.allowReaders();
+        }
+        if (hasXlogSupport) {
+            stdout.updateConfigString();
+        }
+        synchronizeLegacyGCOptions();
+        if (initializationComplete) {
+            initializeAsyncWriter();
+        }
+    }
+
+    /// Applies a direct update of `PrintGC` or `VerboseGC` to the GC log configuration.
+    public static void legacyGCOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
+        if (key != SubstrateGCOptions.PrintGC && key != SubstrateGCOptions.VerboseGC) {
+            return;
+        }
+        VMOperation.guaranteeNotInProgress("Cannot reconfigure GC logging within a VM operation.");
+        synchronized (LogConfiguration.class) {
+            if (!synchronizingLegacyGCOptions) {
+                LogLevel level;
+                if (key == SubstrateGCOptions.PrintGC && !SubstrateGCOptions.PrintGC.getValue()) {
+                    level = LogLevel.OFF;
+                } else {
+                    level = legacyGCLogLevel();
+                }
+                updateGCLoggingLocked(level);
+            }
+        }
+    }
+
+    /// Returns whether `key` is a direct runtime legacy GC update that the collector must observe.
+    /// During startup the native G1 argument parser has already processed the complete command
+    /// line, and synchronization from `-Xlog` must not replace that richer configuration.
+    public static boolean shouldForwardLegacyGCOptionToHeap(NotifyGCRuntimeOptionKey<?> key) {
+        boolean legacyLoggingOption = key == SubstrateGCOptions.PrintGC || key == SubstrateGCOptions.VerboseGC;
+        return !legacyLoggingOption || initializationComplete && !synchronizingLegacyGCOptions;
+    }
+
+    /// Derives the GC threshold represented by the legacy options.
+    private static LogLevel legacyGCLogLevel() {
+        return SubstrateGCOptions.VerboseGC.getValue() ? LogLevel.DEBUG : SubstrateGCOptions.PrintGC.getValue() ? LogLevel.INFO : LogLevel.OFF;
+    }
+
+    /// Mirrors the GC threshold on its legacy option compatibility surface.
+    private static void synchronizeLegacyGCOptions() {
+        LogOutput output = HasXlogSupport.get() ? stdout : vmlog;
+        LogLevel level = LogTagSet.gc.outputList().levelFor(output);
+        synchronizingLegacyGCOptions = true;
+        try {
+            if (SubstrateGCOptions.PrintGC.getValue() != level.enables(LogLevel.INFO)) {
+                SubstrateGCOptions.PrintGC.update(level.enables(LogLevel.INFO));
+            }
+            if (SubstrateGCOptions.VerboseGC.getValue() != level.enables(LogLevel.DEBUG)) {
+                SubstrateGCOptions.VerboseGC.update(level.enables(LogLevel.DEBUG));
+            }
+        } finally {
+            synchronizingLegacyGCOptions = false;
+        }
+    }
+
+    /// Preserves a VM operation diagnostic when route reconfiguration has blocked normal readers.
+    /// The low-level VM log remains available without retaining mutable unified logging state.
+    static void writeVMOperationReconfigurationFallback(LogTagSet tagSet, LogMessage message) {
+        LogDecorations decorations = LogDecorations.capture(LogDecorators.DEFAULT);
+        vmlog.write(tagSet, decorations, message, LogLevel.TRACE);
     }
 
     /// Flushes asynchronous records, reports fallback statistics, and removes every output
@@ -337,6 +460,7 @@ public final class LogConfiguration {
         }
         stdout.updateConfigString();
         stderr.updateConfigString();
+        synchronizeLegacyGCOptions();
         if (resetAsyncRequest) {
             asyncRequested = false;
         }

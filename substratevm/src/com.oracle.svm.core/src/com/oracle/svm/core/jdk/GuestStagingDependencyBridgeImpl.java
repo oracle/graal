@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -46,6 +47,7 @@ import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogConfiguration;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
@@ -94,7 +96,10 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
-        Heap.getHeap().optionValueChanged(key);
+        LogConfiguration.legacyGCOptionValueChanged(key);
+        if (LogConfiguration.shouldForwardLegacyGCOptionToHeap(key)) {
+            Heap.getHeap().optionValueChanged(key);
+        }
     }
 
     @Override
@@ -150,7 +155,9 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void abortLoggingInitialization() {
-        LogConfiguration.abortInitialization();
+        if (HasXlogSupport.get()) {
+            LogConfiguration.abortInitialization();
+        }
     }
 
     @Override
@@ -241,17 +248,46 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void endOfParsing() {
         LogConfiguration.logInitializationComplete();
-        maybeReportImageClasses();
+        if (HasXlogSupport.get()) {
+            maybeReportImageClasses();
+        }
     }
 
     private static void maybeReportImageClasses() {
-        if (RuntimeClassLoading.isSupported() && RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
+        boolean logClassLoad = LogTagSet.class_load_image.isInfo();
+        boolean logModuleLoad = LogTagSet.module_load_image.isInfo();
+        if (logClassLoad || logModuleLoad) {
+            EconomicSet<Module> reportedModules = EconomicSet.create();
+            if (logModuleLoad) {
+                /*
+                 * Logging initialization completes while parsing options, before the startup hook
+                 * augments the boot layer with modules from the runtime module path. The boot layer
+                 * therefore still contains exactly the modules included in the image here.
+                 */
+                for (Module module : ModuleLayer.boot().modules()) {
+                    reportImageModule(module, reportedModules);
+                }
+            }
             Heap.getHeap().visitLoadedClasses((cls) -> {
                 DynamicHub hub = DynamicHub.fromClass(cls);
                 if (!hub.isArray() && !hub.isPrimitive()) {
-                    Log.log().string(AbstractRuntimeClassRegistry.traceMessage(hub.getName(), hub.getClassLoader(), null, "load", "image")).newline();
+                    if (logClassLoad) {
+                        ClassLoader loader = hub.getClassLoader();
+                        AbstractRuntimeClassRegistry.traceMessage(LogTagSet.class_load_image, hub.getName(), loader, null, "image");
+                    }
+                    if (logModuleLoad) {
+                        reportImageModule(hub.getModule(), reportedModules);
+                    }
                 }
             });
+        }
+    }
+
+    /// Reports `module` once if it is named.
+    private static void reportImageModule(Module module, EconomicSet<Module> reportedModules) {
+        String moduleName = ModuleNative.getName(module);
+        if (moduleName != null && reportedModules.add(module)) {
+            LogTagSet.module_load_image.info(moduleName + " location: image");
         }
     }
 

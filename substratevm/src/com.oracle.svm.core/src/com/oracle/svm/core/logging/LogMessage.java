@@ -37,7 +37,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.VMError;
 
 /// Represents a multi-line logging scope that does not allocate on the Java heap and whose lines
-/// are committed as one event to configured logging outputs.
+/// are committed as one event to either configured `-Xlog` outputs or a legacy fallback route.
 ///
 /// Each [LogTagSet] has one shared facade, while mutable message bytes, line metadata, and event
 /// decorations are owned by the current carrier thread. A carrier thread may have only one open
