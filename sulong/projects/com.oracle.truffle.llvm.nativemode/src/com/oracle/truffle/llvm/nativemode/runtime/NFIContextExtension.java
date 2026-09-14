@@ -65,7 +65,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -369,25 +371,46 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
-    public static String getNativeLibrarySuffix() {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            return "dylib";
-        } else {
-            return "so";
+    /**
+     * Default flags for loading a native library, mirroring what the POSIX dynamic loader does for
+     * free.
+     * <p>
+     * On POSIX a library's own dependencies are resolved using the RPATH/RUNPATH recorded in it
+     * (commonly {@code $ORIGIN}), so a library that sits in a directory alongside its siblings
+     * loads without any help from us. Windows has no equivalent: with {@code dwFlags == 0},
+     * {@code LoadLibraryEx} resolves dependencies against the standard search order, which does
+     * <em>not</em> include the directory of the DLL being loaded. A library such as Intel MKL,
+     * whose entry point DLL pulls in siblings from its own directory, therefore fails to load on
+     * Windows while loading fine on Linux.
+     * <p>
+     * {@code LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR} adds the loaded DLL's own directory to the search
+     * for its dependencies, the closest equivalent to {@code $ORIGIN}, while
+     * {@code LOAD_LIBRARY_SEARCH_DEFAULT_DIRS} keeps the system and user directories in play.
+     * Deliberately not {@code LOAD_WITH_ALTERED_SEARCH_PATH}: that is the legacy scheme, and it
+     * puts the process working directory on the dependency search path, which is a DLL planting
+     * vector. These flags require a fully qualified path, so a relative one is left to the
+     * platform default.
+     *
+     * @return the NFI flag expression to use, or {@code null} for the platform default
+     */
+    private static String defaultLoadFlags(String path) {
+        if (!NativeContextExtension.isWindows()) {
+            return null;
         }
-    }
-
-    public static String getNativeLibrarySuffixVersioned(int version) {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-            return version + ".dylib";
-        } else {
-            return "so." + version;
+        try {
+            if (!Paths.get(path).isAbsolute()) {
+                return null;
+            }
+        } catch (InvalidPathException e) {
+            // not something we can reason about, let the loader produce the error
+            return null;
         }
+        return "LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS";
     }
 
     private Object loadLibrary(String path, LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return loadLibrary(path, false, null, context);
+        return loadLibrary(path, false, defaultLoadFlags(path), context);
     }
 
     private Object loadLibrary(String path, boolean optional, String flags, LLVMContext context) {
