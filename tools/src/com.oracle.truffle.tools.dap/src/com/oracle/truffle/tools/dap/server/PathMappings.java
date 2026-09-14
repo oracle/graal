@@ -113,10 +113,26 @@ final class PathMappings {
     }
 
     private static boolean matchesRoot(String path, String root) {
-        if (!path.startsWith(root)) {
+        if (isWindowsRoot(root)) {
+            // The client and runtime may use different operating systems. Normalize only for
+            // comparison, preserving the configured target root and the suffix's case.
+            String normalizedPath = path.replace('\\', '/');
+            String normalizedRoot = root.replace('\\', '/');
+            if (!normalizedPath.regionMatches(true, 0, normalizedRoot, 0, root.length())) {
+                return false;
+            }
+        } else if (!path.startsWith(root)) {
             return false;
         }
         return path.length() == root.length() || isSeparator(root.charAt(root.length() - 1)) || isSeparator(path.charAt(root.length()));
+    }
+
+    private static boolean isWindowsRoot(String root) {
+        if (root.length() >= 3 && root.charAt(1) == ':' && isSeparator(root.charAt(2))) {
+            char drive = root.charAt(0);
+            return drive >= 'A' && drive <= 'Z' || drive >= 'a' && drive <= 'z';
+        }
+        return root.startsWith("\\\\") || root.startsWith("//");
     }
 
     private static String replaceRoot(String path, String sourceRoot, String targetRoot, char targetSeparator) {

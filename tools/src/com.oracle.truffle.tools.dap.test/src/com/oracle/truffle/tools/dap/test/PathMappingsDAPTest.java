@@ -70,6 +70,15 @@ public class PathMappingsDAPTest {
     }
 
     @Test
+    public void testWindowsClientPaths() throws Exception {
+        Path runtimeRoot = Files.createTempDirectory("dap-runtime").toRealPath();
+        Path sourceFile = writeSource(runtimeRoot);
+        String clientRoot = "C:\\Work\\Project";
+        JSONObject configuration = new JSONObject().put("localRoot", clientRoot).put("remoteRoot", runtimeRoot.toString());
+        testMappedSource("attach", configuration, sourceFile, "c:/work/PROJECT/" + sourceFile.getFileName(), clientRoot + "\\" + sourceFile.getFileName());
+    }
+
+    @Test
     public void testUnmappedSourceUsesSourceReference() throws Exception {
         Path runtimeRoot = Files.createTempDirectory("dap-runtime").toRealPath();
         Path mappedRuntimeRoot = Files.createTempDirectory("dap-mapped-runtime").toRealPath();
@@ -253,6 +262,10 @@ public class PathMappingsDAPTest {
     }
 
     private static void testMappedSource(String lifecycleRequest, JSONObject configuration, Path sourceFile, String clientPath) throws Exception {
+        testMappedSource(lifecycleRequest, configuration, sourceFile, clientPath, clientPath);
+    }
+
+    private static void testMappedSource(String lifecycleRequest, JSONObject configuration, Path sourceFile, String clientRequestPath, String clientPath) throws Exception {
         Source source = Source.newBuilder("sl", sourceFile.toFile()).build();
         DAPTester tester = DAPTester.start(false);
         initialize(tester);
@@ -262,7 +275,7 @@ public class PathMappingsDAPTest {
         send(tester, lifecycleRequest, lifecycleArguments, 2);
         assertLifecycleResponse(tester, lifecycleRequest);
 
-        JSONObject dapSource = new JSONObject().put("name", sourceFile.getFileName().toString()).put("path", clientPath);
+        JSONObject dapSource = new JSONObject().put("name", sourceFile.getFileName().toString()).put("path", clientRequestPath);
         JSONObject breakpointArguments = new JSONObject().put("source", dapSource).put("lines", new JSONArray().put(2)).put("breakpoints", new JSONArray().put(new JSONObject().put("line", 2)));
         send(tester, "setBreakpoints", breakpointArguments, 3);
         JSONObject breakpointsResponse = receive(tester);

@@ -141,6 +141,10 @@ For a single direct mapping, set `localRoot` and `remoteRoot` at the top level:
 The server translates client-local paths to runtime paths for path-based breakpoint, breakpoint-location, and source requests.
 It translates runtime paths to client-local paths in loaded-source events, loaded-source responses, and stack traces.
 Trailing path separators do not affect matching.
+Windows drive-letter roots (such as `C:\work`) and Universal Naming Convention (UNC) roots (such as `\\server\share` or `//server/share`) match without regard to case.
+For these roots, `/` and `\` are interchangeable separators.
+The server recognizes Windows syntax independently on each side of a mapping, regardless of its own operating system.
+Other roots remain case-sensitive.
 A root matches either the complete path or a whole directory prefix, so `/opt/app` does not match `/opt/application`.
 When multiple roots match, the longest root takes precedence.
 You can combine `pathMappings` with the top-level `localRoot` and `remoteRoot` pair.
