@@ -30,7 +30,7 @@ import com.oracle.svm.core.logging.LogThreadLocal;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
-/// Registers per-thread initialization and cleanup for logging state.
+/// Registers per-thread initialization and cleanup for configured and fallback logging state.
 @AutomaticallyRegisteredFeature
 public final class UnifiedLoggingFeature implements InternalFeature {
     @Override

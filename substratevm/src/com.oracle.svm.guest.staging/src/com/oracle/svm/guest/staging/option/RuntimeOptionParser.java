@@ -433,7 +433,7 @@ public final class RuntimeOptionParser {
                 }
                 continue;
             }
-            if (parseProperty(arg, context) ||
+            if (parseProperty(arg, context) || parseLegacyGCOption(arg) ||
                             (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
                                             parseVerifyOption(arg) ||
@@ -472,6 +472,16 @@ public final class RuntimeOptionParser {
         }
         GuestStagingDependencyBridge.singleton().setVerifyMode(mode);
         return true;
+    }
+
+    /// Applies legacy GC options in command-line order with `-Xlog` selections.
+    private static boolean parseLegacyGCOption(String arg) {
+        if (arg.equals("-XX:+PrintGC") || arg.equals("-XX:-PrintGC") || arg.equals("-XX:+VerboseGC") || arg.equals("-XX:-VerboseGC")) {
+            String[] remaining = singleton().parse(new String[]{arg}, false);
+            assert remaining.length == 0;
+            return true;
+        }
+        return false;
     }
 
     /// Initializes system properties collected from recognized Java VM options.

@@ -27,6 +27,8 @@ package com.oracle.svm.core.logging;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.svm.core.thread.VMOperation;
+
 /// Tracks the destinations configured for one tag set.
 ///
 /// The `outputsByLevel` array is indexed by message level. Each entry contains the
@@ -126,10 +128,15 @@ public final class LogOutputList {
         return outputsByLevel[level.ordinal()];
     }
 
-    /// Starts a lock-free read and returns one coherent routing snapshot.
+    /// Starts a lock-free read and returns one coherent routing snapshot. A VM operation returns
+    /// `null` when reconfiguration has blocked readers because the thread that must unblock them
+    /// may be stopped at the VM operation's safepoint.
     LogOutput[][] startReading() {
         for (;;) {
             while (readersBlocked) {
+                if (VMOperation.isInProgress()) {
+                    return null;
+                }
                 Thread.onSpinWait();
             }
             activeReaders.incrementAndGet();

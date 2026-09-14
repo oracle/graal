@@ -113,6 +113,11 @@ public final class LogDecorations {
 
     /// Writes one decorator value for `level` from this event record to `target`.
     public void value(LogDecorators.Decorator decorator, LogLevel level, NativeMemoryLog target) {
+        if (!HasXlogSupport.get()) {
+            VMError.guarantee(decorator == UPTIME, "Only uptime is supported (for PrintGC and VerboseGC) when -Xlog is not supported");
+            writeRoundedUptime(target, uptimeNanos());
+            return;
+        }
         switch (decorator) {
             case TIME -> {
                 long value = systemMillis();
