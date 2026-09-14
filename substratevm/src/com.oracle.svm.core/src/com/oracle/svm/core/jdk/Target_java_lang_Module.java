@@ -85,7 +85,7 @@ public final class Target_java_lang_Module {
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/hotspot/share/classfile/modules.cpp#L279-L474")
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
-        ModuleNative.defineModule(module, isOpen, pns);
+        ModuleNative.defineModule(module, location, isOpen, pns);
     }
 
     @Substitute
