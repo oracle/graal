@@ -27,12 +27,14 @@ package com.oracle.svm.core.logging;
 import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.STDERR;
 import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.STDOUT;
 import static com.oracle.svm.core.logging.LogTagSet.logging;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,10 +49,11 @@ import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
 
-/// Owns the configuration for `-Xlog`. Runtime changes wait for active log sites before mutable
-/// output state is replaced.
+/// Owns the configuration for `-Xlog`. Runtime changes wait for active log sites and drain
+/// asynchronous records before mutable output state is replaced.
 public final class LogConfiguration {
     /// Preserves configuration insertion order for deterministic teardown and diagnostics.
     private static final List<LogFileOutput> OUTPUTS = new ArrayList<>();
@@ -68,9 +71,32 @@ public final class LogConfiguration {
     /// Local startup timestamp used for every `%t` filename expansion.
     private static String startupTimestamp;
 
+    /// Producer-facing publication and enabled state of asynchronous logging. Log sites enqueue
+    /// only while this field is non-null. Deactivation clears it before draining so that no new
+    /// producer can enter the queue while existing records are written.
+    private static volatile LogAsyncWriter asyncWriter;
+
+    /// Operational lifetime reference to the sole asynchronous writer created by the VM. Its
+    /// daemon consumer must still access the queue after [#asyncWriter] has been cleared to stop new
+    /// producers, so the writer's identity cannot be represented by that producer-facing field.
+    /// Ordinary deactivation retains this reference so that a later activation can reuse the same
+    /// writer and daemon. Failed startup clears it after terminating the daemon. VM teardown also
+    /// terminates the daemon because an embedded VM must detach it before destroying its isolate.
+    private static volatile LogAsyncWriter asyncWriterInstance;
+
+    /// If true, async logging stalls on a full queue.
+    /// If false, async logging drops messages on a full queue.
+    private static boolean asyncStall;
+
+    /// Records whether asynchronous output was requested.
+    private static volatile boolean asyncRequested;
+
     /// Records whether startup option parsing and logging initialization have completed.
     private static volatile boolean initializationComplete;
 
+    /// Counts VM operation log messages that required synchronous output because the async queue
+    /// could not be used without blocking.
+    private static final AtomicLong VM_OPERATION_SYNCHRONOUS_ENQUEUE_COUNT = new AtomicLong();
     private LogConfiguration() {
     }
 
@@ -146,8 +172,12 @@ public final class LogConfiguration {
             stdout.writePlain(HELP);
             return true;
         }
+        if (options.equals("async") || options.startsWith("async:")) {
+            configureAsync(options);
+            return true;
+        }
         if (options.equals("disable")) {
-            disableLoggingLocked();
+            disableLoggingLocked(false);
             return true;
         }
 
@@ -183,6 +213,7 @@ public final class LogConfiguration {
 
     /// Applies `selections` and `decorators` to `output` while preserving concurrent log records.
     private static void configureOutput(LogSelectionList selections, LogOutput output, LogDecorators decorators) {
+        registerAsyncOutput(output);
         LogDecorators transitionDecorators = output.decorators().union(decorators);
         boolean[] affectedTagSets = new boolean[LogTagSet.VALUES.length];
         for (LogTagSet tagSet : LogTagSet.VALUES) {
@@ -201,6 +232,7 @@ public final class LogConfiguration {
             }
         }
         try {
+            drainAsyncWriter();
             output.setDecorators(decorators);
             for (LogTagSet tagSet : LogTagSet.VALUES) {
                 if (affectedTagSets[tagSet.ordinal()]) {
@@ -220,10 +252,13 @@ public final class LogConfiguration {
             }
         }
         output.updateConfigString();
+        if (initializationComplete) {
+            initializeAsyncWriter();
+        }
     }
 
-    /// Completes logging startup once by emitting initialization diagnostics and registering
-    /// teardown when `-Xlog` is supported.
+    /// Completes logging startup once by starting requested asynchronous output, emitting
+    /// initialization diagnostics, and registering teardown when `-Xlog` is supported.
     public static synchronized void logInitializationComplete() {
         if (initializationComplete) {
             return;
@@ -234,6 +269,7 @@ public final class LogConfiguration {
                 warn("Class load cause logging will not produce output without LogClassLoadingCauseFor.");
             }
 
+            initializeAsyncWriter();
             if (logging.isInfo()) {
                 logging.info("Log configuration fully initialized.");
                 for (String desc : AVAILABLE_DESCRIPTIONS) {
@@ -257,13 +293,14 @@ public final class LogConfiguration {
         initializationComplete = true;
     }
 
-    /// Removes every output configuration.
+    /// Flushes asynchronous records, reports fallback statistics, and removes every output
+    /// configuration.
     public static void disableLogging() {
         // VMOperations must not block which make them incompatible
         // with the locking done while disabling logging.
         VMOperation.guaranteeNotInProgress("Cannot disable logging within a VM operation.");
         synchronized (LogConfiguration.class) {
-            disableLoggingLocked();
+            disableLoggingLocked(true);
         }
     }
 
@@ -271,13 +308,19 @@ public final class LogConfiguration {
     public static void abortInitialization() {
         VMOperation.guaranteeNotInProgress("Cannot abort logging initialization within a VM operation.");
         synchronized (LogConfiguration.class) {
-            disableLoggingLocked();
+            disableLoggingLocked(true);
             initializationComplete = false;
+            if (asyncWriterInstance != null) {
+                asyncWriterInstance.shutdown();
+                asyncWriterInstance = null;
+            }
         }
     }
 
     /// Disables all outputs while holding the configuration monitor.
-    private static void disableLoggingLocked() {
+    private static void disableLoggingLocked(boolean resetAsyncRequest) {
+        flushAsyncWriter();
+        reportSynchronousEnqueuesFromVMOperations();
         for (LogTagSet tagSet : LogTagSet.values()) {
             tagSet.outputList().clear();
         }
@@ -294,6 +337,9 @@ public final class LogConfiguration {
         }
         stdout.updateConfigString();
         stderr.updateConfigString();
+        if (resetAsyncRequest) {
+            asyncRequested = false;
+        }
         for (LogOutput output : OUTPUTS) {
             output.close();
         }
@@ -302,10 +348,101 @@ public final class LogConfiguration {
         stderr.close();
     }
 
-    /// Disables logging and releases file outputs before isolate teardown.
+    /// Disables logging and terminates the VM-lifetime asynchronous consumer before isolate
+    /// teardown waits for attached threads to exit.
     private static void tearDownLogging() {
         synchronized (LogConfiguration.class) {
-            disableLoggingLocked();
+            disableLoggingLocked(true);
+            if (asyncWriterInstance != null) {
+                asyncWriterInstance.shutdown();
+            }
+        }
+    }
+
+    /// Gets the active writer used to route log records asynchronously.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static LogAsyncWriter asyncWriter() {
+        return asyncWriter;
+    }
+
+    /// Gets the operational writer retained across ordinary asynchronous logging deactivation.
+    static LogAsyncWriter asyncWriterInstance() {
+        return asyncWriterInstance;
+    }
+
+    /// Parses the optional asynchronous logging mode from `options`.
+    private static void configureAsync(String options) {
+        if (!LogAsyncWriter.isSupported()) {
+            throw new IllegalArgumentException("Asynchronous logging requires VM internal threads, which are disabled by -H:-AllowVMInternalThreads.");
+        }
+        String mode = options.length() == "async".length() ? "drop" : options.substring("async:".length());
+        if (!mode.equals("drop") && !mode.equals("stall")) {
+            throw new IllegalArgumentException("Invalid async logging mode '" + mode + "'. Expected 'drop' or 'stall'.");
+        }
+        asyncStall = mode.equals("stall");
+        asyncRequested = true;
+        if (initializationComplete) {
+            /* Reactivation applies a changed drop or stall policy to the existing consumer. */
+            flushAsyncWriter();
+            initializeAsyncWriter();
+        }
+    }
+
+    /// Starts or reactivates asynchronous output after the current configuration is ready.
+    private static void initializeAsyncWriter() {
+        if (asyncRequested && asyncWriter == null) {
+            boolean startWriter = false;
+            if (asyncWriterInstance == null) {
+                asyncWriterInstance = new LogAsyncWriter();
+                startWriter = true;
+            }
+            for (LogTagSet tagSet : LogTagSet.VALUES) {
+                for (LogOutput output : tagSet.outputList().outputsFor(LogLevel.ERROR)) {
+                    asyncWriterInstance.registerOutput(output);
+                }
+            }
+            if (startWriter) {
+                try {
+                    asyncWriterInstance.start();
+                } catch (RuntimeException | Error throwable) {
+                    asyncWriterInstance.shutdown();
+                    asyncWriterInstance = null;
+                    throw throwable;
+                }
+            }
+            asyncWriterInstance.activate(asyncStall);
+            asyncWriter = asyncWriterInstance;
+        }
+    }
+
+    /// Returns whether thread-start listeners should install asynchronous logging state.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean isAsyncLoggingRequested() {
+        return asyncRequested;
+    }
+
+    /// Registers a destination before an active asynchronous route can publish its slot.
+    private static void registerAsyncOutput(LogOutput output) {
+        LogAsyncWriter writer = asyncWriter;
+        if (writer != null) {
+            writer.registerOutput(output);
+        }
+    }
+
+    /// Drains records that precede a runtime configuration change without disabling async output.
+    private static void drainAsyncWriter() {
+        LogAsyncWriter writer = asyncWriter;
+        if (writer != null) {
+            LogAsyncWriter.flush();
+        }
+    }
+
+    /// Stops publication and drains the writer before configured outputs are closed or reused.
+    private static void flushAsyncWriter() {
+        LogAsyncWriter writer = asyncWriter;
+        if (writer != null) {
+            asyncWriter = null;
+            writer.deactivateAndFlush();
         }
     }
 
@@ -313,6 +450,25 @@ public final class LogConfiguration {
     private static void waitUntilNoReaders() {
         for (LogTagSet tagSet : LogTagSet.VALUES) {
             tagSet.waitUntilNoReaders();
+        }
+    }
+
+    /// Records a VM operation log message that required synchronous output.
+    static void recordSynchronousEnqueueFromVMOperation() {
+        VM_OPERATION_SYNCHRONOUS_ENQUEUE_COUNT.incrementAndGet();
+    }
+
+    /// Reports and resets the number of VM operation log messages that required synchronous output
+    /// because the asynchronous queue could not be used without blocking.
+    private static void reportSynchronousEnqueuesFromVMOperations() {
+        long count = VM_OPERATION_SYNCHRONOUS_ENQUEUE_COUNT.getAndSet(0);
+        if (count != 0 && logging.isDebug()) {
+            LogMessage message = logging.message();
+            try {
+                message.debug().string("VM operation log messages that used synchronous mode because the asynchronous queue was unavailable: ").unsigned(count);
+            } finally {
+                message.close();
+            }
         }
     }
 
@@ -518,6 +674,13 @@ public final class LogConfiguration {
                  filesize=..       - Target byte size for log rotation (supports K/M/G suffix). If set to 0, log rotation is disabled.
                  filecount=..      - Number of files to keep in rotation (not counting the active file). If set to 0, log rotation is disabled. The active file is overwritten when logging starts.
 
+                Asynchronous logging (off by default):
+                 -Xlog:async[:[mode]]
+                  Log messages are written to an intermediate buffer first and will then be flushed to the corresponding log outputs by a standalone thread.
+                 Messages produced by VM operations use synchronous output when they cannot enqueue without blocking.
+                 A mode, either 'drop' or 'stall', may be provided. If 'drop' is provided then messages will be dropped if there is no room in the intermediate buffer.
+                 If 'stall' is provided then the log operation will wait for room to be made by the output thread, without dropping any messages. The default mode is 'drop'.
+
                 Some examples:
                  -Xlog
                         Log all messages up to 'info' level to stdout with 'uptime', 'level' and 'tags' decorations.
@@ -552,6 +715,9 @@ public final class LogConfiguration {
                         Turn off all logging, including warnings and errors,
                         and then enable messages tagged with 'safepoint' up to 'trace' level to file 'safepointtrace.txt'.
 
+                 -Xlog:async -Xlog:gc=debug:file=gc.log -Xlog:safepoint=trace
+                        Write logs asynchronously. Enable messages tagged with 'safepoint' up to 'trace' level to stdout
+                        and messages tagged with 'gc' up to 'debug' level to file 'gc.log'.
                 """;
         // @formatter:on
     }

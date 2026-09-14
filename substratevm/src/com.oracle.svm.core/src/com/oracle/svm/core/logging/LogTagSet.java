@@ -34,6 +34,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 
@@ -246,15 +247,23 @@ public enum LogTagSet {
     void write(LogMessage message) {
         /*
          * The reader scope starts before decorations are captured and remains active until every
-         * synchronous write has released the output reference.
+         * synchronous write or asynchronous copy has released the output reference.
          */
         LogOutput[][] configuration = outputList.startReading();
         try {
             LogOutput[] outputs = LogOutputList.outputsFor(configuration, message.getMostSevereLevel());
+            LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
             LogDecorations decorations = LogDecorations.capture(decorators);
+            boolean recordedVMOperationFallback = false;
             for (LogOutput output : outputs) {
                 LogLevel outputLevel = LogOutputList.levelFor(configuration, output);
-                output.write(this, decorations, message, outputLevel);
+                if (asyncWriter == null || !asyncWriter.enqueue(output, decorations, message, outputLevel)) {
+                    if (asyncWriter != null && VMOperation.isInProgress() && !recordedVMOperationFallback) {
+                        LogConfiguration.recordSynchronousEnqueueFromVMOperation();
+                        recordedVMOperationFallback = true;
+                    }
+                    output.write(this, decorations, message, outputLevel);
+                }
             }
         } finally {
             outputList.endReading();

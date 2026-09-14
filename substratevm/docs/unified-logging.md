@@ -1,55 +1,359 @@
 # Unified logging in Substrate VM
 
 This document describes the unified logging implementation in Substrate VM
-(SVM). SVM follows the HotSpot `-Xlog` model for selections, levels, stream
-outputs, decorators, and multiline messages, while using precomputed tables and
-native buffers suitable for a native image.
+(SVM). SVM follows the HotSpot `-Xlog` model for selections, levels, outputs,
+decorators, multiline messages, file rotation, and asynchronous logging, but
+implements the runtime path with precomputed tables and native buffers suitable
+for a native image.
 
 ## Using unified logging
 
-SVM accepts the familiar HotSpot `-Xlog` syntax. `-Xlog:help` lists the tag sets
-available in a particular native image. The command line interface is included
-when `StrictRuntimeJavaOptions` is enabled.
+SVM accepts the familiar HotSpot `-Xlog` syntax, so [JEP 158](https://openjdk.org/jeps/158)
+is a useful introduction from the user's perspective. SVM only instantiates tag
+sets used by its runtime. `-Xlog:help` is the authoritative list for a
+particular native image; a tag that is not listed cannot be selected.
+
+The `-Xlog` command line interface is included when
+`StrictRuntimeJavaOptions` is enabled.
 
 ## Writing log messages
 
-`LogTagSet` provides level-specific methods and a `LogMessage` scope for
-multiline events. The message bytes, line metadata, and decorations live in
-native thread-local storage. Closing a message routes it to every enabled output
-and preserves line order while applying each output's threshold.
+`LogTagSet` provides level-specific methods such as `debug`, `info`, `warning`,
+and `error`. An enabled single-line log message uses the tag set's shared
+`LogMessage` to record one line and then commits it.
 
-Stream outputs format a complete event before entering an uninterruptible
-critical section that serializes the no-transition native write. A blocked
-stdout or stderr write can therefore delay a safepoint. HotSpot has the same
-external I/O limitation when synchronous logging runs on its VM operation
-thread.
+The level predicates and message APIs use the same output table for configured
+`-Xlog` routes.
 
-## Configuration and allocation
+For multi-line events (e.g., logging a stack trace), `LogTagSet.message()` returns
+a shared facade for the tag set, while the mutable message bytes, line metadata, and event decorations live
+in fast thread-local native state. A carrier thread may have only one open
+message scope, including an empty scope; nested scopes across tag sets are
+rejected. Each line can have its own level. On close, the complete message is
+routed to every output enabled by its most severe line. Each output's threshold
+then filters individual lines while preserving their order.
 
-Configuration publishes immutable per-level output arrays. `mostDetailedLevel`
-provides the fast enablement check, and successful event processing does not
-allocate on the Java heap. Host name and process id are cached at initialization;
-event timestamps and thread identifiers are captured once for all destinations.
+Stream outputs format a complete event in the current thread's output buffer,
+then perform one no-transition raw write in an uninterruptible critical section
+that holds their dedicated `VMMutex`. File outputs also format before entering
+their prebuilt mutex, then perform the no-transition native write, byte
+accounting, rotation, and reopen in the same kind of critical section. A file
+output discards any preexisting active file contents at startup regardless of
+its rotation configuration; only output from the current process is rotated.
+Consequently, events cannot be interleaved on a destination, file
+rotation cannot occur between an event's lines, and formatting does not hold an
+output lock. The safepoint consequences of a blocked raw write are described
+below.
 
-## Testing
+`LogDecorations` is a reusable event record. It captures the wall-clock
+timestamp, isolate uptime, and thread id once before an event is sent to its
+outputs, but only when at least one active output requests the corresponding
+decorator. The message level is passed separately for each line. The tag set
+maintains the union of decorators requested by its active outputs, while each
+output formats only its own decorators. The captured epoch, uptime, and thread
+id are therefore identical on all outputs. Host name and process id are fixed
+at initialization. The local UTC offset is not part of the event record: a
+`time` decorator passes the captured event timestamp to the native
+`LibCHelper.SVM_localUTCOffsetSeconds(millisecondsSince19700101)` helper when
+that output is formatted.
+The helper converts that timestamp to local time and follows HotSpot's
+`local_to_UTC` calculation, using `tm_gmtoff` where available and the platform
+timezone value with a daylight-saving adjustment otherwise. On Windows it uses
+the standard timezone value returned by `_get_timezone` and applies the same
+daylight-saving correction. The result has the ISO-8601 local-to-UTC sign and
+avoids Java timezone objects and heap allocation on the event path. A delayed
+asynchronous event therefore uses the DST offset for its event timestamp rather
+than the offset current when the output happens to format it.
 
-The focused native JUnit coverage is in `UnifiedLoggingTest` and can be run with:
+The thread-local message state is not recursive. A tag set must not be logged
+again from the same carrier thread while any message is open, including through
+a different tag set. Opening a message does not acquire a file-output mutex;
+file locking starts only after `close` has formatted the complete event.
+
+## Asynchronous logging
+
+[Asynchronous logging](https://bugs.openjdk.org/browse/JDK-8229517) is
+disabled by default and is enabled with:
 
 ```text
-mx native-unittest com.oracle.svm.test.logging.UnifiedLoggingTest
+-Xlog:async[:drop|stall]
 ```
 
+The default mode is `drop`. The native byte budget is configured with the
+immutable expert runtime option `-XX:AsyncLogBufferSize=<size>`. Its default is
+`2M`, standard `K`, `M`, and `G` suffixes are accepted, and valid values range
+from `100K` through `50M`. In `drop` mode, a producer returns without blocking
+for queue space when a complete logical event does not fit; it can still contend while
+acquiring the producer and consumer locks. A multi-line event is admitted atomically,
+so either all selected lines are queued or the complete event is dropped. The consumer
+reports the accumulated number of dropped events separately to each affected output as
+an untagged warning.
+In `stall` mode, the producer waits for enough byte capacity instead. A record
+that cannot fit even in an empty queue is written synchronously and completely
+in either mode.
+
+`LogAsyncWriter` has one daemon consumer thread for the VM's operational lifetime. Producers copy
+prefix and message bytes into variable-sized records within one native memory
+chunk before returning. Each word-aligned raw record contains primitive event
+metadata and an output-slot index followed by its inline bytes. The managed
+output-slot table keeps movable Java output references outside the raw records.
+A producer lock serializes producers
+while all lines selected for one output are copied, so another producer cannot
+insert records between those lines. An event routed to several outputs is
+enqueued as one batch per output. A consumer lock protects queue indices,
+used bytes, wrap state, and records in flight. Its `VMCondition` is
+associated with the consumer lock and wakes producers and the consumer when
+queue state changes.
+
+The two locks have separate roles:
+
+* `PRODUCER_LOCK` orders producers and keeps a stalled or multi-line producer
+  from being overtaken by a later producer.
+* `CONSUMER_LOCK` protects the queue state and coordinates queue-space waits,
+  record publication, record removal, and flushing.
+
+The chunk pointer, ring offsets, used-byte count, wrap offset, queued-record
+count, and shutdown state reside in per-isolate native storage. The
+consumer removes a record and marks it in flight under `CONSUMER_LOCK`, then
+returns to Java state and performs formatting and output I/O without holding that
+queue lock. The in-flight count keeps queue capacity reserved until the output
+write completes. The consumer releases that capacity in an uninterruptible
+critical section, then returns to native state before waiting for more work.
+
+Both locks and the condition are `VMMutex` and `VMCondition` instances. They
+are image-generated runtime primitives and therefore can be used by the
+allocation-free synchronization path.
+
+### Safepoint safety
+
+Every queue-lock acquisition can block. In particular, `drop` mode avoids
+waiting for queue capacity but does not make acquisition of `PRODUCER_LOCK` or
+`CONSUMER_LOCK` non-blocking. Without an explicit safeguard, the following lock
+cycle would be possible:
+
+1. A Java thread acquires `PRODUCER_LOCK`.
+2. A VM operation stops that thread at a safepoint while it still owns the lock.
+3. The VM-operation thread logs a message and waits for `PRODUCER_LOCK`.
+
+`LogAsyncWriter.enqueue` breaks this cycle by using `tryLock` for
+`PRODUCER_LOCK` during a VM operation. After acquiring it, the producer
+simulates reservations for the complete message under `CONSUMER_LOCK`. Failure
+to acquire the producer lock or reserve the whole message returns `false`, and
+`LogTagSet` writes the same event synchronously. An admitted VM-operation
+message never waits for queue space.
+
+The remaining queue lock order is acyclic. Producers acquire `PRODUCER_LOCK`
+before `CONSUMER_LOCK`. The consumer acquires only `CONSUMER_LOCK` and releases
+it before formatting or writing a record. The consumer's permanent loop enters
+native state before using `lockNoTransition` and `blockNoTransition`, so an idle
+or contending consumer does not prevent a safepoint. It returns to Java state
+before dereferencing a queue record or output, allowing the GC to relocate those
+objects safely. Logging from the consumer itself also bypasses the queue.
+
+The synchronous fallback does not introduce an equivalent logger-lock cycle.
+Stream and file output hold their mutex only in an uninterruptible critical
+section, so a thread cannot stop at a safepoint while owning the mutex. Every
+caller, including a VM operation, therefore uses the same serialized output
+path. File output also performs its normal opening and rotation on this path.
+`LogConfiguration.disableLogging` is not supported while a VM operation is in
+progress because flushing acquires queue locks and can wait for output; it checks
+this condition before acquiring the configuration monitor.
+
+These rules prevent a safepoint deadlock caused by unified logging's own locks,
+but they do not make the underlying output device nonblocking. All direct stream
+and file output uses an uninterruptible output mutex and no-transition writes. A
+thread blocked on that mutex, by a full pipe, or by a stalled file system,
+including the asynchronous consumer, can delay entry into a safepoint. If the VM
+operation thread blocks while logging synchronously, it cannot complete the
+operation or end the active safepoint, so the pause can be extended indefinitely.
+
+HotSpot has the same external I/O liveness limitation. `VMThread::inner_execute`
+executes an at-safepoint operation between
+[`SafepointSynchronize::begin()` and `SafepointSynchronize::end()`](https://github.com/graalvm/labs-openjdk/blob/jdk25/src/hotspot/share/runtime/vmThread.cpp#L415-L433),
+and [`VM_Operation::evaluate()` calls `doit()`](https://github.com/graalvm/labs-openjdk/blob/jdk25/src/hotspot/share/runtime/vmOperations.cpp#L65-L80)
+inside that interval. Its synchronous
+[`LogFileStreamOutput::write_blocking`](https://github.com/graalvm/labs-openjdk/blob/jdk25/src/hotspot/share/logging/logFileStreamOutput.cpp#L170-L174)
+holds the output lock across the write and flush. HotSpot's asynchronous drop
+mode normally decouples the producer from output I/O, while stall mode can wait
+for buffer capacity; see
+[`AsyncLogWriter::enqueue_locked`](https://github.com/graalvm/labs-openjdk/blob/jdk25/src/hotspot/share/logging/logAsyncWriter.cpp#L120-L139).
+SVM likewise avoids output I/O on a producer when enqueueing succeeds, but an
+oversized record or an unsafe VM-operation enqueue falls back to synchronous
+output and retains the same liveness limitation. The asynchronous consumer can
+still block in the output device and delay entry into a safepoint. SVM VM
+operations never wait for asynchronous queue capacity because they preflight the
+complete message.
+
+When `-Xlog` is supported, the asynchronous writer is created by
+`LogConfiguration.logInitializationComplete` after command-line parsing and
+legacy-option diagnostics. Disabling logging first stops asynchronous publication
+and drains the writer, then removes all output routes before outputs are closed.
+A stale producer that retained the writer before
+deactivation drops its record instead of accessing an output that may have been
+closed. The consumer and its single queue chunk remain alive across runtime
+logging reconfiguration. Output slots are retained until the queue drains and
+then released. During VM teardown, the queue is drained and the consumer is
+terminated before the chunk is freed and isolate teardown waits for attached
+threads to exit. This is
+required for embedded VMs such as the Native Image `libjvm`, where returning
+from `DestroyJavaVM` destroys the isolate instead of ending the process. Images
+without `-Xlog` support do not create an asynchronous writer.
+
+## Allocation-free runtime behavior
+
+Successful normal logging operations are annotated with
+`RestrictHeapAccess.NO_ALLOCATION`. The contract starts after the caller has
+provided the message text; string concatenation or formatting at the call site
+can still allocate before logging is entered.
+
+The runtime path maintains this contract as follows:
+
+1. `NativeMemoryLog` stores thread-local event bytes in raw native structures containing a position,
+   capacity, and inline byte storage. Message, output, and decorator buffers are
+   shared by the current carrier thread through `FastThreadLocalFactory`. `reset`
+   rewinds a reusable buffer, whereas `clear` frees it during teardown. These buffers
+   may grow with native `malloc` or `realloc`, but do not allocate Java heap
+   objects during logging. A thread listener releases all thread-local buffers
+   when a platform thread exits.
+2. `LogDecorations` formats event metadata and the explicitly supplied line
+   level directly into native memory. Host name and process id are cached
+   during initialization, while `SVM_localUTCOffsetSeconds` computes the local
+   UTC offset for the event timestamp with native time APIs and stack storage.
+3. `LogOutput` formats into the thread-local output and decorator buffers.
+   Decorator padding is retained per output and updated atomically, so repeated
+   events do not create formatted intermediate strings or byte arrays. Stream
+   and file output locks cover only native operations after formatting.
+4. `LogMessage` stores line levels, byte offsets, and message bytes in the
+   thread-local native state. Its local index walk filters levels and either preserves
+   embedded newlines with continuation prefixes or folds them according to the
+   output setting. Native line metadata starts with capacity for ten lines and
+   grows outside the Java heap when necessary.
+5. The asynchronous writer allocates one NMT `Logging` chunk and creates its
+   worker thread at initialization. Producers pack raw record headers and inline
+   bytes directly into a circular queue within that chunk, without per-record
+   allocation or growth. The worker initializes reusable thread-local output and
+   decoration state before entering its native-state loop. The daemon thread and
+   chunk are retained across runtime reconfiguration; VM teardown drains and
+   terminates the thread before freeing the chunk.
+6. `LogFileOutput` retains the expanded active path and archive paths as native
+   `RawFilePath` values. Runtime file operations use
+   `RawFileOperationSupport` and do not construct `Path`, filename strings, or
+   temporary Java objects.
+
+The allocation restriction applies to successful synchronous and asynchronous
+event processing, including decoration, queue copying, raw writes, and file
+rotation. Configuration, help output, diagnostics, and exceptional Java paths
+may allocate.
+
+## Configuration and routing
+
+When `-Xlog` is supported, `LogConfiguration.initialize` installs the default
+`all=warning` configuration on `stdout` and caches the host name, process id,
+and local startup timestamp used for filename expansion.
+The `time` decorator
+obtains the local UTC offset for the event timestamp through the native
+`LibCHelper.SVM_localUTCOffsetSeconds(millisecondsSince19700101)` helper when
+the timestamp is formatted.
+
+Mutating configuration methods synchronize on `LogConfiguration.class`. Each
+tag set's `LogOutputList` also synchronizes updates and publishes a replacement
+`outputsByLevel` table through a volatile field. The arrays in a published table
+are immutable, so a logging thread reads one stable routing snapshot without taking the
+configuration monitor.
+
+For example, after the default configuration and
+
+```text
+-Xlog:all=info:file=app.log
+```
+
+the relevant arrays for each selected tag set are:
+
+```text
+outputsByLevel[TRACE]   = []
+outputsByLevel[DEBUG]   = []
+outputsByLevel[INFO]    = [file=app.log]
+outputsByLevel[WARNING] = [stdout, file=app.log]
+outputsByLevel[ERROR]   = [stdout, file=app.log]
+mostDetailedLevel       = INFO
+```
+
+`mostDetailedLevel` provides the fast enablement check. A single-line event
+uses its own level as the array index. A multi-line event uses the most severe
+line to find every output that can receive at least one line, then recovers
+each selected output's threshold from the same arrays to filter its lines.
+
+Output options are properties of the output, not of an individual selection.
+They are parsed only when an output is first configured. Options supplied when
+the same output is selected again are ignored with a warning. File output
+parsing also recognizes Windows drive-letter colons in native and slash-style
+paths, with or without the `file=` prefix.
 
 ## File output and failure handling
 
 `LogFileOutput` expands `%p`, `%i`, `%t`, and `%hn`, converts the result to an
-absolute native path, and opens the active file when the output is created. `%i`
-is an SVM extension for separating isolate-local descriptors, counters, and
-rotation state. A preexisting active file is truncated on first open regardless
-of whether rotation is enabled.
+absolute path, prepares the native active and archive paths, and opens the active
+file when the output is created. The `%i` placeholder is an SVM extension that
+expands to the current isolate ID, allowing isolates in the same process to use
+distinct output files; `%p` alone identifies only the process. File output does
+not create missing parent directories. If opening fails, it emits an emergency
+diagnostic containing the path and native error code, leaves the output
+configured, and does not abort the VM. A later event for an output whose
+descriptor is unavailable is safely ignored.
 
-Writes, byte accounting, rotation, and reopen are serialized by the output's
-prebuilt mutex. Rotation closes the descriptor, shifts archives, renames the
-active file to `.0`, and reopens it. Open and write failures are diagnosed but do
-not abort the VM. On POSIX, an unlinked open output remains writable through its
-descriptor; Windows follows its native sharing rules.
+Normal writes use the platform-specific `RawFileOperationSupport` implementation;
+`LoggingSupport` supplies the platform-specific archive delete and rename
+operations. If a write operation fails, `LogOutput` emits one emergency
+`Could not write to log` diagnostic for that output and suppresses repeated
+copies of the same diagnostic. The event path remains non-fatal.
+
+Rotation is performed after `LogOutput` completes a write batch and the byte
+threshold has been reached. For synchronous logging the batch is the whole
+possibly multi-line event; for asynchronous logging it is one queued line. The
+active descriptor is closed, the oldest archive is deleted, existing archives
+are renamed toward the last slot, the active path is renamed to `.0`, and the
+active file is reopened. Active-file rename failures produce an emergency
+diagnostic; archive maintenance failures are best-effort. If reopening fails,
+the same non-fatal open-file handling applies.
+
+On POSIX systems, an open log file can be unlinked while its descriptor remains
+open. Subsequent writes continue to use that descriptor and do not recreate the
+directory entry. This behavior is covered by the native logging tests. Windows
+uses platform file-sharing rules, so tests requiring unlinking an open file are
+restricted to POSIX platforms.
+
+
+## Comparison with HotSpot unified logging
+
+The relevant HotSpot implementation uses linked output lists, reader tracking,
+file stream locks, a rotation semaphore, and native asynchronous buffers; see
+[`logTagSet.cpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logTagSet.cpp),
+[`logOutputList.hpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logOutputList.hpp),
+[`logFileOutput.cpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logFileOutput.cpp),
+and [`logAsyncWriter.hpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logAsyncWriter.hpp).
+SVM uses the same broad configuration model but a smaller runtime design:
+
+| Area | HotSpot | SVM |
+| --- | --- | --- |
+| Available tag sets | Every tag set instantiated by HotSpot logging sites. | Every tag set used by the SVM runtime. |
+| Runtime modes | Synchronous by default; `-Xlog:async` adds a bounded queue and writer thread. | Synchronous by default; `-Xlog:async[:drop\|stall]` uses a preallocated native byte queue and a writer thread. VM operations preflight complete messages and write synchronously when immediate admission is unsafe. |
+| Output routing | Per-level linked-list heads with atomic reader tracking. | Per-tag-set, per-level immutable output arrays published through volatile fields. |
+| Configuration | `ConfigurationLock` and reader counts protect updates and delayed reclamation; `jcmd VM.log` supports runtime changes. | Synchronized configuration methods publish replacement arrays. |
+| Synchronous output locking | `FileLocker` protects writes; a rotation semaphore covers file rotation. | Stream outputs use an uninterruptible critical section to serialize no-transition native writes with a dedicated `VMMutex`; file outputs use the same pattern with a prebuilt `VMMutex` across the no-transition write, accounting, rotation, and reopen. VM operations use the same serialized paths. |
+| Asynchronous buffering and locking | Native ping-pong buffers and producer and consumer synchronization protect the queue. | One native chunk contains a variable number of word-aligned raw records with inline bytes. Native ring state, `VMMutex` producer and consumer locks, and a `VMCondition` coordinate publication, waiting, consumption, flushing, and VM teardown. The daemon consumer waits in native state and is terminated before the chunk is freed at isolate destruction. |
+| Decoration state | Resolved event decorations can remain in asynchronous messages. | Event-only decorations live in fast thread-local state and are copied into each asynchronous queue record; line levels remain explicit per line or record. |
+| File rotation | Native C++ file streams and rotation locks. An existing active file is archived at startup when rotation is enabled. | Precomputed native paths, native byte counters, and raw close/delete/rename/reopen operations. An existing active file is truncated at startup regardless of rotation settings. The `%i` filename placeholder separates isolate-local rotation state into distinct operating-system paths. |
+| Allocation contract | Native C++ allocation rules apply. | Successful event processing is explicitly Java-heap allocation-free; native buffers may grow. |
+
+SVM's design is optimized for a native image whose tag sets and output routing
+are known from startup configuration. It avoids dynamic reader reclamation in
+the event path, while its asynchronous queue uses explicit VM locking
+primitives so waiting and flushing remain usable without Java heap allocation.
+
+## Testing
+
+The native JUnit coverage is in `UnifiedLoggingTest`. It can be run with:
+
+```text
+mx native-unittest com.oracle.svm.test.logging.UnifiedLoggingTest
+```

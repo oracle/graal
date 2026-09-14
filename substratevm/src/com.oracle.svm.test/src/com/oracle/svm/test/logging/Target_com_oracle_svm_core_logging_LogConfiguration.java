@@ -40,6 +40,9 @@ public final class Target_com_oracle_svm_core_logging_LogConfiguration {
     /// Aliases the standard error destination used by the logging configuration.
     @Alias public static Target_com_oracle_svm_core_logging_LogFileStreamOutput stderr;
 
+    /// Aliases whether asynchronous output was requested by the command line.
+    @Alias public static boolean asyncRequested;
+
     /// Aliases whether logging startup has completed.
     @Alias public static boolean initializationComplete;
 
