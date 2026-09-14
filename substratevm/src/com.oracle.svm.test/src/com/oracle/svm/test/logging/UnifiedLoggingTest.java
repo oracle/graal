@@ -24,24 +24,41 @@
  */
 package com.oracle.svm.test.logging;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
+import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.core.logging.LogDecorators;
 import com.oracle.svm.core.logging.LogLevel;
+import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogOutput;
 import com.oracle.svm.core.logging.LogOutputList;
 import com.oracle.svm.core.logging.LogSelection;
 import com.oracle.svm.core.logging.LogSelectionList;
 import com.oracle.svm.core.logging.LogTag;
 import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
@@ -207,17 +224,380 @@ public final class UnifiedLoggingTest {
         }
     }
 
-    /// Minimal output used when only routing identity is under test.
-    private static final class TestLogOutput extends LogOutput {
-        TestLogOutput(String name) {
-            super(name);
+    /// Verifies level filtering, multiline filtering, and message-level decorations.
+    @Test
+    public void testMessages() throws IOException {
+        String logFile = testLogFile("messages");
+        delete(logFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + logFile + ":level,tags"), "message configuration should be accepted");
+        try (LogMessage message = LogTagSet.class_load.message()) {
+            message.line(LogLevel.INFO).string("info line");
+            message.line(LogLevel.DEBUG).string("debug line");
+        }
+        LogTagSet.class_load.trace("trace line");
+        LogTagSet.class_load.debug("embedded line 1\nembedded line 2\n");
+        String output = read(logFile);
+        checkContains(output, "[info][class,load] info line", "INFO message should include its level and tags");
+        checkContains(output, "[debug][class,load] debug line", "DEBUG message should include its level and tags");
+        checkNotContains(output, "trace line", "disabled TRACE message should not be written");
+        checkContains(output, "[debug][class,load] embedded line 1\n[debug][class,load] embedded line 2\n", "embedded records should each include metadata without adding a blank record");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+    }
+
+    /// Verifies that the `tid` decorator uses the operating-system thread identifier.
+    @Test
+    public void testThreadIdDecorator() throws IOException {
+        String logFile = testLogFile("thread-id");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":tid"), "thread-id configuration should be accepted");
+            LogTagSet.class_load.info("thread-id message");
+            String line = lineContaining(read(logFile), "thread-id message");
+            int decoratorEnd = line.indexOf(']');
+            long threadId = Long.parseLong(line.substring(1, decoratorEnd).strip());
+            checkTrue(threadId > 0, "tid should contain a positive operating-system thread identifier");
+            checkFalse(threadId == Thread.currentThread().threadId(), "tid should not contain the Java thread identifier");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(logFile);
+        }
+    }
+
+    /// Verifies that mixed-level messages are filtered per output while retaining event metadata.
+    @Test
+    public void testMixedLevelMessageRouting() throws IOException {
+        String debugLogFile = testLogFile("mixed-level-debug");
+        String infoLogFile = testLogFile("mixed-level-info");
+        configureMixedLevelOutputs(debugLogFile, infoLogFile);
+        try {
+            writeMixedLevelMessage("synchronous");
+            assertMixedLevelOutputs(debugLogFile, infoLogFile, "synchronous");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(debugLogFile);
+            delete(infoLogFile);
+        }
+    }
+
+    /// Verifies that concurrent platform threads keep each synchronous event contiguous.
+    @Test
+    public void testSynchronousMessageAtomicity() throws IOException {
+        String logFile = testLogFile("synchronous-message-atomicity");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + logFile + ":none"), "synchronous message configuration should be accepted");
+
+        AtomicInteger ready = new AtomicInteger();
+        AtomicBoolean start = new AtomicBoolean();
+        Thread first = new Thread(new ConcurrentMessageWriter("first", ready, start));
+        Thread second = new Thread(new ConcurrentMessageWriter("second", ready, start));
+        first.start();
+        second.start();
+        while (ready.get() != 2) {
+            Thread.onSpinWait();
+        }
+        start.set(true);
+        try {
+            first.join();
+            second.join();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted while waiting for concurrent log writers", ex);
         }
 
-        /// Accepts bytes without performing I/O.
-        @Override
-        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
-            return 0;
+        String output = read(logFile);
+        for (String prefix : new String[]{"first", "second"}) {
+            String block = prefix + " line 1\n" + prefix + " line 2\n" + prefix + " line 3\n";
+            checkContains(output, block, "concurrent event should remain contiguous for " + prefix);
         }
+        LogConfiguration.disableLogging();
+        delete(logFile);
+    }
+
+    /// Verifies that closing an empty message releases the thread-local event state.
+    @Test
+    public void testEmptyMessageScope() throws IOException {
+        String logFile = testLogFile("empty-message-scope");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":none"), "empty message configuration should be accepted");
+        // The empty scope must still be closed to release the carrier's event state.
+        LogMessage emptyMessage = LogTagSet.class_load.message();
+        emptyMessage.close();
+        LogTagSet.class_load.info("message after empty scope");
+        checkContains(read(logFile), "message after empty scope", "closing an empty scope should permit the next message");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+    }
+
+    /// Verifies that logging buffers from short-lived threads are released when NMT is available.
+    @Test
+    public void testThreadLocalBufferLifecycle() throws Exception {
+        Assume.assumeTrue("native memory tracking is unavailable", VMInspectionOptions.hasNativeMemoryTrackingSupport());
+        LogConfiguration.disableLogging();
+        long baseline = NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Logging);
+        Thread writer = new Thread(() -> {
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                message.debug().string("thread-local lifecycle message");
+            }
+        });
+        writer.start();
+        writer.join();
+        awaitLoggingMemory(baseline);
+    }
+
+    /// Verifies quoted file names, file-size parsing, folding, rotation, and invalid options.
+    @Test
+    public void testFileOutput() throws IOException {
+        String logFile = testLogFile("file-output");
+        String rotatingLogFile = testLogFile("file-output-rotating");
+        String invalidLogFile = testLogFile("file-output-invalid");
+        String existingLogFile = testLogFile("file-output-existing");
+        delete(logFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=\"" + logFile + "\":none:filecount=2,filesize=1"), "file output configuration should be accepted");
+        LogTagSet.class_load.debug("first");
+        LogTagSet.class_load.debug("second");
+        checkTrue(Files.exists(Path.of(logFile)), "configured log file should be created: " + logFile);
+        checkTrue(Files.exists(Path.of(logFile + ".0")), "size-based log rotation should create an archive: " + logFile + ".0");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        delete(logFile + ".0");
+
+        delete(existingLogFile);
+        delete(existingLogFile + ".0");
+        Files.writeString(Path.of(existingLogFile), "existing log contents");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + existingLogFile + ":none:filecount=2"), "existing file output configuration should be accepted");
+        LogTagSet.class_load.debug("new active log contents");
+        LogConfiguration.disableLogging();
+        checkFalse(Files.exists(Path.of(existingLogFile + ".0")), "a preexisting active file should not be archived at startup");
+        checkNotContains(read(existingLogFile), "existing log contents", "startup should discard preexisting active file contents");
+        checkContains(read(existingLogFile), "new active log contents", "startup should write to the replaced active file");
+        delete(existingLogFile);
+
+        delete(rotatingLogFile);
+        delete(rotatingLogFile + ".0");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + rotatingLogFile + ":none:foldmultilines=true"), "folding configuration should be accepted");
+        LogTagSet.class_load.debug("first\\part\nsecond");
+        LogTagSet.class_load.debug("first\r\nsecond");
+        String foldedMessage = "first\\\\part" + "\\n" + "second";
+        checkContains(read(rotatingLogFile), foldedMessage, "multiline event should be folded");
+        checkContains(read(rotatingLogFile), "first\\nsecond", "CRLF should be folded as one line separator");
+        checkNotContains(read(rotatingLogFile), "first\r", "CRLF should not retain the carriage return");
+        LogConfiguration.disableLogging();
+        delete(rotatingLogFile);
+        delete(invalidLogFile);
+        Files.writeString(Path.of(invalidLogFile), "preserve existing contents");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + invalidLogFile + ":badoption=1"), "invalid file option was accepted");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + invalidLogFile + ":none:FoldMultiLines=true"),
+                        "case-insensitive file option key was accepted");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + invalidLogFile + ":none:foldmultilines=TRUE"),
+                        "case-insensitive foldmultilines value was accepted");
+        checkEquals(read(invalidLogFile), "preserve existing contents", "invalid configuration should not truncate an existing file");
+        LogConfiguration.disableLogging();
+        delete(invalidLogFile);
+
+        String indexedLogFile = testLogFile("file-output-indexed");
+        delete(indexedLogFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + indexedLogFile + ":none"), "indexed output configuration should be accepted");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:#2"), "a reported file output index should resolve to its existing output");
+        expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:#3"), "an unknown output index was accepted");
+        LogTagSet.class_load.debug("indexed output message");
+        checkContains(read(indexedLogFile), "indexed output message", "the reported output index should not become a filename");
+        LogConfiguration.disableLogging();
+        delete(indexedLogFile);
+    }
+
+    /// Verifies that file output performs normal rotation while logging from a VM operation.
+    @Test
+    public void testFileOutputFromVMOperation() throws IOException {
+        String logFile = testLogFile("file-output-vm-operation");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        delete(logFile + ".0");
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":none:filecount=2,filesize=1"),
+                            "VM operation file output configuration should be accepted");
+
+            new LoggingVMOperation().enqueue();
+
+            checkTrue(Files.exists(Path.of(logFile + ".0")), "VM operation file output should rotate");
+            checkContains(read(logFile + ".0"), "message from VM operation", "rotated output should contain the VM operation message");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(logFile);
+            delete(logFile + ".0");
+        }
+    }
+
+    /// Verifies that `%i` expands to the current isolate identifier in a file output path.
+    @Test
+    public void testIsolateIdFilenamePlaceholder() throws IOException {
+        String logFilePattern = testLogFile("file-output-isolate-%i");
+        String logFile = logFilePattern.replace("%i", Long.toString(Isolates.getIsolateId()));
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFilePattern + ":none"), "isolate file output configuration should be accepted");
+            LogTagSet.class_load.info("isolate-specific file output");
+            LogConfiguration.disableLogging();
+            checkContains(read(logFile), "isolate-specific file output", "the isolate placeholder should identify the current isolate");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(logFile);
+        }
+    }
+
+    /// Verifies that first-use, contended writes, and rotation do not allocate on the Java heap.
+    @Test
+    public void testAllocationFreeOutput() throws Exception {
+        String logFile = testLogFile("allocation-free-output");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        delete(logFile + ".0");
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + logFile + ":none:filecount=2,filesize=1"), "allocation-free output configuration should be accepted");
+
+            AtomicInteger ready = new AtomicInteger();
+            AtomicBoolean start = new AtomicBoolean();
+            Thread first = new Thread(new AllocationFreeWriter(ready, start));
+            Thread second = new Thread(new AllocationFreeWriter(ready, start));
+            first.start();
+            second.start();
+            while (ready.get() != 2) {
+                Thread.onSpinWait();
+            }
+            start.set(true);
+            first.join();
+            second.join();
+
+            checkContains(read(logFile) + read(logFile + ".0"), "allocation-free output", "allocation-free output should be written");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(logFile);
+            delete(logFile + ".0");
+        }
+    }
+
+    /// Verifies that Windows drive-letter colons do not split file output components.
+    @Test
+    public void testWindowsFileOutputPath() throws IOException {
+        Assume.assumeTrue("Windows drive-letter paths are only valid on Windows", Platform.includedIn(Platform.WINDOWS.class));
+        Path path = Files.createTempFile("unified-logging-windows", ".log");
+        String nativePath = path.toString();
+        String slashPath = nativePath.replace('\\', '/');
+        String[] outputs = {nativePath, slashPath, "file=" + nativePath, "file=" + slashPath};
+        try {
+            for (String output : outputs) {
+                LogConfiguration.disableLogging();
+                Files.deleteIfExists(path);
+                String option = "-Xlog:class+load=debug:" + output + ":none";
+                checkTrue(LogConfiguration.parseCommandLineArgument(option), "Windows file output path should be accepted: " + option);
+                LogTagSet.class_load.debug("Windows path output");
+                checkContains(read(path.toString()), "Windows path output", "Windows file output should receive log messages");
+            }
+        } finally {
+            LogConfiguration.disableLogging();
+            Files.deleteIfExists(path);
+        }
+    }
+
+    /// Verifies that output options are ignored when a file output already exists.
+    @Test
+    public void testExistingOutputOptionsIgnored() throws IOException {
+        String logFile = testLogFile("existing-output-options");
+        String symlink = logFile + ".alias";
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        delete(symlink);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + logFile + ":none"), "initial file output configuration should be accepted");
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=./" + logFile + ":none:invalid=1"), "output options for an existing aliased output should be ignored");
+            if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
+                Files.createSymbolicLink(Path.of(symlink), Path.of(logFile).toAbsolutePath());
+                checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + symlink + ":none:invalid=1"), "symbolic links should resolve to an existing aliased output");
+            }
+            LogTagSet.class_load.debug("existing output message");
+            checkContains(read(logFile), "existing output message", "existing file output should remain usable");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(symlink);
+            delete(logFile);
+        }
+    }
+
+    /// Verifies that an output file whose parent directory is missing does not abort logging.
+    @Test
+    public void testFileOutputMissingDirectory() throws IOException {
+        LogConfiguration.disableLogging();
+        Path missingDirectory = Files.createTempDirectory("logging-test-file-output-missing-directory");
+        Files.delete(missingDirectory);
+        Path logFile = missingDirectory.resolve("output.log");
+        try {
+            String option = "-Xlog:class+load=debug:file=" + logFile + ":none";
+            checkTrue(LogConfiguration.parseCommandLineArgument(option), "file output with a missing parent directory should be accepted: " + option);
+            LogTagSet.class_load.debug("message for unavailable log file");
+            checkFalse(Files.exists(logFile), "a log file should not be created when its parent directory is missing: " + logFile);
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(logFile.toString());
+        }
+    }
+
+    /// Verifies that logging remains safe after a POSIX file-backed output is unlinked.
+    @Test
+    public void testFileOutputDeletedWhileOpen() throws IOException {
+        // POSIX permits unlinking a file while the logging descriptor remains open.
+        Assume.assumeTrue("deleting an open log file requires POSIX semantics", Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class));
+        String logFile = testLogFile("file-output-deleted-while-open");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        try {
+            String option = "-Xlog:class+load=debug:file=" + logFile + ":none";
+            checkTrue(LogConfiguration.parseCommandLineArgument(option), "file output configuration should be accepted: " + option);
+            LogTagSet.class_load.debug("message before deletion");
+            checkTrue(Files.exists(Path.of(logFile)), "configured log file should exist before deletion: " + logFile);
+            Files.delete(Path.of(logFile));
+            checkFalse(Files.exists(Path.of(logFile)), "log file should be absent after deletion: " + logFile);
+
+            // These calls will succeed as a Unix process can continue to read and write to an open file
+            // descriptor even after the file's directory entry has been deleted using unlink() or rm.
+            LogTagSet.class_load.debug("message after deletion 1");
+            LogTagSet.class_load.debug("message after deletion 2");
+
+            // Close the file descriptor for the log file
+            LogOutput output = Target_com_oracle_svm_core_logging_LogConfiguration.findOrCreateOutput(logFile);
+            RawFileOperationSupport.RawFileDescriptor descriptor = ((Target_com_oracle_svm_core_logging_LogFileOutput) (Object) output).descriptor();
+            checkTrue(RawFileOperationSupport.nativeByteOrder().close(descriptor), "deleted log file descriptor should close successfully");
+
+            // The first `debug` call below should produce a warning on the console:
+            //
+            // Could not write to log: file=logging-test-file-output-deleted-while-open.log
+            //
+            // The remaining calls silently do nothing but do not crash the VM.
+            LogTagSet.class_load.debug("message after closing descriptor 1");
+            LogTagSet.class_load.debug("message after closing descriptor 2");
+            LogTagSet.class_load.debug("message after closing descriptor 3");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(logFile);
+        }
+    }
+
+    /// Reads a UTF-8 test log file.
+    private static String read(String file) throws IOException {
+        return Files.readString(Path.of(file));
+    }
+
+    /// Removes a test log file when it exists.
+    private static void delete(String file) throws IOException {
+        Files.deleteIfExists(Path.of(file));
+    }
+
+    /// Returns the isolated log path used by one test method.
+    private static String testLogFile(String testName) {
+        return "logging-test-" + testName + ".log";
     }
 
     /// Captures output for assertions about emitted startup diagnostics.
@@ -248,6 +628,156 @@ public final class UnifiedLoggingTest {
         }
     }
 
+    /// Minimal output used when only routing identity is under test.
+    private static final class TestLogOutput extends LogOutput {
+        TestLogOutput(String name) {
+            super(name);
+        }
+
+        /// Accepts bytes without performing I/O.
+        @Override
+        protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+            return 0;
+        }
+    }
+
+
+    /// Waits for post-termination thread listeners to release native logging state.
+    private static void awaitLoggingMemory(long expected) {
+        long deadline = System.nanoTime() + 5_000_000_000L;
+        while (true) {
+            long actual = NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Logging);
+            if (actual == expected) {
+                return;
+            }
+            if (System.nanoTime() >= deadline) {
+                checkEquals(actual, expected, "thread-local logging buffers should be released after thread exit");
+                return;
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    /// Logs while executing at a safepoint and records the executing thread for comparison.
+    private static final class LoggingVMOperation extends JavaVMOperation {
+        LoggingVMOperation() {
+            super(VMOperationInfos.get(LoggingVMOperation.class, "Unified logging at safepoint", VMOperation.SystemEffect.SAFEPOINT));
+        }
+
+        /// Emits a class-loading message from the VM operation thread.
+        @Override
+        protected void operate() {
+            LogTagSet.class_load.info("message from VM operation");
+        }
+    }
+
+    /// Writes messages while allocation is disabled, allowing concurrent output locking to be tested.
+    private static final class AllocationFreeWriter implements Runnable {
+        private final AtomicInteger ready;
+        private final AtomicBoolean start;
+
+        AllocationFreeWriter(AtomicInteger ready, AtomicBoolean start) {
+            this.ready = ready;
+            this.start = start;
+        }
+
+        @Override
+        public void run() {
+            NoAllocationVerifier verifier = NoAllocationVerifier.factory("Unified logging output");
+            try (verifier) {
+                ready.incrementAndGet();
+                while (!start.get()) {
+                    Thread.onSpinWait();
+                }
+                for (int index = 0; index < 10; index++) {
+                    LogTagSet.class_load.debug("allocation-free output");
+                }
+            }
+        }
+    }
+
+    /// Builds a three-line event after two platform threads are released together.
+    private static final class ConcurrentMessageWriter implements Runnable {
+        private final String prefix;
+        private final AtomicInteger ready;
+        private final AtomicBoolean start;
+
+        ConcurrentMessageWriter(String prefix, AtomicInteger ready, AtomicBoolean start) {
+            this.prefix = prefix;
+            this.ready = ready;
+            this.start = start;
+        }
+
+        @Override
+        public void run() {
+            ready.incrementAndGet();
+            while (!start.get()) {
+                Thread.onSpinWait();
+            }
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                message.debug().string(prefix + " line 1");
+                message.debug().string(prefix + " line 2");
+                message.debug().string(prefix + " line 3");
+            }
+        }
+    }
+
+
+    /// Configures DEBUG and INFO file outputs with event identity and line decorators.
+    private static void configureMixedLevelOutputs(String debugLogFile, String infoLogFile) throws IOException {
+        LogConfiguration.disableLogging();
+        delete(debugLogFile);
+        delete(infoLogFile);
+        String decorators = "timenanos,uptimenanos,tid,level,tags";
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + debugLogFile + ":" + decorators), "DEBUG mixed-level output should be accepted");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + infoLogFile + ":" + decorators), "INFO mixed-level output should be accepted");
+    }
+
+    /// Writes one message whose lines are visible to different output thresholds.
+    private static void writeMixedLevelMessage(String messagePrefix) {
+        try (LogMessage message = LogTagSet.class_load.message()) {
+            message.line(LogLevel.DEBUG).string(messagePrefix + " debug line");
+            message.line(LogLevel.INFO).string(messagePrefix + " info line");
+        }
+    }
+
+    /// Verifies filtering and the normalized decorations of a mixed-level message.
+    private static void assertMixedLevelOutputs(String debugLogFile, String infoLogFile, String messagePrefix) throws IOException {
+        String debugOutput = read(debugLogFile);
+        String infoOutput = read(infoLogFile);
+        String debugMessage = messagePrefix + " debug line";
+        String infoMessage = messagePrefix + " info line";
+        checkContains(debugOutput, debugMessage, "DEBUG output should contain the DEBUG line");
+        checkContains(debugOutput, infoMessage, "DEBUG output should contain the INFO line");
+        checkNotContains(infoOutput, debugMessage, "INFO output should filter the DEBUG line");
+        checkContains(infoOutput, infoMessage, "INFO output should contain the INFO line");
+
+        String debugInfoPrefix = normalizedDecoratorPrefix(lineContaining(debugOutput, infoMessage), 5);
+        String infoInfoPrefix = normalizedDecoratorPrefix(lineContaining(infoOutput, infoMessage), 5);
+        checkEquals(debugInfoPrefix, infoInfoPrefix, "all outputs should retain identical INFO-line decorations");
+        checkTrue(debugInfoPrefix.endsWith("[info][class,load]"), "normalized decorations should contain the INFO level and class-load tags");
+    }
+
+    /// Finds the physical output line containing `message`.
+    private static String lineContaining(String output, String message) {
+        return output.lines().filter(line -> line.contains(message)).findFirst().orElseThrow(() -> new AssertionError("No output line contains <" + message + "> in <" + output + ">"));
+    }
+
+    /// Removes alignment padding from the requested number of leading decorators.
+    private static String normalizedDecoratorPrefix(String line, int decoratorCount) {
+        StringBuilder result = new StringBuilder();
+        int offset = 0;
+        for (int index = 0; index < decoratorCount; index++) {
+            int start = line.indexOf('[', offset);
+            int end = start < 0 ? -1 : line.indexOf(']', start + 1);
+            if (start < 0 || end < 0) {
+                throw new AssertionError("Expected " + decoratorCount + " decorators in <" + line + ">");
+            }
+            result.append('[').append(line.substring(start + 1, end).strip()).append(']');
+            offset = end + 1;
+        }
+        return result.toString();
+    }
 
     /// Runs an operation and verifies that it reports an illegal argument.
     private static void expectFailure(Runnable operation, String failure) {
@@ -309,4 +839,10 @@ public final class UnifiedLoggingTest {
         return value.replace("\r\n", "\n").replace('\r', '\n');
     }
 
+    /// Fails the test when a target string contains a searched substring.
+    private static void checkNotContains(String target, String searched, String comparison) {
+        if (target.contains(searched)) {
+            throw new AssertionError(comparison + ": expected target string <" + target + "> not to contain searched substring <" + searched + ">");
+        }
+    }
 }

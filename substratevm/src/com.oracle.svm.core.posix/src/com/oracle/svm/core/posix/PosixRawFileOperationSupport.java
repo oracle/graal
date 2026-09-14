@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix;
 
 import java.io.File;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -58,7 +59,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 
     @Override
     public RawFileOperationSupport.RawFilePath allocatePath(String path) {
-        byte[] data = path.getBytes();
+        byte[] data = path.getBytes(StandardCharsets.UTF_8);
         CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
             return Word.nullPointer();
@@ -120,7 +121,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public boolean isValid(RawFileDescriptor fd) {
         int posixFd = getPosixFileDescriptor(fd);
-        // > 0 to ensure the default value 0 is invalid on all platforms
+        // GR-79635 tracks support for descriptor zero, which this API currently reserves as invalid.
         return posixFd > 0;
     }
 

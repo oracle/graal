@@ -34,14 +34,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 /// the default `stdout=WARNING` configuration and this command-line setting:
 ///
 /// ```text
-/// -Xlog:all=info:stderr
+/// -Xlog:all=info:file=app.log
 ///
 /// outputsByLevel[OFF]     = []
 /// outputsByLevel[TRACE]   = []
 /// outputsByLevel[DEBUG]   = []
-/// outputsByLevel[INFO]    = [stderr]
-/// outputsByLevel[WARNING] = [stdout, stderr]
-/// outputsByLevel[ERROR]   = [stdout, stderr]
+/// outputsByLevel[INFO]    = [app.log]
+/// outputsByLevel[WARNING] = [stdout, app.log]
+/// outputsByLevel[ERROR]   = [stdout, app.log]
 ///
 /// mostDetailedLevel       = INFO
 /// ```
