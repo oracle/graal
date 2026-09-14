@@ -36,6 +36,7 @@ import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
+import jdk.graal.compiler.loop.phases.OptimizeLoopAccessesPhase;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
@@ -347,6 +348,13 @@ public enum CEOptimization {
      * disabled with {@link GraalOptions#LoopPredication}.
      */
     LoopPredication(GraalOptions.LoopPredication, LoopPredicationPhase.class),
+
+    /// [OptimizeLoopAccessesPhase] replaces eligible reads from loop memory phis with value phis,
+    /// allowing the read to move out of the loop.
+    ///
+    /// This phase is enabled by default and can be disabled with
+    /// [MidTier.Options#OptimizeLoopAccesses].
+    LoopAccess(MidTier.Options.OptimizeLoopAccesses, OptimizeLoopAccessesPhase.class),
 
     /**
      * {@link LoopPeelingPhase} is an optimization that moves first or last loop iterations outside

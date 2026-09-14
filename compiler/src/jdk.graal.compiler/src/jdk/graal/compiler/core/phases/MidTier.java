@@ -30,6 +30,7 @@ import jdk.graal.compiler.duplication.phases.DeDuplicationPhase;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.guards.GuardRangeGroupingPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
+import jdk.graal.compiler.loop.phases.OptimizeLoopAccessesPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
@@ -79,6 +80,12 @@ public class MidTier extends BaseTier<MidTierContext> {
         /// Controls whether integer range guards with the same anchor are combined.
         @Option(help = "Combines integer range guards that have the same anchor.", type = OptionType.Debug)
         public static final OptionKey<Boolean> OptGuardRangeGrouping = new OptionKey<>(true);
+
+        /// Controls whether eligible loop reads are replaced with loop-carried value phis.
+        @Option(help = "Enables access node optimizations for loops. " +
+                       "This can reduce the number of memory operations executed in the body of a loop.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> OptimizeLoopAccesses = new OptionKey<>(true);
+
         //@formatter:on
     }
 
@@ -98,6 +105,11 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         if (GraalOptions.LoopPredication.getValue(options) && !GraalOptions.SpeculativeGuardMovement.getValue(options)) {
             appendPhase(new LoopPredicationPhase(canonicalizer));
+        }
+
+        if (Options.OptimizeLoopAccesses.getValue(options)) {
+            // Expose value phis before later loop optimizations inspect induction variables.
+            appendPhase(new OptimizeLoopAccessesPhase());
         }
 
         appendPhase(new LoopSafepointEliminationPhase());
