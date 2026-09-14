@@ -31,8 +31,8 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESPECIAL;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKESTATIC;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEVIRTUAL;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
-import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ALWAYS_INLINED;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_INVALID;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_NO_DISPATCH;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ONE_IMPL;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
 import static com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl.toHexString;
@@ -588,7 +588,7 @@ public class DebuggerFeature implements InternalFeature {
                     InterpreterUtil.log("[vtable assignment]  set oneImpl to -> %s%n", oneImpl);
                 } else {
                     InterpreterUtil.log("[vtable assignment] No implementation available: %s%n", hostedMethod);
-                    interpreterMethod.setVTableIndex(VTBL_ALWAYS_INLINED);
+                    interpreterMethod.setVTableIndex(VTBL_NO_DISPATCH);
                 }
             }
         }
