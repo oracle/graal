@@ -1285,6 +1285,9 @@ suite = {
                     "jdk.internal.vm",
                     "sun.security.jca",
                 ],
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation"

@@ -26,8 +26,12 @@ package com.oracle.svm.core.logging;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.VMError;
@@ -179,6 +183,16 @@ public final class LogMessage implements AutoCloseable {
         int start = lineStart(index);
         int end = index + 1 < lineCount() ? lineStart(index + 1) : lineBuffer.getPosition();
         return end - start;
+    }
+
+    /// Copies one selected line directly into reserved asynchronous queue storage.
+    void copyLineTo(int index, CCharPointer target, int length) {
+        verifyLine(index);
+        int start = lineStart(index);
+        VMError.guarantee(length == lineLength(index), "LogMessage line length changed while it was queued.");
+        if (length != 0) {
+            UnmanagedMemoryUtil.copy((Pointer) lineBuffer.getBuffer().addressOf(start), (Pointer) target, Word.unsigned(length));
+        }
     }
 
     private static int lineStart(int index) {

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.logging;
 
+import static com.oracle.svm.core.logging.LogAsyncWriter.Options.AsyncLogBufferSize;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -56,6 +58,10 @@ public abstract class LogOutput {
 
     /// Largest value seen for each decorator keeps subsequent messages aligned.
     private final AtomicInteger[] decoratorPadding = createDecoratorPadding();
+
+    /// Counts messages discarded before asynchronous delivery to this output while the shared
+    /// queue was full.
+    final AtomicInteger droppedAsyncMessages = new AtomicInteger();
 
     /// Decorators enabled for this destination.
     private volatile LogDecorators decorators = LogDecorators.DEFAULT;
@@ -315,6 +321,29 @@ public abstract class LogOutput {
         }
     }
 
+    /// Writes one asynchronously queued message part using the copied event decorations.
+    final void write(LogDecorations decorations, CCharPointer message, int messageLength, int prefixLength, LogLevel level) {
+        OUTPUT_BUFFER.reset();
+        writeDecorators(decorations, level);
+        writeMessageBytes(message, messageLength, prefixLength, decorations, level);
+        OUTPUT_BUFFER.newline();
+        finishWrite();
+    }
+
+    /// Writes an untagged warning for messages dropped before asynchronous delivery to this output.
+    final void writeDroppedAsyncMessages(int count) {
+        OUTPUT_BUFFER.reset();
+        LogDecorations decorations = LogDecorations.capture(LogDecorators.DROPPED_MESSAGE);
+        writeDecorators(LogDecorators.DROPPED_MESSAGE, decorations, LogLevel.WARNING);
+        Long asyncLogBufferSize = AsyncLogBufferSize.getValue();
+        OUTPUT_BUFFER.unsigned(Integer.toUnsignedLong(count), 6, Log.RIGHT_ALIGN).string(" messages dropped due to async logging");
+        if (asyncLogBufferSize < LogAsyncWriter.MAXIMUM_BUFFER_SIZE) {
+            OUTPUT_BUFFER.string(" (try increasing ").string(AsyncLogBufferSize.getName()).string(")");
+        }
+        OUTPUT_BUFFER.newline();
+        finishWrite();
+    }
+
     private void finishWrite() {
         int status = writeRaw(OUTPUT_BUFFER.getBuffer(), Word.unsigned(OUTPUT_BUFFER.getPosition()));
         int unreported = claimUnreportedWriteErrors(status);
@@ -344,6 +373,31 @@ public abstract class LogOutput {
             }
         } while (!reportedWriteErrors.compareAndSet(reported, reported | unreported));
         return unreported;
+    }
+
+    /// Copies a queued message into the output buffer, applying its multiline policy.
+    private void writeMessageBytes(CCharPointer message, int messageLength, int prefixLength, LogDecorations decorations, LogLevel level) {
+        for (int position = 0; position < messageLength; position++) {
+            char value = (char) message.read(position);
+            if (value == '\r' && position + 1 < messageLength && message.read(position + 1) == '\n') {
+                /* Treat CRLF as one line separator, as Java text APIs do. */
+                continue;
+            } else if (foldMultilines && value == '\\') {
+                OUTPUT_BUFFER.character('\\').character('\\');
+            } else if (foldMultilines && value == '\n') {
+                OUTPUT_BUFFER.character('\\').character('n');
+            } else if (!foldMultilines && value == '\n') {
+                if (position + 1 < messageLength) {
+                    OUTPUT_BUFFER.newline();
+                    writeDecorators(decorations, level);
+                    if (prefixLength != 0) {
+                        OUTPUT_BUFFER.string(message, prefixLength);
+                    }
+                }
+            } else {
+                OUTPUT_BUFFER.character(value);
+            }
+        }
     }
 
     /// Writes [#decorators] to the thread-local output buffer and returns their display width.

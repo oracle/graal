@@ -1873,7 +1873,9 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         args.append("-D" + key + "=" + value)
 
     # fetch arguments used in all layers
-    testhello_args = testhello_ni_args(cincludepath, sourcepath) + args
+    testhello_args = testhello_ni_args(cincludepath, sourcepath) + svm_experimental_options([
+        '-H:+StrictRuntimeJavaOptions',
+    ]) + args
 
     def build_layer(layer_path, layer_args):
         # clean / create layer output directory
@@ -1905,6 +1907,13 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         f'-H:LayerUse={join(base_layer_path, base_layer_name)}.nil',
         f'-H:LinkerRPath={base_layer_path}'
     ]))
+
+    # Starting asynchronous logging in the application layer verifies that the initial-layer
+    # logging singleton retains its native queue state across layer persistence.
+    logging_output = mx.LinesOutputCapture()
+    mx.run([app_layer, '-Xlog:async', '-Xlog:logging=debug'], cwd=app_layer_path, out=logging_output, err=logging_output)
+    if not any('Log configuration fully initialized.' in line for line in logging_output.lines):
+        mx.abort('Layered image did not initialize asynchronous unified logging.')
 
     # prepare environment
     env = os.environ.copy()
