@@ -35,9 +35,9 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
-import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.guest.staging.JavaMainSupport;
+import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.webimage.JSExceptionSupport.ExceptionToNonLocalizedString;
 import com.oracle.svm.webimage.functionintrinsics.JSFunctionIntrinsics;
@@ -84,8 +84,10 @@ public abstract class WebImageJavaMainSupport extends JavaMainSupport {
     protected static int doRun(String[] args, Runner runner) {
         try {
             startMainThread();
+            // Web Image does not support -Xlog support as it require Webs Image to
+            // register an implementation of LoggingSupport. As such, there's no
+            // need to initialize unified logging.
             String[] parsedArgs = RuntimeOptionParser.parseAndConsumeAllOptions(args, false);
-
             if (ImageSingletons.contains(JavaMainSupport.class)) {
                 ImageSingletons.lookup(JavaMainSupport.class).mainArgs = parsedArgs;
             }

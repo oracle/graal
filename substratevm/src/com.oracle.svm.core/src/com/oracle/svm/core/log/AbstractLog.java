@@ -555,6 +555,7 @@ abstract class AbstractLog implements Log {
             for (int i = 0; i < chunkLength; i++) {
                 int index = chunkOffset + i;
                 byte b;
+                /* GR-79513 tracks encoding non-ASCII text instead of narrowing UTF-16 values. */
                 if (value instanceof String s) {
                     b = (byte) charAt(s, index);
                 } else if (value instanceof char[] arr) {
