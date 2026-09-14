@@ -39,8 +39,11 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.shared.util.VMError;
 
-/// Provides captured event metadata and the code that formats enabled decorators.
+/// Provides captured event metadata and the code that formats enabled decorators. The
+/// producer-facing singleton resolves values from the current thread, while the asynchronous
+/// consumer instance restores metadata saved in a queued record.
 public final class LogDecorations {
     /// Number of seconds in a civil day.
     private static final long SECONDS_PER_DAY = 86_400;
@@ -51,8 +54,47 @@ public final class LogDecorations {
     /// Shared facade that resolves event data from the current thread.
     private static final LogDecorations THREAD_LOCAL = new LogDecorations();
 
-    private static LogTagSet getTagSet() {
-        return LogThreadLocal.activeTagSet();
+    /// Tag set associated with a queued event, or null for the thread-local facade.
+    private LogTagSet tagSet;
+
+    /// Identifies whether this instance resolves values from the current thread.
+    private final boolean threadLocal;
+
+    /// The [System#currentTimeMillis()] timestamp associated with this event.
+    private long systemMillis;
+
+    /// The [System#nanoTime()] timestamp associated with this event.
+    private long systemNanos;
+
+    /// Isolate uptime associated with this event.
+    private long uptimeNanos;
+
+    /// Thread identifier associated with this event.
+    private long threadId;
+
+    /// Creates an empty decoration record associated with `tagSet`.
+    public LogDecorations(LogTagSet tagSet) {
+        this.tagSet = tagSet;
+        this.threadLocal = false;
+    }
+
+    private LogDecorations() {
+        this.tagSet = null;
+        this.threadLocal = true;
+    }
+
+    public LogTagSet getTagSet() {
+        return threadLocal ? LogThreadLocal.activeTagSet() : tagSet;
+    }
+
+    /// Restores metadata copied into a raw asynchronous queue record.
+    void restore(LogTagSet restoredTagSet, long restoredSystemMillis, long restoredSystemNanos, long restoredUptimeNanos, long restoredThreadId) {
+        VMError.guarantee(!threadLocal, "Cannot restore the thread-local decoration facade.");
+        tagSet = restoredTagSet;
+        systemMillis = restoredSystemMillis;
+        systemNanos = restoredSystemNanos;
+        uptimeNanos = restoredUptimeNanos;
+        threadId = restoredThreadId;
     }
 
     private static final int TIME_MILLIS_DECORATORS = TIME.bit() | UTCTIME.bit() | TIMEMILLIS.bit();
@@ -70,7 +112,6 @@ public final class LogDecorations {
     }
 
     /// Writes one decorator value for `level` from this event record to `target`.
-    @SuppressWarnings("static-method")
     public void value(LogDecorators.Decorator decorator, LogLevel level, NativeMemoryLog target) {
         switch (decorator) {
             case TIME -> {
@@ -96,20 +137,20 @@ public final class LogDecorations {
         }
     }
 
-    private static long systemMillis() {
-        return LogThreadLocal.get().getSystemMillis();
+    long systemMillis() {
+        return threadLocal ? LogThreadLocal.get().getSystemMillis() : systemMillis;
     }
 
-    private static long systemNanos() {
-        return LogThreadLocal.systemNanos();
+    long systemNanos() {
+        return threadLocal ? LogThreadLocal.systemNanos() : systemNanos;
     }
 
-    private static long uptimeNanos() {
-        return LogThreadLocal.uptimeNanos();
+    long uptimeNanos() {
+        return threadLocal ? LogThreadLocal.uptimeNanos() : uptimeNanos;
     }
 
-    private static long threadId() {
-        return LogThreadLocal.threadId();
+    long threadId() {
+        return threadLocal ? LogThreadLocal.threadId() : threadId;
     }
 
     /// Writes an ISO timestamp with millisecond precision, using `Z` for UTC or an explicit local
