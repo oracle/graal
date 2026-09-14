@@ -29,7 +29,8 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-/// Indicates whether the `-Xlog` command line interface is available.
+/// Indicates whether the `-Xlog` command line interface is available. The logging API remains
+/// available without `-Xlog` so legacy options can emit messages through the low-level VM log.
 public final class HasXlogSupport {
     /// Returns whether `-Xlog` is supported.
     @Fold

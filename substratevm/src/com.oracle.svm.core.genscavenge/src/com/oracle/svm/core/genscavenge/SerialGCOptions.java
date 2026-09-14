@@ -71,7 +71,7 @@ public final class SerialGCOptions {
     @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, null, SERIAL_GC_ONLY);
 
-    @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
+    @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC or -Xlog:gc=debug. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, null, SERIAL_GC_ONLY);
 
     @Option(help = "Verify the remembered set if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
@@ -86,7 +86,7 @@ public final class SerialGCOptions {
     @Option(help = "Verify write barriers. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
 
-    @Option(help = "Trace heap chunks during collections, if +VerboseGC. Serial GC only.", type = OptionType.Debug) //
+    @Option(help = "Trace heap chunks during collections, if +VerboseGC or -Xlog:gc=debug. Serial GC only.", type = OptionType.Debug) //
     public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, null, SERIAL_GC_ONLY);
 
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
