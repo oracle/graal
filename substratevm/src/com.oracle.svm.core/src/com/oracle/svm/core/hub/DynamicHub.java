@@ -127,6 +127,7 @@ import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.metadata.MetadataTracer;
@@ -1434,8 +1435,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     void setClassLoaderAtRuntime(ClassLoader loader) {
         VMError.guarantee(companion.classLoader == NO_CLASS_LOADER && loader != NO_CLASS_LOADER);
-        if (RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
-            Log.log().string(AbstractRuntimeClassRegistry.traceMessage(getName(), loader, null, "load", "predefine")).newline();
+        if (LogTagSet.class_load.isInfo()) {
+            AbstractRuntimeClassRegistry.traceMessage(LogTagSet.class_load, getName(), loader, null, "predefine");
         }
         companion.classLoader = loader;
     }
