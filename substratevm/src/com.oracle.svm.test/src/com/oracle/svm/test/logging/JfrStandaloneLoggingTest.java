@@ -39,6 +39,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogConfiguration;
@@ -49,12 +50,16 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
-/// Verifies fallback GC logging in an image without `-Xlog` support.
+/// Verifies standalone JFR and fallback GC logging in an image without `-Xlog` support.
 @NativeImageBuildArgs({
+                "--add-exports=jdk.jfr/jdk.jfr.internal=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.jdk=ALL-UNNAMED"
 })
 @SuppressWarnings("static-method")
 public final class JfrStandaloneLoggingTest {
+    /// Preallocated multiline event used by the allocation-restriction test.
+    private static final String[] EVENT_LINES = {"standalone event line 1", "standalone event line 2"};
+
     /// Verifies that fallback logging buffers from short-lived threads are released.
     @Test
     public void testFallbackThreadLocalBufferLifecycle() throws InterruptedException {
@@ -78,6 +83,7 @@ public final class JfrStandaloneLoggingTest {
 
         String logFile = "logging-test-jfr-standalone-only.log";
         Files.deleteIfExists(Path.of(logFile));
+        com.oracle.svm.core.jfr.logging.JfrLogging logging = SubstrateJVM.getLogging();
         RuntimeSupport.Hook closeLog = FunctionPointerLogHandler.configureLogFile("standalone JFR logging test", logFile);
         MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
         try {
@@ -87,11 +93,18 @@ public final class JfrStandaloneLoggingTest {
             assertTrue("INFO fallback logging must be enabled", LogTagSet.gc.isInfo());
             assertFalse("DEBUG fallback logging must remain disabled", LogTagSet.gc.isDebug());
 
+            logging.parseConfiguration("jfr=info,jfr+event=info");
+            assertTrue("the standalone threshold must control the JDK fast-path gate",
+                            jdk.jfr.internal.Logger.shouldLog(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.INFO));
+
             NoAllocationVerifier verifier = NoAllocationVerifier.factory("standalone JFR logging", false);
             verifier.open();
             try {
                 LogTagSet.gc.info("fallback GC info");
                 LogTagSet.gc.debug("filtered fallback GC debug");
+                jdk.jfr.internal.Logger.log(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.INFO, "standalone JFR info");
+                jdk.jfr.internal.Logger.logEvent(jdk.jfr.internal.LogLevel.INFO, EVENT_LINES, false);
+                logging.logJfrWarning("standalone direct warning", true);
             } finally {
                 verifier.close();
             }
@@ -110,8 +123,16 @@ public final class JfrStandaloneLoggingTest {
             assertTrue("DEBUG fallback logging must emit debug messages", output.contains("fallback GC debug"));
             assertFalse("disabled fallback logging must filter messages", output.contains("disabled fallback GC info"));
             assertFalse("fallback logging must not add unified level or tag decorations", output.contains("[info][gc]"));
+            assertTrue("standalone output must retain its established format", output.contains("[info][jfr] standalone JFR info"));
+            assertTrue("standalone output must contain each event line", output.contains("][jfr,event] standalone event line 1"));
+            assertTrue("direct diagnostic helpers must retain standalone output", output.contains("standalone direct warning"));
+
+            logging.parseConfiguration("disable");
+            assertFalse("disabling standalone logging must close the JDK fast-path gate",
+                            jdk.jfr.internal.Logger.shouldLog(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.ERROR));
         } finally {
             memoryMXBean.setVerbose(false);
+            logging.parseConfiguration("all=warning");
             closeLog.execute(false);
             Files.deleteIfExists(Path.of(logFile));
         }
