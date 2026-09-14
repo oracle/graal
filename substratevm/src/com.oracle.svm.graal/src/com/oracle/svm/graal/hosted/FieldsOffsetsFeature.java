@@ -195,6 +195,7 @@ public class FieldsOffsetsFeature implements Feature {
     }
 
     private static void registerFields(Fields fields, BeforeAnalysisAccessImpl config, Object reason) {
+        config.registerAsUsed(fields.getClass(), reason);
         getReplacements().put(fields.getOffsets(), new FieldsOffsetsReplacement(fields));
 
         for (int i = 0; i < fields.getCount(); i++) {
