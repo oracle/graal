@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.SpectrePHTMitigations;
+import jdk.graal.compiler.duplication.phases.DeDuplicationPhase;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
@@ -135,6 +136,10 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(new FrameStateAssignmentPhase());
+
+        if (DeDuplicationPhase.Options.OptDeDuplication.getValue(options)) {
+            appendPhase(new DeDuplicationPhase(canonicalizer));
+        }
 
         // Frame states enable nested elimination and lock coarsening across control flow.
         appendPhase(new LateLockEliminationPhase());
