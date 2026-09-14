@@ -47,6 +47,10 @@ public final class Target_com_oracle_svm_core_logging_LogConfiguration {
     @Alias
     public static native String formatStartupTimestamp(long systemMillis, int localUTCOffsetSeconds);
 
+    /// Finds the file output associated with `value` for descriptor lifecycle testing.
+    @Alias
+    public static native LogOutput findOrCreateOutput(String value);
+
     /// Applies a configuration to an arbitrary test output.
     @Alias
     public static native void configureOutput(LogSelectionList selections, LogOutput output, LogDecorators decorators);
