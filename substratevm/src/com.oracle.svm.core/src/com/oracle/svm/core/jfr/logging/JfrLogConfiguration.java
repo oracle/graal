@@ -34,67 +34,61 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
-/**
- * Parses the flight recorder logging configuration and enables the logging according to that
- * configuration.
- */
+/// Parses FlightRecorderLogging and configures the standalone JFR logging sink.
 final class JfrLogConfiguration {
     private static final String EMPTY_STRING_DEFAULT_CONFIG = "all=info";
+
+    /// Component tags contained in each JDK JFR tag set.
     static final Map<LogTag, Set<JfrLogTag>> LOG_TAG_SETS = createLogTagSets();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private JfrLogConfiguration() {
     }
 
-    static void parse(String str) {
+    /// Parses `str` and stores the selected standalone thresholds in `logging`.
+    static void parse(String str, JfrLogging logging) {
         if (str.equalsIgnoreCase("disable")) {
+            logging.disableStandaloneLogging();
             return;
         }
 
-        String config;
-        if (str.isEmpty()) {
-            config = EMPTY_STRING_DEFAULT_CONFIG;
-        } else {
-            config = str;
-        }
-
+        String config = str.isEmpty() ? EMPTY_STRING_DEFAULT_CONFIG : str;
         String[] splitConfig = config.split(",");
         JfrLogSelection[] selections = new JfrLogSelection[splitConfig.length];
 
         int index = 0;
-        for (String s : splitConfig) {
-            selections[index++] = JfrLogSelection.parse(s);
+        for (String selection : splitConfig) {
+            selections[index++] = JfrLogSelection.parse(selection);
         }
-        setLogTagSetLevels(selections);
+        applyStandaloneSelections(selections, logging);
         verifySelections(selections);
     }
 
-    private static void setLogTagSetLevels(JfrLogSelection[] selections) {
-        LogTag[] values = LogTag.values();
-        for (LogTag logTagSet : values) {
+    /// Applies rightmost matching selections and the standalone warning default.
+    private static void applyStandaloneSelections(JfrLogSelection[] selections, JfrLogging logging) {
+        for (LogTag logTagSet : LogTag.values()) {
             JfrLogLevel logLevel = JfrLogLevel.WARNING;
             for (JfrLogSelection selection : selections) {
-                if ((selection.wildcard && LOG_TAG_SETS.get(logTagSet).containsAll(selection.tags)) || (selection.tags.equals(LOG_TAG_SETS.get(logTagSet)))) {
+                if ((selection.wildcard && LOG_TAG_SETS.get(logTagSet).containsAll(selection.tags)) || selection.tags.equals(LOG_TAG_SETS.get(logTagSet))) {
                     logLevel = selection.level;
                     selection.matchesATagSet = true;
                 }
             }
-            SubstrateUtil.cast(logTagSet, Target_jdk_jfr_internal_LogTag.class).tagSetLevel = logLevel.level;
+            logging.setStandaloneLevel(logTagSet, logLevel.level);
         }
     }
 
+    /// Rejects selections that did not match any JDK JFR tag set.
     private static void verifySelections(JfrLogSelection[] selections) {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
-                // prepare suggestions
                 StringBuilder logTagSuggestions = new StringBuilder();
-                for (Set<JfrLogTag> valid : JfrLogConfiguration.LOG_TAG_SETS.values()) {
+                for (Set<JfrLogTag> valid : LOG_TAG_SETS.values()) {
                     if (valid.containsAll(selection.tags)) {
                         boolean first = true;
                         for (JfrLogTag jfrLogTag : valid) {
@@ -117,14 +111,15 @@ final class JfrLogConfiguration {
         }
     }
 
+    /// Derives the component tags in every JDK JFR tag set.
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Map<LogTag, Set<JfrLogTag>> createLogTagSets() {
         Map<LogTag, Set<JfrLogTag>> result = new EnumMap<>(LogTag.class);
         for (LogTag logTag : LogTag.values()) {
             EnumSet<JfrLogTag> logTagSet = EnumSet.noneOf(JfrLogTag.class);
-            for (String t : logTag.name().split("_")) {
-                /* This fails if a new JDK version adds entries to jdk.jfr.internal. */
-                logTagSet.add(JfrLogTag.valueOf(t));
+            for (String tag : logTag.name().split("_")) {
+                /* This fails if a new JDK version adds entries to jdk.jfr.internal.LogTag. */
+                logTagSet.add(JfrLogTag.valueOf(tag));
             }
             VMError.guarantee(!logTagSet.isEmpty());
             result.put(logTag, logTagSet);
@@ -132,7 +127,8 @@ final class JfrLogConfiguration {
         return result;
     }
 
-    private static class JfrLogSelection {
+    /// One standalone JFR logging selection.
+    private static final class JfrLogSelection {
         private final Set<JfrLogTag> tags;
         private final JfrLogLevel level;
         private final boolean wildcard;
@@ -142,17 +138,17 @@ final class JfrLogConfiguration {
             this.tags = tags;
             this.level = level;
             this.wildcard = wildcard;
-            this.matchesATagSet = false;
         }
 
+        /// Parses one comma-delimited selection.
         private static JfrLogSelection parse(String str) {
             Set<JfrLogTag> tags = EnumSet.noneOf(JfrLogTag.class);
             JfrLogLevel level = JfrLogLevel.INFO;
             boolean wildcard = false;
 
             String tagsStr;
-            int equalsIndex;
-            if ((equalsIndex = str.indexOf('=')) > 0) {
+            int equalsIndex = str.indexOf('=');
+            if (equalsIndex > 0) {
                 String value = str.substring(equalsIndex + 1);
                 try {
                     level = JfrLogLevel.valueOf(value.toUpperCase(Locale.ROOT));
@@ -173,17 +169,18 @@ final class JfrLogConfiguration {
                 tagsStr = tagsStr.substring(0, tagsStr.length() - 1);
             }
 
-            for (String s : tagsStr.split("\\+")) {
+            for (String tag : tagsStr.split("\\+")) {
                 try {
-                    tags.add(JfrLogTag.valueOf(s.toUpperCase(Locale.ROOT)));
+                    tags.add(JfrLogTag.valueOf(tag.toUpperCase(Locale.ROOT)));
                 } catch (IllegalArgumentException | NullPointerException e) {
-                    throw new IllegalArgumentException("Invalid log tag '" + s + "' for FlightRecorderLogging.", e);
+                    throw new IllegalArgumentException("Invalid log tag '" + tag + "' for FlightRecorderLogging.", e);
                 }
             }
             return new JfrLogSelection(tags, level, wildcard);
         }
     }
 
+    /// Numeric levels used by the standalone JFR logging implementation.
     public enum JfrLogLevel {
         TRACE(JfrLogging.getLevel(LogLevel.TRACE)),
         DEBUG(JfrLogging.getLevel(LogLevel.DEBUG)),

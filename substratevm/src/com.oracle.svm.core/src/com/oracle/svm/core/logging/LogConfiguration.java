@@ -46,6 +46,8 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
@@ -269,6 +271,7 @@ public final class LogConfiguration {
         }
         output.updateConfigString();
         synchronizeLegacyGCOptions();
+        updateJfrLogLevels();
         if (initializationComplete) {
             initializeAsyncWriter();
         }
@@ -409,6 +412,12 @@ public final class LogConfiguration {
         }
     }
 
+    private static void updateJfrLogLevels() {
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.getLogging().updateLogLevels();
+        }
+    }
+
     /// Preserves a VM operation diagnostic when route reconfiguration has blocked normal readers.
     /// The low-level VM log remains available without retaining mutable unified logging state.
     static void writeVMOperationReconfigurationFallback(LogTagSet tagSet, LogMessage message) {
@@ -461,6 +470,7 @@ public final class LogConfiguration {
         stdout.updateConfigString();
         stderr.updateConfigString();
         synchronizeLegacyGCOptions();
+        updateJfrLogLevels();
         if (resetAsyncRequest) {
             asyncRequested = false;
         }

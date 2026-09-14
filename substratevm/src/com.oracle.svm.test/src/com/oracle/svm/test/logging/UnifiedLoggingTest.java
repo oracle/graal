@@ -48,6 +48,8 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.core.logging.LogDecorators;
 import com.oracle.svm.core.logging.LogLevel;
@@ -64,6 +66,7 @@ import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
@@ -72,11 +75,18 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:+StrictRuntimeJavaOptions",
                 "-H:-UnlockExperimentalVMOptions",
+                "--add-exports=jdk.jfr/jdk.jfr.internal=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.option=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.jdk=ALL-UNNAMED"
 })
 @SuppressWarnings("static-method")
 public final class UnifiedLoggingTest {
+    /// Preallocated multiline event used by the allocation-restriction test.
+    private static final String[] JFR_EVENT_LINES = {"JFR event line 1", "JFR event line 2"};
+
+    /// JFR event used to verify that the SVM sinks skip null entries.
+    private static final String[] JFR_EVENT_LINES_WITH_NULL = {"JFR event line 1", null, "JFR event line 2"};
+
     /// Payload large enough to fill the byte queue with a modest number of records.
     private static final String ASYNC_QUEUE_FILLER = "x".repeat(8 * 1024);
 
@@ -309,6 +319,79 @@ public final class UnifiedLoggingTest {
         checkFalse(uppercaseStdout == stdout, "the stdout output alias should be case-sensitive");
         checkEquals(uppercaseStdout.name(), "file=STDOUT", "an uppercase output alias should denote a file name");
         LogConfiguration.disableLogging();
+    }
+
+    /// Verifies independent standalone and unified routing for JFR records.
+    @Test
+    public void testJfrRouting() throws IOException {
+        String standaloneLogFile = testLogFile("jfr-standalone");
+        String unifiedLogFile = testLogFile("jfr-unified");
+        String unifiedOnlyLogFile = testLogFile("jfr-unified-only");
+        String eventLogFile = testLogFile("jfr-event");
+        delete(standaloneLogFile);
+        delete(unifiedLogFile);
+        delete(unifiedOnlyLogFile);
+        delete(eventLogFile);
+
+        com.oracle.svm.core.jfr.logging.JfrLogging jfrLogging = SubstrateJVM.getLogging();
+        LogConfiguration.disableLogging();
+        RuntimeSupport.Hook closeStandaloneLog = FunctionPointerLogHandler.configureLogFile("JFR logging test", standaloneLogFile);
+        try {
+            jfrLogging.parseConfiguration("jfr=warning");
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:jfr=debug:file=" + unifiedLogFile + ":level,tags"), "unified JFR output should be accepted");
+            checkTrue(jdk.jfr.internal.Logger.shouldLog(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.DEBUG), "the combined threshold should admit unified-only DEBUG records");
+
+            jdk.jfr.internal.Logger.log(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.DEBUG, "JFR unified-only debug");
+            jdk.jfr.internal.Logger.log(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.WARN, "JFR standalone-and-unified warning");
+            String standaloneOutput = read(standaloneLogFile);
+            String unifiedOutput = read(unifiedLogFile);
+            checkNotContains(standaloneOutput, "JFR unified-only debug", "the unified-only record should not leak into standalone output");
+            checkContains(standaloneOutput, "[warn][jfr] JFR standalone-and-unified warning", "standalone output should retain its established format");
+            checkContains(unifiedOutput, "[debug][jfr] JFR unified-only debug", "unified output should contain the DEBUG record");
+            checkContains(unifiedOutput, "[warning][jfr] JFR standalone-and-unified warning", "unified output should contain the WARNING record");
+
+            LogConfiguration.disableLogging();
+            checkFalse(jdk.jfr.internal.Logger.shouldLog(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.DEBUG), "disabling unified logging should leave the standalone WARNING threshold");
+            checkTrue(jdk.jfr.internal.Logger.shouldLog(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.WARN), "disabling unified logging should not disable standalone JFR logging");
+
+            jfrLogging.parseConfiguration("disable");
+            checkFalse(jdk.jfr.internal.Logger.shouldLog(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.ERROR), "disabling both sinks should disable the JDK JFR tag set");
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:jfr=info:file=" + unifiedOnlyLogFile + ":none"), "unified-only JFR output should be accepted");
+            checkTrue(jdk.jfr.internal.Logger.shouldLog(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.INFO), "unified logging should enable JFR when the standalone sink is disabled");
+            jdk.jfr.internal.Logger.log(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.INFO, "JFR enabled only by Xlog");
+            checkContains(read(unifiedOnlyLogFile), "JFR enabled only by Xlog", "unified logging should receive a record while standalone logging is disabled");
+            checkNotContains(read(standaloneLogFile), "JFR enabled only by Xlog", "standalone logging should remain disabled");
+
+            LogConfiguration.disableLogging();
+            jfrLogging.parseConfiguration("jfr+event=info,jfr+system+event=warning");
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:jfr+system+event=info:file=" + eventLogFile + ":none"), "unified JFR event output should be accepted");
+            NoAllocationVerifier verifier = NoAllocationVerifier.factory("JFR dual logging", false);
+            verifier.open();
+            try {
+                jdk.jfr.internal.Logger.logEvent(jdk.jfr.internal.LogLevel.INFO, JFR_EVENT_LINES, true);
+            } finally {
+                verifier.close();
+            }
+            standaloneOutput = read(standaloneLogFile);
+            checkNotContains(standaloneOutput, "JFR event line 1", "the standalone system event threshold should filter INFO records");
+            jfrLogging.logEvent(LogLevel.INFO.ordinal(), JFR_EVENT_LINES_WITH_NULL, true);
+            jdk.jfr.internal.Logger.logEvent(jdk.jfr.internal.LogLevel.INFO, JFR_EVENT_LINES, false);
+            jfrLogging.logEvent(LogLevel.INFO.ordinal(), JFR_EVENT_LINES_WITH_NULL, false);
+            standaloneOutput = read(standaloneLogFile);
+            checkContains(standaloneOutput, "][jfr,event] JFR event line 1", "the standalone event threshold should admit INFO records");
+            checkContains(standaloneOutput, "][jfr,event] JFR event line 2", "standalone event routing should write every event line");
+            checkNotContains(standaloneOutput, "][jfr,event] null", "standalone event routing should skip null entries");
+            checkContains(read(eventLogFile), "JFR event line 1\nJFR event line 2\n", "unified event routing should preserve one contiguous multiline message");
+            checkNotContains(read(eventLogFile), "null", "unified event routing should skip null entries");
+        } finally {
+            LogConfiguration.disableLogging();
+            jfrLogging.parseConfiguration("all=warning");
+            closeStandaloneLog.execute(false);
+            delete(standaloneLogFile);
+            delete(unifiedLogFile);
+            delete(unifiedOnlyLogFile);
+            delete(eventLogFile);
+        }
     }
 
     /// Verifies level filtering, multiline filtering, and message-level decorations.
