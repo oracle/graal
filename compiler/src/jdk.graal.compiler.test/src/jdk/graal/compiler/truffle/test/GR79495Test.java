@@ -29,17 +29,25 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
@@ -126,6 +134,109 @@ public class GR79495Test extends PartialEvaluationTest {
                         graph.getNodes().filter(AbstractNewObjectNode.class).isEmpty());
     }
 
+    @Test
+    public void testClearReturnedYieldResult() {
+        /*
+         * Regression test to ensure return values don't inhibit virtualization of frame values.
+         * @formatter:off
+         * def yieldingRoot(externalValue):
+         *   yield 20L
+         *   stackValue state = externalValue
+         *   while true:
+         *     yield 1L
+         *
+         * def wrapperRoot(count, externalValue):
+         *   sum = unpack(invoke(yieldingRoot, externalValue), target, frame)
+         *   while count > 0:
+         *     sum += resumeAndUnpack(target, frame, null, target)
+         *     count -= 1
+         *   return sum
+         * @formatter:on
+         * A previous Bytecode DSL bug would leave the first yield's ContinuationResult on the
+         * stack. This value would conflict with the value stashed in the stack value in
+         * subsequent yields, causing PEA to materialize the continuation frame. The external value
+         * is supplied by the caller to avoid introducing allocations in the graph.
+         */
+        BytecodeRootNodes<TestInterpreter> nodes = TestInterpreterGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.beginYield();
+            b.emitLoadConstant(20L);
+            b.endYield();
+
+            b.beginBlock();
+            b.beginBindStackValue();
+            b.emitLoadArgument(0);
+            b.endBindStackValue();
+
+            b.beginWhile();
+            b.emitLoadConstant(true);
+            b.beginYield();
+            b.emitLoadConstant(1L);
+            b.endYield();
+            b.endWhile();
+            b.endBlock();
+            TestInterpreter yieldingRoot = b.endRoot();
+
+            b.beginRoot();
+            BytecodeLocal target = b.createLocal();
+            BytecodeLocal frame = b.createLocal();
+            BytecodeLocal sum = b.createLocal();
+            b.beginStoreLocal(sum);
+            b.beginUnpackContinuationResult(target, frame);
+            b.beginInvokeInlined(yieldingRoot);
+            b.emitLoadArgument(1);
+            b.endInvokeInlined();
+            b.endUnpackContinuationResult();
+            b.endStoreLocal();
+
+            BytecodeLocal count = b.createLocal();
+            b.beginStoreLocal(count);
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginGreater();
+            b.emitLoadLocal(count);
+            b.emitLoadConstant(0L);
+            b.endGreater();
+            b.beginBlock();
+            b.beginStoreLocal(sum);
+            b.beginAdd();
+            b.emitLoadLocal(sum);
+            b.beginResumeAndUnpack(target);
+            b.emitLoadLocal(target);
+            b.emitLoadLocal(frame);
+            b.emitLoadNull();
+            b.endResumeAndUnpack();
+            b.endAdd();
+            b.endStoreLocal();
+            b.beginStoreLocal(count);
+            b.beginAdd();
+            b.emitLoadLocal(count);
+            b.emitLoadConstant(-1L);
+            b.endAdd();
+            b.endStoreLocal();
+            b.endBlock();
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitLoadLocal(sum);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        TestInterpreter wrapperRoot = nodes.getNode(1);
+
+        OptimizedCallTarget wrapperTarget = (OptimizedCallTarget) wrapperRoot.getCallTarget();
+        Assert.assertEquals(42L, wrapperTarget.call(22L, new Object()));
+
+        StructuredGraph graph = partialEval(wrapperTarget, new Object[]{22L, new Object()});
+        assertTrue("unexpected materialized allocations: " + graph.getNodes().filter(AllocatedObjectNode.class).snapshot(),
+                        graph.getNodes().filter(AllocatedObjectNode.class).isEmpty());
+        assertTrue("unexpected object allocations: " + graph.getNodes().filter(AbstractNewObjectNode.class).snapshot(),
+                        graph.getNodes().filter(AbstractNewObjectNode.class).isEmpty());
+    }
+
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
     abstract static class TestInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
         protected TestInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -137,6 +248,65 @@ public class GR79495Test extends PartialEvaluationTest {
             @Specialization
             static long doLong(long left, long right) {
                 return left + right;
+            }
+        }
+
+        @Operation
+        static final class Greater {
+            @Specialization
+            static boolean doLong(long left, long right) {
+                return left > right;
+            }
+        }
+
+        @Operation(storeBytecodeIndex = true)
+        @ConstantOperand(type = TestInterpreter.class)
+        static final class InvokeInlined {
+            @Specialization
+            static Object invoke(TestInterpreter callee, @Variadic Object[] arguments,
+                            @Cached(value = "createForcedInlineCall(callee.getCallTarget())", neverDefault = true) DirectCallNode callNode) {
+                return callNode.call(arguments);
+            }
+
+            static DirectCallNode createForcedInlineCall(CallTarget target) {
+                DirectCallNode callNode = DirectCallNode.create(target);
+                callNode.forceInlining();
+                return callNode;
+            }
+        }
+
+        @Operation
+        @ConstantOperand(type = LocalAccessor.class)
+        @ConstantOperand(type = LocalAccessor.class)
+        static final class UnpackContinuationResult {
+            @Specialization
+            static long unpackContinuation(VirtualFrame frame, LocalAccessor targetAccessor,
+                            LocalAccessor frameAccessor, ContinuationResult result,
+                            @Bind BytecodeNode bytecode) {
+                targetAccessor.setObject(bytecode, frame, result.getContinuationRootNode());
+                frameAccessor.setObject(bytecode, frame, result.getFrame());
+                return (long) result.getResult();
+            }
+        }
+
+        @Operation(storeBytecodeIndex = true)
+        @ConstantOperand(type = LocalAccessor.class)
+        static final class ResumeAndUnpack {
+            @Specialization(guards = "target == rootNode", limit = "2")
+            static long resumeAndUnpack(VirtualFrame callerFrame, LocalAccessor targetAccessor,
+                            ContinuationRootNode target, MaterializedFrame continuationFrame, Object value,
+                            @Bind BytecodeNode bytecode,
+                            @Cached("target") ContinuationRootNode rootNode,
+                            @Cached("createForcedInlineCall(rootNode.getCallTarget())") DirectCallNode callNode) {
+                ContinuationResult result = (ContinuationResult) callNode.call(continuationFrame, value);
+                targetAccessor.setObject(bytecode, callerFrame, result.getContinuationRootNode());
+                return (long) result.getResult();
+            }
+
+            static DirectCallNode createForcedInlineCall(CallTarget target) {
+                DirectCallNode callNode = DirectCallNode.create(target);
+                callNode.forceInlining();
+                return callNode;
             }
         }
 
