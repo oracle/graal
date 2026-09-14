@@ -202,7 +202,6 @@ final class SizeParameters {
     @Uninterruptible(reason = ACCESS_RAW_SIZE_PARAMETERS)
     public UnsignedWord getCurrentHeapSizeTarget() {
         assert isInitialized();
-        assert VMOperation.isGCInProgress() : "use only during GC";
         return computeCurrentHeapSizeTarget(sizes);
     }
 
