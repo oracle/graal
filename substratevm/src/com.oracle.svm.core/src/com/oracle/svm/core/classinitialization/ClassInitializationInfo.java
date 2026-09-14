@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.classinitialization;
 
-import static com.oracle.svm.shared.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 import static com.oracle.svm.guest.staging.core.graal.KnownIntrinsics.readCallerStackPointer;
+import static com.oracle.svm.shared.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.FunctionPointerHolder;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -47,6 +46,10 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.core.logging.NativeMemoryLog;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
@@ -54,7 +57,9 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
@@ -84,6 +89,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 @InternalVMMethod
 public final class ClassInitializationInfo {
+    /// Counts class initialization events when runtime tracing is enabled.
+    private static final AtomicInteger TRACE_CLASS_INIT_COUNTER = new AtomicInteger(0);
+
     /*
      * These singletons are used for build-time initialized classes that are UNTRACKED for type
      * reached, which reduces image size.
@@ -545,7 +553,14 @@ public final class ClassInitializationInfo {
             StackOverflowCheck.singleton().protectYellowZone();
         }
         try {
+            boolean traceVerification = HasXlogSupport.get() && LogTagSet.class_init.isInfo() && RuntimeClassLoading.Options.ClassVerification.getValue().needsVerification(hub.getClassLoader());
+            if (traceVerification) {
+                LogTagSet.class_init.info("Start class verification for: " + hub.getName());
+            }
             CremaSupport.singleton().prepareAndVerify(hub);
+            if (traceVerification) {
+                LogTagSet.class_init.info("End class verification for: " + hub.getName());
+            }
         } finally {
             if (Platform.includedIn(NATIVE_ONLY.class)) {
                 StackOverflowCheck.singleton().makeYellowZoneAvailable();
@@ -630,6 +645,11 @@ public final class ClassInitializationInfo {
             initLock.unlock();
         }
 
+        /* Trace only after this thread has claimed initialization and released the state lock. */
+        if (HasXlogSupport.get() && LogTagSet.class_init.isInfo()) {
+            traceClassInitialization(hub, hasInitializer);
+        }
+
         /*
          * Step 7: Next, if C is a class rather than an interface, initialize its super class and
          * super interfaces.
@@ -706,6 +726,28 @@ public final class ClassInitializationInfo {
              */
             setInitializationStateAndNotify(InitState.InitializationError);
             throw (Error) exception;
+        }
+    }
+
+    /// Emits class initialization diagnostics without allowing tracing failures to strand the
+    /// class in the `BeingInitialized` state.
+    private static void traceClassInitialization(DynamicHub hub, boolean hasInitializer) {
+        try {
+            int sequence = TRACE_CLASS_INIT_COUNTER.getAndIncrement();
+            String method = hasInitializer ? "" : " (no method)";
+            try (LogMessage message = LogTagSet.class_init.message()) {
+                NativeMemoryLog line = message.info();
+                line.signed(sequence).string(" Initializing '");
+                String name = hub.getName();
+                /* Convert the class name without allocating a replacement string. */
+                for (int index = 0; index < name.length(); index++) {
+                    char value = name.charAt(index);
+                    line.character(value == '.' ? '/' : value);
+                }
+                line.string("'").string(method).string(" by thread \"").string(Thread.currentThread().getName()).string("\"");
+            }
+        } catch (Throwable ignored) {
+            /* Tracing must not alter class initialization state or semantics. */
         }
     }
 
