@@ -191,8 +191,9 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
         synchronized (sourcesLock) {
             for (DAPSourceWrapper source : sources) {
                 boolean sourceReference = useSourceReference(source.runtimePath, source.defaultSourceReference);
-                source.dapSource.setPath(sourceReference ? source.runtimePath : context.runtimeToClientPath(source.runtimePath));
-                source.dapSource.setSourceReference(sourceReference ? sourceIDs.get(source.truffleSource) : null);
+                // Recreate the descriptor: optional JSON setters ignore null instead of removing
+                // an existing sourceReference.
+                source.dapSource = from(source.truffleSource, source.runtimePath, sourceReference);
             }
         }
     }
@@ -256,7 +257,7 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
 
     private static final class DAPSourceWrapper {
 
-        final com.oracle.truffle.tools.dap.types.Source dapSource;
+        com.oracle.truffle.tools.dap.types.Source dapSource;
         final Source truffleSource;
         final String runtimePath;
         final boolean defaultSourceReference;

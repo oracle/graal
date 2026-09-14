@@ -194,19 +194,39 @@ public class PathMappingsDAPTest {
 
     @Test
     public void testCachedSourcesAreRefreshedOnAttach() throws Exception {
+        testCachedSourcesAreRefreshedOnAttach(false);
+    }
+
+    @Test
+    public void testCachedSourceReferenceIsRemovedOnAttach() throws Exception {
+        testCachedSourcesAreRefreshedOnAttach(true);
+    }
+
+    private static void testCachedSourcesAreRefreshedOnAttach(boolean virtual) throws Exception {
         Path runtimeRoot = Files.createTempDirectory("dap-runtime").toRealPath();
-        Path sourceFile = writeSource(runtimeRoot);
+        Path sourceFile = virtual ? runtimeRoot.resolve("Virtual.sl") : writeSource(runtimeRoot);
         String clientRoot = runtimeRoot.resolveSibling("dap-client").toString();
         String clientPath = clientRoot + File.separator + sourceFile.getFileName();
-        Source source = Source.newBuilder("sl", sourceFile.toFile()).build();
+        Source source = virtual ? Source.newBuilder("sl", CODE, sourceFile.getFileName().toString()).uri(sourceFile.toUri()).build() : Source.newBuilder("sl", sourceFile.toFile()).build();
         DAPTester tester = DAPTester.start(false, context -> context.eval(source));
         initialize(tester);
-        send(tester, "attach", new JSONObject().put("localRoot", clientRoot).put("remoteRoot", runtimeRoot.toString()), 2);
+        send(tester, "loadedSources", new JSONObject(), 2);
+        JSONObject beforeAttach = receive(tester);
+        assertResponse(beforeAttach, "loadedSources");
+        JSONObject cachedSource = findSource(beforeAttach.getJSONObject("body").getJSONArray("sources"), sourceFile.toString());
+        Assert.assertNotNull(cachedSource);
+        if (virtual) {
+            Assert.assertTrue(cachedSource.getInt("sourceReference") > 0);
+        }
+
+        send(tester, "attach", new JSONObject().put("localRoot", clientRoot).put("remoteRoot", runtimeRoot.toString()), 3);
         assertLifecycleResponse(tester, "attach");
-        send(tester, "loadedSources", new JSONObject(), 3);
+        send(tester, "loadedSources", new JSONObject(), 4);
         JSONObject loadedSources = receive(tester);
         assertResponse(loadedSources, "loadedSources");
-        Assert.assertTrue(containsPath(loadedSources.getJSONObject("body").getJSONArray("sources"), clientPath));
+        JSONObject mappedSource = findSource(loadedSources.getJSONObject("body").getJSONArray("sources"), clientPath);
+        Assert.assertNotNull(mappedSource);
+        Assert.assertFalse(mappedSource.has("sourceReference"));
         tester.eval(source).get();
         Assert.assertEquals("thread", receive(tester).getString("event"));
         tester.finish();
@@ -319,12 +339,17 @@ public class PathMappingsDAPTest {
     }
 
     private static boolean containsPath(JSONArray sources, String path) {
+        return findSource(sources, path) != null;
+    }
+
+    private static JSONObject findSource(JSONArray sources, String path) {
         for (int i = 0; i < sources.length(); i++) {
-            if (path.equals(sources.getJSONObject(i).optString("path", null))) {
-                return true;
+            JSONObject source = sources.getJSONObject(i);
+            if (path.equals(source.optString("path", null))) {
+                return source;
             }
         }
-        return false;
+        return null;
     }
 
     private static void initialize(DAPTester tester) throws Exception {
