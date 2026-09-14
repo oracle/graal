@@ -5,6 +5,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 ## GraalVM 25.5 (Internal Version 25.5.5)
 * (GR-79526): Extended lock elimination to coarsen locks across simple control flow and eliminate
   nested locking of the same object.
+* (GR-79587): Added `GuardRangeGroupingPhase`, which removes redundant integer range guards by
+  retaining the tightest lower and upper bounds for guards with the same anchor. The optimization is
+  enabled by default and can be disabled with `-Djdk.graal.OptGuardRangeGrouping=false`.
 
 ## GraalVM 25.4 (Internal Version 25.4.4.1.1)
 * (GR-79029): Add `PullThroughPhiPhase` and `DuplicationPhase` to the community compiler configuration.

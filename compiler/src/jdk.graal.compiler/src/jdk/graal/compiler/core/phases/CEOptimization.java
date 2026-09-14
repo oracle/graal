@@ -28,6 +28,7 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
+import jdk.graal.compiler.guards.GuardRangeGroupingPhase;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
@@ -162,6 +163,28 @@ public enum CEOptimization {
      * {@link GraalOptions#ConditionalElimination}.
      */
     ConditionalElimination(GraalOptions.ConditionalElimination, ConditionalEliminationPhase.class),
+
+    /// [GuardRangeGroupingPhase] replaces multiple integer based guards with a single
+    /// [jdk.graal.compiler.nodes.extended.MultiGuardNode] covering the low and high bounds implied
+    /// by the guards' conjunction. For example:
+    ///
+    /// ```
+    /// if (x < 10 || x < 50 || x > 100 || x > 1000) {
+    /// deopt();
+    /// }
+    /// ```
+    ///
+    /// is transformed to:
+    ///
+    /// ```
+    /// if (x < 50 || x > 100) {
+    /// deopt();
+    /// }
+    /// ```
+    ///
+    /// This phase is enabled by default and can be disabled with
+    /// [MidTier.Options#OptGuardRangeGrouping].
+    GuardRangeGrouping(MidTier.Options.OptGuardRangeGrouping, GuardRangeGroupingPhase.class),
 
     /**
      * {@link SchedulePhase} is Graal's implementation of an instruction scheduling algorithm for
