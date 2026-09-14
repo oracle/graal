@@ -210,11 +210,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public void enableTraceClassLoading() {
-        RuntimeClassLoading.Options.TraceClassLoading.update(true);
-    }
-
-    @Override
     public void updateRuntimeAssertionStatus(String classOrPackage, boolean enable) {
         AssertionsSupport.singleton().updateRuntimeAssertionStatus(classOrPackage, enable);
     }
