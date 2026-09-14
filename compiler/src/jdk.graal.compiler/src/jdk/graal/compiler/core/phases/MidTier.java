@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.phases;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.SpectrePHTMitigations;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
+import jdk.graal.compiler.guards.GuardRangeGroupingPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
@@ -73,6 +74,10 @@ public class MidTier extends BaseTier<MidTierContext> {
         @Option(help = "Performs aliasing analysis on arrays to determine which memory " +
                        "does not alias and enables more optimizations to be performed.", type = OptionType.Expert)
         public static final OptionKey<Boolean> OptimisticAliasingAnalysis = new OptionKey<>(true);
+
+        /// Controls whether integer range guards with the same anchor are combined.
+        @Option(help = "Combines integer range guards that have the same anchor.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> OptGuardRangeGrouping = new OptionKey<>(true);
         //@formatter:on
     }
 
@@ -95,6 +100,10 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         appendPhase(new LoopSafepointEliminationPhase());
+
+        if (Options.OptGuardRangeGrouping.getValue(options)) {
+            appendPhase(new GuardRangeGroupingPhase());
+        }
 
         if (GraalOptions.SpeculativeGuardMovement.getValue(options)) {
             appendPhase(new SpeculativeGuardMovementPhase(canonicalizer));
