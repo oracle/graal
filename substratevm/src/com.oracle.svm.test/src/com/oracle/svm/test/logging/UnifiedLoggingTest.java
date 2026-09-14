@@ -25,6 +25,8 @@
 package com.oracle.svm.test.logging;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -259,6 +261,30 @@ public final class UnifiedLoggingTest {
         checkEquals(stdout.name(), "stdout", "stdout alias should resolve to stdout");
         checkEquals(stderr.name(), "stderr", "stderr alias should resolve to stderr");
         checkContains(stdoutOutput.describe(), "all=off", "disabled stdout description should include all=off");
+        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        memoryMXBean.setVerbose(true);
+        checkTrue(memoryMXBean.isVerbose(), "the memory management bean should report verbose GC logging as enabled");
+        checkTrue(LogTagSet.gc.isInfo(), "the management update should enable INFO GC logging");
+        checkContains(stdoutOutput.describe(), "gc=info", "the stdout description should include the management update");
+        memoryMXBean.setVerbose(false);
+        checkFalse(memoryMXBean.isVerbose(), "the memory management bean should report verbose GC logging as disabled");
+        checkFalse(LogTagSet.gc.isError(), "the management update should disable GC logging");
+        RuntimeOptions.set("VerboseGC", true);
+        checkTrue(Boolean.TRUE.equals(RuntimeOptions.get("PrintGC")), "DEBUG GC logging should also enable PrintGC");
+        checkTrue(LogTagSet.gc.isDebug(), "VerboseGC should enable DEBUG GC logging");
+        RuntimeOptions.set("VerboseGC", false);
+        checkTrue(LogTagSet.gc.isInfo(), "disabling VerboseGC should retain PrintGC INFO logging");
+        RuntimeOptions.set("PrintGC", false);
+        checkFalse(LogTagSet.gc.isError(), "disabling PrintGC should disable GC logging");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:gc=debug"), "GC DEBUG configuration should be accepted");
+        checkTrue(Boolean.TRUE.equals(RuntimeOptions.get("PrintGC")), "GC DEBUG configuration should enable PrintGC");
+        checkTrue(Boolean.TRUE.equals(RuntimeOptions.get("VerboseGC")), "GC DEBUG configuration should enable VerboseGC");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:gc=info"), "GC INFO configuration should be accepted");
+        checkTrue(Boolean.TRUE.equals(RuntimeOptions.get("PrintGC")), "GC INFO configuration should retain PrintGC");
+        checkFalse(Boolean.TRUE.equals(RuntimeOptions.get("VerboseGC")), "GC INFO configuration should disable VerboseGC");
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:gc=off"), "GC OFF configuration should be accepted");
+        checkFalse(Boolean.TRUE.equals(RuntimeOptions.get("PrintGC")), "GC OFF configuration should disable PrintGC");
+        checkFalse(Boolean.TRUE.equals(RuntimeOptions.get("VerboseGC")), "GC OFF configuration should disable VerboseGC");
         checkFalse(LogConfiguration.parseCommandLineArgument("-verbose"), "non-Xlog option should be rejected by the logger");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:stdout:none"), "stdout configuration should be accepted");
         checkContains(stdoutOutput.describe(), "class+load=debug", "stdout description should include the configured selection");
@@ -729,6 +755,30 @@ public final class UnifiedLoggingTest {
         }
     }
 
+    /// Verifies that a VM operation does not wait for a route transition that may be blocked by
+    /// the operation itself.
+    @Test
+    public void testVMOperationLoggingDuringRouteTransition() throws InterruptedException {
+        LogConfiguration.disableLogging();
+        TestLogOutput output = new TestLogOutput("route-transition-output");
+        Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
+        Target_com_oracle_svm_core_logging_LogOutputList outputList = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) tagSet.outputList();
+        outputList.setOutputLevel(output, LogLevel.INFO);
+        Thread operationThread = new Thread(() -> new NonSafepointLoggingVMOperation().enqueue());
+        boolean completedWhileReadersBlocked;
+        outputList.readersBlocked = true;
+        try {
+            operationThread.start();
+            operationThread.join(5_000);
+            completedWhileReadersBlocked = !operationThread.isAlive();
+        } finally {
+            outputList.readersBlocked = false;
+            operationThread.join();
+            LogConfiguration.disableLogging();
+        }
+        checkTrue(completedWhileReadersBlocked, "VM operation logging should bypass a blocked route transition");
+    }
+
     /// Verifies quoted file names, file-size parsing, folding, rotation, and invalid options.
     @Test
     public void testFileOutput() throws IOException {
@@ -1160,6 +1210,19 @@ public final class UnifiedLoggingTest {
         protected void operate() {
             executingThread = Thread.currentThread();
             LogTagSet.class_load.info("message from VM operation");
+        }
+    }
+
+    /// Logs from a VM operation without stopping the test thread at a safepoint.
+    private static final class NonSafepointLoggingVMOperation extends JavaVMOperation {
+        NonSafepointLoggingVMOperation() {
+            super(VMOperationInfos.get(NonSafepointLoggingVMOperation.class, "Unified logging during route transition", VMOperation.SystemEffect.NONE));
+        }
+
+        /// Emits a message while the VM operation is in progress.
+        @Override
+        protected void operate() {
+            LogTagSet.class_load.info("message from non-safepoint VM operation");
         }
     }
 

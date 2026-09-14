@@ -14,7 +14,13 @@ sets used by its runtime. `-Xlog:help` is the authoritative list for a
 particular native image; a tag that is not listed cannot be selected.
 
 The `-Xlog` command line interface is included when
-`StrictRuntimeJavaOptions` is enabled.
+`StrictRuntimeJavaOptions` is enabled. The logging API remains available when
+it is disabled because legacy GC options use the same message and routing
+infrastructure. `VerboseGC` and `PrintGC` remain synchronized with the `gc` tag
+set on standard output, so either compatibility options or `-Xlog` can
+reconfigure GC logging at run time. In an image without `-Xlog` support, those
+legacy options enable DEBUG or INFO output for the `gc` tag set on the low-level
+VM log.
 
 ## Writing log messages
 
@@ -23,7 +29,10 @@ and `error`. An enabled single-line log message uses the tag set's shared
 `LogMessage` to record one line and then commits it.
 
 The level predicates and message APIs use the same output table for configured
-`-Xlog` routes.
+`-Xlog` routes and the legacy GC fallback. The fallback is filtered in the same
+way as any other output, but uses only the uptime decorator and the GC prefix.
+It writes through `Log.log()`, so it honors `-XX:LogFile` and embedding log
+callbacks rather than creating a separate unified-log destination.
 
 For multi-line events (e.g., logging a stack trace), `LogTagSet.message()` returns
 a shared facade for the tag set, while the mutable message bytes, line metadata, and event decorations live
@@ -42,8 +51,9 @@ output discards any preexisting active file contents at startup regardless of
 its rotation configuration; only output from the current process is rotated.
 Consequently, events cannot be interleaved on a destination, file
 rotation cannot occur between an event's lines, and formatting does not hold an
-output lock. The safepoint consequences of a blocked raw write are described
-below.
+output lock. The low-level VM log fallback uses the synchronization provided by
+`Log.log()` instead of the stream-output mutex. The safepoint consequences of a
+blocked raw write are described below.
 
 `LogDecorations` is a reusable event record. It captures the wall-clock
 timestamp, isolate uptime, and thread id once before an event is sent to its
@@ -155,6 +165,8 @@ Stream and file output hold their mutex only in an uninterruptible critical
 section, so a thread cannot stop at a safepoint while owning the mutex. Every
 caller, including a VM operation, therefore uses the same serialized output
 path. File output also performs its normal opening and rotation on this path.
+The legacy GC fallback writes to the low-level VM log, which uses its existing
+synchronization rather than a unified-log output mutex.
 `LogConfiguration.disableLogging` is not supported while a VM operation is in
 progress because flushing acquires queue locks and can wait for output; it checks
 this condition before acquiring the configuration monitor.
@@ -250,6 +262,12 @@ may allocate.
 When `-Xlog` is supported, `LogConfiguration.initialize` installs the default
 `all=warning` configuration on `stdout` and caches the host name, process id,
 and local startup timestamp used for filename expansion.
+Without `-Xlog`, no default output table is installed. `VerboseGC`, `PrintGC`,
+and `MemoryMXBean.setVerbose` update the GC threshold on standard output when
+`-Xlog` is available and on the fallback output otherwise. Changes to the GC
+threshold on standard output are mirrored back to `VerboseGC` and `PrintGC`.
+Shared message buffers and their thread-exit cleanup remain present for fallback
+GC logging.
 The `time` decorator
 obtains the local UTC offset for the event timestamp through the native
 `LibCHelper.SVM_localUTCOffsetSeconds(millisecondsSince19700101)` helper when
@@ -337,8 +355,8 @@ SVM uses the same broad configuration model but a smaller runtime design:
 | --- | --- | --- |
 | Available tag sets | Every tag set instantiated by HotSpot logging sites. | Every tag set used by the SVM runtime. |
 | Runtime modes | Synchronous by default; `-Xlog:async` adds a bounded queue and writer thread. | Synchronous by default; `-Xlog:async[:drop\|stall]` uses a preallocated native byte queue and a writer thread. VM operations preflight complete messages and write synchronously when immediate admission is unsafe. |
-| Output routing | Per-level linked-list heads with atomic reader tracking. | Per-tag-set, per-level immutable output arrays published through volatile fields. |
-| Configuration | `ConfigurationLock` and reader counts protect updates and delayed reclamation; `jcmd VM.log` supports runtime changes. | Synchronized configuration methods publish replacement arrays. |
+| Output routing | Per-level linked-list heads with atomic reader tracking. | Per-tag-set, per-level immutable output arrays published through volatile fields. The legacy GC fallback uses the same table with a low-level VM-log destination. |
+| Configuration | `ConfigurationLock` and reader counts protect updates and delayed reclamation; `jcmd VM.log` supports runtime changes. | Synchronized configuration methods publish replacement arrays. Configuration is startup-oriented except for GC verbosity changes through `MemoryMXBean`. |
 | Synchronous output locking | `FileLocker` protects writes; a rotation semaphore covers file rotation. | Stream outputs use an uninterruptible critical section to serialize no-transition native writes with a dedicated `VMMutex`; file outputs use the same pattern with a prebuilt `VMMutex` across the no-transition write, accounting, rotation, and reopen. VM operations use the same serialized paths. |
 | Asynchronous buffering and locking | Native ping-pong buffers and producer and consumer synchronization protect the queue. | One native chunk contains a variable number of word-aligned raw records with inline bytes. Native ring state, `VMMutex` producer and consumer locks, and a `VMCondition` coordinate publication, waiting, consumption, flushing, and VM teardown. The daemon consumer waits in native state and is terminated before the chunk is freed at isolate destruction. |
 | Decoration state | Resolved event decorations can remain in asynchronous messages. | Event-only decorations live in fast thread-local state and are copied into each asynchronous queue record; line levels remain explicit per line or record. |
@@ -357,3 +375,6 @@ The native JUnit coverage is in `UnifiedLoggingTest`. It can be run with:
 ```text
 mx native-unittest com.oracle.svm.test.logging.UnifiedLoggingTest
 ```
+
+`JfrStandaloneLoggingTest` covers fallback GC logging in an image without
+`-Xlog` support.

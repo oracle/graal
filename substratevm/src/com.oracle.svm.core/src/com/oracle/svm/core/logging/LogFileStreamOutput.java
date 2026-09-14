@@ -31,10 +31,11 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
-/// Writes log messages to `stdout` or `stderr`.
+/// Writes log messages to `stdout`, `stderr`, or [Log#log()].
 final class LogFileStreamOutput extends LogOutput {
 
     /// Selects the destination used for a stream.
@@ -43,7 +44,10 @@ final class LogFileStreamOutput extends LogOutput {
         STDOUT,
 
         /// Denotes standard error.
-        STDERR
+        STDERR,
+
+        /// Denotes the low-level VM log accessed by [Log#log()].
+        VMLOG
     }
 
     /// Destination used for this output.
@@ -60,6 +64,10 @@ final class LogFileStreamOutput extends LogOutput {
 
     @Override
     protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
+        if (target == Target.VMLOG) {
+            Log.log().string(bytes, (int) length.rawValue());
+            return 0;
+        }
         return writeRawLocked(LoggingSupport.singleton(), bytes, length);
     }
 
@@ -79,6 +87,10 @@ final class LogFileStreamOutput extends LogOutput {
 
     /// Writes undecorated text for configuration diagnostics and help output.
     void writePlain(String text) {
+        if (target == Target.VMLOG) {
+            Log.log().string(text);
+            return;
+        }
         try (CTypeConversion.CCharPointerHolder holder = CTypeConversion.toCString(text)) {
             CCharPointer bytes = holder.get();
             /* Configuration diagnostics are best effort and must not reject an otherwise valid option. */
