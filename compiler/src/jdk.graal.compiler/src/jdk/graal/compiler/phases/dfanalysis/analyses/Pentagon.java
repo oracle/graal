@@ -48,11 +48,10 @@ import jdk.vm.ci.meta.TriState;
  * pentagons. The domain of pentagons knows four different types of values: logic values
  * ({@link LogicPentagon}), objects({@link ObjectPentagon}), floating point numbers
  * ({@link FloatPentagon}), and integers ({@link IntegerPentagon}). Each type forms a sublattice in
- * the domain. The domain of pentagons was first introduced in the paper
- * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">Pentagons: a weakly relational abstract
- * domain for the efficient validation of array accesses</a>. In addition to numeric bounds for
- * integers, it also captures symbolic strict upper bound relationships between variables like
- * {@code x < y}.
+ * the domain. The domain of pentagons was first introduced in the paper <a
+ * href=https://doi.org/10.1145/1363686.1363736">Pentagons: a weakly relational abstract domain for
+ * the efficient validation of array accesses</a>. In addition to numeric bounds for integers, it
+ * also captures symbolic strict upper bound relationships between variables like {@code x < y}.
  */
 public sealed interface Pentagon {
 
@@ -446,22 +445,7 @@ public sealed interface Pentagon {
 
         @Override
         public int hashCode() {
-            int hash = range == null ? -1 : range.hashCode();
-            if (lowerBounds == null) {
-                hash = hash * 31 - 1;
-            } else {
-                for (ValueNode lb : lowerBounds) {
-                    hash = hash * 31 + lb.hashCode();
-                }
-            }
-            if (strictUpperBounds == null) {
-                hash = hash * 31 - 1;
-            } else {
-                for (ValueNode sub : strictUpperBounds) {
-                    hash = hash * 31 + sub.hashCode();
-                }
-            }
-            return hash;
+            return Objects.hash(range.hashCode(), lowerBounds, strictUpperBounds);
         }
 
         @Override

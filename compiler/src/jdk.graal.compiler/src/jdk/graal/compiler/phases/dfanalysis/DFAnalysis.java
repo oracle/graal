@@ -67,9 +67,9 @@ import jdk.graal.compiler.phases.dfanalysis.DFEdgeMap.Reachability;
  * <p>
  * This class is a framework to be used for control flow sensitive optimistic data flow analysis.
  * This framework applies a fixed point algorithm described in
- * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">Lazy Sparse Conditional Constant
- * Propagation in the Sea of Nodes</a> by Chistoph Aigner, Gerg&ouml; Barany, and Hanspeter
- * M&ouml;ssenb&ouml;ck, using a given analysis domain that takes the shape of a
+ * <a href="https://doi.org/10.1145/3679007.3685059">Lazy Sparse Conditional Constant Propagation in
+ * the Sea of Nodes</a> by Christoph Aigner, Gerg&ouml; Barany, and Hanspeter M&ouml;ssenb&ouml;ck,
+ * using a given analysis domain that takes the shape of a
  * <a href="https://en.wikipedia.org/wiki/Lattice_(order)">complete lattice</a>. It tracks abstract
  * domain values for nodes in the graph as well as information about reachability of control flow
  * edges. The algorithm is designed in a way that it does not require a full schedule of the graph.

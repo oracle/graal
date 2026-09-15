@@ -88,11 +88,9 @@ import jdk.vm.ci.meta.TriState;
 /**
  * <p>
  * This phase implements a variation of sparse conditional constant propagation as described in
- * <a href="https://dl.acm.org/doi/10.1145/3679007.3685059">Lazy Sparse Conditional Constant
- * Propagation in the Sea of Nodes</a> by Chistoph Aigner, Gerg&ouml; Barany, and Hanspeter
- * M&ouml;ssenb&ouml;ck.
+ * <a href="https://doi.org/10.1145/3679007.3685059">Lazy Sparse Conditional Constant Propagation in
+ * the Sea of Nodes</a> by Christoph Aigner, Gerg&ouml; Barany, and Hanspeter M&ouml;ssenb&ouml;ck.
  * </p>
- * new HashSet<>
  * <p>
  * The domain of constants is represented using stamps which have all of their information stripped
  * except if a value is constant or not (see {@link ConstantNormalizedStamps#normalize}). The
