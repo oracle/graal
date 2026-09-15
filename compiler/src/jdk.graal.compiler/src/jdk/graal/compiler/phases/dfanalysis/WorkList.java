@@ -457,7 +457,7 @@ final class WorkList {
             if (scheduled.contains(n)) {
                 toDo.add(n);
                 scheduled.remove(n);
-                if (!needsPrioRemoval && !needsValueRemoval) {
+                if (!needsPrioRemoval || !needsValueRemoval) {
                     switch (n) {
                         // nodes scheduled with priority
                         case InferredFactNode<?> ignored -> needsPrioRemoval = true;

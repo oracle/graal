@@ -36,6 +36,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -562,13 +563,14 @@ final class AnalysisInferenceHelper {
      */
     private static <T> boolean insertSafeHeldOffInferences(ArrayList<InferredFactNode<T>> heldOffInferences, EconomicSet<ValueNode> inferredForUsages,
                     DFAnalysis<T> analysis, ValueNode generator, AbstractBeginNode branch, ValueNode value, T fact) {
+        boolean insertedInference = false;
         for (InferredFactNode<T> iFact : heldOffInferences) {
             if (inferredForUsages.contains(iFact.getGenerator())) {
                 createInferenceNode(analysis, generator, branch, value, fact, iFact);
-                return true;
+                insertedInference = true;
             }
         }
-        return false;
+        return insertedInference;
     }
 
     /**
@@ -582,6 +584,7 @@ final class AnalysisInferenceHelper {
     private static <T> boolean recursiveTransitiveCheck(EconomicMap<Node, HIRBlock> domMap, NodeFlood flood, Node curTransitiveNode, DFAnalysis<T> analysis, StringBuilder logBuilder,
                     ValueNode usage,
                     ValueNode value, HIRBlock targetBranch) {
+        CompilationAlarm.checkProgress(analysis.graph);
         final ControlFlowGraph cfg = analysis.cfg;
         flood.add(curTransitiveNode);
         if (!(curTransitiveNode instanceof ValueNode curTransitiveUsage)) {
@@ -610,7 +613,6 @@ final class AnalysisInferenceHelper {
                 return false;
             } else {
                 log(logBuilder, "    ((-> %s) %s dominates %s)\n", curTransitiveUsage, targetBranch, block);
-                domMap.put(curTransitiveNode, block);
                 return true;
             }
         } else {
@@ -670,7 +672,7 @@ final class AnalysisInferenceHelper {
                     if (!flood.isMarked(u) && !recursiveTransitiveCheck(domMap, flood, u, analysis, logBuilder, usage, value, targetBranch)) {
                         return false;
                     }
-                    GraalError.guarantee(domMap.containsKey(u), "WHAT???");
+                    GraalError.guarantee(domMap.containsKey(u), "Dominated nodes should always land in the block cache");
                     myDom = myDom == null ? domMap.get(u) : (HIRBlock) AbstractControlFlowGraph.commonDominator(myDom, domMap.get(u));
                 }
                 usageCnt++;
@@ -688,13 +690,6 @@ final class AnalysisInferenceHelper {
     }
 
     private static TriState checkGuarded(ControlFlowGraph cfg, HIRBlock targetBranch, GuardedNode guardedNode) {
-        if (true) {
-            if (guardedNode.getGuard() instanceof FixedNode fn) {
-                return TriState.get(targetBranch.dominates(cfg.blockFor(fn)));
-            } else {
-                return TriState.UNKNOWN;
-            }
-        }
         return switch (guardedNode.getGuard()) {
             case FixedNode fn ->
                 TriState.get(targetBranch.dominates(cfg.blockFor(fn)));
