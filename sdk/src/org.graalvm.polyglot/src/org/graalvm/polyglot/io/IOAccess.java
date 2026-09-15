@@ -43,6 +43,7 @@ package org.graalvm.polyglot.io;
 import java.util.Objects;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.SandboxPolicy;
 
 /**
  * Represents an IO access configuration of a polyglot context. The IO access configuration
@@ -239,6 +240,12 @@ public final class IOAccess {
          * fully virtualize file system operations. An example of virtualization is a <a href=
          * "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/MemoryFileSystem.java">memory-based
          * file system</a>.
+         * <p>
+         * GraalVM trusts a custom file system supplied by the embedder. Its methods may be invoked
+         * with guest-controlled input, so the embedder must ensure that the implementation is safe
+         * for use with the selected {@link SandboxPolicy sandbox policy}. Sandbox validation rejects
+         * file systems known to expose the default host file system, but it does not inspect the
+         * behavior of arbitrary custom implementations.
          *
          * @param fileSystem the file system to use in the guest language
          * @return the {@link Builder}

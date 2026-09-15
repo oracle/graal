@@ -676,6 +676,9 @@ public interface FileSystem {
      * {@code fileSystem} read-only by forbidding all write operations. This method can be used to
      * make an existing file system, such as the {@link #newDefaultFileSystem() default filesystem},
      * read-only.
+     * <p>
+     * Making the default file system read-only still exposes host files and does not make it
+     * suitable for a sandbox policy that prohibits host file access.
      *
      * @since 22.2
      */
@@ -687,6 +690,10 @@ public interface FileSystem {
      * Creates a {@link FileSystem} implementation based on the given Java NIO filesystem. The
      * returned {@link FileSystem} delegates all operations to {@code fileSystem}'s
      * {@link FileSystemProvider provider}.
+     * <p>
+     * The returned file system has access to all resources exposed by the supplied Java NIO file
+     * system. In particular, passing {@link java.nio.file.FileSystems#getDefault()} exposes the host
+     * file system and is not suitable for a sandbox policy that prohibits host file access.
      *
      * <p>
      * The following example shows how to configure {@link Context} so that languages read files
