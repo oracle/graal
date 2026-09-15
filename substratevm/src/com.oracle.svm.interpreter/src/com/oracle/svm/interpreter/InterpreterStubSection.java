@@ -142,8 +142,11 @@ public abstract class InterpreterStubSection {
 
     private static final String SWITCH_TO_UNINTERRUPTIBLE = "switch to uninterruptible";
 
-    /* '-3' to reduce padding due to alignment in .svm_interp section */
-    static final int MAX_VTABLE_STUBS = 2 * 1024 - 3;
+    /*
+     * On AMD64, the 16-byte trampoline, 4,094 16-byte stubs, and the 13-byte .fini section
+     * fit in one 64-KiB interval. One more stub would move .fini into the next interval.
+     */
+    static final int MAX_VTABLE_STUBS = 4 * 1024 - 2;
 
     protected final SubstrateTarget target;
     protected final RegisterConfig registerConfig;
