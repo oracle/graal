@@ -3302,13 +3302,14 @@ final class BuilderElement extends AbstractElement {
         b.declaration(type(int.class), "handlerSp", "state.currentStackHeight + 1 /* reserve space for the exception */");
         b.statement("state.updateMaxStackHeight(handlerSp)");
         b.declaration(type(int.class), "exHandlerIndex", UNINIT);
+        String exceptionHandlerKind = op.kind == OperationKind.TRY_FINALLY ? "HANDLER_FINALLY" : "HANDLER_CUSTOM";
 
         b.startIf().string(operationStack.read(op, operationFields.operationReachable)).end().startBlock();
         b.lineComment("register exception table entry");
         b.startAssign("exHandlerIndex");
         b.tree(doCreateExceptionHandler(operationStack.read(op, operationFields.tryStartBci),
                         "state.bci",
-                        "HANDLER_CUSTOM",
+                        exceptionHandlerKind,
                         "-" + operationStack.read(op, operationFields.handlerId),
                         "handlerSp"));
         b.end();
@@ -3343,6 +3344,7 @@ final class BuilderElement extends AbstractElement {
         b.string(operationStack.read(op, operationFields.extraTableEntriesStart));
         b.string(operationStack.read(op, operationFields.extraTableEntriesEnd));
         b.string(operationStack.read(op, operationFields.handlerId));
+        b.string(exceptionHandlerKind);
         b.string("handlerBci");
         b.string("handlerSp");
         b.end(2);
@@ -4440,6 +4442,7 @@ final class BuilderElement extends AbstractElement {
                     b.string(operationStack.read(op, operationFields.extraTableEntriesStart));
                     b.string(operationStack.read(op, operationFields.extraTableEntriesEnd));
                     b.string(operationStack.read(op, operationFields.handlerId));
+                    b.string("HANDLER_CUSTOM");
                     b.string("handlerBci");
                     b.string("handlerSp");
                     b.end(2);
@@ -5444,8 +5447,9 @@ final class BuilderElement extends AbstractElement {
     }
 
     private void emitExtraExceptionTableEntry(CodeTreeBuilder b, OperationModel op) {
+        String exceptionHandlerKind = op.kind == OperationKind.TRY_FINALLY ? "HANDLER_FINALLY" : "HANDLER_CUSTOM";
         b.startDeclaration(type(int.class), "handlerTableIndex");
-        b.string("state.doCreateExceptionHandler(", operationStack.read(op, operationFields.tryStartBci), ", state.bci, HANDLER_CUSTOM, -",
+        b.string("state.doCreateExceptionHandler(", operationStack.read(op, operationFields.tryStartBci), ", state.bci, ", exceptionHandlerKind, ", -",
                         operationStack.read(op, operationFields.handlerId), ", ", UNINIT, " /* stack height */)");
         b.end();
         b.startIf().string("handlerTableIndex != ", UNINIT).end().startBlock();
@@ -6281,6 +6285,7 @@ final class BuilderElement extends AbstractElement {
             ex.addParameter(new CodeVariableElement(type(int.class), "tableStart"));
             ex.addParameter(new CodeVariableElement(type(int.class), "tableEnd"));
             ex.addParameter(new CodeVariableElement(type(int.class), "handlerId"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "handlerKind"));
             ex.addParameter(new CodeVariableElement(type(int.class), "handlerBci"));
             ex.addParameter(new CodeVariableElement(type(int.class), "handlerSp"));
 
@@ -6293,7 +6298,7 @@ final class BuilderElement extends AbstractElement {
 
             b.startFor().string("int i = tableStart; i < tableEnd; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
 
-            b.startIf().string("this.handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM").end().startBlock();
+            b.startIf().string("this.handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != handlerKind").end().startBlock();
             b.statement("continue");
             b.end();
             b.startIf().string("this.handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] != -handlerId").end().startBlock();
@@ -6485,7 +6490,8 @@ final class BuilderElement extends AbstractElement {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "finalizeExceptionHandlerLocalCounts");
             CodeTreeBuilder b = ex.createBuilder();
             b.startFor().string("int handlerIndex = 0; handlerIndex < handlerTableSize; handlerIndex += EXCEPTION_HANDLER_LENGTH").end().startBlock();
-            b.startIf().string("handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM").end().startBlock();
+            b.startIf().string("handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM && ",
+                            "handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_FINALLY").end().startBlock();
             b.statement("continue");
             b.end();
             b.declaration(type(int.class), "handlerBci", "handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
