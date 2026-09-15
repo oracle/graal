@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -212,17 +212,20 @@ public abstract class AbstractCompilationTask implements TruffleCompilationTask 
             }
             if (value instanceof Enum<?> e) {
                 value = e.getDeclaringClass().getSimpleName() + "." + e.name();
-            } else {
+            } else if (value instanceof Character || value instanceof Short) {
                 value = value.toString();
+            } else if (value instanceof Class<?> c) {
+                value = c.toString();
+            } else {
+                value = safeObjectString(value);
             }
             properties.put(entry.getKey(), value);
         }
     }
 
     /*
-     * We only support primitives across native and isolation boundary. So we can just as well call
-     * toString() for all non primitive values. In case toString() would fail we fail, we have the
-     * same behavior as in isolated modes.
+     * Only invoke toString() on known final JDK classes. Calling an arbitrary toString() while
+     * collecting debug properties may fail with an exception or have side effects.
      */
     private static boolean isValidProtocolValue(Object object) {
         if (object == null) {
@@ -230,6 +233,10 @@ public abstract class AbstractCompilationTask implements TruffleCompilationTask 
         }
         Class<?> clz = object.getClass();
         return clz == String.class || clz == Boolean.class || clz == Byte.class || clz == Integer.class || clz == Long.class || clz == Float.class || clz == Double.class;
+    }
+
+    private static String safeObjectString(Object value) {
+        return value.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(value));
     }
 
     static String className(Class<?> clazz) {
