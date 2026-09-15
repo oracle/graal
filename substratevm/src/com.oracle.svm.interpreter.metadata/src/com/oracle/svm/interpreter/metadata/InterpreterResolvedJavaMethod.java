@@ -58,12 +58,10 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.PreparedSignature;
-import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -86,7 +84,9 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -144,9 +144,9 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      */
     public static final int VTBL_ONE_IMPL = -2;
     /**
-     * This method is never overriden, and is always inlined in the image.
+     * This method doesn't require dispatch.
      */
-    public static final int VTBL_ALWAYS_INLINED = -3;
+    public static final int VTBL_NO_DISPATCH = -3;
     /**
      * This is a synthetic method representing a selection failures in an ITable. These are never the result of
      * method resolution (only of method selection).
@@ -922,7 +922,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         assert isDevirtualized();
         if (vtableIndex == VTBL_ONE_IMPL) {
             return getOneImplementation();
-        } else if (vtableIndex == VTBL_ALWAYS_INLINED) {
+        } else if (vtableIndex == VTBL_NO_DISPATCH) {
             return this;
         }
         throw VMError.shouldNotReachHere("Unable to devirtualize.");

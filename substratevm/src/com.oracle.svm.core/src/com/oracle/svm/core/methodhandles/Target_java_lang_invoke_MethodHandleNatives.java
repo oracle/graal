@@ -108,7 +108,15 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_METHOD | mods;
             if (Modifier.isStatic(mods)) {
                 refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic;
-            } else if (Modifier.isInterface(mods)) {
+            } else if (RuntimeClassLoading.isSupported() && (Modifier.isFinal(mods) || Modifier.isPrivate(mods) || Modifier.isFinal(method.getDeclaringClass().getModifiers()))) {
+                assert !Modifier.isAbstract(mods);
+                /*
+                 * This path is only enabled in run-time-class-loading-mode because the standard
+                 * mode's REF_invokeSpecial handling doesn't support caller sensitive methods. See
+                 * Util_java_lang_invoke_MethodHandle.invokeInternal.
+                 */
+                refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial;
+            } else if (Modifier.isInterface(method.getDeclaringClass().getModifiers())) {
                 refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface;
             } else {
                 refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual;

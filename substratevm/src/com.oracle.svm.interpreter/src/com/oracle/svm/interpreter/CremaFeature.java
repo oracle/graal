@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter;
 import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.interpreter.InterpreterFeature.assertionsEnabled;
+import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_NO_DISPATCH;
 
 import java.util.List;
 
@@ -168,11 +169,19 @@ public class CremaFeature implements InternalFeature {
         ResolvedJavaField vtableHolderField = JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(InterpreterResolvedObjectType.class), VTABLE_HOLDER_FIELD);
 
         for (HostedMethod method : hUniverse.getMethods()) {
+            InterpreterResolvedJavaMethod iMethod = iUniverse.getMethod(method);
+            if (iMethod == null) {
+                continue;
+            }
             if (method.hasVTableIndex()) {
-                InterpreterResolvedJavaMethod iMethod = iUniverse.getMethod(method);
-                if (iMethod != null) {
-                    iMethod.setVTableIndex(method.getVTableIndex());
-                }
+                iMethod.setVTableIndex(method.getVTableIndex());
+            } else if (!(method.isStatic() || method.isConstructor()) && (method.isPrivate() || method.isFinal() || method.getDeclaringClass().isFinalFlagSet())) {
+                /*
+                 * This helps when such methods are called with call kind VTABLE_LOOKUP. Most crema
+                 * paths ensure those methods will end up being called with call kind DIRECT, but
+                 * setting this up anyway makes the crema call path more robust.
+                 */
+                iMethod.setVTableIndex(VTBL_NO_DISPATCH);
             }
         }
 
