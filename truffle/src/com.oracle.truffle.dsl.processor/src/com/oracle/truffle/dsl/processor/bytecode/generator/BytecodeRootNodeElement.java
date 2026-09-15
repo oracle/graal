@@ -1905,7 +1905,10 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             boundVariables.add(assumption.getExpression());
         }
 
-        boundVariables.add(specialization.getLimitExpression());
+        DSLExpression limit = specialization.getLimitExpression();
+        if (limit != null) {
+            boundVariables.add(limit);
+        }
 
         return boundVariables;
     }
