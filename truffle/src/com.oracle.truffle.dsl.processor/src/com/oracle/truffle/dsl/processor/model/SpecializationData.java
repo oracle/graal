@@ -226,6 +226,9 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean isNodeReceiverBound(DSLExpression expression) {
+        if (expression == null) {
+            return false;
+        }
         for (Variable variable : expression.findBoundVariables()) {
             if (isNodeReceiverVariable(variable.getResolvedVariable())) {
                 return true;
