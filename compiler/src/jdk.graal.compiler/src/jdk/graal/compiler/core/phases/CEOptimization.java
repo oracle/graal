@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.duplication.phases.DeDuplicationPhase;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
@@ -111,6 +112,13 @@ public enum CEOptimization {
     /// [InliningPhase] is a less aggressive inlining algorithm used when priority
     /// inlining is disabled. Inlining as a whole can be disabled with [HighTier.Options#Inline].
     Inlining(HighTier.Options.Inline, InliningPhase.class),
+
+    /// [DeDuplicationPhase] can reduce code size by moving equal statements and expressions from
+    /// incoming branches to their shared merge.
+    ///
+    /// This phase is enabled by default and can be disabled with
+    /// [DeDuplicationPhase.Options#OptDeDuplication].
+    DeDuplicationOptimization(DeDuplicationPhase.Options.OptDeDuplication, DeDuplicationPhase.class),
 
     /// [PullThroughPhiPhase] heuristically duplicates floating operations at control flow merges.
     /// The duplicated operations can then be specialized based on the types and values of the
