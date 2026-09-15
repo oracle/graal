@@ -546,7 +546,6 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         VMError.guarantee(storages.length == jep.handleType().parameterCount());
 
         boolean hasReturnBuffer = false;
-        int stackSize = 0;
         int[] preparedArgumentTypes = new int[storages.length];
         for (int i = 0; i < storages.length; i++) {
             JavaKind kind = JavaKind.fromJavaClass(jep.handleType().parameterType(i));
@@ -555,8 +554,6 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
                 VMError.guarantee(PreparedSignature.getStubLocation(preparedType) == PreparedSignature.STUB_LOCATION_RETURN_BUFFER && !hasReturnBuffer,
                                 "Unexpected stub location for a foreign upcall argument");
                 hasReturnBuffer = true;
-            } else if (PreparedSignature.isStackSlot(preparedType)) {
-                stackSize = Math.max(stackSize, PreparedSignature.getStackOffset(preparedType) + Long.BYTES);
             }
             preparedArgumentTypes[i] = preparedType;
         }
@@ -567,8 +564,8 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
                             "FFM upcall return buffer exceeds the universal interpreter stub capacity");
         }
 
-        stackSize = NumUtil.roundUp(stackSize, SubstrateTarget.singleton().stackAlignment);
-        PreparedSignature signature = new PreparedSignature(JavaKind.fromJavaClass(jep.cMethodType().returnType()), preparedArgumentTypes, stackSize);
+        PreparedSignature signature = new PreparedSignature(JavaKind.fromJavaClass(jep.cMethodType().returnType()), preparedArgumentTypes,
+                        PreparedSignature.UNKNOWN_STACK_SIZE);
         int[] preparedReturns = computePreparedReturns(abi, jep.returnAssignment(), jep.buffersReturn());
         return new ForeignUpcallPlan(signature, preparedReturns);
     }

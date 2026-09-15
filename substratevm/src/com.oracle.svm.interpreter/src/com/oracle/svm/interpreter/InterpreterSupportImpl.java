@@ -267,7 +267,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             }
             argumentTypes[i] = PreparedSignature.encodeArgumentType(argKind, value, isRegister);
         }
-        return preparedJNISignature(signature.getReturnKind(), argumentTypes, callingConvention.getStackSize());
+        return preparedJNISignature(signature.getReturnKind(), argumentTypes, PreparedSignature.UNKNOWN_STACK_SIZE);
     }
 
     private static JavaType toJNIVarargsParameterType(Signature signature, ResolvedJavaType accessingClass, int index, ResolvedJavaType wordType) {

@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.util.Arrays;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -50,6 +51,8 @@ import jdk.vm.ci.meta.JavaKind;
  * location instead of a physical ABI location.
  */
 public final class PreparedSignature {
+
+    public static final int UNKNOWN_STACK_SIZE = -1;
 
     public static final int STUB_LOCATION_TARGET_ADDRESS = 1;
     public static final int STUB_LOCATION_RETURN_BUFFER = 2;
@@ -185,6 +188,7 @@ public final class PreparedSignature {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getStackSize() {
+        VMError.guarantee(stackSize != UNKNOWN_STACK_SIZE, "Stack size is unknown for this prepared signature.");
         return stackSize;
     }
 }
