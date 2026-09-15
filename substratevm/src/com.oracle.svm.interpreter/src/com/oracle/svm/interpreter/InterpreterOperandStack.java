@@ -64,11 +64,11 @@ import jdk.vm.ci.meta.JavaKind;
  * of the call's frame state. Keeping the canonical top across the call avoids that intermediate
  * frame-state value.
  */
-final class InterpreterOperandStack {
+class InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /** First stack slot above the operand stack. */
-    private long top;
+    long top;
 
     InterpreterOperandStack(long top) {
         this.top = top;
