@@ -53,6 +53,7 @@ public class NativeImageResourceUtils {
     public static final String RESOURCE_FILE_4 = RESOURCE_DIR + "/resource-test4.output";
     public static final String SYNTHETIC_RESOURCE_FILE = "synthetic-resource.txt";
     public static final String SYNTHETIC_RESOURCE_CONTENT = "synthetic resource";
+    public static final String SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS = RESOURCE_DIR + "/resource with #%? \u00fc.txt";
     public static final String DUPLICATE_RESOURCE_FILE = "duplicate-resource.txt";
     public static final String DUPLICATE_RESOURCE_CONTENT_1 = "from-a";
     public static final String DUPLICATE_RESOURCE_CONTENT_2 = "from-b";
@@ -79,6 +80,7 @@ public class NativeImageResourceUtils {
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_3.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_4.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, SYNTHETIC_RESOURCE_FILE, SYNTHETIC_RESOURCE_CONTENT.getBytes(StandardCharsets.UTF_8));
+            RuntimeResourceAccess.addResource(resourceModule, SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS.substring(1), SYNTHETIC_RESOURCE_CONTENT.getBytes(StandardCharsets.UTF_8));
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_1.getBytes(StandardCharsets.UTF_8));
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_2.getBytes(StandardCharsets.UTF_8));
             RuntimeReflection.register(com.oracle.svm.test.protocol.resource.Handler.class);

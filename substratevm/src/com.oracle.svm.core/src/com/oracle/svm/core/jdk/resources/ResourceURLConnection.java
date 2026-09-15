@@ -43,6 +43,7 @@ import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.Resources;
 
 import sun.net.www.MessageHeader;
+import sun.net.www.ParseUtil;
 import sun.net.www.URLConnection;
 
 public final class ResourceURLConnection extends URLConnection {
@@ -69,7 +70,7 @@ public final class ResourceURLConnection extends URLConnection {
 
         String urlHost = url.getHost();
         String hostName = urlHost != null && !urlHost.isEmpty() ? urlHost : null;
-        String urlPath = url.getPath();
+        String urlPath = ParseUtil.decode(url.getPath());
         if (urlPath.isEmpty()) {
             throw new IllegalArgumentException("Empty URL path not allowed in " + RESOURCE_PROTOCOL + " URL");
         }

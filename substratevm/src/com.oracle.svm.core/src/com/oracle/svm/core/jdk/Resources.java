@@ -30,6 +30,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLStreamHandler;
 import java.util.ArrayList;
@@ -1040,9 +1042,9 @@ public final class Resources {
             } else {
                 host = moduleName(module);
             }
-            String authority = host != null ? "//" + (userInfo != null ? userInfo + '@' : "") + host : "";
-            return new URL(null, RESOURCE_PROTOCOL + ':' + authority + NativeImageResourceFileSystemUtil.formatRootedResourcePath(rootId, resourceName), RESOURCE_URL_STREAM_HANDLER);
-        } catch (MalformedURLException ex) {
+            URI uri = new URI(RESOURCE_PROTOCOL, userInfo, host, -1, NativeImageResourceFileSystemUtil.formatRootedResourcePath(rootId, resourceName), null, null);
+            return new URL(null, uri.toASCIIString(), RESOURCE_URL_STREAM_HANDLER);
+        } catch (MalformedURLException | URISyntaxException ex) {
             throw new IllegalStateException(ex);
         }
     }

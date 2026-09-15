@@ -37,6 +37,7 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
 import static com.oracle.svm.test.NativeImageResourceUtils.SIMPLE_RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_CONTENT;
 import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE;
+import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
@@ -170,6 +171,21 @@ public class NativeImageResourceTest {
             Assert.assertNotNull("Synthetic resource " + SYNTHETIC_RESOURCE_FILE + " is not found!", in);
             Assert.assertEquals(SYNTHETIC_RESOURCE_CONTENT, new String(in.readAllBytes(), StandardCharsets.UTF_8));
         }
+    }
+
+    @Test
+    public void resourceURLWithSpecialCharactersIsURICompatible() throws IOException, URISyntaxException {
+        URL url = resourceNameToURL(SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS, true);
+        URI uri = url.toURI();
+
+        Assert.assertTrue(uri.getRawPath(), uri.getRawPath().endsWith("/resources/resource%20with%20%23%25%3F%20%C3%BC.txt"));
+        Assert.assertTrue(uri.getPath(), uri.getPath().endsWith(SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS));
+        Assert.assertNull(uri.getRawQuery());
+        Assert.assertNull(uri.getRawFragment());
+        try (InputStream in = url.openStream()) {
+            Assert.assertEquals(SYNTHETIC_RESOURCE_CONTENT, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+        Assert.assertEquals(SYNTHETIC_RESOURCE_CONTENT, Files.readString(Path.of(uri)));
     }
 
     @Test
