@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
@@ -47,6 +48,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.JVMCIFeatureAccess;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -57,6 +59,7 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 
+import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -71,6 +74,7 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
 
     private final GuestAccess guestAccess;
     private JavaConstant guestFeatureHandler;
+    private ResolvedJavaType guestFeatureExceptionType;
     private ResolvedJavaType reflectiveAccessType;
     private ResolvedJavaType resourceAccessType;
     private ResolvedJavaType jniAccessType;
@@ -127,19 +131,29 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
         if (guestFeatureHandler == null) {
             initializeGuestFeatureHandler(loader);
         }
-        return guestAccess.invoke(registerFeature, guestFeatureHandler, guestAccess.asGuestString(featureName), JavaConstant.forBoolean(printFeatures)).asBoolean();
+        try {
+            return guestAccess.invoke(registerFeature, guestFeatureHandler, guestAccess.asGuestString(featureName), JavaConstant.forBoolean(printFeatures)).asBoolean();
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     List<String> getGuestCompatibilityPublishedFeatureSingletons() {
         if (guestFeatureHandler == null) {
             return List.of();
         }
-        JavaConstant guestFeatureSingletons = guestAccess.invoke(getCompatibilityPublishedFeatureSingletons, guestFeatureHandler);
+        JavaConstant guestFeatureSingletons;
+        try {
+            guestFeatureSingletons = guestAccess.invoke(getCompatibilityPublishedFeatureSingletons, guestFeatureHandler);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
         return guestAccess.asGuestArrayElements(guestFeatureSingletons, guestAccess.elements.java_lang_String).map(guestAccess::asHostString).toList();
     }
 
     private void initializeGuestFeatureHandler(ImageClassLoader loader) {
         ResolvedJavaType handlerType = guestAccess.lookupType("com.oracle.svm.guest.hosted.GuestFeatureHandler");
+        guestFeatureExceptionType = guestAccess.lookupType("com.oracle.svm.guest.hosted.GuestFeatureHandler$GuestFeatureException");
         reflectiveAccessType = guestAccess.lookupType(ReflectiveAccess.class);
         resourceAccessType = guestAccess.lookupType(ResourceAccess.class);
         jniAccessType = guestAccess.lookupType(JNIAccess.class);
@@ -160,7 +174,11 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
         JavaConstant applicationClassPath = guestAccess.asGuestStringArray(loader.applicationClassPath().stream().map(Path::toString).toArray(String[]::new));
         JavaConstant applicationModulePath = guestAccess.asGuestStringArray(loader.applicationModulePath().stream().map(Path::toString).toArray(String[]::new));
 
-        guestFeatureHandler = guestAccess.invoke(constructor, null, classLoaders, applicationClassPath, applicationModulePath);
+        try {
+            guestFeatureHandler = guestAccess.invoke(constructor, null, classLoaders, applicationClassPath, applicationModulePath);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
         registerFeature = guestAccess.lookupMethod(handlerType, "registerFeature", String.class, boolean.class);
         getCompatibilityPublishedFeatureSingletons = guestAccess.lookupMethod(handlerType, "getCompatibilityPublishedFeatureSingletons");
         invokeReachabilityHandler = JVMCIReflectionUtil.getUniqueDeclaredMethod(handlerType, "invokeReachabilityHandler", guestAccess.elements.java_util_function_Consumer, duringAnalysisAccessType);
@@ -195,7 +213,11 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
 
     void invokeGuestReachabilityHandler(JavaConstant callback, Feature.DuringAnalysisAccess access) {
         JavaConstant duringAnalysisAccess = this.guestAccess.createHostProxy(access, duringAnalysisAccessType, duringAnalysisMappings);
-        this.guestAccess.invokeStatic(invokeReachabilityHandler, callback, duringAnalysisAccess);
+        try {
+            this.guestAccess.invokeStatic(invokeReachabilityHandler, callback, duringAnalysisAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     void invokeGuestMethodOverrideReachabilityHandler(JavaConstant callback, JVMCIFeatureAccess.DuringAnalysisAccess access, ResolvedJavaMethod method) {
@@ -210,7 +232,11 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
             return;
         }
         JavaConstant duringAnalysisAccess = guestAccess.createHostProxy(access, duringAnalysisAccessType, duringAnalysisMappings);
-        guestAccess.invokeStatic(invokeMethodOverrideReachabilityHandler, callback, duringAnalysisAccess, executable);
+        try {
+            guestAccess.invokeStatic(invokeMethodOverrideReachabilityHandler, callback, duringAnalysisAccess, executable);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     void invokeGuestSubtypeReachabilityHandler(JavaConstant callback, JVMCIFeatureAccess.DuringAnalysisAccess access, ResolvedJavaType type) {
@@ -219,7 +245,11 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
             return;
         }
         JavaConstant duringAnalysisAccess = guestAccess.createHostProxy(access, duringAnalysisAccessType, duringAnalysisMappings);
-        guestAccess.invokeStatic(invokeSubtypeReachabilityHandler, callback, duringAnalysisAccess, guestClass);
+        try {
+            guestAccess.invokeStatic(invokeSubtypeReachabilityHandler, callback, duringAnalysisAccess, guestClass);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     /**
@@ -261,80 +291,157 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
         JavaConstant guestResourceAccess = guestAccess.createHostProxy(ResourceAccessImpl.singleton(), resourceAccessType, resourceAccessMappings);
         JavaConstant guestJNIAccess = guestAccess.createHostProxy(jvmciAccess.getJVMCIJNIAccess(), jniAccessType, jniAccessMappings);
         JavaConstant guestForeignAccess = guestAccess.createHostProxy(jvmciAccess.getJVMCIForeignAccess(), foreignAccessType);
-        guestAccess.invoke(afterRegistrationForEachFeature, guestFeatureHandler, guestReflectiveAccess, guestResourceAccess, guestJNIAccess, guestForeignAccess);
+        try {
+            guestAccess.invoke(afterRegistrationForEachFeature, guestFeatureHandler, guestReflectiveAccess, guestResourceAccess, guestJNIAccess, guestForeignAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
         JavaConstant duringSetupAccess = guestAccess.createHostProxy(access, duringSetupAccessType, duringSetupMappings);
-        guestAccess.invoke(duringSetupForEachFeature, guestFeatureHandler, duringSetupAccess);
+        try {
+            guestAccess.invoke(duringSetupForEachFeature, guestFeatureHandler, duringSetupAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         JavaConstant beforeAnalysisAccess = guestAccess.createHostProxy(access, beforeAnalysisAccessType, commonFeatureAccessMappings);
         JavaConstant queryReachabilityAccess = guestAccess.createHostProxy(access, queryReachabilityAccessType, beforeAnalysisMappings);
-        guestAccess.invoke(beforeAnalysisForEachFeature, guestFeatureHandler, beforeAnalysisAccess, queryReachabilityAccess);
+        try {
+            guestAccess.invoke(beforeAnalysisForEachFeature, guestFeatureHandler, beforeAnalysisAccess, queryReachabilityAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         JavaConstant duringAnalysisAccess = guestAccess.createHostProxy(access, duringAnalysisAccessType, duringAnalysisMappings);
-        guestAccess.invoke(duringAnalysisForEachFeature, guestFeatureHandler, duringAnalysisAccess);
+        try {
+            guestAccess.invoke(duringAnalysisForEachFeature, guestFeatureHandler, duringAnalysisAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         JavaConstant queryReachabilityAccess = guestAccess.createHostProxy(access, queryReachabilityAccessType, beforeAnalysisMappings);
-        guestAccess.invoke(afterAnalysisForEachFeature, guestFeatureHandler, queryReachabilityAccess);
+        try {
+            guestAccess.invoke(afterAnalysisForEachFeature, guestFeatureHandler, queryReachabilityAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void onAnalysisExit(OnAnalysisExitAccess access) {
-        guestAccess.invoke(onAnalysisExitForEachFeature, guestFeatureHandler);
+        try {
+            guestAccess.invoke(onAnalysisExitForEachFeature, guestFeatureHandler);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {
-        guestAccess.invoke(beforeUniverseBuildingForEachFeature, guestFeatureHandler);
+        try {
+            guestAccess.invoke(beforeUniverseBuildingForEachFeature, guestFeatureHandler);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         JavaConstant compilationAccess = guestAccess.createHostProxy(access, compilationAccessType, compilationMappings);
-        guestAccess.invoke(beforeCompilationForEachFeature, guestFeatureHandler, compilationAccess);
+        try {
+            guestAccess.invoke(beforeCompilationForEachFeature, guestFeatureHandler, compilationAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
         JavaConstant compilationAccess = guestAccess.createHostProxy(access, compilationAccessType, compilationMappings);
-        guestAccess.invoke(afterCompilationForEachFeature, guestFeatureHandler, compilationAccess);
+        try {
+            guestAccess.invoke(afterCompilationForEachFeature, guestFeatureHandler, compilationAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void beforeHeapLayout(BeforeHeapLayoutAccess access) {
         JavaConstant compilationAccess = guestAccess.createHostProxy(access, compilationAccessType, compilationMappings);
-        guestAccess.invoke(beforeHeapLayoutForEachFeature, guestFeatureHandler, compilationAccess);
+        try {
+            guestAccess.invoke(beforeHeapLayoutForEachFeature, guestFeatureHandler, compilationAccess);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void afterHeapLayout(AfterHeapLayoutAccess access) {
-        guestAccess.invoke(afterHeapLayoutForEachFeature, guestFeatureHandler);
+        try {
+            guestAccess.invoke(afterHeapLayoutForEachFeature, guestFeatureHandler);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        guestAccess.invoke(beforeImageWriteForEachFeature, guestFeatureHandler);
+        try {
+            guestAccess.invoke(beforeImageWriteForEachFeature, guestFeatureHandler);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        guestAccess.invoke(afterImageWriteForEachFeature, guestFeatureHandler, guestImagePath(access));
+        try {
+            guestAccess.invoke(afterImageWriteForEachFeature, guestFeatureHandler, guestImagePath(access));
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
     }
 
     @Override
     public void cleanup() {
-        guestAccess.invoke(cleanupForEachFeature, guestFeatureHandler);
+        try {
+            guestAccess.invoke(cleanupForEachFeature, guestFeatureHandler);
+        } catch (InvocationException invocationException) {
+            throw handleFeatureError(invocationException);
+        }
+    }
+
+    /**
+     * Handles errors raised while invoking guest features. Keep this in sync with the corresponding
+     * {@code GuestFeatureHandler#handleFeatureError(Feature, Throwable)} implementation in the guest
+     * module; this duplicate is needed because this code runs in the builder.
+     */
+    private RuntimeException handleFeatureError(InvocationException invocationException) {
+        JavaConstant exceptionObject = invocationException.getExceptionObject();
+        if (exceptionObject != null && !exceptionObject.isNull() && exceptionObject.getJavaKind().isObject() &&
+                        guestFeatureExceptionType.isAssignableFrom(guestAccess.getProviders().getMetaAccess().lookupJavaType(exceptionObject))) {
+            Throwable reportedCause = invocationException;
+            Throwable polyglotGuestFeatureException = invocationException.getCause();
+            if (polyglotGuestFeatureException != null && polyglotGuestFeatureException.getCause() != null) {
+                // In Espresso, these PolyglotExceptions represent the guest GuestFeatureException and its original user-feature exception, respectively.
+                reportedCause = polyglotGuestFeatureException.getCause();
+            }
+            JavaConstant message = guestAccess.invoke(guestAccess.elements.java_lang_Throwable_getMessage, exceptionObject);
+            throw UserError.abort(reportedCause, "%s", guestAccess.asHostString(message));
+        }
+        return invocationException;
     }
 
     private Map<ResolvedJavaMethod, String> createReflectiveAccessMappings() {
