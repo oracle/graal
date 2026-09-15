@@ -11,6 +11,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 * (GR-79587): Added `GuardRangeGroupingPhase`, which removes redundant integer range guards by
   retaining the tightest lower and upper bounds for guards with the same anchor. The optimization is
   enabled by default and can be disabled with `-Djdk.graal.OptGuardRangeGrouping=false`.
+* (GR-79585): Added an optimization that replaces eligible loop-carried memory reads with value
+  phis, allowing invariant reads to move out of the loop. The optimization is enabled by default
+  and can be disabled with `-Djdk.graal.OptimizeLoopAccesses=false`.
 
 ## GraalVM 25.4 (Internal Version 25.4.4.1.1)
 * (GR-79029): Add `PullThroughPhiPhase` and `DuplicationPhase` to the community compiler configuration.
