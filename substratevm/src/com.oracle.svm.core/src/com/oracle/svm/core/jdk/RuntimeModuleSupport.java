@@ -56,14 +56,25 @@ public final class RuntimeModuleSupport {
     @UnknownObjectField(availability = AfterHostedUniverse.class) //
     private ModuleLayer bootLayer;
 
+    /// The modules present in `bootLayer` before runtime option parsing can augment it.
+    @UnknownObjectField(availability = AfterHostedUniverse.class) //
+    private Module[] imageBootModules;
+
     @Platforms(Platform.HOSTED_ONLY.class) //
     public void setBootLayer(ModuleLayer bootLayer) {
         this.bootLayer = bootLayer;
+        /* Preserve the original contents because runtime option parsing can patch the layer. */
+        this.imageBootModules = bootLayer.modules().toArray(Module[]::new);
     }
 
     /// The only caller should be the substitution for [ModuleLayer#boot]. All other callers
     /// should call [ModuleLayer#boot()] directly.
     ModuleLayer getBootLayer() {
         return bootLayer;
+    }
+
+    /// Gets the modules that were included in the boot layer during image generation.
+    Module[] getImageBootModules() {
+        return imageBootModules;
     }
 }

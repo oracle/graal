@@ -503,6 +503,14 @@ def truffle_unittest_task(extra_build_args=None):
 
 
 def svm_gate_body(args, tasks):
+    with Task('LogTagSetGenerator', tasks, tags=[GraalTags.build]) as t:
+        if t:
+            source_path = pathlib.Path(suite.dir) / 'src' / 'com.oracle.svm.core' / 'src' / 'com' / 'oracle' / 'svm' / 'core' / 'logging' / 'LogTagSetGenerator.java'
+            exitcode = mx.run([mx.get_jdk().java, '-Xlog:disable', str(source_path)], nonZeroIsFatal=False)
+            if exitcode != 0:
+                git_output = suite.vc.git_command(suite.vc_dir, ["diff", str(source_path.parent.relative_to(suite.vc_dir))])
+                mx.abort(f"{source_path} updated {exitcode} files\n{git_output}")
+
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
             hellomodule(args.extra_image_builder_arguments)
@@ -1802,7 +1810,9 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         args.append("-D" + key + "=" + value)
 
     # fetch arguments used in all layers
-    testhello_args = testhello_ni_args(cincludepath, sourcepath) + args
+    testhello_args = testhello_ni_args(cincludepath, sourcepath) + svm_experimental_options([
+        '-H:+StrictRuntimeJavaOptions',
+    ]) + args
 
     def build_layer(layer_path, layer_args):
         # clean / create layer output directory
@@ -1834,6 +1844,13 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         f'-H:LayerUse={join(base_layer_path, base_layer_name)}.nil',
         f'-H:LinkerRPath={base_layer_path}'
     ]))
+
+    # Starting asynchronous logging in the application layer verifies that the initial-layer
+    # logging singleton retains its native queue state across layer persistence.
+    logging_output = mx.LinesOutputCapture()
+    mx.run([app_layer, '-Xlog:async', '-Xlog:logging=debug'], cwd=app_layer_path, out=logging_output, err=logging_output)
+    if not any('Log configuration fully initialized.' in line for line in logging_output.lines):
+        mx.abort('Layered image did not initialize asynchronous unified logging.')
 
     # prepare environment
     env = os.environ.copy()
@@ -2590,14 +2607,23 @@ mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 # Only add packages here to work around the fact that libjvm currently splits AOT and dynamically
 # loaded JDK code at class granularity, not at method or field granularity. Packages get added as
 # needed based on partial-class errors such as "Trying to dispatch to compiled code for AOT method
-# ..." or "Cannot load undefined field: ...". This list must not be used for optimization.
-lib_jvm_preserved_packages = [
+# ..." or "Cannot load undefined field: ...". These lists must not be used for optimization.
+# The minimal list contains the packages needed to build libjvm and run a hello-world application;
+# the complete list extends it with packages needed by broader Crema use cases.
+lib_jvm_minimal_preserved_packages = [
+    'java.io',
+    'java.lang',
+    'java.lang.invoke',
+    'java.util',
+    'java.util.concurrent.locks',
+    'java.util.stream',
+]
+
+lib_jvm_complete_preserved_packages = lib_jvm_minimal_preserved_packages + [
     'com.sun.jmx.remote.util',
     'com.sun.jndi.url.rmi',
     'java.awt',
     'java.awt.datatransfer',
-    'java.io',
-    'java.lang',
     'java.lang.annotation',
     'java.lang.classfile',
     'java.lang.classfile.attribute',
@@ -2606,7 +2632,6 @@ lib_jvm_preserved_packages = [
     'java.lang.constant',
     'java.lang.foreign',
     'java.lang.instrument',
-    'java.lang.invoke',
     'java.lang.module',
     'java.lang.ref',
     'java.lang.reflect',
@@ -2629,16 +2654,13 @@ lib_jvm_preserved_packages = [
     'java.time.chrono',
     'java.time.format',
     'java.time.temporal',
-    'java.util',
     'java.util.concurrent',
     'java.util.concurrent.atomic',
-    'java.util.concurrent.locks',
     'java.util.function',
     'java.util.jar',
     'java.util.logging',
     'java.util.regex',
     'java.util.spi',
-    'java.util.stream',
     'java.util.zip',
     'javax.lang.model.element',
     'javax.lang.model.util',
@@ -2665,8 +2687,13 @@ lib_jvm_preserved_packages = [
     'sun.util.locale.provider',
 ]
 
-lib_jvm_preserved_modules = [
+lib_jvm_minimal_preserved_modules = [
     'java.base',
+]
+
+# The minimal module list contains the only module needed by a hello-world libjvm; the complete
+# list extends it with modules needed by broader Crema use cases.
+lib_jvm_complete_preserved_modules = lib_jvm_minimal_preserved_modules + [
     'java.compiler',
     'java.datatransfer',
     'java.desktop',
@@ -2683,6 +2710,15 @@ lib_jvm_preserved_modules = [
     'java.xml.crypto',
     'jdk.charsets',
 ]
+
+# Use the complete lists by default so normal libjvm builds retain the full Crema API surface. A
+# minimal build is useful during local hello-world development where a shorter turnaround matters.
+if os.environ.get('MINIMAL_LIBJVM_BUILD') == 'true':
+    lib_jvm_preserved_packages = lib_jvm_minimal_preserved_packages
+    lib_jvm_preserved_modules = lib_jvm_minimal_preserved_modules
+else:
+    lib_jvm_preserved_packages = lib_jvm_complete_preserved_packages
+    lib_jvm_preserved_modules = lib_jvm_complete_preserved_modules
 
 lib_jvm_experimental_build_args = (['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
                                    ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages])

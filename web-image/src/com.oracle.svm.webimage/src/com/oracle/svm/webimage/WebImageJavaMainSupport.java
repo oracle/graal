@@ -84,7 +84,14 @@ public abstract class WebImageJavaMainSupport extends JavaMainSupport {
     protected static int doRun(String[] args, Runner runner) {
         try {
             startMainThread();
-            String[] parsedArgs = RuntimeOptionParser.parseAndConsumeAllOptions(args, false);
+            String[] parsedArgs = RuntimeOptionParser.parseAndConsumeAllOptionsDuringIsolateInitialization(args, false);
+            try {
+                RuntimeOptionParser.completeLoggingInitialization();
+            } catch (Throwable throwable) {
+                /* Release partially initialized logging resources before startup reports failure. */
+                RuntimeOptionParser.abortLoggingInitialization();
+                throw throwable;
+            }
 
             if (ImageSingletons.contains(JavaMainSupport.class)) {
                 ImageSingletons.lookup(JavaMainSupport.class).mainArgs = parsedArgs;
