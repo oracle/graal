@@ -510,7 +510,7 @@ public final class StampAnalysisPhase extends PostRunCanonicalizationPhase<CoreP
                     // boolean[] {defaultSuccessor, overflowSuccessor}
                     IntegerStamp valueStamp = (IntegerStamp) map.getOrUnrestricted(exactNegate.getValue());
                     PrimitiveConstant value = (PrimitiveConstant) valueStamp.asConstant();
-                    return value != null ? (value.asLong() == 1L << (valueStamp.getBits() - 1) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
+                    return value != null ? (value.asLong() == CodeUtil.minValue(valueStamp.getBits()) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
                 }
                 case null ->
                     throw GraalError.shouldNotReachHere("can not compute successor reachability for split 'null'");

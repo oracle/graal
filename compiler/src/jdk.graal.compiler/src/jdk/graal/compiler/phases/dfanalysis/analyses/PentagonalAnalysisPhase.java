@@ -628,7 +628,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                      * (x >= 0) and also if both x and y are negative.
                      */
                     TriState eval;
-                    if (px.range.lowerBound() >= 0 || px.range.upperBound() < 0 && py.range.upperBound() < 0) {
+                    if (px.range.lowerBound() >= 0 && py.range.lowerBound() >= 0 || px.range.upperBound() < 0 && py.range.upperBound() < 0) {
                         if (IntegerPentagon.isLowerThan(px, lt.getY(), py)) {
                             eval = TriState.TRUE;
                         } else if (IntegerPentagon.isLowerEqual(lt.getY(), py, lt.getX(), px)) {
@@ -925,7 +925,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                     // boolean[] {defaultSuccessor, overflowSuccessor}
                     IntegerStamp valueStamp = map.getOrUnrestricted(exactNegate.getValue()).asInteger().range;
                     PrimitiveConstant value = (PrimitiveConstant) valueStamp.asConstant();
-                    return value != null ? (value.asLong() == 1L << (valueStamp.getBits() - 1) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
+                    return value != null ? (value.asLong() == CodeUtil.minValue(valueStamp.getBits()) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
                 }
                 case null ->
                     throw GraalError.shouldNotReachHere("can not compute successor reachability for split 'null'");
