@@ -1,1 +1,1 @@
-Resource file in module moduletests.hello.lib
+Resource file in module moduletests.hello.lib_ü

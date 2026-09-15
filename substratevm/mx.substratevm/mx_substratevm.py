@@ -307,7 +307,7 @@ def _maybe_convert_to_args_file(args):
         return args
     else:
         # Use argument file to avoid exceeding the command line length limit on Windows
-        with tempfile.NamedTemporaryFile(delete=False, mode='w', prefix='ni_args_', suffix='.args') as args_file:
+        with tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8', prefix='ni_args_', suffix='.args') as args_file:
             args_file.write('\n'.join([_escape_for_args_file(a) for a in args]))
         return ['@' + args_file.name]
 
@@ -362,7 +362,10 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         stderrdata = []
         def stderr_collector(x):
             stderrdata.append(x.rstrip())
-        exit_code = _native_image(['--dry-run', '--verbose'] + all_args, nonZeroIsFatal=False, out=stdout_collector, err=stderr_collector)
+        # mx decodes captured output as UTF-8, including Unicode names printed by the JVM driver.
+        query_env = os.environ.copy()
+        query_env['JAVA_TOOL_OPTIONS'] = query_env.get('JAVA_TOOL_OPTIONS', '') + ' -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8'
+        exit_code = _native_image(['--dry-run', '--verbose'] + all_args, nonZeroIsFatal=False, out=stdout_collector, err=stderr_collector, env=query_env)
         if exit_code != 0:
             for line in stdoutdata:
                 print(line)
@@ -2987,8 +2990,8 @@ def hellomodule(args):
 
         def moduletest_args(modules, *, on_jvm, extra_args=None):
             return (['-ea'] if on_jvm or not strict_runtime_java_options else []) + (extra_args or []) + [
-                '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
-                '--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
+                '--add-exports=moduletests.hello.lib_\u00fc/hello.privateLib=moduletests.hello.app',
+                '--add-opens=moduletests.hello.lib_\u00fc/hello.privateLib2=moduletests.hello.app',
                 '-p', module_path_sep.join(modules), '-m', 'moduletests.hello.app'
             ]
 

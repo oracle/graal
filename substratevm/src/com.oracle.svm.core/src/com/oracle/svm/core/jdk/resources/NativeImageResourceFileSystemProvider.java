@@ -222,7 +222,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
             pathPrefix = host;
         } else {
             path = "/" + rootedPath.resourceName();
-            moduleName = uri.getHost();
+            moduleName = uri.getAuthority();
             pathPrefix = "";
         }
         return new ResourcePath(rootedPath, path, new FileSystemContext(rootedPath.rootId(), moduleName, pathPrefix));

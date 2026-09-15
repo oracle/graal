@@ -34,6 +34,7 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -54,6 +55,7 @@ public class NativeImageResourceUtils {
     public static final String SYNTHETIC_RESOURCE_FILE = "synthetic-resource.txt";
     public static final String SYNTHETIC_RESOURCE_CONTENT = "synthetic resource";
     public static final String SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS = RESOURCE_DIR + "/resource with #%? \u00fc.txt";
+    public static final List<String> UNICODE_RESOURCE_FILES = List.of(RESOURCE_DIR + "/caf\u00e9.txt", RESOURCE_DIR + "/cafe\u0301.txt", RESOURCE_DIR + "/supplementary-\ud83d\ude00.txt");
     public static final String DUPLICATE_RESOURCE_FILE = "duplicate-resource.txt";
     public static final String DUPLICATE_RESOURCE_CONTENT_1 = "from-a";
     public static final String DUPLICATE_RESOURCE_CONTENT_2 = "from-b";
@@ -81,6 +83,9 @@ public class NativeImageResourceUtils {
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_4.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, SYNTHETIC_RESOURCE_FILE, SYNTHETIC_RESOURCE_CONTENT.getBytes(StandardCharsets.UTF_8));
             RuntimeResourceAccess.addResource(resourceModule, SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS.substring(1), SYNTHETIC_RESOURCE_CONTENT.getBytes(StandardCharsets.UTF_8));
+            for (String name : UNICODE_RESOURCE_FILES) {
+                RuntimeResourceAccess.addResource(resourceModule, name.substring(1), name.getBytes(StandardCharsets.UTF_8));
+            }
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_1.getBytes(StandardCharsets.UTF_8));
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_2.getBytes(StandardCharsets.UTF_8));
             RuntimeReflection.register(com.oracle.svm.test.protocol.resource.Handler.class);

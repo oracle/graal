@@ -1042,8 +1042,11 @@ public final class Resources {
             } else {
                 host = moduleName(module);
             }
-            URI uri = new URI(RESOURCE_PROTOCOL, userInfo, host, -1, NativeImageResourceFileSystemUtil.formatRootedResourcePath(rootId, resourceName), null, null);
-            return new URL(null, uri.toASCIIString(), RESOURCE_URL_STREAM_HANDLER);
+            // Module names are Java identifiers and need not be valid DNS hostnames.
+            String authority = host != null ? (userInfo != null ? userInfo + '@' : "") + host : null;
+            URI uri = new URI(RESOURCE_PROTOCOL, authority, NativeImageResourceFileSystemUtil.formatRootedResourcePath(rootId, resourceName), null, null);
+            // Resource names are exact keys: canonically equivalent Unicode sequences can name different resources.
+            return new URL(null, uri.toString(), RESOURCE_URL_STREAM_HANDLER);
         } catch (MalformedURLException | URISyntaxException ex) {
             throw new IllegalStateException(ex);
         }

@@ -24,5 +24,5 @@
  */
 module moduletests.hello.runtime {
     exports hello.runtime;
-    requires moduletests.hello.lib;
+    requires moduletests.hello.lib_ü;
 }

@@ -33,7 +33,10 @@ import java.lang.module.Configuration;
 import java.lang.module.ModuleFinder;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -92,7 +95,7 @@ public class Main {
         assert helloAppModule.isNamed();
         assert helloAppModule.getPackages().contains(Main.class.getPackageName());
 
-        assert helloLibModule.getName().equals("moduletests.hello.lib");
+        assert helloLibModule.getName().equals("moduletests.hello.lib_\u00fc");
         assert helloLibModule.isExported(Greeter.class.getPackageName());
         assert helloLibModule.isNamed();
         assert helloLibModule.getPackages().contains(Greeter.class.getPackageName());
@@ -286,7 +289,7 @@ public class Main {
         try {
             Class<?> runtimeGreeter = Class.forName("hello.runtime.RuntimeGreeter", true, runtimeModuleLoader);
             Method greet = runtimeGreeter.getDeclaredMethod("greet");
-            assert "hello from moduletests.hello.lib using element from java.xml".equals(greet.invoke(null)) : "Unexpected greeting from " + runtimeGreeter;
+            assert "hello from moduletests.hello.lib_\u00fc using element from java.xml".equals(greet.invoke(null)) : "Unexpected greeting from " + runtimeGreeter;
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new AssertionError("Unable to load class from runtime module " + moduleName, e);
         }
@@ -306,12 +309,24 @@ public class Main {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static void assertClassResourceURLContents(Class<?> clazz, String resourcePathName, String expectedContents) {
         URL url = clazz.getResource(resourcePathName);
         assert url != null : "Unable to access resource URL " + resourcePathName + " from " + clazz.getModule();
         try (Scanner s = new Scanner(url.openStream())) {
             assert expectedContents.equals(s.nextLine()) : "Class.getResource(String) result differs from Module.getResourceAsStream(String) result";
-        } catch (IOException e) {
+            if (isNativeImageRuntime()) {
+                assert "resource".equals(url.getProtocol()) : "Expected an embedded resource URL: " + url;
+                URI uri = url.toURI();
+                Path path = Path.of(uri);
+                assert expectedContents.equals(Files.readString(path).strip()) : "Unexpected resource filesystem contents for " + uri;
+                assert uri.equals(path.toUri()) : "Resource URI round trip changed " + uri;
+                URL encoded = new URL(uri.toASCIIString());
+                try (Scanner encodedContents = new Scanner(encoded.openStream())) {
+                    assert expectedContents.equals(encodedContents.nextLine()) : "Unable to read percent-encoded module URL " + encoded;
+                }
+            }
+        } catch (IOException | URISyntaxException e) {
             throw new AssertionError("Unable to open resource URL " + url + " from " + clazz.getModule(), e);
         }
     }
