@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,13 +74,22 @@ public class SnippetRuntime {
     }
 
     public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, CallSideEffect callSideEffect, LocationIdentity... additionalKilledLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, callSideEffect, additionalKilledLocations);
+    }
+
+    /**
+     * Creates a descriptor with a name independent of its target method. Calls to the same target
+     * with different memory effects need distinct names because foreign calls are keyed by signature.
+     */
+    public static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, CallSideEffect callSideEffect,
+                    LocationIdentity... additionalKilledLocations) {
         Method method = findMethod(declaringClass, methodName);
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to %s.%s", declaringClass.getName(), methodName);
 
         boolean isUninterruptible = isUninterruptible(method);
         boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
-        return findForeignCall(methodName, method, callSideEffect, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
+        return findForeignCall(descriptorName, method, callSideEffect, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
     }
 
     private static boolean isUninterruptible(Method method) {
