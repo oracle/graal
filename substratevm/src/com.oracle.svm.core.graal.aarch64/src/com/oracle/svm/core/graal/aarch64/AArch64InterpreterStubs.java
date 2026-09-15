@@ -446,6 +446,9 @@ public class AArch64InterpreterStubs {
                 masm.fstr(64, fps.get(i), upcallDataAddress(frameMap, offsetAbiFpArg(i)));
             }
 
+            /* AArch64 uses r8 for the indirect-result address. */
+            masm.str(64, r8, upcallDataAddress(frameMap, offsetAbiGpRet()));
+
             /* Adapt the trampoline registers and captured frame address to the Java signature. */
             masm.mov(64, gps.get(0), r11);
             masm.mov(64, gps.get(1), r12);
@@ -928,6 +931,7 @@ public class AArch64InterpreterStubs {
                 case 5 -> p.getAbiGpArg5();
                 case 6 -> p.getAbiGpArg6();
                 case 7 -> p.getAbiGpArg7();
+                case 8 -> p.getAbiGpRet();
                 default -> {
                     VMError.guarantee(PreparedSignature.isStackSlot(cArgType));
                     Pointer spVal = Word.pointer(p.getAbiSpReg());
@@ -967,7 +971,8 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAtNative(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+        public void setGpArgumentAtNative(int cArgType, Pointer data, long val, boolean incoming) {
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (PreparedSignature.isRegister(cArgType) && pos == 8) {
                 /*
                  * AArch64 uses r8 for the indirect-result address. Store it in the otherwise
@@ -977,7 +982,7 @@ public class AArch64InterpreterStubs {
                 ((InterpreterDataAArch64) data).setAbiGpRet(val);
                 return;
             }
-            setGpArgumentAt(cArgType, data, pos, val, incoming);
+            setGpArgumentAt(cArgType, data, val, incoming);
         }
 
         @Override
