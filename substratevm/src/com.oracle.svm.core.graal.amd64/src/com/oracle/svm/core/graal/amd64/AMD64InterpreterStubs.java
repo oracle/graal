@@ -38,6 +38,8 @@ import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
+import static jdk.vm.ci.amd64.AMD64.xmm2;
+import static jdk.vm.ci.amd64.AMD64.xmm3;
 
 import java.util.List;
 
@@ -67,9 +69,12 @@ import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -418,6 +423,62 @@ public class AMD64InterpreterStubs {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
             /* The wrapper returns raw bits in rax; JNI floating-point variants return them in xmm0. */
             masm.movdq(xmm0, rax);
+            super.leave(crb);
+        }
+    }
+
+    /** Captures the complete native argument state for the universal Crema FFM upcall stub. */
+    public static class InterpreterFFMUpcallStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
+        public InterpreterFFMUpcallStubContext(SharedMethod method, CallingConvention callingConvention) {
+            super(method, callingConvention);
+        }
+
+        private static AMD64Address upcallDataAddress(SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap, int offset) {
+            return new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getInterpreterFFMUpcallData()) + offset);
+        }
+
+        @Override
+        public void enter(CompilationResultBuilder crb) {
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
+            SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) frameMap.getRegisterConfig();
+            List<Register> gps = registerConfig.getNativeGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+
+            /*
+             * Since the caller stack pointer is saved before the regular prologue, we must mark
+             * the start of this routine as an indirect target.
+             */
+            masm.maybeEmitIndirectTargetMarker();
+
+            /* r10 and r11 contain the trampoline metadata and isolate, so use rax for the caller SP. */
+            masm.movq(rax, rsp);
+            super.enter(crb);
+            masm.movq(upcallDataAddress(frameMap, offsetAbiSpReg()), rax);
+            for (int i = 0; i < gps.size(); i++) {
+                masm.movq(upcallDataAddress(frameMap, offsetAbiGp(i)), gps.get(i));
+            }
+            for (int i = 0; i < fps.size(); i++) {
+                masm.movq(upcallDataAddress(frameMap, offsetAbiFpArg(i)), fps.get(i));
+            }
+
+            /* Adapt the trampoline registers and captured frame address to the Java signature. */
+            masm.movq(gps.get(0), r10);
+            masm.movq(gps.get(1), r11);
+            masm.leaq(gps.get(2), upcallDataAddress(frameMap, 0));
+        }
+
+        @Override
+        public void leave(CompilationResultBuilder crb) {
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            /* The Java helper returns the thread-local upcall data pointer in rax. */
+            masm.movq(r11, rax);
+            masm.movq(rax, new AMD64Address(r11, offsetAbiGp(0)));
+            masm.movq(rdx, new AMD64Address(r11, offsetAbiGp(1)));
+            masm.movq(xmm0, new AMD64Address(r11, offsetAbiFpArg(0)));
+            masm.movq(xmm1, new AMD64Address(r11, offsetAbiFpArg(1)));
+            masm.movq(xmm2, new AMD64Address(r11, offsetAbiFpArg(2)));
+            masm.movq(xmm3, new AMD64Address(r11, offsetAbiFpArg(3)));
             super.leave(crb);
         }
     }
@@ -816,6 +877,22 @@ public class AMD64InterpreterStubs {
     @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
     public static class AMD64InterpreterAccessStubData implements InterpreterAccessStubData {
 
+        /* Stable per-thread ABI state and buffered-return storage for interpreter FFM upcalls. */
+        private static final FastThreadLocalBytes<Pointer> FFM_UPCALL_DATA = FastThreadLocalFactory.createBytes(
+                        () -> sizeOfInterpreterData() + ForeignUpcallPlan.MAX_RETURN_BUFFER_SIZE, "AMD64 interpreter FFM upcall data");
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public Pointer getFFMUpcallData() {
+            return FFM_UPCALL_DATA.getAddress();
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public Pointer getFFMUpcallReturnBuffer(Pointer upcallData) {
+            return upcallData.add(sizeOfInterpreterData());
+        }
+
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         private static int spAdjustOnCall(int offset) {
             // offset is relative caller sp, undo side-effect of call instruction
@@ -858,8 +935,9 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public long getGpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getGpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             return switch (pos) {
                 case 0 -> p.getAbiGp0();
                 case 1 -> p.getAbiGp1();
@@ -878,13 +956,14 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAt(int cArgType, Pointer data, int pos, long val, boolean incoming) {
-            setGpArgumentAt0(cArgType, data, pos, val, incoming, JAVA_GP_REGISTERS_SIZE);
+        public void setGpArgumentAt(int cArgType, Pointer data, long val, boolean incoming) {
+            setGpArgumentAt0(cArgType, data, val, incoming, JAVA_GP_REGISTERS_SIZE);
         }
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAtNative(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+        public void setGpArgumentAtNative(int cArgType, Pointer data, long val, boolean incoming) {
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (PreparedSignature.isRegister(cArgType) && pos == NATIVE_GP_REGISTERS_SIZE) {
                 /*
                  * SysV models the number of XMM arguments to a variadic function as a synthetic
@@ -895,12 +974,13 @@ public class AMD64InterpreterStubs {
                 ((InterpreterDataAMD64) data).setAbiGpRet(val);
                 return;
             }
-            setGpArgumentAt0(cArgType, data, pos, val, incoming, NATIVE_GP_REGISTERS_SIZE);
+            setGpArgumentAt0(cArgType, data, val, incoming, NATIVE_GP_REGISTERS_SIZE);
         }
 
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        private static void setGpArgumentAt0(int cArgType, Pointer data, int pos, long val, boolean incoming, int gpRegisterSize) {
+        private static void setGpArgumentAt0(int cArgType, Pointer data, long val, boolean incoming, int gpRegisterSize) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos < gpRegisterSize) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
@@ -935,8 +1015,9 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public long getFpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getFpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos <= upperFpEnd()) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
@@ -966,8 +1047,9 @@ public class AMD64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public void setFpArgumentAt(int cArgType, Pointer data, int pos, long val) {
+        public void setFpArgumentAt(int cArgType, Pointer data, long val) {
             InterpreterDataAMD64 p = (InterpreterDataAMD64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos <= upperFpEnd()) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
