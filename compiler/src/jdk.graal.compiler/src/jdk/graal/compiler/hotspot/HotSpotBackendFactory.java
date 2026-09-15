@@ -156,6 +156,14 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
     protected void afterJVMCIProvidersCreated() {
     }
 
+    /**
+     * Filters target CPU features based on HotSpot flags. JVMCI does not apply every instruction
+     * selection flag to its target description.
+     */
+    @SuppressWarnings("unused")
+    protected void filterTargetFeatures(GraalHotSpotVMConfig config, TargetDescription target) {
+    }
+
     @SuppressWarnings("try")
     public final HotSpotBackend createBackend(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntime jvmciRuntime, HotSpotBackend host) {
         assert host == null;
@@ -168,6 +176,7 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
         HotSpotConstantReflectionProvider constantReflection = createConstantReflectionProvider(jvmci);
         afterJVMCIProvidersCreated();
         TargetDescription target = codeCache.getTarget();
+        filterTargetFeatures(config, target);
         SnippetSignature.initPrimitiveKindCache(metaAccess);
         ConstantFieldProvider constantFieldProvider = createConstantFieldProvider(config, metaAccess);
         HotSpotProviders providers;
