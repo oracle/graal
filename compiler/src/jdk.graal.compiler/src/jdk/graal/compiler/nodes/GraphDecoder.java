@@ -2048,7 +2048,7 @@ public class GraphDecoder {
         methodScope.loopExplosionMerges.add(merge);
 
         if (methodScope.loopExplosion.mergeLoops()) {
-            if (methodScope.iterationStates.size() == 0 && loopScope.loopDepth == 1) {
+            if (loopScope.trigger == LoopScopeTrigger.START && loopScope.loopDepth == 1) {
                 if (methodScope.loopExplosionHead != null) {
                     throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion must not have more than one top-level loop",
                                     LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);

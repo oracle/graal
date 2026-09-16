@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -252,6 +253,58 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     @Test
     public void nestedFieldCanBeUsedAsMergeKey() {
         partialEval(nestedFieldKeyProgram());
+    }
+
+    @Test
+    public void multipleTopLevelLoops() {
+        try {
+            partialEval(multipleTopLevelLoopsProgram());
+            Assert.fail("Expected a bailout for multiple top-level loops");
+        } catch (BailoutException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("must not have more than one top-level loop"));
+        }
+    }
+
+    private static RootNode multipleTopLevelLoopsProgram() {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return executeWithMultipleTopLevelLoops();
+            }
+
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            private static int executeWithMultipleTopLevelLoops() {
+                int bci = 0;
+                bci = CompilerDirectives.mergeExplodeKey(bci);
+                while (true) {
+                    CompilerAsserts.partialEvaluationConstant(bci);
+                    if (bci == 0) {
+                        bci = 1;
+                        continue;
+                    }
+                    if (shouldExitLoop()) {
+                        break;
+                    }
+                }
+                bci = 0;
+                while (true) {
+                    CompilerAsserts.partialEvaluationConstant(bci);
+                    if (bci == 0) {
+                        bci = 1;
+                        continue;
+                    }
+                    if (shouldExitLoop()) {
+                        break;
+                    }
+                }
+                return bci;
+            }
+        };
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static boolean shouldExitLoop() {
+        return true;
     }
 
     private static RootNode explicitKeyWithVirtualStateProgram() {
