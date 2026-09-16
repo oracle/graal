@@ -359,7 +359,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             int rawTargetConstructorClassId = sg.getRawTargetConstructorId();
             AnalysisType rawDeclaringType = getAnalysisTypeForBaseLayerId(rawDeclaringClassId);
             AnalysisType rawTargetConstructorType = getAnalysisTypeForBaseLayerId(rawTargetConstructorClassId);
-            Class<?> rawDeclaringClass = rawDeclaringType.getJavaClass();
+            Class<?> rawDeclaringClass = OriginalClassProvider.getJavaClass(rawDeclaringType);
             Class<?> rawTargetConstructorClass = rawTargetConstructorType.getJavaClass();
             Constructor<?> rawTargetConstructor = ReflectionUtil.lookupConstructor(rawTargetConstructorClass);
             Constructor<?> constructor = ReflectionFactory.getReflectionFactory().newConstructorForSerialization(rawDeclaringClass, rawTargetConstructor);
