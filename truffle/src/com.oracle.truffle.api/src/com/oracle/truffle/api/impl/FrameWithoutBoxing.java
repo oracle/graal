@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 import sun.misc.Unsafe;
@@ -1093,11 +1094,34 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             return;
         }
 
+        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(srcOffset) && CompilerDirectives.isPartialEvaluationConstant(dstOffset) &&
+                        CompilerDirectives.isPartialEvaluationConstant(length)) {
+            unsafeCopyToExploded((int) srcOffset, o, (int) dstOffset, (int) length);
+            return;
+        }
+
         // eventually we might want to optimize this further using Unsafe.
         // for now System.arrayCopy is fast enough.
         System.arraycopy(getIndexedTags(), (int) srcOffset, o.getIndexedTags(), (int) dstOffset, (int) length);
         System.arraycopy(getIndexedLocals(), (int) srcOffset, o.getIndexedLocals(), (int) dstOffset, (int) length);
         System.arraycopy(getIndexedPrimitiveLocals(), (int) srcOffset, o.getIndexedPrimitiveLocals(), (int) dstOffset, (int) length);
+    }
+
+    @ExplodeLoop
+    private void unsafeCopyToExploded(int srcOffset, FrameWithoutBoxing o, int dstOffset, int length) {
+        byte[] srcTags = getIndexedTags();
+        byte[] dstTags = o.getIndexedTags();
+        Object[] srcIndexedLocals = getIndexedLocals();
+        Object[] dstIndexedLocals = o.getIndexedLocals();
+        long[] srcIndexedPrimitiveLocals = getIndexedPrimitiveLocals();
+        long[] dstIndexedPrimitiveLocals = o.getIndexedPrimitiveLocals();
+        for (int i = 0; i < length; i++) {
+            int srcI = srcOffset + i;
+            int dstI = dstOffset + i;
+            dstTags[dstI] = srcTags[srcI];
+            dstIndexedLocals[dstI] = srcIndexedLocals[srcI];
+            dstIndexedPrimitiveLocals[dstI] = srcIndexedPrimitiveLocals[srcI];
+        }
     }
 
     @Override
