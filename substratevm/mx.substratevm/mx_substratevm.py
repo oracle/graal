@@ -837,7 +837,10 @@ def _run_terminus_user_feature_gate(args):
                          'The feature should throw during hosted registration. Captured output:\n' + output)
 
         def stack_frame(method):
-            return rf'^[ \t]*at [^\r\n]*{re.escape(method)}\([^\r\n]*\)(?:\r?\n|$)'
+            return rf'^[ \t]*at (?:[A-Za-z0-9_.]+/)?{re.escape(method)}\([^\r\n]*\)(?:\r?\n|$)'
+
+        def guest_stack_frame(method):
+            return rf'^[ \t]*at (?:<java> |){re.escape(method)}\([^\r\n]*\)(?:\r?\n|$)'
 
         any_stack_frames = r'(?:^[ \t]*at [^\r\n]+(?:\r?\n|$)){0,12}?'
 
@@ -845,8 +848,8 @@ def _run_terminus_user_feature_gate(args):
             rf'^Error: Feature defined by {re.escape("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature")} unexpectedly failed with a\(n\) '
             rf'{re.escape("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$UserFeatureException")}\.[^\r\n]*(?:\r?\n|$)'
             rf'^Caused by: {re.escape("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$UserFeatureException")}: guest-feature-exception-stack-trace-sentinel(?:\r?\n|$)'
-            rf'{stack_frame("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature.throwSentinelException")}'
-            rf'{stack_frame("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature.afterRegistration")}'
+            rf'{guest_stack_frame("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature.throwSentinelException")}'
+            rf'{guest_stack_frame("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature.afterRegistration")}'
             # Host and guest VMAccess have different dispatch frames; keep that variation bounded.
             rf'{any_stack_frames}'
             rf'{stack_frame("com.oracle.svm.hosted.FeatureHandler.forEachFeature")}'
