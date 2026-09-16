@@ -232,7 +232,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (array instanceof ImageHeapPrimitiveArray heapArray) {
             /* Unaligned accesses are only allowed for primitive arrays. */
             MetaAccessProvider originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
-            JavaKind arrayKind = JavaKind.fromJavaClass(heapArray.getType().getComponentType().getJavaClass());
+            JavaKind arrayKind = heapArray.getType().getComponentType().getJavaKind();
             long hostedIndexScale = originalMetaAccess.getArrayIndexScale(arrayKind);
             assert hostedIndexScale == runtimeIndexScale : "element size must match for primitive arrays";
 
