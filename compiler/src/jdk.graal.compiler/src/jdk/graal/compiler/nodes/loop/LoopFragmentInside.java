@@ -87,6 +87,9 @@ import jdk.graal.compiler.nodes.memory.MemoryPhiNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.util.IntegerHelper;
 
+/**
+ * Loop fragment that is capable of partially unrolling inverted loops.
+ */
 public class LoopFragmentInside extends LoopFragment {
 
     /**
@@ -129,7 +132,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     @Override
     public LoopFragmentInside duplicate() {
-        assert !isDuplicate();
+        assert !isDuplicate() : this + " most not be a duplicate already";
         return new LoopFragmentInside(this);
     }
 
@@ -377,7 +380,7 @@ public class LoopFragmentInside extends LoopFragment {
         }
     }
 
-    protected CompareNode placeNewSegmentAndCleanup(Loop loop, EconomicMap<Node, Node> new2OldPhis, @SuppressWarnings("unused") EconomicMap<Node, Node> originalPhi2Backedges) {
+    protected CompareNode placeNewSegmentAndCleanup(Loop loop, EconomicMap<Node, Node> new2OldPhis, EconomicMap<Node, Node> originalPhi2Backedges) {
         CountedLoopInfo mainCounted = loop.counted();
         LoopBeginNode mainLoopBegin = loop.loopBegin();
         // Discard the segment entry and its flow, after if merging it into the loop
@@ -465,7 +468,56 @@ public class LoopFragmentInside extends LoopFragment {
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
             return (CompareNode) loopTest.condition();
         } else {
-            throw GraalError.shouldNotReachHere("Cannot unroll inverted loop"); // ExcludeFromJacocoGeneratedReport
+            // INVERTED case
+
+            // Redirect anchors
+            AbstractBeginNode falseSuccessor = loopTest.falseSuccessor();
+            for (Node usage : falseSuccessor.anchored().snapshot()) {
+                usage.replaceFirstInput(falseSuccessor, newSegmentLoopTest.falseSuccessor());
+            }
+            AbstractBeginNode trueSuccessor = loopTest.trueSuccessor();
+            for (Node usage : trueSuccessor.anchored().snapshot()) {
+                usage.replaceFirstInput(trueSuccessor, newSegmentLoopTest.trueSuccessor());
+            }
+
+            mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
+
+            AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
+
+            FixedWithNextNode oldSegementLastNode = (FixedWithNextNode) loopTest.predecessor();
+            oldSegementLastNode.setNext(null);
+            oldSegementLastNode.setNext(newSegmentBegin);
+
+            LoopEndNode len = loop.loopBegin().getSingleLoopEnd();
+            // no need to replace phis, they are correct
+
+            FixedWithNextNode oldLenEdge = (FixedWithNextNode) len.predecessor();
+            FixedNode oldLenNext = getDuplicatedNode(len);
+            oldLenEdge.setNext(null);
+            getDuplicatedNode(oldLenEdge).setNext(len);
+
+            LoopExitNode lex = (LoopExitNode) loop.counted().getCountedExit();
+            processInvertedExitProxies(loop, lex, originalPhi2Backedges);
+
+            FixedWithNextNode oldLexEdge = lex;
+            if (loopTest.trueSuccessor() == lex) {
+                loopTest.setTrueSuccessor(null);
+            } else {
+                loopTest.setFalseSuccessor(null);
+            }
+            getDuplicatedNode(oldLexEdge).setNext(lex);
+
+            // finally, remove the old test
+            GraphUtil.killCFG(loopTest);
+            GraphUtil.killCFG(oldLenNext);
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
+
+            // remove superfluous begin node
+            FixedWithNextNode fwn = (FixedWithNextNode) lex.predecessor();
+            GraphUtil.unlinkFixedNode(fwn);
+            fwn.safeDelete();
+
+            return (CompareNode) newSegmentLoopTest.condition();
         }
     }
 
@@ -967,5 +1019,39 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         return newExit;
+    }
+
+    private void processInvertedExitProxies(Loop loop, LoopExitNode lex, EconomicMap<Node, Node> originalPhi2Backedges) {
+        for (ProxyNode proxy : lex.proxies().snapshot()) {
+            ValueNode originalNode = proxy.getOriginalNode();
+            ValueNode duplicatedPendant = getDuplicatedNode(originalNode);
+            if (duplicatedPendant == null) {
+                /*
+                 * Special case canonicalizations between pre/main/post insertion and unrolling: If
+                 * the node inside the loop canonicalizes to something above the loop we dont need
+                 * to reset it.
+                 */
+                if (loop.isOutsideLoop(originalNode)) {
+                    proxy.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, proxy.graph(), "Ignoring proxy rewrite of %s since input %s is above the loop", proxy, originalNode);
+                    continue;
+                }
+                /*
+                 * We unrolled the inverted loop: if the original proxy proxied a phi (which is last
+                 * assigned at the loop end) it means it always took the value of the phi on the
+                 * last iteration not the current iteration. If we now unroll the new body after the
+                 * original one, the proxy must still proxy the value of the last iteration. That
+                 * is, the value at the end of iteration 1 (of 2 after unrolling) may be a phi node
+                 * as well. However, since cycles are resolved already at this point, we must use
+                 * the old original value.
+                 */
+                assert originalNode instanceof PhiNode p && p.merge() == loop.loopBegin() : originalNode + " " + ((PhiNode) originalNode).merge();
+                duplicatedPendant = (ValueNode) originalPhi2Backedges.get(originalNode);
+                assert duplicatedPendant != null;
+                GraalError.guarantee(duplicatedPendant != null, "Must have a pendant for proxy %s but node is null", proxy);
+            }
+            ValueNode replacement = proxy.duplicateOn(lex, duplicatedPendant);
+            proxy.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, proxy.graph(), "Creating new proxy %s for proxy %s", replacement, proxy);
+            proxy.replaceAtUsages(replacement);
+        }
     }
 }

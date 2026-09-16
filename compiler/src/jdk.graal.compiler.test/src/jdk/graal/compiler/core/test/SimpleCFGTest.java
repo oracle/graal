@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.DebugContext;
@@ -185,7 +186,9 @@ public class SimpleCFGTest extends GraalCompilerTest {
     @Test
     public void testFoo() {
         modify = true;
-        test("foo", 12, 12);
+        // Keep loop peeling out of this test, which deliberately rewrites loop exit frame states.
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(options, "foo", 12, 12);
         modify = false;
     }
 

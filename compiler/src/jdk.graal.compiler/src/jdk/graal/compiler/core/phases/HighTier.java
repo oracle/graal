@@ -38,8 +38,11 @@ import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.duplication.phases.simulation.FixedDuplicationSimulationConfig;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
+import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
@@ -120,8 +123,17 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         LoopPolicies loopPolicies = createLoopPolicies(options);
 
+        boolean highTierRotation = LoopRotationPhase.Options.LoopRotation.getValue(options) && LoopRotationPhase.Options.HighTierLoopRotation.getValue(options);
+        boolean injectLoopCounterStamps = InjectLoopCounterStampsPhase.Options.OptLoopPhiStamps.getValue(options);
+
         if (GraalOptions.FullUnroll.getValue(options)) {
+            if (highTierRotation) {
+                appendPhase(new LoopRotationPhase<>(canonicalizer));
+            }
             appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
+            if (injectLoopCounterStamps) {
+                appendPhase(new InjectLoopCounterStampsPhase());
+            }
         }
 
         if (GraalOptions.OptReadElimination.getValue(options)) {
@@ -129,11 +141,24 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         if (GraalOptions.LoopPeeling.getValue(options)) {
+            if (highTierRotation && !GraalOptions.FullUnroll.getValue(options)) {
+                appendPhase(new LoopRotationPhase<>(canonicalizer));
+            }
             appendPhase(new LoopPeelingPhase(loopPolicies, canonicalizer));
+            if (injectLoopCounterStamps) {
+                // Loop optimizations change loop phi stamps, so compute them again.
+                appendPhase(new InjectLoopCounterStampsPhase());
+            }
         }
 
         if (GraalOptions.LoopUnswitch.getValue(options)) {
+            if (injectLoopCounterStamps && !GraalOptions.FullUnroll.getValue(options)) {
+                appendPhase(new InjectLoopCounterStampsPhase());
+            }
             appendPhase(new LoopUnswitchingPhase(loopPolicies, canonicalizer));
+            if (LoopInversionPhase.Options.LoopInversion.getValue(options) && LoopInversionPhase.Options.HighTierInversion.getValue(options)) {
+                appendPhase(new LoopInversionPhase(loopPolicies, canonicalizer));
+            }
         }
 
         // Must precede all phases that otherwise ignore the identity of boxes (e.g.
@@ -158,6 +183,9 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
+        if (injectLoopCounterStamps && !GraalOptions.FullUnroll.getValue(options) && !GraalOptions.LoopUnswitch.getValue(options)) {
+            appendPhase(new InjectLoopCounterStampsPhase());
+        }
         appendPhase(new HighTierLoweringPhase(canonicalizer));
     }
 

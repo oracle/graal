@@ -51,6 +51,7 @@ import jdk.graal.compiler.core.match.MatchRuleRegistry;
 import jdk.graal.compiler.core.match.MatchStatement;
 import jdk.graal.compiler.core.riscv64.RISCV64NodeMatchRules;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
 import jdk.graal.compiler.hotspot.CommunityCompilerConfigurationFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
@@ -60,6 +61,7 @@ import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.LoweringPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantPreBlindingPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.FinalSchedulePhase;
@@ -129,20 +131,31 @@ public class GraalConfiguration {
 
     public Suites createSuites(OptionValues options, boolean hosted, Architecture arch) {
         Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getSuitesCreator().createSuites(withSubstrateSuiteOptions(options), arch);
+        maybeUseHostedOptimisticAliasingAnalysis(hosted, suites);
         maybeAddRuntimeConstantBlinding(options, hosted, suites);
         return suites;
     }
 
     public Suites createFirstTierSuites(OptionValues options, boolean hosted, Architecture arch) {
         Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFirstTierSuitesCreator().createSuites(withSubstrateSuiteOptions(options), arch);
+        maybeUseHostedOptimisticAliasingAnalysis(hosted, suites);
         maybeAddRuntimeConstantBlinding(options, hosted, suites);
         return suites;
     }
 
     public Suites createFallbackSuites(OptionValues options, boolean hosted, Architecture arch) {
         Suites suites = ImageSingletons.lookup(SubstrateSuitesCreatorProvider.class).getFallbackSuitesCreator().createSuites(withSubstrateSuiteOptions(options), arch);
+        maybeUseHostedOptimisticAliasingAnalysis(hosted, suites);
         maybeAddRuntimeConstantBlinding(options, hosted, suites);
         return suites;
+    }
+
+    /// Uses guards that cannot deoptimize when optimistic aliasing runs during image generation.
+    protected static void maybeUseHostedOptimisticAliasingAnalysis(boolean hosted, Suites suites) {
+        if (hosted) {
+            CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+            suites.getMidTier().replaceAllPhases(OptimisticAliasingAnalysisPhase.class, () -> new HostedOptimisticAliasingAnalysis(canonicalizer));
+        }
     }
 
     /**

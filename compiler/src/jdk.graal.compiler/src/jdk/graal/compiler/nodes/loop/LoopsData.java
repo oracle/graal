@@ -105,6 +105,7 @@ public class LoopsData {
             assert checkLoopOrder(cfg.getLoops());
             loops = new ArrayList<>(cfg.getLoops().size());
             for (CFGLoop<HIRBlock> loop : cfg.getLoops()) {
+                // Use the CE loop model so all loop phases share counted and inverted-loop data.
                 Loop ex = new Loop(loop, this);
                 loops.add(ex);
                 loopBeginToEx.put(ex.loopBegin(), ex);

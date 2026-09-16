@@ -32,6 +32,8 @@ import org.junit.Test;
 import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.AddNode;
@@ -210,7 +212,9 @@ public class OptimizeOffsetAddressTest extends GraalCompilerTest {
 
     private StructuredGraph getAfterMidTierGraph(String snippet) {
         // Preserve the scalar address expressions tested by OptimizeOffsetAddressPhase.
-        OptionValues options = new OptionValues(getInitialOptions(), LoopVectorizationPhase.Options.VectorizeLoops, false);
+        OptionValues options = new OptionValues(getInitialOptions(), LoopVectorizationPhase.Options.VectorizeLoops, false,
+                        InjectLoopCounterStampsPhase.Options.OptLoopPhiStamps, false,
+                        LoopInversionPhase.Options.LoopInversion, false);
         StructuredGraph graph = parseEager(snippet, StructuredGraph.AllowAssumptions.YES, options);
         CommunityCompilerConfiguration configuration = new CommunityCompilerConfiguration();
         configuration.createHighTier(options).apply(graph, getDefaultHighTierContext());

@@ -123,7 +123,10 @@ import jdk.graal.compiler.lir.asm.DataBuilder;
 import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
+import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -566,6 +569,12 @@ public class CompileQueue {
         }
         if (!LoopVectorizationPhase.Options.VectorizeLoops.hasBeenSet(hostedOptions)) {
             midTier.removeSubTypePhases(LoopVectorizationPhase.class);
+        }
+        if (!MidTier.Options.StripMineNonCountedLoops.hasBeenSet(hostedOptions)) {
+            midTier.removeSubTypePhases(NonCountedStripMiningPhase.class);
+        }
+        if (!LoopRotationPhase.Options.LoopRotation.hasBeenSet(hostedOptions)) {
+            midTier.removeSubTypePhases(LoopRotationPhase.class);
         }
         return tunedSuites;
     }

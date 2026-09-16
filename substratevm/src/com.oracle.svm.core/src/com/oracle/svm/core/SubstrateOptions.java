@@ -92,6 +92,9 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
+import jdk.graal.compiler.loop.phases.CountedStripMiningReassociationPhase;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
+import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
@@ -369,7 +372,18 @@ public class SubstrateOptions {
             disable(GraalOptions.PartialUnroll, values);
             disable(LoopVectorizationPhase.Options.VectorizeLoops, values);
             disable(MidTier.Options.OptimisticAliasingAnalysis, values);
+            disable(MidTier.Options.StripMineCountedLoops, values);
+            disable(MidTier.Options.StripMineNonCountedLoops, values);
+            disable(MidTier.Options.StripMiningPreparationPhases, values);
+            disable(LoopInversionPhase.Options.LoopInversion, values);
+            disable(LoopRotationPhase.Options.LoopRotation, values);
+            disable(CountedStripMiningReassociationPhase.Options.StripMiningReassociation, values);
         }
+
+        /*
+         * Exact math operations can fan out
+         */
+        disable(MidTier.Options.OptExactArithmetic, values);
 
         if (disableVectorization) {
             disable(VectorIntrinsics.Options.Vectorization, values);

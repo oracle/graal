@@ -26,6 +26,24 @@ package jdk.graal.compiler.nodes.loop;
 
 import static jdk.graal.compiler.phases.common.util.LoopUtility.isNumericInteger;
 
+import jdk.vm.ci.code.CodeUtil;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.common.FloatingReadPhase;
+import jdk.graal.compiler.nodes.util.UnsignedIntegerHelper;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.extended.GuardedUnsafeLoadNode;
+import jdk.graal.compiler.nodes.calc.IntegerTestNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
+import jdk.graal.compiler.nodes.LogicNegationNode;
+import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.graph.NodeStack;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.core.common.NumUtil;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -114,6 +132,13 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
  * with a loop.
  */
 public class Loop {
+    public static class Options {
+        //@formatter:off
+        @Option(help = "Applies counted loop optimization to tail-counted loops.", type = OptionType.User)
+        public static final OptionKey<Boolean> DetectInvertedLoopsAsCounted = new OptionKey<>(true);
+        //@formatter:on
+    }
+
     /**
      * The corresponding {@link ControlFlowGraph} loop data structure.
      */
@@ -187,7 +212,7 @@ public class Loop {
 
     /**
      * Not only invalidate fragments but also the induction variables. This can be necessary when
-     * IVs have changed since this LoopEx was computed.
+     * IVs have changed since this loop data was computed.
      */
     public void invalidateFragmentsAndIVs() {
         inside = null;
@@ -338,136 +363,6 @@ public class Loop {
             whole().nodes().union(newLoopNodes);
         }
         return count != 0;
-    }
-
-    @SuppressWarnings("fallthrough")
-    public boolean detectCounted() {
-        if (countedLoopChecked) {
-            return isCounted();
-        }
-        countedLoopChecked = true;
-        LoopBeginNode loopBegin = loopBegin();
-        if (loopBegin.countedLoopDisabled()) {
-            return false;
-        }
-        FixedNode next = loopBegin.next();
-        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode || next instanceof FullInfopointNode) {
-            next = ((FixedWithNextNode) next).next();
-        }
-        if (next instanceof IfNode) {
-            IfNode ifNode = (IfNode) next;
-            boolean negated = false;
-            if (!isCfgLoopExit(ifNode.falseSuccessor())) {
-                if (!isCfgLoopExit(ifNode.trueSuccessor())) {
-                    return false;
-                }
-                negated = true;
-            }
-            LogicNode ifTest = ifNode.condition();
-            if (!(ifTest instanceof CompareNode)) {
-                return false;
-            }
-            CompareNode compare = (CompareNode) ifTest;
-            Condition condition = null;
-            InductionVariable limitCheckedIV = null;
-            ValueNode limit = null;
-            if (isOutsideLoop(compare.getX())) {
-                limitCheckedIV = getInductionVariables().get(compare.getY());
-                if (limitCheckedIV != null) {
-                    condition = compare.condition().asCondition().mirror();
-                    limit = compare.getX();
-                }
-            } else if (isOutsideLoop(compare.getY())) {
-                limitCheckedIV = getInductionVariables().get(compare.getX());
-                if (limitCheckedIV != null) {
-                    condition = compare.condition().asCondition();
-                    limit = compare.getY();
-                }
-            }
-            if (condition == null) {
-                return false;
-            }
-            if (negated) {
-                condition = condition.negate();
-            }
-            final Direction limitCheckedIVDirection = limitCheckedIV.direction();
-            if (limitCheckedIVDirection == null) {
-                // we do not know which direction the stride goes
-                return false;
-            }
-            boolean isLimitIncluded = false;
-            boolean unsigned = false;
-            switch (condition) {
-                case EQ:
-                    if (limitCheckedIV.initNode() == limit) {
-                        // allow "single iteration" case
-                        isLimitIncluded = true;
-                    } else {
-                        return false;
-                    }
-                    break;
-                case NE: {
-                    IntegerStamp initStamp = (IntegerStamp) limitCheckedIV.initNode().stamp(NodeView.DEFAULT);
-                    IntegerStamp limitStamp = (IntegerStamp) limit.stamp(NodeView.DEFAULT);
-                    IntegerStamp counterStamp = (IntegerStamp) limitCheckedIV.valueNode().stamp(NodeView.DEFAULT);
-                    if (limitCheckedIVDirection == InductionVariable.Direction.Up) {
-                        if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.upperBound()) {
-                            // signed: i < MAX_INT
-                        } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
-                            unsigned = true;
-                        } else if (!limitCheckedIV.isConstantStride() || !absStrideIsOne(limitCheckedIV) || initStamp.upperBound() > limitStamp.lowerBound()) {
-                            return false;
-                        }
-                    } else if (limitCheckedIVDirection == InductionVariable.Direction.Down) {
-                        if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.lowerBound()) {
-                            // signed: MIN_INT > i
-                        } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
-                            unsigned = true;
-                        } else if (!limitCheckedIV.isConstantStride() || !absStrideIsOne(limitCheckedIV) || initStamp.lowerBound() < limitStamp.upperBound()) {
-                            return false;
-                        }
-                    } else {
-                        return false;
-                    }
-                    break;
-                }
-                case BE:
-                    unsigned = true; // fall through
-                case LE:
-                    isLimitIncluded = true;
-                    if (limitCheckedIV.direction() != InductionVariable.Direction.Up) {
-                        return false;
-                    }
-                    break;
-                case BT:
-                    unsigned = true; // fall through
-                case LT:
-                    if (limitCheckedIV.direction() != InductionVariable.Direction.Up) {
-                        return false;
-                    }
-                    break;
-                case AE:
-                    unsigned = true; // fall through
-                case GE:
-                    isLimitIncluded = true;
-                    if (limitCheckedIV.direction() != InductionVariable.Direction.Down) {
-                        return false;
-                    }
-                    break;
-                case AT:
-                    unsigned = true; // fall through
-                case GT:
-                    if (limitCheckedIV.direction() != InductionVariable.Direction.Down) {
-                        return false;
-                    }
-                    break;
-                default:
-                    throw GraalError.shouldNotReachHere(condition.toString()); // ExcludeFromJacocoGeneratedReport
-            }
-            counted = new CountedLoopInfo(this, limitCheckedIV, ifNode, limit, isLimitIncluded, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor(), unsigned);
-            return true;
-        }
-        return false;
     }
 
     public static boolean absStrideIsOne(InductionVariable limitCheckedIV) {
@@ -944,7 +839,846 @@ public class Loop {
         return true;
     }
 
-    public boolean canBecomeLimitTestAfterFloatingReads(@SuppressWarnings("unused") IfNode ifNode) {
+    public boolean detectCounted(boolean ignoreProtection) {
+        return analyzeCounted(ignoreProtection) == CountedLoopDetectionResult.COUNTED;
+    }
+
+    public CountedLoopDetectionResult freshAnalyzeCounted() {
+        resetCounted();
+        return analyzeCounted(false);
+    }
+
+    public static boolean willBecomeLoopInvariantAfterFloatingReads(Node n, Loop loop, NodeBitMap knownToBeInvariantNodes) {
+        NodeStack ns = new NodeStack();
+        ns.push(n);
+        while (!ns.isEmpty()) {
+            Node cur = ns.pop();
+            if (knownToBeInvariantNodes.isMarked(cur)) {
+                continue;
+            } else if (loop.isOutsideLoop(cur)) {
+                continue;
+            } else if (loop.loopBegin().isPhiAtMerge(cur)) {
+                return false;
+            } else if (cur instanceof LoadFieldNode || cur instanceof GuardedUnsafeLoadNode || cur instanceof LoadIndexedNode || cur instanceof PiNode || cur instanceof ArrayLengthNode ||
+                            cur instanceof FixedGuardNode || cur instanceof LogicNode) {
+                if (cur instanceof LoadFieldNode) {
+                    LoadFieldNode load = (LoadFieldNode) cur;
+                    if (load.isStatic() && !load.ordersMemoryAccesses()) {
+                        // will float
+                        continue;
+                    }
+                }
+                for (Node input : cur.inputs()) {
+                    ns.push(input);
+                }
+                continue;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Determine if after {@link FloatingReadPhase} this {@link IfNode} can become the new counted
+     * loop exit.
+     */
+    public boolean canBecomeLimitTestAfterFloatingReads(IfNode ifNode) {
+        FixedNode loopStartNode = loopBegin().next();
+        NodeBitMap knownToBeInvariantNodes = ifNode.graph().createNodeBitMap();
+        while (true) { // TERMINATION ARGUMENT: processing next nodes until exit criteria is reached
+            CompilationAlarm.checkProgress(ifNode.graph());
+            if (canSkipBodyNode(loopStartNode, true)) {
+                // nodes that will float away between loop begin and counted check, not necessarily
+                // loop invariant
+                if (loopStartNode instanceof FixedGuardNode && willBecomeLoopInvariantAfterFloatingReads(loopStartNode, this, knownToBeInvariantNodes)) {
+                    knownToBeInvariantNodes.mark(loopStartNode);
+                }
+                loopStartNode = ((FixedWithNextNode) loopStartNode).next();
+                continue;
+            } else if (willBecomeLoopInvariantAfterFloatingReads(loopStartNode, this, knownToBeInvariantNodes)) {
+                // nodes that will truely become invariant
+                knownToBeInvariantNodes.mark(loopStartNode);
+                loopStartNode = ((FixedWithNextNode) loopStartNode).next();
+                continue;
+            }
+            break;
+        }
+        if (loopStartNode instanceof IfNode && loopStartNode == ifNode) {
+            CountedLoopInfo countedLoopInfo = detectCountedLoopIf((IfNode) loopStartNode, IfPosition.LoopStart, false, knownToBeInvariantNodes);
+            if (countedLoopInfo != null) {
+                if (countedLoopInfo.isInvertedLoopComplexSignednessRange()) {
+                    return false;
+                }
+                return true;
+            }
+        }
         return false;
+    }
+
+    public CountedLoopDetectionResult analyzeCounted(boolean ignoreProtection) {
+        if (countedLoopChecked) {
+            return CountedLoopDetectionResult.create(isCounted());
+        }
+        countedLoopChecked = true;
+        LoopBeginNode loopBegin = loopBegin();
+        if (loopBegin.countedLoopDisabled()) {
+            return CountedLoopDetectionResult.NOT_COUNTED;
+        }
+
+        /*
+         * We always try to prefer head counted loops over inverted ones for phase ordering reasons,
+         * except if we inverted a loop, then we should reason about it (for the sake of guard
+         * optimizations) in its inverted form.
+         */
+        if (loopBegin.isCompilerInverted()) {
+            // try tail counted detection first
+            InvertedAnalysisResult invertedCountedLoopInfo = detectInvertedCountedLoop(ignoreProtection);
+            if (invertedCountedLoopInfo.result == CountedLoopDetectionResult.COUNTED) {
+                counted = invertedCountedLoopInfo.info;
+                return CountedLoopDetectionResult.COUNTED;
+            }
+        }
+
+        FixedNode loopStartNode = loopBegin().next();
+        while (canSkipBodyNode(loopStartNode, true)) {
+            loopStartNode = ((FixedWithNextNode) loopStartNode).next();
+        }
+        if (loopStartNode instanceof IfNode) {
+            CountedLoopInfo countedLoopInfo = detectCountedLoopIf((IfNode) loopStartNode, IfPosition.LoopStart, false);
+            if (countedLoopInfo != null) {
+                counted = countedLoopInfo;
+                return CountedLoopDetectionResult.COUNTED;
+            }
+        }
+        InvertedAnalysisResult invertedCountedLoopInfo = detectInvertedCountedLoop(ignoreProtection);
+        if (invertedCountedLoopInfo.result == CountedLoopDetectionResult.COUNTED) {
+            counted = invertedCountedLoopInfo.info;
+            return CountedLoopDetectionResult.COUNTED;
+        } else {
+            return invertedCountedLoopInfo.result;
+        }
+    }
+
+    /**
+     * Determines if the given node can be skipped when analyzing counted loops. Skip-able body
+     * nodes can appear between the {@link LoopBeginNode} and the loop header.
+     */
+    public static boolean canSkipBodyNode(FixedNode bodyNode, boolean skipGuards) {
+        return (skipGuards && bodyNode instanceof FixedGuardNode) || bodyNode instanceof ValueAnchorNode || bodyNode instanceof FullInfopointNode;
+    }
+
+    private static class InvertedAnalysisResult {
+        CountedLoopInfo info;
+        CountedLoopDetectionResult result;
+
+        InvertedAnalysisResult(CountedLoopInfo info, CountedLoopDetectionResult result) {
+            this.info = info;
+            this.result = result;
+        }
+
+        static InvertedAnalysisResult createCounted(CountedLoopInfo info) {
+            return new InvertedAnalysisResult(info, CountedLoopDetectionResult.COUNTED);
+        }
+
+        private static final InvertedAnalysisResult NotCounted = new InvertedAnalysisResult(null, CountedLoopDetectionResult.NOT_COUNTED);
+
+        private static final InvertedAnalysisResult NotProtected = new InvertedAnalysisResult(null, CountedLoopDetectionResult.MISSING_PROTECTION);
+
+        private static final InvertedAnalysisResult UnsignedNegative = new InvertedAnalysisResult(null, CountedLoopDetectionResult.UNSIGNED_INIT_POTENTIALLY_NEGATIVE);
+
+        private static final InvertedAnalysisResult NotProtectedUnsignedNegative = new InvertedAnalysisResult(null, CountedLoopDetectionResult.UNSIGNED_INIT_POTENTIALLY_NEGATIVE_MISSING_PROTECTION);
+
+    }
+
+    public enum CountedLoopDetectionResult {
+        /**
+         * The loop is not counted for various reasons.
+         */
+        NOT_COUNTED,
+        /**
+         * The inverted loop cannot be detected as counted because it is missing a protection.
+         */
+        MISSING_PROTECTION,
+        /**
+         * The inverted loop cannot be detected as counted because it is an unsigned comparison with
+         * a complex iteration range potentially including negative values due to integer overflow.
+         */
+        UNSIGNED_INIT_POTENTIALLY_NEGATIVE,
+        UNSIGNED_INIT_POTENTIALLY_NEGATIVE_MISSING_PROTECTION,
+        /**
+         * The loop is counted.
+         */
+        COUNTED;
+
+        public static CountedLoopDetectionResult create(boolean counted) {
+            return counted ? COUNTED : NOT_COUNTED;
+        }
+    }
+
+    public boolean detectCounted() {
+        if (detectCounted(false)) {
+            assert counted.assertUnsignedIVsAreSane();
+            return true;
+        }
+        return false;
+    }
+
+    public CountedLoopInfo detectCountedLoopIf(IfNode ifNode, IfPosition ifPosition, boolean ignoreProtection) {
+        return detectCountedLoopIf(ifNode, ifPosition, ignoreProtection, null);
+    }
+
+    /**
+     * IMPORTANT NOTE: Enhanced loop detection
+     *
+     * Loop detection also considers inverted (tail-counted) loops as counted loops. The
+     * detection is closely coupled (limit, stride, etc.) with the regular loop detection, thus this
+     * method shares parts of the regular counted-loop detection logic.
+     *
+     * In the following documentation the terms "head counted loop" and "tail counted loop" are
+     * used.
+     *
+     * A "head counted" loop is a loop that starts with the counted loop condition first, i.e. the
+     * condition is at the head of the loop.
+     *
+     * <pre>
+     * int phi = 0;
+     * while (true) {
+     *     if (phi >= max)
+     *         break; // head position
+     *     // rest of the loop body
+     *     phi++;
+     * }
+     * </pre>
+     *
+     * In contrast, a "tail counted" loop is a loop that ends with the counted loop condition.
+     *
+     * <pre>
+     * int phi = 0;
+     * while (true) {
+     *     // loop body
+     *     phi++;
+     *     if (phi >= max)
+     *         break; // tail position
+     * }
+     * </pre>
+     *
+     * Tail counted loops are also referred to as inverted loops, i.e., the counted loop condition
+     * is "inverted" == at the end.
+     *
+     * ####################################################################################
+     *
+     * We need to have a clear definition when to use the inverted (prev iteration) concept for a
+     * counted loop and when the head counted one.
+     *
+     * All loops will be considered head counted except if the loop is in inverted form, i.e., there
+     * are fixed nodes between the body and the exit check.
+     *
+     * Example:
+     *
+     * <pre>
+     *    int phi=0;
+     *    while (true) {
+     *     fixedNode1;
+     *     fixedNode2;
+     *     ...
+     *     fixedNodeN;
+     *     phi++;
+     *     if (phi >= max) break; // tail position
+     *    }
+     * </pre>
+     *
+     * However, this is also a valid inverted loop, though the iv checked in the counted loop check
+     * is not the next iteration value.
+     *
+     * <pre>
+     *    int phi=0;
+     *    while (true) {
+     *     fixedNode1;
+     *     fixedNode2;
+     *     ...
+     *     fixedNodeN;
+     *     if (phi >= max) break; // tail position
+     *     phi++;
+     *    }
+     * </pre>
+     *
+     * ####################################################################################
+     *
+     * If {@code ifPosition} is {@link IfPosition#LoopEnd} and {@code ignoreProtection} is
+     * {@code false}, this method is optimistic that the loop will be protected. The caller
+     * <em>must</em> check for that protection.
+     */
+    CountedLoopInfo detectCountedLoopIf(IfNode ifNode, IfPosition ifPosition, boolean ignoreProtection, NodeBitMap knownToBeInvariantNodesAfter) {
+        LoopBeginNode loopBegin = loopBegin();
+        boolean negated = false;
+        if (!isCfgLoopExit(ifNode.falseSuccessor())) {
+            if (!isCfgLoopExit(ifNode.trueSuccessor())) {
+                return null;
+            }
+            negated = true;
+        }
+        LogicNode ifTest = ifNode.condition();
+        CountedLoopConditionData c = detectCountedLoopIfFromCondition(this, ifTest, negated, ifPosition, ignoreProtection, knownToBeInvariantNodesAfter);
+        if (c == null) {
+            return null;
+        }
+        AbstractBeginNode body = negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
+        InductionVariable bodyUsedIV = c.limitCheckedIV;
+        switch (ifPosition) {
+            case LoopStart:
+                break;
+            case LoopEnd:
+                if (c.bodyUsesPrevIterationIV) {
+                    /*
+                     * the check is on the next value of the actual IV, only if the IV is
+                     * already a derived one
+                     */
+                    bodyUsedIV = InductionVariableHelper.previousIteration(c.limitCheckedIV);
+                }
+                /*
+                 * If the exit check was (only) found from the loop end, this is an inverted loop,
+                 * even if it's empty.
+                 */
+                body = loopBegin;
+                break;
+            default:
+                throw GraalError.shouldNotReachHere(ifPosition.toString()); // ExcludeFromJacocoGeneratedReport
+        }
+        return new CountedLoopInfo(this, c.limitCheckedIV, bodyUsedIV, ifNode, c.limit, c.tripCountLimit, c.isLimitIncluded, body, c.unsigned, c.invertedLoopComplexSignednessRange);
+
+    }
+
+    public record CountedLoopConditionData(InductionVariable limitCheckedIV, ValueNode limit, ValueNode tripCountLimit, boolean bodyUsesPrevIterationIV, boolean isLimitIncluded, boolean unsigned,
+                    boolean invertedLoopComplexSignednessRange) {
+
+    }
+
+    @SuppressWarnings("fallthrough")
+    public static CountedLoopConditionData detectCountedLoopIfFromCondition(Loop loop, LogicNode ifTest, boolean negated, IfPosition ifPosition, boolean ignoreProtection,
+                    NodeBitMap knownToBeInvariantNodesAfter) {
+        if (!(ifTest instanceof CompareNode)) {
+            return null;
+        }
+        CompareNode compare = (CompareNode) ifTest;
+        Condition condition = null;
+        InductionVariable limitCheckedIV = null;
+        ValueNode limit = null;
+        /*
+         * In order to determine if a loop should be treated in its inverted form we need to
+         * guarantee that the value checked for the exit check is actually a derived one, else its a
+         * head counted loop that might look like a tail counted one or a tail counted loop which
+         * checks the regular induction variable. See longer comment below.
+         */
+        boolean bodyUsesPrevIterationIV = false;
+        ValueNode x = compare.getX();
+        ValueNode y = compare.getY();
+        if (loop.isOutsideLoop(x) || knownToBeInvariantNodesAfter != null && knownToBeInvariantNodesAfter.isMarked(x)) {
+            limitCheckedIV = loop.getInductionVariables().get(y);
+            if (limitCheckedIV != null) {
+                condition = compare.condition().asCondition().mirror();
+                limit = x;
+                if (limitCheckedIV instanceof DerivedInductionVariable) {
+                    ValueNode valueNode2 = limitCheckedIV.valueNode();
+                    assert y == valueNode2 : y + "!=" + valueNode2;
+                    bodyUsesPrevIterationIV = true;
+                }
+            }
+        } else if (loop.isOutsideLoop(y) || knownToBeInvariantNodesAfter != null && knownToBeInvariantNodesAfter.isMarked(y)) {
+            limitCheckedIV = loop.getInductionVariables().get(x);
+            if (limitCheckedIV != null) {
+                condition = compare.condition().asCondition();
+                limit = y;
+                if (limitCheckedIV instanceof DerivedInductionVariable) {
+                    ValueNode valueNode = limitCheckedIV.valueNode();
+                    assert x == valueNode : x + " != " + valueNode;
+                    bodyUsesPrevIterationIV = true;
+                }
+            }
+        }
+
+        if (condition == null) {
+            return null;
+        }
+
+        boolean complexSignednessRange = false;
+        if (!ignoreProtection) {
+            /*
+             * Very subtle case that should never happen: The original unsigned compared loop was
+             * not spanning the signedness-range from negative to positive but the unrolled one does
+             * (or we believe it does): We trust the original logic to determine this, still build
+             * any necessary protection control flow and let later counted loop detection (if so)
+             * fail.
+             */
+            complexSignednessRange = invertedLoopComplexSignednessRange(ifPosition, condition, limitCheckedIV, bodyUsesPrevIterationIV);
+        }
+
+        if (negated) {
+            condition = condition.negate();
+        }
+        // limit used to compute the max trip count node
+        ValueNode tripCountLimit = limit;
+        if (!bodyUsesPrevIterationIV && ifPosition == IfPosition.LoopEnd) {
+            // inverted loops with no inverted induction variables checked for limit
+            assert limitCheckedIV instanceof BasicInductionVariable : limitCheckedIV;
+            tripCountLimit = getTripCountLimit(limit, limitCheckedIV);
+        }
+        final Direction limitCheckedIVDirection = limitCheckedIV.direction();
+        if (limitCheckedIVDirection == null) {
+            // we do not know which direction the stride goes
+            return null;
+        }
+        boolean isLimitIncluded = false;
+        boolean unsigned = false;
+        switch (condition) {
+            case EQ:
+                if (limitCheckedIV.initNode() == limit) {
+                    // allow "single iteration" case
+                    isLimitIncluded = true;
+                } else {
+                    return null;
+                }
+                break;
+            case NE: {
+                IntegerStamp initStamp = (IntegerStamp) limitCheckedIV.initNode().stamp(NodeView.DEFAULT);
+                IntegerStamp limitStamp = (IntegerStamp) tripCountLimit.stamp(NodeView.DEFAULT);
+                ValueNode limitCheckedIVValueNode = limitCheckedIV.valueNode();
+                IntegerStamp counterStamp = (IntegerStamp) limitCheckedIVValueNode.stamp(NodeView.DEFAULT);
+                if (limitCheckedIVDirection == Direction.Up) {
+                    if (limitStamp.asConstant() != null && (limitStamp.asConstant().asLong() == counterStamp.upperBound() ||
+                                    ifPosition == IfPosition.LoopEnd &&
+                                                    limitStamp.asConstant().asLong() == ((IntegerStamp) InductionVariableHelper.nextIteration(limitCheckedIV).valueNode().stamp(
+                                                                    NodeView.DEFAULT)).upperBound())) {
+                        // signed: i < MAX_INT
+                    } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
+                        unsigned = true;
+                    } else {
+                        if (!limitCheckedIV.isConstantStride()) {
+                            return null;
+                        }
+                        boolean strideOK = absStrideIsOne(limitCheckedIV);
+                        long constantStride = limitCheckedIV.constantStride();
+                        if (!strideOK && constantStride != Long.MIN_VALUE && CodeUtil.isPowerOf2(NumUtil.safeAbs(constantStride))) {
+                            /*
+                             * Check that we'll hit the limit exactly because the init and limit
+                             * values are multiples of the stride. For example, we won't overflow in
+                             * a loop like `for (i = 0; i != 10; i += 2)`. But we will miss the
+                             * limit and overflow in a loop like `for (i = 0; i != 11; i += 2)`.
+                             */
+                            long mustBeClearLowBits = CodeUtil.mask(Long.numberOfTrailingZeros(NumUtil.safeAbs(constantStride)));
+                            strideOK = (initStamp.mayBeSet() & mustBeClearLowBits) == 0 && (counterStamp.mayBeSet() & mustBeClearLowBits) == 0 && (limitStamp.mayBeSet() & mustBeClearLowBits) == 0;
+                        }
+                        if (!strideOK) {
+                            return null;
+                        }
+                        if (ifPosition == IfPosition.LoopEnd && ignoreProtection) {
+                            /*
+                             * Inverted equality checked loop that is yet unprotected
+                             */
+                        } else if (initStamp.upperBound() > limitStamp.lowerBound()) {
+                            /*
+                             * This loop will have a positive overflow if init starts out greater
+                             * than limit.
+                             */
+                            if (ifPosition == IfPosition.LoopEnd) {
+                                /*
+                                 * This is an inverted loop that is a valid counted loop if it's
+                                 * protected. Optimistically fall through to return a valid
+                                 * CountedLoopInfo. It is the caller's responsibility to
+                                 * check for proper protection.
+                                 */
+                            } else {
+                                /*
+                                 * An upwards, head-counted loop with condition IV != limit. Look
+                                 * for protection by init <= limit, i.e., Not(limit < init).
+                                 */
+                                LogicNode requiredProtection = LogicNegationNode.create(IntegerLessThanNode.create(limit, limitCheckedIV.initNode(), NodeView.DEFAULT));
+                                if (!checkProtectionInDominatingBlock(requiredProtection, loop)) {
+                                    return null;
+                                }
+                            }
+                        }
+                    }
+                } else if (limitCheckedIVDirection == Direction.Down) {
+                    if (limitStamp.asConstant() != null && (limitStamp.asConstant().asLong() == counterStamp.lowerBound() || ifPosition == IfPosition.LoopEnd &&
+                                    limitStamp.asConstant().asLong() == ((IntegerStamp) InductionVariableHelper.previousIteration(limitCheckedIV).valueNode().stamp(NodeView.DEFAULT)).lowerBound())) {
+                        // signed: i > MIN_INT
+                    } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
+                        unsigned = true;
+                    } else {
+                        if (!limitCheckedIV.isConstantStride() || !absStrideIsOne(limitCheckedIV)) {
+                            return null;
+                        }
+                        if (ifPosition == IfPosition.LoopEnd && ignoreProtection) {
+                            /*
+                             * Inverted equality checked loop that is yet unprotected
+                             */
+                        } else if (initStamp.lowerBound() < limitStamp.upperBound()) {
+                            /*
+                             * This loop will have a negative overflow if init starts out lower than
+                             * limit.
+                             */
+                            if (ifPosition == IfPosition.LoopEnd) {
+                                // Fall through, rely on caller for protection.
+                            } else {
+                                // Downwards, head-counted loop: Look for limit <= init, i.e.,
+                                // Not(init < limit).
+                                LogicNode requiredProtection = LogicNegationNode.create(IntegerLessThanNode.create(limitCheckedIV.initNode(), limit, NodeView.DEFAULT));
+                                if (!checkProtectionInDominatingBlock(requiredProtection, loop)) {
+                                    return null;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    return null;
+                }
+                break;
+            }
+            case BE:
+                unsigned = true; // fall through
+            case LE:
+                isLimitIncluded = true;
+                if (limitCheckedIVDirection != Direction.Up) {
+                    return null;
+                }
+                break;
+            case BT:
+                unsigned = true; // fall through
+            case LT:
+                if (limitCheckedIVDirection != Direction.Up) {
+                    return null;
+                }
+                break;
+            case AE:
+                unsigned = true; // fall through
+            case GE:
+                isLimitIncluded = true;
+                if (limitCheckedIVDirection != Direction.Down) {
+                    return null;
+                }
+                break;
+            case AT:
+                unsigned = true; // fall through
+            case GT:
+                if (limitCheckedIVDirection != Direction.Down) {
+                    return null;
+                }
+                break;
+            default:
+                throw GraalError.shouldNotReachHere(condition.toString()); // ExcludeFromJacocoGeneratedReport
+        }
+        return new CountedLoopConditionData(limitCheckedIV, limit, tripCountLimit, bodyUsesPrevIterationIV, isLimitIncluded, unsigned, complexSignednessRange);
+    }
+
+    private static boolean checkProtectionInDominatingBlock(LogicNode requiredProtection, Loop loop) {
+        HIRBlock cur = loop.getCFGLoop().getHeader().getDominator();
+        FixedNode prev = null;
+        while (cur != null) {
+            // after floating guards
+            for (GuardNode g : cur.getBeginNode().guards()) {
+                LogicNode l = g.getCondition();
+                if (l instanceof CompareNode) {
+                    CompareNode c = (CompareNode) l;
+                    if (c.implies(g.isNegated(), requiredProtection).isTrue()) {
+                        return true;
+                    }
+                } else if (l instanceof IntegerTestNode test) {
+                    if (test.implies(g.isNegated(), requiredProtection).isTrue()) {
+                        return true;
+                    }
+                }
+            }
+            // high tier fixed guards
+            for (FixedNode fg : GraphUtil.predecessorIterable(cur.getEndNode())) {
+                if (fg == cur.getBeginNode()) {
+                    prev = fg;
+                    break;
+                }
+                LogicNode l = null;
+                boolean negated = false;
+                if (fg instanceof IfNode) {
+                    l = ((IfNode) fg).condition();
+                    GraalError.guarantee(prev != null, "need previous node when checking if successor");
+                    negated = prev == ((IfNode) fg).falseSuccessor();
+                }
+                if (fg instanceof FixedGuardNode) {
+                    l = ((FixedGuardNode) fg).condition();
+                    negated = ((FixedGuardNode) fg).isNegated();
+                }
+                if (l != null) {
+                    if (l instanceof CompareNode) {
+                        CompareNode c = (CompareNode) l;
+                        if (c.implies(negated, requiredProtection).isTrue()) {
+                            return true;
+                        }
+                    } else if (l instanceof IntegerTestNode test) {
+                        if (test.implies(negated, requiredProtection).isTrue()) {
+                            return true;
+                        }
+                    }
+                }
+                prev = fg;
+            }
+            cur = cur.getDominator();
+        }
+        return false;
+    }
+
+    /**
+     * Get the mathematical trip count limit of this inverted loop, see {@link CountedLoopInfo#getTripCountLimit()}
+     * for details.
+     *
+     * Inverted loop for which the counter induction variable is not in its inverted
+     * form,i.e., it does not check
+     *
+     *<pre>
+     * if (i op stride == end) break
+     *</pre>
+     *
+     * but checks
+     *
+     *<pre>
+     * if (i == end) break
+     *</pre>
+     *
+     * this means this loop's iteration space is one level further and we need to take the
+     * next iteration val as limit.
+     *
+     *
+     * @formatter:off
+     * For clarity the two loops below outline how the different IVs and limits align accordingly:
+     *
+     *
+     * Case (1) Tail counted loop with non-inverted limit checked IV.
+     * <pre>
+     *   i = init;
+     *   do {
+     *      use(i);
+     *   } while (i++ < limit);
+     * </pre>
+     *
+     * getBodyIV                    i
+     * getLimitCheckedIV            i
+     * bodyUsesPrevIterationIV      false // body and limit check consume the same IV
+     * getLimit                     limit
+     * getTripCountLimit            limit + 1
+     *
+     * -----------------------------------------------------------------------------------------
+     *
+     * Case (2) Tail counted loop with inverted limit checked IV.
+     *
+     * <pre>
+     *    i = init;
+     *    do {
+     *       use(i);
+     *       i++;
+     *    } while (i < limit);  // equivalently, while (++i < limit)
+     * </pre>
+     *
+     * getBodyIV                    i
+     * getLimitCheckedIV            i + 1
+     * bodyUsesPrevIterationIV      true // body and limit check consume different IVs
+     * getLimit                     limit
+     * getTripCountLimit            limit
+     * @formatter:on
+     */
+    public static ValueNode getTripCountLimit(ValueNode limit, InductionVariable limitCheckedIV) {
+        BasicInductionVariable biv = (BasicInductionVariable) limitCheckedIV;
+        BinaryArithmeticNode<?> op = biv.getOp();
+        if (op instanceof AddNode) {
+            return limit.graph().addOrUniqueWithInputs(AddNode.create(limit, biv.rawStride(),
+                            NodeView.DEFAULT));
+        } else if (op instanceof SubNode) {
+            return limit.graph().addOrUniqueWithInputs(SubNode.create(limit, biv.rawStride(),
+                            NodeView.DEFAULT));
+        }
+        return limit;
+    }
+
+    /**
+     * Determine if this inverted loop can spawn across the signedness range of integers.
+     *
+     * For inverted loops we have to differentiate between the iv used in the loop body and the IV
+     * used by the counted check (compared against the limit), see
+     * {@link CountedLoopInfo#getLimitCheckedIV()} and CountedLoopInfo#getBodyIV() for details.
+     *
+     * Unsigned checks can cause correctness issues for inverted loops if the body iv's init node
+     * can be negative but the stride causes the limit checked IV to be always positive, because in
+     * such a scenario the counted check can be optimized to an unsigned one while the body iv is
+     * still in its signed form.
+     *
+     * Example
+     *
+     * <pre>
+     * int i = -1;
+     * do {
+     *     // i can be < 0 in first iteration
+     *     i++;
+     *     // i can never be < 0 after the first iteration
+     * } while (i < 10); // can be optimized to an unsigned comparison given that -1 + 1 is always
+     *                   // >= 0
+     * </pre>
+     *
+     * In order to still produce correct code and use {@link CountedLoopInfo#getBodyIVStart()} and
+     * {@link CountedLoopInfo#getLimit()} to calculate ranges we disallow counted loop detection for
+     * such patterns given that -1 to UnsignedInteger.MAX is larger than the unsigned range and can
+     * cause overflows in calculations.
+     *
+     * Users of the {@linkplain CountedLoopInfo API} would need to distinguish between those two
+     * cases, however, this is complex and thus we ignore such inverted loops in Graal.
+     */
+    protected static boolean invertedLoopComplexSignednessRange(IfPosition ifPosition, Condition condition, InductionVariable limitCheckedIV, boolean bodyUsesPrevIterationIV) {
+        if (limitCheckedIV.getLoop().loopBegin().isProtectedNonOverflowingUnsigned()) {
+            return false;
+        }
+        if (ifPosition == IfPosition.LoopEnd && condition.isUnsigned()) {
+            if (bodyUsesPrevIterationIV) {
+                ValueNode initNode = InductionVariableHelper.previousIteration(limitCheckedIV).initNode();
+                if (((IntegerStamp) initNode.stamp(NodeView.DEFAULT)).canBeNegative()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public enum IfPosition {
+        LoopStart,
+        LoopEnd
+    }
+
+    private InvertedAnalysisResult detectInvertedCountedLoop(boolean shouldIgnoreProtection) {
+        boolean ignoreProtection = shouldIgnoreProtection;
+        if (!Options.DetectInvertedLoopsAsCounted.getValue(loopBegin().getOptions())) {
+            return InvertedAnalysisResult.NotCounted;
+        }
+        if (loopBegin().getLoopEndCount() != 1) {
+            return InvertedAnalysisResult.NotCounted;
+        }
+        Node backEdgeNode = loopBegin().loopEnds().first().predecessor();
+        while (CountedLoopInfo.backedgeSkippableNode(backEdgeNode)) {
+            backEdgeNode = backEdgeNode.predecessor();
+        }
+        if (backEdgeNode instanceof BeginNode backEdgeBegin && backEdgeBegin.predecessor() instanceof IfNode) {
+            if (backEdgeBegin.hasAnchored()) {
+                /**
+                 * Code anchored in the {@link LoopEnd} branch: this loop is in fact not inverted
+                 * because there is code between the counted exit condition and the backedge jump.
+                 *
+                 * Consider this loop:
+                 *
+                 * <pre>
+                 * int phi = 0;
+                 * int limit = 100;
+                 * if (phi < limit) {
+                 *     while (true) {
+                 *         body();
+                 *         phi++;
+                 *         if (phi < limit) {
+                 *             continue;
+                 *         } else {
+                 *             break;
+                 *         }
+                 *     }
+                 * }
+                 * </pre>
+                 *
+                 * which is a perfect inverted loop. However, this loop
+                 *
+                 * <pre>
+                 * int phi = 0;
+                 * int limit = 100;
+                 * if (phi < limit) {
+                 *     while (true) {
+                 *         body();
+                 *         phi++;
+                 *         if (phi < limit) {
+                 *             floatingOperationAnchoredOnPrevBegin();
+                 *             continue;
+                 *         } else {
+                 *             break;
+                 *         }
+                 *     }
+                 * }
+                 * </pre>
+                 *
+                 * is not because the floating operation anchored on the {@link IfNode}'s begin is
+                 * executed 1 time less than the rest of the loop body, i.e., it is not in the
+                 * inverted body position. Thus, such loops are not counted.
+                 */
+                return InvertedAnalysisResult.NotCounted;
+            }
+            CountedLoopInfo countedLoopInfo = detectCountedLoopIf((IfNode) backEdgeNode.predecessor(), IfPosition.LoopEnd, ignoreProtection);
+            if (countedLoopInfo != null) {
+                // Looks like an inverted loop, now check if the first iteration is protected
+                ValueNode start = countedLoopInfo.getBodyIVStart();
+                ValueNode limit = countedLoopInfo.getTripCountLimit();
+                Condition condition;
+                boolean unsigned = countedLoopInfo.getCounterIntegerHelper() instanceof UnsignedIntegerHelper;
+                if (countedLoopInfo.getDirection() == Direction.Up) {
+                    if (countedLoopInfo.isLimitIncluded()) {
+                        condition = unsigned ? Condition.BE : Condition.LE;
+                    } else {
+                        condition = unsigned ? Condition.BT : Condition.LT;
+                    }
+                } else {
+                    if (countedLoopInfo.isLimitIncluded()) {
+                        condition = unsigned ? Condition.AE : Condition.GE;
+                    } else {
+                        condition = unsigned ? Condition.AT : Condition.GT;
+                    }
+                }
+                LogicNode requiredProtection = null;
+
+                /*
+                 * We need to ensure the first iteration of an inverted loop is protected.
+                 *
+                 * We can skip this logic (because we know it is protected) if:
+                 *
+                 * 1) Graal inverted the loop in which case it is guaranteed to be protected
+                 *
+                 * 2) Graal unrolled an inverted loop in which process it protects main and post
+                 * loop
+                 *
+                 */
+                if (!(loopBegin().isMainLoop() || loopBegin().isPostLoop() || loopBegin().isCompilerInverted() || loopBegin().isAnyStripMinedInner())) {
+                    requiredProtection = CompareNode.createAnyCompareNode(condition, start, limit, null);
+                } else {
+                    ignoreProtection = true;
+                }
+                if (loopBegin().isProtectedNonOverflowingUnsigned()) {
+                    return InvertedAnalysisResult.createCounted(countedLoopInfo);
+                }
+                if (requiredProtection == null || requiredProtection.isTautology() || ignoreProtection ||
+                                loopBegin().isProtectedNonOverflowingUnsigned()) {
+
+                    /*
+                     * If the original loop was guaranteed to not have signedness problems this loop
+                     * cannot have them. That is because the original loop had an entry node that
+                     * guaranteed this. Through unrolling we might lose this info because the entry
+                     * values of IVs are the phi values of the original loops.
+                     */
+                    boolean canSkipComplexSignednessRangeCheck = loopBegin().isMainLoop() || loopBegin().isPostLoop();
+                    if (!canSkipComplexSignednessRangeCheck) {
+                        if (countedLoopInfo.isInvertedLoopComplexSignednessRange()) {
+                            return InvertedAnalysisResult.UnsignedNegative;
+                        }
+                    }
+                    return InvertedAnalysisResult.createCounted(countedLoopInfo);
+                } else {
+                    if (checkProtectionInDominatingBlock(requiredProtection, this)) {
+                        if (countedLoopInfo.isInvertedLoopComplexSignednessRange()) {
+                            return InvertedAnalysisResult.UnsignedNegative;
+                        }
+                        return InvertedAnalysisResult.createCounted(countedLoopInfo);
+                    }
+                    if (countedLoopInfo.isInvertedLoopComplexSignednessRange()) {
+                        return InvertedAnalysisResult.NotProtectedUnsignedNegative;
+                    }
+                    return InvertedAnalysisResult.NotProtected;
+                }
+            }
+        }
+        return InvertedAnalysisResult.NotCounted;
     }
 }

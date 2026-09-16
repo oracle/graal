@@ -16,6 +16,14 @@ This changelog summarizes newly introduced optimizations and other compiler rela
   and can be disabled with `-Djdk.graal.OptimizeLoopAccesses=false`.
 
 ## GraalVM 25.4 (Internal Version 25.4.4.1.1)
+* (GR-79031): Added strip mining for counted and non-counted loops, loop inversion, loop rotation,
+  and exact arithmetic optimization. Strip mining bounds long-running loop bodies to reduce
+  safepoint overhead, loop inversion transforms while loops into guarded do-while loops to improve
+  instruction pipelining, and loop rotation transforms selected non-counted loops into counted loops
+  by duplicating loop-body code. Exact arithmetic optimization replaces exact additions with
+  normal additions while preserving overflow behavior through loop-limit deoptimization. These
+  optimizations are enabled by default and can be controlled with their corresponding options,
+  including `-Djdk.graal.LoopRotation=false` and `-Djdk.graal.OptExactArithmetic=false`.
 * (GR-79029): Add `PullThroughPhiPhase` and `DuplicationPhase` to the community compiler configuration.
   The optimizations are enabled by default and can be disabled with `-Djdk.graal.OptPullThroughPhi=false` and
   `-Djdk.graal.OptDuplication=false`, respectively.
