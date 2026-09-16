@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.interpreter.ristretto;
 
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NON_NEGATIVE;
 
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -37,14 +39,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class RistrettoOptions {
 
-    @Option(help = "Use the Graal JIT compiler at runtime to compile bytecodes.")//
-    public static final RuntimeOptionKey<Boolean> JITEnableCompilation = new RuntimeOptionKey<>(true);
+    @Option(help = "Use the Graal JIT compiler at runtime to compile bytecodes. Can only be configured during startup.")//
+    public static final RuntimeOptionKey<Boolean> JITEnableCompilation = new RuntimeOptionKey<>(true, Immutable);
 
     @Option(help = "Number of invocations before compilation is triggered on a method.")//
     public static final RuntimeOptionKey<Integer> JITCompilerInvocationThreshold = new RuntimeOptionKey<>(1000);
 
-    @Option(help = "Use on-stack replacement to enter runtime-compiled Ristretto code from interpreted loops.")//
-    public static final RuntimeOptionKey<Boolean> JITUseOnStackReplacement = new RuntimeOptionKey<>(true);
+    @Option(help = "Use on-stack replacement to enter runtime-compiled Ristretto code from interpreted loops. Can only be configured during startup.")//
+    public static final RuntimeOptionKey<Boolean> JITUseOnStackReplacement = new RuntimeOptionKey<>(true, Immutable);
+
+    /**
+     * Compilation mode, initialized by the startup hook before application execution and unchanged
+     * afterwards.
+     */
+    private static boolean compilationEnabled;
+    private static boolean useOSR;
 
     @Option(help = "Number of loop backedges before OSR compilation is triggered for a method and target BCI.")//
     public static final RuntimeOptionKey<Integer> JITCompilerOSRBackedgeThreshold = new RuntimeOptionKey<>(30000, NON_NEGATIVE, null);
@@ -104,6 +113,21 @@ public class RistrettoOptions {
         return JITCompilerOSRBackedgeThreshold.getValue();
     }
 
+    /** Returns whether compilation was enabled at startup. */
+    public static boolean isCompilationEnabled() {
+        return compilationEnabled;
+    }
+
+    /** Returns whether both compilation and OSR were enabled at startup. */
+    public static boolean useOSR() {
+        return useOSR;
+    }
+
+    static void initializeRuntimeOptionCache() {
+        compilationEnabled = JITEnableCompilation.getValue();
+        useOSR = compilationEnabled && JITUseOnStackReplacement.getValue();
+    }
+
     public static final class ConcealedOptions {
         @Option(help = "Use deoptimization for runtime compiled code optimizations.")//
         public static final HostedOptionKey<Boolean> JITUseDeoptimization = new HostedOptionKey<>(true);
@@ -132,5 +156,16 @@ public class RistrettoOptions {
     @Fold
     public static boolean useDeoptimization() {
         return ConcealedOptions.JITUseDeoptimization.getValue();
+    }
+}
+
+/**
+ * Initializes the effective Ristretto compilation mode during runtime initialization, after option
+ * parsing and validation. The options are immutable once runtime initialization begins.
+ */
+final class RistrettoOptionsStartupHook implements RuntimeSupport.Hook {
+    @Override
+    public void execute(boolean isFirstIsolate) {
+        RistrettoOptions.initializeRuntimeOptionCache();
     }
 }

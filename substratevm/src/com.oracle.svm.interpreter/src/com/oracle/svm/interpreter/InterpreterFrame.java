@@ -65,20 +65,42 @@ import jdk.vm.ci.meta.JavaKind;
 public final class InterpreterFrame {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    // region Execution flag constants
+
+    private static final int FORCE_STAY_IN_INTERPRETER = 1;
+    private static final int USE_OSR = 1 << 1;
+    private static final int HIDDEN_FROM_STACK_WALKING = 1 << 2;
+
+    // endregion Execution flag constants
+
     private final long[] primitives;
     private final Object[] references;
 
     final InterpreterResolvedJavaMethod method;
     final byte[] code;
+
+    // region Compilation state and shared flags
+
+    /**
+     * Profile used by this activation, or {@code null} when profiling is disabled or unavailable.
+     * Compilation state stays directly on the frame to avoid a separate holder allocation and
+     * indirection in invocation and backedge handlers.
+     */
     MethodProfile methodProfile;
-    boolean forceStayInInterpreter;
+    /**
+     * Compilation and stack-walking flags. Compilation flags are installed when interpretation
+     * starts; stack-walking visibility is independent and must be preserved when installing them.
+     */
+    private byte flags;
+
+    // endregion Compilation state and shared flags
+
     DebugState debugState;
 
     private final Object[] arguments;
     private Object[] locks;
     private int lockCount;
     private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
-    private boolean hiddenFromStackWalking;
 
     private static final Object[] EMPTY = new Object[0];
 
@@ -93,7 +115,6 @@ public final class InterpreterFrame {
         this.arguments = arguments;
         this.lockCount = 0;
         this.locks = EMPTY;
-        this.hiddenFromStackWalking = false;
     }
 
     /**
@@ -152,15 +173,37 @@ public final class InterpreterFrame {
         return UNSAFE.getReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (index * Unsafe.ARRAY_OBJECT_INDEX_SCALE));
     }
 
-    // endregion Frame lifecycle and arguments
-
-    // region Debugger state
-
-    void installState(MethodProfile newMethodProfile, boolean newForceStayInInterpreter, int debuggerEventFlags, int indent) {
+    /**
+     * Installs compilation and debugger state when interpretation starts, preserving the independent
+     * stack-walking flags.
+     */
+    void installState(MethodProfile newMethodProfile, boolean newForceStayInInterpreter, boolean newUseOSR, int debuggerEventFlags, int indent) {
         this.methodProfile = newMethodProfile;
-        this.forceStayInInterpreter = newForceStayInInterpreter;
+        this.flags = (byte) ((flags & ~(FORCE_STAY_IN_INTERPRETER | USE_OSR)) |
+                        (newForceStayInInterpreter ? FORCE_STAY_IN_INTERPRETER : 0) | (newUseOSR ? USE_OSR : 0));
         this.debugState = new DebugState(debuggerEventFlags, indent);
     }
+
+    // endregion Frame lifecycle and arguments
+
+    // region Compilation state accessors
+
+    /** Returns whether calls from this activation must request interpreter execution. */
+    boolean forceStayInInterpreter() {
+        return (flags & FORCE_STAY_IN_INTERPRETER) != 0;
+    }
+
+    /**
+     * Whether this activation may profile backedges and attempt Ristretto OSR. This combines the
+     * immutable startup configuration with activation-specific profiling and execution state.
+     */
+    boolean useOSR() {
+        return (flags & USE_OSR) != 0;
+    }
+
+    // endregion Compilation state accessors
+
+    // region Debugger state
 
     /** Holds debugger and tracing state installed when interpretation starts. */
     static final class DebugState {
@@ -608,11 +651,11 @@ public final class InterpreterFrame {
      * Marks this frame so that stack walking omits it.
      */
     public void hideFromStackWalking() {
-        hiddenFromStackWalking = true;
+        flags |= HIDDEN_FROM_STACK_WALKING;
     }
 
     boolean isHiddenFromStackWalking() {
-        return hiddenFromStackWalking;
+        return (flags & HIDDEN_FROM_STACK_WALKING) != 0;
     }
 
     /**

@@ -42,7 +42,6 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
-import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.RistrettoInterpreterSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -53,6 +52,7 @@ import com.oracle.svm.interpreter.ristretto.compile.RistrettoInstalledCode;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoDiagnostics;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -66,13 +66,21 @@ import jdk.vm.ci.meta.JavaKind;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 final class RistrettoInterpreterSupportImpl implements RistrettoInterpreterSupport {
     @Override
+    @AlwaysInline("Keep the compilation-disabled interpreter entry call-free")
     public MethodProfile profileMethodEntry(InterpreterResolvedJavaMethod method) {
         return RistrettoProfileSupport.profileMethodEntry(method);
     }
 
     @Override
-    public Interpreter.OSRResult tryOSR(InterpreterResolvedJavaMethod method, MethodProfile methodProfile, InterpreterFrame frame, int targetBCI, int top) {
-        return RistrettoOSRSupport.tryOSR(method, methodProfile, frame, targetBCI, top);
+    @AlwaysInline("Keep startup OSR configuration checks call-free")
+    public boolean useOSR() {
+        return RistrettoOptions.useOSR();
+    }
+
+    @Override
+    @AlwaysInline("Keep the reduced OSR backedge fast path in bytecode-handler stubs")
+    public void tryOSR(InterpreterResolvedJavaMethod method, MethodProfile methodProfile, InterpreterFrame frame, int targetBCI, int top) {
+        RistrettoOSRSupport.tryOSR(method, methodProfile, frame, targetBCI, top);
     }
 
     @Override

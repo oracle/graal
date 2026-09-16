@@ -771,7 +771,9 @@ public final class Interpreter {
                 }
             }
             int indent = getLogIndent();
-            frame.installState(methodProfile, forceStayInInterpreter, debuggerEventFlags, indent);
+            final boolean useOSR = SubstrateOptions.useRistretto() && methodProfile != null && !forceStayInInterpreter &&
+                            RistrettoInterpreterSupport.singleton().useOSR();
+            frame.installState(methodProfile, forceStayInInterpreter, useOSR, debuggerEventFlags, indent);
 
             InterpreterUtil.guarantee(frame.code != null, "no bytecode stream for %s", method);
 
@@ -3212,13 +3214,13 @@ public final class Interpreter {
 
         @AlwaysInline("Fold invoke opcode in individual handlers")
         private static long invokeBytecode(long curBCI, InterpreterFrame frame, int curOpcode, InterpreterOperandStack virtualStack) {
-            boolean preferStayInInterpreter = frame.forceStayInInterpreter;
+            boolean preferStayInInterpreter = frame.forceStayInInterpreter();
             if (debuggerEventsSupported()) {
                 preferStayInInterpreter |= frame.debugState.beforeInvoke();
             }
 
             try {
-                invoke(frame, frame.methodProfile, frame.method, frame.code, (int) curBCI, curOpcode, frame.forceStayInInterpreter, preferStayInInterpreter, virtualStack);
+                invoke(frame, frame.methodProfile, frame.method, frame.code, (int) curBCI, curOpcode, frame.forceStayInInterpreter(), preferStayInInterpreter, virtualStack);
             } finally {
                 if (debuggerEventsSupported()) {
                     frame.debugState.afterInvoke();
@@ -3254,7 +3256,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEDYNAMIC)
         private static long invokedynamicHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            boolean preferStayInInterpreter = frame.forceStayInInterpreter;
+            boolean preferStayInInterpreter = frame.forceStayInInterpreter();
             if (debuggerEventsSupported()) {
                 preferStayInInterpreter |= frame.debugState.beforeInvoke();
             }
@@ -3329,7 +3331,7 @@ public final class Interpreter {
                 calleeArgs[0] = receiver;
             }
 
-            Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, CallKind.DIRECT, frame.forceStayInInterpreter, preferStayInInterpreter, false);
+            Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, CallKind.DIRECT, frame.forceStayInInterpreter(), preferStayInInterpreter, false);
             materializedStack.pushKind(frame, retObj, seedSignature.getReturnKind());
             return materializedStack.slotDeltaFrom(top);
         }
@@ -3565,7 +3567,7 @@ public final class Interpreter {
      *
      * <pre>
      * if targetBCI is a backward branch:
-     *     if the caller allows runtime compilation:
+     *     if OSR is enabled for this interpreter activation:
      *         update the per-target OSR backedge state
      *         submit or enter OSR-compiled code when its threshold has been reached
      * return targetBCI
@@ -3578,14 +3580,8 @@ public final class Interpreter {
     private static long beforeJumpChecks(InterpreterFrame frame, long curBCI, long targetBCI, long stackTop) {
         if (targetBCI <= curBCI) {
             GraalDirectives.safepoint();
-            if (SubstrateOptions.useRistretto() && !frame.forceStayInInterpreter) {
-                OSRResult result = RistrettoInterpreterSupport.singleton().tryOSR(frame.method, frame.methodProfile, frame, (int) targetBCI, (int) stackTop);
-                if (result != null) {
-                    if (result.exception() != null) {
-                        throw new OSRException(result.exception());
-                    }
-                    throw new OSRReturn(result.value());
-                }
+            if (SubstrateOptions.useRistretto() && frame.useOSR()) {
+                RistrettoInterpreterSupport.singleton().tryOSR(frame.method, frame.methodProfile, frame, (int) targetBCI, (int) stackTop);
             }
         }
         return targetBCI;
@@ -3651,8 +3647,9 @@ public final class Interpreter {
      * Internal carrier for a compiled OSR continuation's logical Java outcome.
      *
      * The implementation-specific OSR support owns the transfer state and compiled entry call, but
-     * the interpreter owns the control-flow markers that leave the old bytecode dispatch frame.
-     * Keeping this result type here keeps that ownership boundary explicit.
+     * the interpreter owns the control-flow markers that leave the old bytecode dispatch frame. The
+     * result is converted into such a marker only after the OSR support has restored its transfer
+     * state.
      */
     public static final class OSRResult {
         private final Object value;
@@ -3671,14 +3668,16 @@ public final class Interpreter {
             return new OSRResult(null, exception);
         }
 
-        public Object value() {
-            return value;
+        /**
+         * Creates the internal control-flow marker that transfers this outcome to the interpreter
+         * entry boundary.
+         */
+        public RuntimeException asControlTransferException() {
+            if (exception != null) {
+                return new OSRException(exception);
+            }
+            return new OSRReturn(value);
         }
-
-        public Throwable exception() {
-            return exception;
-        }
-
     }
 
     public static int beforeJumpSafepoint(int curBCI, int targetBCI) {

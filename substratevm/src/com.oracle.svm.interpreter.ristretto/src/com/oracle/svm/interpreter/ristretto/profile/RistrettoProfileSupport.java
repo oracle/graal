@@ -34,6 +34,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -96,6 +98,7 @@ public class RistrettoProfileSupport {
      *            {@link CremaResolvedJavaMethodImpl}
      * @throws AssertionError if iMethod is not a InterpreterResolvedJavaMethod instance
      */
+    @AlwaysInline("Keep the compilation-disabled interpreter entry call-free")
     public static MethodProfile profileMethodEntry(InterpreterResolvedJavaMethod iMethod) {
         if (!SubstrateOptions.useRistretto()) {
             return null;
@@ -103,10 +106,14 @@ public class RistrettoProfileSupport {
         if (!RistrettoProfileSupport.isEnabled()) {
             return null;
         }
-        if (!RistrettoOptions.JITEnableCompilation.getValue()) {
+        if (!RistrettoOptions.isCompilationEnabled()) {
             return null;
         }
+        return profileMethodEntryEnabled(iMethod);
+    }
 
+    @NeverInline("Keep the Ristretto profiling state machine out of the interpreter root")
+    private static MethodProfile profileMethodEntryEnabled(InterpreterResolvedJavaMethod iMethod) {
         assert iMethod instanceof CremaResolvedJavaMethodImpl;
         final RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMethod);
 
@@ -182,7 +189,7 @@ public class RistrettoProfileSupport {
         if (!RistrettoOptions.JITXComp.getValue()) {
             return null;
         }
-        if (!RistrettoOptions.JITEnableCompilation.getValue() || !(iMethod instanceof CremaResolvedJavaMethodImpl) || !iMethod.hasBytecodes() || !isInvocationEntryCompilationAllowed(iMethod)) {
+        if (!RistrettoOptions.isCompilationEnabled() || !(iMethod instanceof CremaResolvedJavaMethodImpl) || !iMethod.hasBytecodes() || !isInvocationEntryCompilationAllowed(iMethod)) {
             return null;
         }
 
