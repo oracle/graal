@@ -1268,7 +1268,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         } else {
             b.declaration(type(int.class), "lastEntry", "0");
             SourceInfoTable.emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
-            b.startWhile().string("index < info.length").end().startBlock();
+            b.startWhile().string("index < info.length - ").variable(sourceInfoTable.footerLengthVariable).end().startBlock();
             b.statement("lastEntry = index");
             b.statement("index += info[index] & 0xFF");
             b.end();
@@ -3007,6 +3007,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         final List<CodeVariableElement> attributeOffsets;
         final int entryLength;
         final CodeVariableElement entryLengthVariable;
+        final CodeVariableElement footerLengthVariable;
         final ArrayType sourceInfoType;
 
         public final CodeExecutableElement createSourceSection;
@@ -3025,6 +3026,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             }
             this.entryLength = offset;
             this.entryLengthVariable = addConstant("ENTRY_LENGTH", this.entryLength);
+            this.footerLengthVariable = model.enableCompressedSources ? addConstant("FOOTER_LENGTH", Byte.BYTES) : null;
 
             this.sourceInfoType = new CodeTypeMirror.ArrayCodeTypeMirror(type(model.enableCompressedSources ? byte.class : int.class));
             this.createSourceSection = BytecodeRootNodeElement.this.add(createCreateSourceSection());

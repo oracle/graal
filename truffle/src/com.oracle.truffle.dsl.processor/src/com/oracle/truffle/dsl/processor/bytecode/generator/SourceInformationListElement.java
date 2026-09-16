@@ -89,7 +89,7 @@ final class SourceInformationListElement extends AbstractElement {
         b.declaration(arrayOf(type(int.class)), "sourceInfoOffsets", "new int[8]");
         b.declaration(type(int.class), "sourceInfoIndex", "0");
         b.declaration(type(int.class), "sourceInfoEntryCount", "0");
-        b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length").end().startBlock();
+        b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end().startBlock();
         b.startIf().string("sourceInfoEntryCount == sourceInfoOffsets.length").end().startBlock();
         b.startAssign("sourceInfoOffsets").startStaticCall(type(Arrays.class), "copyOf").string("sourceInfoOffsets").string("sourceInfoOffsets.length * 2").end().end();
         b.end();
