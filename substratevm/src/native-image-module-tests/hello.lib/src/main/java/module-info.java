@@ -22,7 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-module moduletests.hello.lib {
+// Exercise resource URLs for module names containing an underscore and Unicode.
+module moduletests.hello.lib_ü {
     exports hello.lib;
     exports hello.lib.unused;
     requires java.xml;

@@ -35,6 +35,6 @@ public final class RuntimeOnlyGreeter {
         if (!"element".equals(name.getLocalPart())) {
             throw new AssertionError(name);
         }
-        return "hello from moduletests.hello.lib using element from java.xml";
+        return "hello from moduletests.hello.lib_\u00fc using element from java.xml";
     }
 }

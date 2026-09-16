@@ -17,7 +17,7 @@
           "glob": "META-INF/native-image-module-tests/misc-resource.txt"
       },
       {
-          "module": "moduletests.hello.lib",
+          "module": "moduletests.hello.lib_\u00fc",
           "glob": "resource-file.txt"
       }
   ],

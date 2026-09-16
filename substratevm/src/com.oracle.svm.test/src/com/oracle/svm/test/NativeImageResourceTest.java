@@ -37,6 +37,8 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
 import static com.oracle.svm.test.NativeImageResourceUtils.SIMPLE_RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_CONTENT;
 import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE;
+import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS;
+import static com.oracle.svm.test.NativeImageResourceUtils.UNICODE_RESOURCE_FILES;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
@@ -169,6 +171,36 @@ public class NativeImageResourceTest {
         try (InputStream in = ClassLoader.getSystemClassLoader().getResourceAsStream(SYNTHETIC_RESOURCE_FILE)) {
             Assert.assertNotNull("Synthetic resource " + SYNTHETIC_RESOURCE_FILE + " is not found!", in);
             Assert.assertEquals(SYNTHETIC_RESOURCE_CONTENT, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void resourceURLWithSpecialCharactersIsURICompatible() throws IOException, URISyntaxException {
+        URL url = resourceNameToURL(SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS, true);
+        URI uri = url.toURI();
+
+        Assert.assertTrue(uri.getRawPath(), uri.getRawPath().endsWith("/resources/resource%20with%20%23%25%3F%20\u00fc.txt"));
+        Assert.assertTrue(uri.getPath(), uri.getPath().endsWith(SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS));
+        Assert.assertNull(uri.getRawQuery());
+        Assert.assertNull(uri.getRawFragment());
+        try (InputStream in = url.openStream()) {
+            Assert.assertEquals(SYNTHETIC_RESOURCE_CONTENT, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        }
+        Assert.assertEquals(SYNTHETIC_RESOURCE_CONTENT, Files.readString(Path.of(uri)));
+    }
+
+    @Test
+    public void resourceURLPreservesUnicodeNames() throws IOException, URISyntaxException {
+        for (String name : UNICODE_RESOURCE_FILES) {
+            URL url = resourceNameToURL(name, true);
+            URI uri = url.toURI();
+            Assert.assertTrue(uri.getPath(), uri.getPath().endsWith(name));
+            try (InputStream in = url.openStream()) {
+                Assert.assertEquals(name, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            }
+            Path path = Path.of(uri);
+            Assert.assertEquals(name, Files.readString(path));
+            Assert.assertEquals(uri, path.toUri());
         }
     }
 

@@ -394,7 +394,7 @@ public class NativeImageResourcePath extends NativeImageResourcePathRepresentati
                 return new URI(RESOURCE_PROTOCOL, moduleName, host, -1, NativeImageResourceFileSystemUtil.formatRootedResourcePathFromAbsolute(uriRootId, resourcePath), null, null);
             }
             return new URI(RESOURCE_PROTOCOL, moduleName, NativeImageResourceFileSystemUtil.formatRootedResourcePathFromAbsolute(uriRootId, NativeImageResourceFileSystem.getString(
-                            absolute.path)), null);
+                            absolute.path)), null, null);
         } catch (URISyntaxException e) {
             throw new AssertionError(e);
         }

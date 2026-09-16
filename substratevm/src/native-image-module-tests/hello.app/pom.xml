@@ -51,9 +51,9 @@ questions.
                     <source>9</source>
                     <target>9</target>
                     <compilerArgs>
-                        <arg>--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app</arg>
-                        <arg>--add-exports=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app</arg>
-                        <arg>--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app</arg>
+                        <arg>--add-exports=moduletests.hello.lib_ü/hello.privateLib=moduletests.hello.app</arg>
+                        <arg>--add-exports=moduletests.hello.lib_ü/hello.privateLib2=moduletests.hello.app</arg>
+                        <arg>--add-opens=moduletests.hello.lib_ü/hello.privateLib2=moduletests.hello.app</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

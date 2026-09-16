@@ -43,6 +43,7 @@ import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.Resources;
 
 import sun.net.www.MessageHeader;
+import sun.net.www.ParseUtil;
 import sun.net.www.URLConnection;
 
 public final class ResourceURLConnection extends URLConnection {
@@ -68,8 +69,8 @@ public final class ResourceURLConnection extends URLConnection {
         connected = true;
 
         String urlHost = url.getHost();
-        String hostName = urlHost != null && !urlHost.isEmpty() ? urlHost : null;
-        String urlPath = url.getPath();
+        String hostName = urlHost != null && !urlHost.isEmpty() ? ParseUtil.decode(urlHost) : null;
+        String urlPath = ParseUtil.decode(url.getPath());
         if (urlPath.isEmpty()) {
             throw new IllegalArgumentException("Empty URL path not allowed in " + RESOURCE_PROTOCOL + " URL");
         }
@@ -82,7 +83,7 @@ public final class ResourceURLConnection extends URLConnection {
                 throw new IllegalArgumentException("Host required in " + RESOURCE_PROTOCOL + " URL");
             }
             String moduleName = url.getUserInfo();
-            Module resourceModule = moduleName != null ? ModuleLayer.boot().findModule(moduleName).orElse(null) : null;
+            Module resourceModule = moduleName != null ? ModuleLayer.boot().findModule(ParseUtil.decode(moduleName)).orElse(null) : null;
             entry = Resources.getAtRuntime(hostName, resourceModule, resourceName, false);
         } else {
             Module module = hostName != null ? ModuleLayer.boot().findModule(hostName).orElse(null) : null;
