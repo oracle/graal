@@ -307,6 +307,10 @@ public final class GuestAccess implements VMAccess {
         return get().elements;
     }
 
+    public boolean isBoxingType(ResolvedJavaType type) {
+        return elements.primitiveBoxTypes.contains(type);
+    }
+
     /**
      * Gets the {@link Annotated} equivalent value for element.
      *
