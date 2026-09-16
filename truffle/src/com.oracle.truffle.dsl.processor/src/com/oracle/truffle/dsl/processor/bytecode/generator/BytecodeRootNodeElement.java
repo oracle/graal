@@ -404,6 +404,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         int numHandlerKinds = 0;
         this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_CUSTOM")).createInitBuilder().string(String.valueOf(numHandlerKinds++));
+        this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_FINALLY")).createInitBuilder().string(String.valueOf(numHandlerKinds++));
 
         if (model.epilogExceptional != null) {
             this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_EPILOG_EXCEPTIONAL")).createInitBuilder().string(
