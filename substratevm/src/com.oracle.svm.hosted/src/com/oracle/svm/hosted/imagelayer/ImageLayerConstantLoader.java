@@ -389,7 +389,7 @@ final class ImageLayerConstantLoader {
             parentReachableHostedObject = parentReachableHostedObjectCandidate;
         }
 
-        if (parentReachableHostedObject != null && !type.getJavaClass().equals(Class.class)) {
+        if (parentReachableHostedObject != null && !GuestAccess.elements().java_lang_Class.equals(type.getWrapped())) {
             /*
              * The hash codes of DynamicHubs need to be injected before they are used in a map,
              * which happens right after their creation. The injection of their hash codes can be
