@@ -59,6 +59,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
  */
 public class RedundantLimitTest {
 
+    /** Primary check: {@link RedundantLimitRootNodeGen} must be generated without an annotation-processor NPE. */
     @Test
     public void test() {
         BytecodeRootNodes<RedundantLimitRootNode> nodes = RedundantLimitRootNodeGen.create(null, BytecodeConfig.DEFAULT, b -> {
