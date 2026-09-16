@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.addJavadoc;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
+import static javax.lang.model.element.Modifier.VOLATILE;
 
+import java.util.Arrays;
 import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
@@ -76,13 +79,64 @@ final class TagRootNodeElement extends AbstractElement {
         this.add(createCopy());
     }
 
+    void lazyInit() {
+        TagSourceLocationsElement sourceLocations = this.add(new TagSourceLocationsElement(parent));
+        CodeVariableElement minIndexedTags = this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "MIN_INDEXED_TAGS"));
+        minIndexedTags.createInitBuilder().string("64");
+        addJavadoc(minIndexedTags, "Minimum tag count for bulk indexing; smaller tag trees use linear lookup to avoid allocating an index.");
+        addJavadoc(this.add(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), sourceLocations.asType(), "sourceLocations")), """
+                        Lazily initialized source-offset index, confined to instrumentation infrastructure.
+                        Volatile publication makes the completed index visible to concurrent readers;
+                        racing readers may build equivalent indices. Rebuilt when the source table
+                        identity changes and cleared when this tag root is copied.
+                        """);
+        this.add(createGetSourceSection(sourceLocations));
+    }
+
+    private CodeExecutableElement createGetSourceSection(TagSourceLocationsElement sourceLocations) {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(), types.SourceSection, "getSourceSection");
+        ex.addParameter(new CodeVariableElement(parent.abstractBytecodeNode.asType(), "bytecode"));
+        ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+        addJavadoc(ex, """
+                        Resolves a tag's source section using a shared bulk index for large tag trees.
+                        Preserves the first-match semantics of {@code BytecodeNode.getSourceLocation}.
+                        Only offsets are cached here; each tag caches its resulting source section.
+
+                        @param bytecode the bytecode node currently owning this tag root
+                        @param bci the nonnegative entry BCI of a tag in this root's {@code tagNodes}
+                        @return the matching source section, or null if no source location is available
+                        """);
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("bytecode.sourceInfo == null || bytecode.sourceInfo.length == 0").end().startBlock();
+        b.returnNull();
+        b.end();
+        b.lineComment("For small tag trees, avoid allocating an index.");
+        b.startIf().string("tagNodes.length < MIN_INDEXED_TAGS").end().startBlock();
+        b.statement("return bytecode.getSourceLocation(bci)");
+        b.end();
+        b.declaration(sourceLocations.asType(), "locations", "this.sourceLocations");
+        b.startIf().string("locations == null || locations.sourceInfo != bytecode.sourceInfo").end().startBlock();
+        b.statement("this.sourceLocations = locations = new SourceLocations(bytecode, tagNodes)");
+        b.end();
+        b.startDeclaration(type(int.class), "index").startStaticCall(type(Arrays.class), "binarySearch").string("locations.tagBcis").string("bci").end().end();
+        b.statement("assert index >= 0");
+        b.statement("int offset = locations.sourceOffsets[index]");
+        b.startIf().string("offset < 0").end().startBlock();
+        b.returnNull();
+        b.end();
+        b.startReturn().startStaticCall(parent.sourceInfoTable.createSourceSection).string("bytecode.sources").string("locations.sourceInfo").string("offset").end().end();
+        return parent.withTruffleBoundary(ex);
+    }
+
     private CodeExecutableElement createCopy() {
         CodeExecutableElement ex = GeneratorUtils.override(types.Node, "copy");
         ex.getModifiers().remove(Modifier.ABSTRACT);
         ex.getModifiers().add(Modifier.FINAL);
+        addJavadoc(ex, "Copies this tag root without sharing its probe or lazily initialized source-offset index.");
         CodeTreeBuilder b = ex.createBuilder();
         b.startDeclaration(asType(), "copy").cast(asType()).string("super.copy()").end();
         b.statement("copy.probe = null");
+        b.statement("copy.sourceLocations = null");
         b.statement("return copy");
         return ex;
     }

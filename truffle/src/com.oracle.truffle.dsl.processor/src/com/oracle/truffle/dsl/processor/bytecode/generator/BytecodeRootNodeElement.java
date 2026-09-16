@@ -293,6 +293,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         if (model.enableTagInstrumentation) {
             tagNode.lazyInit();
+            tagRootNode.lazyInit();
         }
 
         CodeVariableElement bytecodeNode = new CodeVariableElement(Set.of(PRIVATE, VOLATILE), abstractBytecodeNode.asType(), "bytecode");
