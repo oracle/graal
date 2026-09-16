@@ -502,7 +502,7 @@ public class SVMHost extends HostVM {
         classInitializationSupport.maybeInitializeAtBuildTime(analysisType);
 
         /* Compute the automatic substitutions. */
-        automaticUnsafeTransformations.computeTransformations(bb, this, lookupOriginalType(analysisType.getJavaClass()));
+        automaticUnsafeTransformations.computeTransformations(bb, this, OriginalClassProvider.getOriginalType(analysisType));
     }
 
     @Override
