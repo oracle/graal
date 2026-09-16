@@ -1461,8 +1461,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         int parameterLength = bootstrap.getMethod().getParameters().length;
                         List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
                         boolean isVarargs = bootstrap.getMethod().isVarArgs();
-                        Class<?> typeClass = getSnippetReflection().asObject(Class.class, bootstrap.getType());
-                        boolean isPrimitive = typeClass.isPrimitive();
+                        ResolvedJavaType type = getConstantReflection().asJavaType(bootstrap.getType());
+                        boolean isPrimitive = type.isPrimitive();
 
                         for (JavaConstant argument : staticArguments) {
                             if (argument.getJavaKind().isObject()) {
@@ -1473,7 +1473,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                             }
                         }
 
-                        if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass)) {
+                        if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, type)) {
                             /*
                              * The number of provided arguments does not match the signature of the
                              * bootstrap method or the provided type does not match the return type
@@ -1490,8 +1490,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         }
                         ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
 
-                        if (typeClass.isPrimitive()) {
-                            JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass));
+                        if (type.isPrimitive()) {
+                            JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(type);
                             resolvedObjectNode = append(UnboxNode.create(getMetaAccess(), getConstantReflection(), resolvedObjectNode, constantKind));
                         }
 
@@ -1763,11 +1763,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * types in the bootstrap method declaration are detected in
              * {@link java.lang.invoke.MethodHandle#invoke(Object...)}.
              */
-            private boolean isBootstrapInvocationInvalid(BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
+            private boolean isBootstrapInvocationInvalid(BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, ResolvedJavaType type) {
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
+                JavaType returnType = bootstrapMethod.getSignature().getReturnType(null);
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
-                                (bootstrapMethod.getSignature().getReturnType(null) instanceof UnresolvedJavaType) ||
-                                !(OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || bootstrapMethod.isConstructor()) ||
+                                (returnType instanceof UnresolvedJavaType) ||
+                                !(((ResolvedJavaType) returnType).isAssignableFrom(type) || bootstrapMethod.isConstructor()) ||
                                 !checkBootstrapParameters(bootstrapMethod, bootstrap.getStaticArguments(), true);
             }
 
