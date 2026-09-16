@@ -1547,7 +1547,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         types.forEach((type, data) -> {
             LinkageError error = data.getClassLookupError();
             if (error != null) {
-                classLookupExceptions.put(type.getJavaClass(), error);
+                classLookupExceptions.put(OriginalClassProvider.getJavaClass(type), error);
             }
         });
         return Collections.unmodifiableMap(classLookupExceptions);
@@ -1589,7 +1589,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         types.forEach((type, data) -> {
             LinkageError error = errorGetter.apply(data);
             if (error != null) {
-                lookupExceptions.put(type.getJavaClass(), error);
+                lookupExceptions.put(OriginalClassProvider.getJavaClass(type), error);
             }
         });
         return Collections.unmodifiableMap(lookupExceptions);
@@ -1602,7 +1602,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         types.forEach((type, data) -> {
             LinkageError error = data.getRecordComponentLookupError();
             if (error != null) {
-                recordComponentLookupExceptions.put(type.getJavaClass(), error);
+                recordComponentLookupExceptions.put(OriginalClassProvider.getJavaClass(type), error);
             }
         });
         return Collections.unmodifiableMap(recordComponentLookupExceptions);
@@ -1941,7 +1941,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         public static ClassLoader getClassLoader(AnalysisType type) {
-            return type.getJavaClass().getClassLoader();
+            return OriginalClassProvider.getJavaClass(type).getClassLoader();
         }
 
         public static RecordComponent[] getRecordComponents(Class<?> clazz) {
@@ -1949,61 +1949,61 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         public static void checkDeclaredFields(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getDeclaredFields();
             }
         }
 
         public static void checkPublicFields(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getFields();
             }
         }
 
         public static void checkDeclaredMethods(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getDeclaredMethods();
             }
         }
 
         public static void checkPublicMethods(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getMethods();
             }
         }
 
         public static void checkDeclaredConstructors(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getDeclaredConstructors();
             }
         }
 
         public static void checkPublicConstructors(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getConstructors();
             }
         }
 
         public static void checkRecordComponents(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getRecordComponents();
             }
         }
 
         public Collection<AnalysisType> getNestMembers(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? filterClasses(javaClass.getNestMembers()) : Collections.singleton(type);
         }
 
         public static Object[] getSigners(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? javaClass.getSigners() : null;
         }
 
@@ -2019,17 +2019,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         public static Type[] getTypeParameters(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? queryGenericInfo(javaClass::getTypeParameters) : null;
         }
 
         public static Type getGenericSuperclass(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? queryGenericInfo(javaClass::getGenericSuperclass) : null;
         }
 
         public static Type[] getGenericInterfaces(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? queryGenericInfo(javaClass::getGenericInterfaces) : null;
         }
 
@@ -2083,7 +2083,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         @SuppressWarnings("deprecation")
         public AnalysisType getProxyType(AnalysisType intf) {
             try {
-                return metaAccess.lookupJavaType(Proxy.getProxyClass(getClassLoader(intf), intf.getJavaClass()));
+                return metaAccess.lookupJavaType(Proxy.getProxyClass(getClassLoader(intf), OriginalClassProvider.getJavaClass(intf)));
             } catch (LinkageError e) {
                 return null;
             }
