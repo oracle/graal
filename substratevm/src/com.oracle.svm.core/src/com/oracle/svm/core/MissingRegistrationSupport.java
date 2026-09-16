@@ -34,8 +34,10 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public class MissingRegistrationSupport {
@@ -57,6 +59,11 @@ public class MissingRegistrationSupport {
 
     public boolean reportMissingRegistrationErrors(Class<?> clazz) {
         return reportMissingRegistrationErrors(clazz.getModule().getName(), clazz.getPackageName(), clazz.getName());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean reportMissingRegistrationErrors(ResolvedJavaType type) {
+        return reportMissingRegistrationErrors(JVMCIReflectionUtil.getModule(type).getName(), JVMCIReflectionUtil.getPackageName(type), type.toClassName());
     }
 
     private boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
