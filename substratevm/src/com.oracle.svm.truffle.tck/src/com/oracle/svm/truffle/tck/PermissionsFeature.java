@@ -454,7 +454,7 @@ public class PermissionsFeature implements Feature {
         if (LambdaUtils.isLambdaType(type)) {
             return true;
         }
-        Class<?> javaClass = type.getJavaClass();
+        Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
         return javaClass != null && javaClass.isAnonymousClass();
     }
 
