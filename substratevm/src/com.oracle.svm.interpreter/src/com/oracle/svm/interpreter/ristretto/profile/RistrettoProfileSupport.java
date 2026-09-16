@@ -26,10 +26,12 @@ package com.oracle.svm.interpreter.ristretto.profile;
 
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.util.VMError;
@@ -166,7 +168,66 @@ public class RistrettoProfileSupport {
         } while (true);
     }
 
+    /**
+     * Attempts to compile a runtime-loaded bytecode method before its first interpreter entry when
+     * Xcomp is enabled. Xcomp may force only the method's first invocation-entry compilation claim;
+     * after that claim, ordinary interpreter profiling controls later compilation. Compilation is
+     * skipped when runtime compilation or root compilation is disabled, the method is outside
+     * {@code JITCompileOnly}, or the method has no compiler-visible bytecodes. The returned code is
+     * only a success signal; the caller must re-read the current entry point in an uninterruptible
+     * context before entering it.
+     */
+    public static SubstrateInstalledCodeImpl compileImmediatelyForXComp(InterpreterResolvedJavaMethod iMethod) {
+        VMError.guarantee(RistrettoProfileSupport.isEnabled(), "Xcomp compilation requires Ristretto support");
+        if (!RistrettoOptions.JITXComp.getValue()) {
+            return null;
+        }
+        if (!RistrettoOptions.JITEnableCompilation.getValue() || !(iMethod instanceof CremaResolvedJavaMethodImpl) || !iMethod.hasBytecodes() || !isInvocationEntryCompilationAllowed(iMethod)) {
+            return null;
+        }
+
+        RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMethod);
+        int oldState = COMPILATION_STATE_UPDATER.get(rMethod);
+        do {
+            switch (oldState) {
+                case RistrettoConstants.COMPILE_STATE_INIT_VAL:
+                case RistrettoConstants.COMPILE_STATE_INTERPRETED:
+                    if (rMethod.getCompilationAttempts() != 0) {
+                        int currentState = COMPILATION_STATE_UPDATER.get(rMethod);
+                        if (currentState == RistrettoConstants.COMPILE_STATE_INIT_VAL || currentState == RistrettoConstants.COMPILE_STATE_INTERPRETED) {
+                            return null;
+                        }
+                        oldState = currentState;
+                        continue;
+                    }
+                    if (rMethod.claimXCompCompilation()) {
+                        submitOrWaitForCompilationRequest(rMethod, iMethod, true);
+                        return rMethod.installedCode;
+                    }
+                    break;
+                case RistrettoConstants.COMPILE_STATE_COMPILED:
+                    return rMethod.installedCode;
+                case RistrettoConstants.COMPILE_STATE_SUBMITTED:
+                    waitForSubmittedCompilation(rMethod);
+                    return rMethod.installedCode;
+                case RistrettoConstants.COMPILE_STATE_PERMANENT_BAILOUT:
+                case RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS_REACHED:
+                    return null;
+                case RistrettoConstants.COMPILE_STATE_INITIALIZING:
+                    PauseNode.pause();
+                    break;
+                default:
+                    throw VMError.shouldNotReachHere("Unknown state " + oldState);
+            }
+            oldState = COMPILATION_STATE_UPDATER.get(rMethod);
+        } while (true);
+    }
+
     private static void methodEntryInterpretedCase(InterpreterResolvedJavaMethod iMethod, RistrettoMethod rMethod, int oldState) {
+        if (RistrettoOptions.JITXComp.getValue() && rMethod.getCompilationAttempts() == 0) {
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Skipping profiling in Xcomp mode for %s%n", iMethod);
+            return;
+        }
         MethodProfile methodProfile = rMethod.getProfile();
         trace(RistrettoOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
                         RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
@@ -177,12 +238,7 @@ public class RistrettoProfileSupport {
         if (methodProfile.profileMethodEntry() > RistrettoOptions.JITCompilerInvocationThreshold.getValue()) {
             trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s, profile overflown, trying to submit compile%n",
                             RistrettoCompileStateMachine.toString(oldState), iMethod);
-            if (RistrettoOptions.JITDisableRootCompiles.getValue()) {
-                trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Skipping invocation compilation for %s because root compiles are disabled%n", iMethod);
-                return;
-            }
-            if (!RistrettoOptions.matchesJITCompileOnly(iMethod)) {
-                trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Skipping invocation compilation for %s because it does not match JITCompileOnly%n", iMethod);
+            if (!isInvocationEntryCompilationAllowed(iMethod)) {
                 return;
             }
             /*
@@ -205,10 +261,131 @@ public class RistrettoProfileSupport {
                                 iMethod, RistrettoCompileStateMachine.toString(observedState));
                 return;
             }
-            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
-                            RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
-            RistrettoCompilationManager.get()
-                            .submitCompilationRequest(new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_TOP_TIER_COMPILATION_PRIORITY));
+            submitOrWaitForCompilationRequest(rMethod, iMethod, false);
+        }
+    }
+
+    /**
+     * Returns whether runtime options permit an invocation-entry compilation for {@code iMethod}.
+     * This applies the root-compilation disable flag and {@code JITCompileOnly}; callers separately
+     * check that compilation is enabled and compiler-visible bytecodes exist.
+     */
+    private static boolean isInvocationEntryCompilationAllowed(InterpreterResolvedJavaMethod iMethod) {
+        if (RistrettoOptions.JITDisableRootCompiles.getValue()) {
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Skipping invocation compilation for %s because root compiles are disabled%n", iMethod);
+            return false;
+        }
+        if (!RistrettoOptions.matchesJITCompileOnly(iMethod)) {
+            trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Skipping invocation compilation for %s because it does not match JITCompileOnly%n", iMethod);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Publishes and submits the invocation-entry request for a method already claimed as
+     * {@code COMPILE_STATE_SUBMITTED}. Publishing the request first lets racing Xcomp callers wait
+     * for this exact compilation. Mixed mode returns after queueing, while Xbatch and Xcomp wait
+     * until the manager reports success, failure, rejection, or shutdown cancellation.
+     */
+    private static void submitOrWaitForCompilationRequest(RistrettoMethod rMethod, InterpreterResolvedJavaMethod iMethod, boolean xComp) {
+        RistrettoCompilationRequest request = null;
+        boolean requestPublished = false;
+        RistrettoCompilationManager manager;
+        try {
+            if (xComp) {
+                trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Xcomp compiling %s before interpreted entry%n", iMethod);
+            } else {
+                trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Entering state %s for %s%n",
+                                RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod);
+            }
+            TestingBackdoor.runBeforeCompilationRequestAllocation();
+            request = new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_TOP_TIER_COMPILATION_PRIORITY);
+            rMethod.setInvocationCompilationRequest(request);
+            requestPublished = true;
+            TestingBackdoor.runAfterCompilationRequestPublication();
+            manager = RistrettoCompilationManager.get();
+        } catch (RuntimeException | Error failure) {
+            if (requestPublished) {
+                request.cancelBeforeExecution();
+            } else {
+                rMethod.onCompilationFailure();
+            }
+            throw failure;
+        }
+        manager.submitCompilationRequestForCurrentMode(request);
+    }
+
+    /**
+     * Waits for the request that owns the method's current submitted epoch. A request may still be
+     * {@code null} immediately after another thread wins the state transition, so this method spins
+     * only through that publication window and otherwise blocks on the published request.
+     */
+    private static void waitForSubmittedCompilation(RistrettoMethod rMethod) {
+        while (true) {
+            RistrettoCompilationRequest request = rMethod.getInvocationCompilationRequest();
+            if (request != null) {
+                request.awaitCompletion();
+                return;
+            }
+            if (COMPILATION_STATE_UPDATER.get(rMethod) != RistrettoConstants.COMPILE_STATE_SUBMITTED) {
+                return;
+            } else {
+                TestingBackdoor.runWhileWaitingForInvocationRequest();
+                PauseNode.pause();
+            }
+        }
+    }
+
+    public static final class TestingBackdoor {
+        private static final AtomicReference<Runnable> beforeCompilationRequestAllocation = new AtomicReference<>();
+        private static final AtomicReference<Runnable> afterCompilationRequestPublication = new AtomicReference<>();
+        private static final AtomicReference<Runnable> whileWaitingForInvocationRequest = new AtomicReference<>();
+
+        private TestingBackdoor() {
+        }
+
+        public static void installBeforeCompilationRequestAllocationHook(Runnable hook) {
+            installHook(beforeCompilationRequestAllocation, hook);
+        }
+
+        public static void installAfterCompilationRequestPublicationHook(Runnable hook) {
+            installHook(afterCompilationRequestPublication, hook);
+        }
+
+        public static void installWhileWaitingForInvocationRequestHook(Runnable hook) {
+            installHook(whileWaitingForInvocationRequest, hook);
+        }
+
+        public static void clearCompilationRequestPreparationHooks() {
+            beforeCompilationRequestAllocation.set(null);
+            afterCompilationRequestPublication.set(null);
+            whileWaitingForInvocationRequest.set(null);
+        }
+
+        private static void installHook(AtomicReference<Runnable> reference, Runnable hook) {
+            if (!reference.compareAndSet(null, hook)) {
+                throw new IllegalStateException("A compilation-request preparation hook is already installed.");
+            }
+        }
+
+        private static void runBeforeCompilationRequestAllocation() {
+            runHook(beforeCompilationRequestAllocation);
+        }
+
+        private static void runAfterCompilationRequestPublication() {
+            runHook(afterCompilationRequestPublication);
+        }
+
+        private static void runWhileWaitingForInvocationRequest() {
+            runHook(whileWaitingForInvocationRequest);
+        }
+
+        private static void runHook(AtomicReference<Runnable> reference) {
+            Runnable hook = reference.get();
+            if (hook != null) {
+                hook.run();
+            }
         }
     }
 

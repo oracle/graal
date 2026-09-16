@@ -95,7 +95,9 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
+import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
@@ -1388,7 +1390,27 @@ public abstract class InterpreterStubSection {
             return leaveInterpreter(entryPoint, interpreterMethod, args);
         }
 
+        if (SubstrateOptions.useRistretto() && RistrettoOptions.JITXComp.getValue()) {
+            /*
+             * In Xcomp mode, the first interpreter entry waits for compilation of the method. The
+             * interruptible compile helper returns only a success signal; re-read the installed
+             * entry point in this uninterruptible context before transferring to compiled code.
+             */
+            SubstrateInstalledCodeImpl installedCode = compileImmediatelyForXCompInterruptibly(interpreterMethod);
+            if (installedCode != null) {
+                CFunctionPointer xcompEntryPoint = getInstalledCodeEntryPoint(interpreterMethod);
+                if (xcompEntryPoint.isNonNull()) {
+                    return leaveInterpreter(xcompEntryPoint, interpreterMethod, args);
+                }
+            }
+        }
+
         return callInterpreterInterruptibly(interpreterMethod, args);
+    }
+
+    @Uninterruptible(reason = "Ristretto compilation is interruptible.", calleeMustBe = false)
+    private static SubstrateInstalledCodeImpl compileImmediatelyForXCompInterruptibly(InterpreterResolvedJavaMethod interpreterMethod) {
+        return RistrettoProfileSupport.compileImmediatelyForXComp(interpreterMethod);
     }
 
     @Uninterruptible(reason = "No JIT compiled code found, so it is safe to switch to interruptible code.", calleeMustBe = false)

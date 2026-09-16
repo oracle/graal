@@ -28,6 +28,7 @@ import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NON_NE
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -54,8 +55,14 @@ public class RistrettoOptions {
     @Option(help = "Comma-separated method-name filters that restrict which methods may be compiled by the Ristretto JIT.")//
     public static final RuntimeOptionKey<String> JITCompileOnly = new RuntimeOptionKey<>("");
 
+    @Option(help = "Compile eligible Ristretto methods before their first invocation and wait for background compilation.")//
+    public static final RuntimeOptionKey<Boolean> JITXComp = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Wait for submitted background Ristretto compilation requests to finish.")//
+    public static final RuntimeOptionKey<Boolean> JITXBatch = new RuntimeOptionKey<>(false);
+
     @Option(help = "Number of threads to use for Graal JIT compilation.")//
-    public static final RuntimeOptionKey<Integer> JITCompilerThreadCount = new RuntimeOptionKey<>(1);
+    public static final RuntimeOptionKey<Integer> JITCompilerThreadCount = new RuntimeOptionKey<>(1, RistrettoOptions::positive, null);
 
     @Option(help = "Report a diagnostic message for a Ristretto compilation that runs longer than this many seconds and prevent this watcher from exiting the VM (0 leaves the generic CompilationWatchDog configuration unchanged).")//
     public static final RuntimeOptionKey<Integer> JITCompilationWatchdogTimeoutSeconds = new RuntimeOptionKey<>(0, NON_NEGATIVE, null);
@@ -80,6 +87,12 @@ public class RistrettoOptions {
 
     @Option(help = "Period, in seconds, between Ristretto compiler statistics dumps.")//
     public static final HostedOptionKey<Integer> JITTraceCompilerStatisticsPeriodSeconds = new HostedOptionKey<>(60, RistrettoOptions::validateCompilerStatisticsPeriod);
+
+    private static void positive(RuntimeOptionKey<Integer> option, int value) {
+        if (value <= 0) {
+            throw RuntimeOptionValidation.invalidOptionValue(option, value, "The value must be greater than 0");
+        }
+    }
 
     private static void validateCompilerStatisticsPeriod(HostedOptionKey<Integer> option) {
         if (option.getValue() <= 0) {
@@ -110,6 +123,10 @@ public class RistrettoOptions {
             }
         }
         return false;
+    }
+
+    public static boolean useBlockingCompilation() {
+        return JITXComp.getValue() || JITXBatch.getValue();
     }
 
     @Fold

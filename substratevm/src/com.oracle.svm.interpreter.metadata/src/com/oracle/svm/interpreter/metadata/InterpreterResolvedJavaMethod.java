@@ -649,7 +649,8 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
             if (indyCpi == 0) {
                 continue;
             }
-            Object indyEntry = constantPool.resolvedAt(indyCpi, getDeclaringClass());
+            /* Building the compiler view must not link the runtime call site. */
+            Object indyEntry = constantPool.peekCachedEntry(indyCpi);
             if (!(indyEntry instanceof InterpreterResolvedJavaMethod)) {
                 BytecodeStream.patchIndyExtraCPI(result, bci, encodeCompilerIndyBci(bci));
             }

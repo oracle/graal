@@ -117,6 +117,14 @@ public final class RistrettoCompilationManager {
      */
     private final ExecutorService compilerExecutorService;
     /**
+     * Synchronizes compilation-request submission with shutdown: submitters check
+     * {@link #acceptingRequests} while holding this lock, while shutdown disables admission and
+     * drains pending requests under the same lock.
+     */
+    private final Object submissionLock;
+    /** Guarded by {@link #submissionLock}; false once shutdown has started. */
+    private boolean acceptingRequests;
+    /**
      * A list of all compilations performed so far. Normally not used. ONLY USED BY TEST CODE.
      */
     private final List<RistrettoCompilationRequest> performedCompilations;
@@ -154,6 +162,8 @@ public final class RistrettoCompilationManager {
         final int compilerThreadCount = RistrettoOptions.JITCompilerThreadCount.getValue();
         statisticsReporterPeriodSeconds = RistrettoOptions.JITTraceCompilerStatisticsPeriodSeconds.getValue();
         compilerExecutorService = Executors.newFixedThreadPool(compilerThreadCount, RistrettoCompilerThread::new);
+        submissionLock = new Object();
+        acceptingRequests = true;
         compilationQueue = new PriorityBlockingQueue<>();
         queuedRequestsToReportLock = new Object();
         performedCompilations = Collections.synchronizedList(new ArrayList<>());
@@ -200,6 +210,7 @@ public final class RistrettoCompilationManager {
             if (TestingBackdoor.recordUninstallTasks()) {
                 performedCompilations.add(task);
             }
+            task.markCompleted();
             finishedRequests.incrementAndGet();
         }
     }
@@ -381,21 +392,73 @@ public final class RistrettoCompilationManager {
     }
 
     public void submitCompilationRequest(RistrettoCompilationRequest request) {
-        boolean compilationWatchdogEnabled = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue() > 0;
-        request.markSubmitted(compilationWatchdogEnabled ? System.nanoTime() : 0);
-        submittedRequests.incrementAndGet();
-        RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Submitting compilation request %s %n", request);
-        if (compilationWatchdogEnabled) {
-            addQueuedRequestToReport(request);
-        } else {
-            compilationQueue.add(request);
+        synchronized (submissionLock) {
+            boolean compilationWatchdogEnabled = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue() > 0;
+            request.markSubmitted(compilationWatchdogEnabled ? System.nanoTime() : 0);
+            submittedRequests.incrementAndGet();
+            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Submitting compilation request %s %n", request);
+            if (!acceptingRequests) {
+                cancelRequestBeforeExecution(request);
+                return;
+            }
+            try {
+                if (compilationWatchdogEnabled) {
+                    addQueuedRequestToReport(request);
+                } else {
+                    compilationQueue.add(request);
+                }
+            } catch (RuntimeException | Error failure) {
+                if (request.sampledForCompilationWatchdog) {
+                    removeQueuedRequestToReport(request);
+                }
+                cancelRequestBeforeExecution(request);
+                throw failure;
+            }
+            RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Queue size after submitting %s =%s %n", request, compilationQueue.size());
         }
-        RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Queue size after submitting %s =%s %n", request, compilationQueue.size());
+    }
+
+    /**
+     * Submits one compilation request and waits until it has either installed code, failed, or been
+     * cancelled before execution. Once this method returns, that request can no longer publish code.
+     */
+    public void submitCompilationRequestAndWait(RistrettoCompilationRequest request) {
+        submitCompilationRequest(request);
+        request.awaitCompletion();
+    }
+
+    /**
+     * Submits one invocation-entry or OSR compilation request. Ordinary mixed mode returns after
+     * queuing; Xbatch and Xcomp wait for the request's completion before returning to interpreted
+     * execution.
+     */
+    public void submitCompilationRequestForCurrentMode(RistrettoCompilationRequest request) {
+        if (RistrettoOptions.useBlockingCompilation()) {
+            submitCompilationRequestAndWait(request);
+        } else {
+            submitCompilationRequest(request);
+        }
+    }
+
+    private void cancelRequestBeforeExecution(RistrettoCompilationRequest request) {
+        request.cancelBeforeExecution();
+        finishedRequests.incrementAndGet();
     }
 
     public void shutDown() {
         // we want this to be fast, tear down the world
-        compilerExecutorService.shutdownNow();
+        List<RistrettoCompilationRequest> cancelledRequests = new ArrayList<>();
+        synchronized (submissionLock) {
+            acceptingRequests = false;
+            compilerExecutorService.shutdownNow();
+            compilationQueue.drainTo(cancelledRequests);
+            for (RistrettoCompilationRequest request : cancelledRequests) {
+                if (request.sampledForCompilationWatchdog) {
+                    removeQueuedRequestToReport(request);
+                }
+                cancelRequestBeforeExecution(request);
+            }
+        }
         if (statisticsReporterThread != null) {
             statisticsReporterThread.interrupt();
         }
@@ -426,6 +489,14 @@ public final class RistrettoCompilationManager {
 
         public static int getQueuedRequestsToReportCount() {
             return get().queuedRequestsToReportSnapshot().size();
+        }
+
+        public static int getCompletionWaiterCount(RistrettoCompilationRequest request) {
+            return request.completionWaiterCount();
+        }
+
+        public static void completeRequestForTesting(RistrettoCompilationRequest request) {
+            request.markCompleted();
         }
 
         public static synchronized void reset() {
