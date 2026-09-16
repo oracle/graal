@@ -592,7 +592,7 @@ final class ImageLayerConstantLoader {
              * they are not relinked, the packages from the base layer will never be marked as
              * reachable without doing so manually.
              */
-            if (heapObj.getType().getJavaClass().equals(Package.class)) {
+            if (GuestAccess.elements().java_lang_Package.equals(heapObj.getType().getWrapped())) {
                 ScanReason reason = new OtherReason("Object loaded from base layer");
                 loader.universe.getHeapScanner().doScan(heapObj, reason);
             }
