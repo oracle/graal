@@ -66,7 +66,7 @@ public abstract class AbstractAuxiliaryImageProvider implements AuxiliaryImagePr
         /* Determine how much of the address space should be reserved for auxiliary images. */
         UnsignedWord auxImageReserved = unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateOptions.AuxiliaryImageBytesIsolateArgument)));
         if (auxImageReserved.equal(Word.zero())) {
-            auxImageReserved = SubstrateOptions.getReservedAuxiliaryImageBytes();
+            auxImageReserved = Word.unsigned(SubstrateOptions.ReservedAuxiliaryImageBytes.getValue());
         }
         auxImageReserved = UnsignedUtils.roundUp(auxImageReserved, pageSize);
 

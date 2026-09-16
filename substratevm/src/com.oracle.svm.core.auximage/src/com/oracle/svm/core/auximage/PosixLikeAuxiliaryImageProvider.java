@@ -26,17 +26,11 @@ package com.oracle.svm.core.auximage;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
@@ -45,18 +39,14 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.AuxiliaryImageIOProvider;
 import com.oracle.svm.core.os.AuxiliaryImageIOProvider.FileDesc;
-import com.oracle.svm.core.os.AuxiliaryImageProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -168,23 +158,4 @@ public final class PosixLikeAuxiliaryImageProvider extends AbstractAuxiliaryImag
         return result;
     }
 
-}
-
-@AutomaticallyRegisteredFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-class PosixLikeAuxiliaryImageProviderFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !ImageLayerBuildingSupport.buildingImageLayer();
-    }
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(AuxiliaryImageHeapFeature.class);
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(AuxiliaryImageProvider.class, new PosixLikeAuxiliaryImageProvider());
-    }
 }

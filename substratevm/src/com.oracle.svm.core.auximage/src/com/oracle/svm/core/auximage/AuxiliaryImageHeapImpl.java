@@ -25,25 +25,17 @@
 package com.oracle.svm.core.auximage;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.AuxiliaryImageHeap;
 import com.oracle.svm.core.genscavenge.HeapChunkVisitor;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.ImageHeapWalker;
 import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.thread.ContinuationSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -94,38 +86,5 @@ final class AuxiliaryImageHeapImpl implements AuxiliaryImageHeap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ImageHeapInfo getImageHeapInfo() {
         return isWalkable ? heapInfo : null;
-    }
-}
-
-/**
- * Not automatically registered: needs to be depended on if auxiliary images are available on the
- * platform.
- */
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
-public class AuxiliaryImageHeapFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !ImageLayerBuildingSupport.buildingImageLayer();
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(AuxiliaryImageHeap.class, new AuxiliaryImageHeapImpl());
-        ImageSingletons.add(ContinuationSupport.class, new PersistedContinuationSupport());
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (PersistedRuntimeCode.isSupportedInCurrentImage()) {
-            RuntimeSupport.getRuntimeSupport().addInitializationHook(new AuxiliaryImageCodeInstallationHook());
-        }
-    }
-
-}
-
-final class AuxiliaryImageCodeInstallationHook implements RuntimeSupport.Hook {
-    @Override
-    public void execute(boolean isFirstIsolate) {
-        AuxiliaryImageLoader.installLoadedImageCode();
     }
 }

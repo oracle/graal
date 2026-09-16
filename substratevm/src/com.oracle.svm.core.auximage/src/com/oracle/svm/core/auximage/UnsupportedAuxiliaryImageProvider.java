@@ -26,7 +26,6 @@ package com.oracle.svm.core.auximage;
 
 import static org.graalvm.word.impl.Word.unsigned;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
@@ -36,38 +35,15 @@ import com.oracle.svm.core.IsolateArgumentAccess;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.os.AuxiliaryImageProvider;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-
-@AutomaticallyRegisteredFeature
-class UnsupportedAuxiliaryImageFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.firstImageBuild();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(AuxiliaryImageProvider.class)) {
-            ImageSingletons.add(AuxiliaryImageProvider.class, new UnsupportedAuxiliaryImageProvider());
-
-            String message = SubstrateOptions.useG1GC() ? "The G1 garbage collector ('--gc=G1') does not support auxiliary images."
-                            : "Auxiliary images are not supported with the current configuration or platform.";
-            access.registerReachabilityHandler(_ -> {
-                throw UserError.abort(message);
-            }, AuxiliaryImageBuilder.class);
-        }
-    }
-}
 
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class UnsupportedAuxiliaryImageProvider implements AuxiliaryImageProvider {
@@ -79,6 +55,9 @@ class UnsupportedAuxiliaryImageProvider implements AuxiliaryImageProvider {
         if (auxImagePath.isNonNull() || auxImageReserved.notEqual(0)) {
             return CEntryPointErrors.AUX_IMAGE_UNSUPPORTED;
         }
+
+        assert PointerUtils.isAMultiple(imageHeapEnd, VirtualMemoryProvider.get().getGranularity());
+        collectedHeapBeginOut.write(imageHeapEnd);
         return CEntryPointErrors.NO_ERROR;
     }
 
