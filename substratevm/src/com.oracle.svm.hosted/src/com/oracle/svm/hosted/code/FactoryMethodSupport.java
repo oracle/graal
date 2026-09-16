@@ -34,8 +34,6 @@ import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.code.FactoryMethodHolder;
-import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
@@ -44,6 +42,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
@@ -67,8 +66,8 @@ public class FactoryMethodSupport {
     private final Map<ConstructorDescription, FactoryMethod> factoryThrowMethods = new ConcurrentHashMap<>();
 
     public static boolean isFactoryMethod(AnalysisMethod method) {
-        var javaClass = method.getDeclaringClass().getJavaClass();
-        return javaClass == FactoryMethodHolder.class || javaClass == FactoryThrowMethodHolder.class;
+        ResolvedJavaType declaringClass = method.getDeclaringClass().getWrapped();
+        return declaringClass.equals(GuestAccess.elements().FactoryMethodHolder) || declaringClass.equals(GuestAccess.elements().FactoryThrowMethodHolder);
     }
 
     public AnalysisMethod lookup(AnalysisMetaAccess aMetaAccess, AnalysisMethod aConstructor, boolean throwAllocatedObject) {
@@ -98,7 +97,7 @@ public class FactoryMethodSupport {
             Signature unwrappedSignature = ResolvedSignature.fromArray(unwrappedParameterTypes, unwrappedReturnType);
             ResolvedJavaMethod unwrappedConstructor = aConstructor.getWrapped();
             ResolvedJavaType unwrappedInstantiatedType = aInstType.getWrapped();
-            ResolvedJavaType unwrappedDeclaringClass = (aMetaAccess.lookupJavaType(throwAllocatedObject ? FactoryThrowMethodHolder.class : FactoryMethodHolder.class)).getWrapped();
+            ResolvedJavaType unwrappedDeclaringClass = throwAllocatedObject ? GuestAccess.elements().FactoryThrowMethodHolder : GuestAccess.elements().FactoryMethodHolder;
             ConstantPool unwrappedConstantPool = unwrappedConstructor.getConstantPool();
             return new FactoryMethod(name, unwrappedConstructor, unwrappedInstantiatedType, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });

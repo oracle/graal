@@ -243,6 +243,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
+    public final ResolvedJavaType FactoryMethodHolder = lookupType("com.oracle.svm.core.code.FactoryMethodHolder");
+    public final ResolvedJavaType FactoryThrowMethodHolder = lookupType("com.oracle.svm.core.code.FactoryThrowMethodHolder");
 
     public final ResolvedJavaType FieldValueTransformer = lookupType(FieldValueTransformer.class);
     public final ResolvedJavaMethod FieldValueTransformer_transform = lookupMethod(FieldValueTransformer, "transform", Object.class, Object.class);
