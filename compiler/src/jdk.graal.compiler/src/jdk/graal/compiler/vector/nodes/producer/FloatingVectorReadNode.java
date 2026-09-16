@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -157,15 +157,12 @@ public final class FloatingVectorReadNode extends AbstractVectorNode implements 
         replaceAndDelete(fixedVectorRead);
     }
 
-    /**
-     * Compute the insertion point for a fixed node corresponding to {@code self}, a temporary
-     * floating vector read or gather node. If the {@code guard} is newer than the
-     * {@code beforeVectorization} mark, the fixed node should be inserted right after that guard.
-     * This indicates that the original guard of the vectorized read was inside the loop and is now
-     * a {@link VectorGuardNode}. Otherwise, the original guard was somewhere before the vectorized
-     * loop, and we can insert the fixed read after the {@code loopEntryPoint}, which is just before
-     * the original loop's begin node.
-     */
+    /// Computes the insertion point for a fixed node corresponding to `self`, a temporary floating
+    /// vector read or gather node. If `guard` is newer than the `beforeVectorization` mark, the fixed
+    /// node is inserted right after that guard. This indicates that the original guard of the
+    /// vectorized read was inside the loop and is now a [VectorGuardNode]. Otherwise, the original
+    /// guard was somewhere before the vectorized loop, and the fixed read is inserted after
+    /// `loopEntryPoint`, which is just before the original loop's begin node.
     public static FixedWithNextNode fixedReadInsertionPoint(FixedWithNextNode loopEntryPoint, Graph.Mark beforeVectorization, AbstractVectorNode self, GuardingNode guard) {
         FixedWithNextNode insertionPoint = loopEntryPoint;
         StructuredGraph graph = insertionPoint.graph();
@@ -174,16 +171,7 @@ public final class FloatingVectorReadNode extends AbstractVectorNode implements 
             inputs.add(self);
             for (Node input : inputs) {
                 if (input instanceof VectorGuardNode vectorGuard && graph.isNew(beforeVectorization, vectorGuard)) {
-                    if (insertionPoint == loopEntryPoint) {
-                        insertionPoint = vectorGuard;
-                    } else {
-                        for (Node predecessor = vectorGuard.predecessor(); predecessor != null; predecessor = predecessor.predecessor()) {
-                            if (predecessor == insertionPoint) {
-                                insertionPoint = vectorGuard;
-                                break;
-                            }
-                        }
-                    }
+                    insertionPoint = laterInsertionPoint(insertionPoint, vectorGuard);
                     continue;
                 }
                 if (input instanceof VectorNode || input instanceof MultiGuardNode) {
@@ -196,11 +184,7 @@ public final class FloatingVectorReadNode extends AbstractVectorNode implements 
             } else if (guard instanceof MultiGuardNode multiGuard) {
                 for (ValueNode inputGuard : multiGuard.getGuards()) {
                     if (inputGuard instanceof VectorGuardNode vectorGuard && graph.isNew(beforeVectorization, vectorGuard)) {
-                        if (insertionPoint == loopEntryPoint) {
-                            insertionPoint = vectorGuard;
-                        } else {
-                            throw GraalError.shouldNotReachHere("expect only one vectorized guard for read: " + self + ", got " + insertionPoint + " before, now found " + inputGuard);
-                        }
+                        insertionPoint = laterInsertionPoint(insertionPoint, vectorGuard);
                     }
                 }
             } else {
@@ -208,6 +192,26 @@ public final class FloatingVectorReadNode extends AbstractVectorNode implements 
             }
         }
         return insertionPoint;
+    }
+
+    /// Returns the later of `first` and `second` on their shared fixed-node path. Vector guards for
+    /// one read must be ordered by fixed control flow so that the read can be placed after all of
+    /// them.
+    private static FixedWithNextNode laterInsertionPoint(FixedWithNextNode first, VectorGuardNode second) {
+        if (first == second) {
+            return first;
+        }
+        for (Node predecessor = second.predecessor(); predecessor != null; predecessor = predecessor.predecessor()) {
+            if (predecessor == first) {
+                return second;
+            }
+        }
+        for (Node predecessor = first.predecessor(); predecessor != null; predecessor = predecessor.predecessor()) {
+            if (predecessor == second) {
+                return first;
+            }
+        }
+        throw GraalError.shouldNotReachHere("vector read guards are not ordered: " + first + " and " + second);
     }
 
 }

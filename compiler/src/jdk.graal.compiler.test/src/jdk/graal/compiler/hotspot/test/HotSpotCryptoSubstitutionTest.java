@@ -51,9 +51,11 @@ import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.replacements.SnippetSubstitutionNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
@@ -138,6 +140,14 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 192, "AES/CBC/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 256, "AES/CBC/PKCS5Padding");
+    }
+
+    /// Compiles the AES key expansion without inlining, as CompileTheWorld does.
+    @Test
+    public void testAESKeyExpansionCompiles() throws ClassNotFoundException {
+        ResolvedJavaMethod method = getResolvedJavaMethod("com.sun.crypto.provider.AESCrypt", "makeSessionKey", byte[].class);
+        OptionValues options = new OptionValues(getInitialOptions(), HighTier.Options.Inline, false);
+        getCode(method, options);
     }
 
     @Test
