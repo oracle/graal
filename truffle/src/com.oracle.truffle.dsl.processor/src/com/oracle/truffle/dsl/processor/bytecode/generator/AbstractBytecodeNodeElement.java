@@ -993,7 +993,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         }
 
         b.caseDefault().startCaseBlock();
-        b.startIf().string("handlerKind != HANDLER_CUSTOM").end().startBlock();
+        b.startIf().string("handlerKind != HANDLER_CUSTOM && handlerKind != HANDLER_FINALLY").end().startBlock();
         b.tree(createValidationError("unexpected handler kind"));
         b.end();
 
