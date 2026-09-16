@@ -720,7 +720,7 @@ public class SVMHost extends HostVM {
                 return HubType.POD_INSTANCE;
             } else if (ContinuationSupport.isSupported() && GuestAccess.elements().StoredContinuation.equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.STORED_CONTINUATION_INSTANCE;
-            } else if (type.getJavaClass() == FillerArray.class) {
+            } else if (GuestAccess.elements().FillerArray.equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.PRIMITIVE_ARRAY;
             }
             assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";

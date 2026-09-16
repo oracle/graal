@@ -54,7 +54,6 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -236,7 +235,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.shared.Uninterruptible");
     public final ResolvedJavaType Delete = lookupType(Delete.class);
-    public final ResolvedJavaType StoredContinuation = lookupType(StoredContinuation.class);
+    public final ResolvedJavaType FillerArray = lookupType("com.oracle.svm.core.heap.FillerArray");
+    public final ResolvedJavaType StoredContinuation = lookupType("com.oracle.svm.core.heap.StoredContinuation");
     public final ResolvedJavaType CEntryPoint_IsolateContext = lookupType(CEntryPoint.IsolateContext.class);
     public final ResolvedJavaType CEntryPoint_IsolateThreadContext = lookupType(CEntryPoint.IsolateThreadContext.class);
     public final ResolvedJavaType CEntryPointOptions_NoCallerEpilogue = lookupType("com.oracle.svm.guest.staging.c.function.CEntryPointOptions$NoCallerEpilogue");
