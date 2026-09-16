@@ -2962,10 +2962,15 @@ final class BuilderElement extends AbstractElement {
         if (model.enableBlockScoping) {
             b.statement("state.finalizeExceptionHandlerLocalCounts()");
         }
-        b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("state.handlerTable").string("state.handlerTableSize").end().end();
+        b.startAssign("handlers_");
+        b.string("state.handlerTableSize == 0 ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ");
+        b.startStaticCall(type(Arrays.class), "copyOf").string("state.handlerTable").string("state.handlerTableSize").end();
+        b.end();
         b.startAssign("numNodes_").string("state.numNodes").end();
-        b.startAssign("locals_").string("state.locals == null ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ").startStaticCall(type(Arrays.class), "copyOf").string("state.locals").string(
-                        "state.localsTableIndex").end().end();
+        b.startAssign("locals_");
+        b.string("state.localsTableIndex == 0 ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ");
+        b.startStaticCall(type(Arrays.class), "copyOf").string("state.locals").string("state.localsTableIndex").end();
+        b.end();
         if (needsStableBciRemappings()) {
             b.startAssign("stableBciDeltas_");
             b.string("state.stableBciDeltasIndex == 0 ? null : ");
@@ -2980,7 +2985,7 @@ final class BuilderElement extends AbstractElement {
 
         if (model.enableTagInstrumentation) {
             b.startIf().string("tags != 0 && state.tagNodes != null").end().startBlock();
-            b.startDeclaration(arrayOf(parent.tagNode.asType()), "tagNodes_").string("state.tagNodes.toArray(TagNode[]::new)").end();
+            b.startDeclaration(arrayOf(parent.tagNode.asType()), "tagNodes_").string("state.tagNodes.toArray(TagNode.EMPTY_ARRAY)").end();
 
             b.declaration(parent.tagNode.asType(), "tagTree_");
 
@@ -2991,7 +2996,7 @@ final class BuilderElement extends AbstractElement {
             b.startAssign("tagTree_").startNew(parent.tagNode.asType());
             b.string("0").string("-1");
             b.end().end();
-            b.statement("tagTree_.children = tagTree_.insert(state.tagRoots.toArray(TagNode[]::new))");
+            b.statement("tagTree_.children = tagTree_.insert(state.tagRoots.toArray(TagNode.EMPTY_ARRAY))");
             b.end();
 
             b.startAssign("tagRoot_");
@@ -7691,6 +7696,9 @@ final class BuilderElement extends AbstractElement {
                 CodeTreeBuilder b = ex.createBuilder();
 
                 b.startAssert().string("builderTableLength % ").variable(entryLengthVariable).string(" == 0").end();
+                b.startIf().string("builderTableLength == 0").end().startBlock();
+                b.startReturn().string(BytecodeRootNodeElement.EMPTY_INT_ARRAY).end();
+                b.end();
 
                 b.startDeclaration(type(int.class), "length");
                 b.startParentheses().string("builderTableLength / ").variable(entryLengthVariable).end().string(" * ").variable(parent.sourceInfoTable.entryLengthVariable);
@@ -7726,6 +7734,9 @@ final class BuilderElement extends AbstractElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startAssert().string("builderTableLength % ").variable(entryLengthVariable).string(" == 0").end();
+            b.startIf().string("builderTableLength == 0").end().startBlock();
+            b.startReturn().string(BytecodeRootNodeElement.EMPTY_BYTE_ARRAY).end();
+            b.end();
 
             b.declaration(arrayOf(type(byte.class)), "compressedSourceInfo", "new byte[Math.max(16, builderTableLength)]");
             b.declaration(type(int.class), "compressedSourceInfoIndex", "0");

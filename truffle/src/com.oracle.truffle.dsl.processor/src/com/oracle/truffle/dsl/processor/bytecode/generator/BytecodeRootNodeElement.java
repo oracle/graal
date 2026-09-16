@@ -142,6 +142,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     static final String BCI_INDEX = "BCI_INDEX";
     static final String CONTINUATION_FRAME_INDEX = "CONTINUATION_FRAME_INDEX";
     static final String EMPTY_INT_ARRAY = "EMPTY_INT_ARRAY";
+    static final String EMPTY_BYTE_ARRAY = "EMPTY_BYTE_ARRAY";
 
     // !Important: Keep these in sync with InstructionBytecodeSizeTest!
     // Estimated number of Java bytecodes per instruction.
@@ -232,6 +233,9 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         this.parserType = generic(types.BytecodeParser, abstractBuilderType == null ? bytecodeBuilderType : abstractBuilderType);
         setSuperClass(model.getTemplateType().asType());
         addField(this, Set.of(PRIVATE, STATIC, FINAL), int[].class, EMPTY_INT_ARRAY, "new int[0]");
+        if (model.enableCompressedSources) {
+            addField(this, Set.of(PRIVATE, STATIC, FINAL), byte[].class, EMPTY_BYTE_ARRAY, "new byte[0]");
+        }
 
         addField(this, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
         this.fastAccess = addField(this, Set.of(PRIVATE, STATIC, FINAL), types.BytecodeDSLAccess, "ACCESS");
