@@ -280,14 +280,14 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                  * actual declared method, so normal resolution will not work.
                  */
                 beforeAnalysisAccess.registerSubtypeReachabilityHandler((_, reachableSubtype) -> {
-                    AnalysisType subtype = beforeAnalysisAccess.getMetaAccess().lookupJavaType(reachableSubtype);
+                    AnalysisType subtype = reachableSubtype instanceof AnalysisType aType ? aType : aUniverse.lookup(reachableSubtype);
                     if (!subtype.equals(baseType)) {
                         AnalysisMethod resolvedOverride = subtype.resolveConcreteMethod(baseMethod, null);
                         if (resolvedOverride != null) {
                             resolvedOverride.registerImplementationInvokedCallback(_ -> createMethod(resolvedOverride));
                         }
                     }
-                }, baseType.getJavaClass());
+                }, baseType);
 
                 /*
                  * With run-time debug info support enabled, ensure LocalVariableTables are
