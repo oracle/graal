@@ -124,7 +124,8 @@ public interface BytecodeRootNode {
 
     /**
      * Optional hook invoked when a {@link ControlFlowException} is thrown during execution. This
-     * hook can do one of four things:
+     * hook is not invoked for exceptions configured by
+     * {@link GenerateBytecode#unwindExceptions()}. It can do one of four things:
      *
      * <ol>
      * <li>It can return a value. The value will be returned from the root node (this can be used to
@@ -151,8 +152,9 @@ public interface BytecodeRootNode {
     /**
      * Optional hook invoked when an internal exception (i.e., anything other than
      * {@link AbstractTruffleException} or {@link ControlFlowException}) is thrown during execution.
-     * This hook can be used to convert such exceptions into guest-language exceptions that can be
-     * handled by guest code.
+     * This hook is not invoked for exceptions configured by
+     * {@link GenerateBytecode#unwindExceptions()}. It can be used to convert other exceptions into
+     * guest-language exceptions that can be handled by guest code.
      * <p>
      * For example, if a Java {@link StackOverflowError} is thrown, this hook can be used to return
      * a guest-language equivalent exception that the guest code understands.
@@ -178,8 +180,9 @@ public interface BytecodeRootNode {
 
     /**
      * Optional hook invoked when an {@link AbstractTruffleException} is thrown during execution.
-     * This hook can be used to preprocess the exception or replace it with another exception before
-     * it is handled.
+     * This hook is not invoked for exceptions configured by
+     * {@link GenerateBytecode#unwindExceptions()}. It can be used to preprocess other exceptions or
+     * replace them with another exception before they are handled.
      *
      * @param ex the Truffle exception
      * @param frame the frame at the point the exception was thrown
