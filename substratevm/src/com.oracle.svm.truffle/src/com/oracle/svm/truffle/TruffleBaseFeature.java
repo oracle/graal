@@ -813,7 +813,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
 
         for (AnalysisType type : access.getBigBang().getUniverse().getTypes()) {
-            if (!a.isReachable(type.getJavaClass())) {
+            if (!access.isReachable(type)) {
                 continue;
             }
             initializeTruffleLibrariesAtBuildTime(access, type);
@@ -985,14 +985,14 @@ public final class TruffleBaseFeature implements InternalFeature {
     private void initializeTruffleLibrariesAtBuildTime(DuringAnalysisAccessImpl access, AnalysisType type) {
         if (GuestAnnotationAccess.isAnnotationPresent(type, GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
-            LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
+            LibraryFactory<? extends Library> factory = LibraryFactory.resolve(OriginalClassProvider.getJavaClass(type).asSubclass(Library.class));
             /* Trigger computation of uncachedDispatch. */
             factory.getUncached();
             /* Manually rescan the field since this is during analysis. */
             access.rescanField(factory, uncachedDispatchField, scanReason);
         }
         if (GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.class) || GuestAnnotationAccess.isAnnotationPresent(type, ExportLibrary.Repeat.class)) {
-            Class<?> receiverClass = type.getJavaClass();
+            Class<?> receiverClass = OriginalClassProvider.getJavaClass(type);
             if (registeredExportLibraryClasses.add(receiverClass)) {
                 if (registeredExportLibraryReceiverClasses.add(receiverClass)) {
                     access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
@@ -1042,7 +1042,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private void initializeDynamicObjectLayouts(AnalysisType type) {
         if (type.isInstantiated()) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (DynamicObject.class.isAssignableFrom(javaClass) && dynamicObjectClasses.add(javaClass)) {
                 initializeDynamicObjectLayoutImpl(javaClass);
             }
