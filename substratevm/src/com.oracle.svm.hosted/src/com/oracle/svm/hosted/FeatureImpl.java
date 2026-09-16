@@ -390,7 +390,7 @@ public class FeatureImpl {
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
             return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).toHashSet().stream()
-                            .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(HashSet::new));
+                            .map(OriginalClassProvider::getJavaClass).collect(Collectors.toCollection(HashSet::new));
         }
 
         EconomicSet<AnalysisType> reachableSubtypes(AnalysisType baseType) {
