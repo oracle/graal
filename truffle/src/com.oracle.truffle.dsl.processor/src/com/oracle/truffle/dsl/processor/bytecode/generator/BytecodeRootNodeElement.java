@@ -1875,6 +1875,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             boundVariables.add(assumption.getExpression());
         }
 
+        // The parser omits the limit when it has no effect (specialization cannot have multiple instances).
         DSLExpression limit = specialization.getLimitExpression();
         if (limit != null) {
             boundVariables.add(limit);
