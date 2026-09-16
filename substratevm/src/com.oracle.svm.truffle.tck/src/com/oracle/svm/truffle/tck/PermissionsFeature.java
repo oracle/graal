@@ -912,7 +912,7 @@ public class PermissionsFeature implements Feature {
      * @param methodNode the {@link BaseMethodNode} to check
      */
     private static boolean isSystemClass(BaseMethodNode methodNode) {
-        return isSystemClass(methodNode.getOwner().getJavaClass());
+        return isSystemClass(OriginalClassProvider.getJavaClass(methodNode.getOwner()));
     }
 
     private static boolean isSystemClass(Class<?> clz) {
