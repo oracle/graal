@@ -374,7 +374,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static void registerTypeForRuntimeAccess(AnalysisType type) {
-        if (PredefinedClassesSupport.isPredefined(type.getJavaClass())) {
+        if (PredefinedClassesSupport.isPredefined(type)) {
             return; // must be defined at runtime before it can be looked up
         }
         ClassLoader loader = ClassAccess.getClassLoader(type);

@@ -63,12 +63,19 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.util.Digest;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Manages classes that are predefined during image building and defined at run time.
+ *
+ * <p>The remaining core-reflection boundary is tracked by {@code GR-79830}.
+ */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class PredefinedClassesSupport {
     public static final class Options {
@@ -197,6 +204,11 @@ public final class PredefinedClassesSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean isPredefined(Class<?> clazz) {
         return singleton().predefinedClasses.contains(clazz);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean isPredefined(ResolvedJavaType type) {
+        return isPredefined(OriginalClassProvider.getJavaClass(type));
     }
 
     public static Class<?> knownClass(byte[] data, int offset, int length) {
