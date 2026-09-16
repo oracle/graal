@@ -522,6 +522,9 @@ def svm_gate_body(args, tasks):
     with Task('terminus helloworld', tasks, tags=[GraalTags.terminus]) as t:
         if t: _run_terminus_gate(args)
 
+    with Task('terminus tests', tasks, tags=[GraalTags.terminus]) as t:
+        if t: _run_terminus_user_feature_gate(args)
+
     with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
             if mx.is_windows():
@@ -800,6 +803,63 @@ def _run_terminus_gate(args):
         actual_idx -= 1
 
     mx.log(mx.colorize("Detected the expected failure pattern!", color="green"))
+
+
+def _run_terminus_user_feature_gate(args):
+    espresso_compiler_stub = 'espresso-compiler-stub'
+    if not mx.suite(espresso_compiler_stub, fatalIfMissing=False):
+        mx.abort(f'The {espresso_compiler_stub} suite is required for the Terminus user-feature test.\n'
+                 f'Use `mx --dy /{espresso_compiler_stub}` to dynamically import it.')
+
+    # The Terminus CI build targets GRAALVM, while this isolated test distribution is test-only.
+    mx.command_function('build')(['--dependencies=SVM_TEST_TERMINUS'])
+
+    test_class = 'com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest'
+    test_distribution = mx.distribution('SVM_TEST_TERMINUS').path
+
+    for vmaccess_name in ('host', 'espresso'):
+        captured = mx.LinesOutputCapture()
+        with tempfile.TemporaryDirectory() as image_dir:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                image_path = native_image(args.extra_image_builder_arguments +
+                                          svm_experimental_options([f'-H:Path={image_dir}']) + [
+                                              '-cp', test_distribution,
+                                              f'-Dorg.graalvm.nativeimage.vmaccess.name={vmaccess_name}',
+                                              '--features=' + test_class + '$TestFeature',
+                                              test_class,
+                                          ], out=mx.TeeOutputCapture(captured), err=mx.TeeOutputCapture(captured),
+                                          nonZeroIsFatal=False)
+
+            output = '\n'.join(captured.lines)
+            if exists(image_path):
+                mx.abort(f'The Terminus user-feature exception stack trace native-image build unexpectedly succeeded '
+                         f'for VMAccess {vmaccess_name}.\n'
+                         'The feature should throw during hosted registration. Captured output:\n' + output)
+
+        def stack_frame(method):
+            return rf'^[ \t]*at (?:[A-Za-z0-9_.]+/)?{re.escape(method)}\([^\r\n]*\)(?:\r?\n|$)'
+
+        def guest_stack_frame(method):
+            return rf'^[ \t]*at (?:<java> |){re.escape(method)}\([^\r\n]*\)(?:\r?\n|$)'
+
+        any_stack_frames = r'(?:^[ \t]*at [^\r\n]+(?:\r?\n|$)){0,12}?'
+
+        expected_stacktrace = re.compile(
+            rf'^Error: Feature defined by {re.escape("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature")} unexpectedly failed with a\(n\) '
+            rf'{re.escape("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$UserFeatureException")}\.[^\r\n]*(?:\r?\n|$)'
+            rf'^Caused by: {re.escape("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$UserFeatureException")}: guest-feature-exception-stack-trace-sentinel(?:\r?\n|$)'
+            rf'{guest_stack_frame("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature.throwSentinelException")}'
+            rf'{guest_stack_frame("com.oracle.svm.test.terminus.GuestFeatureExceptionStackTraceTest$TestFeature.afterRegistration")}'
+            # Host and guest VMAccess have different dispatch frames; keep that variation bounded.
+            rf'{any_stack_frames}'
+            rf'{stack_frame("com.oracle.svm.hosted.FeatureHandler.forEachFeature")}'
+            rf'{any_stack_frames}'
+            rf'{stack_frame("com.oracle.svm.hosted.NativeImageGenerator.setupNativeImage")}',
+            re.MULTILINE)
+
+        if not expected_stacktrace.search(output):
+            mx.abort(f'The {vmaccess_name} native-image output did not match the expected user-feature exception '
+                     f'stack trace. Captured output:\n{output}')
 
 
 def _compute_native_unittest_args(extra_build_args=None, include_svm_test_features=True):
