@@ -58,8 +58,12 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
     int bci();
 
     static Stamp computeStamp(ValueNode object, Stamp currentStamp) {
-        if (ObjectClone.getConcreteType(object.stamp(NodeView.DEFAULT)) != null) {
-            return AbstractPointerStamp.pointerNonNull(object.stamp(NodeView.DEFAULT));
+        Stamp objectStamp = object.stamp(NodeView.DEFAULT);
+        if (objectStamp.isEmpty()) {
+            return objectStamp;
+        }
+        if (ObjectClone.getConcreteType(objectStamp) != null) {
+            return AbstractPointerStamp.pointerNonNull(objectStamp);
         }
         /*
          * If this call can't be intrinsified don't report a non-null stamp, otherwise the stamp
