@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
  * {@link Class} object with an instance of the class (or interface) that it represents.
  * <p>
  * {@link AuxiliaryImageBuilder} is used to create, populate and subsequently persist an image.
- * {@link AuxiliaryImageLoader} is used for loading and unloading a persisted auxiliary image.
+ * {@link AuxiliaryImageLoader} is used for loading a persisted auxiliary image.
  * Auxiliary images can also be loaded {@linkplain CreateIsolateParameters during isolate creation}.
  * <p>
  * Auxiliary images are tightly coupled with the native image from which they were captured. Loading

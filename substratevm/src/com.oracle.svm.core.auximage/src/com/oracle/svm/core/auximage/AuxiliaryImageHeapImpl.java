@@ -32,7 +32,6 @@ import com.oracle.svm.core.genscavenge.AuxiliaryImageHeap;
 import com.oracle.svm.core.genscavenge.HeapChunkVisitor;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.ImageHeapWalker;
-import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -49,10 +48,7 @@ final class AuxiliaryImageHeapImpl implements AuxiliaryImageHeap {
         return (AuxiliaryImageHeapImpl) ImageSingletons.lookup(AuxiliaryImageHeap.class);
     }
 
-    @ExcludeFromReferenceMap(reason = "Do not keep live reference into auxiliary image heap during unloading.") //
     ImageHeapInfo heapInfo;
-
-    boolean isWalkable;
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -62,14 +58,14 @@ final class AuxiliaryImageHeapImpl implements AuxiliaryImageHeap {
 
     @Override
     public void walkObjects(ObjectVisitor visitor) {
-        if (isWalkable && heapInfo != null) {
+        if (heapInfo != null) {
             ImageHeapWalker.walkImageHeapObjects(heapInfo, visitor);
         }
     }
 
     @Override
     public void walkHeapChunks(HeapChunkVisitor visitor) {
-        if (isWalkable && heapInfo != null) {
+        if (heapInfo != null) {
             ImageHeapWalker.walkImageHeapChunks(heapInfo, visitor);
         }
     }
@@ -77,7 +73,7 @@ final class AuxiliaryImageHeapImpl implements AuxiliaryImageHeap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor) {
-        if (isWalkable && heapInfo != null) {
+        if (heapInfo != null) {
             ImageHeapWalker.walkRegions(heapInfo, visitor);
         }
     }
@@ -85,6 +81,6 @@ final class AuxiliaryImageHeapImpl implements AuxiliaryImageHeap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ImageHeapInfo getImageHeapInfo() {
-        return isWalkable ? heapInfo : null;
+        return heapInfo;
     }
 }

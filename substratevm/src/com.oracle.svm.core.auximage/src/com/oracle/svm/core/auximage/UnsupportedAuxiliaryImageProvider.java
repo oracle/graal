@@ -66,9 +66,4 @@ class UnsupportedAuxiliaryImageProvider implements AuxiliaryImageProvider {
     public int loadAuxiliaryImage(Pointer reservedAddressSpace, UnsignedWord reservedSize, CCharPointer filePath, WordPointer basePointer, WordPointer endPointer) {
         return CEntryPointErrors.AUX_IMAGE_UNSUPPORTED;
     }
-
-    @Override
-    public int unloadAuxiliaryImage(Pointer base, Pointer end) {
-        return CEntryPointErrors.AUX_IMAGE_UNSUPPORTED;
-    }
 }

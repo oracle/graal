@@ -61,13 +61,4 @@ public interface AuxiliaryImageProvider {
      */
     @Uninterruptible(reason = "Called during isolate initialization.")
     int loadAuxiliaryImage(Pointer reservedAddressSpace, UnsignedWord reservedSize, CCharPointer filePath, WordPointer basePointer, WordPointer endPointer);
-
-    /**
-     * Unloads a previously loaded auxiliary image.
-     *
-     * @param base A pointer to the start of the loaded auxiliary image. Must not be {@code null}.
-     * @param end A pointer to the end of the loaded auxiliary image. Must not be {@code null}.
-     * @return a result code from {@link CEntryPointErrors}.
-     */
-    int unloadAuxiliaryImage(Pointer base, Pointer end);
 }

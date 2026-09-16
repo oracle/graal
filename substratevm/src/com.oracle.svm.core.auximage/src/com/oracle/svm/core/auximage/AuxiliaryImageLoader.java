@@ -126,14 +126,15 @@ public final class AuxiliaryImageLoader {
         ImageHeapInfo heapInfo = null;
         if (auxImageBegin.isNonNull()) {
             Pointer objectAddress = KnownIntrinsics.heapBase().add(imageHeapToOriginObjectOffset);
+            VMError.guarantee(objectAddress.aboveOrEqual(auxImageBegin) && objectAddress.belowThan(auxImageEnd));
             meta = (AuxiliaryImageMetadata) objectAddress.toObject();
             heapInfo = meta.heapInfo;
         }
-        loadedInstance = meta;
 
         AuxiliaryImageHeapImpl heapImpl = AuxiliaryImageHeapImpl.singleton();
         heapImpl.heapInfo = heapInfo;
-        heapImpl.isWalkable = true;
+
+        loadedInstance = meta;
     }
 
     private static volatile AuxiliaryImageMetadata loadedInstance;
@@ -221,7 +222,7 @@ public final class AuxiliaryImageLoader {
                     }
 
                     AuxiliaryImageHeapImpl heapImpl = AuxiliaryImageHeapImpl.singleton();
-                    VMError.guarantee(auxImageBegin.isNonNull() && auxImageEnd.isNonNull() && loadedInstance != null && heapImpl.heapInfo != null && heapImpl.isWalkable);
+                    VMError.guarantee(auxImageBegin.isNonNull() && auxImageEnd.isNonNull() && loadedInstance != null && heapImpl.heapInfo != null);
                 }
             } finally {
                 AuxiliaryImageTracing.traceAfterLoad();

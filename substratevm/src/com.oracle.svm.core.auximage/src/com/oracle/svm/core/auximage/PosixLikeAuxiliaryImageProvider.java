@@ -150,12 +150,4 @@ public final class PosixLikeAuxiliaryImageProvider extends AbstractAuxiliaryImag
         } while (readBytes.belowThan(size));
         return ((WordPointer) p).read();
     }
-
-    @Override
-    public int unloadAuxiliaryImage(Pointer base, Pointer end) {
-        int result = VirtualMemoryProvider.get().uncommit(base, end.subtract(base));
-        AuxiliaryImageLoader.setAuxImageLocation(Word.nullPointer(), Word.nullPointer(), Word.zero());
-        return result;
-    }
-
 }
