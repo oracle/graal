@@ -88,6 +88,7 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -355,7 +356,7 @@ public class SVMImageLayerSnapshotUtil {
      * image, the constructor accessors table from SerializationSupport is accessed.
      */
     private static String getGeneratedSerializationName(AnalysisType type) {
-        Class<?> constructorAccessor = type.getJavaClass();
+        Class<?> constructorAccessor = OriginalClassProvider.getJavaClass(type);
         SerializationSupport serializationRegistry = SerializationSupport.currentLayer();
         SerializationSupport.SerializationLookupKey serializationLookupKey = serializationRegistry.getKeyFromConstructorAccessorClass(constructorAccessor);
         return generatedSerializationClassName(serializationLookupKey);
