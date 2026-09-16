@@ -1023,7 +1023,6 @@ public final class Resources {
         return MISSING_METADATA_MARKER;
     }
 
-    @SuppressWarnings("deprecation")
     private static URL createURL(String loaderKey, Module module, String resourceName, int rootId) {
         if (JavaNetSubstitutions.isDisabledURLProtocol(RESOURCE_PROTOCOL)) {
             return null;
@@ -1044,9 +1043,10 @@ public final class Resources {
             }
             // Module names are Java identifiers and need not be valid DNS hostnames.
             String authority = host != null ? (userInfo != null ? userInfo + '@' : "") + host : null;
+            // Let URI quote characters that are illegal in individual URL components.
+            // Preserve exact Unicode sequences: canonically equivalent names can identify different resources.
             URI uri = new URI(RESOURCE_PROTOCOL, authority, NativeImageResourceFileSystemUtil.formatRootedResourcePath(rootId, resourceName), null, null);
-            // Resource names are exact keys: canonically equivalent Unicode sequences can name different resources.
-            return new URL(null, uri.toString(), RESOURCE_URL_STREAM_HANDLER);
+            return URL.of(uri, RESOURCE_URL_STREAM_HANDLER);
         } catch (MalformedURLException | URISyntaxException ex) {
             throw new IllegalStateException(ex);
         }
