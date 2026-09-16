@@ -87,7 +87,6 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.FillerArray;
-import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.guest.staging.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -719,7 +718,7 @@ public class SVMHost extends HostVM {
                 return HubType.REFERENCE_INSTANCE;
             } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(OriginalClassProvider.getJavaClass(type))) {
                 return HubType.POD_INSTANCE;
-            } else if (ContinuationSupport.isSupported() && type.getJavaClass() == StoredContinuation.class) {
+            } else if (ContinuationSupport.isSupported() && GuestAccess.elements().StoredContinuation.equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.STORED_CONTINUATION_INSTANCE;
             } else if (type.getJavaClass() == FillerArray.class) {
                 return HubType.PRIMITIVE_ARRAY;
