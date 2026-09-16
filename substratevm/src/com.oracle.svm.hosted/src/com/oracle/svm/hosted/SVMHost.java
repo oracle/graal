@@ -717,7 +717,7 @@ public class SVMHost extends HostVM {
         } else if (type.isInstanceClass()) {
             if (GuestAccess.elements().java_lang_ref_Reference.isAssignableFrom(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.REFERENCE_INSTANCE;
-            } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(type.getJavaClass())) {
+            } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(OriginalClassProvider.getJavaClass(type))) {
                 return HubType.POD_INSTANCE;
             } else if (ContinuationSupport.isSupported() && type.getJavaClass() == StoredContinuation.class) {
                 return HubType.STORED_CONTINUATION_INSTANCE;
