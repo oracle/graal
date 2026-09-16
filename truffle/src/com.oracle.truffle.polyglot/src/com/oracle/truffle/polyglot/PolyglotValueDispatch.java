@@ -1748,7 +1748,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         private InteropLibrary interop;
         private final PolyglotLanguage language;
 
-        private PrimitiveValue(PolyglotImpl impl, PolyglotLanguageInstance instance) {
+        PrimitiveValue(PolyglotImpl impl, PolyglotLanguageInstance instance) {
             super(impl, instance);
             /*
              * No caching needed for primitives. We do that to avoid the overhead of crossing a

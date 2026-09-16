@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,7 +110,6 @@ final class PolyglotLanguageInstance implements VMObject {
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
-        PolyglotValueDispatch.createDefaultValues(getImpl(), this, this.valueCache);
     }
 
     CallTarget lookupCallTarget(Class<? extends RootNode> rootNodeClass) {
@@ -194,6 +193,9 @@ final class PolyglotLanguageInstance implements VMObject {
     private synchronized PolyglotValueDispatch lookupValueCacheImpl(Object guestValue) {
         PolyglotValueDispatch cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValueDispatch>() {
             public PolyglotValueDispatch apply(Class<?> t) {
+                if (PolyglotImpl.isGuestPrimitive(guestValue)) {
+                    return new PolyglotValueDispatch.PrimitiveValue(getImpl(), PolyglotLanguageInstance.this);
+                }
                 return PolyglotValueDispatch.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
             }
         });
