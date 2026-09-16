@@ -385,7 +385,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             metaAccess.lookupJavaType(lambdaClass);
             return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
-            Class<?>[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), tid -> getAnalysisTypeForBaseLayerId(tid).getJavaClass(), Class[]::new);
+            Class<?>[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), tid -> OriginalClassProvider.getJavaClass(getAnalysisTypeForBaseLayerId(tid)), Class[]::new);
             Class<?> proxy = DynamicProxySupport.singleton().getProxyClassHosted(interfaces);
             metaAccess.lookupJavaType(proxy);
             return true;
