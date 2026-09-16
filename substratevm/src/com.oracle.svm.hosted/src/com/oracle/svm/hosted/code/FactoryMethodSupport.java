@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.BuilderUtil;
+import com.oracle.svm.core.code.FactoryMethodHolder;
+import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -67,7 +69,7 @@ public class FactoryMethodSupport {
 
     public static boolean isFactoryMethod(AnalysisMethod method) {
         ResolvedJavaType declaringClass = method.getDeclaringClass().getWrapped();
-        return declaringClass.equals(GuestAccess.elements().FactoryMethodHolder) || declaringClass.equals(GuestAccess.elements().FactoryThrowMethodHolder);
+        return declaringClass.equals(GuestAccess.get().lookupType(FactoryMethodHolder.class)) || declaringClass.equals(GuestAccess.get().lookupType(FactoryThrowMethodHolder.class));
     }
 
     public AnalysisMethod lookup(AnalysisMetaAccess aMetaAccess, AnalysisMethod aConstructor, boolean throwAllocatedObject) {
@@ -97,7 +99,7 @@ public class FactoryMethodSupport {
             Signature unwrappedSignature = ResolvedSignature.fromArray(unwrappedParameterTypes, unwrappedReturnType);
             ResolvedJavaMethod unwrappedConstructor = aConstructor.getWrapped();
             ResolvedJavaType unwrappedInstantiatedType = aInstType.getWrapped();
-            ResolvedJavaType unwrappedDeclaringClass = throwAllocatedObject ? GuestAccess.elements().FactoryThrowMethodHolder : GuestAccess.elements().FactoryMethodHolder;
+            ResolvedJavaType unwrappedDeclaringClass = throwAllocatedObject ? GuestAccess.get().lookupType(FactoryThrowMethodHolder.class) : GuestAccess.get().lookupType(FactoryMethodHolder.class);
             ConstantPool unwrappedConstantPool = unwrappedConstructor.getConstantPool();
             return new FactoryMethod(name, unwrappedConstructor, unwrappedInstantiatedType, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });

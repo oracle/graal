@@ -236,17 +236,12 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType Uninterruptible = lookupType("com.oracle.svm.shared.Uninterruptible");
     public final ResolvedJavaType Delete = lookupType(Delete.class);
-    public final ResolvedJavaType FillerArray = lookupType("com.oracle.svm.core.heap.FillerArray");
-    public final ResolvedJavaType StoredContinuation = lookupType("com.oracle.svm.core.heap.StoredContinuation");
     public final ResolvedJavaType CEntryPoint_IsolateContext = lookupType(CEntryPoint.IsolateContext.class);
     public final ResolvedJavaType CEntryPoint_IsolateThreadContext = lookupType(CEntryPoint.IsolateThreadContext.class);
     public final ResolvedJavaType CEntryPointOptions_NoCallerEpilogue = lookupType("com.oracle.svm.guest.staging.c.function.CEntryPointOptions$NoCallerEpilogue");
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
-    public final ResolvedJavaType FactoryMethodHolder = lookupType("com.oracle.svm.core.code.FactoryMethodHolder");
-    public final ResolvedJavaType FactoryThrowMethodHolder = lookupType("com.oracle.svm.core.code.FactoryThrowMethodHolder");
-
     public final ResolvedJavaType FieldValueTransformer = lookupType(FieldValueTransformer.class);
     public final ResolvedJavaMethod FieldValueTransformer_transform = lookupMethod(FieldValueTransformer, "transform", Object.class, Object.class);
     public final ResolvedJavaMethod FieldValueTransformer_isAvailable = lookupMethod(FieldValueTransformer, "isAvailable");

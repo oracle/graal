@@ -87,6 +87,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.FillerArray;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.guest.staging.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -718,9 +719,9 @@ public class SVMHost extends HostVM {
                 return HubType.REFERENCE_INSTANCE;
             } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(OriginalClassProvider.getJavaClass(type))) {
                 return HubType.POD_INSTANCE;
-            } else if (ContinuationSupport.isSupported() && GuestAccess.elements().StoredContinuation.equals(OriginalClassProvider.getOriginalType(type))) {
+            } else if (ContinuationSupport.isSupported() && GuestAccess.get().lookupType(StoredContinuation.class).equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.STORED_CONTINUATION_INSTANCE;
-            } else if (GuestAccess.elements().FillerArray.equals(OriginalClassProvider.getOriginalType(type))) {
+            } else if (GuestAccess.get().lookupType(FillerArray.class).equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.PRIMITIVE_ARRAY;
             }
             assert !GuestAccess.get().lookupType(Target_java_lang_ref_Reference.class).isAssignableFrom(OriginalClassProvider.getOriginalType(type)) : "should not see substitution type here";
