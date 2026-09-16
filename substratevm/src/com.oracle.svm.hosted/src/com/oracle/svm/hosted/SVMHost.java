@@ -592,7 +592,7 @@ public class SVMHost extends HostVM {
         if ((type.isInstanceClass() && type.getSuperclass() != null) || type.isArray()) {
             superHub = dynamicHub(type.getSuperclass());
         }
-        Class<?> javaClass = type.getJavaClass();
+        Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
         DynamicHub componentHub = null;
         if (type.isArray()) {
             componentHub = dynamicHub(type.getComponentType());
