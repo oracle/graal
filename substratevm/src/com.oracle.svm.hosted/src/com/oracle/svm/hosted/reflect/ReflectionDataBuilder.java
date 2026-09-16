@@ -853,8 +853,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         TypeData data = types.computeIfAbsent(type, _ -> new TypeData());
         if (!data.reachabilityHandlerRegistered) {
             data.reachabilityHandlerRegistered = true;
-            analysisAccess.registerSubtypeReachabilityHandler((_, subtype) -> runConditionalTask(unconditional(), _ -> checkSubtypeForOverridingElements(type, metaAccess.lookupJavaType(subtype))),
-                            type.getJavaClass());
+            analysisAccess.registerSubtypeReachabilityHandler((_, subtype) -> {
+                AnalysisType analysisSubtype = subtype instanceof AnalysisType aType ? aType : universe.lookup(subtype);
+                runConditionalTask(unconditional(), _ -> checkSubtypeForOverridingElements(type, analysisSubtype));
+            }, type);
             return true;
         } else {
             return false;
