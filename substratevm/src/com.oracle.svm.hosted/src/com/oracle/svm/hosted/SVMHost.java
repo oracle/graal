@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.ref.Reference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -716,7 +715,7 @@ public class SVMHost extends HostVM {
                 return HubType.OBJECT_ARRAY;
             }
         } else if (type.isInstanceClass()) {
-            if (Reference.class.isAssignableFrom(type.getJavaClass())) {
+            if (GuestAccess.elements().java_lang_ref_Reference.isAssignableFrom(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.REFERENCE_INSTANCE;
             } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(type.getJavaClass())) {
                 return HubType.POD_INSTANCE;
