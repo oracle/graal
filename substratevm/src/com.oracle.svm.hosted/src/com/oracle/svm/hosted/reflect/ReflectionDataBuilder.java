@@ -378,7 +378,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             return; // must be defined at runtime before it can be looked up
         }
         ClassLoader loader = ClassAccess.getClassLoader(type);
-        ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(loader), type.getJavaClass());
+        ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(loader), OriginalClassProvider.getJavaClass(type));
     }
 
     /**
