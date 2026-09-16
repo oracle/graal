@@ -723,7 +723,7 @@ public class SVMHost extends HostVM {
             } else if (GuestAccess.elements().FillerArray.equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.PRIMITIVE_ARRAY;
             }
-            assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
+            assert !GuestAccess.get().lookupType(Target_java_lang_ref_Reference.class).isAssignableFrom(OriginalClassProvider.getOriginalType(type)) : "should not see substitution type here";
             return HubType.INSTANCE;
         }
         return HubType.OTHER;
