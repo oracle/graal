@@ -1302,28 +1302,28 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses() {
+    public Map<ResolvedJavaType, Set<ResolvedJavaType>> getReflectionInnerClasses() {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
-        Map<Class<?>, Set<Class<?>>> innerClasses = new HashMap<>();
+        Map<ResolvedJavaType, Set<ResolvedJavaType>> innerClasses = new HashMap<>();
         types.forEach((type, typeData) -> {
             if (typeData.isRegisteredAs(ACCESSED)) {
                 try {
-                    var innerTypes = innerClasses.computeIfAbsent(type.getJavaClass(), _ -> new HashSet<>());
+                    var innerTypes = innerClasses.computeIfAbsent(OriginalClassProvider.getOriginalType(type), _ -> new HashSet<>());
                     for (var innerType : type.getDeclaredTypes()) {
-                        innerTypes.add(innerType.getJavaClass());
+                        innerTypes.add(OriginalClassProvider.getOriginalType(innerType));
                     }
                     forAllSuperTypes(type, t -> {
-                        var superTypeInnerTypes = innerClasses.computeIfAbsent(t.getJavaClass(), _ -> new HashSet<>());
+                        var superTypeInnerTypes = innerClasses.computeIfAbsent(OriginalClassProvider.getOriginalType(t), _ -> new HashSet<>());
                         for (var innerType : t.getDeclaredTypes()) {
                             if (innerType.isPublic()) {
-                                superTypeInnerTypes.add(innerType.getJavaClass());
+                                superTypeInnerTypes.add(OriginalClassProvider.getOriginalType(innerType));
                             }
                         }
                     });
                     if (!throwMissingRegistrationErrors()) {
                         AnalysisType enclosingType = type.getEnclosingType();
                         if (enclosingType != null) {
-                            innerClasses.computeIfAbsent(enclosingType.getJavaClass(), _ -> new HashSet<>()).add(type.getJavaClass());
+                            innerClasses.computeIfAbsent(OriginalClassProvider.getOriginalType(enclosingType), _ -> new HashSet<>()).add(OriginalClassProvider.getOriginalType(type));
                         }
                     }
                 } catch (LinkageError ignored) {
@@ -1334,13 +1334,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return Collections.unmodifiableMap(innerClasses);
     }
 
-    public int getEnabledReflectionQueries(Class<?> clazz) {
+    public int getEnabledReflectionQueries(AnalysisType type) {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         /*
          * Primitives and arrays are registered by default since they provide reflective access to
          * no members.
          */
-        AnalysisType type = metaAccess.lookupJavaType(clazz);
         if (type.isPrimitive() || type.isArray() || types.get(type).isRegisteredAs(ACCESSED)) {
             return ALL_DECLARED_CLASSES_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG |
                             ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG | ALL_RECORD_COMPONENTS_FLAG | ALL_PERMITTED_SUBCLASSES_FLAG | ALL_NEST_MEMBERS_FLAG | ALL_SIGNERS_FLAG;

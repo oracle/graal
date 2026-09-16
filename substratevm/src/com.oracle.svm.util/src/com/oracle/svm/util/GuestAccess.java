@@ -422,6 +422,14 @@ public final class GuestAccess implements VMAccess {
     }
 
     /**
+     * Gets the nest members of a type by invoking {@link Class#getNestMembers()} in the guest.
+     */
+    public ResolvedJavaType[] getNestMembers(ResolvedJavaType type) {
+        JavaConstant classConstant = constantReflection.asJavaClass(OriginalClassProvider.getOriginalType(type));
+        return asResolvedJavaTypes(invoke(elements.java_lang_Class_getNestMembers, classConstant));
+    }
+
+    /**
      * Shortcut for {@code lookupAppClassLoaderType(name)}.
      */
     public ResolvedJavaType lookupType(String name) {
