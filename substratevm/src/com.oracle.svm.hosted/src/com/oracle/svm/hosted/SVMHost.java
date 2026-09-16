@@ -1700,7 +1700,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public String loaderName(AnalysisType type) {
-        var originalLoader = type.getJavaClass().getClassLoader();
+        var originalLoader = OriginalClassProvider.getJavaClass(type).getClassLoader();
         var runtimeLoader = typeToHub.get(type).getClassLoader();
         if (Objects.equals(originalLoader, runtimeLoader)) {
             return loaderName(originalLoader);
