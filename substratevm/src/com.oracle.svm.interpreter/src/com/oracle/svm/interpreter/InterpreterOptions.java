@@ -47,6 +47,7 @@ public class InterpreterOptions {
             super.onValueUpdate(values, oldValue, newValue);
             if (newValue) {
                 PLTGOTOptions.EnablePLTGOT.update(values, true);
+                SubstrateOptions.EnableJVMCIGuest.update(values, true);
             }
         }
     };

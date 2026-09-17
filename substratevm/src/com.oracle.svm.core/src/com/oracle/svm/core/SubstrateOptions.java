@@ -207,6 +207,9 @@ public class SubstrateOptions {
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
 
+    @Option(help = "Enable JVMCI in the guest", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> EnableJVMCIGuest = new HostedOptionKey<>(false);
+
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
@@ -1438,6 +1441,7 @@ public class SubstrateOptions {
                 super.onValueUpdate(values, oldValue, newValue);
                 if (newValue) {
                     SubstrateOptions.SupportCompileInIsolates.update(values, false);
+                    SubstrateOptions.EnableJVMCIGuest.update(values, true);
                 }
             }
         };
