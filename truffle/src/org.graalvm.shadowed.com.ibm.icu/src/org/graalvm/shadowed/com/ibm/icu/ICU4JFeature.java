@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,26 +110,8 @@ public class ICU4JFeature implements Feature {
                                         "org.graalvm.shadowed.com.ibm.icu.charset.CharsetMBCS",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/.*\\.cnv$"),
                         new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UCaseProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ucase\\.icu$"),
-                        new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterName",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/unames\\.icu$"),
-                        new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterProperty",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/uprops\\.icu$"),
-                        new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UCharacterProperty$LayoutProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ulayout\\.icu$"),
-                        new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UPropertyAliases",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/pnames\\.icu$"),
-                        new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.EmojiProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/uemoji\\.icu$"),
-                        new ResourceEntry(
-                                        "org.graalvm.shadowed.com.ibm.icu.impl.UBiDiProps",
-                                        "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/ubidi\\.icu$"),
                         new ResourceEntry(
                                         "org.graalvm.shadowed.com.ibm.icu.impl.coll.CollationRoot",
                                         "org/graalvm/shadowed/com/ibm/icu/impl/data/icudata/coll/ucadata\\.icu$"),
