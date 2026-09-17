@@ -358,6 +358,9 @@ public class SubstrateOptions {
         disable(GraalOptions.OptDuplication, values);
         disable(PullThroughPhiPhase.Options.OptPullThroughPhi, values);
 
+        /* Early checkcast expansion exposes control flow and can increase code size. */
+        disable(GraalOptions.EarlyExpandCheckCast, values);
+
         if (disableLoopOptimizations) {
             /*
              * Remove all loop optimizations that can increase code size, i.e., duplicate a loop
