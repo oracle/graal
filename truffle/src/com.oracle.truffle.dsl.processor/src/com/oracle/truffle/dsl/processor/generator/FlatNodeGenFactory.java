@@ -1667,6 +1667,14 @@ public class FlatNodeGenFactory {
                         builder.staticReference(createLibraryConstant(constants, cache.getParameter().getType()));
                         builder.startCall(".getUncached").end();
                     } else {
+                        if (cache.getParameter().getType().getKind() == TypeKind.ARRAY) {
+                            /*
+                             * An array typed cache must be passed as a single element, otherwise
+                             * Arrays.asList is resolved as a non-varargs call and spreads the array
+                             * contents.
+                             */
+                            builder.cast(context.getType(Object.class));
+                        }
                         builder.tree(createCacheAccess(innerFrameState, specialization, cache, null));
                     }
                     builder.end();
