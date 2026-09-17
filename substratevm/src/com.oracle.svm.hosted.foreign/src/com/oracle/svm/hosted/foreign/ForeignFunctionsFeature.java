@@ -33,10 +33,12 @@ import java.lang.constant.DirectMethodHandleDesc.Kind;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -47,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -67,6 +70,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FactoryMethodHolder;
@@ -96,6 +100,7 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.SharedArenaSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.jdk.VarHandleFeature;
 import com.oracle.svm.hosted.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -103,17 +108,26 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.foreign.AbstractMemorySegmentImpl;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.abi.AbstractLinker;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.SharedUtils;
 import jdk.internal.misc.ScopedMemoryAccess.ScopedAccessError;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -711,6 +725,52 @@ public class ForeignFunctionsFeature implements InternalFeature {
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(ForeignFunctionsRuntime.CAPTURE_CALL_STATE);
+    }
+
+    /**
+     * Invocation plugin to initialize the ValueLayouts' VarHandle cache (which is annotated
+     * with @Stable) early. This should enable intrinsification of the VarHandles.
+     */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25.0.2+4/src/java.base/share/classes/jdk/internal/foreign/layout/ValueLayouts.java#L69-L70")
+    private static final class FoldValueLayoutVarHandlePlugin extends RequiredInvocationPlugin {
+        private final Class<?> receiverClass;
+        private final Function<Object, VarHandle> varHandleInvoker;
+
+        FoldValueLayoutVarHandlePlugin(Class<?> receiverClass, Function<Object, VarHandle> varHandleInvoker) {
+            super("varHandle", Receiver.class);
+            this.receiverClass = receiverClass;
+            this.varHandleInvoker = varHandleInvoker;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+            ValueNode receiverNode = receiver.get(false);
+            if (!receiverNode.isJavaConstant() || receiverNode.isNullConstant()) {
+                return false;
+            }
+            JavaConstant receiverConst = receiverNode.asJavaConstant();
+            Object receiverHostedObject = b.getSnippetReflection().asObject(receiverClass, receiverConst);
+            if (receiverHostedObject == null) {
+                return false;
+            }
+            VarHandle varHandle = varHandleInvoker.apply(receiverHostedObject);
+            VMError.guarantee(varHandle != null);
+            VarHandleFeature.eagerlyInitializeVarHandle(varHandle);
+            JavaConstant varHandleConst = b.getSnippetReflection().forObject(varHandle);
+            b.addPush(JavaKind.Object, ConstantNode.forConstant(varHandleConst, b.getMetaAccess(), b.getGraph()));
+            return true;
+        }
+    }
+
+    @Override
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        InvocationPlugins.Registration valueLayoutRegistration = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), ValueLayout.class);
+        valueLayoutRegistration.register(new FoldValueLayoutVarHandlePlugin(ValueLayout.class, rcv -> ((ValueLayout) rcv).varHandle()));
+
+        Class<?> abstractValueLayout = ReflectionUtil.lookupClass("jdk.internal.foreign.layout.ValueLayouts$AbstractValueLayout");
+        Method varHandle = ReflectionUtil.lookupMethod(abstractValueLayout, "varHandle");
+        InvocationPlugins.Registration abstractValueLayoutRegistration = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), abstractValueLayout);
+        abstractValueLayoutRegistration.register(new FoldValueLayoutVarHandlePlugin(abstractValueLayout, rcv -> ReflectionUtil.invokeMethod(varHandle, rcv)));
     }
 
     /* Testing interface */

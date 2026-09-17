@@ -1999,11 +1999,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         final ValueNode[] args;
         final InvokeKind kind;
         final JavaType returnType;
+        final ResolvedJavaType referencedType;
 
-        CurrentInvoke(ValueNode[] args, InvokeKind kind, JavaType returnType) {
+        CurrentInvoke(ValueNode[] args, InvokeKind kind, JavaType returnType, ResolvedJavaType referencedType) {
             this.args = args;
             this.kind = kind;
             this.returnType = returnType;
+            this.referencedType = referencedType;
         }
     }
 
@@ -2043,6 +2045,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     @Override
     public JavaType getInvokeReturnType() {
         return currentInvoke == null ? null : currentInvoke.returnType;
+    }
+
+    @Override
+    public ResolvedJavaType getInvokeReferencedType() {
+        return currentInvoke == null ? null : currentInvoke.referencedType;
     }
 
     private boolean forceInliningEverything;
@@ -2112,7 +2119,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         InlineInfo inlineInfo = null;
         try {
-            currentInvoke = new CurrentInvoke(args, invokeKind, returnType);
+            currentInvoke = new CurrentInvoke(args, invokeKind, returnType, referencedType);
             Mark pluginMark = graph.getMark();
             if (tryNodePluginForInvocation(args, targetMethod)) {
                 if (TraceParserPlugins.getValue(options)) {

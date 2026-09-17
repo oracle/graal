@@ -81,6 +81,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Used by a {@link GraphBuilderPlugin} to interface with an object that parses the bytecode of a
@@ -261,6 +262,13 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * Gets the return type of the invocation currently being parsed.
      */
     JavaType getInvokeReturnType();
+
+    /**
+     * Gets the referenced type of the invocation currently being parsed. This is only useful if
+     * {@link #getInvokeKind()} is {@link InvokeKind#Interface} and always returns {@code null} in
+     * all other cases.
+     */
+    ResolvedJavaType getInvokeReferencedType();
 
     default StampPair getInvokeReturnStamp(Assumptions assumptions) {
         JavaType returnType = getInvokeReturnType();

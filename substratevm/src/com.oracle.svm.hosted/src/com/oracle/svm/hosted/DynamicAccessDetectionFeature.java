@@ -106,7 +106,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
                     "java.io.ObjectStreamClass.lookup",
                     "java.lang.reflect.Array.newInstance",
                     "java.lang.ClassLoader.loadClass",
-                    "java.lang.foreign.Linker.nativeLinker");
+                    "java.lang.foreign.Linker.nativeLinker",
+                    "jdk.internal.foreign.abi.AbstractLinker.downcallHandle");
 
     public static final String TRACK_ALL = "all";
 

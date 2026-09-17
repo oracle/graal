@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,11 @@ import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Queue;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -226,6 +228,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * class file and therefore not in the list of declared methods.
      */
     @SuppressWarnings("unused") private volatile Object overrideableMethods;
+
+    /**
+     * Sentinel marker for the uninitialized state of {@link #permittedSubclasses}. Indicates that
+     * the permitted subclasses (for sealed types) has not yet been computed. Distinguishes this
+     * state from both a computed {@code null} (not sealed) and a computed list (which may be
+     * empty).
+     */
+    private static final List<AnalysisType> PERMITTED_SUBCLASSES_UNINITIALIZED = new ArrayList<>();
+    private volatile List<AnalysisType> permittedSubclasses = PERMITTED_SUBCLASSES_UNINITIALIZED;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -993,6 +1004,67 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return arrayClass;
     }
 
+    public boolean isSealed() {
+        return getJavaClass().isSealed();
+    }
+
+    public List<? extends AnalysisType> getPermittedSubclasses() {
+        if (permittedSubclasses == PERMITTED_SUBCLASSES_UNINITIALIZED) {
+            permittedSubclasses = buildPermittedSubclasses(getJavaClass().getPermittedSubclasses());
+        }
+        return permittedSubclasses;
+    }
+
+    private List<AnalysisType> buildPermittedSubclasses(Class<?>[] wrappedPermittedSubclasses) {
+        if (wrappedPermittedSubclasses == null) {
+            return null;
+        }
+        if (universe.sealed()) {
+            return buildPermittedSubclassesAfterAnalysis(wrappedPermittedSubclasses);
+        }
+        return buildPermittedSubclassesDuringAnalysis(wrappedPermittedSubclasses);
+    }
+
+    /**
+     * Builds the list of permitted subclasses during the analysis. This may add types to the
+     * analysis universe.
+     */
+    private List<AnalysisType> buildPermittedSubclassesDuringAnalysis(Class<?>[] wrappedPermittedSubclasses) {
+        assert !universe.sealed();
+        List<AnalysisType> result = new ArrayList<>(wrappedPermittedSubclasses.length);
+        for (Class<?> permittedSubclass : wrappedPermittedSubclasses) {
+            ResolvedJavaType resolvedPermittedSubclass = universe.getOriginalMetaAccess().lookupJavaType(permittedSubclass);
+            /*
+             * The permitted subclasses of the wrapped type may contain types that are unsupported
+             * on the target platform (e.g. hosted-only types). We therefore need to filter the list
+             * and remove those types. This is fine because such types cannot be part of the
+             * analysis universe anyway.
+             */
+            if (universe.hostVM.platformSupported(resolvedPermittedSubclass)) {
+                result.add(universe.lookup(resolvedPermittedSubclass));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Builds the list of permitted subclasses if the analysis universe was sealed. This never adds
+     * types to the analysis universe. The list will only contain the permitted subclasses of the
+     * wrapped type that were reachable during analysis.
+     */
+    private List<AnalysisType> buildPermittedSubclassesAfterAnalysis(Class<?>[] wrappedPermittedSubclasses) {
+        assert universe.sealed();
+        List<AnalysisType> result = new ArrayList<>(wrappedPermittedSubclasses.length);
+        for (Class<?> permittedSubclass : wrappedPermittedSubclasses) {
+            ResolvedJavaType resolvedPermittedSubclass = universe.getOriginalMetaAccess().lookupJavaType(permittedSubclass);
+            AnalysisType analysisType = universe.optionalLookup(resolvedPermittedSubclass);
+            if (analysisType != null) {
+                result.add(analysisType);
+            }
+        }
+        return result;
+    }
+
     @Override
     public boolean isInterface() {
         return wrapped.isInterface();
@@ -1051,10 +1123,22 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public ResolvedJavaType getSingleImplementor() {
         /*
+         * Make use of a sealed class hierarchy. Try to find a single implementing (abstract) class
+         * by following the one permitted subclass of this interface.
+         */
+        assert isInterface();
+        if (isSealed() && hasSinglePermittedImplementor(getPermittedSubclasses())) {
+            return getPermittedSubclasses().getFirst();
+        }
+        /*
          * New classes can be loaded during the analysis, so we cannot guarantee a consistent and
          * correct result. So we need to conservatively say that there is no single implementor.
          */
         return this;
+    }
+
+    private static boolean hasSinglePermittedImplementor(List<? extends AnalysisType> permittedSubclasses) {
+        return permittedSubclasses.size() == 1 && !permittedSubclasses.getFirst().isInterface();
     }
 
     /** Get the immediate subtypes, including this type itself. */
@@ -1179,10 +1263,61 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
-        // ResolvedJavaMethod subst = universe.substitutions.resolve(((AnalysisMethod)
-        // method).wrapped);
-        // return universe.lookup(wrapped.findUniqueConcreteMethod(subst));
+        if (!isInterface() && isSealed()) {
+            ResolvedJavaMethod uniqueConcreteMethodInPermittedSubclasses = findUniqueConcreteMethodInPermittedSubclasses(method);
+            if (uniqueConcreteMethodInPermittedSubclasses != null) {
+                return new AssumptionResult<>(uniqueConcreteMethodInPermittedSubclasses);
+            }
+        }
         return null;
+    }
+
+    private ResolvedJavaMethod findUniqueConcreteMethodInPermittedSubclasses(ResolvedJavaMethod method) {
+        assert isSealed();
+
+        ResolvedJavaMethod uniqueImplementation = resolveConcreteMethod(method);
+        Queue<AnalysisType> worklist = new LinkedList<>(getPermittedSubclasses());
+        AnalysisType currentType;
+        while ((currentType = worklist.poll()) != null) {
+            boolean currentTypeIsSealed = currentType.isSealed();
+            boolean currentTypeIsFinal = currentType.isFinalFlagSet();
+            /*
+             * If any class in the hierarchy is non-sealed (i.e. not final and not sealed), we
+             * abort. In this case, arbitrary user classes may extend the base class, and we cannot
+             * do further reasoning here.
+             */
+            if (!currentTypeIsSealed && !currentTypeIsFinal) {
+                return null;
+            }
+
+            if (currentTypeIsSealed) {
+                /* If sealed, 'getPermittedSubclasses' is guaranteed to be non-null. */
+                worklist.addAll(currentType.getPermittedSubclasses());
+            }
+
+            ResolvedJavaMethod currentImplementation = currentType.resolveConcreteMethod(method);
+            if (currentImplementation == null) {
+                continue;
+            }
+
+            // remember the first concrete method
+            if (uniqueImplementation == null) {
+                uniqueImplementation = currentImplementation;
+                continue;
+            }
+
+            /*
+             * We can only return a unique concrete method if every implementation in the permitted
+             * subclass hierarchy resolves to the same target method.
+             */
+            if (uniqueImplementation.equals(currentImplementation)) {
+                continue;
+            }
+
+            // bailout: found two different implementations
+            return null;
+        }
+        return uniqueImplementation;
     }
 
     @Override

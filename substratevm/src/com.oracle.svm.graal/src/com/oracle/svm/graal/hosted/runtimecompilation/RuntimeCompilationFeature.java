@@ -953,7 +953,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
              * handle intrinsification with larger thresholds in order to fully inline the method
              * handle.
              */
-            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !InlineBeforeAnalysisPolicyUtils.isMethodHandleIntrinsificationRoot(method);
+            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !inliningUtils.isMethodHandleIntrinsificationRoot(method);
             int inliningDepth = outer == null ? 1 : outer.inliningDepth + 1;
             if (trivialInlineAllowed && inliningDepth <= trivialAllowingInliningDepth) {
                 return new RuntimeCompilationAlwaysInlineScope(inliningDepth);

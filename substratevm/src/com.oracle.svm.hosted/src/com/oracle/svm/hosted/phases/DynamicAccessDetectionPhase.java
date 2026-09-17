@@ -59,6 +59,7 @@ import org.graalvm.collections.EconomicSet;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.DynamicAccessDetectionFeature;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -216,6 +217,12 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
                         new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
                         new MethodSignature("downcallHandle", FunctionDescriptor.class, Linker.Option[].class),
                         new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
+        Class<?> abstractLinkerClass = ReflectionUtil.lookupClass("jdk.internal.foreign.abi.AbstractLinker");
+        foreignMethodSignatures.put(abstractLinkerClass, Set.of(
+                        new MethodSignature("downcallHandle", MemorySegment.class, FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("downcallHandle", FunctionDescriptor.class, Linker.Option[].class),
+                        new MethodSignature("upcallStub", MethodHandle.class, FunctionDescriptor.class, Arena.class, Linker.Option[].class)));
+
     }
 
     public DynamicAccessDetectionPhase() {

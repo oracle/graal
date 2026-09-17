@@ -321,6 +321,15 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
+    public ResolvedJavaType getInvokeReferencedType() {
+        /*
+         * This graph builder only handles static or virtual calls (see method 'getInvokeKind') and
+         * such calls never have a referenced type.
+         */
+        return null;
+    }
+
+    @Override
     public int getDepth() {
         return 0;
     }
