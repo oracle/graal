@@ -36,7 +36,7 @@
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose"],
-      ["mx", "sigtest"],
+      ["mx", "sigtest", "--check", if self.jdk_version == 25 then "all" else "binary"],
     ],
     notify_groups:: ["tools"],
     targets: ["weekly"],

@@ -16,13 +16,6 @@ meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
 
-CLSS public final org.graalvm.tools.insight.Insight
-fld public final static java.lang.String ID = "insight"
-fld public final static java.lang.String VERSION = "1.3"
-innr public abstract interface static SymbolProvider
+CLSS public final org.graalvm.sdk.Placeholder
 supr java.lang.Object
-
-CLSS public abstract interface static org.graalvm.tools.insight.Insight$SymbolProvider
- outer org.graalvm.tools.insight.Insight
-meth public abstract java.util.Map<java.lang.String,?> symbolsWithValues() throws java.lang.Exception
 

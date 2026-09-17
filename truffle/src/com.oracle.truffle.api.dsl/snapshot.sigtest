@@ -181,7 +181,6 @@ meth public !varargs static boolean validate(com.oracle.truffle.api.nodes.Node,c
 meth public static boolean validate(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.dsl.InlineSupport$InlinableField)
 meth public static boolean validate(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.dsl.InlineSupport$InlinableField,com.oracle.truffle.api.dsl.InlineSupport$InlinableField)
 supr java.lang.Object
-hfds PARENT
 hcls UnsafeField,VarHandleField
 
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$BooleanField

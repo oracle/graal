@@ -47,9 +47,9 @@ hfds safeSingleton,unsafeSingleton
 
 CLSS public abstract com.oracle.truffle.api.bytecode.BytecodeDescriptor<%0 extends com.oracle.truffle.api.nodes.RootNode & com.oracle.truffle.api.bytecode.BytecodeRootNode, %1 extends com.oracle.truffle.api.TruffleLanguage<?>, %2 extends com.oracle.truffle.api.bytecode.BytecodeBuilder>
 cons protected init(java.lang.Object)
-meth protected final void onTransition(com.oracle.truffle.api.TruffleLanguage<?>,{com.oracle.truffle.api.bytecode.BytecodeDescriptor%0},com.oracle.truffle.api.bytecode.BytecodeTransition)
 meth protected final long withGlobalConfig(com.oracle.truffle.api.TruffleLanguage<?>,long)
 meth protected final void onPrepareForLoad(com.oracle.truffle.api.TruffleLanguage<?>,{com.oracle.truffle.api.bytecode.BytecodeDescriptor%0})
+meth protected final void onTransition(com.oracle.truffle.api.TruffleLanguage<?>,{com.oracle.truffle.api.bytecode.BytecodeDescriptor%0},com.oracle.truffle.api.bytecode.BytecodeTransition)
 meth public abstract com.oracle.truffle.api.bytecode.BytecodeConfig$Builder newConfigBuilder()
 meth public abstract com.oracle.truffle.api.bytecode.BytecodeRootNodes<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%0}> create({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},com.oracle.truffle.api.bytecode.BytecodeConfig,com.oracle.truffle.api.bytecode.BytecodeParser<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%2}>)
 meth public abstract com.oracle.truffle.api.bytecode.InstructionDescriptor getInstructionDescriptor(int)
@@ -85,12 +85,12 @@ meth public java.lang.Object getArgument(int)
 meth public java.lang.Object getFrameDescriptorInfo()
 meth public java.lang.Object getLocalValue(int)
 meth public java.lang.Object[] getLocalNames()
+meth public static <%0 extends java.lang.Object> {%%0} iterateBytecodeFrames(java.util.function.Function<com.oracle.truffle.api.bytecode.BytecodeFrame,{%%0}>,com.oracle.truffle.api.frame.FrameInstance$FrameAccess,com.oracle.truffle.api.nodes.Node,int,int)
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame get(com.oracle.truffle.api.TruffleStackTraceElement)
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame get(com.oracle.truffle.api.frame.FrameInstance,com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
-meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getTop(com.oracle.truffle.api.frame.FrameInstance$FrameAccess,com.oracle.truffle.api.nodes.Node,int)
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getNonVirtual(com.oracle.truffle.api.TruffleStackTraceElement)
 meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getNonVirtual(com.oracle.truffle.api.frame.FrameInstance)
-meth public static <%0 extends java.lang.Object> {%%0} iterateBytecodeFrames(java.util.function.Function<com.oracle.truffle.api.bytecode.BytecodeFrame,{%%0}>,com.oracle.truffle.api.frame.FrameInstance$FrameAccess,com.oracle.truffle.api.nodes.Node,int,int)
+meth public static com.oracle.truffle.api.bytecode.BytecodeFrame getTop(com.oracle.truffle.api.frame.FrameInstance$FrameAccess,com.oracle.truffle.api.nodes.Node,int)
 meth public void setArgument(int,java.lang.Object)
 meth public void setLocalValue(int,java.lang.Object)
 supr java.lang.Object
@@ -131,6 +131,7 @@ CLSS public abstract com.oracle.truffle.api.bytecode.BytecodeNode
 cons protected init(java.lang.Object)
 meth protected abstract boolean isLocalClearedInternal(com.oracle.truffle.api.frame.Frame,int,int)
 meth protected abstract boolean validateBytecodeIndex(int)
+meth protected abstract com.oracle.truffle.api.bytecode.BytecodeTransition createTransition(com.oracle.truffle.api.bytecode.BytecodeNode,int,com.oracle.truffle.api.bytecode.BytecodeNode,int,boolean)
 meth protected abstract com.oracle.truffle.api.bytecode.Instruction findInstruction(int)
 meth protected abstract com.oracle.truffle.api.frame.Frame resolveFrameImpl(com.oracle.truffle.api.frame.FrameInstance,com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
 meth protected abstract int findBytecodeIndex(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.nodes.Node)
@@ -147,7 +148,6 @@ meth protected com.oracle.truffle.api.frame.Frame resolveFrameImpl(com.oracle.tr
 meth protected com.oracle.truffle.api.frame.Frame resolveNonVirtualFrameImpl(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected double getLocalValueInternalDouble(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected final com.oracle.truffle.api.bytecode.BytecodeLocation findLocation(int)
-meth protected abstract com.oracle.truffle.api.bytecode.BytecodeTransition createTransition(com.oracle.truffle.api.bytecode.BytecodeNode,int,com.oracle.truffle.api.bytecode.BytecodeNode,int,boolean)
 meth protected final static java.lang.Object createDefaultStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected float getLocalValueInternalFloat(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected int getLocalValueInternalInt(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
@@ -285,9 +285,9 @@ meth public abstract boolean isBytecodeUpdate()
 meth public abstract boolean isTransferToInterpreter()
 meth public abstract com.oracle.truffle.api.bytecode.BytecodeLocation getNewLocation()
 meth public abstract com.oracle.truffle.api.bytecode.BytecodeLocation getOldLocation()
-meth public java.lang.String toString()
 meth public abstract java.util.Set<java.lang.Class<?>> getAddedInstrumentations()
 meth public abstract java.util.Set<java.lang.Class<?>> getAddedTags()
+meth public java.lang.String toString()
 supr java.lang.Object
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.ConstantOperand
@@ -1242,3 +1242,4 @@ meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
+

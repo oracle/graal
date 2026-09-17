@@ -1,7 +1,7 @@
 #
 # mx_tools.py - the GraalVM specific commands
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -164,7 +164,12 @@ mx_unittest.register_unittest_config(ToolsUnittestConfig())
 
 def _tools_gate_runner(args, tasks):
     with Task('Tools Signature Tests', tasks) as t:
-        if t: sigtest(['--check', 'binary'])
+        if t:
+            jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
+            if jdk.javaCompliance == '25':
+                sigtest(['--check', 'all'])
+            else:
+                sigtest(['--check', 'binary'])
     with Task('Tools UnitTests', tasks) as t:
         if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--max-class-failures=25'])
 

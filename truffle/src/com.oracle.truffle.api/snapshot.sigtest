@@ -184,9 +184,9 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 innr public abstract interface static !annotation Argument
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean secondarySwitch()
 meth public abstract com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument[] arguments()
 meth public abstract int maximumOperationCode()
-meth public abstract !hasdefault boolean secondarySwitch()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
  outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig
