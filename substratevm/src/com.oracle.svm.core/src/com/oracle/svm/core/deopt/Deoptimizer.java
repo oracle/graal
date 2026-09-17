@@ -789,6 +789,15 @@ public final class Deoptimizer {
         InterpreterJNIUpcallStub,
 
         /**
+         * Custom prologue: preserve the incoming native ABI argument registers and caller stack
+         * pointer across the isolate transition.
+         * <p>
+         * Custom epilogue: restore the native ABI return registers from the interpreter's
+         * thread-local upcall result data.
+         */
+        InterpreterFFMUpcallStub,
+
+        /**
          * Custom prologue: store arguments to stack and allocate variable sized frame.
          * <p>
          * Custom epilogue: prepare stack layout and ABI registers for outgoing call.
@@ -806,7 +815,7 @@ public final class Deoptimizer {
         InterpreterDeoptEntryPointStub;
 
         public boolean isInterpreterStub() {
-            return equals(InterpreterEnterStub) || equals(InterpreterJNIUpcallStub) || equals(InterpreterLeaveStub) || equals(InterpreterNativeDowncallStub);
+            return equals(InterpreterEnterStub) || equals(InterpreterJNIUpcallStub) || equals(InterpreterFFMUpcallStub) || equals(InterpreterLeaveStub) || equals(InterpreterNativeDowncallStub);
         }
     }
 

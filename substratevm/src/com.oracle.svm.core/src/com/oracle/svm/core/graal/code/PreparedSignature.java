@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.util.Arrays;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -37,19 +38,24 @@ import jdk.vm.ci.meta.JavaKind;
  * Each prepared argument type is encoded in a 32-bit integer with the following layout:
  *
  * <pre>
- * 32                               7            5            4                    0
- * +--------------------------------+------------+------------+--------------------+
- * |          value                 | adaptation | isRegister |     JavaKind       |
- * +--------------------------------+------------+------------+--------------------+
+ * 32                              8        7            5            4                    0
+ * +-------------------------------+--------+------------+------------+--------------------+
+ * |          value                | wideFP | adaptation | isRegister |     JavaKind       |
+ * +-------------------------------+--------+------------+------------+--------------------+
  * </pre>
  *
  * The {@code isRegister} bit indicates whether {@code value} is a register index or a byte offset into the
  * stack-argument area. The adaptation specifies how the Java value must be transformed
- * before it is stored at that location. A {@link JavaKind#Void} entry with value zero represents
- * an argument that is skipped. A nonzero value on a {@code Void} entry identifies a special stub
- * location instead of a physical ABI location.
+ * before it is stored at that location. The {@code wideFP} bit is used for buffered FP register
+ * returns whose ABI return-buffer entry contains the complete 16-byte vector register. Without
+ * this bit, an FP return-buffer entry occupies 8 bytes. GP return-buffer entries always occupy
+ * 8 bytes. A {@link JavaKind#Void} entry with value zero represents an argument that is skipped.
+ * A nonzero value on a {@code Void} entry identifies a special stub location instead of a
+ * physical ABI location.
  */
 public final class PreparedSignature {
+
+    public static final int UNKNOWN_STACK_SIZE = -1;
 
     public static final int STUB_LOCATION_TARGET_ADDRESS = 1;
     public static final int STUB_LOCATION_RETURN_BUFFER = 2;
@@ -63,7 +69,8 @@ public final class PreparedSignature {
     private static final int ADAPTATION_BITS = 2;
     private static final int ADAPTATION_SHIFT = REGISTER_SHIFT + 1;
     private static final int ADAPTATION_MASK = (1 << ADAPTATION_BITS) - 1;
-    private static final int VALUE_SHIFT = ADAPTATION_SHIFT + ADAPTATION_BITS;
+    private static final int WIDE_FP_SHIFT = ADAPTATION_SHIFT + ADAPTATION_BITS;
+    private static final int VALUE_SHIFT = WIDE_FP_SHIFT + 1;
     private static final int VALUE_BITS = Integer.SIZE - VALUE_SHIFT;
     private static final int VALUE_MASK = (1 << VALUE_BITS) - 1;
     private static final ArgumentAdaptation[] ARGUMENT_ADAPTATIONS = ArgumentAdaptation.values();
@@ -121,8 +128,15 @@ public final class PreparedSignature {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int encodeArgumentType(JavaKind kind, int value, boolean isRegister, ArgumentAdaptation adaptation) {
+        return encodeArgumentType(kind, value, isRegister, adaptation, false);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static int encodeArgumentType(JavaKind kind, int value, boolean isRegister, ArgumentAdaptation adaptation, boolean wideFpReturn) {
         assert value >= 0 && value <= VALUE_MASK : "Prepared argument value does not fit in its encoding.";
-        return kind.ordinal() | ((isRegister ? 1 : 0) << REGISTER_SHIFT) | (adaptation.ordinal() << ADAPTATION_SHIFT) | (value << VALUE_SHIFT);
+        assert !wideFpReturn || (kind == JavaKind.Double && isRegister) : "Only FP register returns can use a 16-byte return-buffer slot.";
+        return kind.ordinal() | ((isRegister ? 1 : 0) << REGISTER_SHIFT) | (adaptation.ordinal() << ADAPTATION_SHIFT) |
+                        ((wideFpReturn ? 1 : 0) << WIDE_FP_SHIFT) | (value << VALUE_SHIFT);
     }
 
     public static int encodeStubLocation(int stubLocation, ArgumentAdaptation adaptation) {
@@ -148,6 +162,11 @@ public final class PreparedSignature {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static ArgumentAdaptation getArgumentAdaptation(int argType) {
         return ARGUMENT_ADAPTATIONS[(argType >>> ADAPTATION_SHIFT) & ADAPTATION_MASK];
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isWideFpReturn(int argType) {
+        return ((argType >>> WIDE_FP_SHIFT) & 1) != 0;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -179,17 +198,13 @@ public final class PreparedSignature {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static int getDefaultArgumentType() {
-        return 0;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public JavaKind getReturnKind() {
         return returnKind;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getStackSize() {
+        VMError.guarantee(stackSize != UNKNOWN_STACK_SIZE, "Stack size is unknown for this prepared signature.");
         return stackSize;
     }
 }

@@ -37,6 +37,7 @@ import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
 import static jdk.vm.ci.aarch64.AArch64.r11;
+import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.aarch64.AArch64.r19;
 import static jdk.vm.ci.aarch64.AArch64.r2;
 import static jdk.vm.ci.aarch64.AArch64.r3;
@@ -44,6 +45,9 @@ import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
+import static jdk.vm.ci.aarch64.AArch64.v1;
+import static jdk.vm.ci.aarch64.AArch64.v2;
+import static jdk.vm.ci.aarch64.AArch64.v3;
 
 import java.util.List;
 
@@ -68,9 +72,12 @@ import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
+import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -407,6 +414,62 @@ public class AArch64InterpreterStubs {
         }
     }
 
+    /** Captures the complete native argument state for the universal Crema FFM upcall stub. */
+    public static class InterpreterFFMUpcallStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
+        public InterpreterFFMUpcallStubContext(SharedMethod method) {
+            super(method);
+        }
+
+        private static AArch64Address upcallDataAddress(SubstrateAArch64Backend.SubstrateAArch64FrameMap frameMap, int offset) {
+            return createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, frameMap.offsetForStackSlot(frameMap.getInterpreterFFMUpcallData()) + offset);
+        }
+
+        @Override
+        public void enter(CompilationResultBuilder crb) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            SubstrateAArch64Backend.SubstrateAArch64FrameMap frameMap = (SubstrateAArch64Backend.SubstrateAArch64FrameMap) crb.frameMap;
+            SubstrateAArch64RegisterConfig registerConfig = (SubstrateAArch64RegisterConfig) frameMap.getRegisterConfig();
+            List<Register> gps = registerConfig.getJavaGeneralParameterRegs();
+            List<Register> fps = registerConfig.getFloatingPointParameterRegs();
+
+            /* r11 and r12 contain the trampoline metadata and isolate. */
+            super.enter(crb);
+            try (AArch64MacroAssembler.ScratchRegister sc = masm.getScratchRegister()) {
+                Register originalSp = sc.getRegister();
+                masm.add(64, originalSp, sp, frameMap.totalFrameSize());
+                masm.str(64, originalSp, upcallDataAddress(frameMap, offsetAbiSpReg()));
+            }
+            for (int i = 0; i < gps.size(); i++) {
+                masm.str(64, gps.get(i), upcallDataAddress(frameMap, offsetAbiGpArg(i)));
+            }
+            for (int i = 0; i < fps.size(); i++) {
+                masm.fstr(64, fps.get(i), upcallDataAddress(frameMap, offsetAbiFpArg(i)));
+            }
+
+            /* AArch64 uses r8 for the indirect-result address. */
+            masm.str(64, r8, upcallDataAddress(frameMap, offsetAbiGpRet()));
+
+            /* Adapt the trampoline registers and captured frame address to the Java signature. */
+            masm.mov(64, gps.get(0), r11);
+            masm.mov(64, gps.get(1), r12);
+            masm.add(64, gps.get(2), sp, frameMap.offsetForStackSlot(frameMap.getInterpreterFFMUpcallData()));
+        }
+
+        @Override
+        public void leave(CompilationResultBuilder crb) {
+            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+            /* The Java helper returns the thread-local upcall data pointer in r0. */
+            masm.mov(64, r11, r0);
+            masm.ldr(64, r0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiGpArg(0)));
+            masm.ldr(64, r1, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiGpArg(1)));
+            masm.fldr(128, v0, createImmediateAddress(128, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(0)));
+            masm.fldr(128, v1, createImmediateAddress(128, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(2)));
+            masm.fldr(128, v2, createImmediateAddress(128, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(4)));
+            masm.fldr(128, v3, createImmediateAddress(128, IMMEDIATE_UNSIGNED_SCALED, r11, offsetAbiFpArg(6)));
+            super.leave(crb);
+        }
+    }
+
     public static class InterpreterLeaveStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
 
         public InterpreterLeaveStubContext(SharedMethod method) {
@@ -605,10 +668,10 @@ public class AArch64InterpreterStubs {
                 masm.add(64, data, sp, data);
                 masm.str(64, r0, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiGpArg(0)));
                 masm.str(64, r1, createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiGpArg(1)));
-                masm.fstr(64, fps.get(0), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(0)));
-                masm.fstr(64, fps.get(1), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(1)));
-                masm.fstr(64, fps.get(2), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(2)));
-                masm.fstr(64, fps.get(3), createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(3)));
+                masm.fstr(128, fps.get(0), createImmediateAddress(128, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(0)));
+                masm.fstr(128, fps.get(1), createImmediateAddress(128, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(2)));
+                masm.fstr(128, fps.get(2), createImmediateAddress(128, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(4)));
+                masm.fstr(128, fps.get(3), createImmediateAddress(128, IMMEDIATE_SIGNED_UNSCALED, data, offsetAbiFpArg(6)));
                 masm.bind(noReturnBuffer);
 
                 Label gpResult = new Label();
@@ -804,6 +867,22 @@ public class AArch64InterpreterStubs {
     @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
     public static class AArch64InterpreterAccessStubData implements InterpreterAccessStubData {
 
+        /* Stable per-thread ABI state and buffered-return storage for interpreter FFM upcalls. */
+        private static final FastThreadLocalBytes<Pointer> FFM_UPCALL_DATA = FastThreadLocalFactory.createBytes(
+                        () -> sizeOfInterpreterData() + ForeignUpcallPlan.MAX_RETURN_BUFFER_SIZE, "AArch64 interpreter FFM upcall data");
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public Pointer getFFMUpcallData() {
+            return FFM_UPCALL_DATA.getAddress();
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public Pointer getFFMUpcallReturnBuffer(Pointer upcallData) {
+            return upcallData.add(sizeOfInterpreterData());
+        }
+
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public void setSp(Pointer data, Pointer stackBuffer) {
@@ -840,8 +919,9 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public long getGpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getGpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             return switch (pos) {
                 case 0 -> p.getAbiGpArg0();
                 case 1 -> p.getAbiGpArg1();
@@ -851,6 +931,7 @@ public class AArch64InterpreterStubs {
                 case 5 -> p.getAbiGpArg5();
                 case 6 -> p.getAbiGpArg6();
                 case 7 -> p.getAbiGpArg7();
+                case 8 -> p.getAbiGpRet();
                 default -> {
                     VMError.guarantee(PreparedSignature.isStackSlot(cArgType));
                     Pointer spVal = Word.pointer(p.getAbiSpReg());
@@ -861,8 +942,9 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAt(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+        public void setGpArgumentAt(int cArgType, Pointer data, long val, boolean incoming) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (pos >= 0 && pos <= 7) {
                 VMError.guarantee(PreparedSignature.isRegister(cArgType));
                 switch (pos) {
@@ -889,7 +971,8 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = REASON_RAW_POINTER, callerMustBe = true)
-        public void setGpArgumentAtNative(int cArgType, Pointer data, int pos, long val, boolean incoming) {
+        public void setGpArgumentAtNative(int cArgType, Pointer data, long val, boolean incoming) {
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             if (PreparedSignature.isRegister(cArgType) && pos == 8) {
                 /*
                  * AArch64 uses r8 for the indirect-result address. Store it in the otherwise
@@ -899,13 +982,14 @@ public class AArch64InterpreterStubs {
                 ((InterpreterDataAArch64) data).setAbiGpRet(val);
                 return;
             }
-            setGpArgumentAt(cArgType, data, pos, val, incoming);
+            setGpArgumentAt(cArgType, data, val, incoming);
         }
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public long getFpArgumentAt(int cArgType, Pointer data, int pos) {
+        public long getFpArgumentAt(int cArgType, Pointer data) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             return switch (pos) {
                 case 0 -> p.getAbiFpArg0();
                 case 1 -> p.getAbiFpArg1();
@@ -925,8 +1009,9 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public void setFpArgumentAt(int cArgType, Pointer data, int pos, long val) {
+        public void setFpArgumentAt(int cArgType, Pointer data, long val) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            int pos = PreparedSignature.isRegister(cArgType) ? PreparedSignature.getRegister(cArgType) : -1;
             switch (pos) {
                 case 0 -> p.setAbiFpArg0(val);
                 case 1 -> p.setAbiFpArg1(val);
@@ -987,15 +1072,38 @@ public class AArch64InterpreterStubs {
 
         @Override
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public long getFpResultAt(Pointer data, int index) {
+        public long getFpResultLaneAt(Pointer data, int registerIndex, int laneIndex) {
             InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
-            return switch (index) {
+            VMError.guarantee(laneIndex >= 0 && laneIndex < 2);
+            return switch (registerIndex * 2 + laneIndex) {
                 case 0 -> p.getAbiFpArg0();
                 case 1 -> p.getAbiFpArg1();
                 case 2 -> p.getAbiFpArg2();
                 case 3 -> p.getAbiFpArg3();
+                case 4 -> p.getAbiFpArg4();
+                case 5 -> p.getAbiFpArg5();
+                case 6 -> p.getAbiFpArg6();
+                case 7 -> p.getAbiFpArg7();
                 default -> throw VMError.shouldNotReachHereAtRuntime();
             };
+        }
+
+        @Override
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public void setFpResultLaneAt(Pointer data, int registerIndex, int laneIndex, long value) {
+            InterpreterDataAArch64 p = (InterpreterDataAArch64) data;
+            VMError.guarantee(laneIndex >= 0 && laneIndex < 2);
+            switch (registerIndex * 2 + laneIndex) {
+                case 0 -> p.setAbiFpArg0(value);
+                case 1 -> p.setAbiFpArg1(value);
+                case 2 -> p.setAbiFpArg2(value);
+                case 3 -> p.setAbiFpArg3(value);
+                case 4 -> p.setAbiFpArg4(value);
+                case 5 -> p.setAbiFpArg5(value);
+                case 6 -> p.setAbiFpArg6(value);
+                case 7 -> p.setAbiFpArg7(value);
+                default -> throw VMError.shouldNotReachHereAtRuntime();
+            }
         }
 
         @Override

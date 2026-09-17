@@ -54,7 +54,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PreparedSignature;
@@ -867,7 +866,7 @@ class ABIs {
 
         @Override
         public Registers upcallSpecialArgumentsRegisters() {
-            return new Registers(SubstrateAArch64MacroAssembler.scratch1, SubstrateAArch64MacroAssembler.scratch2);
+            return new Registers(AArch64.r11, AArch64.r12);
         }
 
         @Override
@@ -920,7 +919,7 @@ class ABIs {
                     VMError.guarantee(index >= 0 && index < (forReturn ? 4 : 8), "Unsupported AArch64 FP register assignment");
                     JavaKind locationKind = forReturn ? JavaKind.Double : kind;
                     VMError.guarantee(adaptation == ArgumentAdaptation.NONE, "Unexpected adaptation for an AArch64 FP register");
-                    yield PreparedSignature.encodeArgumentType(locationKind, index, true, adaptation);
+                    yield PreparedSignature.encodeArgumentType(locationKind, index, true, adaptation, forReturn);
                 }
                 case AArch64Architecture.StorageType.STACK -> {
                     if (forReturn) {
@@ -960,25 +959,27 @@ class ABIs {
             masm.emitLong(0x9999_aaaa_bbbb_ccccL);
 
             masm.bind(loadIsolate);
-            /* r10 contains the isolate address */
+            /* r12 contains the isolate address */
             masm.ldr(64, isolateRegister, AArch64Address.createPCLiteralAddress(64, posIsolate - masm.position()));
 
             masm.ldr(64, mhRegister, AArch64Address.createPCLiteralAddress(64, posMHArray - masm.position()));
-            /* r9 contains the method handle */
+            /* r11 contains the method handle */
             masm.ldr(64, mhRegister, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, mhRegister, 0));
 
             /*
              * NOTE: do not use r8, it's part of the CallArranger ABI ("indirect result register"),
-             * also do not use scratch registers (r9/r10 on SVM).
+             * or either of the special argument registers.
              */
-            Register scratch = AArch64.r11;
-            assert !scratch.equals(mhRegister) && !scratch.equals(isolateRegister);
-            masm.ldr(64, scratch, AArch64Address.createPCLiteralAddress(64, posCallTarget - masm.position()));
-            /* deref it */
-            masm.ldr(64, scratch, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, scratch, 0));
+            try (AArch64MacroAssembler.ScratchRegister sc = masm.getScratchRegister()) {
+                Register scratch = sc.getRegister();
+                assert !scratch.equals(mhRegister) && !scratch.equals(isolateRegister);
+                masm.ldr(64, scratch, AArch64Address.createPCLiteralAddress(64, posCallTarget - masm.position()));
+                /* deref it */
+                masm.ldr(64, scratch, AArch64Address.createImmediateAddress(64, IMMEDIATE_SIGNED_UNSCALED, scratch, 0));
 
-            /* jump into the target */
-            masm.jmp(scratch);
+                /* jump into the target */
+                masm.jmp(scratch);
+            }
 
             assert trampolineSize() >= masm.position();
 
@@ -1114,7 +1115,7 @@ class ABIs {
                     VMError.guarantee(index >= 0 && index < count, "Unsupported AMD64 FP register assignment");
                     JavaKind locationKind = forReturn ? JavaKind.Double : kind;
                     VMError.guarantee(adaptation == ArgumentAdaptation.NONE, "Unexpected adaptation for an AMD64 FP register");
-                    yield PreparedSignature.encodeArgumentType(locationKind, index, true, adaptation);
+                    yield PreparedSignature.encodeArgumentType(locationKind, index, true, adaptation, forReturn);
                 }
                 case X86_64Architecture.StorageType.STACK -> {
                     if (forReturn) {
