@@ -49,6 +49,9 @@ public final class GraalOptions {
                    "This can clean up the intermediate representation and simplify later optimizations. ", type = OptionType.Expert)
     public static final OptionKey<Boolean> EarlyGVN = new OptionKey<>(true);
 
+    @Option(help = "Tries to improve code generation by making checkcast operations better optimizable early in the compilation pipeline.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> EarlyExpandCheckCast = new OptionKey<>(true);
+
     @Option(help = "Performs early loop-invariant code motion.", type = OptionType.Expert)
     public static final OptionKey<Boolean> EarlyLICM = new OptionKey<>(true);
 

@@ -123,6 +123,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, true, true);
@@ -140,6 +141,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, false, false);
@@ -152,6 +154,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
     }
 
     @Test

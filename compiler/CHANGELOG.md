@@ -14,6 +14,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 * (GR-79585): Added an optimization that replaces eligible loop-carried memory reads with value
   phis, allowing invariant reads to move out of the loop. The optimization is enabled by default
   and can be disabled with `-Djdk.graal.OptimizeLoopAccesses=false`.
+* (GR-79597): Added early checkcast expansion to expose null and type checks as control flow for
+  subsequent optimizations. It is enabled by default and can be disabled with
+  `-Djdk.graal.EarlyExpandCheckCast=false`.
 
 ## GraalVM 25.4 (Internal Version 25.4.4.1.1)
 * (GR-79031): Added strip mining for counted and non-counted loops, loop inversion, loop rotation,
