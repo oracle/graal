@@ -26,6 +26,8 @@ package com.oracle.svm.interpreter.ristretto.profile;
 
 import java.util.concurrent.Callable;
 
+import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
@@ -36,6 +38,11 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.InstalledCode;
 
 public class RistrettoCompilationRequest implements Comparable<RistrettoCompilationRequest>, Callable<InstalledCode> {
+    /** Protects completion publication and per-request waiter counts. */
+    private static final VMMutex COMPLETION_WAITERS_MUTEX = new VMMutex("ristrettoCompilationCompletionWaiters");
+    /** Wakes completion waiters, which recheck the predicate of their own request. */
+    private static final VMCondition COMPLETION_WAITERS_CONDITION = new VMCondition(COMPLETION_WAITERS_MUTEX, "ristrettoCompilationCompletion");
+
     /**
      * Default priority for any graal top tier compilation.
      */
@@ -56,6 +63,12 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
      * Queue ordering key; lower values are consumed first by the compilation manager.
      */
     private final int priority;
+
+    /** One-way publication bit for a request that can no longer install code. */
+    private volatile boolean completed;
+
+    /** Waiters registered for this request while it is incomplete. Guarded by {@link #COMPLETION_WAITERS_MUTEX}. */
+    private int completionWaiterCount;
 
     /**
      * Entry BCI for this compilation.
@@ -201,6 +214,78 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
     }
 
     /**
+     * Publishes that this request can no longer install code and releases all blocking Xcomp or
+     * Xbatch callers. Completion is idempotent so shutdown cleanup can safely race with ordinary
+     * compiler-thread cleanup; ownership is cleared only if this request is still current.
+     */
+    void markCompleted() {
+        if (rMethod != null && !isOSR()) {
+            rMethod.clearInvocationCompilationRequest(this);
+        }
+        COMPLETION_WAITERS_MUTEX.lock();
+        try {
+            completed = true;
+            if (completionWaiterCount > 0) {
+                COMPLETION_WAITERS_CONDITION.broadcast();
+            }
+        } finally {
+            COMPLETION_WAITERS_MUTEX.unlock();
+        }
+    }
+
+    /**
+     * Cancels a request that will not be executed, restores its invocation or OSR state to a
+     * retryable state, and releases completion waiters. This is used when submission is refused or
+     * shutdown removes the request from the queue.
+     */
+    void cancelBeforeExecution() {
+        if (rMethod != null) {
+            onCompilationFailure();
+        }
+        markCompleted();
+    }
+
+    /** Returns whether this request has finished processing or was cancelled before execution. */
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    int completionWaiterCount() {
+        COMPLETION_WAITERS_MUTEX.lock();
+        try {
+            return completionWaiterCount;
+        } finally {
+            COMPLETION_WAITERS_MUTEX.unlock();
+        }
+    }
+
+    /**
+     * Waits until this request has finished processing or was cancelled, without consuming a
+     * guest-level park permit.
+     */
+    public void awaitCompletion() {
+        if (completed) {
+            return;
+        }
+        COMPLETION_WAITERS_MUTEX.lock();
+        try {
+            if (completed) {
+                return;
+            }
+            completionWaiterCount++;
+            try {
+                while (!completed) {
+                    COMPLETION_WAITERS_CONDITION.block();
+                }
+            } finally {
+                completionWaiterCount--;
+            }
+        } finally {
+            COMPLETION_WAITERS_MUTEX.unlock();
+        }
+    }
+
+    /**
      * Records a Graal bailout that declared this request non-retryable.
      */
     private void onPermanentBailout() {
@@ -218,7 +303,7 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
         if (isOSR()) {
             rMethod.onOSRCompilationFailure(entryBCI, osrCompilationRequestId);
         } else {
-            rMethod.onCompilationFailure();
+            rMethod.onCompilationFailure(this);
         }
     }
 }

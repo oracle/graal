@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.ristretto.meta;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
@@ -50,6 +51,7 @@ import com.oracle.svm.interpreter.ristretto.RistrettoConstants;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoSpeculationLog;
+import com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationRequest;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoDiagnostics;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfilingInfo;
@@ -117,6 +119,14 @@ public final class RistrettoMethod extends SubstrateMethod {
      */
     public volatile int compilationState = RistrettoConstants.COMPILE_STATE_INIT_VAL;
 
+    /**
+     * Number of invocation-entry compilation claims made for this method.
+     *
+     * The counter is incremented when a caller wins the compilation-state transition, before the
+     * compilation is submitted, and is not reset by compilation failure or code invalidation. Xcomp
+     * may force only the first claim; later compilation attempts are driven by ordinary interpreter
+     * profiling. OSR compilation attempts are tracked separately per backedge.
+     */
     private volatile int compilationAttempts;
 
     /**
@@ -126,6 +136,20 @@ public final class RistrettoMethod extends SubstrateMethod {
      * state so older installed-code objects cannot clobber newer compilations.
      */
     public volatile SubstrateInstalledCodeImpl installedCode;
+
+    /**
+     * Request that won the invocation-entry compilation claim for this method.
+     *
+     * The winner first changes the compilation state to {@code COMPILE_STATE_SUBMITTED} and then
+     * publishes this reference through {@link #setInvocationCompilationRequest(RistrettoCompilationRequest)}.
+     * During that short publication window, a caller that loses the claim spins until the request
+     * is published or the compilation state changes, instead of submitting duplicate work. Once
+     * published, it obtains the request through {@link #getInvocationCompilationRequest()} and waits
+     * for its completion. Completion clears the reference through
+     * {@link #clearInvocationCompilationRequest(RistrettoCompilationRequest)}. The compare-and-set
+     * prevents an older request from clearing a newer retry.
+     */
+    private volatile RistrettoCompilationRequest invocationCompilationRequest;
 
     /** Serializes invocation-entry code publication with invalidation of the published code. */
     private final Object invocationPublicationLock = new Object();
@@ -169,6 +193,9 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     private static final AtomicReferenceFieldUpdater<RistrettoMethod, SubstrateInstalledCodeImpl> INSTALLED_CODE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RistrettoMethod.class,
                     SubstrateInstalledCodeImpl.class, "installedCode");
+
+    private static final AtomicReferenceFieldUpdater<RistrettoMethod, RistrettoCompilationRequest> INVOCATION_COMPILATION_REQUEST_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    RistrettoMethod.class, RistrettoCompilationRequest.class, "invocationCompilationRequest");
 
     /*
      * The speculation log belongs to the RistrettoMethod, not to one RistrettoInstalledCode object.
@@ -275,27 +302,93 @@ public final class RistrettoMethod extends SubstrateMethod {
      * Atomically claims the right to submit one invocation-entry compilation for this method.
      */
     public boolean claimInvocationEntryCompilation() {
-        if (RistrettoProfileSupport.COMPILATION_STATE_UPDATER.get(this) != RistrettoConstants.COMPILE_STATE_INTERPRETED) {
+        return claimInvocationEntryCompilation(RistrettoConstants.COMPILE_STATE_INTERPRETED, false);
+    }
+
+    /// Atomically claims the right to submit an Xcomp invocation-entry compilation.
+    public boolean claimXCompCompilation() {
+        int state = RistrettoProfileSupport.COMPILATION_STATE_UPDATER.get(this);
+        if (state != RistrettoConstants.COMPILE_STATE_INIT_VAL && state != RistrettoConstants.COMPILE_STATE_INTERPRETED) {
             return false;
         }
+        if (compilationAttempts != 0) {
+            return false;
+        }
+        TestingBackdoor.runBeforeXCompCompilationClaim();
+        return claimInvocationEntryCompilation(state, true);
+    }
+
+    private boolean claimInvocationEntryCompilation(int expectedState, boolean firstAttemptOnly) {
         if (compilationAttempts >= RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS) {
-            if (RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, RistrettoConstants.COMPILE_STATE_INTERPRETED,
+            if (RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, expectedState,
                             RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS_REACHED)) {
                 RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing,
                                 "[Ristretto Method]Invocation-entry compilation retry limit reached for %s after %s attempts%n", this, compilationAttempts);
             }
             return false;
         }
-        if (RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, RistrettoConstants.COMPILE_STATE_INTERPRETED,
+        if (RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, expectedState,
                         RistrettoConstants.COMPILE_STATE_SUBMITTED)) {
+            /*
+             * The state transition gives this caller exclusive claim ownership. Revalidate the
+             * first-attempt condition here to close an ABA window: another caller may have claimed,
+             * failed, and reopened INTERPRETED after this caller's initial check. No request has
+             * been published yet, so a stale Xcomp claimant can safely restore the state without
+             * consuming another attempt.
+             */
+            if (firstAttemptOnly && compilationAttempts != 0) {
+                VMError.guarantee(RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, RistrettoConstants.COMPILE_STATE_SUBMITTED, expectedState),
+                                "Only the Xcomp claim owner can reopen an unpublished compilation state");
+                return false;
+            }
             COMPILATION_ATTEMPTS_UPDATER.incrementAndGet(this);
             return true;
         }
         return false;
     }
 
+    /// Records the request currently compiling this method's invocation entry.
+    public void setInvocationCompilationRequest(RistrettoCompilationRequest request) {
+        INVOCATION_COMPILATION_REQUEST_UPDATER.set(this, request);
+    }
+
+    /// Returns the request currently compiling this method's invocation entry, or `null`.
+    public RistrettoCompilationRequest getInvocationCompilationRequest() {
+        return invocationCompilationRequest;
+    }
+
+    /// Clears invocation-entry ownership only when `request` is still the current owner.
+    public void clearInvocationCompilationRequest(RistrettoCompilationRequest request) {
+        INVOCATION_COMPILATION_REQUEST_UPDATER.compareAndSet(this, request, null);
+    }
+
     public int getCompilationAttempts() {
         return compilationAttempts;
+    }
+
+    public static final class TestingBackdoor {
+        private static final AtomicReference<Runnable> beforeXCompCompilationClaim = new AtomicReference<>();
+
+        private TestingBackdoor() {
+        }
+
+        /** Installs a hook immediately before an Xcomp caller attempts to claim compilation state. */
+        public static void installBeforeXCompCompilationClaimHook(Runnable hook) {
+            if (!beforeXCompCompilationClaim.compareAndSet(null, hook)) {
+                throw new IllegalStateException("A before-Xcomp-claim hook is already installed.");
+            }
+        }
+
+        public static void clearBeforeXCompCompilationClaimHook() {
+            beforeXCompCompilationClaim.set(null);
+        }
+
+        private static void runBeforeXCompCompilationClaim() {
+            Runnable hook = beforeXCompCompilationClaim.get();
+            if (hook != null) {
+                hook.run();
+            }
+        }
     }
 
     /**
@@ -469,6 +562,12 @@ public final class RistrettoMethod extends SubstrateMethod {
             if (installCode) {
                 INSTALLED_CODE_UPDATER.set(this, code);
             }
+            /*
+             * Retire this request before publishing COMPILED: invalidation can reopen compilation
+             * before manager completion, and a retry must not expose the old request. Callers that
+             * already captured it still wait for its completion.
+             */
+            INVOCATION_COMPILATION_REQUEST_UPDATER.set(this, null);
             if (!RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, RistrettoConstants.COMPILE_STATE_SUBMITTED,
                             RistrettoConstants.COMPILE_STATE_COMPILED)) {
                 if (installCode) {
@@ -483,15 +582,40 @@ public final class RistrettoMethod extends SubstrateMethod {
     }
 
     /**
-     * Restores interpreter profiling after a queued compilation failed.
+     * Restores interpreter profiling after compilation-request preparation or a queued compilation
+     * failed.
      *
-     * Failed background compilations must not leave the method stuck in
+     * Failed submission preparation and background compilations must not leave the method stuck in
      * {@code COMPILE_STATE_SUBMITTED}, otherwise profiling would stop permanently.
      */
     public void onCompilationFailure() {
+        onCompilationFailure(null);
+    }
+
+    /**
+     * Restores interpreter profiling after a retryable failure from {@code request}.
+     *
+     * <p>
+     * A request-aware caller clears only its own ownership record before reopening the state. The
+     * no-argument form is also used when submission preparation fails before a request is
+     * published, and remains available for white-box state-machine tests that intentionally do not
+     * create a request object.
+     */
+    public void onCompilationFailure(RistrettoCompilationRequest request) {
         int nextState = compilationAttempts >= RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS ? RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS_REACHED
                         : RistrettoConstants.COMPILE_STATE_INTERPRETED;
         while (RistrettoProfileSupport.COMPILATION_STATE_UPDATER.get(this) == RistrettoConstants.COMPILE_STATE_SUBMITTED) {
+            if (request != null && getInvocationCompilationRequest() != request) {
+                return;
+            }
+            /*
+             * Remove this epoch's owner before reopening compilation. Otherwise a retry can publish
+             * SUBMITTED while an Xcomp caller still observes this completed request from the prior
+             * epoch and returns before the retry has finished.
+             */
+            if (request != null) {
+                clearInvocationCompilationRequest(request);
+            }
             if (RistrettoProfileSupport.COMPILATION_STATE_UPDATER.compareAndSet(this, RistrettoConstants.COMPILE_STATE_SUBMITTED, nextState)) {
                 return;
             }

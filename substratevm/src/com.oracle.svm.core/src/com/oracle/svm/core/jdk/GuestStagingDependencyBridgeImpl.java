@@ -181,6 +181,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public boolean useRistretto() {
+        return SubstrateOptions.useRistretto();
+    }
+
+    @Override
     public void enableTraceClassLoading() {
         RuntimeClassLoading.Options.TraceClassLoading.update(true);
     }

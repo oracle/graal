@@ -214,6 +214,13 @@ public interface GuestStagingDependencyBridge {
     boolean isRuntimeClassLoadingSupported();
 
     /**
+     * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useRistretto()}.
+     * <p>
+     * Remove this method when Ristretto options move to guest/staging.
+     */
+    boolean useRistretto();
+
+    /**
      * Enables tracing of class loading. Enabled through {@code --verbose} or {@code --verbose:class}.
      * <p>
      * Remove this method when runtime class loading (aka Crema) options move to guest/staging.

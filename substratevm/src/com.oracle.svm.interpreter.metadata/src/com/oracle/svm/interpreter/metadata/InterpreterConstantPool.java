@@ -270,10 +270,28 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             case DOUBLE -> JavaConstant.forDouble(this.doubleAt(cpi));
             case STRING -> SubstrateObjectConstant.forObject(resolvedAt(cpi, holder));
             case CLASS -> objAt(cpi);
-            case METHODHANDLE, METHODTYPE -> SubstrateObjectConstant.forObject(queryConstantPool(cpi, resolve));
-            case DYNAMIC -> {
-                if (!resolve && objAt(cpi) == null) {
+            case METHODHANDLE, METHODTYPE -> {
+                /*
+                 * A non-resolving JVMCI lookup reports a cold entry as null. Do not wrap the cache
+                 * miss as the object constant representing Java null.
+                 */
+                Object ret = queryConstantPool(cpi, resolve);
+                if (ret == null) {
                     yield null;
+                }
+                yield SubstrateObjectConstant.forObject(ret);
+            }
+            case DYNAMIC -> {
+                if (!resolve) {
+                    /*
+                     * Only a successfully published dynamic value is visible to a non-resolving
+                     * lookup. A cold entry and StickyConstantError both remain interpreter-owned
+                     * linkage state.
+                     */
+                    Object cachedEntry = objAt(cpi);
+                    if (cachedEntry == null || cachedEntry instanceof StickyConstantError) {
+                        yield null;
+                    }
                 }
                 Object ret = resolvedDynamicConstantAt(cpi, getHolder());
                 yield switch (CremaTypeAccess.symbolToJvmciKind(dynamicType(cpi))) {

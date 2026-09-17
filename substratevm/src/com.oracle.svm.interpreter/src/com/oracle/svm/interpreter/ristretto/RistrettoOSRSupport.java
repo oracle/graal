@@ -116,7 +116,8 @@ public final class RistrettoOSRSupport {
         if (backedgeCount > osrThreshold && RistrettoOptions.matchesJITCompileOnly(method)) {
             int requestId = rMethod.claimOSRCompilationRequest(targetBCI);
             if (requestId != RistrettoMethod.NO_OSR_COMPILATION_REQUEST) {
-                RistrettoCompilationManager.get().submitCompilationRequest(new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_OSR_COMPILATION_PRIORITY, targetBCI,
+                RistrettoCompilationManager.get().submitCompilationRequestForCurrentMode(new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_OSR_COMPILATION_PRIORITY,
+                                targetBCI,
                                 requestId));
             }
         }

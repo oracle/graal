@@ -21,6 +21,17 @@ A typical way to address this is to use `-H:Preserve=package=...` at build time 
 
 To enable just-in-time (JIT) compilation of run-time-loaded bytecode, use `-H:+GraalJITCompileAtRuntime`.
 
+### Runtime Compilation Mode Options
+
+Ristretto-enabled images recognize the HotSpot-style run-time options `-Xint`, `-Xmixed`, and
+`-Xcomp`. `-Xint` disables run-time compilation and uses the interpreter; `-Xmixed` enables
+threshold-based mixed execution; and `-Xcomp` compiles before first invocation. If more than one
+of these mode options is present, they are processed in command-line order and the last one wins.
+
+`-Xbatch` is independent of the selected mode. It makes callers wait for scheduled compilation,
+including on-stack replacement compilation. If run-time compilation is disabled or a compilation
+fails, Ristretto continues execution in the interpreter.
+
 ## Resource URLs
 The semantics of the internal `resource:` URL depends on `ClassForNameRespectsClassLoader`:
 * `-H:-ClassForNameRespectsClassLoader`: the host part of the URL is the module name, matching the legacy resource lookup scheme.
