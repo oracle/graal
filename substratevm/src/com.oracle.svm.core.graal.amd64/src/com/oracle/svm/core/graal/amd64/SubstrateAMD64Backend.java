@@ -2248,7 +2248,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAMD64FrameMap) frameMap).allocateInterpreterJNIUpcallData();
             }
-            if (stubType == Deoptimizer.StubType.InterpreterFFMUpcallStub) {
+            if (stubType == DeoptStub.StubType.InterpreterFFMUpcallStub) {
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAMD64FrameMap) frameMap).allocateInterpreterFFMUpcallData();
             }

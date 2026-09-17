@@ -2121,7 +2121,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterJNIUpcallData();
             }
-            if (stubType == Deoptimizer.StubType.InterpreterFFMUpcallStub) {
+            if (stubType == DeoptStub.StubType.InterpreterFFMUpcallStub) {
                 assert InterpreterSupport.isEnabled();
                 ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterFFMUpcallData();
             }

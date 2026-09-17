@@ -28,6 +28,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class HostedModuleSupport {
     public static final String MODULE_SET_ALL_DEFAULT = "ALL-DEFAULT";
@@ -55,13 +57,19 @@ public final class HostedModuleSupport {
                     "org.graalvm.truffle.compiler",
                     "org.graalvm.word");
 
-    public static final Set<String> GUEST_MODULES = Set.of(
+    public static final Set<String> STANDARD_GUEST_MODULES = Set.of(
                     "org.graalvm.nativeimage.guest",
                     "org.graalvm.nativeimage.guest.staging",
-                    "org.graalvm.nativeimage.shared",
+                    "org.graalvm.nativeimage.shared");
+    public static final Set<String> JVMCI_GUEST_MODULES = Set.of(
                     "org.graalvm.nativeimage.jvmci.guest",
                     "org.graalvm.nativeimage.jvmci.guest.staging",
                     "org.graalvm.nativeimage.jvmci.shared");
+    public static final Set<String> GUEST_MODULES = Stream.concat(STANDARD_GUEST_MODULES.stream(), JVMCI_GUEST_MODULES.stream()).collect(Collectors.toUnmodifiableSet());
+    public static final Set<String> JVMCI_GUEST_JARS = Set.of(
+                    "svm-jvmci-guest.jar",
+                    "svm-jvmci-guest-staging.jar",
+                    "svm-jvmci-shared.jar");
 
     public static Set<String> parseModuleSetModifierProperty(String prop) {
         Set<String> specifiedModules = new HashSet<>(); // noEconomicSet(streaming)
