@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.5
+* GR-71613: Added `CompilerDirectives.mergeExplodeKey` method for explicitly marking a local variable as a key for `@ExplodeLoop(MERGE_EXPLODE)` methods. It is recommended to migrate all merge exploded loops to use this method to catch unintended graph size explosions.
+
 ## Version 25.4
 * GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.
 * GR-77721: Removed Truffle Strings methods deprecated in 23.0 or earlier.
@@ -95,7 +98,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44829: `TruffleString` nodes no longer profile the `expectedEncoding` parameter for interpreter performance reasons. Languages with non-constant string encodings should profile the encoding before passing it to `TruffleString` nodes.
 * GR-75002: Specialization DSL: Handwritten `inline(InlineTarget)` methods are now preferred over synthesized generated inline signatures when resolving inlined caches. Generated inline metadata now preserves public node subtypes for `ReferenceField`-backed fields, while non-public or generated helper node types continue to use generic `Node`/`Node[]` types. If you need stable inline APIs, you can continue to pin `ReferenceField` requirements to a stable public supertype such as `Node` in a handwritten `inline` method.
 * GR-57579: Added `TruffleString.ByteIndexOfStringSetNode` for fast multi-string searches.
-* GR-71613: Added `CompilerDirectives.mergeExplodeKey` method for explicitly marking a local variable as a key for `@ExplodeLoop(MERGE_EXPLODE)` methods. It is recommended to migrate all merge exploded loops to use this method to catch unintended graph size explosions.
 
 * GR-61161: Bytecode DSL: Added support for basic instruction rewriting. At bytecode build time, the builder can perform peephole optimization to remove redundant loads. This new optimization can be configured using `@GenerateBytecode(enableInstructionRewriting=true|false)`.
 * GR-71765: Bytecode DSL: Added support for specifying an illegal local exception via `@GenerateBytecode(illegalLocalException=SomeException.class)`. This configures the interpreter to throw a custom exception when loading a cleared local, as an alternative to the default behaviour (throwing a `FrameSlotTypeException`). This option is mutually exclusive with the default local value option (`@GenerateBytecode(defaultLocalValue = "someValue")`).

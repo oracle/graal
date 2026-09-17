@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -567,6 +568,20 @@ public class GraphDecoder {
         public final EconomicMap<LoopExplosionKey, LoopExplosionState> iterationStates;
 
         /**
+         * Replacement values for key markers. A marker must remain visible until its path has been
+         * {@linkplain #computeMergeKeyFilter recorded}, after which this map lets loop-scope lookups resolve
+         * stale marker references.
+         */
+        public final EconomicMap<LoopExplosionKeyNode, ValueNode> loopExplosionKeyReplacements;
+
+        /**
+         * Key markers for which path discovery has completed. Before a marker is in this set,
+         * {@link LoopScope#getNode(int)} must return the marker so it can be found in the loop
+         * header frame state.
+         */
+        public final EconomicSet<LoopExplosionKeyNode> loopExplosionKeyReplacementsEnabled;
+
+        /**
          * The start of explosion, and the merge point for when irreducible loops are detected. Only
          * used when {@link MethodScope#loopExplosion} is
          * {@link jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind#MERGE_EXPLODE}.
@@ -662,6 +677,8 @@ public class GraphDecoder {
 
             loopExplosionMerges = loopExplosion.useExplosion() ? EconomicSet.create(Equivalence.IDENTITY) : null;
             iterationStates = loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.DEFAULT) : null;
+            loopExplosionKeyReplacements = loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.IDENTITY) : null;
+            loopExplosionKeyReplacementsEnabled = loopExplosion.mergeLoops() ? EconomicSet.create(Equivalence.IDENTITY) : null;
         }
 
         public final boolean isInlinedMethod() {
@@ -871,12 +888,27 @@ public class GraphDecoder {
          *         the created nodes. Otherwise, it is read form the initial nodes.
          */
         public Node getNode(int nodeOrderId) {
+            Node node;
             if (writtenNodes == null || writtenNodes.get(nodeOrderId)) {
-                return createdNodes[nodeOrderId];
+                node = createdNodes[nodeOrderId];
             } else {
                 assert initialCreatedNodes != null : "Initial nodes not initialized when using written set inside loop scope";
-                return initialCreatedNodes[nodeOrderId];
+                node = initialCreatedNodes[nodeOrderId];
             }
+            /*
+             * Key markers have two phases. Before path discovery, the marker must be returned so
+             * that computeMergeKeyFilter can find it in the loop header frame state. Afterwards,
+             * other loop scopes can still contain the marker in their node arrays, so resolve those
+             * stale references to the cached value. The cached value also remains available if the
+             * marker has already been deleted.
+             */
+            if (node instanceof LoopExplosionKeyNode keyNode && methodScope.loopExplosionKeyReplacements != null) {
+                Node replacement = methodScope.loopExplosionKeyReplacements.get(keyNode);
+                if (replacement != null && (!keyNode.isAlive() || methodScope.loopExplosionKeyReplacementsEnabled.contains(keyNode))) {
+                    return replacement;
+                }
+            }
+            return node;
         }
 
         /**
@@ -983,23 +1015,46 @@ public class GraphDecoder {
          * entry.
          */
         private final List<int[]> slotPaths;
+        /** Marker nodes corresponding to the paths in {@link #slotPaths}. */
+        private final EconomicSet<LoopExplosionKeyNode> markerNodes;
 
-        private LoopExplosionMergeKeyFilter(List<int[]> slotPaths) {
+        private LoopExplosionMergeKeyFilter(List<int[]> slotPaths, EconomicSet<LoopExplosionKeyNode> markerNodes) {
+            assert !slotPaths.isEmpty();
+            assert slotPaths.stream().allMatch(path -> path.length > 0 && IntStream.of(path).allMatch(i -> i >= 0));
             this.slotPaths = slotPaths;
+            this.markerNodes = markerNodes;
         }
 
-        static LoopExplosionMergeKeyFilter create(LoopScope loopScope, FrameState frameState) {
+        static LoopExplosionMergeKeyFilter create(FrameState frameState) {
             List<int[]> slotPaths = new ArrayList<>();
             NodeInputList<ValueNode> values = frameState.values();
+            boolean hasVirtualObjects = values.filter(VirtualObjectNode.class).isNotEmpty();
+            EconomicSet<LoopExplosionKeyNode> markerNodes = EconomicSet.create(Equivalence.IDENTITY);
+            if (!hasVirtualObjects) {
+                // fast-path for the case where there are no virtual objects
+                for (int i = 0; i < values.size(); i++) {
+                    if (values.get(i) instanceof LoopExplosionKeyNode keyNode) {
+                        markerNodes.add(keyNode);
+                        slotPaths.add(new int[]{i});
+                    }
+                }
+                return slotPaths.isEmpty() ? null : new LoopExplosionMergeKeyFilter(slotPaths, markerNodes);
+            }
+            EconomicSet<VirtualObjectNode> activeObjects = EconomicSet.create(Equivalence.IDENTITY);
+            EconomicMap<VirtualObjectNode, List<int[]>> markerPaths = EconomicMap.create(Equivalence.IDENTITY);
+            EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates = createVirtualObjectStateIndex(frameState);
             for (int i = 0; i < values.size(); i++) {
-                ArrayList<Integer> currentPath = new ArrayList<>(4);
-                currentPath.add(i);
-                collectSlotPaths(slotPaths, loopScope, frameState, values.get(i), currentPath, new ArrayList<>(2));
+                for (int[] markerPath : collectMarkerPaths(values.get(i), virtualObjectStates, activeObjects, markerPaths, markerNodes)) {
+                    int[] path = new int[markerPath.length + 1];
+                    path[0] = i;
+                    System.arraycopy(markerPath, 0, path, 1, markerPath.length);
+                    slotPaths.add(path);
+                }
             }
             if (slotPaths.isEmpty()) {
                 return null;
             }
-            return new LoopExplosionMergeKeyFilter(slotPaths);
+            return new LoopExplosionMergeKeyFilter(slotPaths, markerNodes);
         }
 
         /**
@@ -1007,51 +1062,66 @@ public class GraphDecoder {
          * any {@link LoopExplosionKeyNode} reachable from the given {@code value}.
          * <p>
          * Each discovered path represents the sequence of slot indexes that leads from the starting
-         * value through nested {@link VirtualObjectState} entries to a key marker. When such a
-         * marker is found, the current path is recorded in {@code slotPaths}, the marker is
-         * replaced in the loop scope's created-node maps, and the node itself is rewritten to its
-         * inner value and deleted.
+         * value through nested {@link VirtualObjectState} entries to a key marker. Markers remain in
+         * the graph until decoding is complete because the encoded node can still be referenced by a
+         * lazily decoded frame state in another loop scope. In particular, the marker must remain
+         * visible until the first loop header has recorded its path.
          * <p>
          * The traversal is recursive and only follows {@link VirtualObjectNode}s that have a
-         * corresponding {@link VirtualObjectState}. The {@code activeObjects} list is used as a
+         * corresponding {@link VirtualObjectState}. The {@code activeObjects} set is used as a
          * recursion stack to detect cycles and prevent infinite descent through cyclic
          * virtual-object graphs.
          *
-         * @param slotPaths collects the discovered slot-index paths to loop explosion key markers
-         * @param loopScope provides the node maps that must be updated when a key marker is found
-         * @param frameState the frame state from which virtual object state is resolved
          * @param value the current value being inspected
-         * @param currentPath the path accumulated so far while descending through nested slots
-         * @param activeObjects the set/stack of virtual objects currently being visited to avoid
-         *            cycles
+         * @param virtualObjectStates maps virtual objects to their frame-state mappings
+         * @param activeObjects virtual objects currently being visited to avoid cycles
+         * @param markerPaths memoized marker paths for virtual objects
          */
-        private static void collectSlotPaths(List<int[]> slotPaths, LoopScope loopScope, FrameState frameState, ValueNode value, ArrayList<Integer> currentPath,
-                        ArrayList<VirtualObjectNode> activeObjects) {
+        private static List<int[]> collectMarkerPaths(ValueNode value, EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates,
+                        EconomicSet<VirtualObjectNode> activeObjects, EconomicMap<VirtualObjectNode, List<int[]>> markerPaths,
+                        EconomicSet<LoopExplosionKeyNode> markerNodes) {
             if (value instanceof LoopExplosionKeyNode keyNode) {
-                // we found a key marker, record the index path
-                slotPaths.add(toIntArray(currentPath));
-                replaceKeyMarkerWithInner(loopScope.createdNodes, keyNode);
-                if (loopScope.initialCreatedNodes != null) {
-                    replaceKeyMarkerWithInner(loopScope.initialCreatedNodes, keyNode);
-                }
-                keyNode.replaceAndDelete(keyNode.value);
-                return;
+                markerNodes.add(keyNode);
+                return List.of(new int[0]);
             }
-            if (!(value instanceof VirtualObjectNode virtualObject) || activeObjects.contains(virtualObject)) {
-                return; // prevent infinite recursion on cycles in the virtual object state graph
+            if (!(value instanceof VirtualObjectNode virtualObject)) {
+                return List.of();
             }
-            EscapeObjectState escapeState = findEscapeObjectState(frameState, virtualObject);
+            List<int[]> cachedPaths = markerPaths.get(virtualObject);
+            if (cachedPaths != null) {
+                return cachedPaths;
+            }
+            if (!activeObjects.add(virtualObject)) {
+                return List.of();
+            }
+            EscapeObjectState escapeState = virtualObjectStates.get(virtualObject);
             if (!(escapeState instanceof VirtualObjectState virtualObjectState)) {
-                return; // we only care about virtual objects here
+                activeObjects.remove(virtualObject);
+                markerPaths.put(virtualObject, List.of());
+                return List.of();
             }
-            activeObjects.add(virtualObject);
+            List<int[]> paths = new ArrayList<>();
             NodeInputList<ValueNode> nestedValues = virtualObjectState.values();
             for (int i = 0; i < nestedValues.size(); i++) {
-                currentPath.add(i);
-                collectSlotPaths(slotPaths, loopScope, frameState, nestedValues.get(i), currentPath, activeObjects);
-                currentPath.remove(currentPath.size() - 1);
+                for (int[] nestedPath : collectMarkerPaths(nestedValues.get(i), virtualObjectStates, activeObjects, markerPaths, markerNodes)) {
+                    int[] path = new int[nestedPath.length + 1];
+                    path[0] = i;
+                    System.arraycopy(nestedPath, 0, path, 1, nestedPath.length);
+                    paths.add(path);
+                }
             }
-            activeObjects.remove(activeObjects.size() - 1);
+            activeObjects.remove(virtualObject);
+            markerPaths.put(virtualObject, paths);
+            return paths;
+        }
+
+        private static EconomicMap<VirtualObjectNode, EscapeObjectState> createVirtualObjectStateIndex(FrameState frameState) {
+            EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates = EconomicMap.create(Equivalence.IDENTITY);
+            for (int i = 0; i < frameState.virtualObjectMappingCount(); i++) {
+                EscapeObjectState state = frameState.virtualObjectMappings().get(i);
+                virtualObjectStates.put(state.object(), state);
+            }
+            return virtualObjectStates;
         }
 
         int size() {
@@ -1060,17 +1130,24 @@ public class GraphDecoder {
 
         List<ValueNode> resolveMarkedValues(FrameState frameState) {
             List<ValueNode> values = new ArrayList<>(slotPaths.size());
+            EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates = createVirtualObjectStateIndex(frameState);
             for (int[] slotPath : slotPaths) {
                 ValueNode value = frameState.values().get(slotPath[0]);
                 for (int i = 1; i < slotPath.length; i++) {
                     if (!(value instanceof VirtualObjectNode virtualObject)) {
-                        throw nestedMergeKeyRequiresVirtualObject();
+                        throw nestedMergeKeyRequiresVirtualObject("the recorded path now reaches a non-virtual value");
                     }
-                    EscapeObjectState escapeState = findEscapeObjectState(frameState, virtualObject);
+                    EscapeObjectState escapeState = virtualObjectStates.get(virtualObject);
                     if (!(escapeState instanceof VirtualObjectState virtualObjectState)) {
-                        throw nestedMergeKeyRequiresVirtualObject();
+                        throw nestedMergeKeyRequiresVirtualObject("an object on the recorded path was materialized or escaped");
                     }
                     value = virtualObjectState.values().get(slotPath[i]);
+                }
+                if (value instanceof LoopExplosionKeyNode keyNode) {
+                    value = keyNode.value();
+                }
+                if (value == null || !value.isAlive()) {
+                    throw shouldNotReachHere("Recorded nested merge key value is null or no longer alive");
                 }
                 values.add(value);
             }
@@ -1101,6 +1178,7 @@ public class GraphDecoder {
             if (thisState.virtualObjectMappingCount() != otherState.virtualObjectMappingCount()) {
                 return false;
             }
+            EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates = createVirtualObjectStateIndex(thisState);
             for (int i = 0; i < thisState.virtualObjectMappingCount(); i++) {
                 EscapeObjectState thisEscapeState = thisState.virtualObjectMappings().get(i);
                 EscapeObjectState otherEscapeState = otherState.virtualObjectMappings().get(i);
@@ -1110,22 +1188,22 @@ public class GraphDecoder {
                 if (!thisEscapeState.getClass().equals(otherEscapeState.getClass())) {
                     return false;
                 }
-                List<int[]> objectPaths = findPathsForObject(thisState, thisEscapeState.object());
-                if (thisEscapeState instanceof MaterializedObjectState) {
+                List<int[]> objectPaths = findPathsForObject(thisState, thisEscapeState.object(), virtualObjectStates);
+                if (thisEscapeState instanceof MaterializedObjectState thisMaterializedObjectState) {
                     if (objectPaths != null) {
-                        throw nestedMergeKeyRequiresVirtualObject();
+                        throw nestedMergeKeyRequiresVirtualObject("the recorded path reaches a materialized object");
                     }
-                    MaterializedObjectState thisMaterializedObjectState = (MaterializedObjectState) thisEscapeState;
                     MaterializedObjectState otherMaterializedObjectState = (MaterializedObjectState) otherEscapeState;
                     if (!compareStateValues(thisMaterializedObjectState.materializedValue(), otherMaterializedObjectState.materializedValue(), true)) {
                         return false;
                     }
-                } else {
-                    VirtualObjectState thisVirtualObjectState = (VirtualObjectState) thisEscapeState;
+                } else if (thisEscapeState instanceof VirtualObjectState thisVirtualObjectState) {
                     VirtualObjectState otherVirtualObjectState = (VirtualObjectState) otherEscapeState;
                     if (!virtualObjectValuesEqual(thisVirtualObjectState.values(), otherVirtualObjectState.values(), objectPaths)) {
                         return false;
                     }
+                } else {
+                    throw GraalError.shouldNotReachHere("Unknown subclass of virtual object state " + thisEscapeState);
                 }
             }
             return true;
@@ -1147,7 +1225,8 @@ public class GraphDecoder {
             return true;
         }
 
-        private List<int[]> findPathsForObject(FrameState frameState, VirtualObjectNode targetObject) {
+        private List<int[]> findPathsForObject(FrameState frameState, VirtualObjectNode targetObject,
+                        EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates) {
             List<int[]> objectPaths = null;
             for (int[] slotPath : slotPaths) {
                 if (slotPath.length < 2) {
@@ -1167,7 +1246,7 @@ public class GraphDecoder {
                     if (depth == slotPath.length - 1) {
                         break;
                     }
-                    EscapeObjectState escapeState = findEscapeObjectState(frameState, currentObject);
+                    EscapeObjectState escapeState = virtualObjectStates.get(currentObject);
                     if (!(escapeState instanceof VirtualObjectState virtualObjectState)) {
                         break;
                     }
@@ -1202,13 +1281,6 @@ public class GraphDecoder {
             return false;
         }
 
-        private static int[] toIntArray(ArrayList<Integer> currentPath) {
-            int[] path = new int[currentPath.size()];
-            for (int i = 0; i < currentPath.size(); i++) {
-                path[i] = currentPath.get(i);
-            }
-            return path;
-        }
     }
 
     /** Key for matching previous loop iterations to the current one for merging. */
@@ -1226,10 +1298,7 @@ public class GraphDecoder {
         public final List<ValueNode> values;
         /** Cached hash code. */
         private final int hashCode;
-        /**
-         * Determines if matching of virtual object mappings should take place. False by default if
-         * `CompilerDirectives.EarlyEscapeAnalysis` is not used.
-         */
+        /** Whether virtual object values need structural comparison instead of identity comparison. */
         private final boolean hasVirtualObjects;
 
         @SuppressWarnings("hiding")
@@ -1462,6 +1531,8 @@ public class GraphDecoder {
     protected final OptionValues options;
     protected final DebugContext debug;
     private final EconomicMap<NodeClass<?>, ArrayDeque<Node>> reusableFloatingNodes;
+    /** Key markers recognized while decoding merge-exploded methods. */
+    private final EconomicSet<LoopExplosionKeyNode> recognizedLoopExplosionKeyNodes;
 
     public GraphDecoder(Architecture architecture, StructuredGraph graph) {
         this.architecture = architecture;
@@ -1469,6 +1540,7 @@ public class GraphDecoder {
         this.options = graph.getOptions();
         this.debug = graph.getDebug();
         reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
+        recognizedLoopExplosionKeyNodes = EconomicSet.create(Equivalence.IDENTITY);
     }
 
     // #region Main decoder loop
@@ -2023,11 +2095,12 @@ public class GraphDecoder {
         FixedNode successor = loopBegin.next();
         FrameState frameState = loopBegin.stateAfter();
 
+        LoopExplosionKey key = null;
         if (methodScope.loopExplosion.mergeLoops()) {
             if (loopScope.trigger == LoopScopeTrigger.START) {
                 loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, frameState);
             }
-            LoopExplosionKey key = createLoopExplosionKey(loopScope, frameState);
+            key = createLoopExplosionKey(loopScope, frameState);
             LoopExplosionState existingState = methodScope.iterationStates.get(key);
             if (existingState != null) {
                 loopBegin.replaceAtUsagesAndDelete(existingState.merge);
@@ -2065,14 +2138,26 @@ public class GraphDecoder {
         }
 
         if (methodScope.loopExplosion.mergeLoops()) {
-            LoopExplosionKey explosionKey = createLoopExplosionKey(loopScope, frameState);
             LoopExplosionState explosionState = new LoopExplosionState(frameState, merge);
-            methodScope.iterationStates.put(explosionKey, explosionState);
+            methodScope.iterationStates.put(key, explosionState);
         }
     }
 
     protected LoopExplosionMergeKeyFilter computeMergeKeyFilter(LoopScope loopScope, FrameState frameState) {
-        LoopExplosionMergeKeyFilter mergeKeyFilter = LoopExplosionMergeKeyFilter.create(loopScope, frameState);
+        LoopExplosionMergeKeyFilter mergeKeyFilter = LoopExplosionMergeKeyFilter.create(frameState);
+        if (mergeKeyFilter != null) {
+            for (LoopExplosionKeyNode keyNode : mergeKeyFilter.markerNodes) {
+                if (keyNode.isAlive()) {
+                    /*
+                     * Path discovery is complete for this marker. Replace its current usages and
+                     * enable getNode to resolve any remaining references in other loop scopes.
+                     */
+                    recognizedLoopExplosionKeyNodes.add(keyNode);
+                    loopScope.methodScope.loopExplosionKeyReplacementsEnabled.add(keyNode);
+                    keyNode.replaceAtUsages(keyNode.value());
+                }
+            }
+        }
         if (mergeKeyFilter != null && mergeKeyFilter.size() > 1) {
             throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion has more than one specified merge key local",
                             LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);
@@ -2099,36 +2184,15 @@ public class GraphDecoder {
     }
 
     /**
-     * Replaces the loop explosion key nodes with their corresponding inner values in the created
-     * node list, so it doesn't interfere with constant folding and further optimizations.
-     * @param nodes The node array to search in.
-     * @param keyNode The key node that should be replaced.
+     * Creates the error reported when a nested merge key cannot be resolved through its recorded
+     * virtual-object path.
      */
-    private static void replaceKeyMarkerWithInner(Node[] nodes, LoopExplosionKeyNode keyNode) {
-        for (int j = 0; j < nodes.length; j++) {
-            if (nodes[j] == keyNode) {
-                nodes[j] = keyNode.value;
-            }
-        }
-    }
-
-    private static EscapeObjectState findEscapeObjectState(FrameState frameState, VirtualObjectNode virtualObject) {
-        for (int i = 0; i < frameState.virtualObjectMappingCount(); i++) {
-            EscapeObjectState escapeState = frameState.virtualObjectMappings().get(i);
-            if (escapeState.object() == virtualObject) {
-                return escapeState;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * This error occurs whenever a local variable that is turned into a virtual object gets
-     * overwritten by a different value which is not a virtual object anymore.
-     */
-    private static PermanentBailoutException nestedMergeKeyRequiresVirtualObject() {
-        return new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion can only use nested merge keys for non-escaping EarlyEscapeAnalysis virtual objects",
-                        LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);
+    private static PermanentBailoutException nestedMergeKeyRequiresVirtualObject(String reason) {
+        return new PermanentBailoutException("Graal implementation restriction: nested CompilerDirectives.mergeExplodeKey cannot be used because %s. " +
+                        "For a nested key, every object on the path to the keyed int must be virtualized by " +
+                        "EarlyEscapeAnalysis and remain non-escaping at every iteration of the merge-exploded loop. " +
+                        "If an object escapes or becomes materialized, mark a scalar local instead.",
+                        reason);
     }
 
     /**
@@ -2719,6 +2783,14 @@ public class GraphDecoder {
         }
 
         node = decodeFloatingNode(methodScope, loopScope, nodeOrderId);
+        if (node instanceof LoopExplosionKeyNode keyNode && methodScope.loopExplosion.mergeLoops()) {
+            /*
+             * Record the replacement before registering the marker in a loop scope. The marker must
+             * remain visible until computeMergeKeyFilter has identified its path; after that, getNode
+             * uses this cached value to resolve stale references in lazily decoded loop scopes.
+             */
+            methodScope.loopExplosionKeyReplacements.put(keyNode, keyNode.value());
+        }
         if (node instanceof ProxyNode || node instanceof PhiNode) {
             /*
              * We need these nodes as they were in the original graph, without any canonicalization
@@ -2970,6 +3042,11 @@ public class GraphDecoder {
      * @param rootMethodScope The current method.
      */
     protected void cleanupGraph(MethodScope rootMethodScope) {
+        for (LoopExplosionKeyNode keyNode : recognizedLoopExplosionKeyNodes) {
+            if (keyNode.isAlive()) {
+                keyNode.replaceAndDelete(keyNode.value());
+            }
+        }
         rootMethodScope.decodePolicy.cleanupGraph(rootMethodScope);
         assert verifyEdges();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -842,7 +842,7 @@ public final class CompilerDirectives {
      * @param i the variable that should be used as the merge key.
      * @return the unchanged value
      *
-     * @since 25.1
+     * @since 25.5
      */
     public static int mergeExplodeKey(int i) {
         return i;

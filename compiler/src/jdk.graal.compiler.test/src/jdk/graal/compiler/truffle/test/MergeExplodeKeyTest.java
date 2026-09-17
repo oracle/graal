@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -221,13 +222,93 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
         partialEval(Program.create("constAddProgram", bytecodes, 2, false));
     }
 
-    @Test(expected = BailoutException.class)
+    @Test
+    public void keyCanBeUsedAfterLoop() {
+        RootNode root = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return executeWithKeyAfterLoop();
+            }
+        };
+        OptimizedCallTarget target = compileHelper("keyCanBeUsedAfterLoop", root, new Object[0]);
+        Assert.assertEquals(1, target.call());
+    }
+
+    @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+    private static int executeWithKeyAfterLoop() {
+        int bci = CompilerDirectives.mergeExplodeKey(0);
+        while (true) {
+            CompilerAsserts.partialEvaluationConstant(bci);
+            if (bci == 0) {
+                bci = 1;
+                continue;
+            }
+            break;
+        }
+        return bci;
+    }
+
+    @Test
+    public void keyInMergeExplodeMethodWithoutLoopFails() {
+        RootNode root = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return keyInMergeExplodeMethodWithoutLoop();
+            }
+        };
+        try {
+            compile((OptimizedCallTarget) root.getCallTarget(), partialEval(root));
+            Assert.fail("Expected a bailout for a merge key that is not used by a merge exploded loop");
+        } catch (BailoutException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("must only be used with a merge exploded loop"));
+        }
+    }
+
+    @Test
+    public void nestedMergeKeyWithoutStableVirtualPathFails() {
+        RootNode root = nestedEscapingFieldKeyProgram();
+        try {
+            compile((OptimizedCallTarget) root.getCallTarget(), partialEval(root));
+            Assert.fail("Expected a bailout for a nested merge key whose object path escapes");
+        } catch (BailoutException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("CompilerDirectives.mergeExplodeKey"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("EarlyEscapeAnalysis"));
+        }
+    }
+
+    @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+    private static int keyInMergeExplodeMethodWithoutLoop() {
+        return CompilerDirectives.mergeExplodeKey(42);
+    }
+
+    @Test
+    public void keyOutsideMergeExplodeFails() {
+        RootNode root = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return CompilerDirectives.mergeExplodeKey(1);
+            }
+        };
+        try {
+            compile((OptimizedCallTarget) root.getCallTarget(), partialEval(root));
+            Assert.fail("Expected a bailout for a key outside a merge exploded method");
+        } catch (BailoutException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("must only be used with a merge exploded loop"));
+        }
+    }
+
+    @Test
     public void multipleKeyVariables() {
         byte[] bytecodes = new byte[]{
                         /* 0: */Bytecode.CONST,
                         /* 1: */42,
                         /* 2: */Bytecode.RETURN};
-        partialEval(Program.create("multipleKeyVariables", bytecodes, 2, true));
+        try {
+            partialEval(Program.create("multipleKeyVariables", bytecodes, 2, true));
+            Assert.fail("Expected a bailout for multiple merge key variables");
+        } catch (BailoutException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("more than one specified merge key local"));
+        }
     }
 
     @Test(expected = BailoutException.class)
@@ -252,7 +333,9 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
 
     @Test
     public void nestedFieldCanBeUsedAsMergeKey() {
-        partialEval(nestedFieldKeyProgram());
+        RootNode root = nestedFieldKeyProgram();
+        OptimizedCallTarget target = compileHelper("nestedFieldCanBeUsedAsMergeKey", root, new Object[0]);
+        Assert.assertEquals(42, target.call());
     }
 
     @Test
@@ -305,6 +388,10 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     @CompilerDirectives.TruffleBoundary
     private static boolean shouldExitLoop() {
         return true;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void escape(Object object) {
     }
 
     private static RootNode explicitKeyWithVirtualStateProgram() {
@@ -364,6 +451,35 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                 while (true) {
                     switch (state.inner.key) {
                         case 0:
+                            state.inner.key = 1;
+                            continue;
+                        case 1:
+                            return 42;
+                        default:
+                            throw new IllegalStateException();
+                    }
+                }
+            }
+        };
+    }
+
+    private static RootNode nestedEscapingFieldKeyProgram() {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return executeWithEscapingNestedFieldMarker();
+            }
+
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            private static int executeWithEscapingNestedFieldMarker() {
+                NestedVirtualState state = new NestedVirtualState(new VirtualState(0, 0));
+                state.inner.key = CompilerDirectives.mergeExplodeKey(state.inner.key);
+
+                while (true) {
+                    switch (state.inner.key) {
+                        case 0:
+                            escape(state);
                             state.inner.key = 1;
                             continue;
                         case 1:

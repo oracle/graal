@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,15 +38,23 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 
+/**
+ * Transparent marker produced for {@code CompilerDirectives.mergeExplodeKey}. Graph decoding uses
+ * the marker while identifying merge keys and removes recognized markers before lowering.
+ */
 @NodeInfo(nameTemplate = "LoopExplosionKey", cycles = CYCLES_0, size = SIZE_0)
 public final class LoopExplosionKeyNode extends FloatingNode implements Canonicalizable, LIRLowerable {
     public static final NodeClass<LoopExplosionKeyNode> TYPE = NodeClass.create(LoopExplosionKeyNode.class);
 
-    @Input ValueNode value;
+    @Input private ValueNode value;
 
     public LoopExplosionKeyNode(ValueNode value) {
-        super(TYPE, value.stamp.unrestricted());
+        super(TYPE, value.stamp(NodeView.DEFAULT).unrestricted());
         this.value = value;
+    }
+
+    public ValueNode value() {
+        return value;
     }
 
     @Override
@@ -56,7 +64,8 @@ public final class LoopExplosionKeyNode extends FloatingNode implements Canonica
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        Throwable exception = new GraalGraphError("`CompilerDirectives.mergeExplodeKey` must only be used with a merge exploded loop.");
+        Throwable exception = new GraalGraphError("`CompilerDirectives.mergeExplodeKey` must only be used with a merge exploded loop. " +
+                        "Nested object-field keys additionally require `@EarlyEscapeAnalysis` and a non-escaping object path.");
         throw GraphUtil.approxSourceException(this, exception);
     }
 }
