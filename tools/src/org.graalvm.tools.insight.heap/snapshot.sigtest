@@ -12,7 +12,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -37,7 +37,7 @@ meth public org.graalvm.tools.insight.heap.HeapDump$InstanceBuilder newInstance(
 meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance dumpPrimitive(java.lang.Object)
 meth public org.graalvm.tools.insight.heap.HeapDump$ObjectInstance dumpString(java.lang.String)
 meth public org.graalvm.tools.insight.heap.HeapDump$ThreadBuilder newThread(java.lang.String)
-meth public static org.graalvm.tools.insight.heap.HeapDump$Builder newHeapBuilder(java.io.OutputStream) throws java.io.IOException
+meth public static org.graalvm.tools.insight.heap.HeapDump$Builder newHeapBuilder(java.io.OutputStream)
 supr java.lang.Object
 hfds HEAP_CLASS_DUMP,HEAP_INSTANCE_DUMP,HEAP_OBJECT_ARRAY_DUMP,HEAP_PRIMITIVE_ARRAY_DUMP,HEAP_ROOT_JAVA_FRAME,HEAP_ROOT_THREAD_OBJECT,MAGIC,TAG_HEAP_DUMP,TAG_LOAD_CLASS,TAG_STACK_FRAME,TAG_STACK_TRACE,TAG_STRING,TYPE_BOOLEAN,TYPE_BYTE,TYPE_CHAR,TYPE_DOUBLE,TYPE_FLOAT,TYPE_INT,TYPE_LONG,TYPE_OBJECT,TYPE_SHORT,builder,heap,heapStrings,primitiveClasses,primitives,typeObject,typeObjectArray,typeString,typeThread
 hcls Counter,Identifiers

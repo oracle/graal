@@ -35,32 +35,6 @@ meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
 
-CLSS public abstract interface java.lang.annotation.Annotation
-meth public abstract boolean equals(java.lang.Object)
-meth public abstract int hashCode()
-meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
-meth public abstract java.lang.String toString()
-
-CLSS public abstract interface !annotation java.lang.annotation.Documented
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
-intf java.lang.annotation.Annotation
-
-CLSS public abstract interface !annotation java.lang.annotation.Retention
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.annotation.RetentionPolicy value()
-
-CLSS public abstract interface !annotation java.lang.annotation.Target
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.annotation.ElementType[] value()
-
 CLSS public java.util.concurrent.atomic.AtomicLong
 cons public init()
 cons public init(long)
@@ -102,11 +76,6 @@ meth public java.lang.String toString()
 meth public long longValue()
 supr java.lang.Number
 hfds U,VALUE,serialVersionUID,value
-
-CLSS public abstract interface !annotation jdk.internal.vm.annotation.AOTSafeClassInitializer
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-intf java.lang.annotation.Annotation
 
 CLSS public abstract interface org.graalvm.collections.EconomicMap<%0 extends java.lang.Object, %1 extends java.lang.Object>
 intf org.graalvm.collections.UnmodifiableEconomicMap<{org.graalvm.collections.EconomicMap%0},{org.graalvm.collections.EconomicMap%1}>
@@ -152,6 +121,7 @@ meth public org.graalvm.collections.MapCursor<{org.graalvm.collections.EconomicM
 meth public void clear()
 meth public void replaceAll(java.util.function.BiFunction<? super {org.graalvm.collections.EconomicMapWrap%0},? super {org.graalvm.collections.EconomicMapWrap%1},? extends {org.graalvm.collections.EconomicMapWrap%1}>)
 meth public {org.graalvm.collections.EconomicMapWrap%1} get({org.graalvm.collections.EconomicMapWrap%0})
+meth public {org.graalvm.collections.EconomicMapWrap%1} get({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
 meth public {org.graalvm.collections.EconomicMapWrap%1} put({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
 meth public {org.graalvm.collections.EconomicMapWrap%1} putIfAbsent({org.graalvm.collections.EconomicMapWrap%0},{org.graalvm.collections.EconomicMapWrap%1})
 meth public {org.graalvm.collections.EconomicMapWrap%1} removeKey({org.graalvm.collections.EconomicMapWrap%0})
@@ -171,14 +141,14 @@ meth public static <%0 extends java.lang.Object> org.graalvm.collections.Economi
 meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.Equivalence,org.graalvm.collections.UnmodifiableEconomicSet<{%%0}>)
 meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> create(org.graalvm.collections.UnmodifiableEconomicSet<{%%0}>)
 meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> emptySet()
-meth public void addAll(java.lang.Iterable<{org.graalvm.collections.EconomicSet%0}>)
-meth public void addAll(java.util.Iterator<{org.graalvm.collections.EconomicSet%0}>)
-meth public void addAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
+meth public static <%0 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> of({%%0})
+meth public void addAll(java.lang.Iterable<? extends {org.graalvm.collections.EconomicSet%0}>)
+meth public void addAll(java.util.Iterator<? extends {org.graalvm.collections.EconomicSet%0}>)
+meth public void addAll(org.graalvm.collections.EconomicSet<? extends {org.graalvm.collections.EconomicSet%0}>)
 meth public void removeAll(java.lang.Iterable<{org.graalvm.collections.EconomicSet%0}>)
 meth public void removeAll(java.util.Iterator<{org.graalvm.collections.EconomicSet%0}>)
 meth public void removeAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
 meth public void retainAll(org.graalvm.collections.EconomicSet<{org.graalvm.collections.EconomicSet%0}>)
-meth public static org.graalvm.collections.EconomicSet<{%%0}> of(java.lang.Object)
 
 CLSS public abstract org.graalvm.collections.Equivalence
 cons protected init()
@@ -308,13 +278,14 @@ intf java.lang.Iterable<{org.graalvm.collections.UnmodifiableEconomicSet%0}>
 meth public abstract boolean contains({org.graalvm.collections.UnmodifiableEconomicSet%0})
 meth public abstract boolean isEmpty()
 meth public abstract int size()
+meth public boolean containsAll(java.lang.Iterable<? extends {org.graalvm.collections.UnmodifiableEconomicSet%0}>)
+meth public boolean removeIf(java.util.function.Predicate<? super {org.graalvm.collections.UnmodifiableEconomicSet%0}>)
+meth public java.util.HashSet<{org.graalvm.collections.UnmodifiableEconomicSet%0}> toHashSet()
+meth public java.util.List<{org.graalvm.collections.UnmodifiableEconomicSet%0}> toList()
 meth public {org.graalvm.collections.UnmodifiableEconomicSet%0}[] toArray({org.graalvm.collections.UnmodifiableEconomicSet%0}[])
-meth public boolean containsAll(java.lang.Iterable)
-meth public boolean removeIf(java.util.function.Predicate)
-meth public java.util.HashSet toHashSet()
-meth public java.util.List toList()
 
 CLSS public abstract interface org.graalvm.collections.UnmodifiableMapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
 meth public abstract boolean advance()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%0} getKey()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%1} getValue()
+

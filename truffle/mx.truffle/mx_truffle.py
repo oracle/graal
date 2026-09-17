@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -637,7 +637,7 @@ def _truffle_gate_runner(args, tasks):
             check_filename_length([])
     with Task("Truffle Signature Tests", tasks, tags=TruffleGateTags.sigtest) as t:
         if t:
-            if jdk.javaCompliance == "21":
+            if jdk.javaCompliance == "25":
                 sigtest(["--check", "all"])
             else:
                 sigtest(["--check", "binary"])

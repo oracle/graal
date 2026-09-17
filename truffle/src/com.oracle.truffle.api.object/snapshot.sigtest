@@ -266,8 +266,7 @@ meth public final void executeWithFlagsIfPresent(com.oracle.truffle.api.object.D
 meth public static com.oracle.truffle.api.object.DynamicObject$PutAllNode create()
 meth public static com.oracle.truffle.api.object.DynamicObject$PutAllNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
-hfds PUT_CACHE_LIMIT
-hcls PutAllCache,PutAllPlan
+hcls PutAllPlan
 
 CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$PutConstantNode
  outer com.oracle.truffle.api.object.DynamicObject
