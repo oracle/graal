@@ -956,7 +956,7 @@ public class FrameInfoEncoder {
         for (FrameData data : allDebugInfos) {
             if (data.frameSliceIndex == UNCOMPRESSED_FRAME_SLICE_INDEX) {
                 data.encodedFrameInfoIndex = encodingBuffer.getBytesWritten();
-                encodeUncompressedFrameData(data, encodingBuffer);
+                encodeUncompressedFrameData(data.frame, encodingBuffer, encoders, constantAccess);
             } else {
                 data.encodedFrameInfoIndex = frameMetadata.getEncodingOffset(data.frameSliceIndex);
                 assert frameMetadata.writeFrameVerificationInfo(data, encoders);
@@ -968,13 +968,17 @@ public class FrameInfoEncoder {
         return frameInfoEncodings;
     }
 
-    private void encodeUncompressedFrameData(FrameData data, UnsafeArrayTypeWriter encodingBuffer) {
+    /**
+     * Encodes an uncompressed frame slice from prepared frame metadata. Object constants must
+     * already have indices in {@code encoders}.
+     */
+    static void encodeUncompressedFrameData(FrameInfoQueryResult frame, UnsafeArrayTypeWriter encodingBuffer, Encoders encoders, ConstantAccess constantAccess) {
         encodingBuffer.putSV(FrameInfoDecoder.UNCOMPRESSED_FRAME_SLICE_MARKER);
 
-        for (FrameInfoQueryResult cur = data.frame; cur != null; cur = cur.caller) {
+        for (FrameInfoQueryResult cur = frame; cur != null; cur = cur.caller) {
             assert cur.encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER : "used as the end marker during decoding";
             assert cur.hasLocalValueInfo() : "Compressed frame info must be used when no local values are needed";
-            assert cur == data.frame || !cur.isDeoptEntry : "Deoptimization entry information for caller frames is not persisted";
+            assert cur == frame || !cur.isDeoptEntry : "Deoptimization entry information for caller frames is not persisted";
 
             encodingBuffer.putUV(cur.encodedBci);
             encodingBuffer.putUV(cur.numLocks);
@@ -993,13 +997,13 @@ public class FrameInfoEncoder {
             encodingBuffer.putSV(deoptMethodIndex);
             // No need to encode cur.deoptMethodImageCodeInfo: decoding can get it from context
 
-            encodeValues(cur.valueInfos, encodingBuffer);
+            encodeValues(cur.valueInfos, encodingBuffer, encoders);
 
-            if (cur == data.frame) {
+            if (cur == frame) {
                 // Write virtual objects only for first frame.
                 encodingBuffer.putUV(cur.virtualObjects.length);
                 for (ValueInfo[] virtualObject : cur.virtualObjects) {
-                    encodeValues(virtualObject, encodingBuffer);
+                    encodeValues(virtualObject, encodingBuffer, encoders);
                 }
             }
 
@@ -1015,7 +1019,7 @@ public class FrameInfoEncoder {
         encodingBuffer.putUV(FrameInfoDecoder.ENCODED_BCI_NO_CALLER);
     }
 
-    private void encodeValues(ValueInfo[] valueInfos, UnsafeArrayTypeWriter encodingBuffer) {
+    private static void encodeValues(ValueInfo[] valueInfos, UnsafeArrayTypeWriter encodingBuffer, Encoders encoders) {
         encodingBuffer.putUV(valueInfos.length);
         for (ValueInfo valueInfo : valueInfos) {
             if (valueInfo.type == ValueType.Constant) {
