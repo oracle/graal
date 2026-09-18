@@ -1656,6 +1656,13 @@ public class FlatNodeGenFactory {
                     builder.startBlock();
                 }
 
+                int cachedCount = 0;
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (!cache.isAlwaysInitialized()) {
+                        cachedCount++;
+                    }
+                }
+
                 builder.startStatement().startCall("cached", "add");
                 builder.startStaticCall(context.getType(Arrays.class), "<Object>asList");
                 for (CacheExpression cache : specialization.getCaches()) {
@@ -1667,6 +1674,14 @@ public class FlatNodeGenFactory {
                         builder.staticReference(createLibraryConstant(constants, cache.getParameter().getType()));
                         builder.startCall(".getUncached").end();
                     } else {
+                        if (cachedCount == 1 && isAssignable(cache.getParameter().getType(), context.getType(Object[].class))) {
+                            /*
+                             * A single reference array cache must be passed as an Object, otherwise
+                             * Arrays.asList is resolved as a non-varargs call and spreads the array
+                             * contents.
+                             */
+                            builder.cast(context.getType(Object.class));
+                        }
                         builder.tree(createCacheAccess(innerFrameState, specialization, cache, null));
                     }
                     builder.end();
