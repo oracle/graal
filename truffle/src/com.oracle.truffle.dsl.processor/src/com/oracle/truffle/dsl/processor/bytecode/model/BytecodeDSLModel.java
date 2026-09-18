@@ -155,6 +155,12 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         CUSTOM_EXCEPTION
     }
 
+    public enum RegistrationMode {
+        DEFAULT,
+        OPTIONAL_BUILTIN,
+        FALLBACK
+    }
+
     public LoadIllegalLocalStrategy loadIllegalLocalStrategy;
     public String defaultLocalValue;
     public DSLExpression defaultLocalValueExpression;
@@ -413,16 +419,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName) {
-        return operation(kind, name, javadoc, builderName, false);
+        return operation(kind, name, javadoc, builderName, RegistrationMode.DEFAULT);
     }
 
-    public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName, boolean optionalBuiltin) {
+    public OperationModel operation(OperationKind kind, String name, String javadoc, String builderName, RegistrationMode registrationMode) {
         if (operations.containsKey(name)) {
-            if (optionalBuiltin) {
-                addSuppressableWarning(TruffleSuppressedWarnings.HIDE_BUILTIN, "Custom operation with name %s conflicts with a built-in operation with the same name. " +
+            switch (registrationMode) {
+                case DEFAULT -> addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
+                case OPTIONAL_BUILTIN -> addSuppressableWarning(TruffleSuppressedWarnings.HIDE_BUILTIN, "Custom operation with name %s conflicts with a built-in operation with the same name. " +
                                 "The built-in operation will not be generated. ", name);
-            } else {
-                addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
+                case FALLBACK -> {
+                }
             }
             return null;
         }
