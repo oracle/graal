@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,6 +159,86 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
         } catch (ClassCastException e) {
         } catch (IllegalArgumentException e) {
         } catch (NullPointerException e) {
+        }
+    }
+
+    @Test
+    public void testSingleThreadedAccessErrorIncludesActiveThread() throws Exception {
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> req.singleThreaded;
+        ExecutorService executor = createExecutor(1, vthreads);
+        for (boolean seenThread : new boolean[]{false, true}) {
+            try (Context context = Context.create(MultiThreadedLanguage.ID)) {
+                context.initialize(MultiThreadedLanguage.ID);
+                if (seenThread) {
+                    executor.submit(() -> {
+                        context.enter();
+                        context.leave();
+                    }).get(10, TimeUnit.SECONDS);
+                }
+                Thread activeThread = Thread.currentThread();
+                context.enter();
+                try {
+                    executor.submit(() -> {
+                        Thread.currentThread().setName("requesting-thread");
+                        AbstractPolyglotTest.assertFails(() -> {
+                            context.enter();
+                            context.leave();
+                        }, IllegalStateException.class, (e) -> {
+                            assertTrue(e.getMessage(), e.getMessage().contains("Multi threaded access requested by thread "));
+                            assertTrue(e.getMessage(), e.getMessage().contains("requesting-thread"));
+                            assertTrue(e.getMessage(), e.getMessage().endsWith(" Thread " + activeThread + " was already active."));
+                        });
+                    }).get(10, TimeUnit.SECONDS);
+                } finally {
+                    context.leave();
+                }
+                executor.submit(() -> {
+                    context.enter();
+                    context.leave();
+                }).get(10, TimeUnit.SECONDS);
+            }
+        }
+    }
+
+    @Test
+    public void testMultiThreadedAccessErrorWithoutTransition() throws Exception {
+        ExecutorService executor = createExecutor(1, vthreads);
+        try (Context context = Context.create(MultiThreadedLanguage.ID)) {
+            // Transition before initializing the language that will deny multithreaded access.
+            context.enter();
+            try {
+                executor.submit(() -> {
+                    context.enter();
+                    context.leave();
+                }).get(10, TimeUnit.SECONDS);
+            } finally {
+                context.leave();
+            }
+
+            AtomicReference<Thread> deniedThread = new AtomicReference<>();
+            Function<ThreadRequest, Boolean> denyMultiThreadedAccess = (req) -> {
+                if (!req.singleThreaded) {
+                    deniedThread.set(req.thread);
+                }
+                return req.singleThreaded;
+            };
+            MultiThreadedLanguage.isThreadAccessAllowed = denyMultiThreadedAccess;
+            AbstractPolyglotTest.assertFails(() -> context.initialize(MultiThreadedLanguage.ID), IllegalStateException.class, (e) -> {
+                assertEquals("Multi threaded access requested by thread " + deniedThread.get() + " but is not allowed for language(s) " + MultiThreadedLanguage.ID + ".", e.getMessage());
+            });
+
+            MultiThreadedLanguage.isThreadAccessAllowed = (req) -> true;
+            context.initialize(MultiThreadedLanguage.ID);
+            MultiThreadedLanguage.isThreadAccessAllowed = denyMultiThreadedAccess;
+            // A previously unseen thread is rejected without another multithreading transition.
+            createExecutor(1, vthreads).submit(() -> {
+                AbstractPolyglotTest.assertFails(() -> {
+                    context.enter();
+                    context.leave();
+                }, IllegalStateException.class, (e) -> {
+                    assertEquals("Multi threaded access requested by thread " + deniedThread.get() + " but is not allowed for language(s) " + MultiThreadedLanguage.ID + ".", e.getMessage());
+                });
+            }).get(10, TimeUnit.SECONDS);
         }
     }
 
@@ -677,13 +757,17 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
     @Test
     public void testMultiThreadedAccessExceptionThrownToCreator() throws Throwable {
         try (Context context = Context.newBuilder(MultiThreadedLanguage.ID).allowCreateThread(true).build()) {
+            AtomicReference<Thread> deniedThread = new AtomicReference<>();
             MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+                if (!req.singleThreaded) {
+                    deniedThread.set(req.thread);
+                }
                 return req.singleThreaded;
             };
             eval(context, (env) -> {
                 AbstractPolyglotTest.assertFails(() -> env.newTruffleThreadBuilder(() -> {
                 }).virtual(vthreads).build(), IllegalStateException.class, (ise) -> {
-                    assertTrue(ise.getMessage().contains("Multi threaded access requested by thread"));
+                    assertEquals("Multi threaded access requested by thread " + deniedThread.get() + " but is not allowed for language(s) " + MultiThreadedLanguage.ID + ".", ise.getMessage());
                 });
                 return null;
             });
