@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.svm.core.GCRelatedMXBeans;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
@@ -58,13 +58,14 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
+import com.oracle.svm.core.metaspace.AbstractMetaspace;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 
@@ -95,12 +96,8 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
         ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
 
-        if (RuntimeClassLoading.isSupported()) {
-            MetaspaceImpl metaspace = new MetaspaceImpl();
-            ImageSingletons.add(Metaspace.class, metaspace);
-            if (SubstrateGCOptions.PrintMetaspace.getValue()) {
-                RuntimeSupport.getRuntimeSupport().addTearDownHook(new MetaspaceImpl.TeardownHook(metaspace));
-            }
+        if (RuntimeClassLoading.isSupported() && ImageLayerBuildingSupport.firstImageBuild()) {
+            ImageSingletons.add(Metaspace.class, new MetaspaceImpl());
         }
     }
 
@@ -123,9 +120,22 @@ class GenScavengeGCFeature implements InternalFeature {
             if (ImageSingletons.contains(PerfManager.class)) {
                 ImageSingletons.lookup(PerfManager.class).register(createPerfData());
             }
+
+            registerDiagnosticThunks();
         }
 
         HeapParameters.initialize();
+    }
+
+    private static void registerDiagnosticThunks() {
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new HeapImpl.DumpHeapSettingsAndStatistics());
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new HeapImpl.DumpHeapUsage());
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new HeapImpl.DumpGCPolicy());
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new HeapImpl.DumpImageHeapInfo());
+        if (RuntimeClassLoading.isSupported()) {
+            SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new AbstractMetaspace.DumpMetaspaceInfo());
+        }
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new HeapImpl.DumpChunkInfo());
     }
 
     @Override

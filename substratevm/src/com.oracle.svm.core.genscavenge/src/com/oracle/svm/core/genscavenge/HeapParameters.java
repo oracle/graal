@@ -31,11 +31,10 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -60,18 +59,20 @@ public final class HeapParameters {
         if (!SubstrateUtil.isPowerOf2(alignedChunkSize)) {
             throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", alignedChunkSize);
         }
+
         long maxLargeArrayThreshold = alignedChunkSize - RememberedSet.get().getHeaderSizeOfAlignedChunk().rawValue() + 1;
         if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.hasBeenSet() && !SerialAndEpsilonGCOptions.LargeArrayThreshold.hasBeenSet()) {
             throw UserError.abort("When setting AlignedHeapChunkSize, LargeArrayThreshold should be explicitly set to a value between 1 " +
                             "and the usable size of an aligned chunk + 1 (currently %d).", maxLargeArrayThreshold);
         }
+
         long largeArrayThreshold = getLargeArrayThreshold().rawValue();
         if (largeArrayThreshold <= 0 || largeArrayThreshold > maxLargeArrayThreshold) {
             throw UserError.abort("LargeArrayThreshold (set to %d) should be between 1 and the usable size of an aligned chunk + 1 (currently %d).",
                             largeArrayThreshold, maxLargeArrayThreshold);
         }
 
-        validateMaxMetaSpaceSize(alignedChunkSize);
+        SubstrateGCOptions.validateMaxMetaspaceSize(alignedChunkSize, HeapImpl.getNullRegionSize());
     }
 
     @Fold
@@ -147,29 +148,6 @@ public final class HeapParameters {
     @Fold
     public static UnsignedWord getLargeArrayThreshold() {
         return Word.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
-    }
-
-    private static void validateMaxMetaSpaceSize(long alignedChunkSize) {
-        long maxMetaspaceSize = SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
-        if (maxMetaspaceSize == 0) {
-            return;
-        }
-
-        if (!RuntimeClassLoading.isSupported()) {
-            throw UserError.abort("'%s' can only be set if '%s' is enabled.",
-                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(),
-                            RuntimeClassLoading.Options.RuntimeClassLoading.getName());
-        } else if (maxMetaspaceSize < 0) {
-            throw UserError.abort("The value of '%s' must be greater than or equal to 0.",
-                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());
-        } else if (maxMetaspaceSize % alignedChunkSize != 0) {
-            throw UserError.abort("The value of '%s' (currently '%d') must be a multiple of '%s' (currently '%d').",
-                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName(), maxMetaspaceSize,
-                            SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getName(), alignedChunkSize);
-        } else if (HeapImpl.getHeap().getImageHeapOffsetInAddressSpace() < 0) {
-            throw UserError.abort("The value of '%s' is too large.",
-                            SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getName());
-        }
     }
 
     /*

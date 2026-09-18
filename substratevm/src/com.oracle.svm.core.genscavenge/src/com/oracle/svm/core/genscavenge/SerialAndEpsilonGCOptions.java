@@ -28,17 +28,16 @@ import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.PERCEN
 
 import java.util.function.Consumer;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 
@@ -80,35 +79,7 @@ public final class SerialAndEpsilonGCOptions {
     @Option(help = "Print information about TLABs. Printed when The TLABs are retired before a GC, and during the resizing of the TLABs. Serial and epsilon GC only.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> PrintTLAB = new RuntimeOptionKey<>(false, null, SERIAL_OR_EPSILON_GC_ONLY);
 
-    @Fold
-    public static int getNullRegionSize() {
-        if (SubstrateOptions.UseNullRegion.getValue()) {
-            /*
-             * The image heap will be mapped in a way that there is a memory protected gap between
-             * the heap base and the start of the image heap. The gap won't need any memory in the
-             * native image file.
-             */
-            return NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
-        }
-        return 0;
-    }
-
-    @Fold
-    public static int getReservedMetaspaceSize() {
-        if (!Metaspace.isSupported()) {
-            return 0;
-        }
-
-        int value = SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue();
-        if (value != 0) {
-            return value;
-        }
-
-        /* Use roughly 32 MB as the default. */
-        long result = NumUtil.roundUp(32L * 1024 * 1024, SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
-        return NumUtil.safeToInt(result);
-    }
-
+    @Platforms(Platform.HOSTED_ONLY.class)
     private SerialAndEpsilonGCOptions() {
     }
 

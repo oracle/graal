@@ -33,8 +33,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.OldGeneration;
 import com.oracle.svm.core.genscavenge.Space;
@@ -44,11 +42,9 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.metaspace.AbstractMetaspace;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -70,16 +66,13 @@ import jdk.graal.compiler.api.replacements.Fold;
  * always relinked or properly duplicated for each layer.
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
-public class MetaspaceImpl implements Metaspace {
+public class MetaspaceImpl extends AbstractMetaspace {
     private final Space space = new Space("Metaspace", "M", true, getAge());
     private final ChunkedMetaspaceMemory memory = new ChunkedMetaspaceMemory(space);
     private final MetaspaceObjectAllocator allocator = new MetaspaceObjectAllocator(memory);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public MetaspaceImpl() {
-        if (ImageLayerBuildingSupport.firstImageBuild() && MetaspaceObjectAllocator.collectsStats()) {
-            SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new DumpMetaspaceInfo());
-        }
     }
 
     @Fold
@@ -94,47 +87,29 @@ public class MetaspaceImpl implements Metaspace {
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isInAllocatedMemory(Object obj) {
-        return isInAllocatedMemory(Word.objectToUntrackedPointer(obj));
-    }
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInAllocatedMemory(Pointer ptr) {
-        return space.contains(ptr);
+        /* This is not necessarily thread-safe enough, see GR-79696. */
+        return isInAddressSpace(ptr) && space.contains(ptr);
     }
 
     @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isInAddressSpace(Object obj) {
-        return isInAddressSpace(Word.objectToUntrackedPointer(obj));
-    }
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isInAddressSpace(Pointer ptr) {
-        AddressRangeCommittedMemoryProvider m = AddressRangeCommittedMemoryProvider.singleton();
-        return m.isInMetaspace(ptr);
-    }
-
-    @Override
-    public DynamicHub allocateDynamicHub(int numVTableEntries) {
+    protected DynamicHub allocateDynamicHub0(int numVTableEntries) {
         return allocator.allocateDynamicHub(numVTableEntries);
     }
 
     @Override
-    public byte[] allocateByteArray(int length) {
+    protected byte[] allocateByteArray0(int length) {
         return allocator.allocateByteArray(length);
     }
 
     @Override
-    public int[] allocateIntArray(int length) {
+    protected int[] allocateIntArray0(int length) {
         return allocator.allocateIntArray(length);
     }
 
     @Override
-    public <T> T allocateObject(Class<T> clazz) {
-        return allocator.allocateObject(clazz);
+    protected Object allocateObject0(DynamicHub hub) {
+        return allocator.allocateObject(hub);
     }
 
     @Override
@@ -168,10 +143,12 @@ public class MetaspaceImpl implements Metaspace {
     }
 
     public boolean verify() {
+        assert VMOperation.isInProgressAtSafepoint() : "prevent other threads from manipulating the metaspace";
         return HeapVerifier.verifySpace(space);
     }
 
     public boolean verifyRememberedSets() {
+        assert VMOperation.isInProgressAtSafepoint() : "prevent other threads from manipulating the metaspace";
         return HeapVerifier.verifyRememberedSet(space);
     }
 
@@ -180,41 +157,14 @@ public class MetaspaceImpl implements Metaspace {
         space.tearDown();
     }
 
-    private void logUsageAndStats() {
-        Log log = Log.log();
+    @Override
+    protected void printMetaspaceInfo(Log log) {
         logUsage(log);
-        logStats(log);
+        printAllocationStatistics(log);
     }
 
-    private void logStats(Log log) {
-        log.string("Metaspace allocation stats:").indent(true);
+    @Override
+    protected void printAllocationStatistics(Log log) {
         allocator.logStats(log);
-        log.indent(false);
-    }
-
-    public static final class TeardownHook implements RuntimeSupport.Hook {
-        private final MetaspaceImpl metaspace;
-
-        public TeardownHook(MetaspaceImpl metaspace) {
-            this.metaspace = metaspace;
-        }
-
-        @Override
-        public void execute(boolean isFirstIsolate) {
-            metaspace.logUsageAndStats();
-        }
-    }
-
-    private static final class DumpMetaspaceInfo extends SubstrateDiagnostics.DiagnosticThunk {
-        @Override
-        public int maxInvocationCount() {
-            return 1;
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, SubstrateDiagnostics.ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            ((MetaspaceImpl) Metaspace.singleton()).logStats(log);
-        }
     }
 }

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
@@ -67,7 +69,7 @@ public interface CommittedMemoryProvider {
      * Returns the granularity of committed memory management, which is typically the same as that
      * of {@linkplain VirtualMemoryProvider#getGranularity() virtual memory management}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     default UnsignedWord getGranularity() {
         return VirtualMemoryProvider.get().getGranularity();
     }
@@ -79,8 +81,13 @@ public interface CommittedMemoryProvider {
      */
     UnsignedWord getCollectedHeapAddressSpaceSize();
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    default boolean isInMetaspace(Pointer ptr) {
+        return false;
+    }
+
     Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment);
 }
