@@ -54,11 +54,21 @@ import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.util.EmptyArrays;
 
 /**
- * A DFA transition node referencing a packed simple capture-group transition record. Simple and
+ * A DFA transition referencing a packed simple capture-group transition record. Simple and
  * generic capture-group tracking are mutually exclusive, so simple records use the executor's
- * capture-group transition record array when generic partial-transition records are absent.
+ * capture-group transition record array when generic partial-transition records are absent. Its
+ * DFA graph record appends the simple-transition reference to the common
+ * {@link DFAAbstractTransitionNode} fields.
  *
  * <pre>
+ * DFA graph record tail
+ *
+ * +-------------+------+-----------------------------+
+ * | byte offset | size | field                       |
+ * +-------------+------+-----------------------------+
+ * | 5           | 4    | simple-transition reference |
+ * +-------------+------+-----------------------------+
+ *
  * simple capture-group transition record
  *
  * +-------------+------+-------------------------------------+
@@ -77,14 +87,17 @@ public final class DFASimpleCGTransition extends DFAAbstractTransitionNode {
 
     public static final int NO_TRANSITION = -1;
 
-    private static final int FLAG_FULL_CLEAR = 1;
-    private static final int FLAG_FINAL_TRANSITION = 1 << 1;
+    static final int FLAG_FULL_CLEAR = 1;
+    static final int FLAG_FINAL_TRANSITION = 1 << 1;
 
-    private static final int FIELD_FLAGS = 0;
-    private static final int FIELD_LAST_GROUP = 1;
-    private static final int FIELD_INDEX_UPDATES_COUNT = 2;
-    private static final int FIELD_INDEX_CLEARS_COUNT = 3;
-    private static final int RECORD_HEADER_SIZE = 4;
+    static final int FIELD_FLAGS = 0;
+    static final int FIELD_LAST_GROUP = 1;
+    static final int FIELD_INDEX_UPDATES_COUNT = 2;
+    static final int FIELD_INDEX_CLEARS_COUNT = 3;
+    static final int RECORD_HEADER_SIZE = 4;
+
+    private static final int GRAPH_FIELD_TRANSITION_REF = COMMON_RECORD_SIZE;
+    private static final int GRAPH_RECORD_SIZE = GRAPH_FIELD_TRANSITION_REF + Integer.BYTES;
 
     /** Absolute offset into {@link TRegexDFAExecutorNode#getSimpleCGTransitionRecords()}. */
     private final int transitionRef;
@@ -100,9 +113,27 @@ public final class DFASimpleCGTransition extends DFAAbstractTransitionNode {
     }
 
     @Override
-    void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        apply(transitionRef, locals, executor);
+    int encodedSize() {
+        return GRAPH_RECORD_SIZE;
+    }
+
+    @Override
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        encodeCommon(encoder, recordRef, DFAExecutorRecords.Kind.simpleCGTransition);
+        encoder.putInt(recordRef + GRAPH_FIELD_TRANSITION_REF, transitionRef);
+    }
+
+    static int getTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + GRAPH_FIELD_TRANSITION_REF);
+    }
+
+    static int getEncodedSize() {
+        return GRAPH_RECORD_SIZE;
+    }
+
+    static int apply(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        apply(getTransitionRef(records, recordRef), locals, executor);
+        return getSuccessor(records, recordRef);
     }
 
     static void apply(int transitionRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {

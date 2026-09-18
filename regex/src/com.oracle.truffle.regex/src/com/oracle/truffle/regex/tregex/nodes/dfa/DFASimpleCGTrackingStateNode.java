@@ -44,7 +44,24 @@ import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.strings.TruffleString;
 
+/**
+ * A simple capture-group state. Its packed record appends an anchored-final successor and a final
+ * simple capture-group transition reference to the common {@link DFAStateNode} fields.
+ *
+ * <pre>
+ * +-------------+------+------------------------------+
+ * | tail offset | size | field                        |
+ * +-------------+------+------------------------------+
+ * | 0           | 4    | anchored-final successor     |
+ * | 4           | 4    | final-transition reference   |
+ * +-------------+------+------------------------------+
+ * </pre>
+ */
 public class DFASimpleCGTrackingStateNode extends DFAStateNode {
+
+    private static final int FIELD_ANCHORED_FINAL_SUCCESSOR = 0;
+    private static final int FIELD_FINAL_TRANSITION_REF = Integer.BYTES;
+    private static final int TAIL_SIZE = 2 * Integer.BYTES;
 
     /** Reference to a packed {@link DFASimpleCGTransition} record. */
     private final int transitionToFinalStateRef;
@@ -59,53 +76,77 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
     }
 
     @Override
-    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
-        locals.setIndex(postLoopIndex);
-        DFAAbstractNode loopSuccessor = executor.getNodes()[successors[getLoopToSelf()]];
-        CompilerAsserts.partialEvaluationConstant(loopSuccessor);
-        if (loopSuccessor instanceof DFASimpleCGTransition simpleCGTransition && locals.getIndex() > preLoopIndex) {
-            int curIndex = locals.getIndex();
-            executor.inputSkipReverse(locals, codeRange);
-            simpleCGTransition.apply(locals, executor);
-            locals.setIndex(curIndex);
-        }
-        checkFinalState(locals, executor);
+    DFAExecutorRecords.Kind getRecordKind() {
+        return DFAExecutorRecords.Kind.simpleCGState;
     }
 
     @Override
-    boolean checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        if (isFinalState() && !(isAnchoredFinalState() && executor.inputAtEnd(locals))) {
-            storeResult(locals, executor, false);
-            applySimpleCGFinalTransition(executor, locals);
+    int encodedTailSize() {
+        return TAIL_SIZE;
+    }
+
+    @Override
+    void encodeTail(DFAExecutorRecords.Encoder encoder, int tailRef) {
+        encoder.putNodeRef(tailRef + FIELD_ANCHORED_FINAL_SUCCESSOR, getAnchoredFinalSuccessor());
+        encoder.putInt(tailRef + FIELD_FINAL_TRANSITION_REF, transitionToFinalStateRef);
+    }
+
+    static int getAnchoredFinalSuccessor(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_ANCHORED_FINAL_SUCCESSOR);
+    }
+
+    static int getFinalTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_FINAL_TRANSITION_REF);
+    }
+
+    static int getEncodedSize(byte[] records, int recordRef) {
+        return DFAStateNode.getEncodedSize(records, recordRef) + TAIL_SIZE;
+    }
+
+    static void afterIndexOf(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor,
+                    int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
+        locals.setIndex(postLoopIndex);
+        int loopTransitionRef = DFAStateNode.getSuccessor(records, recordRef, DFAStateNode.getLoopTransitionIndex(records, recordRef));
+        DFAExecutorRecords.Kind loopTransitionKind = DFAExecutorRecords.getKind(records, loopTransitionRef);
+        CompilerAsserts.partialEvaluationConstant(loopTransitionKind);
+        if (loopTransitionKind == DFAExecutorRecords.Kind.simpleCGTransition && locals.getIndex() > preLoopIndex) {
+            int curIndex = locals.getIndex();
+            executor.inputSkipReverse(locals, codeRange);
+            DFASimpleCGTransition.apply(records, loopTransitionRef, locals, executor);
+            locals.setIndex(curIndex);
+        }
+        checkFinalState(records, recordRef, locals, executor);
+    }
+
+    static boolean checkFinalState(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        if (DFAStateNode.isFinalState(records, recordRef) && !(DFAStateNode.isAnchoredFinalState(records, recordRef) && executor.inputAtEnd(locals))) {
+            storeResult(locals, executor);
+            applyFinalTransition(records, recordRef, locals, executor);
         }
         return false;
     }
 
-    @Override
-    void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        boolean anchored = isAnchoredFinalState() && inputAtEnd;
-        if (isFinalState() || anchored) {
-            storeResult(locals, executor, anchored);
-            if (!isAnchoredFinalState() && isFinalState()) {
-                applySimpleCGFinalTransition(executor, locals);
+    static void atEnd(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
+        boolean anchored = DFAStateNode.isAnchoredFinalState(records, recordRef) && inputAtEnd;
+        if (DFAStateNode.isFinalState(records, recordRef) || anchored) {
+            storeResult(locals, executor);
+            if (!DFAStateNode.isAnchoredFinalState(records, recordRef) && DFAStateNode.isFinalState(records, recordRef)) {
+                applyFinalTransition(records, recordRef, locals, executor);
             }
         }
     }
 
-    @Override
-    void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, @SuppressWarnings("unused") boolean anchored) {
-        CompilerAsserts.partialEvaluationConstant(this);
+    static void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         if (executor.isSimpleCGMustCopy()) {
             ArrayUtils.arraycopy(locals.getCGData().results, 0, locals.getCGData().currentResult, 0, locals.getCGData().currentResult.length);
         }
         locals.setResultInt(0);
     }
 
-    private void applySimpleCGFinalTransition(TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        if (transitionToFinalStateRef != DFASimpleCGTransition.NO_TRANSITION) {
-            DFASimpleCGTransition.apply(transitionToFinalStateRef, locals, executor);
+    private static void applyFinalTransition(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        int transitionRef = getFinalTransitionRef(records, recordRef);
+        if (transitionRef != DFASimpleCGTransition.NO_TRANSITION) {
+            DFASimpleCGTransition.apply(transitionRef, locals, executor);
         }
     }
 }

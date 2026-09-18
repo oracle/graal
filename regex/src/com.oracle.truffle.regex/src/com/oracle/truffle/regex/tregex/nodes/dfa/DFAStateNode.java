@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -54,14 +55,42 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+/**
+ * An ordinary DFA state. All ordinary state kinds share this packed-record prefix; subclasses append
+ * their kind-specific fields at {@code 13 + 4 * successorCount}.
+ *
+ * <pre>
+ * +-------------+--------------------+--------------------------------+
+ * | byte offset | size               | field                          |
+ * +-------------+--------------------+--------------------------------+
+ * | 0           | 1                  | kind                           |
+ * | 1           | 1                  | flags                          |
+ * | 2           | 2                  | loop-transition index (int16)  |
+ * | 4           | 2                  | index-of node ID (int16)       |
+ * | 6           | 1                  | index-of fast flag             |
+ * | 7           | 4                  | matcher reference (int32)      |
+ * | 11          | 2                  | successor count (uint16)       |
+ * | 13          | 4 * successorCount | successor references (int32[]) |
+ * +-------------+--------------------+--------------------------------+
+ * </pre>
+ */
 public class DFAStateNode extends DFAAbstractStateNode {
 
-    private static final byte FLAG_FINAL_STATE = 1;
-    private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
-    private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
-    private static final byte FLAG_UTF_16_MUST_DECODE = 1 << 3;
-    private static final byte FLAG_GUARDED_FINAL_STATE = 1 << 4;
-    private static final byte FLAG_GUARDED_ANCHORED_FINAL_STATE = 1 << 5;
+    private static final int FIELD_FLAGS = 1;
+    private static final int FIELD_LOOP_TRANSITION_INDEX = 2;
+    private static final int FIELD_INDEX_OF_NODE_ID = 4;
+    private static final int FIELD_INDEX_OF_IS_FAST = 6;
+    private static final int FIELD_MATCHER_REF = 7;
+    private static final int FIELD_SUCCESSOR_COUNT = 11;
+    private static final int FIELD_SUCCESSORS = 13;
+
+    static final byte FLAG_FINAL_STATE = 1;
+    static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
+    static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
+    static final byte FLAG_UTF_16_MUST_DECODE = 1 << 3;
+    static final byte FLAG_GUARDED_FINAL_STATE = 1 << 4;
+    static final byte FLAG_GUARDED_ANCHORED_FINAL_STATE = 1 << 5;
+    static final byte FLAG_INDEX_OF_MAY_HAVE_NO_SUCCESSOR = 1 << 6;
 
     private final byte flags;
     private final short loopTransitionIndex;
@@ -77,6 +106,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, int matcherRef, short anchoredFinalSuccessor) {
         super(id, successors);
         assert id > 0;
+        assert (flags & FLAG_INDEX_OF_MAY_HAVE_NO_SUCCESSOR) == 0 || (loopTransitionIndex >= 0 && indexOfNodeId >= 0 && indexOfIsFast != 0);
         this.flags = flags;
         this.loopTransitionIndex = loopTransitionIndex;
         this.indexOfNodeId = indexOfNodeId;
@@ -86,7 +116,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean utf16MustDecode, boolean guardedFinalState,
-                    boolean guardedAnchoredFinalState) {
+                    boolean guardedAnchoredFinalState, boolean indexOfMayHaveNoSuccessor) {
         byte flags = 0;
         if (finalState) {
             flags |= FLAG_FINAL_STATE;
@@ -105,6 +135,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
         if (guardedAnchoredFinalState) {
             flags |= FLAG_GUARDED_ANCHORED_FINAL_STATE;
+        }
+        if (indexOfMayHaveNoSuccessor) {
+            flags |= FLAG_INDEX_OF_MAY_HAVE_NO_SUCCESSOR;
         }
         return flags;
     }
@@ -144,10 +177,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return flagIsSet(FLAG_HAS_BACKWARD_PREFIX_STATE);
     }
 
-    public boolean utf16MustDecode() {
-        return flagIsSet(FLAG_UTF_16_MUST_DECODE);
-    }
-
     private boolean flagIsSet(byte flag) {
         return (flags & flag) != 0;
     }
@@ -156,48 +185,132 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return loopTransitionIndex >= 0;
     }
 
-    short getLoopToSelf() {
-        assert hasLoopToSelf();
-        return loopTransitionIndex;
-    }
-
     boolean treeTransitionMatching() {
         return matcherRef < 0;
-    }
-
-    public boolean hasIndexOfNodeId() {
-        return indexOfNodeId >= 0;
-    }
-
-    public int getIndexOfNodeId() {
-        return indexOfNodeId;
-    }
-
-    int getBackwardPrefixStateIndex() {
-        assert hasBackwardPrefixState();
-        return getSuccessors().length - 1;
     }
 
     public short getAnchoredFinalSuccessor() {
         return anchoredFinalSuccessor;
     }
 
+    DFAExecutorRecords.Kind getRecordKind() {
+        return DFAExecutorRecords.Kind.state;
+    }
+
+    int encodedTailSize() {
+        return 0;
+    }
+
+    void encodeTail(@SuppressWarnings("unused") DFAExecutorRecords.Encoder encoder, @SuppressWarnings("unused") int tailRef) {
+    }
+
+    @Override
+    final int encodedSize() {
+        return Math.addExact(tailOffset(successors.length), encodedTailSize());
+    }
+
+    @Override
+    final void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        encoder.putKind(recordRef, getRecordKind());
+        encoder.putByte(recordRef + FIELD_FLAGS, flags);
+        encoder.putShort(recordRef + FIELD_LOOP_TRANSITION_INDEX, loopTransitionIndex);
+        encoder.putShort(recordRef + FIELD_INDEX_OF_NODE_ID, indexOfNodeId);
+        encoder.putByte(recordRef + FIELD_INDEX_OF_IS_FAST, indexOfIsFast);
+        encoder.putInt(recordRef + FIELD_MATCHER_REF, matcherRef);
+        encoder.putUnsignedShort(recordRef + FIELD_SUCCESSOR_COUNT, successors.length);
+        for (int i = 0; i < successors.length; i++) {
+            encoder.putNodeRef(recordRef + FIELD_SUCCESSORS + Integer.BYTES * i, successors[i]);
+        }
+        encodeTail(encoder, recordRef + tailOffset(successors.length));
+    }
+
+    static boolean flagIsSet(byte[] records, int recordRef, int flag) {
+        return (records[recordRef + FIELD_FLAGS] & flag) != 0;
+    }
+
+    static int getLoopTransitionIndex(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getShort(records, recordRef + FIELD_LOOP_TRANSITION_INDEX);
+    }
+
+    static int getIndexOfNodeId(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getShort(records, recordRef + FIELD_INDEX_OF_NODE_ID);
+    }
+
+    static int getIndexOfIsFast(byte[] records, int recordRef) {
+        return Byte.toUnsignedInt(records[recordRef + FIELD_INDEX_OF_IS_FAST]);
+    }
+
+    static int getMatcherRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_MATCHER_REF);
+    }
+
+    static int getSuccessorCount(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getUnsignedShort(records, recordRef + FIELD_SUCCESSOR_COUNT);
+    }
+
+    @CompilerDirectives.EarlyInline
+    static int getSuccessor(byte[] records, int recordRef, int index) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_SUCCESSORS + Integer.BYTES * index);
+    }
+
+    static int getEncodedSize(byte[] records, int recordRef) {
+        return tailOffset(records, recordRef) - recordRef;
+    }
+
+    static int tailOffset(byte[] records, int recordRef) {
+        return recordRef + tailOffset(getSuccessorCount(records, recordRef));
+    }
+
+    private static int tailOffset(int successorCount) {
+        return FIELD_SUCCESSORS + Integer.BYTES * successorCount;
+    }
+
+    static boolean isFinalState(byte[] records, int recordRef) {
+        return flagIsSet(records, recordRef, FLAG_FINAL_STATE);
+    }
+
+    static boolean isGuardedFinalState(byte[] records, int recordRef) {
+        return flagIsSet(records, recordRef, FLAG_GUARDED_FINAL_STATE);
+    }
+
+    static boolean isGuardedAnchoredFinalState(byte[] records, int recordRef) {
+        return flagIsSet(records, recordRef, FLAG_GUARDED_ANCHORED_FINAL_STATE);
+    }
+
+    static boolean isAnchoredFinalState(byte[] records, int recordRef) {
+        return flagIsSet(records, recordRef, FLAG_ANCHORED_FINAL_STATE);
+    }
+
+    static boolean hasBackwardPrefixState(byte[] records, int recordRef) {
+        return flagIsSet(records, recordRef, FLAG_HAS_BACKWARD_PREFIX_STATE);
+    }
+
+    static boolean utf16MustDecode(byte[] records, int recordRef) {
+        return flagIsSet(records, recordRef, FLAG_UTF_16_MUST_DECODE);
+    }
+
+    static boolean indexOfMayHaveNoSuccessor(byte[] records, int recordRef) {
+        return flagIsSet(records, recordRef, FLAG_INDEX_OF_MAY_HAVE_NO_SUCCESSOR);
+    }
+
     /**
-     * Returns {@code true} if this state has a {@code TruffleString.ByteIndexOfCodePointSetNode}.
+     * Returns {@code true} if this state has a {@code indexOf}-node for the given code range.
      */
-    boolean canDoIndexOf(TruffleString.CodeRange codeRange) {
+    static boolean canDoIndexOf(byte[] records, int recordRef, TruffleString.CodeRange codeRange) {
         CompilerAsserts.partialEvaluationConstant(codeRange);
         CompilerAsserts.partialEvaluationConstant(codeRange.ordinal());
-        return hasLoopToSelf() && hasIndexOfNodeId() && (indexOfIsFast & (1 << codeRange.ordinal())) != 0;
+        int loopTransitionIndex = getLoopTransitionIndex(records, recordRef);
+        int indexOfNodeId = getIndexOfNodeId(records, recordRef);
+        int indexOfIsFast = getIndexOfIsFast(records, recordRef);
+        return loopTransitionIndex >= 0 && indexOfNodeId >= 0 && (indexOfIsFast & (1 << codeRange.ordinal())) != 0;
     }
 
     /**
      * Gets called when a new DFA state is entered. Returns true whenever the executor can
      * immediately return the result.
      */
-    boolean beforeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        return checkFinalState(locals, executor);
+    static boolean beforeFindSuccessor(byte[] records, int recordRef, TRegexDFAExecutorLocals locals) {
+        return checkFinalState(records, recordRef, locals);
     }
 
     /**
@@ -205,46 +318,39 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * {@link InputOps#indexOf(TruffleString, int, int, TruffleString.CodePointSet, Encoding, TruffleString.ByteIndexOfCodePointSetNode)}
      * which we call an {@code indexOf}-operation.
      *
-     * @param preLoopIndex the starting index of the {@code indexOf}-operation.
      * @param postLoopIndex the index found by the {@code indexOf}-operation. If the {@code indexOf}
      *            -operation did not find a match, this value is equal to
      *            {@link TRegexDFAExecutorLocals#getMaxIndex()}.
      */
-    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex, @SuppressWarnings("unused") TruffleString.CodeRange codeRange) {
+    static void afterIndexOf(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, int postLoopIndex) {
         locals.setIndex(postLoopIndex);
-        checkFinalState(locals, executor);
+        checkFinalState(records, recordRef, locals);
     }
 
     /**
      * Save the current result iff we are in a final state.
      */
-    boolean checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        if (isFinalState()) {
-            storeResult(locals, executor, false);
+    private static boolean checkFinalState(byte[] records, int recordRef, TRegexDFAExecutorLocals locals) {
+        if (isFinalState(records, recordRef)) {
+            storeResult(locals);
         }
         return false;
     }
 
     /**
-     * Gets called if {@link TRegexExecutorNode#getMaxIndex(TRegexExecutorLocals)} is reached
-     * ({@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}). Returns a
-     * {@link DFAAbstractNode#getId() DFA node ID} if execution should immediately be continued at
-     * that ID. Otherwise, returns {@code -1}.
+     * Gets called if {@link TRegexExecutorNode#getMaxIndex(TRegexExecutorLocals)} is reached.
      */
-    void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        boolean anchored = isAnchoredFinalState() && inputAtEnd;
-        if (isFinalState() || anchored) {
-            storeResult(locals, executor, anchored);
+    static void atEnd(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, boolean inputAtEnd) {
+        boolean anchored = isAnchoredFinalState(records, recordRef) && inputAtEnd;
+        if (isFinalState(records, recordRef) || anchored) {
+            storeResult(locals);
         }
     }
 
     /**
      * Saves the current result (single index or all capture group boundaries).
      */
-    void storeResult(TRegexDFAExecutorLocals locals, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, @SuppressWarnings("unused") boolean anchored) {
-        CompilerAsserts.partialEvaluationConstant(this);
+    static void storeResult(TRegexDFAExecutorLocals locals) {
         locals.setResultInt(locals.getIndex());
     }
 

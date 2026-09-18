@@ -44,7 +44,23 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 
+/**
+ * A generic capture-group transition. Its packed record appends a lazy-transition reference and a
+ * last-transition index to the common {@link DFAAbstractTransitionNode} fields.
+ *
+ * <pre>
+ * +-------------+------+--------------------------------+
+ * | byte offset | size | field                          |
+ * +-------------+------+--------------------------------+
+ * | 5           | 4    | lazy-transition reference      |
+ * | 9           | 2    | last-transition index (int16)  |
+ * +-------------+------+--------------------------------+
+ * </pre>
+ */
 public final class CGTrackingTransitionNode extends CGTrackingAbstractTransitionNode {
+
+    private static final int FIELD_LAST_TRANSITION_INDEX = FIELD_TRANSITION_REF + Integer.BYTES;
+    private static final int RECORD_SIZE = FIELD_LAST_TRANSITION_INDEX + Short.BYTES;
 
     /** Reference to a {@link DFACaptureGroupLazyTransition}. */
     private final int transitionRef;
@@ -64,17 +80,37 @@ public final class CGTrackingTransitionNode extends CGTrackingAbstractTransition
     }
 
     @Override
-    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
-        return DFACaptureGroupLazyTransition.getCost(transitionRef, executor);
+    int encodedSize() {
+        return RECORD_SIZE;
     }
 
     @Override
-    public void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        DFACaptureGroupLazyTransition.apply(transitionRef, locals, executor, false);
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        encodeCommon(encoder, recordRef, DFAExecutorRecords.Kind.genericCGTransition);
+        encoder.putInt(recordRef + FIELD_TRANSITION_REF, transitionRef);
+        encoder.putShort(recordRef + FIELD_LAST_TRANSITION_INDEX, lastTransitionIndex);
+    }
+
+    static int getLastTransitionIndex(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getShort(records, recordRef + FIELD_LAST_TRANSITION_INDEX);
+    }
+
+    static int getEncodedSize() {
+        return RECORD_SIZE;
+    }
+
+    static int apply(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        CompilerAsserts.partialEvaluationConstant(recordRef);
+        DFACaptureGroupLazyTransition.apply(getTransitionRef(records, recordRef), locals, executor, false);
+        int lastTransitionIndex = getLastTransitionIndex(records, recordRef);
         if (lastTransitionIndex >= 0) {
-            locals.setLastTransition(lastTransitionIndex);
+            locals.setLastTransition((short) lastTransitionIndex);
         }
+        return getSuccessor(records, recordRef);
+    }
+
+    static int getCGTrackingCost(byte[] records, int recordRef, TRegexDFAExecutorNode executor) {
+        return DFACaptureGroupLazyTransition.getCost(getTransitionRef(records, recordRef), executor);
     }
 
     @Override

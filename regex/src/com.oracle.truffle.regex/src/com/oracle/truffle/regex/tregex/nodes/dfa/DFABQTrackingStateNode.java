@@ -41,14 +41,32 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 
+/**
+ * A bounded-quantifier state. Its packed record appends unanchored and anchored constraint lists to
+ * the common {@link DFAStateNode} fields. Each list has a two-byte entry count followed by six-byte
+ * entries containing a {@code long[]} reference and value count.
+ *
+ * <pre>
+ * +----------------------+------------------------+----------------------+
+ * | entry count (uint16) | long-array ref (int32) | value count (uint16) |
+ * +----------------------+------------------------+----------------------+
+ * | 2 B                  | 4 B                    | 2 B                  |
+ * +----------------------+------------------------+----------------------+
+ * |                      | repeated entryCount times                     |
+ * +----------------------+-----------------------------------------------+
+ * </pre>
+ */
 public class DFABQTrackingStateNode extends DFAStateNode {
 
-    @CompilationFinal(dimensions = 2) private final long[][] unAnchoredFinalConstraints;
-    @CompilationFinal(dimensions = 2) private final long[][] anchoredFinalConstraints;
+    private static final int LIST_HEADER_SIZE = Short.BYTES;
+    private static final int LIST_ENTRY_SIZE = Integer.BYTES + Short.BYTES;
+    private static final int FIELD_LIST_ENTRY_REF = 0;
+    private static final int FIELD_LIST_ENTRY_COUNT = Integer.BYTES;
+
+    private final long[][] unAnchoredFinalConstraints;
+    private final long[][] anchoredFinalConstraints;
 
     public DFABQTrackingStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
                     short[] successors,
@@ -60,65 +78,109 @@ public class DFABQTrackingStateNode extends DFAStateNode {
         this.anchoredFinalConstraints = anchoredFinalConstraints;
     }
 
-    @ExplodeLoop
     @Override
-    boolean checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(executor);
-        if (isFinalState()) {
-            storeResult(locals, executor, false);
+    DFAExecutorRecords.Kind getRecordKind() {
+        return DFAExecutorRecords.Kind.bqState;
+    }
+
+    @Override
+    int encodedTailSize() {
+        return Math.addExact(listSize(unAnchoredFinalConstraints), listSize(anchoredFinalConstraints));
+    }
+
+    @Override
+    void encodeTail(DFAExecutorRecords.Encoder encoder, int tailRef) {
+        int anchoredListRef = encodeList(encoder, tailRef, unAnchoredFinalConstraints);
+        encodeList(encoder, anchoredListRef, anchoredFinalConstraints);
+    }
+
+    private static int encodeList(DFAExecutorRecords.Encoder encoder, int listRef, long[][] constraints) {
+        int n = length(constraints);
+        encoder.putUnsignedShort(listRef, n);
+        int entryRef = listRef + LIST_HEADER_SIZE;
+        for (int i = 0; i < n; i++) {
+            encoder.putBQValues(entryRef + FIELD_LIST_ENTRY_REF, entryRef + FIELD_LIST_ENTRY_COUNT, constraints[i]);
+            entryRef += LIST_ENTRY_SIZE;
+        }
+        return entryRef;
+    }
+
+    static int getConstraintListCount(byte[] records, int recordRef, boolean anchored) {
+        return DFAExecutorRecords.getUnsignedShort(records, constraintListRef(records, recordRef, anchored));
+    }
+
+    static int getConstraintRef(byte[] records, int recordRef, boolean anchored, int index) {
+        int entryRef = constraintListRef(records, recordRef, anchored) + LIST_HEADER_SIZE + LIST_ENTRY_SIZE * index;
+        return DFAExecutorRecords.getInt(records, entryRef + FIELD_LIST_ENTRY_REF);
+    }
+
+    static int getConstraintCount(byte[] records, int recordRef, boolean anchored, int index) {
+        int entryRef = constraintListRef(records, recordRef, anchored) + LIST_HEADER_SIZE + LIST_ENTRY_SIZE * index;
+        return DFAExecutorRecords.getUnsignedShort(records, entryRef + FIELD_LIST_ENTRY_COUNT);
+    }
+
+    static int getEncodedSize(byte[] records, int recordRef) {
+        int tailRef = DFAStateNode.tailOffset(records, recordRef);
+        int anchoredListRef = nextListRef(records, tailRef);
+        return nextListRef(records, anchoredListRef) - recordRef;
+    }
+
+    private static int constraintListRef(byte[] records, int recordRef, boolean anchored) {
+        int listRef = DFAStateNode.tailOffset(records, recordRef);
+        return anchored ? nextListRef(records, listRef) : listRef;
+    }
+
+    private static int nextListRef(byte[] records, int listRef) {
+        return listRef + LIST_HEADER_SIZE + LIST_ENTRY_SIZE * DFAExecutorRecords.getUnsignedShort(records, listRef);
+    }
+
+    private static int listSize(long[][] constraints) {
+        return Math.addExact(LIST_HEADER_SIZE, Math.multiplyExact(LIST_ENTRY_SIZE, length(constraints)));
+    }
+
+    static boolean checkFinalState(byte[] records, long[] bqRecords, int recordRef, TRegexDFAExecutorLocals locals, CounterTracker[] counterTrackers) {
+        if (DFAStateNode.isFinalState(records, recordRef)) {
+            DFAStateNode.storeResult(locals);
             return true;
-        } else if (isGuardedFinalState()) {
-            for (long[] cs : unAnchoredFinalConstraints) {
-                assert cs.length > 0;
-                if (constraintsAreSatisfied(locals, executor, cs)) {
-                    storeResult(locals, executor, false);
-                    return true;
-                }
+        }
+        if (DFAStateNode.isGuardedFinalState(records, recordRef) && checkFinalStateConstraints(records, bqRecords, recordRef, locals, false, counterTrackers)) {
+            DFAStateNode.storeResult(locals);
+            return true;
+        }
+        return false;
+    }
+
+    static void afterIndexOf(byte[] records, long[] bqRecords, int recordRef, TRegexDFAExecutorLocals locals, int postLoopIndex, CounterTracker[] counterTrackers) {
+        locals.setIndex(postLoopIndex);
+        checkFinalState(records, bqRecords, recordRef, locals, counterTrackers);
+    }
+
+    static void atEnd(byte[] records, long[] bqRecords, int recordRef, TRegexDFAExecutorLocals locals, boolean inputAtEnd, CounterTracker[] counterTrackers) {
+        DFAStateNode.atEnd(records, recordRef, locals, inputAtEnd);
+        if (DFAStateNode.isGuardedFinalState(records, recordRef) && checkFinalStateConstraints(records, bqRecords, recordRef, locals, false, counterTrackers)) {
+            DFAStateNode.storeResult(locals);
+            return;
+        }
+        if (DFAStateNode.isGuardedAnchoredFinalState(records, recordRef) && inputAtEnd && checkFinalStateConstraints(records, bqRecords, recordRef, locals, true, counterTrackers)) {
+            DFAStateNode.storeResult(locals);
+        }
+    }
+
+    @ExplodeLoop
+    private static boolean checkFinalStateConstraints(byte[] records, long[] bqRecords, int recordRef, TRegexDFAExecutorLocals locals, boolean anchored, CounterTracker[] counterTrackers) {
+        int listCount = getConstraintListCount(records, recordRef, anchored);
+        CompilerAsserts.partialEvaluationConstant(listCount);
+        for (int i = 0; i < listCount; i++) {
+            int constraintRef = getConstraintRef(records, recordRef, anchored, i);
+            int constraintCount = getConstraintCount(records, recordRef, anchored, i);
+            if (DFABQTrackingTransitionConstraintsNode.constraintsAreSatisfied(bqRecords, constraintRef, constraintCount, locals, counterTrackers)) {
+                return true;
             }
         }
         return false;
     }
 
-    @ExplodeLoop
-    @Override
-    void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(executor);
-        super.atEnd(locals, executor, inputAtEnd);
-        boolean guardedAnchored = isGuardedAnchoredFinalState() && inputAtEnd;
-        if (isGuardedFinalState()) {
-            for (long[] cs : unAnchoredFinalConstraints) {
-                if (constraintsAreSatisfied(locals, executor, cs)) {
-                    storeResult(locals, executor, false);
-                    return;
-                }
-            }
-        }
-        if (guardedAnchored) {
-            for (long[] cs : anchoredFinalConstraints) {
-                if (constraintsAreSatisfied(locals, executor, cs)) {
-                    storeResult(locals, executor, true);
-                    return;
-                }
-            }
-        }
-    }
-
-    @ExplodeLoop
-    private static boolean constraintsAreSatisfied(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, long[] constraints) {
-        CompilerAsserts.partialEvaluationConstant(executor);
-        CompilerAsserts.partialEvaluationConstant(constraints);
-        for (long constraint : constraints) {
-            int qId = TransitionConstraint.getQuantifierID(constraint);
-            CompilerAsserts.partialEvaluationConstant(constraint);
-            CompilerAsserts.partialEvaluationConstant(qId);
-            CounterTracker counterTracker = executor.getCounterTrackers()[qId];
-            CompilerAsserts.partialEvaluationConstant(counterTracker);
-            if (!counterTracker.canExecute(constraint, locals.getFixedData(), locals.getIntArrays())) {
-                return false;
-            }
-        }
-        return true;
+    private static int length(long[][] values) {
+        return values == null ? 0 : values.length;
     }
 }

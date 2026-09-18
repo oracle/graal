@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,29 +41,111 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+/**
+ * A bounded-quantifier constraint transition. Its packed record has a three-byte header followed by
+ * one ten-byte record per constraint branch.
+ *
+ * <pre>
+ * +--------------+-----------------------+-------------------+------------------------+----------------------+
+ * | kind (uint8) | branch count (uint16) | successor (int32) | long-array ref (int32) | value count (uint16) |
+ * +--------------+-----------------------+-------------------+------------------------+----------------------+
+ * | 1 B          | 2 B                   | 4 B               | 4 B                    | 2 B                  |
+ * +--------------+-----------------------+-------------------+------------------------+----------------------+
+ * | header                               | 10 * branchCount                                                  |
+ * +--------------------------------------+-------------------------------------------------------------------+
+ * </pre>
+ */
 public final class DFABQTrackingTransitionConstraintsNode extends DFAAbstractStateNode {
 
-    @CompilationFinal(dimensions = 2) public final long[][] constraints;
+    private static final int FIELD_BRANCH_COUNT = 1;
+    private static final int FIELD_BRANCHES = 3;
+    private static final int BRANCH_SIZE = 2 * Integer.BYTES + Short.BYTES;
+    private static final int FIELD_BRANCH_SUCCESSOR = 0;
+    private static final int FIELD_BRANCH_REF = Integer.BYTES;
+    private static final int FIELD_BRANCH_VALUE_COUNT = 2 * Integer.BYTES;
+
+    private final long[][] constraints;
 
     public DFABQTrackingTransitionConstraintsNode(short id, short[] successors, long[][] constraints) {
         super(id, successors);
         this.constraints = constraints;
     }
 
+    @Override
+    int encodedSize() {
+        return Math.addExact(FIELD_BRANCHES, Math.multiplyExact(BRANCH_SIZE, constraints.length));
+    }
+
+    @Override
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        if (successors.length != constraints.length) {
+            throw CompilerDirectives.shouldNotReachHere("invalid bounded-quantifier branch table");
+        }
+        encoder.putKind(recordRef, DFAExecutorRecords.Kind.bqTransitionConstraints);
+        encoder.putUnsignedShort(recordRef + FIELD_BRANCH_COUNT, constraints.length);
+        for (int i = 0; i < constraints.length; i++) {
+            int branchRef = branchRef(recordRef, i);
+            encoder.putNodeRef(branchRef + FIELD_BRANCH_SUCCESSOR, successors[i]);
+            encoder.putBQValues(branchRef + FIELD_BRANCH_REF, branchRef + FIELD_BRANCH_VALUE_COUNT, constraints[i]);
+        }
+    }
+
+    static int getBranchCount(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getUnsignedShort(records, recordRef + FIELD_BRANCH_COUNT);
+    }
+
+    @CompilerDirectives.EarlyInline
+    static int getBranchSuccessor(byte[] records, int recordRef, int index) {
+        return DFAExecutorRecords.getInt(records, branchRef(recordRef, index) + FIELD_BRANCH_SUCCESSOR);
+    }
+
+    static int getBranchConstraintsRef(byte[] records, int recordRef, int index) {
+        return DFAExecutorRecords.getInt(records, branchRef(recordRef, index) + FIELD_BRANCH_REF);
+    }
+
+    static int getBranchConstraintCount(byte[] records, int recordRef, int index) {
+        return DFAExecutorRecords.getUnsignedShort(records, branchRef(recordRef, index) + FIELD_BRANCH_VALUE_COUNT);
+    }
+
+    static int getEncodedSize(byte[] records, int recordRef) {
+        return FIELD_BRANCHES + BRANCH_SIZE * getBranchCount(records, recordRef);
+    }
+
+    private static int branchRef(int recordRef, int index) {
+        return recordRef + FIELD_BRANCHES + BRANCH_SIZE * index;
+    }
+
+    @CompilerDirectives.EarlyInline
+    static int apply(byte[] records, long[] bqRecords, int recordRef, TRegexDFAExecutorLocals locals, CounterTracker[] counterTrackers) {
+        int branchCount = getBranchCount(records, recordRef);
+        CompilerAsserts.partialEvaluationConstant(branchCount);
+        for (int i = 0; i < branchCount; i++) {
+            int constraintRef = getBranchConstraintsRef(records, recordRef, i);
+            int constraintCount = getBranchConstraintCount(records, recordRef, i);
+            if (constraintsAreSatisfied(bqRecords, constraintRef, constraintCount, locals, counterTrackers)) {
+                return getBranchSuccessor(records, recordRef, i);
+            }
+        }
+        return DFAExecutorRecords.NO_REF;
+    }
+
     @ExplodeLoop
-    public static boolean constraintsAreSatisfied(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, long[] constraints) {
-        CompilerAsserts.partialEvaluationConstant(executor);
-        CompilerAsserts.partialEvaluationConstant(constraints);
-        for (long constraint : constraints) {
-            int qId = TransitionConstraint.getQuantifierID(constraint);
+    static boolean constraintsAreSatisfied(long[] bqRecords, int constraintsRef, int constraintCount, TRegexDFAExecutorLocals locals, CounterTracker[] counterTrackers) {
+        CompilerAsserts.partialEvaluationConstant(bqRecords);
+        CompilerAsserts.partialEvaluationConstant(constraintsRef);
+        CompilerAsserts.partialEvaluationConstant(constraintCount);
+        for (int i = 0; i < constraintCount; i++) {
+            long constraint = bqRecords[constraintsRef + i];
             CompilerAsserts.partialEvaluationConstant(constraint);
-            CompilerAsserts.partialEvaluationConstant(qId);
-            CounterTracker counterTracker = executor.getCounterTrackers()[qId];
+            int quantifierId = TransitionConstraint.getQuantifierID(constraint);
+            CompilerAsserts.partialEvaluationConstant(quantifierId);
+            CounterTracker counterTracker = counterTrackers[quantifierId];
             CompilerAsserts.partialEvaluationConstant(counterTracker);
             if (!counterTracker.canExecute(constraint, locals.getFixedData(), locals.getIntArrays())) {
                 return false;
@@ -74,6 +156,6 @@ public final class DFABQTrackingTransitionConstraintsNode extends DFAAbstractSta
 
     @Override
     public JsonValue toJson() {
-        return null;
+        return Json.nullValue();
     }
 }

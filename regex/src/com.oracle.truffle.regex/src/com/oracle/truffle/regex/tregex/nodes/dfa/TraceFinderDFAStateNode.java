@@ -40,9 +40,26 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+/**
+ * A DFA state with two one-byte pre-calculated result indices appended to the common
+ * {@link DFAStateNode} record. Its tail is:
+ *
+ * <pre>
+ * +-------------+------+----------------------------+
+ * | tail offset | size | field                      |
+ * +-------------+------+----------------------------+
+ * | 0           | 1    | unanchored result (uint8)  |
+ * | 1           | 1    | anchored result (uint8)    |
+ * +-------------+------+----------------------------+
+ * </pre>
+ */
 public class TraceFinderDFAStateNode extends DFAStateNode {
 
     public static final byte NO_PRE_CALC_RESULT = (byte) 0xff;
+
+    private static final int FIELD_UNANCHORED_RESULT = 0;
+    private static final int FIELD_ANCHORED_RESULT = FIELD_UNANCHORED_RESULT + Byte.BYTES;
+    private static final int TAIL_SIZE = FIELD_ANCHORED_RESULT + Byte.BYTES;
 
     private final byte preCalculatedUnAnchoredResult;
     private final byte preCalculatedAnchoredResult;
@@ -62,29 +79,62 @@ public class TraceFinderDFAStateNode extends DFAStateNode {
         return preCalculatedAnchoredResult;
     }
 
-    private boolean hasPreCalculatedUnAnchoredResult() {
-        return preCalculatedUnAnchoredResult != NO_PRE_CALC_RESULT;
-    }
-
-    private int getPreCalculatedUnAnchoredResult() {
-        return Byte.toUnsignedInt(preCalculatedUnAnchoredResult);
-    }
-
-    private boolean hasPreCalculatedAnchoredResult() {
-        return preCalculatedAnchoredResult != NO_PRE_CALC_RESULT;
-    }
-
-    private int getPreCalculatedAnchoredResult() {
-        return Byte.toUnsignedInt(preCalculatedAnchoredResult);
+    @Override
+    DFAExecutorRecords.Kind getRecordKind() {
+        return DFAExecutorRecords.Kind.traceFinderState;
     }
 
     @Override
-    void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean anchored) {
-        if (hasPreCalculatedAnchoredResult() && anchored) {
-            locals.setResultInt(getPreCalculatedAnchoredResult());
+    int encodedTailSize() {
+        return TAIL_SIZE;
+    }
+
+    @Override
+    void encodeTail(DFAExecutorRecords.Encoder encoder, int tailRef) {
+        encoder.putByte(tailRef + FIELD_UNANCHORED_RESULT, preCalculatedUnAnchoredResult);
+        encoder.putByte(tailRef + FIELD_ANCHORED_RESULT, preCalculatedAnchoredResult);
+    }
+
+    static int getUnAnchoredResult(byte[] records, int recordRef) {
+        return Byte.toUnsignedInt(records[DFAStateNode.tailOffset(records, recordRef) + FIELD_UNANCHORED_RESULT]);
+    }
+
+    static int getAnchoredResult(byte[] records, int recordRef) {
+        return Byte.toUnsignedInt(records[DFAStateNode.tailOffset(records, recordRef) + FIELD_ANCHORED_RESULT]);
+    }
+
+    static int getEncodedSize(byte[] records, int recordRef) {
+        return DFAStateNode.getEncodedSize(records, recordRef) + TAIL_SIZE;
+    }
+
+    static boolean checkFinalState(byte[] records, int recordRef, TRegexDFAExecutorLocals locals) {
+        if (DFAStateNode.isFinalState(records, recordRef)) {
+            storeResult(records, recordRef, locals, false);
+        }
+        return false;
+    }
+
+    static void afterIndexOf(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, int postLoopIndex) {
+        locals.setIndex(postLoopIndex);
+        checkFinalState(records, recordRef, locals);
+    }
+
+    static void atEnd(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, boolean inputAtEnd) {
+        boolean anchored = DFAStateNode.isAnchoredFinalState(records, recordRef) && inputAtEnd;
+        if (DFAStateNode.isFinalState(records, recordRef) || anchored) {
+            storeResult(records, recordRef, locals, anchored);
+        }
+    }
+
+    private static void storeResult(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, boolean anchored) {
+        int noPreCalculatedResult = Byte.toUnsignedInt(NO_PRE_CALC_RESULT);
+        int anchoredResult = getAnchoredResult(records, recordRef);
+        if (anchored && anchoredResult != noPreCalculatedResult) {
+            locals.setResultInt(anchoredResult);
         } else {
-            assert hasPreCalculatedUnAnchoredResult();
-            locals.setResultInt(getPreCalculatedUnAnchoredResult());
+            int unAnchoredResult = getUnAnchoredResult(records, recordRef);
+            assert unAnchoredResult != noPreCalculatedResult;
+            locals.setResultInt(unAnchoredResult);
         }
     }
 }

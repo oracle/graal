@@ -43,7 +43,31 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.strings.TruffleString;
 
+/**
+ * A generic capture-group state. Its packed record appends the anchored-final successor, pre-final
+ * transition, final transition, loop partial-transition, and loop-dependency flag to the common
+ * {@link DFAStateNode} fields.
+ *
+ * <pre>
+ * +-------------+------+----------------------------------+
+ * | tail offset | size | field                            |
+ * +-------------+------+----------------------------------+
+ * | 0           | 4    | anchored-final successor         |
+ * | 4           | 4    | pre-final transition reference   |
+ * | 8           | 4    | final transition reference       |
+ * | 12          | 4    | loop transition reference        |
+ * | 16          | 1    | loop-transition dependency flag  |
+ * +-------------+------+----------------------------------+
+ * </pre>
+ */
 public final class CGTrackingDFAStateNode extends DFAStateNode {
+
+    private static final int FIELD_ANCHORED_FINAL_SUCCESSOR = 0;
+    private static final int FIELD_PRE_FINAL_TRANSITION_REF = Integer.BYTES;
+    private static final int FIELD_FINAL_TRANSITION_REF = 2 * Integer.BYTES;
+    private static final int FIELD_LOOP_TRANSITION_REF = 3 * Integer.BYTES;
+    private static final int FIELD_LOOP_TRANSITION_HAS_DEPENDENCY = 4 * Integer.BYTES;
+    private static final int TAIL_SIZE = 4 * Integer.BYTES + 1;
 
     /** Reference to a {@link DFACaptureGroupLazyTransition}. */
     private final int preUnAnchoredFinalStateTransitionRef;
@@ -72,32 +96,71 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
         this.cgLoopToSelfHasDependency = cgLoopToSelfHasDependency;
     }
 
-    private int getCGTransitionToSelfRef() {
-        return cgLoopToSelfRef;
+    @Override
+    DFAExecutorRecords.Kind getRecordKind() {
+        return DFAExecutorRecords.Kind.genericCGState;
     }
 
     @Override
-    boolean beforeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
+    int encodedTailSize() {
+        return TAIL_SIZE;
+    }
+
+    @Override
+    void encodeTail(DFAExecutorRecords.Encoder encoder, int tailRef) {
+        encoder.putNodeRef(tailRef + FIELD_ANCHORED_FINAL_SUCCESSOR, getAnchoredFinalSuccessor());
+        encoder.putInt(tailRef + FIELD_PRE_FINAL_TRANSITION_REF, preUnAnchoredFinalStateTransitionRef);
+        encoder.putInt(tailRef + FIELD_FINAL_TRANSITION_REF, unAnchoredFinalStateTransitionRef);
+        encoder.putInt(tailRef + FIELD_LOOP_TRANSITION_REF, cgLoopToSelfRef);
+        encoder.putByte(tailRef + FIELD_LOOP_TRANSITION_HAS_DEPENDENCY, cgLoopToSelfHasDependency ? 1 : 0);
+    }
+
+    static int getAnchoredFinalSuccessor(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_ANCHORED_FINAL_SUCCESSOR);
+    }
+
+    static int getPreUnAnchoredFinalTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_PRE_FINAL_TRANSITION_REF);
+    }
+
+    static int getUnAnchoredFinalTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_FINAL_TRANSITION_REF);
+    }
+
+    static int getLoopTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_LOOP_TRANSITION_REF);
+    }
+
+    static boolean loopTransitionHasDependency(byte[] records, int recordRef) {
+        return records[DFAStateNode.tailOffset(records, recordRef) + FIELD_LOOP_TRANSITION_HAS_DEPENDENCY] != 0;
+    }
+
+    static int getEncodedSize(byte[] records, int recordRef) {
+        return DFAStateNode.getEncodedSize(records, recordRef) + TAIL_SIZE;
+    }
+
+    static boolean beforeFindSuccessor(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         if (executor.isSearching()) {
-            checkFinalStateCG(locals, executor);
+            checkFinalState(records, recordRef, locals, executor);
         }
         return false;
     }
 
-    @Override
-    void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
+    static void afterIndexOf(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor,
+                    int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
         assert locals.getIndex() == preLoopIndex;
         if (locals.getIndex() < postLoopIndex) {
-            DFAAbstractNode loopTransitionNode = executor.getNodes()[successors[getLoopToSelf()]];
-            if (loopTransitionNode instanceof CGTrackingTransitionNode cgTrackingLoopTransitionNode) {
-                cgTrackingLoopTransitionNode.apply(locals, executor);
+            int loopTransitionRef = DFAStateNode.getSuccessor(records, recordRef, DFAStateNode.getLoopTransitionIndex(records, recordRef));
+            DFAExecutorRecords.Kind loopTransitionKind = DFAExecutorRecords.getKind(records, loopTransitionRef);
+            CompilerAsserts.partialEvaluationConstant(loopTransitionKind);
+            if (loopTransitionKind == DFAExecutorRecords.Kind.genericCGTransition) {
+                CGTrackingTransitionNode.apply(records, loopTransitionRef, locals, executor);
             }
             locals.setLastIndex();
             executor.inputSkip(locals, codeRange);
         }
         int secondIndex = locals.getIndex();
-        int transitionRef = getCGTransitionToSelfRef();
+        int transitionRef = getLoopTransitionRef(records, recordRef);
         byte[] partialTransitionRecords = executor.getCGPartialTransitionRecords();
         if (DFACaptureGroupPartialTransition.doesReorderResults(partialTransitionRecords, transitionRef)) {
             while (locals.getIndex() < postLoopIndex) {
@@ -112,7 +175,7 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
             if (secondIndex < postLoopIndex) {
                 executor.inputSkipReverse(locals, codeRange);
             }
-            if (cgLoopToSelfHasDependency && secondIndex < locals.getLastIndex()) {
+            if (loopTransitionHasDependency(records, recordRef) && secondIndex < locals.getLastIndex()) {
                 int postLoopMinusTwoIndex = locals.getIndex();
                 executor.inputSkipReverse(locals, codeRange);
                 DFACaptureGroupPartialTransition.apply(partialTransitionRecords, transitionRef, executor, locals.getCGData(), locals.getIndex());
@@ -127,23 +190,21 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
             executor.inputIncNextIndexRaw(locals, executor.inputGetCodePointSize(locals, codeRange));
         }
         if (executor.isSearching()) {
-            checkFinalStateCG(locals, executor);
+            checkFinalState(records, recordRef, locals, executor);
         }
     }
 
-    @Override
-    void atEnd(TRegexDFAExecutorLocals frame, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        if (!isAnchoredFinalState() || !inputAtEnd) {
-            checkFinalStateCG(frame, executor);
+    static void atEnd(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
+        if (!DFAStateNode.isAnchoredFinalState(records, recordRef) || !inputAtEnd) {
+            checkFinalState(records, recordRef, locals, executor);
         }
     }
 
-    private void checkFinalStateCG(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        if (isFinalState()) {
-            DFACaptureGroupLazyTransition.applyPreFinal(preUnAnchoredFinalStateTransitionRef, locals, executor);
-            DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(), unAnchoredFinalStateTransitionRef, executor, locals.getCGData(), locals.getIndex());
+    private static void checkFinalState(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        if (DFAStateNode.isFinalState(records, recordRef)) {
+            DFACaptureGroupLazyTransition.applyPreFinal(getPreUnAnchoredFinalTransitionRef(records, recordRef), locals, executor);
+            DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(),
+                            getUnAnchoredFinalTransitionRef(records, recordRef), executor, locals.getCGData(), locals.getIndex());
             storeResult(locals, executor);
         }
     }
@@ -155,11 +216,16 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
         locals.setResultInt(0);
     }
 
-    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
-        int preFinalCost = preUnAnchoredFinalStateTransitionRef == DFACaptureGroupLazyTransition.NO_TRANSITION ? 0
-                        : DFACaptureGroupLazyTransition.getCost(preUnAnchoredFinalStateTransitionRef, executor);
-        int finalCost = unAnchoredFinalStateTransitionRef == DFACaptureGroupPartialTransition.NO_TRANSITION ? 0
-                        : DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), unAnchoredFinalStateTransitionRef);
-        return preFinalCost + finalCost;
+    static int getCGTrackingCost(byte[] records, int recordRef, TRegexDFAExecutorNode executor) {
+        int cost = 0;
+        int preFinalRef = getPreUnAnchoredFinalTransitionRef(records, recordRef);
+        int finalRef = getUnAnchoredFinalTransitionRef(records, recordRef);
+        if (preFinalRef != DFACaptureGroupLazyTransition.NO_TRANSITION) {
+            cost += DFACaptureGroupLazyTransition.getCost(preFinalRef, executor);
+        }
+        if (finalRef != DFACaptureGroupLazyTransition.NO_TRANSITION) {
+            cost += DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), finalRef);
+        }
+        return cost;
     }
 }

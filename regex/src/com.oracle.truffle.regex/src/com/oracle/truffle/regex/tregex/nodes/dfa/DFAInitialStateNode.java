@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,39 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
- * This state node is responsible for selecting a DFA's initial state based on the index the search
+ * This state is responsible for selecting a DFA's initial state based on the index the search
  * starts from. Successors are entry points in case we start matching at the beginning of the input
  * string, followed by entry points in case we do not start matching at the beginning of the input
  * string. If possible matches must start at the beginning of the input string, entry points may be
  * -1.
+ *
+ * <pre>
+ * +-------------+------+-----------------------------------------------+
+ * | byte offset | size | field                                         |
+ * +-------------+------+-----------------------------------------------+
+ * | 0           | 1    | kind                                          |
+ * | 1           | 1    | flags                                         |
+ * | 2           | 2    | successor count (uint16)                      |
+ * | 4           | 4*n  | successor references (int32[])                |
+ * | 4 + 4*n     | 2*n  | generic-CG last-transition table (int16[])   |
+ * +-------------+------+-----------------------------------------------+
+ * </pre>
  */
 public class DFAInitialStateNode extends DFAAbstractStateNode {
 
-    @CompilationFinal(dimensions = 1) private final short[] cgLastTransition;
+    private static final int FIELD_FLAGS = 1;
+    private static final int FIELD_SUCCESSOR_COUNT = 2;
+    private static final int FIELD_SUCCESSORS = 4;
+    private static final int FLAG_HAS_UNANCHORED_ENTRY = 1;
+    private static final int FLAG_HAS_CG_LAST_TRANSITIONS = 1 << 1;
+
+    private final short[] cgLastTransition;
     private final boolean hasUnanchoredEntry;
 
     public DFAInitialStateNode(short[] successors, short[] cgLastTransition) {
@@ -73,16 +90,59 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
         return false;
     }
 
-    public short[] getCgLastTransition() {
-        return cgLastTransition;
+    @Override
+    int encodedSize() {
+        int n = successors.length;
+        if (cgLastTransition != null && cgLastTransition.length != n) {
+            throw CompilerDirectives.shouldNotReachHere("invalid initial-state transition table");
+        }
+        int size = Math.addExact(FIELD_SUCCESSORS, Math.multiplyExact(Integer.BYTES, n));
+        return cgLastTransition == null ? size : Math.addExact(size, Math.multiplyExact(Short.BYTES, n));
     }
 
-    public int getPrefixLength() {
-        return (successors.length / 2) - 1;
+    @Override
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        assert recordRef == DFAExecutorRecords.INITIAL_STATE_REF;
+        encoder.putKind(recordRef, DFAExecutorRecords.Kind.initialState);
+        int flags = (hasUnanchoredEntry ? FLAG_HAS_UNANCHORED_ENTRY : 0) | (cgLastTransition != null ? FLAG_HAS_CG_LAST_TRANSITIONS : 0);
+        encoder.putByte(recordRef + FIELD_FLAGS, flags);
+        encoder.putUnsignedShort(recordRef + FIELD_SUCCESSOR_COUNT, successors.length);
+        for (int i = 0; i < successors.length; i++) {
+            encoder.putNodeRef(recordRef + FIELD_SUCCESSORS + Integer.BYTES * i, successors[i]);
+        }
+        if (cgLastTransition != null) {
+            int lastTransitionRef = recordRef + FIELD_SUCCESSORS + Integer.BYTES * successors.length;
+            for (int i = 0; i < cgLastTransition.length; i++) {
+                encoder.putShort(lastTransitionRef + Short.BYTES * i, cgLastTransition[i]);
+            }
+        }
     }
 
-    public boolean hasUnAnchoredEntry() {
-        return hasUnanchoredEntry;
+    static int getSuccessorCount(byte[] records) {
+        return DFAExecutorRecords.getUnsignedShort(records, FIELD_SUCCESSOR_COUNT);
+    }
+
+    @CompilerDirectives.EarlyInline
+    static int getSuccessor(byte[] records, int index) {
+        return DFAExecutorRecords.getInt(records, FIELD_SUCCESSORS + Integer.BYTES * index);
+    }
+
+    static int getLastTransition(byte[] records, int index) {
+        int count = getSuccessorCount(records);
+        return DFAExecutorRecords.getShort(records, FIELD_SUCCESSORS + Integer.BYTES * count + Short.BYTES * index);
+    }
+
+    static boolean hasUnAnchoredEntry(byte[] records) {
+        return (records[FIELD_FLAGS] & FLAG_HAS_UNANCHORED_ENTRY) != 0;
+    }
+
+    static int getEncodedSize(byte[] records) {
+        int n = getSuccessorCount(records);
+        int size = FIELD_SUCCESSORS + Integer.BYTES * n;
+        if ((records[FIELD_FLAGS] & FLAG_HAS_CG_LAST_TRANSITIONS) != 0) {
+            size += Short.BYTES * n;
+        }
+        return size;
     }
 
     @TruffleBoundary

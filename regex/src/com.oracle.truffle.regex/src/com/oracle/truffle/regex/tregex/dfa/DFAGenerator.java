@@ -1745,7 +1745,7 @@ public final class DFAGenerator implements JsonConvertible {
                     loopToSelf = (short) i;
                     CodePointSet loopMB = t.getCodePointSet();
                     CodePointSet inverse = loopMB.createInverse(getEncoding());
-                    if (coversCharSpace && !loopMB.matchesEverything(getEncoding()) && !(getEncoding().isUTF16() && inverse.intersects(Constants.SURROGATES))) {
+                    if (!loopMB.matchesEverything(getEncoding()) && !(getEncoding().isUTF16() && inverse.intersects(Constants.SURROGATES))) {
                         TruffleString.CodePointSet indexOfParam = TruffleString.CodePointSet.fromRanges(inverse.getRanges(), getEncoding().getTStringEncoding());
                         indexOfIsFast = checkIndexOfIsFast(indexOfParam);
                         if (indexOfIsFast != 0) {
@@ -1802,7 +1802,7 @@ public final class DFAGenerator implements JsonConvertible {
                 successors[successors.length - 1] = s.getBackwardPrefixState();
             }
             byte flags = DFAStateNode.buildFlags(s.isUnAnchoredFinalState(), s.isAnchoredFinalState(), s.hasBackwardPrefixState(), utf16MustDecode, s.isGuardedUnAnchoredFinalState(),
-                            s.isGuardedAnchoredFinalState());
+                            s.isGuardedAnchoredFinalState(), indexOfNodeId >= 0 && !coversCharSpace);
             DFAStateNode stateNode;
             if (isGenericCG()) {
                 stateNode = createCGTrackingDFAState(nodes, s, id, matcherRef, successors, indexOfNodeId, indexOfIsFast, loopToSelf, flags);

@@ -40,7 +40,22 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+/**
+ * An anchored-final capture-group transition. Unlike other transition records, it has no successor.
+ *
+ * <pre>
+ * +-------------+------+--------------------------------+
+ * | byte offset | size | field                          |
+ * +-------------+------+--------------------------------+
+ * | 0           | 1    | kind                           |
+ * | 1           | 4    | partial-transition ref (int32) |
+ * +-------------+------+--------------------------------+
+ * </pre>
+ */
 public final class CGTrackingAnchoredFinalTransitionNode extends CGTrackingAbstractTransitionNode {
+
+    private static final int FIELD_TRANSITION_REF = 1;
+    private static final int RECORD_SIZE = FIELD_TRANSITION_REF + Integer.BYTES;
 
     /** Reference to a {@link DFACaptureGroupPartialTransition}. */
     private final int anchoredFinalStateTransitionRef;
@@ -51,13 +66,31 @@ public final class CGTrackingAnchoredFinalTransitionNode extends CGTrackingAbstr
     }
 
     @Override
-    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
-        return DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), anchoredFinalStateTransitionRef);
+    int encodedSize() {
+        return RECORD_SIZE;
     }
 
     @Override
-    void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(), anchoredFinalStateTransitionRef, executor, locals.getCGData(), locals.getIndex());
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        encoder.putKind(recordRef, DFAExecutorRecords.Kind.genericCGAnchoredFinalTransition);
+        encoder.putInt(recordRef + FIELD_TRANSITION_REF, anchoredFinalStateTransitionRef);
+    }
+
+    static int getTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_TRANSITION_REF);
+    }
+
+    static int getEncodedSize() {
+        return RECORD_SIZE;
+    }
+
+    static int apply(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(), getTransitionRef(records, recordRef), executor, locals.getCGData(), locals.getIndex());
         CGTrackingDFAStateNode.storeResult(locals, executor);
+        return DFAExecutorRecords.NO_REF;
+    }
+
+    static int getCGTrackingCost(byte[] records, int recordRef, TRegexDFAExecutorNode executor) {
+        return DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), getTransitionRef(records, recordRef));
     }
 }

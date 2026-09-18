@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,29 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+/**
+ * A state that searches for an inner literal. Its packed record contains one successor.
+ *
+ * <pre>
+ * +-------------+------+-------------------+
+ * | byte offset | size | field             |
+ * +-------------+------+-------------------+
+ * | 0           | 1    | kind              |
+ * | 1           | 4    | successor (int32) |
+ * +-------------+------+-------------------+
+ * </pre>
+ */
 public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
+
+    private static final int FIELD_SUCCESSOR = 1;
+    private static final int RECORD_SIZE = FIELD_SUCCESSOR + Integer.BYTES;
 
     private final InnerLiteral innerLiteral;
 
@@ -60,7 +76,28 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
         return innerLiteral;
     }
 
-    int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+    @Override
+    int encodedSize() {
+        return RECORD_SIZE;
+    }
+
+    @Override
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        assert successors.length == 1;
+        encoder.putKind(recordRef, DFAExecutorRecords.Kind.innerLiteralState);
+        encoder.putNodeRef(recordRef + FIELD_SUCCESSOR, successors[0]);
+    }
+
+    @CompilerDirectives.EarlyInline
+    static int getSuccessor(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_SUCCESSOR);
+    }
+
+    static int getEncodedSize() {
+        return RECORD_SIZE;
+    }
+
+    static int executeInnerLiteralSearch(InnerLiteral innerLiteral, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         return InputOps.indexOf(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral, executor.getEncoding(), executor.getIndexOfStringNode());
     }
 

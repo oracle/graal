@@ -42,9 +42,13 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 public abstract class CGTrackingAbstractTransitionNode extends DFAAbstractTransitionNode {
 
+    static final int FIELD_TRANSITION_REF = COMMON_RECORD_SIZE;
+
     CGTrackingAbstractTransitionNode(short id, short successor) {
         super(id, successor);
     }
 
-    public abstract int getCGTrackingCost(TRegexDFAExecutorNode executor);
+    static int getTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_TRANSITION_REF);
+    }
 }
