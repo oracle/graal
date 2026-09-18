@@ -94,6 +94,7 @@ import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVarINodeGen.LLVMUnsigned
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToFloatVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI16VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI128VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI1VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI32VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVectorNodeFactory.LLVMBitcastToI64VectorNodeGen;
@@ -270,6 +271,7 @@ import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI128Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 import java.math.BigInteger;
@@ -694,6 +696,9 @@ public class CommonNodeFactory {
                         return LLVMObjectReadNode.create(frameSlot);
                 }
             } else if (elemType instanceof PointerType || elemType instanceof FunctionType) {
+                return LLVMObjectReadNode.create(frameSlot);
+            } else if (elemType instanceof VariableBitWidthType) {
+                // e.g. <N x i128> (Eigen AVX predux intermediate); stored in an Object frame slot.
                 return LLVMObjectReadNode.create(frameSlot);
             }
         } else if (llvmType instanceof VariableBitWidthType) {
@@ -1138,6 +1143,12 @@ public class CommonNodeFactory {
                         return LLVMBitcastToFloatVectorNodeGen.create(fromNode, vectorLength);
                     case DOUBLE:
                         return LLVMBitcastToDoubleVectorNodeGen.create(fromNode, vectorLength);
+                }
+            } else if (elemType instanceof VariableBitWidthType) {
+                // <N x i128>: clang emits this for Eigen's AVX predux, reinterpreting a 256-bit
+                // register as <2 x i128> to extractelement the high 128-bit lane.
+                if (((VariableBitWidthType) elemType).getBitSizeInt() == LLVMI128Vector.ELEMENT_BITS) {
+                    return LLVMBitcastToI128VectorNodeGen.create(fromNode, vectorLength);
                 }
             } else if (elemType instanceof PointerType) {
                 if (fromType instanceof VectorType) {
