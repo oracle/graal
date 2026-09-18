@@ -66,6 +66,11 @@ public class WebImageRawFileOperationSupport implements RawFileOperationSupport 
     }
 
     @Override
+    public boolean sameFiles(RawFilePath f1, RawFilePath f2) {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
     public RawFileDescriptor open(String filename, FileAccessMode accessMode) {
         throw UNSUPPORTED_OPERATION;
     }
