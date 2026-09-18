@@ -51,10 +51,10 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
 
     public DFASimpleCGTrackingStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
                     short[] successors,
-                    Matchers matchers,
+                    int matcherRef,
                     int transitionToFinalStateRef,
                     short anchoredFinalSuccessor) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, anchoredFinalSuccessor);
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matcherRef, anchoredFinalSuccessor);
         this.transitionToFinalStateRef = transitionToFinalStateRef;
     }
 

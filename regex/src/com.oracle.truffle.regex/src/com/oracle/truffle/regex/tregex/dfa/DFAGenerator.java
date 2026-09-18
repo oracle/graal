@@ -102,7 +102,6 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFASimpleCGTrackingStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFASimpleCGTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorDebugRecorder;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
@@ -184,6 +183,7 @@ public final class DFAGenerator implements JsonConvertible {
     private TRegexDFAExecutorNode innerLiteralPrefixMatcher = null;
 
     private final SequentialMatchers.Builder matchersBuilder;
+    private final List<AllTransitionsInOneTreeMatcher> treeMatchers = new ArrayList<>();
     private final List<TruffleString.CodePointSet> indexOfParams = new ArrayList<>();
 
     public DFAGenerator(TRegexCompilationRequest compilationRequest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
@@ -418,7 +418,8 @@ public final class DFAGenerator implements JsonConvertible {
         checkIfAllQuantifierOperationsAreSupported(nodes, counterTrackers);
 
         return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates,
-                        indexOfParams.toArray(TruffleString.CodePointSet[]::new), nodes.toArray(DFAAbstractNode[]::new), matchersBuilder.finish(),
+                        indexOfParams.toArray(TruffleString.CodePointSet[]::new), nodes.toArray(DFAAbstractNode[]::new), matchersBuilder.getEncodedMatchers(),
+                        matchersBuilder.getMatcherRecords(), treeMatchers.isEmpty() ? null : treeMatchers.toArray(AllTransitionsInOneTreeMatcher[]::new),
                         isGenericCG() ? cgTransitionRecordBuilder.getPartialTransitionRecords() : doSimpleCG ? simpleCGTransitionBuilder.getTransitionRecords() : null,
                         isGenericCG() ? cgTransitionRecordBuilder.getLazyTransitionRecords() : null,
                         debugRecorder, innerLiteralPrefixMatcher, counterDataBuilder, counterTrackers);
@@ -1786,14 +1787,15 @@ public final class DFAGenerator implements JsonConvertible {
                 iT += trackBoundedQuantifiers() ? constraints.get(i).length() : 1;
             }
 
-            final Matchers matchers;
+            final int matcherRef;
             // Very conservative heuristic for whether we should use AllTransitionsInOneTreeMatcher.
             // TODO: Potential benefits of this should be further explored.
             boolean useTreeTransitionMatcher = nRanges > 1 && MathUtil.log2ceil(nRanges + 2) * 8 < estimatedTransitionsCost && !anyConstraints;
             if (useTreeTransitionMatcher) {
-                matchers = createAllTransitionsInOneTreeMatcher(s, coversCharSpace);
+                matcherRef = DFAStateNode.treeMatcherRef(treeMatchers.size());
+                treeMatchers.add(createAllTransitionsInOneTreeMatcher(s, coversCharSpace));
             } else {
-                matchers = getEncoding().toMatchers(matchersBuilder);
+                matcherRef = matchersBuilder.createMatcherRecord();
             }
 
             if (s.hasBackwardPrefixState()) {
@@ -1803,22 +1805,22 @@ public final class DFAGenerator implements JsonConvertible {
                             s.isGuardedAnchoredFinalState());
             DFAStateNode stateNode;
             if (isGenericCG()) {
-                stateNode = createCGTrackingDFAState(nodes, s, id, matchers, successors, indexOfNodeId, indexOfIsFast, loopToSelf, flags);
+                stateNode = createCGTrackingDFAState(nodes, s, id, matcherRef, successors, indexOfNodeId, indexOfIsFast, loopToSelf, flags);
             } else if (nfa.isTraceFinderNFA()) {
-                stateNode = new TraceFinderDFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers,
+                stateNode = new TraceFinderDFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matcherRef,
                                 s.getPreCalculatedUnAnchoredResult(),
                                 s.getPreCalculatedAnchoredResult());
             } else if (anyConstraints || anyOps || s.isGuardedFinalState()) {
                 assert isBooleanMatch();
-                stateNode = new DFABQTrackingStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers,
+                stateNode = new DFABQTrackingStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matcherRef,
                                 s.getUnAnchoredFinalConstraints(),
                                 s.getAnchoredFinalConstraints());
             } else if (doSimpleCG) {
-                stateNode = new DFASimpleCGTrackingStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers,
+                stateNode = new DFASimpleCGTrackingStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matcherRef,
                                 createSimpleCGTransitionRef(s.getUnAnchoredFinalStateTransition()),
                                 createAndDedupSimpleCGTransition(nodes, (short) -1, s.getAnchoredFinalStateTransition()));
             } else {
-                stateNode = new DFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers, (short) -1);
+                stateNode = new DFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matcherRef, (short) -1);
             }
             nodes.set(id, stateNode);
         }
@@ -1874,7 +1876,7 @@ public final class DFAGenerator implements JsonConvertible {
      */
     @SuppressWarnings("unchecked")
     private CGTrackingDFAStateNode createCGTrackingDFAState(ObjectArrayBuffer<DFAAbstractNode> nodes, DFAStateNodeBuilder s,
-                    short id, Matchers matchers, short[] successors, short indexOfNodeId, byte indexOfIsFast, short loopToSelf, byte flags) {
+                    short id, int matcherRef, short[] successors, short indexOfNodeId, byte indexOfIsFast, short loopToSelf, byte flags) {
         int[] lazyTransitionRefs = new int[s.getSuccessors().length];
         final int lazyPreFinalTransitionRef;
         final int lazyPreAnchoredFinalTransitionRef;
@@ -1971,7 +1973,7 @@ public final class DFAGenerator implements JsonConvertible {
             preAnchoredFinalTransition = dedupDFATransition(nodes, anchoredFinalTransition,
                             CGTrackingPreFinalTransitionNode.create(nextID, anchoredFinalTransition, lazyPreAnchoredFinalTransitionRef));
         }
-        return new CGTrackingDFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers,
+        return new CGTrackingDFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matcherRef,
                         preAnchoredFinalTransition, lazyPreFinalTransitionRef, createCGFinalTransition(s.getUnAnchoredFinalStateTransition()), cgLoopToSelfRef, cgLoopToSelfHasDependency);
     }
 

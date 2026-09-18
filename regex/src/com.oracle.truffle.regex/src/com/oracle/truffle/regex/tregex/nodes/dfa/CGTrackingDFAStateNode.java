@@ -59,13 +59,13 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
                     short indexOfNodeId,
                     byte indexOfIsFast,
                     short[] successors,
-                    Matchers matchers,
+                    int matcherRef,
                     short anchoredFinalSuccessor,
                     int preUnAnchoredFinalStateTransitionRef,
                     int unAnchoredFinalStateTransitionRef,
                     int cgLoopToSelfRef,
                     boolean cgLoopToSelfHasDependency) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, anchoredFinalSuccessor);
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matcherRef, anchoredFinalSuccessor);
         this.unAnchoredFinalStateTransitionRef = unAnchoredFinalStateTransitionRef;
         this.preUnAnchoredFinalStateTransitionRef = preUnAnchoredFinalStateTransitionRef;
         this.cgLoopToSelfRef = cgLoopToSelfRef;
