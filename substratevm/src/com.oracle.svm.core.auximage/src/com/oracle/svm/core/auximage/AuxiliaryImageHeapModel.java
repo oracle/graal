@@ -51,6 +51,7 @@ final class AuxiliaryImageHeapModel implements ImageHeap {
     private final EconomicMap<Object, AuxiliaryImageHeapObject> objects = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
     AuxiliaryImageHeapModel(long sizeLimit) {
+        assert sizeLimit > 0;
         maximumAllowedAuxiliaryImageSize = sizeLimit;
     }
 
@@ -60,14 +61,14 @@ final class AuxiliaryImageHeapModel implements ImageHeap {
 
     void addObject(Object obj, Object from) {
         long size = LayoutEncoding.getSizeFromObjectAddOptionalIdHashField(obj).rawValue();
+        if (size > maximumAllowedAuxiliaryImageSize - estimatedAuxiliaryImageSize) {
+            throw new MaximumAuxiliaryImageSizeExceededException();
+        }
+
         AuxiliaryImageHeapObject info = new AuxiliaryImageHeapObject(obj, from, size);
         AuxiliaryImageHeapObject oldInfo = objects.put(obj, info);
         assert oldInfo == null : "Object is already present in the auxiliary image heap";
-
         estimatedAuxiliaryImageSize += size;
-        if (estimatedAuxiliaryImageSize > maximumAllowedAuxiliaryImageSize) {
-            throw new MaximumAuxiliaryImageSizeExceededException();
-        }
     }
 
     void addObjectToLayout(ImageHeapLayouter layouter, Object obj) {
@@ -97,12 +98,12 @@ final class AuxiliaryImageHeapModel implements ImageHeap {
     }
 
     AuxiliaryImageHeapObject removeObject(Object obj) {
-        return objects.removeKey(obj);
-    }
-
-    Object getReachableFromForObject(Object obj) {
-        AuxiliaryImageHeapObject info = objects.get(obj);
-        return info != null ? info.getReachableFrom() : null;
+        AuxiliaryImageHeapObject info = objects.removeKey(obj);
+        if (info != null) {
+            estimatedAuxiliaryImageSize -= info.getSize();
+            assert estimatedAuxiliaryImageSize >= 0;
+        }
+        return info;
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "This doesn't allocate except for assertions/exceptions which cause us to abort.")

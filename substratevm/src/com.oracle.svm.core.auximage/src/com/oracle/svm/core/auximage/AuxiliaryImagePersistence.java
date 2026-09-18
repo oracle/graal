@@ -30,7 +30,6 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -157,6 +156,11 @@ final class AuxiliaryImagePersistence {
 
         private final AuxiliaryImageObjectReplacer[] replacers;
         private final EconomicMap<Object, Object> replacedObjects = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        /**
+         * Objects in the (primary) image heap that were discovered during traversal, and the object
+         * they were reached from, for diagnostics and late replacement.
+         */
+        private EconomicMap<Object, Object> discoveredImageHeapObjects = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         private final ReplacerAccessImpl replacersAccess = new ReplacerAccessImpl();
 
         private AuxiliaryImageHeapModel heap;
@@ -220,7 +224,7 @@ final class AuxiliaryImagePersistence {
                         control.poll();
                         replacer.epilogue(replacersAccess);
                     }
-                    traversal.traverse((_, to) -> VMError.guarantee(heap.containsObject(to), "No additional objects may become reachable after the epilogue"));
+                    traversal.traverse((from, to) -> VMError.guarantee(isDiscoveredReference(from, to), "No additional objects may become reachable after the epilogue"));
                     assert traversal.isFinished();
                 }
 
@@ -233,31 +237,27 @@ final class AuxiliaryImagePersistence {
                     assert traversal.isFinished();
                 }
 
+                discoveredImageHeapObjects = null; // no longer needed
+
                 ImageHeapLayouter layouter = new ChunkedImageHeapLayouter(metaObj.heapInfo, auxImageHeapOffsetInAddressSpace.rawValue());
 
                 try (Timer _ = AuxiliaryImageTracing.persistTimers.initHeap.start()) {
-                    for (Iterator<Object> itr = heap.getPlainObjects().iterator(); itr.hasNext();) {
+                    for (Object obj : heap.getPlainObjects()) {
                         control.maybePoll();
-                        Object obj = itr.next();
-                        if (isInPrimaryImageHeap(obj)) {
-                            itr.remove(); // for accurate trace output (if enabled)
-                        } else {
-                            assert obj != NULL_SENTINEL && obj != CLEAR_REFERENCE_SENTINEL : "should not be discovered as objects";
-                            assert !replacedObjects.containsKey(obj) : "must not contain replaced objects";
-                            ClassInitializationInfo init = DynamicHubIntrinsics.readHub(obj).getClassInitializationInfo();
-                            if (!init.isBuildTimeInitialized()) {
-                                assert !init.isInErrorState() : "should not be possible to allocate instances";
-                                /*
-                                 * GR-37592: we would have to initialize classes after loading an
-                                 * auxiliary image, before it can be accessed, and in a sane order,
-                                 * possibly the order of class initialization in the current
-                                 * isolate.
-                                 */
-                                throw attachPathToRoot(obj, new UnsupportedOperationException("Objects of classes which are initialized at runtime currently cannot be persisted: " + obj.getClass()));
-                            }
-
-                            heap.addObjectToLayout(layouter, obj);
+                        assert obj != NULL_SENTINEL && obj != CLEAR_REFERENCE_SENTINEL : "should not be discovered as objects";
+                        assert !replacedObjects.containsKey(obj) : "must not contain replaced objects";
+                        ClassInitializationInfo init = DynamicHubIntrinsics.readHub(obj).getClassInitializationInfo();
+                        if (!init.isBuildTimeInitialized()) {
+                            assert !init.isInErrorState() : "should not be possible to allocate instances";
+                            /*
+                             * GR-37592: we would have to initialize classes after loading an
+                             * auxiliary image, before it can be accessed, and in a sane order,
+                             * possibly the order of class initialization in the current isolate.
+                             */
+                            throw attachPathToRoot(obj, new UnsupportedOperationException("Objects of classes which are initialized at runtime currently cannot be persisted: " + obj.getClass()));
                         }
+
+                        heap.addObjectToLayout(layouter, obj);
                     }
                 }
 
@@ -339,7 +339,7 @@ final class AuxiliaryImagePersistence {
         private void traverseReference(Object from, Object to, boolean callReplacers) {
             assert from != null;
             assert to != null && to != CLEAR_REFERENCE_SENTINEL && to != NULL_SENTINEL;
-            if (heap.containsObject(to)) {
+            if (isDiscovered(to)) {
                 assert !replacedObjects.containsKey(to);
                 return;
             }
@@ -355,7 +355,7 @@ final class AuxiliaryImagePersistence {
                 }
                 throw VMError.shouldNotReachHere("must be a disallowed object");
             } else if (obj != null) { // replaced
-                if (obj != NULL_SENTINEL && !heap.containsObject(obj)) {
+                if (obj != NULL_SENTINEL && !isDiscovered(obj)) {
                     traverseReference(from, obj, false); // replacement not yet traversed
                 }
                 return;
@@ -395,15 +395,38 @@ final class AuxiliaryImagePersistence {
             if (obj == NULL_SENTINEL || obj == CLEAR_REFERENCE_SENTINEL) {
                 return;
             }
-            heap.addObject(obj, from);
-            // Remember even image heap objects so to not offer to replace again, but filter later
-            if (!isInPrimaryImageHeap(obj)) {
+            if (obj != to && isDiscovered(obj)) {
+                return;
+            }
+            boolean inPrimaryImageHeap = isInPrimaryImageHeap(obj);
+            if (inPrimaryImageHeap) {
+                Object previousFrom = discoveredImageHeapObjects.put(obj, from);
+                assert previousFrom == null;
+            } else {
+                heap.addObject(obj, from);
                 traversal.addObject(obj);
             }
         }
 
+        private boolean isDiscovered(Object obj) {
+            if (heap.containsObject(obj)) {
+                return true;
+            }
+            assert discoveredImageHeapObjects != null : "After traversal: no primary image heap objects should be encountered";
+            return discoveredImageHeapObjects.containsKey(obj);
+        }
+
+        private Object getDiscoveredFrom(Object obj) {
+            AuxiliaryImageHeapObject info = heap.getObject(obj);
+            if (info == null) {
+                assert discoveredImageHeapObjects != null : "After traversal: no primary image heap objects should be encountered";
+                return discoveredImageHeapObjects.get(obj);
+            }
+            return info.getReachableFrom();
+        }
+
         private UnsupportedOperationException attachPathToRoot(Object from, UnsupportedOperationException e) {
-            Object root = metaObj;
+            Object root = heap.getRootObject();
             Object ref = from;
             StringBuilder b = new StringBuilder();
             while (ref != null && ref != root) {
@@ -411,7 +434,7 @@ final class AuxiliaryImagePersistence {
                 if (ref instanceof ValidPersistedRuntimeCode) {
                     b.append(" root-name: ").append(((ValidPersistedRuntimeCode) ref).installedCode.getName());
                 }
-                ref = heap.getReachableFromForObject(ref);
+                ref = getDiscoveredFrom(ref);
             }
             if (b.length() > 0) {
                 throw new UnsupportedOperationException(String.format("%s%n    Path to root object: %s", e.getMessage(), b.toString()), e);
@@ -449,6 +472,17 @@ final class AuxiliaryImagePersistence {
 
         private static boolean isReferenceObjectReferent(Object from, Object to) {
             return from instanceof Reference && ReferenceInternals.getReferent((Reference<?>) from) == to;
+        }
+
+        private boolean isDiscoveredReference(Object from, Object to) {
+            Object replacement = replacedObjects.get(to);
+            if (replacement == NULL_SENTINEL) {
+                return true;
+            } else if (replacement == CLEAR_REFERENCE_SENTINEL) {
+                return isReferenceObjectReferent(from, to);
+            }
+            Object obj = replacement != null ? replacement : to;
+            return isDiscovered(obj);
         }
 
         private void writeObject(ImageHeapObject info) {
@@ -619,10 +653,14 @@ final class AuxiliaryImagePersistence {
                 }
                 replaceObject(original, replacement, true);
                 AuxiliaryImageHeapObject info = heap.removeObject(original);
-                Object originalFrom = info != null ? info.getReachableFrom() : null;
+                Object originalFrom;
+                if (info != null) {
+                    originalFrom = info.getReachableFrom();
+                } else {
+                    originalFrom = discoveredImageHeapObjects.removeKey(original);
+                }
                 boolean seenOriginal = (originalFrom != null);
-                boolean seenReplacement = heap.containsObject(replacement);
-                if (seenOriginal && !seenReplacement) {
+                if (seenOriginal && !isDiscovered(replacement)) {
                     // In the epilogue phase: never call replacers.
                     traverseReference(originalFrom, replacement, false);
                 }
