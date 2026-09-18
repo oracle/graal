@@ -88,7 +88,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     @CompilationFinal(dimensions = 1) private final TruffleString.CodePointSet[] indexOfParameters;
     @CompilationFinal(dimensions = 1) private final DFAAbstractNode[] states;
     @CompilationFinal(dimensions = 1) private final int[] encodedMatchers;
-    @CompilationFinal(dimensions = 1) private final byte[] cgPartialTransitionRecords;
+    @CompilationFinal(dimensions = 1) private final byte[] cgTransitionRecords;
     @CompilationFinal(dimensions = 1) private final byte[] cgLazyTransitionRecords;
     @CompilationFinal(dimensions = 1) private final int[] cgResultOrder;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
@@ -109,14 +109,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TruffleString.CodePointSet[] indexOfParameters,
                     DFAAbstractNode[] states,
                     int[] encodedMatchers,
-                    byte[] cgPartialTransitionRecords,
+                    byte[] cgTransitionRecords,
                     byte[] cgLazyTransitionRecords,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
                     TRegexDFAExecutorNode innerLiteralPrefixMatcher,
                     CounterTrackerData.Builder counterDataBuilder,
                     CounterTracker[] counterTrackers) {
         this(source, createFlags(props), props.getMinResultLength(), numberOfCaptureGroups, calcNumberOfTransitions(source, states), maxNumberOfNFAStates, indexOfParameters, states, encodedMatchers,
-                        cgPartialTransitionRecords, cgLazyTransitionRecords,
+                        cgTransitionRecords, cgLazyTransitionRecords,
                         props.isGenericCG() && maxNumberOfNFAStates > 1 ? initResultOrder(maxNumberOfNFAStates, numberOfCaptureGroups, props.tracksLastGroup()) : null, debugRecorder,
                         innerLiteralPrefixMatcher, counterDataBuilder.getFixedDataSize(), counterDataBuilder.getNumberOfIntArrays(), counterTrackers);
     }
@@ -131,7 +131,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TruffleString.CodePointSet[] indexOfParameters,
                     DFAAbstractNode[] states,
                     int[] encodedMatchers,
-                    byte[] cgPartialTransitionRecords,
+                    byte[] cgTransitionRecords,
                     byte[] cgLazyTransitionRecords,
                     int[] cgResultOrder,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
@@ -148,7 +148,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         this.indexOfParameters = indexOfParameters;
         this.states = states;
         this.encodedMatchers = encodedMatchers;
-        this.cgPartialTransitionRecords = cgPartialTransitionRecords;
+        this.cgTransitionRecords = cgTransitionRecords;
         this.cgLazyTransitionRecords = cgLazyTransitionRecords;
         this.cgResultOrder = cgResultOrder;
         this.debugRecorder = debugRecorder;
@@ -166,7 +166,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         copy.indexOfParameters,
                         copy.states,
                         copy.encodedMatchers,
-                        copy.cgPartialTransitionRecords,
+                        copy.cgTransitionRecords,
                         copy.cgLazyTransitionRecords,
                         copy.cgResultOrder,
                         copy.debugRecorder,
@@ -190,7 +190,13 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     byte[] getCGPartialTransitionRecords() {
-        return cgPartialTransitionRecords;
+        assert isGenericCG();
+        return cgTransitionRecords;
+    }
+
+    byte[] getSimpleCGTransitionRecords() {
+        assert isSimpleCG();
+        return cgTransitionRecords;
     }
 
     byte[] getCGLazyTransitionRecords() {

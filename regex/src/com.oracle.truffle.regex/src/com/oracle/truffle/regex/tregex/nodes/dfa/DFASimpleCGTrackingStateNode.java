@@ -46,15 +46,16 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 public class DFASimpleCGTrackingStateNode extends DFAStateNode {
 
-    private final DFASimpleCGTransition transitionToFinalState;
+    /** Reference to a packed {@link DFASimpleCGTransition} record. */
+    private final int transitionToFinalStateRef;
 
     public DFASimpleCGTrackingStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
                     short[] successors,
                     Matchers matchers,
-                    DFASimpleCGTransition transitionToFinalState,
+                    int transitionToFinalStateRef,
                     short anchoredFinalSuccessor) {
         super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, anchoredFinalSuccessor);
-        this.transitionToFinalState = transitionToFinalState;
+        this.transitionToFinalStateRef = transitionToFinalStateRef;
     }
 
     @Override
@@ -103,8 +104,8 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
     }
 
     private void applySimpleCGFinalTransition(TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        if (transitionToFinalState != null) {
-            transitionToFinalState.apply(locals, executor);
+        if (transitionToFinalStateRef != DFASimpleCGTransition.NO_TRANSITION) {
+            DFASimpleCGTransition.apply(transitionToFinalStateRef, locals, executor);
         }
     }
 }

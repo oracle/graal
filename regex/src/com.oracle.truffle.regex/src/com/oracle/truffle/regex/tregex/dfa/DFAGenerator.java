@@ -165,6 +165,7 @@ public final class DFAGenerator implements JsonConvertible {
     private final EconomicMap<byte[], Integer> cgPartialTransitionIds = EconomicMap.create(BYTE_ARRAY_EQUIVALENCE);
     private final ArrayList<byte[]> cgPartialTransitionRecords = new ArrayList<>();
     private final DFACaptureGroupLazyTransition.Builder cgTransitionRecordBuilder;
+    private final DFASimpleCGTransition.Builder simpleCGTransitionBuilder = new DFASimpleCGTransition.Builder();
     private int maxNumberOfNfaStates = 1;
     private boolean hasAmbiguousStates = false;
     private boolean doSimpleCG = false;
@@ -418,7 +419,7 @@ public final class DFAGenerator implements JsonConvertible {
 
         return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates,
                         indexOfParams.toArray(TruffleString.CodePointSet[]::new), nodes.toArray(DFAAbstractNode[]::new), matchersBuilder.finish(),
-                        isGenericCG() ? cgTransitionRecordBuilder.getPartialTransitionRecords() : null,
+                        isGenericCG() ? cgTransitionRecordBuilder.getPartialTransitionRecords() : doSimpleCG ? simpleCGTransitionBuilder.getTransitionRecords() : null,
                         isGenericCG() ? cgTransitionRecordBuilder.getLazyTransitionRecords() : null,
                         debugRecorder, innerLiteralPrefixMatcher, counterDataBuilder, counterTrackers);
     }
@@ -1814,7 +1815,7 @@ public final class DFAGenerator implements JsonConvertible {
                                 s.getAnchoredFinalConstraints());
             } else if (doSimpleCG) {
                 stateNode = new DFASimpleCGTrackingStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers,
-                                createSimpleCGTransition((short) -1, (short) -1, s.getUnAnchoredFinalStateTransition()),
+                                createSimpleCGTransitionRef(s.getUnAnchoredFinalStateTransition()),
                                 createAndDedupSimpleCGTransition(nodes, (short) -1, s.getAnchoredFinalStateTransition()));
             } else {
                 stateNode = new DFAStateNode(id, flags, loopToSelf, indexOfNodeId, indexOfIsFast, successors, matchers, (short) -1);
@@ -2123,9 +2124,13 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private DFASimpleCGTransition createSimpleCGTransition(short id, short successor, NFAStateTransition nfaTransition) {
+        return DFASimpleCGTransition.create(id, successor, createSimpleCGTransitionRef(nfaTransition));
+    }
+
+    private int createSimpleCGTransitionRef(NFAStateTransition nfaTransition) {
         boolean fullClear = isForward() && nfaTransition != null && nfa.getInitialLoopBackTransition() != null && nfaTransition.getSource() == nfa.getInitialLoopBackTransition().getSource();
         boolean isFinalTransition = nfaTransition != null && nfaTransition.getTarget(isForward()).isFinalState();
-        return DFASimpleCGTransition.create(id, successor, nfaTransition, fullClear, isFinalTransition);
+        return simpleCGTransitionBuilder.create(nfaTransition, fullClear, isFinalTransition);
     }
 
     private short dedupDFATransition(ObjectArrayBuffer<DFAAbstractNode> nodes, short successor, DFAAbstractTransitionNode t) {
