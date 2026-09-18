@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CyclicBarrier;
@@ -60,8 +61,8 @@ public final class AuxiliaryImageBuilder {
      * Add a singleton to the registry. The key must be unique, i.e., no value must have been
      * registered with the given class before.
      *
-     * If this instance represents an auxiliary image that was loaded from a persisted state, the
-     * call will throw an {@link UnsupportedOperationException}.
+     * @throws IllegalArgumentException if the key already exists, or the passed {@code value}
+     * resides in the (primary) image heap.
      */
     public <T> void add(Class<T> key, T value) {
         checkKey(key);
@@ -82,7 +83,7 @@ public final class AuxiliaryImageBuilder {
         checkKey(key);
         Object result = map.get(key);
         if (result == null) {
-            throw new RuntimeException("Does not contain key: " + key.getTypeName());
+            throw new NoSuchElementException("Does not contain key: " + key.getTypeName());
         }
         return key.cast(result);
     }
@@ -196,7 +197,7 @@ public final class AuxiliaryImageBuilder {
             throw new NullPointerException("'null' value not allowed for key: " + key.getTypeName());
         }
         if (AuxiliaryImagePersistence.isInPrimaryImageHeap(value)) {
-            throw new RuntimeException("Image heap object not allowed: key: " + key.getTypeName() + "\nValue: " + value);
+            throw new IllegalArgumentException("Image heap object not allowed: key: " + key.getTypeName() + "\nValue: " + value);
         }
     }
 }

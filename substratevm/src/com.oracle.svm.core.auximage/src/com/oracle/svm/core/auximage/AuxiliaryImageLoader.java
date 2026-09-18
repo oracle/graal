@@ -95,8 +95,8 @@ public final class AuxiliaryImageLoader {
         assert auxImageReservedBegin.isNull();
         assert auxImageReservedBytes.equal(Word.zero());
 
-        assert PointerUtils.isAMultiple(auxImageReservedBegin, Word.unsigned(Heap.getHeap().getImageHeapAlignment()));
-        assert UnsignedUtils.isAMultiple(auxImageReservedBytes, VirtualMemoryProvider.get().getGranularity());
+        assert PointerUtils.isAMultiple(begin, Word.unsigned(Heap.getHeap().getImageHeapAlignment()));
+        assert UnsignedUtils.isAMultiple(reservedBytes, VirtualMemoryProvider.get().getGranularity());
 
         auxImageReservedBegin = begin;
         auxImageReservedBytes = reservedBytes;
@@ -113,7 +113,7 @@ public final class AuxiliaryImageLoader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setAuxImageLocation(Pointer begin, Pointer end, UnsignedWord imageHeapToOriginObjectOffset) {
-        VMError.guarantee(begin.isNull() == end.isNull() && auxImageBegin.isNull() == auxImageEnd.isNull(), "sanity");
+        VMError.guarantee(begin.isNull() == end.isNull() && auxImageBegin.isNull() == auxImageEnd.isNull());
         VMError.guarantee(auxImageBegin.isNull() || begin.isNull(), "Cannot replace a loaded image in-place");
         auxImageBegin = begin;
         auxImageEnd = end;

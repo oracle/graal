@@ -109,7 +109,7 @@ final class PersistedRuntimeCodeReplacer implements AuxiliaryImageObjectReplacer
                 throw new UnsupportedOperationException("Installed code not supported: runtime compilation not available");
             }
             SubstrateInstalledCode code = (SubstrateInstalledCode) obj;
-            PersistedRuntimeCode persisted = ValidPersistedRuntimeCode.create(code, access);
+            PersistedRuntimeCode persisted = PersistedRuntimeCode.create(code, access);
             ((AuxiliaryImagePersistence.InternalReplacersAccess) access).addObject(persisted, code, false);
             discovered.add(persisted);
         } else if (obj instanceof InstalledCode) {
@@ -301,11 +301,11 @@ final class RuntimeCodeReferenceWalker implements ObjectReferencesWalker {
 
     static int encodeOffset(int offset, boolean compressed) {
         assert offset >= 0;
-        return compressed ? -offset : offset;
+        return compressed ? ~offset : offset;
     }
 
     static int decodeOffset(int encodedOffset) {
-        return encodedOffset < 0 ? -encodedOffset : encodedOffset;
+        return encodedOffset < 0 ? ~encodedOffset : encodedOffset;
     }
 
     static boolean isCompressedAtOffset(int encodedOffset) {
@@ -401,6 +401,7 @@ final class CodeReferencesGatherer implements ObjectReferenceVisitor {
         gather0(estimate);
         if (referenceCount > estimate) {
             int count = referenceCount;
+            referenceCount = 0;
             gather0(count);
             assert referenceCount == count;
         } else if (referenceCount < estimate) {

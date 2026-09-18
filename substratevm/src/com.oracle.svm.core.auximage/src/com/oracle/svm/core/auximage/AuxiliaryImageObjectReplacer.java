@@ -37,8 +37,9 @@ public interface AuxiliaryImageObjectReplacer {
 
     interface EpilogueAccess extends Access {
         /**
-         * Replaces the given object with a replacement object, which must not make any previously
-         * undiscovered objects reachable. No replacers will be called for the replacement object.
+         * Replaces the given object with a replacement object. The replacement object itself may
+         * be new, but its references must resolve, after applying replacements, to previously
+         * discovered objects. No replacers will be called for the replacement object.
          *
          * @param original The object to replace. This object must not have been replaced with
          *            another object before, and it must not itself have replaced another object.

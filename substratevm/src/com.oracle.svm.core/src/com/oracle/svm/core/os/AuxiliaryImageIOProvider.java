@@ -36,9 +36,7 @@ import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * Provides functionality for low-level IO operations used by the registered
- * {@link AuxiliaryImageProvider}. The default {@link AuxiliaryImageProvider} is registered before
- * analysis as an image singleton if no other {@link AuxiliaryImageProvider} implementations have
- * already been registered.
+ * {@link AuxiliaryImageProvider}.
  */
 public interface AuxiliaryImageIOProvider {
 

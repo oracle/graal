@@ -58,7 +58,7 @@ final class AuxiliaryImageTracing {
     static final PersistTimers persistTimers = new PersistTimers();
     static final LoadTimers loadTimers = new LoadTimers();
 
-    static void traceAfterSnapshot(AuxiliaryImageHeap heap, int imageSize) {
+    static void traceAfterSnapshot(AuxiliaryImageHeapModel heap, int imageSize) {
         if (Options.TraceAuxiliaryImageClassHistogram.getValue() || Options.TraceAuxiliaryImageReferenceTree.getValue()) {
             Log trace = Log.log();
             printPrefix(trace, "persist").string("bytes written: ").unsigned(imageSize).newline();
@@ -77,7 +77,7 @@ final class AuxiliaryImageTracing {
         }
     }
 
-    private static void traceHistogramAndTree(Log trace, AuxiliaryImageHeap heap) {
+    private static void traceHistogramAndTree(Log trace, AuxiliaryImageHeapModel heap) {
         if (Options.TraceAuxiliaryImageReferenceTree.getValue()) {
             trace.newline();
             printPrefix(trace, "persist").string("Object tree:").newline();
@@ -88,7 +88,7 @@ final class AuxiliaryImageTracing {
                 tree.computeIfAbsent(from, _ -> new ArrayList<>()).add(to);
             }
             Object root = heap.getRootObject();
-            printObjectTree(trace, tree.get(root), tree, 0, 140);
+            printObjectTree(trace, List.of(root), tree, 0, 140);
         }
 
         if (Options.TraceAuxiliaryImageClassHistogram.getValue()) {

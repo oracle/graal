@@ -124,9 +124,9 @@ public final class PosixLikeAuxiliaryImageProvider extends AbstractAuxiliaryImag
 
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             if (!AuxiliaryImageLoader.hasAuxImageReservedSpace()) {
-                NativeMemoryTracking.singleton().trackReserve(sizeInFile, NmtCategory.AuxiliaryImage);
+                NativeMemoryTracking.singleton().trackReserve(sizeInMemory, NmtCategory.AuxiliaryImage);
             }
-            NativeMemoryTracking.singleton().trackCommit(sizeInFile, NmtCategory.AuxiliaryImage);
+            NativeMemoryTracking.singleton().trackCommit(sizeInMemory, NmtCategory.AuxiliaryImage);
         }
 
         basePointer.write(base);
@@ -143,7 +143,6 @@ public final class PosixLikeAuxiliaryImageProvider extends AbstractAuxiliaryImag
         do {
             SignedWord result = io().pread(fd, p.add(readBytes), size.subtract(readBytes), (SignedWord) readBytes.add(offsetInFile));
             if (result.lessOrEqual(0)) {
-                io().close(fd);
                 return failureResult;
             }
             readBytes = readBytes.add((UnsignedWord) result);

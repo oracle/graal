@@ -53,10 +53,10 @@ final class PersistedRuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
     @SuppressWarnings("unlikely-arg-type")
     static void installAll(AuxiliaryImageMetadata image) {
-        int totalCodeAndDataSize = 0;
+        long totalCodeAndDataSize = 0;
         for (PersistedRuntimeCode p : image.code) {
             if (p.isValid()) {
-                totalCodeAndDataSize += ((ValidPersistedRuntimeCode) p).alignedCodeAndDataSize();
+                totalCodeAndDataSize = Math.addExact(totalCodeAndDataSize, ((ValidPersistedRuntimeCode) p).alignedCodeAndDataSize());
             }
             /*
              * Call clearAddress on all code for a chance to observe a clean state before
@@ -65,19 +65,20 @@ final class PersistedRuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
             p.installedCode.clearAddress();
         }
 
+        EnumSet<?> currentCpuFeatures = AuxiliaryImagePersistence.getCPUFeatures();
+        boolean cpuFeatureMismatch = image.cpuFeatures == null || currentCpuFeatures == null || !currentCpuFeatures.containsAll(image.cpuFeatures);
+
         /*
          * Allocate memory for code and data, if image contains valid persisted runtime code.
          */
         Pointer nextCodeAndData = Word.nullPointer();
-        if (totalCodeAndDataSize > 0) {
+        if (!cpuFeatureMismatch && totalCodeAndDataSize > 0) {
             nextCodeAndData = (Pointer) RuntimeCodeInfoAccess.allocateCodeMemory(Word.unsigned(totalCodeAndDataSize));
             if (nextCodeAndData.isNull()) {
                 throw new OutOfMemoryError("Could not allocate memory for persisted runtime code.");
             }
         }
 
-        EnumSet<?> currentCpuFeatures = AuxiliaryImagePersistence.getCPUFeatures();
-        boolean cpuFeatureMismatch = image.cpuFeatures == null || currentCpuFeatures == null || !currentCpuFeatures.containsAll(image.cpuFeatures);
         for (PersistedRuntimeCode p : image.code) {
             if (cpuFeatureMismatch) {
                 p.installedCode.invalidate();

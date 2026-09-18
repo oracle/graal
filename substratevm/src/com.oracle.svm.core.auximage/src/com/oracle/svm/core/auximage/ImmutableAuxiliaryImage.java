@@ -25,6 +25,7 @@
 package com.oracle.svm.core.auximage;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 final class ImmutableAuxiliaryImage implements AuxiliaryImage {
@@ -39,7 +40,7 @@ final class ImmutableAuxiliaryImage implements AuxiliaryImage {
         Objects.requireNonNull(key, "key");
         Object result = map.get(key);
         if (result == null) {
-            throw new RuntimeException("Does not contain key: " + key.getTypeName());
+            throw new NoSuchElementException("Does not contain key: " + key.getTypeName());
         }
         return key.cast(result);
     }

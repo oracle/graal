@@ -159,7 +159,7 @@ final class AuxiliaryImagePersistence {
         private final EconomicMap<Object, Object> replacedObjects = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         private final ReplacerAccessImpl replacersAccess = new ReplacerAccessImpl();
 
-        private AuxiliaryImageHeap heap;
+        private AuxiliaryImageHeapModel heap;
         private byte[] imageData;
         private int imageDataLength;
         private Pointer heapDataPtr;
@@ -195,7 +195,7 @@ final class AuxiliaryImagePersistence {
 
         private void operate0() {
 
-            heap = new AuxiliaryImageHeap(maximumAllowedImageSize);
+            heap = new AuxiliaryImageHeapModel(maximumAllowedImageSize);
 
             try (Timer _ = AuxiliaryImageTracing.persistTimers.total.start()) {
                 control.poll();
@@ -337,6 +337,7 @@ final class AuxiliaryImagePersistence {
         }
 
         private void traverseReference(Object from, Object to, boolean callReplacers) {
+            assert from != null;
             assert to != null && to != CLEAR_REFERENCE_SENTINEL && to != NULL_SENTINEL;
             if (heap.containsObject(to)) {
                 assert !replacedObjects.containsKey(to);
@@ -354,7 +355,7 @@ final class AuxiliaryImagePersistence {
                 }
                 throw VMError.shouldNotReachHere("must be a disallowed object");
             } else if (obj != null) { // replaced
-                if (obj != NULL_SENTINEL && !heap.containsObject(to)) {
+                if (obj != NULL_SENTINEL && !heap.containsObject(obj)) {
                     traverseReference(from, obj, false); // replacement not yet traversed
                 }
                 return;

@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.core.auximage;
 
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.SmallestPossibleObject;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
@@ -37,25 +40,17 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.util.VMError;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
-final class AuxiliaryImageHeap implements ImageHeap {
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+final class AuxiliaryImageHeapModel implements ImageHeap {
     private final Object root = new Object();
-    private final ObjectLayout objectLayout = ObjectLayout.singleton();
-    private final int minArraySize = objectLayout.getMinImageHeapArraySize();
-    private final int intArrayScale = objectLayout.getArrayIndexScale(JavaKind.Int);
-    private final int minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
     private final long maximumAllowedAuxiliaryImageSize;
     private long estimatedAuxiliaryImageSize;
 
     private final EconomicMap<Object, AuxiliaryImageHeapObject> objects = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
-    AuxiliaryImageHeap(long sizeLimit) {
+    AuxiliaryImageHeapModel(long sizeLimit) {
         maximumAllowedAuxiliaryImageSize = sizeLimit;
     }
 
@@ -131,22 +126,7 @@ final class AuxiliaryImageHeap implements ImageHeap {
 
     @Override
     public AuxiliaryImageHeapObject addFillerObject(int size) {
-        if (size >= minArraySize) {
-            int arrayLength = (size - minArraySize) / intArrayScale;
-            int[] fillerObj = new int[arrayLength];
-            AuxiliaryImageHeapObject filler = new AuxiliaryImageHeapObject(fillerObj, size);
-            assert LayoutEncoding.getSizeFromObjectAddOptionalIdHashField(filler.getObject()).equal(size);
-            objects.put(fillerObj, filler);
-            return filler;
-        } else if (size >= minInstanceSize) {
-            Object fillerObj = new SmallestPossibleObject();
-            AuxiliaryImageHeapObject filler = new AuxiliaryImageHeapObject(fillerObj, minInstanceSize);
-            assert LayoutEncoding.getSizeFromObjectAddOptionalIdHashField(filler.getObject()).equal(minInstanceSize);
-            objects.put(fillerObj, filler);
-            return filler;
-        } else {
-            return null;
-        }
+        throw VMError.shouldNotReachHere("Currently not needed for auxiliary image heaps.");
     }
 
     @Override
@@ -162,10 +142,6 @@ final class AuxiliaryImageHeapObject implements ImageHeapObject {
     private final long size;
     private ImageHeapPartition partition;
     private long offsetInPartition = -1;
-
-    AuxiliaryImageHeapObject(Object obj, long size) {
-        this(obj, null, size);
-    }
 
     AuxiliaryImageHeapObject(Object obj, Object reachableFrom, long size) {
         assert obj != null && size > 0;

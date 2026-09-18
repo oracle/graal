@@ -48,9 +48,10 @@ final class ObjectTraversal {
     private final Queue<Object> queue = new ArrayDeque<>();
 
     private final Object[] buffer = new Object[512];
-    private int bufferCount = 0;
-    private int skipFirst = 0;
-    private int skipped = 0;
+    private int totalCount;
+    private int bufferCount;
+    private int skipFirst;
+    private int skipped;
 
     ObjectTraversal(Function<Object, ObjectReferencesWalker> walkerProvider) {
         this.walkerProvider = walkerProvider;
@@ -67,11 +68,10 @@ final class ObjectTraversal {
     void traverse(Callback callback) {
         while (!queue.isEmpty()) {
             Object obj = queue.poll();
-            skipFirst = 0;
-            bufferCount = 0;
+            totalCount = 0;
             boolean bufferOverflow;
             do {
-                skipFirst += bufferCount;
+                skipFirst = totalCount;
                 skipped = 0;
                 bufferCount = 0;
 
@@ -144,16 +144,19 @@ final class ObjectTraversal {
              * fill a buffer with as many references as we can. If there are more than fit in the
              * buffer, we visit again, which should only be the case for larger object arrays.
              */
+            if (skipped < skipFirst) {
+                skipped++;
+                return;
+            }
             if (target != null) {
-                if (skipped < skipFirst) {
-                    skipped++;
-                } else if (bufferCount < buffer.length) {
+                if (bufferCount < buffer.length) {
                     buffer[bufferCount] = target;
                     bufferCount++;
                 } else {
                     throw BUFFER_OVERFLOW_EXCEPTION;
                 }
             }
+            totalCount++;
         }
     }
 
