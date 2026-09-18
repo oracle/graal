@@ -106,7 +106,7 @@ public final class TruffleAPIFeature implements Feature {
             Version truffleMajorMinorVersion = stripUpdateVersion(truffleAPIVersion);
             Version truffleSVMVersion = getSVMFeatureVersion();
             Version truffleSVMMajorMinorVersion = stripUpdateVersion(truffleSVMVersion);
-            if (truffleSVMVersion.compareTo(TruffleVersions.NEXT_VERSION_UPDATE) >= 0) {
+            if (truffleAPIVersion.compareTo(TruffleVersions.NEXT_VERSION_UPDATE) >= 0) {
                 throw new AssertionError("MIN_COMPILER_VERSION, MIN_JDK_VERSION and MAX_JDK_VERSION must be updated!");
             } else if (truffleSVMMajorMinorVersion.compareTo(truffleMajorMinorVersion) > 0) {
                 // no forward compatibility
