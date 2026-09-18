@@ -67,7 +67,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -1819,54 +1818,31 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         CodeTreeBuilder b = ex.createBuilder();
         b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
 
-        Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
-                        .sorted(Comparator.comparing(InstructionModel::getName)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
-
-        List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
-                        .collect(deterministicGroupingBy(InstructionModel::getInstructionLength)).entrySet() //
-                        .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
-                        .toList();
-
-        List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
-                        .collect(deterministicGroupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
-                        .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> {
-                            InstructionKind kind = entry.getKey().kind;
-                            return kind == InstructionKind.CUSTOM || kind == InstructionKind.CUSTOM_SHORT_CIRCUIT;
-                        }).thenComparing(entry -> entry.getKey().getInstructionLength())) //
-                        .toList();
-
         b.declaration(getBytecodeIndexType(), "bci", "0");
 
         b.startWhile().string("bci < copy.length").end().startBlock();
         b.startSwitch().tree(readInstruction("copy", "bci")).end().startBlock();
 
-        for (var quickenedGroup : quickenedGroupedByQuickeningRoot) {
-            InstructionModel quickeningRoot = quickenedGroup.getKey();
-            List<InstructionModel> instructions = quickenedGroup.getValue();
-            int instructionLength = instructions.get(0).getInstructionLength();
-            for (InstructionModel instruction : instructions) {
-                if (instruction.getInstructionLength() != instructionLength) {
-                    throw new AssertionError("quickened group has multiple different instruction lengths");
-                }
-                b.startCase().tree(createInstructionConstant(instruction)).end();
-            }
-            b.startCaseBlock();
-
-            b.statement(writeInstruction("copy", "bci", createInstructionConstant(quickeningRoot)));
-            b.startStatement().string("bci += ").string(instructionLength).end();
-            b.statement("break");
-            b.end();
+        if (ImmediateKind.STATE_PROFILE.width != ImmediateWidth.SHORT) {
+            throw new AssertionError("state bitset width changed");
         }
-
-        for (var regularGroup : regularGroupedByLength) {
-            int instructionLength = regularGroup.getKey();
-            List<InstructionModel> instructions = regularGroup.getValue();
+        Map<EqualityCodeTree, List<InstructionModel>> caseGrouping = EqualityCodeTree.group(b, model.getInstructions(), (InstructionModel instruction, CodeTreeBuilder group) -> {
+            if (instruction.isQuickening()) {
+                group.statement(writeInstruction("copy", "bci", createInstructionConstant(instruction.getQuickeningRoot())));
+            }
+            for (InstructionImmediate stateBitset : instruction.getImmediates(ImmediateKind.STATE_PROFILE)) {
+                group.statement(writeImmediate("copy", "bci", "(short) 0", stateBitset.encoding()));
+            }
+            group.startStatement().string("bci += ").string(instruction.getInstructionLength()).end();
+            group.statement("break");
+        });
+        for (var group : caseGrouping.entrySet()) {
+            List<InstructionModel> instructions = group.getValue();
             for (InstructionModel instruction : instructions) {
                 b.startCase().tree(createInstructionConstant(instruction)).end();
             }
             b.startCaseBlock();
-            b.startStatement().string("bci += ").string(instructionLength).end();
-            b.statement("break");
+            b.tree(group.getKey().getTree());
             b.end();
         }
 
