@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.test;
 
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
@@ -1553,6 +1554,52 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
+    }
+
+    @Test
+    public void testTableGrowRejectsInvalidConcreteReference() throws IOException {
+        /*
+         * Equivalent WAT:
+         *
+         * (module
+         *   (type $small (struct (field i32)))
+         *   (type $big (struct (field i32) (field i32)))
+         *   (table (export "table") 1 2 (ref null $big))
+         *   (func (export "makeSmall") (result (ref $small))
+         *     i32.const 42
+         *     struct.new $small)
+         * )
+         */
+        final byte[] tableModule = hexStringToByteArray(
+                        "0061736d010000000110035f017f005f027f007f006000016400030201020406",
+                        "016301010102071502057461626c650100096d616b65536d616c6c00000a0901",
+                        "0700412afb00000b");
+        runTest(options -> options.option("wasm.GC", "true"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, tableModule, null);
+            final WasmTable table = (WasmTable) WebAssembly.instanceExport(instance, "table");
+
+            assertTableGrowRejectsTypeError(table, 42);
+
+            final Object small;
+            try {
+                final Object makeSmall = WebAssembly.instanceExport(instance, "makeSmall");
+                small = InteropLibrary.getUncached().execute(makeSmall);
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+            assertTableGrowRejectsTypeError(table, small);
+            Assert.assertEquals("Invalid growth must not change the table size", 1, table.size());
+        });
+    }
+
+    private static void assertTableGrowRejectsTypeError(WasmTable table, Object value) {
+        try {
+            WebAssembly.tableGrow(table, 1, value);
+            Assert.fail("Table.grow must reject a value incompatible with the table element type");
+        } catch (WasmJsApiException e) {
+            Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+        }
     }
 
     @Test

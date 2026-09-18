@@ -77,14 +77,6 @@ import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import org.graalvm.wasm.struct.WasmStruct;
 import org.graalvm.wasm.types.AbstractHeapType;
 import org.graalvm.wasm.types.DefinedType;
@@ -95,6 +87,14 @@ import org.graalvm.wasm.types.ReferenceType;
 import org.graalvm.wasm.types.SubType;
 import org.graalvm.wasm.types.ValueType;
 import org.graalvm.wasm.types.VectorType;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -528,6 +528,9 @@ public class WebAssembly extends Dictionary {
     }
 
     public static long tableGrow(WasmTable table, long delta, Object ref) {
+        if (!table.elemType().matchesValue(ref)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
+        }
         final long result = table.grow(delta, ref);
         if (result == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow table above max limit");

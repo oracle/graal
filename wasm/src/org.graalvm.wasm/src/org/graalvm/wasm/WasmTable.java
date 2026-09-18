@@ -257,6 +257,7 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
      */
     @TruffleBoundary
     public long grow(long delta, Object value) {
+        assert elemType.matchesValue(value);
         final int size = size();
         if (compareUnsigned(delta, Integer.toUnsignedLong(maxAllowedSize - size)) <= 0) {
             final int targetSize = size + (int) delta;
