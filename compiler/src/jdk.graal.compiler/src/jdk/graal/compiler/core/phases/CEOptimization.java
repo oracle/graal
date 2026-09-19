@@ -52,6 +52,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
+import jdk.graal.compiler.phases.common.EarlyExpandCheckCastPhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.LateLockEliminationPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
@@ -194,6 +195,15 @@ public enum CEOptimization {
     /// This phase is enabled by default and can be disabled with
     /// [MidTier.Options#OptGuardRangeGrouping].
     GuardRangeGrouping(MidTier.Options.OptGuardRangeGrouping, GuardRangeGroupingPhase.class),
+
+    /**
+     * {@link EarlyExpandCheckCastPhase} expands checkcast bytecodes early in the compilation
+     * pipeline, exposing their null and type checks as control flow for subsequent optimizations.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link GraalOptions#EarlyExpandCheckCast}.
+     */
+    EarlyExpandCheckCast(GraalOptions.EarlyExpandCheckCast, EarlyExpandCheckCastPhase.class),
 
     /**
      * {@link SchedulePhase} is Graal's implementation of an instruction scheduling algorithm for
