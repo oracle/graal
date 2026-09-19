@@ -43,6 +43,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.code.FrameInfoEncoder.ValueRetentionPolicy;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.code.FrameSourceInfo;
@@ -93,6 +94,23 @@ import jdk.vm.ci.meta.Signature;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class InterpreterSupportImpl extends InterpreterSupport {
+    /* The uniform handler ABI starts with the static long curBCI parameter. */
+    private static final int BYTECODE_HANDLER_BCI_LOCAL = 0;
+
+    @Platforms(Platform.HOSTED_ONLY.class) private final ValueRetentionPolicy bytecodeHandlerValueRetentionPolicy = new ValueRetentionPolicy() {
+        @Override
+        public boolean retainLocalValue(ResolvedJavaMethod method, ResolvedJavaMethod caller, int localIndex) {
+            /* Stack walking consumes the BCI in the stub or its immediate inlined Java handler. */
+            return localIndex == BYTECODE_HANDLER_BCI_LOCAL &&
+                            (isInterpreterBytecodeHandlerStub(method) || (caller != null && isInterpreterBytecodeHandlerStub(caller)));
+        }
+
+        @Override
+        public boolean retainStackOperand(ResolvedJavaMethod method, ResolvedJavaMethod caller, int stackIndex) {
+            return false;
+        }
+    };
+
     private static final int MAX_SYMBOL_LOG_LENGTH = 255;
     private static final String BYTECODE_ROOT_METHOD_NAME = "executeBodyFromBCI";
 
@@ -406,6 +424,12 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ValueRetentionPolicy getBytecodeHandlerValueRetentionPolicy() {
+        return bytecodeHandlerValueRetentionPolicy;
+    }
+
+    @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getInterpreterBytecodeHandlerBCI(FrameInfoQueryResult frameInfo, Pointer sp) {
         /*
@@ -420,7 +444,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
          * but their BCI must be preserved explicitly if such asynchronous walks need to report the
          * transition precisely.
          */
-        return readBCISlot(frameInfo, sp, 0);
+        return readBCISlot(frameInfo, sp, BYTECODE_HANDLER_BCI_LOCAL);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

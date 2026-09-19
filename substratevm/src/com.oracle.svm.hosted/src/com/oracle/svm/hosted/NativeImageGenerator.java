@@ -257,6 +257,7 @@ import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.GuestFoldInvocationPlugin;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
+import com.oracle.svm.hosted.phases.PruneFrameStateValuesPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptLIRFrameStatesPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
@@ -325,9 +326,11 @@ import jdk.graal.compiler.phases.common.AbstractInliningPhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
+import jdk.graal.compiler.phases.common.FinalCanonicalizerPhase;
 import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
 import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
 import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
@@ -1880,6 +1883,15 @@ public class NativeImageGenerator {
         midTier.findPhase(LoopSafepointInsertionPhase.class).set(new SubstrateSafepointInsertionPhase());
 
         if (hosted) {
+            /* Native debuggers consume local values independently of runtime metadata encoding. */
+            if (!SubstrateOptions.useDebugInfoGeneration() && !SubstrateOptions.getSourceLevelDebug()) {
+                var retentionPosition = lowTier.findPhase(FinalCanonicalizerPhase.class);
+                if (retentionPosition == null) {
+                    retentionPosition = lowTier.findPhase(SchedulePhase.FinalSchedulePhase.class);
+                }
+                retentionPosition.previous();
+                retentionPosition.add(new PruneFrameStateValuesPhase());
+            }
             lowTier.appendPhase(new VerifyNoGuardsPhase());
 
             /* Remove phases that are not suitable for AOT compilation. */
