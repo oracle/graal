@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import com.oracle.svm.hosted.CHeaderGuestValue;
 import static com.oracle.svm.shared.util.SubstrateUtil.mangleName;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
@@ -48,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -103,6 +103,7 @@ import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
+import com.oracle.svm.hosted.CHeaderGuestValue;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -538,7 +539,7 @@ public abstract class NativeImage extends AbstractImage {
             // Define symbols for the sections.
             if (codeCache.definesTextSectionBoundarySymbols()) {
                 objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false, false);
-                if (ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                if (ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.DeleteLocalSymbols.getValue() || DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
                     /* add a dummy function symbol at the start of the code section */
                     objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true, true);
                 }
@@ -766,7 +767,7 @@ public abstract class NativeImage extends AbstractImage {
         return !target.isCompiled() && !target.isCompiledInPriorLayer();
     }
 
-    static HostedMethod getMethodRefTargetMethod(HostedMetaAccess metaAccess, HostedMethod method) {
+    public static HostedMethod getMethodRefTargetMethod(HostedMetaAccess metaAccess, HostedMethod method) {
         if (isInjectedNotCompiled(method)) {
             return metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }

@@ -146,16 +146,16 @@ public abstract class HostedPLTGOTConfiguration extends PLTGOTConfiguration {
     }
 
     record GOTSectionExtent(long endOffset, long bufferSize) {
-        static GOTSectionExtent forEntries(long entryCount, int wordSize, ObjectFile.Format format) {
-            long endOffset = Math.multiplyExact(entryCount, wordSize);
+        static GOTSectionExtent forEntries(long entryCount, int entrySize, ObjectFile.Format format) {
+            long endOffset = Math.multiplyExact(entryCount, entrySize);
             long bufferSize = endOffset;
             if (format == ObjectFile.Format.MACH_O && endOffset == 0) {
                 assert HostedPLTGOTConfiguration.singleton().gotEntryAllocator.getGOT().length == 0 : "GOT table should be empty when padding GOT section size on Mach-O";
                 /*
-                 * Mach-O rejects symbols defined in zero-sized sections. Keep the backing buffer
-                 * non-empty without moving the section end symbol.
+                 * Mach-O rejects symbols defined in zero-sized sections. Pad an empty section to
+                 * one entry of the specified size without moving the section end symbol.
                  */
-                bufferSize = wordSize;
+                bufferSize = entrySize;
             }
             return new GOTSectionExtent(endOffset, bufferSize);
         }

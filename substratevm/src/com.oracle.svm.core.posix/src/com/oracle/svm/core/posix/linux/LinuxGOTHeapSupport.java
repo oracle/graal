@@ -124,7 +124,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
         }
 
         Pointer gotStartInMemory = gotMemory.add(getGOTOffsetFromStartOfMapping());
-        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGOTSectionSize());
+        initializeGOTContent(gotStartInMemory);
 
         /* Keep the initial GOT mapping for writing. */
 

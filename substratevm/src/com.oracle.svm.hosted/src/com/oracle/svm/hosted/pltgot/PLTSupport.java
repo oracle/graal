@@ -32,10 +32,9 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.meta.MethodRefSupport;
-import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -105,14 +104,26 @@ public class PLTSupport {
         section.markRelocationSite(offset, relocationKind, pltSymbolNameForMethod(target), addend);
     }
 
-    void addMethodPLTStubResolverRelocation(RelocatableBuffer buffer, int offset, RelocationKind relocationKind, SharedMethod target) {
-        buffer.addRelocationWithAddend(offset, relocationKind, generatedPLT.getResolverEntryDisplacement(target), MethodRefSupport.createMethodPointer(target));
-    }
-
-    public int getMethodPLTStubCodeAddressOffset(SharedMethod method) {
+    /**
+     * Returns the offset of {@code method}'s PLT stub entry point in the image code section.
+     * This entry point loads the method's current target from its GOT entry.
+     *
+     * @return the offset from the start of the image text section
+     */
+    public int getMethodPLTStubEntryOffset(SharedMethod method) {
         assert pltTextOffset >= 0;
         int stubOffset = generatedPLT.getStubStartOffset(method);
         assert stubOffset >= 0;
-        return pltTextOffset + stubOffset;
+        return Math.addExact(pltTextOffset, stubOffset);
+    }
+
+    /**
+     * Returns the offset of {@code method}'s resolver entry point within its PLT stub.
+     * An unresolved GOT entry initially targets this entry point.
+     *
+     * @return the offset from the start of the image text section
+     */
+    int getMethodPLTResolverEntryOffset(SharedMethod method) {
+        return Math.addExact(getMethodPLTStubEntryOffset(method), generatedPLT.getResolverEntryDisplacement(method));
     }
 }

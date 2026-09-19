@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.pltgot;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -43,8 +44,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.meta.MethodRefSupport;
-import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
@@ -52,12 +51,13 @@ import com.oracle.svm.hosted.FeatureImpl.AfterAbstractImageCreationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.image.MethodPointerRelocationProvider;
 import com.oracle.svm.hosted.image.NativeImage;
-import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.pltgot.aarch64.AArch64HostedPLTGOTConfiguration;
 import com.oracle.svm.hosted.pltgot.amd64.AMD64HostedPLTGOTConfiguration;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -126,10 +126,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class PLTGOTFeature implements InternalFeature {
 
-    private RelocatableBuffer gotBuffer;
-    private ObjectFile.ProgbitsSectionImpl gotBufferImpl;
-
-    private EconomicSet<SharedMethod> methodsForDirectGOTRelocation = EconomicSet.create();
+    private EconomicSet<SharedMethod> methodsForDirectGOTInitialization = EconomicSet.create();
 
     public static PLTGOTFeature singleton() {
         return ImageSingletons.lookup(PLTGOTFeature.class);
@@ -189,8 +186,8 @@ public class PLTGOTFeature implements InternalFeature {
         ImageSingletons.add(MethodPointerRelocationProvider.class, new PLTGOTPointerRelocationProvider(configuration.getPLTSupport(), Set.of(got)::contains));
 
         /*
-         * Generate the PLT before GOT relocations are emitted. Space for it in the text section is
-         * reserved later during image writing, and the actual bytes are written when the text
+         * Generate the PLT before GOT is initialized. Space for it in the code section is
+         * reserved later during image writing, and the actual bytes are written when the code
          * buffer is written.
          */
         PLTSupport pltSupport = configuration.getPLTSupport();
@@ -198,9 +195,7 @@ public class PLTGOTFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeImageWrite(BeforeImageWriteAccess a) {
-        var access = ((BeforeImageWriteAccessImpl) a);
-        ((NativeImage) access.getImage()).markRelocationSitesFromBuffer(gotBuffer, gotBufferImpl);
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (PLTGOTOptions.PrintPLTGOTCallsInfo.getValue()) {
             reportPLTGOTCallSites();
         }
@@ -212,33 +207,32 @@ public class PLTGOTFeature implements InternalFeature {
         ObjectFile imageObjectFile = access.getImage().getObjectFile();
         HostedPLTGOTConfiguration configuration = HostedPLTGOTConfiguration.singleton();
         SharedMethod[] got = configuration.getGOTEntryAllocator().getGOT();
-        createGOTSection(got, imageObjectFile, configuration.getPLTSupport());
+        createGOTSection(got, imageObjectFile, configuration.getPLTSupport(), access.getMetaAccess());
         configuration.getMethodAddressResolutionSupport().augmentImage(access.getImage());
     }
 
-    private void createGOTSection(SharedMethod[] got, ObjectFile objectFile, PLTSupport pltSupport) {
+    private void createGOTSection(SharedMethod[] got, ObjectFile objectFile, PLTSupport pltSupport, HostedMetaAccess metaAccess) {
         int wordSize = SubstrateTarget.getWordSize();
-        HostedPLTGOTConfiguration.GOTSectionExtent gotSectionExtent = HostedPLTGOTConfiguration.GOTSectionExtent.forEntries(got.length, wordSize,
+        HostedPLTGOTConfiguration.GOTSectionExtent gotSectionExtent = HostedPLTGOTConfiguration.GOTSectionExtent.forEntries(got.length, Integer.BYTES,
                         objectFile.getFormat());
         int gotEndOffset = Math.toIntExact(gotSectionExtent.endOffset());
-        gotBuffer = new RelocatableBuffer(gotSectionExtent.bufferSize(), objectFile.getByteOrder());
-        gotBufferImpl = new BasicProgbitsSectionImpl(gotBuffer.getBackingArray());
+        int gotBufferSize = Math.toIntExact(gotSectionExtent.bufferSize());
+        ByteBuffer gotBuffer = ByteBuffer.allocate(gotBufferSize).order(objectFile.getByteOrder());
+        ObjectFile.ProgbitsSectionImpl gotBufferImpl = new BasicProgbitsSectionImpl(gotBuffer.array());
         String name = HostedPLTGOTConfiguration.SVM_GOT_SECTION.getFormatDependentName(objectFile.getFormat());
-        ObjectFile.Section gotSection = objectFile.newProgbitsSection(name, objectFile.getPageSize(), true, false, gotBufferImpl);
+        ObjectFile.Section gotSection = objectFile.newProgbitsSection(name, objectFile.getPageSize(), false, false, gotBufferImpl);
 
-        ObjectFile.RelocationKind relocationKind = ObjectFile.RelocationKind.getDirect(wordSize);
         for (int gotEntryNo = 0; gotEntryNo < got.length; ++gotEntryNo) {
             var method = got[gotEntryNo];
-            int methodGOTEntryOffsetInSection = gotEndOffset + GOTAccess.getGOTEntryOffsetFromHeapRegister(gotEntryNo);
-            if (methodsForDirectGOTRelocation.contains(method)) {
-                gotBuffer.addRelocationWithoutAddend(methodGOTEntryOffsetInSection, relocationKind, MethodRefSupport.createMethodPointer(method, false));
-            } else {
-                pltSupport.addMethodPLTStubResolverRelocation(gotBuffer, methodGOTEntryOffsetInSection, relocationKind, method);
-            }
+            int methodGOTEntryOffsetInSection = gotEndOffset - (gotEntryNo + 1) * Integer.BYTES;
+            int codeSectionOffset = methodsForDirectGOTInitialization.contains(method)
+                            ? getMethodCodeSectionOffset(method, metaAccess)
+                            : pltSupport.getMethodPLTResolverEntryOffset(method);
+            gotBuffer.putInt(methodGOTEntryOffsetInSection, codeSectionOffset);
         }
-        // Prevent methods from being marked for a direct GOT relocation, after the relocations have
-        // already been emitted.
-        methodsForDirectGOTRelocation = null;
+        // Prevent methods from being marked for direct initialization after the initial values have
+        // already been written.
+        methodsForDirectGOTInitialization = null;
 
         objectFile.createDefinedSymbol(gotSection.getName(), gotSection, 0, 0, false, false, false);
         boolean internalSymbolsAreGlobal = SubstrateOptions.InternalSymbolsAreGlobal.getValue();
@@ -255,16 +249,20 @@ public class PLTGOTFeature implements InternalFeature {
         }
     }
 
+    private static int getMethodCodeSectionOffset(SharedMethod method, HostedMetaAccess metaAccess) {
+        HostedMethod targetMethod = NativeImage.getMethodRefTargetMethod(metaAccess, (HostedMethod) method);
+        return targetMethod.getCodeAddressOffset();
+    }
+
     /**
-     * Marks methods that will have their GOT entries contain the address of the corresponding
-     * method - instead of the PLT stub - when the GOT table is mapped. This is primarily useful for
-     * cases where methods need to be called via GOT table but don't require runtime resolution
-     * since their address is already known at build time.
+     * Marks methods whose GOT entries are initialized directly to the corresponding method instead
+     * of its PLT stub.
+     * @param methods will bypass runtime address resolution process and are directly routed through GOT
      */
-    public void markForDirectGOTRelocation(Set<? extends SharedMethod> methods) {
-        assert methodsForDirectGOTRelocation != null : "It is not possible to mark methods for direct GOT relocations once the relocations have already been emitted.";
+    public void markForDirectGOTInitialization(Set<? extends SharedMethod> methods) {
+        assert methodsForDirectGOTInitialization != null : "It is not possible to mark methods for direct GOT initialization once the initial values have already been written.";
         verifyGOTEntryValues(methods);
-        methodsForDirectGOTRelocation.addAll(methods);
+        methodsForDirectGOTInitialization.addAll(methods);
     }
 
     private static void verifyGOTEntryValues(Set<? extends SharedMethod> methods) {
