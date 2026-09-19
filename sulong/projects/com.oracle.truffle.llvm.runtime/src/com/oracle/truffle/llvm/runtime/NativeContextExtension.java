@@ -142,6 +142,18 @@ public abstract class NativeContextExtension implements ContextExtension {
     public abstract Object bindSignature(LLVMFunctionCode function, Source signatureSource);
 
     public abstract Object bindSignature(long fnPtr, Source signatureSource);
+    private static final String OS_NAME = System.getProperty("os.name").toLowerCase();
+    private static final boolean IS_WINDOWS = OS_NAME.contains("windows");
+    private static final boolean IS_MAC = OS_NAME.contains("mac");
+
+    /**
+     * Whether the host is Windows. Callers that need to branch on native library loading
+     * behaviour should use this rather than re-reading {@code os.name}, so that every such
+     * decision agrees.
+     */
+    public static boolean isWindows() {
+        return IS_WINDOWS;
+    }
 
     public static String getNativeLibrary(String libname) {
         return getNativeLibraryPrefix() + libname + '.' + getNativeLibrarySuffix();
@@ -152,7 +164,7 @@ public abstract class NativeContextExtension implements ContextExtension {
     }
 
     public static String getNativeLibraryPrefix() {
-        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+        if (IS_WINDOWS) {
             return "";
         } else {
             return "lib";
@@ -160,9 +172,9 @@ public abstract class NativeContextExtension implements ContextExtension {
     }
 
     public static String getNativeLibrarySuffix() {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+        if (IS_MAC) {
             return "dylib";
-        } else if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+        } else if (IS_WINDOWS) {
             return "dll";
         } else {
             return "so";
@@ -170,9 +182,9 @@ public abstract class NativeContextExtension implements ContextExtension {
     }
 
     public static String getNativeLibrarySuffixVersioned(int version) {
-        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+        if (IS_MAC) {
             return version + ".dylib";
-        } else if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+        } else if (IS_WINDOWS) {
             // no version ATM
             return "dll";
         } else {
