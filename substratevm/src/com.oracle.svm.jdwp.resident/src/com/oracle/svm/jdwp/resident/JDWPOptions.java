@@ -53,6 +53,6 @@ public final class JDWPOptions {
     @Option(help = "Specify JDWP options")//
     public static final RuntimeOptionKey<String> JDWPOptions = new RuntimeOptionKey<>(null);
 
-    @Option(help = "Enable JDWP specifc logging", type = OptionType.Expert) //
+    @Option(help = "Enable JDWP specific logging", type = OptionType.Expert) //
     public static final RuntimeOptionKey<Boolean> JDWPTrace = new RuntimeOptionKey<>(false);
 }

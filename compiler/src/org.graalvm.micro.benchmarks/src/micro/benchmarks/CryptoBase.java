@@ -53,7 +53,7 @@ public class CryptoBase extends BenchmarkBase {
         if (provider != null && !provider.isEmpty()) {
             prov = Security.getProvider(provider);
             if (prov == null) {
-                throw new RuntimeException("Can't find prodiver \"" + provider + "\"");
+                throw new RuntimeException("Can't find provider \"" + provider + "\"");
             }
         }
     }
