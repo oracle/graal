@@ -47,6 +47,7 @@ import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.util.IntList;
 import jdk.graal.compiler.core.common.util.TypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 import jdk.graal.compiler.debug.Assertions;
@@ -1034,79 +1035,74 @@ public class GraphDecoder {
                 }
                 return slotPaths.isEmpty() ? null : new LoopExplosionMergeKeyFilter(slotPaths, markerNodes);
             }
-            EconomicSet<VirtualObjectNode> activeObjects = EconomicSet.create(Equivalence.IDENTITY);
-            EconomicMap<VirtualObjectNode, List<int[]>> markerPaths = EconomicMap.create(Equivalence.IDENTITY);
+            EconomicSet<VirtualObjectNode> visitedObjects = EconomicSet.create(Equivalence.IDENTITY);
             EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates = createVirtualObjectStateIndex(frameState);
+            IntList path = new IntList(4);
             for (int i = 0; i < values.size(); i++) {
-                for (int[] markerPath : collectMarkerPaths(values.get(i), virtualObjectStates, activeObjects, markerPaths, markerNodes)) {
-                    int[] path = new int[markerPath.length + 1];
-                    path[0] = i;
-                    System.arraycopy(markerPath, 0, path, 1, markerPath.length);
-                    slotPaths.add(path);
+                ValueNode value = values.get(i);
+                if (value instanceof VirtualObjectNode || value instanceof LoopExplosionKeyNode) {
+                    path.add(i);
+                    collectMarkerPaths(value, virtualObjectStates, visitedObjects, path, markerNodes, slotPaths);
+                    path.setSize(0);
                 }
             }
-            if (slotPaths.isEmpty()) {
-                return null;
-            }
-            return new LoopExplosionMergeKeyFilter(slotPaths, markerNodes);
+            return slotPaths.isEmpty() ? null : new LoopExplosionMergeKeyFilter(slotPaths, markerNodes);
         }
 
         /**
-         * Traverses the virtual-object portion of a {@link FrameState} to collect index paths to
-         * any {@link LoopExplosionKeyNode} reachable from the given {@code value}.
+         * Records one access path per keyed location reachable from a frame-state value, following
+         * only {@link VirtualObjectNode}s with a corresponding {@link VirtualObjectState}. The path
+         * format is documented in {@link #slotPaths}.
          * <p>
          * Each discovered path represents the sequence of slot indexes that leads from the starting
-         * value through nested {@link VirtualObjectState} entries to a key marker. Markers remain in
-         * the graph until decoding is complete because the encoded node can still be referenced by a
-         * lazily decoded frame state in another loop scope. In particular, the marker must remain
-         * visible until the first loop header has recorded its path.
+         * value through nested {@link VirtualObjectState} entries to a key marker. Markers remain
+         * in the graph until decoding is complete because the encoded node can still be referenced
+         * by a lazily decoded frame state in another loop scope. In particular, the marker must
+         * remain visible until the first loop header has recorded its path.
          * <p>
-         * The traversal is recursive and only follows {@link VirtualObjectNode}s that have a
-         * corresponding {@link VirtualObjectState}. The {@code activeObjects} set is used as a
-         * recursion stack to detect cycles and prevent infinite descent through cyclic
-         * virtual-object graphs.
+         * Each virtual object is visited at most once across all frame-state roots. Aliases and
+         * cycles do not require additional paths: the non-key comparison identifies a keyed field
+         * by its owning virtual object. In particular, do not enumerate all paths through a shared
+         * object graph, which can be exponential in the number of objects. Reuse the path buffer
+         * while descending and backtracking, copying it only when recording a keyed location.
+         * <p>
+         * Markers must remain visible during lazy decoding of the initial loop-header frame state
+         * and path discovery. Only afterwards does {@link GraphDecoder#computeMergeKeyFilter}
+         * populate {@link MethodScope#loopExplosionKeyReplacements}, so
+         * {@link LoopScope#getNode(int)} can resolve stale references even after marker deletion.
          *
-         * @param value the current value being inspected
-         * @param virtualObjectStates maps virtual objects to their frame-state mappings
-         * @param activeObjects virtual objects currently being visited to avoid cycles
-         * @param markerPaths memoized marker paths for virtual objects
+         * @param value the value to inspect for markers
+         * @param virtualObjectStates virtual-object mappings for the current frame state
+         * @param visitedObjects shared set of virtual objects already visited across all
+         *            frame-state roots, to avoid cycles
+         * @param path reusable path from the frame state to {@code value}; its size is restored on
+         *            return
+         * @param markerNodes set to receive the marker nodes found at keyed locations
+         * @param slotPaths list to receive copies of paths to distinct keyed locations
          */
-        private static List<int[]> collectMarkerPaths(ValueNode value, EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates,
-                        EconomicSet<VirtualObjectNode> activeObjects, EconomicMap<VirtualObjectNode, List<int[]>> markerPaths,
-                        EconomicSet<LoopExplosionKeyNode> markerNodes) {
+        private static void collectMarkerPaths(ValueNode value, EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates,
+                        EconomicSet<VirtualObjectNode> visitedObjects, IntList path,
+                        EconomicSet<LoopExplosionKeyNode> markerNodes, List<int[]> slotPaths) {
             if (value instanceof LoopExplosionKeyNode keyNode) {
                 markerNodes.add(keyNode);
-                return List.of(new int[0]);
-            }
-            if (!(value instanceof VirtualObjectNode virtualObject)) {
-                return List.of();
-            }
-            List<int[]> cachedPaths = markerPaths.get(virtualObject);
-            if (cachedPaths != null) {
-                return cachedPaths;
-            }
-            if (!activeObjects.add(virtualObject)) {
-                return List.of();
-            }
-            EscapeObjectState escapeState = virtualObjectStates.get(virtualObject);
-            if (!(escapeState instanceof VirtualObjectState virtualObjectState)) {
-                activeObjects.remove(virtualObject);
-                markerPaths.put(virtualObject, List.of());
-                return List.of();
-            }
-            List<int[]> paths = new ArrayList<>();
-            NodeInputList<ValueNode> nestedValues = virtualObjectState.values();
-            for (int i = 0; i < nestedValues.size(); i++) {
-                for (int[] nestedPath : collectMarkerPaths(nestedValues.get(i), virtualObjectStates, activeObjects, markerPaths, markerNodes)) {
-                    int[] path = new int[nestedPath.length + 1];
-                    path[0] = i;
-                    System.arraycopy(nestedPath, 0, path, 1, nestedPath.length);
-                    paths.add(path);
+                int[] slotPath = new int[path.size()];
+                for (int i = 0; i < slotPath.length; i++) {
+                    slotPath[i] = path.get(i);
+                }
+                slotPaths.add(slotPath);
+            } else if (value instanceof VirtualObjectNode object && visitedObjects.add(object) &&
+                            virtualObjectStates.get(object) instanceof VirtualObjectState state) {
+                NodeInputList<ValueNode> entries = state.values();
+                int depth = path.size();
+                for (int i = 0; i < entries.size(); i++) {
+                    ValueNode entry = entries.get(i);
+                    if (entry instanceof VirtualObjectNode || entry instanceof LoopExplosionKeyNode) {
+                        path.add(i);
+                        collectMarkerPaths(entry, virtualObjectStates, visitedObjects, path, markerNodes, slotPaths);
+                        path.setSize(depth);
+                    }
                 }
             }
-            activeObjects.remove(virtualObject);
-            markerPaths.put(virtualObject, paths);
-            return paths;
         }
 
         private static EconomicMap<VirtualObjectNode, EscapeObjectState> createVirtualObjectStateIndex(FrameState frameState) {
@@ -2094,6 +2090,11 @@ public class GraphDecoder {
         LoopExplosionKey key = null;
         if (methodScope.loopExplosion.mergeLoops()) {
             if (loopScope.trigger == LoopScopeTrigger.START) {
+                /*
+                 * Collect marker paths once per loop instance (not per exploded iteration). Later
+                 * iterations reuse the filter and resolve the paths against their own frame state.
+                 * Re-entering a nested loop during outer-loop explosion creates a new instance.
+                 */
                 loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, frameState);
             }
             key = createLoopExplosionKey(loopScope, frameState);
