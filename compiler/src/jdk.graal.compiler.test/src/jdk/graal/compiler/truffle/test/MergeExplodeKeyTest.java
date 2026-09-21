@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -42,9 +46,18 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.LoopExplosionKeyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Tests {@link CompilerDirectives#mergeExplodeKey(int)} and
@@ -972,6 +985,53 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void mergeKeysFromDifferentLoopInstancesHaveBoundedCollisions() {
+        MergeKeyDecoder decoder = createMergeKeyDecoder();
+        CountingKeyEquivalence equivalence = new CountingKeyEquivalence();
+        EconomicMap<Object, Object> keys = EconomicMap.create(equivalence);
+        int loopInstances = 256;
+        for (int i = 0; i < loopInstances; i++) {
+            Object key = decoder.keyForNewLoopInstance();
+            keys.put(key, key);
+        }
+        Assert.assertEquals("Each loop instance has a distinct merge-key filter", loopInstances, keys.size());
+        /* Allow ordinary collisions, but not a single quadratic collision chain. */
+        Assert.assertTrue("Excessive merge-key comparisons: " + equivalence.comparisons, equivalence.comparisons < 16 * loopInstances);
+    }
+
+    private static final class CountingKeyEquivalence extends Equivalence {
+        int comparisons;
+
+        @Override
+        public boolean equals(Object a, Object b) {
+            comparisons++;
+            return a.equals(b);
+        }
+
+        @Override
+        public int hashCode(Object object) {
+            return object.hashCode();
+        }
+    }
+
+    @Test
+    public void markerReplacementStartsAtRecognitionAndSurvivesDeletion() {
+        createMergeKeyDecoder().assertMarkerReplacementLifecycle();
+    }
+
+    @Test
+    public void markerPathBacktracksAcrossRootsAndCycles() {
+        createMergeKeyDecoder().assertMarkerPathBacktracking(getMetaAccess().lookupJavaType(Object.class), getMetaAccess().lookupJavaType(int.class));
+    }
+
+    private MergeKeyDecoder createMergeKeyDecoder() {
+        StructuredGraph sourceGraph = parseEager("opaqueAdd", StructuredGraph.AllowAssumptions.YES);
+        EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(sourceGraph, getTarget().arch);
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext()).method(sourceGraph.method()).build();
+        return new MergeKeyDecoder(getTarget().arch, graph, encodedGraph);
+    }
+
+    @Test
     public void multipleTopLevelLoops() {
         try {
             partialEval(multipleTopLevelLoopsProgram());
@@ -1031,5 +1091,76 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     @CompilerDirectives.TruffleBoundary
     private static int opaqueAdd(int left, int right) {
         return left + right;
+    }
+
+    /** Exercises marker tracking and key hashing without large exploded graphs. */
+    private static final class MergeKeyDecoder extends GraphDecoder {
+        private final MethodScope methodScope;
+
+        MergeKeyDecoder(Architecture architecture, StructuredGraph graph, EncodedGraph encodedGraph) {
+            super(architecture, graph);
+            methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE) {
+            };
+        }
+
+        void assertMarkerReplacementLifecycle() {
+            /* Exercise both the linear and hashed representations of the replacement map. */
+            for (int i = 0; i < 16; i++) {
+                LoopScope loopScope = createInitialLoopScope(methodScope, null);
+                ConstantNode value = ConstantNode.forInt(i, graph);
+                LoopExplosionKeyNode marker = graph.addWithoutUnique(new LoopExplosionKeyNode(value));
+                int orderId = GraphEncoder.FIRST_NODE_ORDER_ID;
+                registerNode(loopScope, orderId, marker, false, false);
+                FrameState state = graph.add(new FrameState(null, null, 0, List.of(marker), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
+
+                Assert.assertFalse(methodScope.loopExplosionKeyReplacements.containsKey(marker));
+                Assert.assertSame("Unrecognized markers must remain visible", marker, loopScope.getNode(orderId));
+                Assert.assertNotNull(computeMergeKeyFilter(loopScope, state));
+                Assert.assertSame(value, methodScope.loopExplosionKeyReplacements.get(marker));
+                Assert.assertSame(value, loopScope.getNode(orderId));
+
+                marker.safeDelete();
+                Assert.assertNull(marker.value());
+                Assert.assertSame("Stale references must use the cached value after deletion", value, loopScope.getNode(orderId));
+            }
+        }
+
+        void assertMarkerPathBacktracking(ResolvedJavaType objectType, ResolvedJavaType intType) {
+            LoopScope loopScope = createInitialLoopScope(methodScope, null);
+            ConstantNode value = ConstantNode.forInt(0, graph);
+            LoopExplosionKeyNode marker = graph.addWithoutUnique(new LoopExplosionKeyNode(value));
+            VirtualArrayNode emptyRoot = graph.addWithoutUnique(new VirtualArrayNode(objectType, 0));
+            VirtualArrayNode root = graph.addWithoutUnique(new VirtualArrayNode(objectType, 3));
+            VirtualArrayNode unmarked = graph.addWithoutUnique(new VirtualArrayNode(objectType, 1));
+            VirtualArrayNode leaf = graph.addWithoutUnique(new VirtualArrayNode(intType, 1));
+            VirtualObjectState emptyState = graph.addWithoutUnique(new VirtualObjectState(emptyRoot, List.of()));
+            VirtualObjectState rootState = graph.addWithoutUnique(new VirtualObjectState(root, List.of(unmarked, unmarked, leaf)));
+            VirtualObjectState unmarkedState = graph.addWithoutUnique(new VirtualObjectState(unmarked, List.of(root)));
+            VirtualObjectState leafState = graph.addWithoutUnique(new VirtualObjectState(leaf, List.of(marker)));
+            FrameState state = graph.add(new FrameState(null, null, 0, List.of(emptyRoot, root), 2, 0, 0, FrameState.StackState.BeforePop, false, null,
+                            List.of(emptyState, rootState, unmarkedState, leafState), null));
+
+            /*
+             * Backtrack from an empty root, a cyclic child, and its alias before finding the key.
+             */
+            loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, state);
+            Assert.assertNotNull(loopScope.loopExplosionMergeKeyFilter);
+            Assert.assertSame(value, createLoopExplosionKey(loopScope, state).values.getFirst());
+
+            /* Reuse the recorded path with the next iteration's virtual state. */
+            ConstantNode nextValue = ConstantNode.forInt(1, graph);
+            FrameState nextState = state.duplicate();
+            nextState.virtualObjectMappings().set(3, graph.addWithoutUnique(new VirtualObjectState(leaf, List.of(nextValue))));
+            Assert.assertSame(nextValue, createLoopExplosionKey(loopScope, nextState).values.getFirst());
+            Assert.assertSame(value, createLoopExplosionKey(loopScope, state).values.getFirst());
+        }
+
+        Object keyForNewLoopInstance() {
+            LoopScope loopScope = createInitialLoopScope(methodScope, null);
+            LoopExplosionKeyNode marker = graph.addWithoutUnique(new LoopExplosionKeyNode(ConstantNode.forInt(0, graph)));
+            FrameState state = graph.add(new FrameState(null, null, 0, List.of(marker), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
+            loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, state);
+            return createLoopExplosionKey(loopScope, state);
+        }
     }
 }
