@@ -36,6 +36,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.code.FrameInfoEncoder.ValueRetentionPolicy;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -106,6 +107,14 @@ public abstract class InterpreterSupport {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public abstract boolean isInterpreterBytecodeHandlerStub(ResolvedJavaMethod method);
+
+    /**
+     * Returns the local and operand-stack retention policy for bytecode-handler stub frame chains.
+     * Hosted compilation selects this policy only when deoptimization, debugging, and explicit
+     * frame-information requirements permit pruning.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public abstract ValueRetentionPolicy getBytecodeHandlerValueRetentionPolicy();
 
     /**
      * Reads the current guest BCI from a bytecode-handler frame or its generated stub. Both use the

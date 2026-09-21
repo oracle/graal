@@ -99,6 +99,7 @@ import com.oracle.svm.hosted.code.CodeSectionLayouter;
 import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.SortByMethodNameCodeSectionLayouter;
+import com.oracle.svm.hosted.code.FrameInfoRetention;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DeoptSourceFrameInfo;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
@@ -948,6 +949,11 @@ public abstract class NativeImageCodeCache {
             }
 
             return false;
+        }
+
+        @Override
+        protected FrameInfoEncoder.ValueRetentionPolicy getValueRetentionPolicy(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
+            return FrameInfoRetention.getValueRetentionPolicy((HostedMethod) method, isDeoptEntry, infopoint.debugInfo.frame());
         }
 
         @Override
