@@ -568,18 +568,12 @@ public class GraphDecoder {
         public final EconomicMap<LoopExplosionKey, LoopExplosionState> iterationStates;
 
         /**
-         * Replacement values for key markers. A marker must remain visible until its path has been
-         * {@linkplain #computeMergeKeyFilter recorded}, after which this map lets loop-scope lookups resolve
-         * stale marker references.
+         * Replacement values for recognized key markers. Entries are added only after a marker's
+         * path has been {@linkplain #computeMergeKeyFilter recorded}. Before then,
+         * {@link LoopScope#getNode(int)} must return the marker for path discovery. Afterwards,
+         * this map resolves stale references even if the marker has been deleted.
          */
         public final EconomicMap<LoopExplosionKeyNode, ValueNode> loopExplosionKeyReplacements;
-
-        /**
-         * Key markers for which path discovery has completed. Before a marker is in this set,
-         * {@link LoopScope#getNode(int)} must return the marker so it can be found in the loop
-         * header frame state.
-         */
-        public final EconomicSet<LoopExplosionKeyNode> loopExplosionKeyReplacementsEnabled;
 
         /**
          * The start of explosion, and the merge point for when irreducible loops are detected. Only
@@ -677,8 +671,8 @@ public class GraphDecoder {
 
             loopExplosionMerges = loopExplosion.useExplosion() ? EconomicSet.create(Equivalence.IDENTITY) : null;
             iterationStates = loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.DEFAULT) : null;
+            /* Only registered markers are inserted, so their node IDs provide stable hashes. */
             loopExplosionKeyReplacements = loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.IDENTITY) : null;
-            loopExplosionKeyReplacementsEnabled = loopExplosion.mergeLoops() ? EconomicSet.create(Equivalence.IDENTITY) : null;
         }
 
         public final boolean isInlinedMethod() {
@@ -904,7 +898,7 @@ public class GraphDecoder {
              */
             if (node instanceof LoopExplosionKeyNode keyNode && methodScope.loopExplosionKeyReplacements != null) {
                 Node replacement = methodScope.loopExplosionKeyReplacements.get(keyNode);
-                if (replacement != null && (!keyNode.isAlive() || methodScope.loopExplosionKeyReplacementsEnabled.contains(keyNode))) {
+                if (replacement != null) {
                     return replacement;
                 }
             }
@@ -2155,7 +2149,7 @@ public class GraphDecoder {
                      * enable getNode to resolve any remaining references in other loop scopes.
                      */
                     recognizedLoopExplosionKeyNodes.add(keyNode);
-                    loopScope.methodScope.loopExplosionKeyReplacementsEnabled.add(keyNode);
+                    loopScope.methodScope.loopExplosionKeyReplacements.put(keyNode, keyNode.value());
                     keyNode.replaceAtUsages(keyNode.value());
                 }
             }
@@ -2785,14 +2779,6 @@ public class GraphDecoder {
         }
 
         node = decodeFloatingNode(methodScope, loopScope, nodeOrderId);
-        if (node instanceof LoopExplosionKeyNode keyNode && methodScope.loopExplosion.mergeLoops()) {
-            /*
-             * Record the replacement before registering the marker in a loop scope. The marker must
-             * remain visible until computeMergeKeyFilter has identified its path; after that, getNode
-             * uses this cached value to resolve stale references in lazily decoded loop scopes.
-             */
-            methodScope.loopExplosionKeyReplacements.put(keyNode, keyNode.value());
-        }
         if (node instanceof ProxyNode || node instanceof PhiNode || node instanceof LoopExplosionKeyNode) {
             /*
              * We need these nodes as they were in the original graph, without any canonicalization
