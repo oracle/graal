@@ -84,6 +84,9 @@ public class G1Structs {
         @CField("log_of_heap_region_grain_bytes")
         int logOfHeapRegionGrainBytes();
 
+        @CField("g1_barrier_and_allocation_data_size")
+        int g1BarrierAndAllocationDataSize();
+
         @CField("java_thread_size")
         int javaThreadSize();
 

@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
@@ -51,6 +52,19 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.g1.G1CommittedMemoryProvider;
+import com.oracle.svm.core.g1.G1Constants;
+import com.oracle.svm.core.g1.G1Heap;
+import com.oracle.svm.core.g1.G1ImageHeapInfo;
+import com.oracle.svm.core.g1.G1ObjectHeader;
+import com.oracle.svm.core.g1.G1Options;
+import com.oracle.svm.core.g1.G1PerfData;
+import com.oracle.svm.core.g1.G1PhysicalMemorySupport;
+import com.oracle.svm.core.g1.G1PinnedObjectSupport;
+import com.oracle.svm.core.g1.G1RelatedMXBeans;
+import com.oracle.svm.core.g1.graal.G1AllocationSupport;
+import com.oracle.svm.core.g1.graal.G1BarrierSetProvider;
+import com.oracle.svm.core.g1.graal.SubstrateG1WriteBarrierSnippets;
 import com.oracle.svm.core.gc.shared.graal.NativeGCAllocationSupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -70,20 +84,10 @@ import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.posix.darwin.DarwinPhysicalMemorySupportImpl;
 import com.oracle.svm.core.posix.linux.LinuxPhysicalMemorySupportImpl;
+import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.windows.WindowsPhysicalMemorySupportImpl;
-import com.oracle.svm.core.g1.G1CommittedMemoryProvider;
-import com.oracle.svm.core.g1.G1Heap;
-import com.oracle.svm.core.g1.G1ImageHeapInfo;
-import com.oracle.svm.core.g1.G1ObjectHeader;
-import com.oracle.svm.core.g1.G1Options;
-import com.oracle.svm.core.g1.G1PerfData;
-import com.oracle.svm.core.g1.G1PhysicalMemorySupport;
-import com.oracle.svm.core.g1.G1PinnedObjectSupport;
-import com.oracle.svm.core.g1.G1RelatedMXBeans;
-import com.oracle.svm.core.g1.graal.G1AllocationSupport;
-import com.oracle.svm.core.g1.graal.G1BarrierSetProvider;
-import com.oracle.svm.core.g1.graal.SubstrateG1WriteBarrierSnippets;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -167,6 +171,12 @@ public class G1Feature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
+
+        /* Ensure that thread locals whose offsets are only used by native code are discovered. */
+        ResolvedJavaType g1HeapType = accessImpl.getMetaAccess().lookupJavaType(G1Heap.class);
+        accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "g1BarrierAndAllocationDataTL"), "its offset is used by G1 native code");
+        accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "javaThreadTL"), "its offset is used by G1 native code");
+
         NativeGCAccessedFields.markAsAccessed(accessImpl, G1AccessedFields.ACCESSED_CLASSES);
 
         /* G1 needs a custom filler array class that does not match int[].class. */
@@ -199,6 +209,8 @@ public class G1Feature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
+        assert hotDataHasSmallThreadLocalOffsets();
+
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
         G1Heap heap = G1Heap.get();
 
@@ -209,8 +221,8 @@ public class G1Feature implements InternalFeature {
         access.registerAsImmutable(imageHeapInfo.getRegionFreeSpaces());
 
         /* Collect data and offsets that are needed when initializing G1. */
-        byte[] fieldOffsets = NativeGCAccessedFields.writeOffsets(access, G1ObjectHeader.getMarkWordOffset(), G1Heap.javaThreadTL, G1AllocationSupport.podReferenceMapTL,
-                        G1AccessedFields.ACCESSED_CLASSES);
+        byte[] fieldOffsets = NativeGCAccessedFields.writeOffsets(access, G1ObjectHeader.getMarkWordOffset(), G1Heap.g1BarrierAndAllocationDataTL, G1Heap.javaThreadTL,
+                        G1AllocationSupport.podReferenceMapTL, G1AccessedFields.ACCESSED_CLASSES);
         heap.setAccessedFieldOffsets(fieldOffsets);
         access.registerAsImmutable(fieldOffsets);
     }
@@ -336,5 +348,23 @@ public class G1Feature implements InternalFeature {
             referenceKind = JavaKind.Int;
         }
         return target.arch.getPlatformKind(referenceKind).getSizeInBytes();
+    }
+
+    private static boolean hotDataHasSmallThreadLocalOffsets() {
+        VMThreadLocalOffsetProvider offsetProvider = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class);
+        int dataOffset = offsetProvider.offsetOf(G1Heap.g1BarrierAndAllocationDataTL);
+        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.satbQueueIndexOffset());
+        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.satbQueueBufferOffset());
+        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.satbQueueMarkingActiveOffset());
+        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.tlabTopOffset());
+        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.tlabEndOffset());
+        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.cardQueueIndexOffset());
+        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.cardQueueBufferOffset());
+        return true;
+    }
+
+    private static boolean hasSmallThreadLocalOffset(int dataOffset, int fieldOffset) {
+        int offset = dataOffset + fieldOffset;
+        return offset <= FastThreadLocal.BYTE_OFFSET;
     }
 }

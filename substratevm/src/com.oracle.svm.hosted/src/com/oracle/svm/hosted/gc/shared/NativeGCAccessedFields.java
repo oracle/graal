@@ -71,12 +71,12 @@ public class NativeGCAccessedFields {
     }
 
     /** Writes all offsets as integer values (4 bytes per value) into a byte array. */
-    public static byte[] writeOffsets(BeforeCompilationAccess access, int markWordOffset, FastThreadLocalBytes<Word> nativeJavaThreadTL, FastThreadLocalObject<Object> podReferenceMapTL,
-                    AccessedClass[] accessedClasses) {
+    public static byte[] writeOffsets(BeforeCompilationAccess access, int markWordOffset, FastThreadLocalBytes<Word> g1BarrierAndAllocationDataTL,
+                    FastThreadLocalBytes<Word> nativeJavaThreadTL, FastThreadLocalObject<Object> podReferenceMapTL, AccessedClass[] accessedClasses) {
         UnsafeArrayTypeWriter buffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
 
         writeObjectLayoutOffsets(buffer, markWordOffset);
-        writeThreadLocalOffsets(buffer, nativeJavaThreadTL, podReferenceMapTL);
+        writeThreadLocalOffsets(buffer, g1BarrierAndAllocationDataTL, nativeJavaThreadTL, podReferenceMapTL);
         writeCodeInfoOffsets(buffer);
         for (AccessedClass accessedClass : accessedClasses) {
             writeFieldOffsets(access, buffer, accessedClass.clazz, accessedClass.fields);
@@ -125,10 +125,12 @@ public class NativeGCAccessedFields {
         buffer.putS4(SubstrateOptions.useClosedTypeWorldHubLayout() ? DynamicHubLayout.singleton().getClosedTypeWorldTypeCheckSlotsOffset() : -1);
     }
 
-    private static void writeThreadLocalOffsets(UnsafeArrayTypeWriter buffer, FastThreadLocalBytes<Word> nativeJavaThreadTL, FastThreadLocalObject<Object> podReferenceMapTL) {
+    private static void writeThreadLocalOffsets(UnsafeArrayTypeWriter buffer, FastThreadLocalBytes<Word> g1BarrierAndAllocationDataTL, FastThreadLocalBytes<Word> nativeJavaThreadTL,
+                    FastThreadLocalObject<Object> podReferenceMapTL) {
         VMThreadLocalOffsetProvider vmThreadLocalOffsetProvider = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class);
 
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(VMThreads.nextTL));
+        buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(g1BarrierAndAllocationDataTL));
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(nativeJavaThreadTL));
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(StatusSupport.statusTL));
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(podReferenceMapTL));

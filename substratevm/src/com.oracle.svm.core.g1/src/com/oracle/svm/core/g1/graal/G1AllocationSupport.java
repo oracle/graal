@@ -41,7 +41,7 @@ import com.oracle.svm.core.g1.nativelib.G1Library;
 public class G1AllocationSupport extends NativeGCAllocationSupport {
     @Override
     public Word getTLABInfo() {
-        return G1Heap.javaThreadTL.getAddress();
+        return G1Heap.g1BarrierAndAllocationDataTL.getAddress();
     }
 
     @Override

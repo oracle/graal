@@ -130,6 +130,9 @@ public final class G1Heap extends Heap {
     private static final CGlobalData<Word> IMAGE_HEAP_BOT_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_BOT_END_SYMBOL_NAME);
 
     public static final Field GC_TOTAL_COLLECTIONS_ADDRESS_FIELD = ReflectionUtil.lookupField(G1Heap.class, "gcTotalCollectionsAddress");
+    /* Keep frequently accessed allocation and barrier fields within compact displacement range. */
+    public static final FastThreadLocalBytes<Word> g1BarrierAndAllocationDataTL = FastThreadLocalFactory.createBytes(G1Constants::g1BarrierAndAllocationDataSize, "G1Heap.g1BarrierAndAllocationData")
+                    .setMaxOffset(FastThreadLocal.BYTE_OFFSET - G1Constants.cardQueueBufferOffset());
     public static final FastThreadLocalBytes<Word> javaThreadTL = FastThreadLocalFactory.createBytes(G1Constants::javaThreadSize, "G1Heap.javaThread");
     private static final FastThreadLocalWord<Word> cardTableAddressTL = FastThreadLocalFactory.createWord("G1Heap.cardTableAddress").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
@@ -479,6 +482,7 @@ public final class G1Heap extends Heap {
         VMError.guarantee(G1Constants.youngCardValue() == state.youngCardValue(), "Failed while validating the G1 state: youngCardValue");
         VMError.guarantee(G1Constants.cardTableShift() == state.cardTableShift(), "Failed while validating the G1 state: cardTableShift");
         VMError.guarantee(G1Constants.logOfHeapRegionGrainBytes() == state.logOfHeapRegionGrainBytes(), "Failed while validating the G1 state: logOfHeapRegionGrainBytes");
+        VMError.guarantee(G1Constants.g1BarrierAndAllocationDataSize() == state.g1BarrierAndAllocationDataSize(), "Failed while validating the G1 state: g1BarrierAndAllocationDataSize");
         VMError.guarantee(G1Constants.javaThreadSize() == state.javaThreadSize(), "Failed while validating the G1 state: javaThreadSize");
         VMError.guarantee(SizeOf.get(NativeGCVMOperationData.class) <= state.vmOperationDataSize(), "Failed while validating the G1 state: vmOperationDataSize");
         VMError.guarantee(SizeOf.get(NativeGCVMOperationWrapperData.class) <= state.vmOperationWrapperDataSize(), "Failed while validating the G1 state: vmOperationWrapperDataSize");

@@ -164,7 +164,7 @@ public final class SubstrateG1WriteBarrierSnippets extends G1WriteBarrierSnippet
             byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
             if (cardByteReload != G1Constants.dirtyCardValue()) {
                 cardAddress.writeByte(0, G1Constants.dirtyCardValue(), GC_CARD_LOCATION);
-                Word thread = G1Heap.javaThreadTL.getAddress();
+                Word thread = G1Heap.g1BarrierAndAllocationDataTL.getAddress();
                 Word indexValue = thread.readWord(G1Constants.cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION);
                 if (indexValue.notEqual(0)) {
                     Word bufferAddress = thread.readWord(G1Constants.cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
@@ -231,7 +231,7 @@ public final class SubstrateG1WriteBarrierSnippets extends G1WriteBarrierSnippet
 
     @Override
     protected Word getThread() {
-        return G1Heap.javaThreadTL.getAddress();
+        return G1Heap.g1BarrierAndAllocationDataTL.getAddress();
     }
 
     @Override

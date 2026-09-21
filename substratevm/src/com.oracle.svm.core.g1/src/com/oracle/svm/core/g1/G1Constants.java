@@ -40,16 +40,17 @@ import jdk.vm.ci.code.CodeUtil;
  * values (i.e., one value per debug-level).
  */
 public class G1Constants {
-    private static final int TLAB_TOP_OFFSET = 104;
-    private static final int TLAB_END_OFFSET = 120;
-    private static final int SATB_QUEUE_MARKING_OFFSET = 24;
-    private static final int SATB_QUEUE_BUFFER_OFFSET = 16;
-    private static final int SATB_QUEUE_INDEX_OFFSET = 8;
-    private static final int CARD_QUEUE_BUFFER_OFFSET = 40;
-    private static final int CARD_QUEUE_INDEX_OFFSET = 32;
+    private static final int TLAB_TOP_OFFSET = 24;
+    private static final int TLAB_END_OFFSET = 32;
+    private static final int SATB_QUEUE_MARKING_OFFSET = 16;
+    private static final int SATB_QUEUE_BUFFER_OFFSET = 8;
+    private static final int SATB_QUEUE_INDEX_OFFSET = 0;
+    private static final int CARD_QUEUE_BUFFER_OFFSET = 48;
+    private static final int CARD_QUEUE_INDEX_OFFSET = 40;
+    private static final int G1_BARRIER_AND_ALLOCATION_DATA_SIZE = 80;
     private static final byte DIRTY_CARD_VALUE = 0;
     private static final byte YOUNG_CARD_VALUE = 2;
-    private static final int[] JAVA_THREAD_SIZE = {280, 312, 312};
+    private static final int[] JAVA_THREAD_SIZE = {208, 240, 240};
     private static final int AGE_BIT_COUNT = 4;
 
     @Fold
@@ -85,6 +86,11 @@ public class G1Constants {
     @Fold
     public static int cardQueueIndexOffset() {
         return CARD_QUEUE_INDEX_OFFSET;
+    }
+
+    @Fold
+    public static int g1BarrierAndAllocationDataSize() {
+        return G1_BARRIER_AND_ALLOCATION_DATA_SIZE;
     }
 
     @Fold
