@@ -633,8 +633,18 @@ public final class MethodProfile {
         /**
          * All counts per type - each [index] represents the number of times {@code types[i]} was
          * seen during profiling.
+         *
+         * Counts are updated concurrently without synchronization. Readers snapshot the counts and
+         * compute probabilities using a total count at least as large as the sum of sampled counts.
          */
         private final long[] counts;
+
+        /**
+         * Tracks whether an observation could not be associated with a recorded type. Once set,
+         * snapshots reserve probability mass for at least one unrecorded observation even if racy
+         * updates lose more increments from {@link #counter} than from {@link #counts}.
+         */
+        private volatile boolean unrecordedSeen;
 
         /**
          * Tracks whether a null receiver or value was observed for this profiled bytecode.
@@ -684,7 +694,7 @@ public final class MethodProfile {
             if (nullSeen) {
                 return TriState.TRUE;
             }
-            return counter == 0L ? TriState.UNKNOWN : TriState.FALSE;
+            return getCounter() == 0L ? TriState.UNKNOWN : TriState.FALSE;
         }
 
         /**
@@ -703,24 +713,35 @@ public final class MethodProfile {
          * Returns the probability of a given type in this profile.
          */
         public double getProbability(ResolvedJavaType type) {
-            if (counter == 0L) {
+            int profiledTypeCount = getProfiledTypeCount();
+            boolean localUnrecordedSeen = unrecordedSeen;
+            long localCounter = getCounter();
+            long matchingTypeCount = 0L;
+            long sampledTypeCountSum = 0L;
+            boolean typeFound = false;
+            for (int i = 0; i < profiledTypeCount; i++) {
+                long count = counts[i];
+                sampledTypeCountSum += count;
+                if (types[i].equals(type)) {
+                    matchingTypeCount = count;
+                    typeFound = true;
+                }
+            }
+            localCounter = getSnapshotCounter(localCounter, sampledTypeCountSum, localUnrecordedSeen);
+            if (localCounter == 0L) {
                 // no type profiled yet
                 return -1D;
             }
-            for (int i = 0; i < getProfiledTypeCount(); i++) {
-                ResolvedJavaType t = types[i];
-                if (t.equals(type)) {
-                    return (double) counts[i] / (double) counter;
-                }
+            if (typeFound) {
+                return (double) matchingTypeCount / (double) localCounter;
             }
             return -1;
         }
 
         /**
          * Tries to increment the profile count for the given {@code type}. If the profile is
-         * saturated ({@code getProfiledTypeCount() == types.length}) only
-         * {@link CountingProfile#counter} is incremented (which results in the
-         * notRecordedProbability to be increased).
+         * saturated ({@code getProfiledTypeCount() == types.length}) only the unrecorded count is
+         * incremented (which results in the notRecordedProbability to be increased).
          * <p>
          * If {@code type} cannot be found in the profile tries to add it to the profile array. If
          * that fails, because another thread concurrently added a type (sequentialized via
@@ -743,28 +764,69 @@ public final class MethodProfile {
                 if (slotType.equals(type)) {
                     /* Either the CAS succeeded or another thread wrote the same type already. */
                     counts[i]++;
-                    break;
+                    counter++;
+                    return;
                 }
             }
 
-            /* Always update the total count, even if recording the type failed. */
-            counter++;
+            /* The profile is saturated with other types. Record this observation as unrecorded. */
+            incrementCounter();
+        }
+
+        /**
+         * Records an observation without a corresponding type count. Such observations contribute
+         * to the not-recorded probability, including when the type profile is saturated.
+         */
+        @Override
+        public void incrementCounter() {
+            super.incrementCounter();
+            markUnrecordedSeen();
+        }
+
+        private void markUnrecordedSeen() {
+            if (!unrecordedSeen) {
+                unrecordedSeen = true;
+            }
+        }
+
+        /**
+         * Returns a total count that includes all sampled type counts and reserves probability mass
+         * for at least one unrecorded observation when one has been seen. Concurrent updates can lose
+         * more increments from the total counter than from the individual type counts.
+         */
+        private static long getSnapshotCounter(long localCounter, long sampledTypeCountSum, boolean localUnrecordedSeen) {
+            long minimumCounter = sampledTypeCountSum + (localUnrecordedSeen ? 1L : 0L);
+            return Math.max(localCounter, minimumCounter);
         }
 
         public JavaTypeProfile toTypeProfile() {
             final int profiledTypeCount = getProfiledTypeCount();
+            boolean localUnrecordedSeen = unrecordedSeen;
             if (profiledTypeCount == 0) {
+                if (localUnrecordedSeen) {
+                    return new JavaTypeProfile(getNullSeen(), 1.0, new JavaTypeProfile.ProfiledType[0]);
+                }
                 return getNullSeen() == TriState.TRUE ? new JavaTypeProfile(TriState.TRUE, 0.0, new JavaTypeProfile.ProfiledType[0]) : null;
             }
-            if (counter == 0L) {
+            /* Profiles are updated and read concurrently without synchronization. Read the total
+             * and each bucket once, then compute probabilities using at least their summed count. */
+            final long[] localCounts = new long[profiledTypeCount];
+            long localCounter = getCounter();
+            long sampledTypeCountSum = 0L;
+            for (int i = 0; i < profiledTypeCount; i++) {
+                localCounts[i] = counts[i];
+                sampledTypeCountSum += localCounts[i];
+            }
+            localCounter = getSnapshotCounter(localCounter, sampledTypeCountSum, localUnrecordedSeen);
+            if (localCounter == 0L) {
                 return null;
             }
             // taken from HotSpotMethodData.java#createTypeProfile - sync any bug fixes there
             JavaTypeProfile.ProfiledType[] ptypes = new JavaTypeProfile.ProfiledType[profiledTypeCount];
             double totalProbability = 0.0;
             for (int i = 0; i < profiledTypeCount; i++) {
-                double p = counts[i];
-                p = p / counter;
+                double p = localCounts[i];
+                p = p / localCounter;
                 totalProbability += p;
                 /*
                  * When we give the profile out we want it to be ristretto types only. Consumers,
@@ -774,8 +836,8 @@ public final class MethodProfile {
                 ptypes[i] = new JavaTypeProfile.ProfiledType(rType, p);
             }
             Arrays.sort(ptypes);
-            double notRecordedTypeProbability = profiledTypeCount < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
-            assert notRecordedTypeProbability == 0 || profiledTypeCount == types.length;
+            double notRecordedTypeProbability = !localUnrecordedSeen && profiledTypeCount < types.length ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
+            assert notRecordedTypeProbability == 0 || localUnrecordedSeen || profiledTypeCount == types.length;
             return new JavaTypeProfile(getNullSeen(), notRecordedTypeProbability, ptypes);
         }
 
@@ -783,7 +845,7 @@ public final class MethodProfile {
         public String toString() {
             JavaTypeProfile typeProfile = toTypeProfile();
             StringBuilder sb = new StringBuilder(128);
-            sb.append("{TypeProfile:bci=").append(bci).append(", counter=").append(counter).append(", nullSeen=").append(getNullSeen());
+            sb.append("{TypeProfile:bci=").append(bci).append(", counter=").append(getCounter()).append(", nullSeen=").append(getNullSeen());
             int limit = Math.min(getProfiledTypeCount(), types.length);
             sb.append(", types=[");
             for (int i = 0; i < limit; i++) {
