@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,13 @@ package jdk.graal.compiler.nodes;
 
 import java.util.Iterator;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.Position;
@@ -249,10 +251,12 @@ public abstract class ValueNode extends Node implements ValueNodeInterface {
             return false;
         }
 
-        NodeBitMap visited = new NodeBitMap(graph());
+        EconomicSet<Pair<Node, Node>> visited = EconomicSet.create();
         /*
          * "These" nodes are the ones recursively reachable from this, "those" are the ones
-         * recursively reachable from that.
+         * recursively reachable from that. We must record visited pairs because the traversal can
+         * compare a node reachable from {@code this} with several distinct nodes reachable from
+         * {@code that}.
          *
          * Invariants: These two stacks always have the same size. Their elements at corresponding
          * positions are never null, have equal node classes, are value equal but not reference
@@ -266,10 +270,9 @@ public abstract class ValueNode extends Node implements ValueNodeInterface {
             assert !those.isEmpty();
             Node thisNode = these.pop();
             Node thatNode = those.pop();
-            if (visited.isMarked(thisNode)) {
+            if (!visited.add(Pair.create(thisNode, thatNode))) {
                 continue;
             }
-            visited.mark(thisNode);
             Iterator<Position> theseInputs = thisNode.inputPositions().iterator();
             Iterator<Position> thoseInputs = thatNode.inputPositions().iterator();
             while (theseInputs.hasNext() && thoseInputs.hasNext()) {
