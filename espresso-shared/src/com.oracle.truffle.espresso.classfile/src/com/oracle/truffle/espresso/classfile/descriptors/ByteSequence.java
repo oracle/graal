@@ -239,7 +239,11 @@ public abstract class ByteSequence {
     }
 
     public int indexOf(byte b) {
-        for (int i = 0; i < length(); i++) {
+        return indexOf(b, 0);
+    }
+
+    public int indexOf(byte b, int fromIndex) {
+        for (int i = fromIndex; i < length(); i++) {
             if (byteAt(i) == b) {
                 return i;
             }

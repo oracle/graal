@@ -42,6 +42,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
+import com.oracle.svm.core.reflect.FallbackCallerSensitiveCremaMethodAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -188,7 +189,8 @@ public class StackTraceUtils {
              */
             return true;
         }
-        if (clazz == SubstrateMethodAccessor.class || (RuntimeClassLoading.isSupported() && clazz == CremaMethodAccessor.class)) {
+        if (clazz == SubstrateMethodAccessor.class || (RuntimeClassLoading.isSupported() &&
+                        (clazz == CremaMethodAccessor.class || clazz == FallbackCallerSensitiveCremaMethodAccessor.class))) {
             /*
              * Ignore SVM's method accessor implementations like HotSpot ignores
              * `MethodAccessorImpl`. Note that this does not ignore ConstructorAccessors, this is in
@@ -263,7 +265,8 @@ public class StackTraceUtils {
         if (clazz.equals(metaAccess.lookupJavaType(Method.class)) && "invoke".equals(method.getName())) {
             return true;
         }
-        if (clazz.equals(metaAccess.lookupJavaType(SubstrateMethodAccessor.class)) || (RuntimeClassLoading.isSupported() && clazz.equals(metaAccess.lookupJavaType(CremaMethodAccessor.class)))) {
+        if (clazz.equals(metaAccess.lookupJavaType(SubstrateMethodAccessor.class)) || (RuntimeClassLoading.isSupported() &&
+                        (clazz.equals(metaAccess.lookupJavaType(CremaMethodAccessor.class)) || clazz.equals(metaAccess.lookupJavaType(FallbackCallerSensitiveCremaMethodAccessor.class))))) {
             return true;
         }
         if (metaAccessExtensionProvider.isLambdaFormCompiled(method)) {

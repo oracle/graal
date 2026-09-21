@@ -242,4 +242,11 @@ public interface CremaSupport {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     ResolvedJavaMethod[] getAllDeclaredMethods(ResolvedJavaType interpreterType);
+
+    /**
+     * For a {@linkplain jdk.internal.reflect.CallerSensitive caller sensitive method}, finds the associated
+     * {@linkplain jdk.internal.reflect.CallerSensitiveAdapter caller sensitive adapted method} if it exists.
+     * Otherwise, returns {@code null}.
+     */
+    ResolvedJavaMethod findCallerSensitiveAdapter(ResolvedJavaMethod callerSensitiveMethod);
 }

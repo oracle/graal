@@ -35,13 +35,18 @@ import jdk.internal.reflect.MethodAccessor;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CremaMethodAccessor extends AbstractCremaAccessor implements MethodAccessor {
+    private final boolean callerSensitiveAdapter;
 
-    public CremaMethodAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes) {
+    public CremaMethodAccessor(ResolvedJavaMethod targetMethod, Class<?> declaringClass, Class<?>[] parameterTypes, boolean callerSensitiveAdapter) {
         super(targetMethod, declaringClass, parameterTypes);
+        this.callerSensitiveAdapter = callerSensitiveAdapter;
     }
 
     @Override
     public Object invoke(Object obj, Object[] initialArguments) throws IllegalArgumentException, InvocationTargetException {
+        if (callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Cannot invoke caller sensitive method without an explicit caller");
+        }
         Object[] args = initialArguments == null ? NO_ARGS : initialArguments;
         if (targetMethod.isStatic()) {
             verifyArguments(args);
@@ -67,8 +72,34 @@ public final class CremaMethodAccessor extends AbstractCremaAccessor implements 
     }
 
     @Override
-    public Object invoke(Object obj, Object[] args, Class<?> caller) throws IllegalArgumentException, InvocationTargetException {
-        // (GR-68603) - handle caller sensitive methods
-        throw VMError.unimplemented("CremaMethodAccessor#invoke");
+    public Object invoke(Object obj, Object[] initialArguments, Class<?> caller) throws IllegalArgumentException, InvocationTargetException {
+        if (!callerSensitiveAdapter) {
+            throw VMError.shouldNotReachHere("Unexpected caller-sensitive call for " + targetMethod);
+        }
+        Object[] args = initialArguments == null ? NO_ARGS : initialArguments;
+        if (targetMethod.isStatic()) {
+            verifyArguments(args);
+            ensureDeclaringClassInitialized();
+        } else {
+            verifyReceiver(obj);
+            verifyArguments(args);
+        }
+
+        Object[] finalArgs;
+        if (targetMethod.isStatic()) {
+            finalArgs = new Object[args.length + 1];
+            System.arraycopy(args, 0, finalArgs, 0, args.length);
+            finalArgs[args.length] = caller;
+        } else {
+            finalArgs = new Object[args.length + 2];
+            finalArgs[0] = obj;
+            System.arraycopy(args, 0, finalArgs, 1, args.length);
+            finalArgs[args.length + 1] = caller;
+        }
+        try {
+            return CremaSupport.singleton().execute(targetMethod, finalArgs, CallKind.getCallKind((MethodAccess<?, ?, ?>) targetMethod));
+        } catch (Throwable t) {
+            throw new InvocationTargetException(t);
+        }
     }
 }

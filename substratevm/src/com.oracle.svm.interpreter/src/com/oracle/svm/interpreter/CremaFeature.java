@@ -143,6 +143,11 @@ public class CremaFeature implements InternalFeature {
             enterCremaJNIMethodVarargsNonVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.VARARGS, true, unpublished);
             enterCremaJNIMethodArrayNonVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.ARRAY, true, unpublished);
             enterCremaJNIMethodVaListNonVirtualWrapper = registerCremaJNIMethodWrapper(accessImpl, CallVariant.VA_LIST, true, unpublished);
+
+            AnalysisType invokers = accessImpl.findTypeByName("java.lang.invoke.Invokers$Holder");
+            for (AnalysisMethod invokersMethod : invokers.getDeclaredMethods(false)) {
+                accessImpl.registerAsRoot(invokersMethod, false, "Used by method handles with crema");
+            }
         } catch (NoSuchMethodError e) {
             throw VMError.shouldNotReachHere(e);
         }
