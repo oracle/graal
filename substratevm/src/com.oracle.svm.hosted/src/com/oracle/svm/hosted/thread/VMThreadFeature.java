@@ -223,7 +223,7 @@ public class VMThreadFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
-        int nextOffset = threadLocalCollector.sortAndAssignOffsets();
+        int nextOffset = threadLocalCollector.layoutThreadLocals();
 
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             /*

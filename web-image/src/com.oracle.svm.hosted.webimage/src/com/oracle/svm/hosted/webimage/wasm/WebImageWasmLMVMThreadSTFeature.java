@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.wasm;
 
-import java.util.List;
+import java.util.ArrayList;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -68,7 +68,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @Platforms(WebImageWasmLMPlatform.class)
 public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
 
-    private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
+    private final VMThreadLocalCollector threadLocalCollector = new WebImageWasmLMThreadLocalCollector();
 
     @Override
     public void duringSetup(DuringSetupAccess config) {
@@ -204,27 +204,37 @@ public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
-        threadLocalCollector.sortThreadLocals();
-        List<VMThreadLocalInfo> sortedThreadLocalInfos = threadLocalCollector.getSortedThreadLocalInfos();
-        ObjectLayout layout = ObjectLayout.singleton();
-        int nextObject = 0;
-        int nextPrimitive = 0;
-        for (VMThreadLocalInfo info : sortedThreadLocalInfos) {
-            if (info.isObject) {
-                info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObject));
-                nextObject += 1;
-            } else {
-                assert nextPrimitive % Math.min(8, info.sizeInBytes) == 0 : "alignment mismatch: " + info.sizeInBytes + ", " + nextPrimitive;
-                info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, nextPrimitive));
-                nextPrimitive += info.sizeInBytes;
-            }
-        }
-
-        WebImageWasmVMThreadLocalSTSupport support = ImageSingletons.lookup(WebImageWasmVMThreadLocalSTSupport.class);
-        support.objectThreadLocals = new Object[nextObject];
-        support.primitiveThreadLocals = new byte[nextPrimitive];
+        threadLocalCollector.layoutThreadLocals();
 
         /* Remember the final sorted list. */
-        VMThreadLocalInfos.setInfos(sortedThreadLocalInfos);
+        VMThreadLocalInfos.setInfos(threadLocalCollector.getSortedThreadLocalInfos());
+    }
+
+    private static class WebImageWasmLMThreadLocalCollector extends VMThreadLocalCollector {
+        /**
+         * Assigns offsets relative to separate object and primitive arrays, preserving the processing
+         * order within each array. Returns the combined size of the array contents without headers.
+         */
+        @Override
+        protected int assignOffsets(ArrayList<VMThreadLocalInfo> threadLocals) {
+            ObjectLayout layout = ObjectLayout.singleton();
+            int nextObject = 0;
+            int nextPrimitive = 0;
+            for (VMThreadLocalInfo info : threadLocals) {
+                if (info.isObject) {
+                    info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObject));
+                    nextObject += 1;
+                } else {
+                    nextPrimitive = NumUtil.roundUp(nextPrimitive, Math.min(8, info.sizeInBytes));
+                    info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, nextPrimitive));
+                    nextPrimitive += info.sizeInBytes;
+                }
+            }
+
+            WebImageWasmVMThreadLocalSTSupport support = ImageSingletons.lookup(WebImageWasmVMThreadLocalSTSupport.class);
+            support.objectThreadLocals = new Object[nextObject];
+            support.primitiveThreadLocals = new byte[nextPrimitive];
+            return nextPrimitive + nextObject * layout.getReferenceSize();
+        }
     }
 }

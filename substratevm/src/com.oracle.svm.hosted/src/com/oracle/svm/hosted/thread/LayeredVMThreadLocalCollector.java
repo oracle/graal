@@ -31,10 +31,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -82,9 +82,7 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector {
 
     @Override
     public Object apply(Object source) {
-        /*
-         * Make sure all names have been assigned in the prior layers
-         */
+        /* Make sure all names have been assigned in the prior layers. */
         if (!initialLayer) {
             if (source instanceof FastThreadLocal threadLocal) {
                 var name = threadLocal.getName();
@@ -95,22 +93,19 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector {
     }
 
     @Override
-    public int sortAndAssignOffsets() {
+    protected int assignOffsets(ArrayList<VMThreadLocalInfo> tl) {
         if (initialLayer) {
             assert nextOffset == -1 : nextOffset;
-
-            nextOffset = super.sortAndAssignOffsets();
+            nextOffset = super.assignOffsets(tl);
         } else {
             assert nextOffset != -1;
-
-            for (VMThreadLocalInfo info : threadLocals.values()) {
+            /* Use the offsets from the base layer. */
+            for (VMThreadLocalInfo info : tl) {
                 var assignment = threadLocalAssignmentMap.get(info.name);
                 info.offset = assignment.offset();
-                assert assignment.size() == calculateSize(info) : Assertions.errorMessage("Mismatch in computed size: ", assignment.size(), calculateSize(info), info.name);
-                info.sizeInBytes = assignment.size();
+                assert assignment.size() == info.sizeInBytes : Assertions.errorMessage("Mismatch in computed size: ", assignment.size(), info.sizeInBytes, info.name);
             }
         }
-
         return nextOffset;
     }
 
