@@ -75,24 +75,3 @@ code .
 ```
 
 8&#46; Start debugging (F5).
-
-When debugging a guest language application from VS Code, a user can choose a protocol to use by setting the protocol attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
-To connect to the open DAP port in this scenario, the content of the _launch.json_ should be:
-
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "graalvm",
-            "request": "launch",
-            "name": "Launch Node App",
-            "outputCapture": "std",
-            "protocol": "debugAdapter",
-            "program": "${workspaceFolder}/App.js"
-        }
-    ]
-}
-```
-
-The advantage of using Debug Adapter Protocol over Chrome Dev Tools is that (1) it is 'native' to Visual Studio Code (VS Code), meaning it does not require any intermediate translation, and (2) that it supports multithreading, which can be particularly useful to debug, for example, a Ruby application.
