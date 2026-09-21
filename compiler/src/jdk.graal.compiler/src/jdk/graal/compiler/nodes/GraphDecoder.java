@@ -1326,6 +1326,8 @@ public class GraphDecoder {
                     }
                 }
             } else {
+                /* Equality distinguishes the filters of independently entered loop instances. */
+                h = h * 31 + System.identityHashCode(filter);
                 for (ValueNode value : values) {
                     h = h * 31 + value.hashCode();
                 }
