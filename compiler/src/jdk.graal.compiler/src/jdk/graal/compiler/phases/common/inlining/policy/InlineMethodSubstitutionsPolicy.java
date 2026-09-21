@@ -47,7 +47,7 @@ public final class InlineMethodSubstitutionsPolicy extends InlineEverythingPolic
         if (callTarget instanceof MethodCallTargetNode) {
             ResolvedJavaMethod calleeMethod = callTarget.targetMethod();
             if (replacements.hasSubstitution(calleeMethod, options)) {
-                return Decision.YES.withReason(isTracing, "has a method subtitution");
+                return Decision.YES.withReason(isTracing, "has a method substitution");
             }
         }
         return Decision.NO.withReason(isTracing, "does not have a method substitution");

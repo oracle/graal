@@ -1111,7 +1111,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         assertEquals(1, foobarInvocations.get());
     }
 
-    @ExpectError("No suiteable constructor found for wrapper factory generation. At least one default or copy constructor must be visible.")
+    @ExpectError("No suitable constructor found for wrapper factory generation. At least one default or copy constructor must be visible.")
     @GenerateWrapper
     @SuppressWarnings("unused")
     public abstract static class ErrorNode6 extends Node implements InstrumentableNode {

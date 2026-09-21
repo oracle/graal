@@ -943,7 +943,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (cache.getInlinedNode() != null && inline != null && inline) {
                     if (emitErrors) {
                         cache.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED, inlineValue, "Redundant specification of @%s(... inline=true). " + //
-                                        "Cached values of nodes with @%s are implicitely inlined.",
+                                        "Cached values of nodes with @%s are implicitly inlined.",
                                         getSimpleName(types.GenerateInline),
                                         getSimpleName(types.Cached),
                                         getSimpleName(types.GenerateInline));
@@ -3457,7 +3457,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     Iterator<Parameter> firstParameter = specialization.getSignatureParameters().iterator();
                     if (firstParameter.hasNext() && firstParameter.next().getVariableElement().getSimpleName().toString().equals(NodeParser.SYMBOL_THIS)) {
                         cache.addError("Variable 'this' is reserved for library receiver values in methods annotated with @%s. " +
-                                        "If the intention was to access the encapsulting Node for inlined nodes or profiles, you may use '%s' as expression instead.",
+                                        "If the intention was to access the encapsulating Node for inlined nodes or profiles, you may use '%s' as expression instead.",
                                         getSimpleName(types.ExportMessage),
                                         NodeParser.SYMBOL_NODE);
                     }

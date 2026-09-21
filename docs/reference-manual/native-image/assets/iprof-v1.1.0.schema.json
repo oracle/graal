@@ -289,7 +289,7 @@
             "title": "Virtual invoke profiles",
             "type": "array",
             "default": [],
-            "description": "Information about the run-time receiver types of virutal invokes.",
+            "description": "Information about the run-time receiver types of virtual invokes.",
             "items":{
                 "$id": "#root/virtualInvokeProfiles/items",
                 "title": "Items",

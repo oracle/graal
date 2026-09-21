@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,7 @@ public enum UnaryOperator {
         if (opcode < VALUES.length) {
             return VALUES[opcode];
         } else {
-            throw new UnsupportedOperationException("Unknow scalar unary opcode: " + opcode);
+            throw new UnsupportedOperationException("Unknown scalar unary opcode: " + opcode);
         }
     }
 

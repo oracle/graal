@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -181,7 +181,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Invalid array index %d", index);
             } catch (UnsupportedMessageException ex) {
                 notFound.enter();
-                throw new LLVMPolyglotException(this, "Cannot acess array element %d", index);
+                throw new LLVMPolyglotException(this, "Cannot access array element %d", index);
             }
 
             return recursive.execute(type, inner, restOffset);
