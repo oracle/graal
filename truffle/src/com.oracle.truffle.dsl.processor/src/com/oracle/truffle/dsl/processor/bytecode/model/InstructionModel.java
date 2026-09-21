@@ -52,6 +52,7 @@ import java.util.OptionalInt;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature.Operand;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -793,6 +794,13 @@ public final class InstructionModel implements PrettyPrintable {
 
     public Optional<ConstantOperandModel> resolveConstantOperand(InstructionImmediate immediate) {
         return resolveOperand(immediate).filter(Operand::isConstant).map(Operand::constant);
+    }
+
+    public Optional<OperationArgument> resolveOperationArgument(InstructionImmediate immediate) {
+        if (operation == null) {
+            return Optional.empty();
+        }
+        return resolveConstantOperand(immediate).flatMap(operation::resolveOperationArgument);
     }
 
     public InstructionImmediate findImmediate(ImmediateKind immediateKind, String immediateName) {

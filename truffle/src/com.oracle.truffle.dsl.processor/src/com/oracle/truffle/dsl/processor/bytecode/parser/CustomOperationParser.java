@@ -332,9 +332,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         produceConstantOperandWarnings(customOperation, signature, mirror);
 
-        operation.operationBeginArguments = createOperationConstantArguments(customOperation, constantOperands.before(), signatures, 0);
-        operation.operationEndArguments = createOperationConstantArguments(customOperation, constantOperands.after(), signatures,
-                        constantOperands.before().size() + signature.dynamicOperandCount());
+        operation.setOperationBeginArguments(createOperationConstantArguments(customOperation, constantOperands.before(), signatures, 0));
+        operation.setOperationEndArguments(createOperationConstantArguments(customOperation, constantOperands.after(), signatures,
+                        constantOperands.before().size() + signature.dynamicOperandCount()));
 
         createCustomInstruction(customOperation, generatedNode, signature, name);
 

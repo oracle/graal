@@ -41,7 +41,9 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -196,6 +198,12 @@ public class OperationModel implements PrettyPrintable {
     public OperationArgument[] operationBeginArguments = EMPTY_ARGUMENTS;
     public OperationArgument[] operationEndArguments = EMPTY_ARGUMENTS;
 
+    /*
+     * Defines a mapping from constant operand to operation argument. Useful for resolving the
+     * generated Java name of an operation argument from an instruction immediate.
+     */
+    private final Map<ConstantOperandModel, OperationArgument> constantOperandArguments = new HashMap<>();
+
     public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name, String builderName, String javadoc) {
         this.parent = parent;
         this.id = id;
@@ -284,21 +292,31 @@ public class OperationModel implements PrettyPrintable {
     }
 
     public OperationModel setOperationBeginArguments(OperationArgument... operationBeginArguments) {
-        if (this.operationBeginArguments != EMPTY_ARGUMENTS && this.operationBeginArguments.length != operationBeginArguments.length) {
-            throw new AssertionError("Number of begin arguments for %s should not change (was %d, attempted to set to %d).".formatted(name, this.operationBeginArguments.length,
-                            operationBeginArguments.length));
+        if (this.operationBeginArguments != EMPTY_ARGUMENTS) {
+            throw new AssertionError("Operation begin arguments for %s were already set.".formatted(name));
         }
         this.operationBeginArguments = operationBeginArguments;
+        registerConstantOperandArguments(operationBeginArguments);
         return this;
     }
 
     public OperationModel setOperationEndArguments(OperationArgument... operationEndArguments) {
-        if (this.operationEndArguments != EMPTY_ARGUMENTS && this.operationEndArguments.length != operationEndArguments.length) {
-            throw new AssertionError(
-                            "Number of end arguments for %s should not change (was %d, attempted to set to %d).".formatted(name, this.operationEndArguments.length, operationEndArguments.length));
+        if (this.operationEndArguments != EMPTY_ARGUMENTS) {
+            throw new AssertionError("Operation end arguments for %s were already set.".formatted(name));
         }
         this.operationEndArguments = operationEndArguments;
+        registerConstantOperandArguments(operationEndArguments);
         return this;
+    }
+
+    private void registerConstantOperandArguments(OperationArgument[] arguments) {
+        for (OperationArgument argument : arguments) {
+            argument.constantOperand().ifPresent(constantOperand -> constantOperandArguments.put(constantOperand, argument));
+        }
+    }
+
+    public Optional<OperationArgument> resolveOperationArgument(ConstantOperandModel constantOperand) {
+        return Optional.ofNullable(constantOperandArguments.get(constantOperand));
     }
 
     public String getOperationBeginArgumentName(int i) {
