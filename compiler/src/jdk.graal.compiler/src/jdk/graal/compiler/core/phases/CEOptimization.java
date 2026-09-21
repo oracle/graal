@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.BreakChainedPhisPhase;
 import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
@@ -225,6 +226,15 @@ public enum CEOptimization {
      * This phase is unconditionally enabled (it's required for correct code generation).
      */
     InstructionScheduling(null, SchedulePhase.class),
+
+    /**
+     * {@link BreakChainedPhisPhase} is an optimization that optimizes chains of loop phis by using
+     * rematerialization on the HIR level.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link LowTier.Options#BreakChainedPhis}.
+     */
+    BreakChainedPhisPhase(LowTier.Options.BreakChainedPhis, BreakChainedPhisPhase.class),
 
     /**
      * {@link FloatingReadPhase} rewrites fixed memory read nodes to floating read nodes that can
