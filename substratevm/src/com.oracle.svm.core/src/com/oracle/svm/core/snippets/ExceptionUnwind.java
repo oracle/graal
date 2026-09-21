@@ -33,14 +33,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -53,7 +51,7 @@ import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.shared.util.VMError;
@@ -74,17 +72,16 @@ public abstract class ExceptionUnwind {
     };
 
     public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class, "ExceptionUnwind.currentException");
-    public static final FastThreadLocalBytes<BooleanPointer> lazyDeoptStubShouldReturnToExceptionHandler = FastThreadLocalFactory.createBytes(() -> SizeOf.get(BooleanPointer.class),
-                    "ExceptionUnwind.lazyDeoptStubShouldReturnToExceptionHandler");
+    public static final FastThreadLocalBoolean lazyDeoptStubShouldReturnToExceptionHandler = FastThreadLocalFactory.createBoolean("ExceptionUnwind.lazyDeoptStubShouldReturnToExceptionHandler");
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setLazyDeoptStubShouldReturnToExceptionHandler(boolean val) {
-        lazyDeoptStubShouldReturnToExceptionHandler.getAddress().write(val);
+        lazyDeoptStubShouldReturnToExceptionHandler.set(val);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean getLazyDeoptStubShouldReturnToExceptionHandler() {
-        return lazyDeoptStubShouldReturnToExceptionHandler.getAddress().read();
+        return lazyDeoptStubShouldReturnToExceptionHandler.get();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

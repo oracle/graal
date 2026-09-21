@@ -47,7 +47,7 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
@@ -87,7 +87,7 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBuffer");
     private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBuffer");
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
-    private static final FastThreadLocalInt notified = FastThreadLocalFactory.createInt("JfrThreadLocal.notified");
+    private static final FastThreadLocalBoolean notified = FastThreadLocalFactory.createBoolean("JfrThreadLocal.notified");
 
     /* Stacktrace-related thread-locals. */
     private static final FastThreadLocalWord<SamplerBuffer> samplerBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerBuffer");
@@ -373,17 +373,17 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isNotified() {
-        return notified.get() != 0;
+        return notified.get();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void notifyEventWriter(IsolateThread thread) {
-        notified.set(thread, 1);
+        notified.set(thread, true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void clearNotification() {
-        notified.set(0);
+        notified.set(false);
     }
 
     /**
