@@ -2793,10 +2793,12 @@ public class GraphDecoder {
              */
             methodScope.loopExplosionKeyReplacements.put(keyNode, keyNode.value());
         }
-        if (node instanceof ProxyNode || node instanceof PhiNode) {
+        if (node instanceof ProxyNode || node instanceof PhiNode || node instanceof LoopExplosionKeyNode) {
             /*
              * We need these nodes as they were in the original graph, without any canonicalization
-             * or value numbering.
+             * or value numbering. In particular, each decoded key marker must remain distinct:
+             * recognizing a marker in one method or loop scope must not consume another scope's
+             * marker just because the initial key values happen to be equal.
              */
             node = graph.addWithoutUnique(node);
         } else {

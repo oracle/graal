@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.graph.spi.NodeWithIdentity;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
@@ -41,9 +42,12 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 /**
  * Transparent marker produced for {@code CompilerDirectives.mergeExplodeKey}. Graph decoding uses
  * the marker while identifying merge keys and removes recognized markers before lowering.
+ * <p>
+ * Each marker has its own identity, even when input values are equal. Recognizing one marker must
+ * not consume another marker.
  */
 @NodeInfo(nameTemplate = "LoopExplosionKey", cycles = CYCLES_0, size = SIZE_0)
-public final class LoopExplosionKeyNode extends FloatingNode implements Canonicalizable, LIRLowerable {
+public final class LoopExplosionKeyNode extends FloatingNode implements Canonicalizable, LIRLowerable, NodeWithIdentity {
     public static final NodeClass<LoopExplosionKeyNode> TYPE = NodeClass.create(LoopExplosionKeyNode.class);
 
     @Input private ValueNode value;

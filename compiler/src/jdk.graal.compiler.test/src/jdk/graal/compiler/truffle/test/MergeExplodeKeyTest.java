@@ -339,6 +339,74 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void sameInitialKeyInRepeatedInlinings() {
+        RootNode root = repeatedInliningKeyProgram();
+        Assert.assertEquals(4, root.getCallTarget().call());
+        OptimizedCallTarget target = compileHelper("sameInitialKeyInRepeatedInlinings", root, new Object[0]);
+        Assert.assertEquals(4, target.call());
+    }
+
+    private static RootNode repeatedInliningKeyProgram() {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                /* Separate method scopes share the same graph and initial-key constant. */
+                return dispatch() + dispatch();
+            }
+
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            private static int dispatch() {
+                int key = 0;
+                key = CompilerDirectives.mergeExplodeKey(key);
+                while (key < 2) {
+                    CompilerAsserts.partialEvaluationConstant(key);
+                    key++;
+                }
+                return key;
+            }
+        };
+    }
+
+    @Test
+    public void repeatedInnerLoopKeys() {
+        int iterations = 128;
+        RootNode root = repeatedInnerLoopKeyProgram(iterations);
+        int expected = iterations * (iterations + 1) / 2;
+        Assert.assertEquals(expected, root.getCallTarget().call());
+        OptimizedCallTarget target = compileHelper("repeatedInnerLoopKeys", root, new Object[0]);
+        Assert.assertEquals(expected, target.call());
+    }
+
+    private static RootNode repeatedInnerLoopKeyProgram(int iterations) {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return executeWithInnerKeys(iterations);
+            }
+
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            private static int executeWithInnerKeys(int count) {
+                CompilerAsserts.partialEvaluationConstant(count);
+                int result = 0;
+                for (int outer = 1; outer <= count; outer++) {
+                    int key = outer;
+                    key = CompilerDirectives.mergeExplodeKey(key);
+                    while (true) {
+                        CompilerAsserts.partialEvaluationConstant(key);
+                        result = opaqueAdd(result, key);
+                        if (key == 0) {
+                            break;
+                        }
+                        /* All inner-loop instances revisit zero with a different filter. */
+                        key = 0;
+                    }
+                }
+                return result;
+            }
+        };
+    }
+
+    @Test
     public void multipleTopLevelLoops() {
         try {
             partialEval(multipleTopLevelLoopsProgram());
@@ -461,6 +529,11 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                 }
             }
         };
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static int opaqueAdd(int left, int right) {
+        return left + right;
     }
 
     private static RootNode nestedEscapingFieldKeyProgram() {
