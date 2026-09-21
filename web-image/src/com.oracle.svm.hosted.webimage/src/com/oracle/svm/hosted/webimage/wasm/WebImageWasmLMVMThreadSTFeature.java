@@ -40,7 +40,6 @@ import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.hosted.thread.VMThreadLocalCollector;
@@ -96,6 +95,7 @@ public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
 
             registerAccessors(r, valueClass, false);
             registerAccessors(r, valueClass, true);
+            registerAddressAccessors(r);
 
             /* compareAndSet() method without the VMThread parameter. */
             r.register(new RequiredInvocationPlugin("compareAndSet", Receiver.class, valueClass, valueClass) {
@@ -113,24 +113,24 @@ public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
             });
         }
 
-        Class<?>[] typesWithGetAddress = new Class<?>[]{FastThreadLocalBytes.class, FastThreadLocalWord.class};
-        for (Class<?> type : typesWithGetAddress) {
-            Registration r = new Registration(plugins.getInvocationPlugins(), type);
-            /* getAddress() method without the VMThread parameter. */
-            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    return handleGetAddress(b, targetMethod, receiver);
-                }
-            });
-            /* getAddress() method with the VMThread parameter. */
-            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
-                    return handleGetAddress(b, targetMethod, receiver);
-                }
-            });
-        }
+        registerAddressAccessors(new Registration(plugins.getInvocationPlugins(), FastThreadLocalBytes.class));
+    }
+
+    private void registerAddressAccessors(Registration r) {
+        /* getAddress() method without the VMThread parameter. */
+        r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return handleGetAddress(b, targetMethod, receiver);
+            }
+        });
+        /* getAddress() method with the VMThread parameter. */
+        r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
+                return handleGetAddress(b, targetMethod, receiver);
+            }
+        });
     }
 
     private void registerAccessors(Registration r, Class<?> valueClass, boolean isVolatile) {

@@ -40,10 +40,14 @@ import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalByte;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalChar;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalShort;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -55,12 +59,20 @@ import jdk.vm.ci.meta.JavaKind;
 public class VMThreadLocalInfo {
 
     @SuppressWarnings("unchecked")    //
-    public static final Class<? extends FastThreadLocal>[] THREAD_LOCAL_CLASSES = (Class<? extends FastThreadLocal>[]) new Class<?>[]{FastThreadLocalInt.class, FastThreadLocalLong.class,
-                    FastThreadLocalWord.class, FastThreadLocalObject.class};
+    public static final Class<? extends FastThreadLocal>[] THREAD_LOCAL_CLASSES = (Class<? extends FastThreadLocal>[]) new Class<?>[]{FastThreadLocalBoolean.class, FastThreadLocalByte.class,
+                    FastThreadLocalShort.class, FastThreadLocalChar.class, FastThreadLocalInt.class, FastThreadLocalLong.class, FastThreadLocalWord.class, FastThreadLocalObject.class};
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Class<?> getValueClass(Class<? extends FastThreadLocal> threadLocalClass) {
-        if (threadLocalClass == FastThreadLocalInt.class) {
+        if (threadLocalClass == FastThreadLocalBoolean.class) {
+            return boolean.class;
+        } else if (threadLocalClass == FastThreadLocalByte.class) {
+            return byte.class;
+        } else if (threadLocalClass == FastThreadLocalShort.class) {
+            return short.class;
+        } else if (threadLocalClass == FastThreadLocalChar.class) {
+            return char.class;
+        } else if (threadLocalClass == FastThreadLocalInt.class) {
             return int.class;
         } else if (threadLocalClass == FastThreadLocalLong.class) {
             return long.class;
@@ -119,7 +131,15 @@ public class VMThreadLocalInfo {
             valueClass = null;
         }
 
-        if (threadLocalClass == FastThreadLocalInt.class) {
+        if (threadLocalClass == FastThreadLocalBoolean.class) {
+            storageKind = JavaKind.Boolean;
+        } else if (threadLocalClass == FastThreadLocalByte.class) {
+            storageKind = JavaKind.Byte;
+        } else if (threadLocalClass == FastThreadLocalShort.class) {
+            storageKind = JavaKind.Short;
+        } else if (threadLocalClass == FastThreadLocalChar.class) {
+            storageKind = JavaKind.Char;
+        } else if (threadLocalClass == FastThreadLocalInt.class) {
             storageKind = JavaKind.Int;
         } else if (threadLocalClass == FastThreadLocalLong.class) {
             storageKind = JavaKind.Long;

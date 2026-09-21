@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.options.Option;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Collects all {@link FastThreadLocal} instances that are actually used by the application.
@@ -150,8 +151,10 @@ public class VMThreadLocalCollector implements Function<Object, Object>, VMThrea
             int unalignedSize = info.sizeSupplier.getAsInt();
             assert unalignedSize > 0;
             return NumUtil.roundUp(unalignedSize, 8);
-        } else {
+        } else if (info.storageKind == JavaKind.Object) {
             return ObjectLayout.singleton().sizeInBytes(info.storageKind);
+        } else {
+            return info.storageKind.getByteCount();
         }
     }
 

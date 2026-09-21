@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,54 +30,54 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 /**
- * Represents a fast thread local variable of the primitive type {@code long}. See
+ * Represents a fast thread local variable of the primitive type {@code char}. See
  * {@link FastThreadLocalFactory} for details and restrictions of VM thread local variables.
  */
 @SuppressWarnings({"unused", "static-method"})
-public final class FastThreadLocalLong extends FastThreadLocal {
+public final class FastThreadLocalChar extends FastThreadLocal {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FastThreadLocalLong(String name) {
+    FastThreadLocalChar(String name) {
         super(name);
     }
 
-    public long get() {
+    public char get() {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public long get(IsolateThread thread) {
+    public char get(IsolateThread thread) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public void set(long value) {
+    public void set(char value) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public void set(IsolateThread thread, long value) {
+    public void set(IsolateThread thread, char value) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public long getVolatile() {
+    public char getVolatile() {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public long getVolatile(IsolateThread thread) {
+    public char getVolatile(IsolateThread thread) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public void setVolatile(long value) {
+    public void setVolatile(char value) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public void setVolatile(IsolateThread thread, long value) {
+    public void setVolatile(IsolateThread thread, char value) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public boolean compareAndSet(long expect, long update) {
+    public boolean compareAndSet(char expect, char update) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    public boolean compareAndSet(IsolateThread thread, long expect, long update) {
+    public boolean compareAndSet(IsolateThread thread, char expect, char update) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
