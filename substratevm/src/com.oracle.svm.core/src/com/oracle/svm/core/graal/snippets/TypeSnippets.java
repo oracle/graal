@@ -26,10 +26,14 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHubOrNull;
+import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMaxHints;
+import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMinProfileHitProbability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import com.oracle.svm.core.graal.meta.KnownOffsets;
@@ -40,11 +44,14 @@ import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
+import jdk.graal.compiler.nodes.TypeCheckHints;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
@@ -56,6 +63,10 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.InstanceOfSnippetsTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class TypeSnippets extends SubstrateTemplates implements Snippets {
 
@@ -86,8 +97,14 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
         }
     }
 
+    /**
+     * Performs an inexact type check, using any exact-hub profile hints before the generic
+     * closed-world check.
+     */
     @Snippet
     protected static SubstrateIntrinsics.Any instanceOfSnippet(
+                    @Snippet.VarargsParameter DynamicHub[] hints,
+                    @Snippet.VarargsParameter boolean[] hintIsPositive,
                     Object object,
                     SubstrateIntrinsics.Any trueValue,
                     SubstrateIntrinsics.Any falseValue,
@@ -103,6 +120,14 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
         GuardingNode guard = SnippetAnchorNode.anchor();
         Object nonNullObject = PiNode.piCastNonNull(object, guard);
         DynamicHub nonNullHub = loadHub(nonNullObject);
+        ExplodeLoopNode.explodeLoop();
+        for (int i = 0; i < hints.length; i++) {
+            boolean positive = hintIsPositive[i];
+            DynamicHub hint = hints[i];
+            if (probability(LIKELY_PROBABILITY, nonNullHub == hint)) {
+                return unknownProbability(positive) ? trueValue : falseValue;
+            }
+        }
         return slotTypeCheck(start, range, slot, typeIDSlotOffset, nonNullHub, trueValue, falseValue);
     }
 
@@ -154,6 +179,60 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
         }
 
         return falseValue;
+    }
+
+    /**
+     * Substrate counterpart of {@code TypeCheckSnippetUtils#createHints}. It is kept separate because
+     * this method materializes runtime {@link DynamicHub} values, whereas the HotSpot helper
+     * materializes {@code ConstantNode}s with {@code KlassPointerStamp}.
+     */
+    static Hints createHints(TypeCheckHints hints, boolean positiveOnly) {
+        DynamicHub[] hubs = new DynamicHub[hints.hints.length];
+        boolean[] isPositive = new boolean[hints.hints.length];
+        int index = 0;
+        for (int i = 0; i < hubs.length; i++) {
+            if (!positiveOnly || hints.hints[i].positive) {
+                hubs[index] = ((SharedType) hints.hints[i].type).getHub();
+                isPositive[index] = hints.hints[i].positive;
+                index++;
+            }
+        }
+        if (positiveOnly && index != hubs.length) {
+            assert index < hubs.length : Assertions.errorMessage(index, hubs);
+            hubs = Arrays.copyOf(hubs, index);
+            isPositive = Arrays.copyOf(isPositive, index);
+        }
+        return new Hints(hubs, isPositive);
+    }
+
+    /** Exact-hub profile hints and their expected type-check results. */
+    record Hints(DynamicHub[] hubs, boolean[] isPositive) {
+    }
+
+    /** Returns the minimum useful profile hit probability for closed-world type checks. */
+    public static double getTypeCheckMinProfileHitProbability(OptionValues options) {
+        if (!TypeCheckMinProfileHitProbability.hasBeenSet(options)) {
+            /*
+             * Generic type checks under the closed world assumption are very efficient. Only
+             * introduce fast paths if it is likely that one of them is reached.
+             */
+            return 0.7;
+        }
+        /* Same default as on HotSpot. */
+        return TypeCheckMinProfileHitProbability.getValue(options);
+    }
+
+    /** Returns the maximum number of exact-hub hints for closed-world type checks. */
+    public static int getTypeCheckMaxHints(OptionValues options) {
+        if (!TypeCheckMaxHints.hasBeenSet(options)) {
+            /*
+             * Benchmarks have shown that the generic type check is faster than two consecutive hub
+             * checks. Insert only one fast path check per default.
+             */
+            return 1;
+        }
+        /* Same default as on HotSpot. */
+        return TypeCheckMaxHints.getValue(options);
     }
 
     public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, Providers providers) {
@@ -218,6 +297,9 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
         protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
             assert !type.isInterface() || type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
+            Hints hints = createHints(node);
+            args.addVarargs("hints", DynamicHub.class, StampFactory.forKind(JavaKind.Object), hints.hubs());
+            args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive());
             args.add("object", node.getValue());
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
@@ -227,6 +309,18 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
             args.add("slot", hub.getTypeCheckSlot());
             args.add("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
             return args;
+        }
+
+        /** Creates exact-hub hints for a type check, or an empty set if no profile is available. */
+        private Hints createHints(InstanceOfNode node) {
+            if (node.profile() == null) {
+                return new Hints(new DynamicHub[0], new boolean[0]);
+            }
+            JavaTypeProfile profile = node.profile();
+            OptionValues optionValues = node.getOptions();
+            Assumptions assumptions = node.graph().getAssumptions();
+            TypeCheckHints hintInfo = new TypeCheckHints(node.type(), profile, assumptions, getTypeCheckMinProfileHitProbability(optionValues), getTypeCheckMaxHints(optionValues));
+            return TypeSnippets.createHints(hintInfo, false);
         }
     }
 
