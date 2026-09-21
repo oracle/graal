@@ -625,6 +625,39 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void scalarKeyInIrreducibleLoop() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.ARGUMENT,
+                        /* 1: */0,
+                        /* 2: */Bytecode.IFZERO,
+                        /* 3: */6,
+                        /* 4: */Bytecode.JMP,
+                        /* 5: */12,
+                        /* 6: */Bytecode.ARGUMENT,
+                        /* 7: */1,
+                        /* 8: */Bytecode.IFZERO,
+                        /* 9: */18,
+                        /* 10: */Bytecode.JMP,
+                        /* 11: */12,
+                        /* 12: */Bytecode.ARGUMENT,
+                        /* 13: */1,
+                        /* 14: */Bytecode.IFZERO,
+                        /* 15: */18,
+                        /* 16: */Bytecode.JMP,
+                        /* 17: */6,
+                        /* 18: */Bytecode.CONST,
+                        /* 19: */42,
+                        /* 20: */Bytecode.RETURN};
+        RootNode root = Program.create("scalarKeyInIrreducibleLoop", bytecodes, 1, false);
+        Assert.assertEquals(42, root.getCallTarget().call(0, 0));
+        Assert.assertEquals(42, root.getCallTarget().call(1, 0));
+        OptimizedCallTarget target = compileHelper("scalarKeyInIrreducibleLoop", root, new Object[]{0, 0});
+        Assert.assertEquals(42, target.call(0, 0));
+        Assert.assertEquals(42, target.call(1, 0));
+        Assert.assertTrue(target.isValid());
+    }
+
+    @Test
     public void nestedFieldKeyInIrreducibleLoop() {
         RootNode root = irreducibleNestedFieldKeyProgram();
         /* Exercise both entries and both backedges before compilation. */

@@ -583,6 +583,9 @@ public class GraphDecoder {
          */
         public MergeNode loopExplosionHead;
 
+        /** Explicit key location used when constructing the irreducible-loop dispatcher. */
+        public LoopExplosionMergeKeyFilter loopExplosionHeadKeyFilter;
+
         /**
          * The decoded inlining log. If this is the root method scope, it
          * {@link StructuredGraph#setInliningLog replaces} the inlining log of the graph. Otherwise,
@@ -1142,6 +1145,56 @@ public class GraphDecoder {
                 values.add(value);
             }
             return values;
+        }
+
+        /**
+         * Copies the frame state and updates its single recorded key location. It is used by
+         * {@link LoopDetector#handleIrreducibleLoop} because the dispatcher header's frame state
+         * represents multiple exploded states and must hold the loop-variable phi instead of one
+         * entry state's constant key.
+         * <p>
+         * {@link FrameState#duplicate(FrameState.ValueFunction)} only transforms top-level frame
+         * values; a nested key instead needs an update to a field in a virtual-object mapping.
+         * Following the recorded path also avoids changing unrelated locations that happen to
+         * contain the same constant node as the key.
+         * <p>
+         * {@link FrameState#duplicate()} shares its virtual-object mappings with the original.
+         * Mutating the keyed mapping in place would therefore change other frame states that still
+         * need their original key values. Copy only the mapping that owns the keyed field and
+         * replace it in the new frame state. The virtual-object identities remain unchanged, so all
+         * aliases in the new frame state resolve to the updated mapping without copying the
+         * intermediate objects on the path.
+         *
+         * @param frameState the original frame state to copy
+         * @param value the replacement key value, typically the dispatcher's loop-variable phi
+         * @return a frame state with the keyed location updated, leaving the original state and its
+         *         mappings unchanged
+         */
+        FrameState duplicateWithMarkedValue(FrameState frameState, ValueNode value) {
+            assert slotPaths.size() == 1 : Assertions.errorMessageContext("keyCount", slotPaths.size(), "frameState", frameState);
+            int[] path = slotPaths.getFirst();
+            FrameState result = frameState.duplicate();
+            if (path.length == 1) {
+                result.values().set(path[0], value);
+                return result;
+            }
+
+            EconomicMap<VirtualObjectNode, EscapeObjectState> virtualObjectStates = createVirtualObjectStateIndex(frameState);
+            NodeInputList<ValueNode> entries = frameState.values();
+            VirtualObjectState owner = null;
+            for (int i = 0; i < path.length - 1; i++) {
+                if (!(entries.get(path[i]) instanceof VirtualObjectNode object) || !(virtualObjectStates.get(object) instanceof VirtualObjectState state)) {
+                    throw nestedMergeKeyRequiresVirtualObject("the dispatcher key path is no longer virtual");
+                }
+                owner = state;
+                entries = state.values();
+            }
+            VirtualObjectState newOwner = owner.duplicateWithVirtualState();
+            newOwner.values().set(path[path.length - 1], value);
+            int mappingIndex = frameState.virtualObjectMappings().indexOf(owner);
+            assert mappingIndex >= 0 : Assertions.errorMessageContext("owner", owner, "mappings", frameState.virtualObjectMappings());
+            result.virtualObjectMappings().set(mappingIndex, newOwner);
+            return result;
         }
 
         boolean sameNonKeyState(FrameState thisState, FrameState otherState) {
@@ -2124,6 +2177,7 @@ public class GraphDecoder {
                                     LoopExplosionPlugin.LoopExplosionKind.MERGE_EXPLODE);
                 }
                 methodScope.loopExplosionHead = merge;
+                methodScope.loopExplosionHeadKeyFilter = loopScope.loopExplosionMergeKeyFilter;
             }
         }
 
@@ -3568,21 +3622,30 @@ class LoopDetector implements Runnable {
         int loopVariableIndex = -1;
         ValueNode loopValue = null;
         ValueNode explosionHeadValue = null;
-        for (int i = 0; i < loopValues.size(); i++) {
-            ValueNode curLoopValue = loopValues.get(i);
-            ValueNode curExplosionHeadValue = explosionHeadValues.get(i);
-
-            if (curLoopValue != curExplosionHeadValue) {
-                if (loopVariableIndex != -1) {
-                    throw bailout("must have only one variable that is changed in loop. " + loopValue + " != " + explosionHeadValue + " and " + curLoopValue + " != " + curExplosionHeadValue);
-                }
-
-                loopVariableIndex = i;
-                loopValue = curLoopValue;
-                explosionHeadValue = curExplosionHeadValue;
+        GraphDecoder.LoopExplosionMergeKeyFilter keyFilter = methodScope.loopExplosionHeadKeyFilter;
+        if (keyFilter != null) {
+            if (!keyFilter.sameNonKeyState(loopState, explosionHeadState)) {
+                throw bailout("must have only one variable that is changed in loop: non-key state differs between loop headers");
             }
+            loopValue = keyFilter.resolveMarkedValues(loopState).getFirst();
+            explosionHeadValue = keyFilter.resolveMarkedValues(explosionHeadState).getFirst();
+        } else {
+            for (int i = 0; i < loopValues.size(); i++) {
+                ValueNode curLoopValue = loopValues.get(i);
+                ValueNode curExplosionHeadValue = explosionHeadValues.get(i);
+
+                if (curLoopValue != curExplosionHeadValue) {
+                    if (loopVariableIndex != -1) {
+                        throw bailout("must have only one variable that is changed in loop. " + loopValue + " != " + explosionHeadValue + " and " + curLoopValue + " != " + curExplosionHeadValue);
+                    }
+
+                    loopVariableIndex = i;
+                    loopValue = curLoopValue;
+                    explosionHeadValue = curExplosionHeadValue;
+                }
+            }
+            assert loopVariableIndex != -1;
         }
-        assert loopVariableIndex != -1;
         assert explosionHeadValue != null;
 
         ValuePhiNode loopVariablePhi;
@@ -3607,18 +3670,23 @@ class LoopDetector implements Runnable {
              * Build the new FrameState for the loop header. There is only one change in comparison
              * to the old FrameState: the loop variable is replaced with the phi function.
              */
-            int loopVariableIndexCopy = loopVariableIndex;
-            FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
-                @Override
-                public ValueNode apply(int index, ValueNode node) {
-                    if (index == loopVariableIndexCopy) {
-                        return loopVariablePhi;
-                    } else {
-                        return node;
+            FrameState newFrameState;
+            if (keyFilter != null) {
+                newFrameState = keyFilter.duplicateWithMarkedValue(explosionHeadState, loopVariablePhi);
+            } else {
+                int loopVariableIndexCopy = loopVariableIndex;
+                FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
+                    @Override
+                    public ValueNode apply(int index, ValueNode node) {
+                        if (index == loopVariableIndexCopy) {
+                            return loopVariablePhi;
+                        } else {
+                            return node;
+                        }
                     }
-                }
-            };
-            FrameState newFrameState = graph.add(explosionHeadState.duplicate(valueFunction));
+                };
+                newFrameState = graph.add(explosionHeadState.duplicate(valueFunction));
+            }
             explosionHeadState.replaceAtUsages(newFrameState);
 
             /*
