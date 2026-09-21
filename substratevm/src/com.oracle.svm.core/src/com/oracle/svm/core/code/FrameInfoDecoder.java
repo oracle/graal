@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -459,9 +459,14 @@ public class FrameInfoDecoder {
                 /* This is the first frame, i.e., the top frame that will be returned. */
                 int numVirtualObjects = readBuffer.getUVInt();
                 virtualObjects = newValueInfoArrayArray(valueInfoAllocator, numVirtualObjects);
+                /*
+                 * An allocator that discards virtual objects may reuse the storage holding the
+                 * frame's locals. Consume the virtual-object encodings without touching that storage.
+                 */
+                ValueInfoAllocator virtualObjectAllocator = virtualObjects == null ? CodeInfoDecoder.DummyValueInfoAllocator.SINGLETON : valueInfoAllocator;
                 for (int i = 0; i < numVirtualObjects; i++) {
                     int numValues = readBuffer.getUVInt();
-                    ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, constantAccess, numValues, readBuffer, CodeInfoAccess.getObjectConstants(info));
+                    ValueInfo[] decodedValues = decodeValues(virtualObjectAllocator, constantAccess, numValues, readBuffer, CodeInfoAccess.getObjectConstants(info));
                     if (virtualObjects != null) {
                         virtualObjects[i] = decodedValues;
                     }
