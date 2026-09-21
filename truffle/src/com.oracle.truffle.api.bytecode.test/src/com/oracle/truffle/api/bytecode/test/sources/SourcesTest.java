@@ -768,6 +768,10 @@ public class SourcesTest {
 
         assertNull(location1.getSourceLocation());
         assertNull(location2.getSourceLocation());
+
+        node.getRootNodes().ensureSourceInformation();
+        assertNull(node.getSourceSection());
+        assertTrue(node.getBytecodeNode().getSourceInformation().isEmpty());
         assertNull(node.getBytecodeNode().getSourceInformationTree());
     }
 

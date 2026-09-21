@@ -82,10 +82,14 @@ final class SourceInformationListElement extends AbstractElement {
         constructor.addParameter(new CodeVariableElement(parent.abstractBytecodeNode.asType(), "bytecode"));
         CodeTreeBuilder b = constructor.createBuilder();
         b.startAssign("this.bytecode").string("bytecode").end();
+        b.startIf().string("bytecode.sourceInfo.length == 0").end().startBlock();
+        b.startAssign("this.offsets").string(BytecodeRootNodeElement.EMPTY_INT_ARRAY).end();
+        b.returnStatement();
+        b.end();
         b.declaration(arrayOf(type(int.class)), "sourceInfoOffsets", "new int[8]");
         b.declaration(type(int.class), "sourceInfoIndex", "0");
         b.declaration(type(int.class), "sourceInfoEntryCount", "0");
-        b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length").end().startBlock();
+        b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end().startBlock();
         b.startIf().string("sourceInfoEntryCount == sourceInfoOffsets.length").end().startBlock();
         b.startAssign("sourceInfoOffsets").startStaticCall(type(Arrays.class), "copyOf").string("sourceInfoOffsets").string("sourceInfoOffsets.length * 2").end().end();
         b.end();

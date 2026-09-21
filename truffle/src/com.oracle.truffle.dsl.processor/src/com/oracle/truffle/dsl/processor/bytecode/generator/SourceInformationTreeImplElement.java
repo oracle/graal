@@ -185,7 +185,7 @@ final class SourceInformationTreeImplElement extends AbstractElement {
              */
             emitInitCompressedSourceIterationVariables(b, type(int.class), "sourceInfoIndex");
             b.declaration(generic(ArrayDeque.class, this.asType()), "entries", "new ArrayDeque<>()");
-            b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length").end().startBlock();
+            b.startWhile().string("sourceInfoIndex < bytecode.sourceInfo.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end().startBlock();
             b.declaration(type(int.class), "baseIndex", "sourceInfoIndex");
             b.declaration(type(int.class), "entryEnd", "baseIndex + (sourceInfo[sourceInfoIndex++] & 0xFF)");
             b.startStatement().startCall("entries.addLast");

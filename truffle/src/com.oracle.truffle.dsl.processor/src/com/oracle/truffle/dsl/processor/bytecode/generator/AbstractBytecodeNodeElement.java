@@ -1014,7 +1014,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.declaration(generic(declaredType(List.class), types.Source), "localSources", "this.sources");
         if (model().enableCompressedSources) {
             emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
-            b.startWhile().string("index < info.length").end().startBlock();
+            b.startWhile().string("index < info.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end().startBlock();
             b.declaration(type(int.class), "entryEnd", "index + (info[index++] & 0xFF)");
             emitDecodeVarintEntry(b, "info", "index");
             b.declaration(type(int.class), "startBci", "(int) decoded");
@@ -1030,7 +1030,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
                 for (int i = 0; i < parent.sourceInfoTable.attributeOffsets.size(); i++) {
                     emitDecodeVarintEntry(b, "info", "index");
                 }
-                b.startAssert().string("index == entryEnd || entryEnd == info.length").end();
+                b.startAssert().string("index == entryEnd || entryEnd == info.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end();
             }
             b.statement("index = entryEnd");
             b.end(); // while sources
@@ -1883,7 +1883,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
             emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
 
-            b.startWhile().string("index < info.length").end().startBlock();
+            b.startWhile().string("index < info.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end().startBlock();
             b.declaration(type(int.class), "entryEnd", "index + (info[index++] & 0xFF)");
             emitDecodeVarintEntry(b, "info", "index");
             b.declaration(type(int.class), "startBci", "(int) decoded");
@@ -1930,7 +1930,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.declaration(type(int.class), "sectionIndex", "0");
             b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
 
-            b.startWhile().string("index < info.length").end().startBlock();
+            b.startWhile().string("index < info.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end().startBlock();
             b.declaration(type(int.class), "entryEnd", "index + (info[index++] & 0xFF)");
             emitDecodeVarintEntry(b, "info", "index");
             b.declaration(type(int.class), "startBci", "(int) decoded");
@@ -1990,13 +1990,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.end();
 
         if (model().enableCompressedSources) {
-            b.declaration(type(int.class), "lastEntry", "0");
-            emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
-            b.startWhile().string("index < info.length").end().startBlock();
-            b.statement("lastEntry = index");
-            b.statement("index += info[index] & 0xFF");
-            b.end();
-            b.statement("index = lastEntry + 1");
+            b.startDeclaration(type(int.class), "entryEnd").string("info.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end();
+            b.declaration(type(int.class), "lastEntry", "entryEnd - (info[entryEnd] & 0xFF)");
+            emitInitCompressedSourceIterationVariables(b, type(int.class), "index", "lastEntry + 1");
             emitDecodeVarintEntry(b, "info", "index");
             b.declaration(type(int.class), "startBci", "(int) decoded");
             emitDecodeVarintEntry(b, "info", "index");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -263,7 +263,8 @@ final class TagNodeElement extends AbstractElement {
 
         // Because of operation nesting, any source section that applies to the tag.enter should
         // apply to the whole tag operation.
-        b.startReturn().string("findBytecodeNode().getSourceLocation(enterBci)").end();
+        b.declaration(parent.abstractBytecodeNode.asType(), "bytecode", "findBytecodeNode()");
+        b.startReturn().string("bytecode.tagRoot.getSourceSection(bytecode, enterBci)").end();
         return ex;
     }
 

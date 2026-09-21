@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitDecodeVarintEntry;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitInitCompressedSourceIterationVariables;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.addField;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
-import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitDecodeVarintEntry;
-import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable.emitInitCompressedSourceIterationVariables;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.mergeSuppressWarnings;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
@@ -76,8 +76,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.function.IntBinaryOperator;
 import java.util.function.Function;
+import java.util.function.IntBinaryOperator;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -111,13 +111,13 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionPatternModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ImmediateReference;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSection;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedBinding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedInstructionPatternModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedLiteral;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.ResolvedWildcard;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionRewriteRuleModel.RewriteSection;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
@@ -2962,10 +2962,15 @@ final class BuilderElement extends AbstractElement {
         if (model.enableBlockScoping) {
             b.statement("state.finalizeExceptionHandlerLocalCounts()");
         }
-        b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("state.handlerTable").string("state.handlerTableSize").end().end();
+        b.startAssign("handlers_");
+        b.string("state.handlerTableSize == 0 ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ");
+        b.startStaticCall(type(Arrays.class), "copyOf").string("state.handlerTable").string("state.handlerTableSize").end();
+        b.end();
         b.startAssign("numNodes_").string("state.numNodes").end();
-        b.startAssign("locals_").string("state.locals == null ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ").startStaticCall(type(Arrays.class), "copyOf").string("state.locals").string(
-                        "state.localsTableIndex").end().end();
+        b.startAssign("locals_");
+        b.string("state.localsTableIndex == 0 ? " + BytecodeRootNodeElement.EMPTY_INT_ARRAY + " : ");
+        b.startStaticCall(type(Arrays.class), "copyOf").string("state.locals").string("state.localsTableIndex").end();
+        b.end();
         if (needsStableBciRemappings()) {
             b.startAssign("stableBciDeltas_");
             b.string("state.stableBciDeltasIndex == 0 ? null : ");
@@ -2980,7 +2985,7 @@ final class BuilderElement extends AbstractElement {
 
         if (model.enableTagInstrumentation) {
             b.startIf().string("tags != 0 && state.tagNodes != null").end().startBlock();
-            b.startDeclaration(arrayOf(parent.tagNode.asType()), "tagNodes_").string("state.tagNodes.toArray(TagNode[]::new)").end();
+            b.startDeclaration(arrayOf(parent.tagNode.asType()), "tagNodes_").string("state.tagNodes.toArray(TagNode.EMPTY_ARRAY)").end();
 
             b.declaration(parent.tagNode.asType(), "tagTree_");
 
@@ -2991,7 +2996,7 @@ final class BuilderElement extends AbstractElement {
             b.startAssign("tagTree_").startNew(parent.tagNode.asType());
             b.string("0").string("-1");
             b.end().end();
-            b.statement("tagTree_.children = tagTree_.insert(state.tagRoots.toArray(TagNode[]::new))");
+            b.statement("tagTree_.children = tagTree_.insert(state.tagRoots.toArray(TagNode.EMPTY_ARRAY))");
             b.end();
 
             b.startAssign("tagRoot_");
@@ -7677,6 +7682,8 @@ final class BuilderElement extends AbstractElement {
         // | attrN       | var  | unsigned(attrN + 2)                                    |
         // +-------------+------+--------------------------------------------------------+
         // Entries start at index 0 and each entry is prefixed by a one-byte length for the entire entry.
+        // Nonempty tables end with a one-byte footer containing the last entry's length (excluding the footer).
+        // Empty tables have no footer.
         // Varints are written most-significant 7-bit group first; the high bit marks continuation.
         // Additionally, attributes use -1 to indicate unavailable info and -2 to indicate unspecified attributes.
         // Thus, zero encodes -2, one encodes -1, and the value of every attribute is shifted by 2.
@@ -7691,6 +7698,9 @@ final class BuilderElement extends AbstractElement {
                 CodeTreeBuilder b = ex.createBuilder();
 
                 b.startAssert().string("builderTableLength % ").variable(entryLengthVariable).string(" == 0").end();
+                b.startIf().string("builderTableLength == 0").end().startBlock();
+                b.startReturn().string(BytecodeRootNodeElement.EMPTY_INT_ARRAY).end();
+                b.end();
 
                 b.startDeclaration(type(int.class), "length");
                 b.startParentheses().string("builderTableLength / ").variable(entryLengthVariable).end().string(" * ").variable(parent.sourceInfoTable.entryLengthVariable);
@@ -7726,15 +7736,22 @@ final class BuilderElement extends AbstractElement {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startAssert().string("builderTableLength % ").variable(entryLengthVariable).string(" == 0").end();
+            b.startIf().string("builderTableLength == 0").end().startBlock();
+            b.startReturn().string(BytecodeRootNodeElement.EMPTY_BYTE_ARRAY).end();
+            b.end();
 
             b.declaration(arrayOf(type(byte.class)), "compressedSourceInfo", "new byte[Math.max(16, builderTableLength)]");
             b.declaration(type(int.class), "compressedSourceInfoIndex", "0");
+            b.declaration(type(int.class), "lastEntryLength", "0");
             b.declaration(type(int.class), "maxCompressedSourceInfoEntryLength", Integer.toString(MAX_COMPRESSED_SOURCE_INFO_ENTRY_LENGTH));
             b.startFor().string("int entryIndex = 0; entryIndex < builderTableLength; entryIndex += ").variable(entryLengthVariable).end().startBlock();
-            b.startIf().string("compressedSourceInfoIndex + maxCompressedSourceInfoEntryLength > compressedSourceInfo.length").end().startBlock();
+            b.startIf().string("compressedSourceInfoIndex + maxCompressedSourceInfoEntryLength + ").variable(parent.sourceInfoTable.footerLengthVariable).string(
+                            " > compressedSourceInfo.length").end().startBlock();
             b.startAssign("compressedSourceInfo").startStaticCall(type(Arrays.class), "copyOf");
             b.string("compressedSourceInfo");
-            b.startStaticCall(type(Math.class), "max").string("compressedSourceInfo.length * 2").string("compressedSourceInfoIndex + maxCompressedSourceInfoEntryLength").end();
+            b.startStaticCall(type(Math.class), "max").string("compressedSourceInfo.length * 2");
+            b.startGroup().string("compressedSourceInfoIndex + maxCompressedSourceInfoEntryLength + ").variable(parent.sourceInfoTable.footerLengthVariable).end();
+            b.end();
             b.end(2);
             b.end();
             b.declaration(type(int.class), "entryStartIndex", "compressedSourceInfoIndex");
@@ -7758,7 +7775,10 @@ final class BuilderElement extends AbstractElement {
             b.declaration(type(int.class), "entryLength", "compressedSourceInfoIndex - entryStartIndex");
             b.startAssert().string("entryLength <= 0xFF").end();
             b.statement("compressedSourceInfo[entryLengthIndex] = (byte) entryLength");
+            b.statement("lastEntryLength = entryLength");
             b.end();
+            b.statement("compressedSourceInfo[compressedSourceInfoIndex] = (byte) lastEntryLength");
+            b.startStatement().string("compressedSourceInfoIndex += ").variable(parent.sourceInfoTable.footerLengthVariable).end();
             b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("compressedSourceInfo").string("compressedSourceInfoIndex").end().end();
 
             return ex;
@@ -7897,14 +7917,8 @@ final class BuilderElement extends AbstractElement {
                 b.declaration(parent.asType(), "patchedNode", "nodes.get(nodeId)");
                 b.declaration(type(byte[].class), "info", "patchedNode.bytecode.sourceInfo");
 
-                b.declaration(type(int.class), "finalizedPatchIndex", "0");
-                b.declaration(type(int.class), "entryEnd", "0");
-                b.startFor().string("int scanIndex = 0; scanIndex < info.length;").end().startBlock();
-                b.statement("finalizedPatchIndex = scanIndex");
-                b.statement("entryEnd = scanIndex + (info[scanIndex] & 0xFF)");
-                b.statement("scanIndex = entryEnd");
-                b.end();
-                b.startAssert().string("entryEnd == info.length").end();
+                b.startDeclaration(type(int.class), "entryEnd").string("info.length - ").variable(parent.sourceInfoTable.footerLengthVariable).end();
+                b.declaration(type(int.class), "finalizedPatchIndex", "entryEnd - (info[entryEnd] & 0xFF)");
 
                 emitInitCompressedSourceIterationVariables(b, type(int.class), "index", "finalizedPatchIndex + 1");
                 emitDecodeVarintEntry(b, "info", "index");

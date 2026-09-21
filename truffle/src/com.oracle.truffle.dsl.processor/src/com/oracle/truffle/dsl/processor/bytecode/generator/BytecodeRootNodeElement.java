@@ -142,6 +142,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     static final String BCI_INDEX = "BCI_INDEX";
     static final String CONTINUATION_FRAME_INDEX = "CONTINUATION_FRAME_INDEX";
     static final String EMPTY_INT_ARRAY = "EMPTY_INT_ARRAY";
+    static final String EMPTY_BYTE_ARRAY = "EMPTY_BYTE_ARRAY";
 
     // !Important: Keep these in sync with InstructionBytecodeSizeTest!
     // Estimated number of Java bytecodes per instruction.
@@ -232,6 +233,9 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         this.parserType = generic(types.BytecodeParser, abstractBuilderType == null ? bytecodeBuilderType : abstractBuilderType);
         setSuperClass(model.getTemplateType().asType());
         addField(this, Set.of(PRIVATE, STATIC, FINAL), int[].class, EMPTY_INT_ARRAY, "new int[0]");
+        if (model.enableCompressedSources) {
+            addField(this, Set.of(PRIVATE, STATIC, FINAL), byte[].class, EMPTY_BYTE_ARRAY, "new byte[0]");
+        }
 
         addField(this, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
         this.fastAccess = addField(this, Set.of(PRIVATE, STATIC, FINAL), types.BytecodeDSLAccess, "ACCESS");
@@ -289,6 +293,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         if (model.enableTagInstrumentation) {
             tagNode.lazyInit();
+            tagRootNode.lazyInit();
         }
 
         CodeVariableElement bytecodeNode = new CodeVariableElement(Set.of(PRIVATE, VOLATILE), abstractBytecodeNode.asType(), "bytecode");
@@ -1273,7 +1278,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         } else {
             b.declaration(type(int.class), "lastEntry", "0");
             SourceInfoTable.emitInitCompressedSourceIterationVariables(b, type(int.class), "index");
-            b.startWhile().string("index < info.length").end().startBlock();
+            b.startWhile().string("index < info.length - ").variable(sourceInfoTable.footerLengthVariable).end().startBlock();
             b.statement("lastEntry = index");
             b.statement("index += info[index] & 0xFF");
             b.end();
@@ -3012,6 +3017,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         final List<CodeVariableElement> attributeOffsets;
         final int entryLength;
         final CodeVariableElement entryLengthVariable;
+        final CodeVariableElement footerLengthVariable;
         final ArrayType sourceInfoType;
 
         public final CodeExecutableElement createSourceSection;
@@ -3030,6 +3036,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             }
             this.entryLength = offset;
             this.entryLengthVariable = addConstant("ENTRY_LENGTH", this.entryLength);
+            this.footerLengthVariable = model.enableCompressedSources ? addConstant("FOOTER_LENGTH", Byte.BYTES) : null;
 
             this.sourceInfoType = new CodeTypeMirror.ArrayCodeTypeMirror(type(model.enableCompressedSources ? byte.class : int.class));
             this.createSourceSection = BytecodeRootNodeElement.this.add(createCreateSourceSection());
