@@ -9,6 +9,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 * (GR-79589): Added partial redundancy elimination scheduling to the community compiler. The
   optimization is enabled by default and can be disabled with
   `-Djdk.graal.PartialRedundancyScheduling=false`.
+* (GR-79594): Added a write sinking optimization that moves eligible field and constant-offset
+  array writes out of loops. The optimization is enabled by default and can be disabled with
+  `-Djdk.graal.OptWriteSinking=false`.
 * (GR-79588): Added a deduplication optimization that can reduce generated code size by sharing
   equivalent statements and expressions from converging control-flow branches. The optimization is
   enabled by default and can be disabled with `-Djdk.graal.OptDeDuplication=false`.

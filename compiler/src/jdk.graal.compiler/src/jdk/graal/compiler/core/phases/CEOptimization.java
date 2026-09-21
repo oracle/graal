@@ -66,6 +66,7 @@ import jdk.graal.compiler.phases.common.OptimizeDivPhase;
 import jdk.graal.compiler.phases.common.OptimizeExactArithmeticPhase;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
+import jdk.graal.compiler.phases.common.writesinking.WriteSinkingPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase;
@@ -256,6 +257,15 @@ public enum CEOptimization {
      * {@link GraalOptions#OptFloatingReads}.
      */
     FloatingReads(GraalOptions.OptFloatingReads, FloatingReadPhase.class),
+
+    /**
+     * {@link WriteSinkingPhase} moves eligible writes out of loops when no intervening read needs
+     * the value written in the loop body.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link LowTier.Options#OptWriteSinking}.
+     */
+    WriteSinking(LowTier.Options.OptWriteSinking, WriteSinkingPhase.class),
 
     /**
      * {@link ReadEliminationPhase} removes redundant memory access operations using a control-flow
