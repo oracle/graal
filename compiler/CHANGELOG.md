@@ -17,8 +17,6 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 * (GR-79597): Added early checkcast expansion to expose null and type checks as control flow for
   subsequent optimizations. It is enabled by default and can be disabled with
   `-Djdk.graal.EarlyExpandCheckCast=false`.
-
-## GraalVM 25.4 (Internal Version 25.4.4.1.1)
 * (GR-79031): Added strip mining for counted and non-counted loops, loop inversion, loop rotation,
   and exact arithmetic optimization. Strip mining bounds long-running loop bodies to reduce
   safepoint overhead, loop inversion transforms while loops into guarded do-while loops to improve
@@ -27,6 +25,8 @@ This changelog summarizes newly introduced optimizations and other compiler rela
   normal additions while preserving overflow behavior through loop-limit deoptimization. These
   optimizations are enabled by default and can be controlled with their corresponding options,
   including `-Djdk.graal.LoopRotation=false` and `-Djdk.graal.OptExactArithmetic=false`.
+
+## GraalVM 25.4 (Internal Version 25.4.4.1.1)
 * (GR-79029): Add `PullThroughPhiPhase` and `DuplicationPhase` to the community compiler configuration.
   The optimizations are enabled by default and can be disabled with `-Djdk.graal.OptPullThroughPhi=false` and
   `-Djdk.graal.OptDuplication=false`, respectively.
