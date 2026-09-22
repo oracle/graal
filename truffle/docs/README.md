@@ -14,7 +14,7 @@ You can use them from your `pom.xml` file as:
 
 ```xml
 <properties>
-    <graalvm.version>25.1.3</graalvm.version> <!-- or any later version -->
+    <graalvm.version>25.4.4.1.1</graalvm.version> <!-- or any later version -->
 </properties>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
