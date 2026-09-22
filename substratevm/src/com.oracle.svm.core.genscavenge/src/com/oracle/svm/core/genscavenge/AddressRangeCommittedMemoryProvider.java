@@ -48,37 +48,37 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.IsolateArgumentAccess;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.IsolateArguments;
-import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.os.AuxiliaryImageProvider;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -201,7 +201,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
         CEntryPointSnippets.initBaseRegisters(heapBaseOut.read());
         WordPointer runtimeHeapBeginOut = StackValue.get(WordPointer.class);
-        errorCode = initializeCollectedHeapBegin(arguments, reservedBegin, reservedSize, imageHeapEndOut.read(), runtimeHeapBeginOut);
+        errorCode = initializeForAuxiliaryImages(arguments, reservedBegin, reservedSize, imageHeapEndOut.read(), runtimeHeapBeginOut);
         if (errorCode != CEntryPointErrors.NO_ERROR) {
             freeOnInitializeError(reservedBegin, reservedSize);
             return errorCode;
@@ -220,11 +220,9 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Uninterruptible(reason = "Still being initialized.")
-    protected int initializeCollectedHeapBegin(@SuppressWarnings("unused") IsolateArguments arguments, @SuppressWarnings("unused") Pointer reservedBegin,
-                    @SuppressWarnings("unused") UnsignedWord reservedSize, Pointer imageHeapEnd, WordPointer collectedHeapBeginOut) {
-        assert PointerUtils.isAMultiple(imageHeapEnd, Word.unsigned(SubstrateOptions.getPageSize()));
-        collectedHeapBeginOut.write(imageHeapEnd);
-        return CEntryPointErrors.NO_ERROR;
+    @NeverInline("Base registers are set in caller, prevent reads from floating before that.")
+    protected int initializeForAuxiliaryImages(IsolateArguments arguments, Pointer reservedBegin, UnsignedWord reservedSize, Pointer imageHeapEnd, WordPointer collectedHeapBeginOut) {
+        return AuxiliaryImageProvider.get().initializeHeapAddressRange(arguments, reservedBegin, reservedSize, imageHeapEnd, collectedHeapBeginOut);
     }
 
     @NeverInline("Ensure a newly looked up value is used as 'this', now that the image heap is initialized")

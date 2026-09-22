@@ -1893,4 +1893,17 @@ public class SubstrateOptions {
 
     @Option(help = "Map the runtime code cache at pseudo-random addresses. This fragments the virtual address space, which can make subsequent reservations of very large contiguous ranges harder to satisfy.", type = Expert) //
     public static final HostedOptionKey<Boolean> RandomizeRuntimeCodeCache = new HostedOptionKey<>(true);
+
+    @Option(help = "Size in bytes of an address space to reserve for auxiliary images.", stability = OptionStability.STABLE)//
+    public static final HostedOptionKey<Long> ReservedAuxiliaryImageBytes = new HostedOptionKey<>(0L, optionKey -> {
+        if (optionKey.getValue() < 0) {
+            throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The value must be non-negative");
+        }
+    });
+
+    @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = Expert)//
+    public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
+
+    @Option(help = "Internal, instead use 'auxiliary_image_path' in 'graal_create_isolate_params_t'.", type = Expert)//
+    public static final RuntimeOptionKey<String> AuxiliaryImagePathIsolateArgument = new RuntimeOptionKey<>(null, RegisterForIsolateArgumentParser);
 }

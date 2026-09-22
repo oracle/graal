@@ -99,7 +99,7 @@ import jdk.graal.compiler.options.OptionKey;
  */
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public class IsolateArgumentParser {
+public final class IsolateArgumentParser {
     @SuppressWarnings("unchecked")//
     private final List<RuntimeOptionKey<?>> options = (List<RuntimeOptionKey<?>>) ImageHeapList.createGeneric(RuntimeOptionKey.class);
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
@@ -138,12 +138,12 @@ public class IsolateArgumentParser {
     }
 
     @Fold
-    protected static CGlobalData<CLongPointer> getDefaultValues() {
+    static CGlobalData<CLongPointer> getDefaultValues() {
         return ImageSingletons.lookup(DefaultValuesProvider.class).getDefaultValues();
     }
 
     @Fold
-    protected static CGlobalData<CCharPointer> getDefaultStrings() {
+    static CGlobalData<CCharPointer> getDefaultStrings() {
         return ImageSingletons.lookup(DefaultValuesProvider.class).getDefaultStrings();
     }
 
@@ -270,12 +270,12 @@ public class IsolateArgumentParser {
     }
 
     @Fold
-    protected static List<RuntimeOptionKey<?>> getOptions() {
+    static List<RuntimeOptionKey<?>> getOptions() {
         return singleton().options;
     }
 
     @Fold
-    protected static int getOptionCount() {
+    static int getOptionCount() {
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             return getOptions().size();
         } else {
@@ -284,7 +284,7 @@ public class IsolateArgumentParser {
     }
 
     @Uninterruptible(reason = "Still being initialized.")
-    public void parse(CEntryPointCreateIsolateParameters parameters, IsolateArguments arguments) {
+    public static void parse(CEntryPointCreateIsolateParameters parameters, IsolateArguments arguments) {
         initialize(arguments, parameters);
 
         boolean parseArguments = LibC.isSupported() && shouldParseArguments(arguments);
@@ -332,7 +332,7 @@ public class IsolateArgumentParser {
     }
 
     @Uninterruptible(reason = "Tear-down in progress.")
-    public boolean tearDown(IsolateArguments arguments) {
+    public static boolean tearDown(IsolateArguments arguments) {
         if (arguments.getOwnsStringArguments()) {
             freeStringArguments(arguments);
         }
@@ -375,10 +375,22 @@ public class IsolateArgumentParser {
      * consistent values as well.
      */
     public void copyToRuntimeOptions() {
-        int optionIndex = getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize);
-        long value = getLongOptionValue(optionIndex);
-        if (getDefaultValues().get().read(optionIndex) != value) {
-            SubstrateGCOptions.ReservedAddressSpaceSize.update(value);
+        int index = getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize);
+        long addressSpaceSize = getLongOptionValue(index);
+        if (getDefaultValues().get().read(index) != addressSpaceSize) {
+            SubstrateGCOptions.ReservedAddressSpaceSize.update(addressSpaceSize);
+        }
+
+        index = getOptionIndex(SubstrateOptions.AuxiliaryImagePathIsolateArgument);
+        CCharPointer auxPath = getCCharPointerOptionValue(index);
+        if (IsolateArgumentParser.getDefaultValues().get().read(index) != auxPath.rawValue()) {
+            SubstrateOptions.AuxiliaryImagePathIsolateArgument.update(CTypeConversion.toJavaString(auxPath));
+        }
+
+        index = getOptionIndex(SubstrateOptions.AuxiliaryImageBytesIsolateArgument);
+        long auxBytes = getLongOptionValue(index);
+        if (IsolateArgumentParser.getDefaultValues().get().read(index) != auxBytes) {
+            SubstrateOptions.AuxiliaryImageBytesIsolateArgument.update(auxBytes);
         }
     }
 
@@ -522,7 +534,7 @@ public class IsolateArgumentParser {
         return Word.pointer(parsedOptionValues[optionIndex]);
     }
 
-    protected Object getOptionValue(int optionIndex) {
+    private Object getOptionValue(int optionIndex) {
         assert !SubstrateUtil.HOSTED;
 
         Class<?> optionValueType = getOptions().get(optionIndex).getDescriptor().getOptionValueType();
@@ -558,9 +570,14 @@ public class IsolateArgumentParser {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected void initialize(IsolateArguments arguments, CEntryPointCreateIsolateParameters parameters) {
+    private static void initialize(IsolateArguments arguments, CEntryPointCreateIsolateParameters parameters) {
         /* Initialize the options with their default values. */
         UnmanagedMemoryUtil.copy((Pointer) getDefaultValues().get(), (Pointer) arguments.getParsedArgs(), Word.unsigned(getParsedArgsSize()));
+
+        if (parameters.isNonNull() && parameters.version() >= 2) {
+            writeCCharPointer(arguments, getOptionIndex(SubstrateOptions.AuxiliaryImagePathIsolateArgument), parameters.auxiliaryImagePath());
+            writeLong(arguments, getOptionIndex(SubstrateOptions.AuxiliaryImageBytesIsolateArgument), parameters.auxiliaryImageReservedSpaceSize().rawValue(), false);
+        }
 
         if (parameters.isNonNull() && parameters.version() >= 3) {
             arguments.setArgc(parameters.getArgc());
@@ -774,7 +791,7 @@ public class IsolateArgumentParser {
         return Long.BYTES * slotCount * getOptionCount();
     }
 
-    protected static class OptionValueType {
+    private static final class OptionValueType {
         public static final byte BOOLEAN = 1;
         public static final byte INTEGER = 2;
         public static final byte LONG = 3;
