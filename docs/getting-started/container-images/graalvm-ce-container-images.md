@@ -17,8 +17,8 @@ These are: **native-image-community**, **jdk-community**, **truffleruby-communit
 The regular container images are multi-arch, for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8, 9, and 10.
 The `muslib` container images are available for x64 only.
 
-GraalVM is installed in _/usr/lib64/graalvm/graalvm-community-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `25`, `25i3`, and so on.
-For instance, GraalVM 25.3 is installed in _/usr/lib64/graalvm/graalvm-community-java25i3/_.
+GraalVM is installed in _/usr/lib64/graalvm/graalvm-community-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `25`, `25i4`, and so on.
+For instance, GraalVM 25.4 is installed in _/usr/lib64/graalvm/graalvm-community-java25i4/_.
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 > Note: For GraalVM non-RPM based images (**graalvm-community**, **python-community**, **truffleruby-community**), the installation location is under _/opt/_ (_/opt/graalvm-community-java&lt;$FeatureVersion&gt;/_, _/opt/truffleruby-&lt;$GRAALVM_VERSION&gt;/_, and _/opt/graalpy-&lt;$GRAALVM_VERSION&gt;/_ respectively).
@@ -37,49 +37,49 @@ $graalvm-version[-$jdk-version][-muslib][-$platform][-$build-date]
 
 The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom).
 The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
-For GraalVM 25.3+ releases, the tag prefix combines the JDK feature version, the letter `i`, and the GraalVM feature release number.
-For example, `25i3` selects GraalVM 25.3+.
-GraalVM 25.3.4.1 is based on JDK 25.0.4+7, so its more-specific tags also contain `25.0.4`.
+For GraalVM 25.4+ releases, the tag prefix combines the JDK feature version, the letter `i`, and the GraalVM feature release number.
+For example, `25i4` selects GraalVM 25.4+.
+GraalVM 25.4.4.1.1 is based on JDK 25.0.4.1.1+1, so its more-specific tags also contain `25.0.4.1.1`.
 For example:
 ```bash
-25i3-25.0.4-ol9-$build-date
-25i3-25.0.4-ol9
-25i3-25.0.4
-25i3-ol9
-25i3
+25i4-25.0.4.1.1-ol9-$build-date
+25i4-25.0.4.1.1-ol9
+25i4-25.0.4.1.1
+25i4-ol9
+25i4
 ```
 
 ## Pulling Images
 
-1. To pull the container image for GraalVM JDK for a specific feature release, such as _25.3_, run:
+1. To pull the container image for GraalVM JDK for a specific feature release, such as _25.4_, run:
     ```bash
-    docker pull ghcr.io/graalvm/jdk-community:25i3
+    docker pull ghcr.io/graalvm/jdk-community:25i4
     ```
 
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM ghcr.io/graalvm/jdk-community:25i3
+    FROM ghcr.io/graalvm/jdk-community:25i4
     ```
     You have pulled a size compact GraalVM Community Edition container image with the GraalVM JDK and the Graal compiler preinstalled.
 
-2. To pull the container image with the `native-image` utility for a specific feature release, such as _25.3_, run:
+2. To pull the container image with the `native-image` utility for a specific feature release, such as _25.4_, run:
     ```bash
-    docker pull ghcr.io/graalvm/native-image-community:25i3
+    docker pull ghcr.io/graalvm/native-image-community:25i4
     ```
 
     Alternatively, to pull the container image with the `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, use:
     ```bash
-    docker pull ghcr.io/graalvm/native-image-community:25i3-muslib
+    docker pull ghcr.io/graalvm/native-image-community:25i4-muslib
     ```
 
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM ghcr.io/graalvm/native-image-community:25i3-muslib
+    FROM ghcr.io/graalvm/native-image-community:25i4-muslib
     ```
 
 3. To verify, start the container and enter a Bash session:
     ```bash
-    docker run -it --rm --entrypoint /bin/bash ghcr.io/graalvm/native-image-community:25i3
+    docker run -it --rm --entrypoint /bin/bash ghcr.io/graalvm/native-image-community:25i4
     ```
 
 	To check the version of GraalVM and its installed location, run the `env` command from the Bash prompt:
@@ -100,7 +100,7 @@ For example:
 
 4. Calling `docker pull` without specifying a processor architecture pulls container images for the processor architecture that matches your Docker client. To pull a container image for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/arm64` as follows:
     ```bash
-    docker pull --platform linux/arm64 ghcr.io/graalvm/native-image-community:25i3
+    docker pull --platform linux/arm64 ghcr.io/graalvm/native-image-community:25i4
     ```
 
 ## Oracle GraalVM Container Images
