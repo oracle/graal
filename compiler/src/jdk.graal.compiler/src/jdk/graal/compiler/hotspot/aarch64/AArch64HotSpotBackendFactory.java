@@ -85,6 +85,13 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     }
 
     @Override
+    protected void filterTargetFeatures(GraalHotSpotVMConfig config, TargetDescription target) {
+        if (!config.useLSE) {
+            ((AArch64) target.arch).getFeatures().remove(AArch64.CPUFeature.LSE);
+        }
+    }
+
+    @Override
     protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider graalRuntime,
                     CompilerConfiguration compilerConfiguration,
                     GraalHotSpotVMConfig config,
