@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -372,7 +372,10 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
     }
 
     @TruffleBoundary
-    public Source findOrCreateSource(ObjectKlass klass) {
+    public synchronized Source findOrCreateSource(ObjectKlass klass) {
+        if (isFinalized) {
+            return null;
+        }
         String sourceFile = klass.getSourceFile();
         if (sourceFile == null) {
             return null;
@@ -1324,7 +1327,7 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
         return isFinalized;
     }
 
-    public void setFinalized() {
+    public synchronized void setFinalized() {
         isFinalized = true;
     }
 
