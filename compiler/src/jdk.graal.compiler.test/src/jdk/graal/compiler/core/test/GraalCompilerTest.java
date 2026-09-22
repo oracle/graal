@@ -1236,12 +1236,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         return parseEager(method, AllowAssumptions.YES, getCompilationId(method), options);
     }
 
-    protected final StructuredGraph parseForCompile(ResolvedJavaMethod method, DebugContext debug) {
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, DebugContext debug) {
         return parseEager(method, AllowAssumptions.YES, debug);
     }
 
     protected final StructuredGraph parseForCompile(ResolvedJavaMethod method) {
-        return parseEager(method, AllowAssumptions.YES, getCompilationId(method), getInitialOptions());
+        return parseForCompile(method, getInitialOptions());
     }
 
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
@@ -1369,6 +1369,13 @@ public abstract class GraalCompilerTest extends GraalTest {
             speculationLog.collectFailedSpeculations();
         }
         return speculationLog;
+    }
+
+    /**
+     * Returns the same test-wide speculation log for every method. Subclasses may override for test-specific behavior.
+     */
+    protected SpeculationLog getSpeculationLog(ResolvedJavaMethod method) {
+        return getSpeculationLog();
     }
 
     protected SpeculationLog createSpeculationLog() {
@@ -1592,7 +1599,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
-        builder.speculationLog(getSpeculationLog());
+        builder.speculationLog(getSpeculationLog(javaMethod));
         if (builder.getCancellable() == null) {
             builder.cancellable(getCancellable(javaMethod));
         }
