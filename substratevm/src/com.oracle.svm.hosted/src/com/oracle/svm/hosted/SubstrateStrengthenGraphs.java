@@ -29,6 +29,9 @@ import java.util.ArrayList;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -344,7 +347,7 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     }
 
     /**
-     * Collects reachable concrete subtypes of {@code inputType}. Depending on
+     * Collects each reachable concrete subtype of {@code inputType} at most once. Depending on
      * {@code collectAssignable} and {@code collectNotAssignable}, types are classified relative to
      * {@code checkedType} and stored in {@code assignableTypes} or {@code notAssignableTypes}.
      *
@@ -355,8 +358,10 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     private static boolean collectTypesForInstanceofProfile(HostedType inputType, HostedType checkedType, int maxTypes, boolean collectAssignable, ArrayList<HostedType> assignableTypes,
                     boolean collectNotAssignable, ArrayList<HostedType> notAssignableTypes) {
         ArrayDeque<HostedType> worklist = new ArrayDeque<>();
+        EconomicSet<HostedType> visitedTypes = EconomicSet.create(Equivalence.IDENTITY);
 
         checkConcreteAssignable(inputType, checkedType, assignableTypes, notAssignableTypes, collectAssignable, collectNotAssignable);
+        visitedTypes.add(inputType);
         worklist.add(inputType);
         while (!worklist.isEmpty()) {
             var elementalType = worklist.peek().getElementalType();
@@ -369,7 +374,7 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
             }
             HostedType[] types = worklist.removeFirst().getSubTypes();
             for (HostedType type : types) {
-                if (!type.getWrapped().isReachable()) {
+                if (!visitedTypes.add(type) || !type.getWrapped().isReachable()) {
                     continue;
                 }
                 if (checkConcreteAssignable(type, checkedType, assignableTypes, notAssignableTypes, collectAssignable, collectNotAssignable) &&
