@@ -489,7 +489,7 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "64-bit indexed tables require wasm.Memory64");
         }
         if (Long.compareUnsigned(initial, maximum) > 0) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max memory size");
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max table size");
         }
         if (Long.compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds implementation limit");
@@ -499,6 +499,9 @@ public class WebAssembly extends Dictionary {
         }
         if (!refTypes && !ReferenceType.FUNCREF.equals(elemType)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable wasm.BulkMemoryAndRefTypes to support other reference types");
+        }
+        if (!elemType.matchesValue(initialValue)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid initial value of table elements");
         }
         final int maxAllowedSize = (int) minUnsigned(maximum, Integer.toUnsignedLong(JS_LIMITS.tableInstanceSizeLimit()));
         return new WasmTable(initial, maximum, maxAllowedSize, (ReferenceType) elemType, initialValue, indexType64);

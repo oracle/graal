@@ -1603,6 +1603,30 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testTableAllocRejectsInvalidFuncrefValue() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.tableAlloc(1, 1, ReferenceType.FUNCREF, 42);
+                Assert.fail("Table allocation must reject a value incompatible with the table element type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableAllocAcceptsExternrefValue() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object value = new Object();
+            final WasmTable table = wasm.tableAlloc(2, 2, ReferenceType.EXTERNREF, value);
+            Assert.assertSame("Initial externref value should be stored at index 0", value, WebAssembly.tableRead(table, 0));
+            Assert.assertSame("Initial externref value should be stored at index 1", value, WebAssembly.tableRead(table, 1));
+        });
+    }
+
+    @Test
     public void testTableInitAnyfunc() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -1740,9 +1764,9 @@ public class WasmJsApiSuite {
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
                 final Object tableRead = wasm.readMember("table_read");
-                final Object table = lib.execute(tableAlloc, 1, "funcref", "funcref", WasmConstant.NULL);
+                final Object table = lib.execute(tableAlloc, 1, "funcref", WasmConstant.NULL, "funcref");
                 final Object value = lib.execute(tableRead, table, 0);
-                Assert.assertEquals("Element should be funcref", "funcref", value);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }

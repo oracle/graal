@@ -189,14 +189,16 @@ public class MultiInstantiationSuite {
                            (elem (i32.const 1) func 1)
                         )
                         """, EnumSet.of(WasmBinaryTools.WabtOption.EXCEPTIONS));
-        final Executable tableFun = new Executable(args -> 13);
+        final Object[] tableFun = new Object[1];
         test(source, wasm -> {
             final Dictionary imports = new Dictionary();
             final Dictionary a = new Dictionary();
 
             a.addMember("f", new Executable(args -> 42));
 
-            final WasmTable t = wasm.tableAlloc(2, 2, ReferenceType.FUNCREF, tableFun);
+            final WasmInstance tableFunInstance = wasm.moduleInstantiate(wasm.moduleDecode(binaryWithExports), WasmConstant.NULL);
+            tableFun[0] = WebAssembly.instanceExport(tableFunInstance, "main");
+            final WasmTable t = wasm.tableAlloc(2, 2, ReferenceType.FUNCREF, tableFun[0]);
             a.addMember("t", t);
 
             final WasmMemory m = WebAssembly.memAlloc(1, 1, false);
@@ -222,7 +224,7 @@ public class MultiInstantiationSuite {
                 final Object t = WebAssembly.instanceExport(i, "t");
                 final Object tableRead = wasm.readMember("table_read");
                 final Object tFun = lib.execute(tableRead, t, 0);
-                Assert.assertEquals("Table functions do not match", tableFun, tFun);
+                Assert.assertEquals("Table functions do not match", tableFun[0], tFun);
 
                 final Object m = WebAssembly.instanceExport(i, "m");
                 final byte b = lib.asByte(lib.readArrayElement(m, 0));
