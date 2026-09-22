@@ -49,8 +49,8 @@ import jdk.vm.ci.meta.JavaKind;
  * reference values remain stored directly in the frame supplied to each operation.
  *
  * In normal bytecode handlers, this overlay is expected to remain virtual and be expanded into its
- * {@link #top} field. Handlers therefore must not let it escape across calls that would force
- * materialization. At a frame-stack operation boundary, {@link #topForFrameStackOperation()}
+ * {@link #top} and {@link #state} fields. Handlers therefore must not let it escape across calls
+ * that would force materialization. At a frame-stack operation boundary, {@link #topForFrameStackOperation()}
  * exposes only the stack top to code that operates directly on the frame, and
  * {@link #applyFrameStackOperationDelta(int)} applies any resulting stack-slot delta. The
  * operation does not need to be outlined; the boundary prevents this overlay from being passed to
@@ -67,11 +67,29 @@ import jdk.vm.ci.meta.JavaKind;
 final class InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    static final int STATE_NORMAL = 0;
+    static final int STATE_PROFILING = 1;
+    static final int STATE_DEBUGGING = 2;
+
     /** First stack slot above the operand stack. */
     private long top;
+    /** Execution mode used to select the bytecode handler template variant. */
+    private int state = STATE_NORMAL;
 
+    @AlwaysInline("Keep the operand-stack overlay virtual in interpreter entry")
     InterpreterOperandStack(long top) {
         this.top = top;
+    }
+
+    @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
+    int getState() {
+        return state;
+    }
+
+    @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
+    void setState(int state) {
+        assert state >= STATE_NORMAL && state <= STATE_DEBUGGING;
+        this.state = state;
     }
 
     /**

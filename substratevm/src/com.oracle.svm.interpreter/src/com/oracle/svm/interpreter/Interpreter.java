@@ -37,6 +37,8 @@ import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Int;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Long;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Object;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Short;
+import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_DEBUGGING;
+import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_PROFILING;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterToVM.nullCheck;
 import static com.oracle.svm.interpreter.InterpreterUtil.invalidOpcode;
@@ -525,10 +527,10 @@ public final class Interpreter {
      * Ristretto OSR returns bypass this helper because the OSR continuation has already left the
      * interpreter and returns as runtime-compiled code.
      */
-    private static void returnFromInterpreter(InterpreterResolvedJavaMethod method, int indent, long curBCI, long top, Object returnValue) {
+    private static void returnFromInterpreter(InterpreterResolvedJavaMethod method, int indent, long curBCI, long top, Object returnValue, int state) {
         traceInterpreterReturn(method, indent, curBCI, top);
         Thread currentThread = Thread.currentThread();
-        if (Root.debuggerEventsSupported() && DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.METHOD_EXIT)) {
+        if (state == STATE_DEBUGGING && DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.METHOD_EXIT)) {
             if (method.getDeclaringClass().isMethodExitEvent()) {
                 int flags = EventKind.METHOD_EXIT.getFlag() | EventKind.METHOD_EXIT_WITH_RETURN_VALUE.getFlag();
                 DebuggerEvents.singleton().getEventHandler().onEventAt(currentThread, method, (int) curBCI, returnValue, flags);
@@ -767,24 +769,32 @@ public final class Interpreter {
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "primitives"),
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "references")
                         }),
-                        @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.VIRTUAL)
+                        @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.VIRTUAL, fields = {
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "state", templateVariable = 3)
+                        })
         })
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
                         boolean forceStayInInterpreter) {
             /*
-             * SubstrateOptions.useRistretto() is a hosted @Fold switch. When Ristretto is disabled,
-             * graph building sees the false branch below, initializes profiling to an inert
-             * constant, and folds away the profile-entry and profile-site paths.
+             * Debugging and profiling use separate handler variants. Debugger support takes
+             * precedence so events enabled during this invocation are still observed. Both
+             * capability checks fold at image build time.
              */
+            InterpreterOperandStack virtualStack = new InterpreterOperandStack(startTop);
             final MethodProfile methodProfile;
-            if (SubstrateOptions.useRistretto()) {
+            if (debuggerEventsSupported()) {
+                methodProfile = null;
+                virtualStack.setState(STATE_DEBUGGING);
+            } else if (SubstrateOptions.useRistretto()) {
                 methodProfile = RistrettoInterpreterSupport.singleton().profileMethodEntry(method);
+                if (methodProfile != null) {
+                    virtualStack.setState(STATE_PROFILING);
+                }
             } else {
                 methodProfile = null;
             }
 
             long curBCI = startBCI;
-            InterpreterOperandStack virtualStack = new InterpreterOperandStack(startTop);
             int debuggerEventFlags = 0;
             if (debuggerEventsSupported()) {
                 DebuggerEvents debuggerEvents = DebuggerEvents.singleton();
@@ -1086,7 +1096,7 @@ public final class Interpreter {
                         case ARETURN: // fall through
                         case RETURN: {
                             Object returnValue = virtualStack.peekKindAsObject(frame, method.getSignature().getReturnKind());
-                            returnFromInterpreter(method, indent, curBCI, virtualStack.topForFrameStackOperation(), returnValue);
+                            returnFromInterpreter(method, indent, curBCI, virtualStack.topForFrameStackOperation(), returnValue, virtualStack.getState());
                             return returnValue;
                         }
                         // @formatter:off
@@ -1160,7 +1170,7 @@ public final class Interpreter {
                     if (handler != null) {
                         virtualStack.clearOperandStack(frame);
                         virtualStack.pushObject(frame, exception);
-                        curBCI = beforeJumpChecks(frame, curBCI, handler.getHandlerBCI(), virtualStack.topForFrameStackOperation());
+                        curBCI = beforeJumpChecks(frame, curBCI, handler.getHandlerBCI(), virtualStack.topForFrameStackOperation(), virtualStack.getState());
                         prepareOpcodeForDispatch(curBCI, frame, virtualStack);
                         continue;
                     } else {
@@ -1191,7 +1201,7 @@ public final class Interpreter {
 
         /**
          * Prepares the bytecode at {@code curBCI} for dispatch when debugging or instruction
-         * tracing is included in the image.
+         * tracing is enabled for this invocation.
          *
          * <p>
          * This is the per-bytecode work that the non-threaded interpreter performs between entering
@@ -1214,7 +1224,7 @@ public final class Interpreter {
          */
         @AlwaysInline("Keep the interpreter fast path call-free")
         private static void prepareOpcodeForDispatch(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            boolean debuggerEventsSupported = debuggerEventsSupported();
+            boolean debuggerEventsSupported = virtualStack.getState() == STATE_DEBUGGING;
             if (!debuggerEventsSupported && !InterpreterOptions.InterpreterTraceSupport.getValue()) {
                 return;
             }
@@ -1308,14 +1318,14 @@ public final class Interpreter {
         @AlwaysInline("Keep semantic opcode replay on the fast path")
         @BytecodeInterpreterFetchOpcode
         private static int fetchOpcode(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            if (debuggerEventsSupported()) {
+            if (virtualStack.getState() == STATE_DEBUGGING) {
                 /*
                  * Debugger preparation resolves BREAKPOINT to its original semantic opcode. Use
                  * that prepared value instead of reading the breakpoint opcode from the bytecode.
                  */
                 return frame.debugState.opcode;
             }
-            // Without debugger support, the bytecode contains the semantic opcode directly.
+            // Outside debugging mode, the bytecode contains the semantic opcode directly.
             return BytecodeStream.uncheckedOpcode(frame.code, curBCI);
         }
 
@@ -2127,7 +2137,9 @@ public final class Interpreter {
             Object[] array = uncheckedCast(nonNullReceiver, Object[].class);
             int index = virtualStack.peekInt(frame, -1);
             Object value = InterpreterToVM.getArrayObject(index, array);
-            profileType(frame, curBCI, value);
+            if (virtualStack.getState() == STATE_PROFILING) {
+                profileType(frame.methodProfile, curBCI, value);
+            }
             virtualStack.pop1(frame, false);
             virtualStack.pop1(frame);
             virtualStack.pushObject(frame, value);
@@ -2297,7 +2309,9 @@ public final class Interpreter {
                 throw SemanticJavaException.raiseArrayIndexOutOfBoundsException(index, length);
             }
             Object value = virtualStack.peekObject(frame, -1);
-            profileType(frame, curBCI, value);
+            if (virtualStack.getState() == STATE_PROFILING) {
+                profileType(frame.methodProfile, curBCI, value);
+            }
             InterpreterToVM.setArrayObject(value, index, array);
             virtualStack.pop1(frame);
             virtualStack.pop1(frame, false);
@@ -2969,7 +2983,9 @@ public final class Interpreter {
 
         @AlwaysInline("Fold branch opcode in individual handlers")
         private static long branch(long curBCI, InterpreterFrame frame, int curOpcode, boolean branchTaken, InterpreterOperandStack virtualStack) {
-            profileBranch(frame.methodProfile, curBCI, branchTaken);
+            if (virtualStack.getState() == STATE_PROFILING) {
+                profileBranch(frame.methodProfile, curBCI, branchTaken);
+            }
             if (branchTaken) {
                 long targetBCI = BytecodeStream.uncheckedReadBranchDest2(frame.code, curBCI);
                 return finishJump(curBCI, targetBCI, frame, virtualStack);
@@ -3278,7 +3294,9 @@ public final class Interpreter {
             if (linkedInvoke.hasReceiver(opcode)) {
                 assert calleeArgs.length > 0;
                 Object receiver = Unsafe.getUnsafe().getReference(calleeArgs, Unsafe.ARRAY_OBJECT_BASE_OFFSET);
-                profileType(callerFrame, curBCI, receiver);
+                if (virtualStack.getState() == STATE_PROFILING) {
+                    profileType(callerFrame.methodProfile, curBCI, receiver);
+                }
                 nullCheck(receiver);
                 if (linkedInvoke.requiresSymbolicTypeCheck(opcode)) {
                     DynamicHub instanceHub = DynamicHubIntrinsics.readHub(receiver);
@@ -3299,7 +3317,7 @@ public final class Interpreter {
 
         @AlwaysInline("Fold invoke opcode in individual handlers")
         private static void invokeBytecode(long curBCI, InterpreterFrame frame, int curOpcode, InterpreterOperandStack virtualStack) {
-            if (debuggerEventsSupported()) {
+            if (virtualStack.getState() == STATE_DEBUGGING) {
                 boolean preferStayInInterpreter = frame.debugState.beforeInvoke();
                 try {
                     invoke(curBCI, frame, virtualStack, curOpcode, preferStayInInterpreter);
@@ -3343,16 +3361,20 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = INVOKEDYNAMIC)
         private static long invokedynamicHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
             boolean preferStayInInterpreter = frame.forceStayInInterpreter();
-            if (debuggerEventsSupported()) {
+            if (virtualStack.getState() == STATE_DEBUGGING) {
                 preferStayInInterpreter |= frame.debugState.beforeInvoke();
             }
 
             try {
                 long top = virtualStack.topForFrameStackOperation();
-                int slotDelta = invokeDynamicBytecode((int) curBCI, frame, top, preferStayInInterpreter);
+                /*
+                 * If needed, separate non-inlined profiling and non-profiling entry points could
+                 * inline the shared body to fold the profiling flag. Keep one body for this slow path.
+                 */
+                int slotDelta = invokeDynamicBytecode((int) curBCI, frame, top, preferStayInInterpreter, virtualStack.getState() == STATE_PROFILING);
                 virtualStack.applyFrameStackOperationDelta(slotDelta);
             } finally {
-                if (debuggerEventsSupported()) {
+                if (virtualStack.getState() == STATE_DEBUGGING) {
                     frame.debugState.afterInvoke();
                 }
             }
@@ -3360,7 +3382,7 @@ public final class Interpreter {
         }
 
         @NeverInline("Keep stack-consuming INVOKEDYNAMIC invocation out of bytecode-handler stubs")
-        private static int invokeDynamicBytecode(int curBCI, InterpreterFrame frame, long top, boolean preferStayInInterpreter) {
+        private static int invokeDynamicBytecode(int curBCI, InterpreterFrame frame, long top, boolean preferStayInInterpreter, boolean profiling) {
             int fullCPI = BytecodeStream.uncheckedReadCPI4(frame.code, curBCI);
             if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, fullCPI == 0)) {
                 // This can happen for the debugger
@@ -3413,7 +3435,9 @@ public final class Interpreter {
             materializedStack.popArgumentsWithAppendix(frame, hasReceiver, seedSignature, calleeArgs, appendix);
             if (hasReceiver) {
                 Object receiver = calleeArgs[0];
-                profileType(frame, curBCI, receiver);
+                if (profiling) {
+                    profileType(frame.methodProfile, curBCI, receiver);
+                }
                 receiver = nullCheck(receiver);
                 calleeArgs[0] = receiver;
             }
@@ -3479,7 +3503,9 @@ public final class Interpreter {
         @AlwaysInline("Keep type-check receiver loading in bytecode-handler stubs")
         private static DynamicHub loadReceiverHub(long bci, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
             Object receiver = virtualStack.peekObject(frame, -1);
-            profileType(frame, bci, receiver);
+            if (virtualStack.getState() == STATE_PROFILING) {
+                profileType(frame.methodProfile, bci, receiver);
+            }
             if (GraalDirectives.injectBranchProbability(GraalDirectives.FASTPATH_PROBABILITY, receiver != null)) {
                 return InterpreterToVM.getObjectHub(receiver);
             }
@@ -3633,7 +3659,7 @@ public final class Interpreter {
          */
         @AlwaysInline("Keep branch completion on the fast path")
         private static long finishJump(long curBCI, long targetBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            long nextBCI = beforeJumpChecks(frame, curBCI, targetBCI, virtualStack.topForFrameStackOperation());
+            long nextBCI = beforeJumpChecks(frame, curBCI, targetBCI, virtualStack.topForFrameStackOperation(), virtualStack.getState());
             prepareOpcodeForDispatch(nextBCI, frame, virtualStack);
             return nextBCI;
         }
@@ -3659,21 +3685,18 @@ public final class Interpreter {
         }
     }
 
-    @AlwaysInline("Profile-site guards must fold away when Ristretto is disabled in the hosted image.")
-    private static void profileType(InterpreterFrame frame, long bci, Object o) {
-        if (SubstrateOptions.useRistretto()) {
-            MethodProfile methodProfile = frame.methodProfile;
-            if (methodProfile != null) {
-                methodProfile.profileReceiver((int) bci, o);
-            }
-        }
+    @AlwaysInline("Keep type profiling in the profiling handler variants.")
+    private static void profileType(MethodProfile methodProfile, long bci, Object o) {
+        assert SubstrateOptions.useRistretto();
+        assert methodProfile != null;
+        methodProfile.profileReceiver((int) bci, o);
     }
 
-    @AlwaysInline("Profile-site guards must fold away when Ristretto is disabled in the hosted image.")
+    @AlwaysInline("Keep branch profiling in the profiling handler variants.")
     private static void profileBranch(MethodProfile methodProfile, long curBCI, boolean branchTaken1) {
-        if (SubstrateOptions.useRistretto() && methodProfile != null) {
-            methodProfile.profileBranch((int) curBCI, branchTaken1);
-        }
+        assert SubstrateOptions.useRistretto();
+        assert methodProfile != null;
+        methodProfile.profileBranch((int) curBCI, branchTaken1);
     }
 
     @SuppressWarnings("unchecked")
@@ -3696,10 +3719,10 @@ public final class Interpreter {
      * must stay in the interpreter.
      */
     @SuppressWarnings("unused")
-    private static long beforeJumpChecks(InterpreterFrame frame, long curBCI, long targetBCI, long stackTop) {
+    private static long beforeJumpChecks(InterpreterFrame frame, long curBCI, long targetBCI, long stackTop, int state) {
         if (targetBCI <= curBCI) {
             GraalDirectives.safepoint();
-            if (SubstrateOptions.useRistretto() && frame.useOSR()) {
+            if (state == STATE_PROFILING && SubstrateOptions.useRistretto() && frame.useOSR()) {
                 RistrettoInterpreterSupport.singleton().tryOSR(frame.method, frame.methodProfile, frame, (int) targetBCI, (int) stackTop);
             }
         }
