@@ -89,7 +89,7 @@ public class G1Constants {
     }
 
     @Fold
-    public static int g1BarrierAndAllocationDataSize() {
+    public static int barrierAndAllocationDataSize() {
         return G1_BARRIER_AND_ALLOCATION_DATA_SIZE;
     }
 

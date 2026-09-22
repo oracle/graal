@@ -171,13 +171,12 @@ public class G1Feature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
+        NativeGCAccessedFields.markAsAccessed(accessImpl, G1AccessedFields.ACCESSED_CLASSES);
 
         /* Ensure that thread locals whose offsets are only used by native code are discovered. */
         ResolvedJavaType g1HeapType = accessImpl.getMetaAccess().lookupJavaType(G1Heap.class);
-        accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "g1BarrierAndAllocationDataTL"), "its offset is used by G1 native code");
+        accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "barrierAndAllocationDataTL"), "its offset is used by G1 native code");
         accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "javaThreadTL"), "its offset is used by G1 native code");
-
-        NativeGCAccessedFields.markAsAccessed(accessImpl, G1AccessedFields.ACCESSED_CLASSES);
 
         /* G1 needs a custom filler array class that does not match int[].class. */
         accessImpl.registerAsUsed(FillerArray.class);
@@ -209,7 +208,7 @@ public class G1Feature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
-        assert hotDataHasSmallThreadLocalOffsets();
+        assert hotThreadLocalDataHasSmallOffsets();
 
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
         G1Heap heap = G1Heap.get();
@@ -221,7 +220,7 @@ public class G1Feature implements InternalFeature {
         access.registerAsImmutable(imageHeapInfo.getRegionFreeSpaces());
 
         /* Collect data and offsets that are needed when initializing G1. */
-        byte[] fieldOffsets = NativeGCAccessedFields.writeOffsets(access, G1ObjectHeader.getMarkWordOffset(), G1Heap.g1BarrierAndAllocationDataTL, G1Heap.javaThreadTL,
+        byte[] fieldOffsets = NativeGCAccessedFields.writeOffsets(access, G1ObjectHeader.getMarkWordOffset(), G1Heap.barrierAndAllocationDataTL, G1Heap.javaThreadTL,
                         G1AllocationSupport.podReferenceMapTL, G1AccessedFields.ACCESSED_CLASSES);
         heap.setAccessedFieldOffsets(fieldOffsets);
         access.registerAsImmutable(fieldOffsets);
@@ -350,21 +349,21 @@ public class G1Feature implements InternalFeature {
         return target.arch.getPlatformKind(referenceKind).getSizeInBytes();
     }
 
-    private static boolean hotDataHasSmallThreadLocalOffsets() {
+    private static boolean hotThreadLocalDataHasSmallOffsets() {
         VMThreadLocalOffsetProvider offsetProvider = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class);
-        int dataOffset = offsetProvider.offsetOf(G1Heap.g1BarrierAndAllocationDataTL);
-        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.satbQueueIndexOffset());
-        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.satbQueueBufferOffset());
-        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.satbQueueMarkingActiveOffset());
-        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.tlabTopOffset());
-        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.tlabEndOffset());
-        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.cardQueueIndexOffset());
-        assert hasSmallThreadLocalOffset(dataOffset, G1Constants.cardQueueBufferOffset());
+        int structOffset = offsetProvider.offsetOf(G1Heap.barrierAndAllocationDataTL);
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.satbQueueIndexOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.satbQueueBufferOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.satbQueueMarkingActiveOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.tlabTopOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.tlabEndOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.cardQueueIndexOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.cardQueueBufferOffset());
         return true;
     }
 
-    private static boolean hasSmallThreadLocalOffset(int dataOffset, int fieldOffset) {
-        int offset = dataOffset + fieldOffset;
+    private static boolean hasSmallThreadLocalOffset(int structOffset, int fieldOffset) {
+        int offset = structOffset + fieldOffset;
         return offset <= FastThreadLocal.BYTE_OFFSET;
     }
 }

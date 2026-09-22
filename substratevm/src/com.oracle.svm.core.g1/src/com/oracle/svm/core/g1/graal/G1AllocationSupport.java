@@ -26,22 +26,22 @@ package com.oracle.svm.core.g1.graal;
 
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.g1.G1Constants;
+import com.oracle.svm.core.g1.G1Heap;
+import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.gc.shared.graal.NativeGCAllocationSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.g1.G1Constants;
-import com.oracle.svm.core.g1.G1Heap;
-import com.oracle.svm.core.g1.nativelib.G1Library;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public class G1AllocationSupport extends NativeGCAllocationSupport {
     @Override
-    public Word getTLABInfo() {
-        return G1Heap.g1BarrierAndAllocationDataTL.getAddress();
+    public Word getThreadLocalData() {
+        return G1Heap.barrierAndAllocationDataTL.getAddress();
     }
 
     @Override

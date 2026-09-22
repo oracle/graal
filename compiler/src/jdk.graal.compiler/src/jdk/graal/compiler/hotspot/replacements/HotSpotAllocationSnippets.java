@@ -280,8 +280,8 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     private void verifyHeap() {
-        Word tlabInfo = getTLABInfo();
-        Word topValue = readTlabTop(tlabInfo);
+        Word threadLocalData = getThreadLocalData();
+        Word topValue = readTlabTop(threadLocalData);
         if (probability(FAST_PATH_PROBABILITY, !topValue.equal(Word.zero()))) {
             Word topValueContents = topValue.readWord(0, MARK_WORD_LOCATION);
             if (probability(SLOW_PATH_PROBABILITY, topValueContents.equal(Word.zero()))) {
@@ -456,7 +456,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public final Word getTLABInfo() {
+    public final Word getThreadLocalData() {
         return getThread();
     }
 
@@ -465,18 +465,18 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public final Word readTlabEnd(Word thread) {
-        return TLAB_END_LOCATION.readWord(thread);
+    public final Word readTlabEnd(Word threadLocalData) {
+        return TLAB_END_LOCATION.readWord(threadLocalData);
     }
 
     @Override
-    public final Word readTlabTop(Word thread) {
-        return TLAB_TOP_LOCATION.readWord(thread);
+    public final Word readTlabTop(Word threadLocalData) {
+        return TLAB_TOP_LOCATION.readWord(threadLocalData);
     }
 
     @Override
-    public final void writeTlabTop(Word thread, Word newTop) {
-        TLAB_TOP_LOCATION.writeWord(thread, newTop);
+    public final void writeTlabTop(Word threadLocalData, Word newTop) {
+        TLAB_TOP_LOCATION.writeWord(threadLocalData, newTop);
     }
 
     @Override

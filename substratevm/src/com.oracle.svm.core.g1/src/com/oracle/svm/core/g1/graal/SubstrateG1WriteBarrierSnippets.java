@@ -38,8 +38,10 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.g1.G1Constants;
+import com.oracle.svm.core.g1.G1Heap;
+import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -51,9 +53,7 @@ import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.g1.G1Constants;
-import com.oracle.svm.core.g1.G1Heap;
-import com.oracle.svm.core.g1.nativelib.G1Library;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
@@ -164,13 +164,13 @@ public final class SubstrateG1WriteBarrierSnippets extends G1WriteBarrierSnippet
             byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
             if (cardByteReload != G1Constants.dirtyCardValue()) {
                 cardAddress.writeByte(0, G1Constants.dirtyCardValue(), GC_CARD_LOCATION);
-                Word thread = G1Heap.g1BarrierAndAllocationDataTL.getAddress();
-                Word indexValue = thread.readWord(G1Constants.cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION);
+                Word threadLocalData = G1Heap.barrierAndAllocationDataTL.getAddress();
+                Word indexValue = threadLocalData.readWord(G1Constants.cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION);
                 if (indexValue.notEqual(0)) {
-                    Word bufferAddress = thread.readWord(G1Constants.cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
+                    Word bufferAddress = threadLocalData.readWord(G1Constants.cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
                     Word nextIndex = indexValue.subtract(SubstrateTarget.getWordSize());
                     bufferAddress.writeWord(nextIndex, cardAddress, CARD_QUEUE_LOG_LOCATION);
-                    thread.writeWord(G1Constants.cardQueueIndexOffset(), nextIndex, CARD_QUEUE_INDEX_LOCATION);
+                    threadLocalData.writeWord(G1Constants.cardQueueIndexOffset(), nextIndex, CARD_QUEUE_INDEX_LOCATION);
                 } else {
                     G1Library.postWriteBarrierStub(cardAddress);
                 }
@@ -230,8 +230,13 @@ public final class SubstrateG1WriteBarrierSnippets extends G1WriteBarrierSnippet
     }
 
     @Override
+    protected Word getThreadLocalData() {
+        return G1Heap.barrierAndAllocationDataTL.getAddress();
+    }
+
+    @Override
     protected Word getThread() {
-        return G1Heap.g1BarrierAndAllocationDataTL.getAddress();
+        return G1Heap.javaThreadTL.getAddress();
     }
 
     @Override

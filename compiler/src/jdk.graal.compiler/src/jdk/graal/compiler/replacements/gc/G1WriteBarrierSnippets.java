@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,21 +122,23 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     }
 
     private void satbBarrier(Address address, Object object, Object expectedObject, boolean doLoad, boolean shouldOutline, int traceStartCycle, Counters counters) {
-        Word thread = getThread();
+        Word threadLocalData = getThreadLocalData();
         verifyOop(object);
         Word field = WordCastNode.castToWord(address);
-        byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
+        byte markingValue = threadLocalData.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
 
         boolean trace = isTracingActive(traceStartCycle);
         int gcCycle = 0;
+        long traceThread = 0;
         if (trace) {
+            traceThread = getThread().rawValue();
             Pointer gcTotalCollectionsAddress = Word.pointer(gcTotalCollectionsAddress());
             gcCycle = gcTotalCollectionsAddress.readInt(0, LocationIdentity.any());
-            log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
-            log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(expectedObject).rawValue());
-            log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, thread.rawValue(), field.rawValue());
-            log(trace, "[%d] G1-Pre Thread %p Marking %d\n", gcCycle, thread.rawValue(), markingValue);
-            log(trace, "[%d] G1-Pre Thread %p DoLoad %d\n", gcCycle, thread.rawValue(), doLoad ? 1L : 0L);
+            log(trace, "[%d] G1-Pre Thread %p Object %p\n", gcCycle, traceThread, Word.objectToTrackedPointer(object).rawValue());
+            log(trace, "[%d] G1-Pre Thread %p Expected Object %p\n", gcCycle, traceThread, Word.objectToTrackedPointer(expectedObject).rawValue());
+            log(trace, "[%d] G1-Pre Thread %p Field %p\n", gcCycle, traceThread, field.rawValue());
+            log(trace, "[%d] G1-Pre Thread %p Marking %d\n", gcCycle, traceThread, markingValue);
+            log(trace, "[%d] G1-Pre Thread %p DoLoad %d\n", gcCycle, traceThread, doLoad ? 1L : 0L);
         }
 
         counters.g1AttemptedPreWriteBarrierCounter.inc();
@@ -156,7 +158,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             if (doLoad) {
                 previousObject = JavaReadNode.readObject(field, 0, BarrierType.NONE, LocationIdentity.any());
                 if (trace) {
-                    log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(previousObject).rawValue());
+                    log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, traceThread, Word.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
                 }
             } else {
@@ -168,14 +170,14 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                 counters.g1ExecutedPreWriteBarrierCounter.inc();
                 // If the thread-local SATB buffer is full issue a native call which will
                 // initialize a new one and add the entry.
-                Word indexValue = thread.readWord(satbQueueIndexOffset(), SATB_QUEUE_INDEX_LOCATION);
+                Word indexValue = threadLocalData.readWord(satbQueueIndexOffset(), SATB_QUEUE_INDEX_LOCATION);
                 if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
-                    Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
+                    Word bufferAddress = threadLocalData.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
                     Word nextIndex = indexValue.subtract(wordSize());
 
                     // Log the object to be marked as well as update the SATB's buffer next index.
                     bufferAddress.writeWord(nextIndex, Word.objectToTrackedPointer(previousObject), SATB_QUEUE_LOG_LOCATION);
-                    thread.writeWord(satbQueueIndexOffset(), nextIndex, SATB_QUEUE_INDEX_LOCATION);
+                    threadLocalData.writeWord(satbQueueIndexOffset(), nextIndex, SATB_QUEUE_INDEX_LOCATION);
                 } else {
                     g1PreBarrierStub(previousObject);
                 }
@@ -186,7 +188,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     @Snippet
     public void g1PostWriteBarrier(Address address, Object object, Object value, @ConstantParameter boolean usePrecise, @ConstantParameter int traceStartCycle,
                     @ConstantParameter boolean shouldOutline, @ConstantParameter Counters counters) {
-        Word thread = getThread();
+        Word threadLocalData = getThreadLocalData();
         Object fixedValue = FixedValueAnchorNode.getObject(value);
         verifyOop(object);
         verifyOop(fixedValue);
@@ -204,11 +206,13 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
         boolean trace = isTracingActive(traceStartCycle);
         int gcCycle = 0;
+        long traceThread = 0;
         if (trace) {
+            traceThread = getThread().rawValue();
             Pointer gcTotalCollectionsAddress = Word.pointer(gcTotalCollectionsAddress());
             gcCycle = gcTotalCollectionsAddress.readInt(0, LocationIdentity.any());
-            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(object).rawValue());
-            log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, traceThread, Word.objectToTrackedPointer(object).rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, traceThread, oop.rawValue());
         }
         Pointer writtenValue = Word.objectToTrackedPointer(fixedValue);
         // The result of the xor reveals whether the installed pointer crosses heap regions.
@@ -244,21 +248,21 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_LOAD, GC_CARD_LOCATION);
                     byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
                     if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
-                        log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
+                        log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, traceThread, Word.unsigned(cardByte).rawValue());
                         cardAddress.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
                         counters.g1ExecutedPostWriteBarrierCounter.inc();
 
                         // If the thread local card queue is full, issue a native call which will
                         // initialize a new one and add the card entry.
-                        Word indexValue = thread.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION);
+                        Word indexValue = threadLocalData.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION);
                         if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
-                            Word bufferAddress = thread.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
+                            Word bufferAddress = threadLocalData.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
                             Word nextIndex = indexValue.subtract(wordSize());
 
                             // Log the object to be scanned as well as update the card queue's next
                             // index.
                             bufferAddress.writeWord(nextIndex, cardAddress, CARD_QUEUE_LOG_LOCATION);
-                            thread.writeWord(cardQueueIndexOffset(), nextIndex, CARD_QUEUE_INDEX_LOCATION);
+                            threadLocalData.writeWord(cardQueueIndexOffset(), nextIndex, CARD_QUEUE_INDEX_LOCATION);
                         } else {
                             g1PostBarrierStub(cardAddress);
                         }
@@ -270,8 +274,8 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     @Snippet
     public void g1ArrayRangePreWriteBarrier(Address address, long length, @ConstantParameter int elementStride, @ConstantParameter boolean shouldOutline) {
-        Word thread = getThread();
-        byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
+        Word threadLocalData = getThreadLocalData();
+        byte markingValue = threadLocalData.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
         // If the concurrent marker is not enabled or the vector length is zero, return.
         if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0) || probability(NOT_FREQUENT_PROBABILITY, length == 0)) {
             return;
@@ -283,8 +287,8 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             return;
         }
 
-        Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
-        Word indexAddress = thread.add(satbQueueIndexOffset());
+        Word bufferAddress = threadLocalData.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
+        Word indexAddress = threadLocalData.add(satbQueueIndexOffset());
         long indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION).rawValue();
         long scale = objectArrayIndexScale();
         Word start = getPointerToFirstArrayElement(addr, length, elementStride);
@@ -336,10 +340,10 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             return;
         }
 
-        Word thread = getThread();
-        Word bufferAddress = thread.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
-        Word indexAddress = thread.add(cardQueueIndexOffset());
-        long indexValue = thread.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION).rawValue();
+        Word threadLocalData = getThreadLocalData();
+        Word bufferAddress = threadLocalData.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
+        Word indexAddress = threadLocalData.add(cardQueueIndexOffset());
+        long indexValue = threadLocalData.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION).rawValue();
 
         do {
             byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
@@ -366,6 +370,8 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             cur = cur.add(1);
         } while (GraalDirectives.injectIterationCount(10, cur.belowOrEqual(end)));
     }
+
+    protected abstract Word getThreadLocalData();
 
     protected abstract Word getThread();
 
