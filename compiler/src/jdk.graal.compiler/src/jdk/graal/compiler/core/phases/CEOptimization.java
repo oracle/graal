@@ -32,12 +32,17 @@ import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.guards.GuardRangeGroupingPhase;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.loop.phases.CountedStripMiningPhase;
+import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
+import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.loop.phases.OptimizeLoopAccessesPhase;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
+import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import jdk.graal.compiler.nodes.memory.MemoryMap;
@@ -56,6 +61,7 @@ import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.LateLockEliminationPhase;
 import jdk.graal.compiler.phases.common.LockEliminationPhase;
 import jdk.graal.compiler.phases.common.OptimizeDivPhase;
+import jdk.graal.compiler.phases.common.OptimizeExactArithmeticPhase;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
@@ -268,6 +274,12 @@ public enum CEOptimization {
     DivisionOptimization(GraalOptions.OptimizeDiv, OptimizeDivPhase.class),
 
     /**
+     * {@link OptimizeExactArithmeticPhase} rewrites exact integer additions to normal additions
+     * when loop overflow can be handled by the loop limit deoptimization.
+     */
+    ExactMathOptimization(MidTier.Options.OptExactArithmetic, OptimizeExactArithmeticPhase.class),
+
+    /**
      * {@link LoopSafepointEliminationPhase} tries to reduce the number of safepoint checks in the
      * generated machine code. Safepoints in Java are program locations where mutator threads
      * (application threads) are at a well defined point with respect to the Java heap. This means
@@ -281,6 +293,63 @@ public enum CEOptimization {
      * This phase is unconditionally enabled.
      */
     SafepointElimination(null, LoopSafepointEliminationPhase.class),
+
+    /**
+     * {@link InjectLoopCounterStampsPhase} tries to inject more precise value and type information
+     * into the counter of a loop to better reason about its iteration boundaries. This can improve
+     * performance as later optimization can better reason about the semantic of a loop.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase.Options#OptLoopPhiStamps}
+     */
+    LoopPhiOptimization(InjectLoopCounterStampsPhase.Options.OptLoopPhiStamps, InjectLoopCounterStampsPhase.class),
+
+    /**
+     * {@link CountedStripMiningPhase} is an optimization that tiles the iteration space of counted
+     * loops to enable the removal of safepoints inside counted loops. Additionally, strip-mining
+     * long counted loops enables range check elimination of 64bit integer range checks. See
+     * {@link SpeculativeGuardMovementPhase} for details.
+     *
+     * Strip mining is the default policy to reduce safepoints in counted loops. Graal does not
+     * remove safepoints from loops since that can increase the time-to-safepoint and cause a
+     * throughput problem for applications by stalling a GC. Instead Graal uses strip mining to tile
+     * the iteration space and perform a safepoint poll after every such tile.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link MidTier.Options#StripMineCountedLoops}.
+     */
+    CountedStripMining(MidTier.Options.StripMineCountedLoops, CountedStripMiningPhase.class),
+
+    /**
+     * {@link NonCountedStripMiningPhase} is an optimization that tiles the iteration space of
+     * non-counted loops by adding artificial loop counters to enable the removal of safepoints
+     * inside non-counted loops.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link MidTier.Options#StripMineNonCountedLoops}.
+     */
+    NonCountedStripMining(MidTier.Options.StripMineNonCountedLoops, NonCountedStripMiningPhase.class),
+
+    /**
+     * {@link LoopInversionPhase} tries to transform a {@code while} loop to an {@code if} block
+     * containing a {@code do..while} loop. This can improve performance due to instruction
+     * pipelining. It also provides a location for hoisting loop-invariant code outside a loop where
+     * said code must only be executed if the loop is executed at least once.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.loop.phases.LoopInversionPhase.Options#LoopInversion}.
+     */
+    LoopInversion(LoopInversionPhase.Options.LoopInversion, LoopInversionPhase.class),
+
+    /**
+     * {@link LoopRotationPhase} tries to transform non-counted loops into counted ones by applying
+     * code duplication on parts of the loop body. This can enable more counted loops which makes
+     * them amendable for unrolling, vectorization and safepoint removal.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.loop.phases.LoopRotationPhase.Options#LoopRotation}.
+     */
+    LoopRotation(LoopRotationPhase.Options.LoopRotation, LoopRotationPhase.LoopRotationPhaseWitness.class),
 
     /**
      * {@link ReassociationPhase} implements expression reassociation. It re-orders operations and

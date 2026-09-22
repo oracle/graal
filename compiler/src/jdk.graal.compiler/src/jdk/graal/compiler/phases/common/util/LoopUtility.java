@@ -27,42 +27,309 @@ package jdk.graal.compiler.phases.common.util;
 import java.util.ArrayDeque;
 import java.util.EnumSet;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TimerKey;
+import jdk.graal.compiler.duplication.util.DuplicationUtil;
+import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Position;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.GuardProxyNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
+import jdk.graal.compiler.nodes.MemoryProxyNode;
+import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.ValueProxyNode;
+import jdk.graal.compiler.nodes.VirtualState.NodePositionClosure;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.extended.CaptureStateBeginNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.vector.phases.LoopVectorizationAnalysis;
+import jdk.graal.compiler.vector.phases.VectorLoopUtility;
 
 public class LoopUtility {
+
+    /**
+     * Determine if the given loop comes from a {@link SnippetTemplate} snippet with a
+     * side-effecting body. See {@link CaptureStateBeginNode#verifyNode()} for details.
+     */
+    public static boolean snippetSideEffectLoop(Loop lex) {
+        for (LoopExitNode lexNode : lex.loopBegin().loopExits()) {
+            if (lexNode.next() instanceof CaptureStateBeginNode) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static final TimerKey vectorizationCheck = DebugContext.timer("Time_Peeling_VectorizationCheck");
+
+    @SuppressWarnings("try")
+    public static boolean potentialVectorLoop(Loop loop, StructuredGraph graph, CoreProviders providers) {
+        if (!VectorLoopUtility.Options.RespectVectorization.getValue(graph.getOptions())) {
+            return false;
+        }
+        try (DebugCloseable dc = vectorizationCheck.start(graph.getDebug())) {
+            return LoopVectorizationAnalysis.detectVectorizableLoop(loop, true, providers) != null;
+        }
+    }
+
+    /**
+     * Create {@link LoopExitNode} nodes before {@link Loop#isCounted()} {@linkplain Loop loops}
+     * that terminate with {@link DeoptimizeNode}.
+     *
+     * The {@link CountedLoopInfo} API in Graal supports loops which
+     * {@link CountedLoopInfo#getLimitTest()} terminate the loop with either a {@link LoopExitNode}
+     * or {@link DeoptimizeNode}. In order for loop optimizations to only support one common case
+     * ({@link LoopExitNode}) this method takes counted loop exit paths that terminate the loop with
+     * a {@link DeoptimizeNode} and inserts {@link LoopExitNode} before.
+     *
+     * @return {@code true} if the counted exit path was a {@link DeoptimizeNode} and this method
+     *         could insert a {@link LoopExitNode} before it, {@code false} otherwise
+     */
+    public static boolean createDeoptCountedLoopExitNode(Loop elex) {
+        GraalError.guarantee(elex.loopBegin().graph().getGuardsStage().areFrameStatesAtSideEffects(),
+                        "Cannot use this method after framestate assignment because Deoptimize nodes have input then potentially requiring proxies");
+        assert elex.isCounted() : "Loop must be counted " + elex;
+        final CountedLoopInfo cli = elex.counted();
+        final AbstractBeginNode abn = cli.getCountedExit();
+        final StructuredGraph graph = abn.graph();
+        if (!(abn instanceof LoopExitNode)) {
+            if (abn.next() instanceof DeoptimizeNode) {
+                assert abn.graph().getGuardsStage().areFrameStatesAtSideEffects() : "Must run before FSA";
+                insertLoopExitNodeAndBuildState(graph, abn, elex);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static LoopExitNode insertLoopExitNodeAndBuildState(StructuredGraph graph, AbstractBeginNode countedIrregularExit, Loop elex) {
+        FrameState lastState = GraphUtil.findLastFrameState(countedIrregularExit);
+        assert lastState != null;
+        LoopExitNode lex = graph.add(new LoopExitNode(elex.loopBegin()));
+        Mark before = graph.getMark();
+        lastState = lastState.duplicateWithVirtualState();
+        for (Node newNode : graph.getNewNodes(before).snapshot()) {
+            for (Position p : newNode.inputPositions()) {
+                Node input = p.get(newNode);
+                if (input != null && elex.whole().contains(input)) {
+                    if (input instanceof VirtualObjectNode) {
+                        continue;
+                    }
+                    input = proxyNode(p, lex, (ValueNode) input);
+                    input = graph.addOrUnique(input);
+                    p.set(newNode, input);
+                }
+            }
+        }
+        lex.setStateAfter(lastState);
+        graph.replaceFixedWithFixed(countedIrregularExit, lex);
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After creating lex %s for prev sink counted loop", lex);
+        return lex;
+    }
+
+    private static ValueNode proxyNode(Position p, LoopExitNode lex, ValueNode input) {
+        switch (p.getInputType()) {
+            case Value:
+                return new ValueProxyNode(input, lex);
+            case Guard:
+                return new GuardProxyNode((GuardingNode) input, lex);
+            case Memory:
+                MemoryKill inputKill = (MemoryKill) input;
+                return new MemoryProxyNode(inputKill, lex, DuplicationUtil.getLocationIdentity((Node) inputKill));
+            default:
+                throw GraalError.shouldNotReachHereUnexpectedValue(p.getInputType()); // ExcludeFromJacocoGeneratedReport
+        }
+    }
+
+    /**
+     * Merges all {@link LoopEndNode} of the given loop if there are more than 1. Returns
+     * {@code true} if such a merge happened, otherwise {@code false}.
+     */
+    @SuppressWarnings("try")
+    public static boolean mergeLoopEnds(LoopBeginNode loopBegin) {
+        if (loopBegin.loopEnds().count() == 1) {
+            return false;
+        }
+        /*
+         * We use the NodeSourcePosition of the loop begin node: merge loop ends just creates a new
+         * landing pad before the jump to the actual loop begin node. Thus, the loop begin is the
+         * best approximation to use.
+         */
+        try (DebugCloseable s = loopBegin.withNodeSourcePosition()) {
+            MergeNode merge = loopBegin.graph().add(new MergeNode());
+            for (LoopEndNode le : loopBegin.loopEnds()) {
+                EndNode end = loopBegin.graph().add(new EndNode());
+                merge.addForwardEnd(end);
+                FixedWithNextNode fwn = (FixedWithNextNode) le.predecessor();
+                fwn.setNext(null);
+                fwn.setNext(end);
+            }
+            EconomicMap<PhiNode, PhiNode> old2New = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+            for (PhiNode phi : loopBegin.phis()) {
+                PhiNode copy = phi.duplicateOn(merge);
+                for (LoopEndNode le : loopBegin.loopEnds()) {
+                    copy.addInput(phi.valueAt(le));
+                }
+                old2New.put(phi, copy);
+            }
+            assert old2New.size() == loopBegin.phis().count() : "Sizes for phi must match - old=" + old2New.size() + " vs " + loopBegin.phis().snapshot();
+            LoopEndNode newEnd = loopBegin.graph().add(new LoopEndNode(loopBegin));
+            for (PhiNode loopPhi : loopBegin.phis()) {
+                PhiNode phi = old2New.get(loopPhi);
+                loopPhi.addInput(phi.singleValueOrThis());
+            }
+            for (LoopEndNode le : loopBegin.loopEnds().snapshot()) {
+                if (le == newEnd) {
+                    continue;
+                }
+                loopBegin.removeEnd(le);
+                le.safeDelete();
+            }
+            if (loopBegin.stateAfter() != null) {
+                // the merge only needs a state if we are before FSA
+                FrameState duplicatedState = loopBegin.stateAfter().duplicateWithVirtualState();
+                duplicatedState.applyToNonVirtual(new NodePositionClosure<>() {
+                    @Override
+                    public void apply(Node from, Position p) {
+                        ValueNode usage = (ValueNode) p.get(from);
+                        if (loopBegin.isPhiAtMerge(usage)) {
+                            Node replacement = old2New.get((PhiNode) usage).singleValueOrThis();
+                            p.set(from, replacement);
+                        }
+                    }
+
+                });
+                merge.setStateAfter(duplicatedState);
+            }
+            merge.setNext(newEnd);
+        }
+        return true;
+    }
+
+    public static boolean isConstantLoopCount(Loop loop, long constantLimit) {
+        if (loop.counted() == null) {
+            return false;
+        }
+        CountedLoopInfo counted = loop.counted();
+        if (!counted.counterNeverOverflows()) {
+            return false;
+        }
+        if (!counted.countedIntegrityValid()) {
+            /*
+             * It can be that we are in the middle of a loop optimization process and the caller
+             * does not know/care about "intact" IVs, and does not recompute them. In favor of
+             * compile time be resilient towards broken IVs.
+             */
+            return false;
+        }
+        if (counted.isConstantMaxTripCount()) {
+            return counted.constantMaxTripCount().isLessThan(constantLimit);
+        }
+        ValueNode val = counted.maxTripCountNode();
+        /**
+         * We are looking here for mostly 2 patterns: constant loops and loops that are bounded by a
+         * "hidden constant". Such hidden constant patterns are of various forms. On example is
+         * loops that offset a constant from a limit. An example can look like this:
+         *
+         * <pre>
+         * int limit = x.limit;
+         * int init = limit - 8;
+         * int i = init;
+         * for (; i < limit; i++) {
+         *     body();
+         * }
+         * </pre>
+         *
+         * Where they either do 0 or 8 iterations - both are constant values. We catch those cases
+         * by checking that the stamp of the node is in range.
+         */
+        return nodeStampInRange(val, constantLimit, counted);
+    }
+
+    public static boolean nodeStampInRange(ValueNode maxTripCount, long iterationLimit, CountedLoopInfo counted) {
+        final Stamp limitStamp = maxTripCount.stamp(NodeView.DEFAULT);
+        if (limitStamp instanceof IntegerStamp iS) {
+            final long lowerBound = iS.lowerBound();
+            final long upperBound = iS.upperBound();
+            if (lowerBound == upperBound) {
+                /**
+                 * maxTripCount is an unsigned value. Even loops that do not overflow their stamp
+                 * range (e.g. 32bit for integer, 64bit for long) not necessarily have a trip count
+                 * limit that fits in the respective value range.
+                 *
+                 * For example consider the following loop
+                 *
+                 * <pre>
+                 * for (int i = Integer.MIN_VALUE; i < Integer.MAX_VALUE; i++) {
+                 *     body();
+                 * }
+                 * </pre>
+                 *
+                 * which has a value range of 4294967295 (signed integer -1) does not fit in signed
+                 * integer range yet is perfectly counted. Just check that we are in range
+                 */
+                return lowerBound >= 0 && lowerBound < iterationLimit;
+            }
+            if (IntegerStamp.subtractionOverflows(upperBound, lowerBound, 64)) {
+                return false;
+            }
+            try {
+                final long distanceLowerUpper = NumUtil.safeAbs(upperBound - lowerBound);
+                final InductionVariable counter = counted.getLimitCheckedIV();
+                // assume a worst case stride of 1 if we don't know what it is
+                final long stride = counter.isConstantStride() ? NumUtil.safeAbs(counter.constantStride()) : 1;
+                final long strideRelativeStartToLimitDistance = distanceLowerUpper / stride;
+                return strideRelativeStartToLimitDistance <= iterationLimit;
+            } catch (ArithmeticException e) {
+                return false;
+            }
+        }
+        return false;
+    }
 
     /**
      * Policy method for the GraalVM compiler loop optimizer.

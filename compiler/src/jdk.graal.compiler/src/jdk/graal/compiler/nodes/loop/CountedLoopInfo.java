@@ -24,9 +24,11 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.common.util.UnsignedLong;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -35,13 +37,19 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.LoopEndNode;
+import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
@@ -57,6 +65,7 @@ import jdk.graal.compiler.nodes.util.SignedIntegerHelper;
 import jdk.graal.compiler.nodes.util.UnsignedIntegerHelper;
 import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.graal.compiler.truffle.nodes.TruffleSafepointNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -150,22 +159,46 @@ public class CountedLoopInfo {
      */
     protected final boolean unsigned;
 
-    protected CountedLoopInfo(Loop loop, InductionVariable limitCheckedIV, IfNode ifNode, ValueNode limit, boolean isLimitIncluded, AbstractBeginNode body, boolean unsigned) {
-        assert limitCheckedIV.direction() != null;
+    private final InductionVariable bodyUsedIV;
+
+    /**
+     * @see #getTripCountLimit()
+     */
+    private final ValueNode tripCountLimit;
+
+    /**
+     * Determines if the {@link InductionVariable} {@link #getBodyIV()} and
+     * {@link #getLimitCheckedIV()} can have different signs and we are an inverted loops. Together
+     * with unsigned loops this can cause problems. See
+     * {@link Loop#invertedLoopComplexSignednessRange(Loop.IfPosition, jdk.graal.compiler.core.common.calc.Condition, InductionVariable, boolean)}
+     * for details.
+     */
+    private boolean invertedLoopComplexSignednessRange;
+
+    @SuppressWarnings("this-escape")
+    protected CountedLoopInfo(Loop loop, InductionVariable limitedCheckedIV, InductionVariable bodyUsedIV, IfNode ifNode, ValueNode limit, ValueNode tripCountLimit,
+                    boolean isLimitIncluded,
+                    AbstractBeginNode body,
+                    boolean unsigned, boolean invertedLoopComplexSignednessRange) {
+        assert limitedCheckedIV.direction() != null;
         this.loop = loop;
-        this.limitCheckedIV = limitCheckedIV;
+        this.limitCheckedIV = limitedCheckedIV;
         this.limit = limit;
         this.isLimitIncluded = isLimitIncluded;
         this.body = body;
         this.ifNode = ifNode;
         this.unsigned = unsigned;
+        this.bodyUsedIV = bodyUsedIV;
+        this.tripCountLimit = tripCountLimit;
+        this.invertedLoopComplexSignednessRange = invertedLoopComplexSignednessRange;
+        assert !isInverted() || emptyInvertedCountedBackedge() : "Backedge must be empty to be a pure tail counted loop " + loop.loopBegin();
     }
 
     /**
      * See {@link InductionVariable#structuralIntegrityValid()}.
      */
     public boolean countedIntegrityValid() {
-        return limitCheckedIV.structuralIntegrityValid() && limit.isAlive() && body.isAlive() && ifNode.isAlive();
+        return limitCheckedIV.structuralIntegrityValid() && limit.isAlive() && body.isAlive() && ifNode.isAlive() && bodyUsedIV.structuralIntegrityValid() && tripCountLimit.isAlive();
     }
 
     /**
@@ -210,9 +243,8 @@ public class CountedLoopInfo {
      *         {@link CountedLoopInfo#isInverted()} returns {@code false} this returns the same as
      *         {@link CountedLoopInfo#getLimitCheckedIV()}.
      */
-    protected InductionVariable getBodyIV() {
-        assert !isInverted() && getLimitCheckedIV() == limitCheckedIV : "Only inverted loops must have different body ivs.";
-        return limitCheckedIV;
+    public InductionVariable getBodyIV() {
+        return bodyUsedIV;
     }
 
     /**
@@ -297,8 +329,7 @@ public class CountedLoopInfo {
      * we distinguish between those two concepts.
      */
     public ValueNode getTripCountLimit() {
-        assert !isInverted() && getLimit() == limit : "Only inverted loops must have a different trip count limit";
-        return limit;
+        return tripCountLimit;
     }
 
     private void assertNoOverflow() {
@@ -350,7 +381,7 @@ public class CountedLoopInfo {
      * @param assumeLoopEntered if true the check that the loop is entered at all will be omitted.
      *
      */
-    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
+    public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimitNode) {
         assertNoOverflow();
         StructuredGraph graph = getLimitCheckedIV().valueNode().graph();
         Stamp stamp = getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
@@ -361,13 +392,13 @@ public class CountedLoopInfo {
         final InductionVariable.Direction direction = getLimitCheckedIV().direction();
         if (direction == InductionVariable.Direction.Up) {
             absStride = getLimitCheckedIV().strideNode();
-            max = tripCountLimit;
+            max = tripCountLimitNode;
             min = initNode;
         } else {
             assert direction == InductionVariable.Direction.Down : "direction must be down if its not up - else loop should not be counted " + direction;
             absStride = NegateNode.create(getLimitCheckedIV().strideNode(), NodeView.DEFAULT);
             max = initNode;
-            min = tripCountLimit;
+            min = tripCountLimitNode;
         }
         ValueNode range = BinaryArithmeticNode.sub(max, min);
 
@@ -453,6 +484,9 @@ public class CountedLoopInfo {
      * @return false if the loop can definitely not be entered, true otherwise
      */
     public boolean loopMightBeEntered() {
+        if (isInverted()) {
+            return true;
+        }
         Stamp stamp = getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
 
         ValueNode max;
@@ -599,7 +633,19 @@ public class CountedLoopInfo {
         return body;
     }
 
+    /**
+     * Returns the path exiting the loop at the counted exit check. Note that this is not
+     * necessarily a {@link LoopExitNode} for reasons explained at {@link CFGLoop#getLoopExits()}.
+     * Optimizations that re-wire the control flow should check if this is an actual exit node.
+     */
     public AbstractBeginNode getCountedExit() {
+        if (isInverted()) {
+            AbstractBeginNode trueSucc = getLimitTest().trueSuccessor();
+            if (loop.isCfgLoopExit(trueSucc)) {
+                return trueSucc;
+            }
+            return getLimitTest().falseSuccessor();
+        }
         if (getLimitTest().trueSuccessor() == getBody()) {
             return getLimitTest().falseSuccessor();
         } else {
@@ -862,6 +908,98 @@ public class CountedLoopInfo {
     }
 
     public boolean isInverted() {
-        return false;
+        return body == loop.loopBegin();
     }
+
+    public static boolean backedgeSkippableNode(Node backEdgeNode) {
+        return backEdgeNode instanceof FullInfopointNode || backEdgeNode instanceof SafepointNode ||
+                        backEdgeNode instanceof TruffleSafepointNode;
+    }
+
+    public void setInvertedLoopComplexSignednessRange(boolean invertedLoopComplexSignednessRange) {
+        this.invertedLoopComplexSignednessRange = invertedLoopComplexSignednessRange;
+    }
+
+    public boolean isInvertedLoopComplexSignednessRange() {
+        return isInverted() && unsigned && invertedLoopComplexSignednessRange;
+    }
+
+    public boolean assertUnsignedIVsAreSane() {
+        assert !isInverted() || !unsigned || !invertedLoopComplexSignednessRange || assertBodyAndLimitIVSignedness();
+        return true;
+    }
+
+    public boolean assertBodyAndLimitIVSignedness() {
+        if (bodyUsedIV == limitCheckedIV) {
+            return true;
+        }
+        final ValueNode bodyIVInit = bodyUsedIV.initNode();
+        final ValueNode limitCheckedIVInit = limitCheckedIV.initNode();
+        final IntegerStamp bodyIVInitStamp = (IntegerStamp) bodyIVInit.stamp(NodeView.DEFAULT);
+        final IntegerStamp limitCheckedIVInitStamp = (IntegerStamp) limitCheckedIVInit.stamp(NodeView.DEFAULT);
+        /*
+         * If the body is negative the limit one must be as well.
+         */
+        boolean bodyNegative = bodyIVInitStamp.canBeNegative();
+        if (bodyNegative) {
+            boolean limitNegative = limitCheckedIVInitStamp.canBeNegative();
+            assert limitNegative : "Limit Checked IV must have same signedness as body iv, body=" + bodyUsedIV + " limit=" + limitCheckedIV;
+        }
+        return true;
+    }
+
+    /**
+     * Determine if the given inverted loop has code on the loop's inverted backedge that is not in
+     * its pure tail position. Consider the following loop
+     *
+     * <pre>
+     * int phi = 0;
+     * int limit = 100;
+     * if (phi < limit) {
+     *     while (true) {
+     *         body();
+     *         phi++;
+     *         if (phi < limit) {
+     *             floatingOperationAnchoredOnPrevBegin();
+     *             continue;
+     *         } else {
+     *             break;
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * The {@code floatingOperationAnchoredOnPrevBegin();} is not in its strict tail position. This
+     * can be a problem for optimizations that create proxies for different values inside an
+     * inverted loop including unrolling, strip mining etc.
+     *
+     */
+    public boolean emptyInvertedCountedBackedge() {
+        if (isInverted()) {
+            IfNode limitTest = getLimitTest();
+            AbstractBeginNode countedExit = getCountedExit();
+            AbstractBeginNode backEdge = limitTest.trueSuccessor() == countedExit ? limitTest.falseSuccessor() : limitTest.trueSuccessor();
+            if (backEdge.hasAnchored()) {
+                // floating nodes anchored on the backedge position
+                return false;
+            }
+            // skip the begin node
+            FixedNode backEdgeNode = backEdge.next();
+            while (true) { // TERMINATION ARGUMENT: processing fixed set of next nodes until a loop
+                           // end node is reached, abort earlier if another node is found
+                CompilationAlarm.checkProgress(limitTest.graph());
+                if (backEdgeNode instanceof LoopEndNode) {
+                    break;
+                } else if (backedgeSkippableNode(backEdgeNode)) {
+                    backEdgeNode = ((FixedWithNextNode) backEdgeNode).next();
+                } else {
+                    // fixed nodes between the loop exit condition and the backedge jump that cannot
+                    // be safely skipped
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
 }

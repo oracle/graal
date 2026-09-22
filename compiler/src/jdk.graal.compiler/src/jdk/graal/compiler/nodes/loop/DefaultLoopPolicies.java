@@ -59,6 +59,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.ProfileData;
@@ -74,6 +75,9 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
+import jdk.graal.compiler.vector.phases.LoopVectorizationAnalysis;
+import jdk.graal.compiler.vector.phases.VectorLoopUtility;
 
 public class DefaultLoopPolicies implements LoopPolicies {
 
@@ -105,7 +109,44 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> ExactPartialUnrollMaxNodes = new OptionKey<>(200);
 
         @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
+        @Option(help = "Allow inversion of vectorizable loops.", type = OptionType.Debug) public static final OptionKey<Boolean> InvertVectorizableLoops = new OptionKey<>(false);
+        @Option(help = "Allow inversion of loops with multiple backedges.", type = OptionType.Debug) public static final OptionKey<Boolean> InvertMultiEndLoops = new OptionKey<>(false);
+        @Option(help = "Allow inversion of non-leaf loops.", type = OptionType.Debug) public static final OptionKey<Boolean> InvertNonLeafLoops = new OptionKey<>(false);
         // @formatter:on
+    }
+
+    @Override
+    public boolean shouldInvert(Loop loop, IfNode controlSplit, CoreProviders providers) {
+        if (!LoopInversionPhase.canInvert(loop)) {
+            return false;
+        }
+        if (!loop.loopBegin().isNonCountedStripMinedInner()) {
+            if (!Options.InvertMultiEndLoops.getValue(controlSplit.getOptions())) {
+                /*
+                 * Loop inversion and multi-end loops: Inverting multi-end loops can cause
+                 * performance slowdowns. This can happen because inverting such loops requires to
+                 * merge the loop ends. If a loop has a very short fast-path inside the loop before
+                 * inversion, the merging of loop ends after inversion can result in the fast path
+                 * now needing to perform an additional jump (to the merge before jumping to the
+                 * header again). This can create performance slowdowns.
+                 */
+                if (loop.loopBegin().getLoopEndCount() > 1) {
+                    return false;
+                }
+            }
+        }
+        if (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop()) {
+            // Do not invert pre or post loops
+            return false;
+        }
+        if (!Options.InvertNonLeafLoops.getValue(controlSplit.getOptions()) && !loop.getCFGLoop().getChildren().isEmpty()) {
+            return false;
+        }
+        if (!Options.InvertVectorizableLoops.getValue(controlSplit.getOptions()) && VectorLoopUtility.Options.RespectVectorization.getValue(controlSplit.getOptions()) &&
+                        LoopVectorizationAnalysis.detectVectorizableLoop(loop, true, providers) != null) {
+            return false;
+        }
+        return true;
     }
 
     @Override

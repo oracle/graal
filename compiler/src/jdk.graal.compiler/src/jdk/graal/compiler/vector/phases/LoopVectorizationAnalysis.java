@@ -132,7 +132,7 @@ import jdk.graal.compiler.nodes.loop.DerivedInductionVariable;
 import jdk.graal.compiler.nodes.loop.DerivedOffsetInductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.Loop;
-import jdk.graal.compiler.nodes.loop.OriginalLimitCheckedIV;
+import jdk.graal.compiler.loop.phases.CountedStripMiningUtility;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.FloatableThreadLocalAccess;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
@@ -695,11 +695,7 @@ public final class LoopVectorizationAnalysis {
     private static boolean isCounterIVHiddenBehindStripMining(Loop loop, InductionVariable currentIV, InductionVariable counterIV) {
         return loop.loopBegin().isCountedStripMinedInner() && loop.parent() != null && currentIV instanceof DerivedOffsetInductionVariable offsetIV &&
                         offsetIV.getBase() == counterIV && offsetIV.valueNode() instanceof AddNode &&
-                        isOriginalLimitCheckedIV(offsetIV.getOffset(), loop.parent());
-    }
-
-    private static boolean isOriginalLimitCheckedIV(ValueNode value, Loop loop) {
-        return loop.loopBegin().isCountedStripMinedOuter() && value instanceof OriginalLimitCheckedIV && value instanceof ValuePhiNode phi && phi.merge() == loop.loopBegin();
+                        CountedStripMiningUtility.isOriginalLimitCheckedIV(offsetIV.getOffset(), loop.parent());
     }
 
     /**

@@ -39,6 +39,7 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -303,7 +304,9 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
     @Override
     protected Suites createSuites(OptionValues opts) {
-        Suites suites = super.createSuites(opts).copy();
+        // Keep loop inversion out of checks that inspect the partial-unroll main loop.
+        OptionValues options = new OptionValues(opts, LoopInversionPhase.Options.LoopInversion, false);
+        Suites suites = super.createSuites(options).copy();
         PhaseSuite<MidTierContext> mid = suites.getMidTier();
         ListIterator<BasePhase<? super MidTierContext>> iter = mid.findPhase(LoopPartialUnrollPhase.class);
         BasePhase<? super MidTierContext> partialUnoll = iter.previous();

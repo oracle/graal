@@ -38,8 +38,10 @@ import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.LoopEndNode;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
@@ -342,6 +344,43 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         return loopIsInIterationRange(loop, IntegerRangeDistance);
     }
 
+    /**
+     * Determines if the compiler's optimizer believes this is a lightweight loop. The compiler
+     * removes safepoint polls on loop ends for loops that iterate over the {@code 32 bit int}
+     * range. This is a heuristic and a trade-off between latency and throughput because long
+     * running loops without safepoint polls increase the time-to-safepoint.
+     */
+    public static boolean loopIsLightweight(Loop loop, ScheduleResult schedule) {
+        /*
+         * The estimation of loop wall clock time in cycles is done by using the frequencies
+         * computed by the control flow graph. Since we do not want a single loop delaying
+         * safepoints too much we need to take the local loop frequency for all the code inside the
+         * loop. It does not matter what the frequency to the start block is. Whenever we execute a
+         * loop, it alone must not increase the time to safepoint too much.
+         */
+        final double loopEntryFrequency = schedule.blockFor(loop.loopBegin().forwardEnd()).getRelativeFrequency();
+        double cost = 0;
+        for (Node node : loop.whole().nodes()) {
+            HIRBlock block = schedule.getNodeToBlockMap().get(node);
+            // phis are not scheduled with all scheduling strategies
+            if (block != null) {
+                final double loopLocalFrequency = block.getRelativeFrequency() / loopEntryFrequency;
+                cost += node.estimatedNodeCycles().value * loopLocalFrequency;
+            }
+        }
+        return cost <= MAX_NON_SAFEPOINT_LOOP_TIME;
+    }
+
+    /**
+     * Maximum number of cycles for a loop to execute before another safepoint is reached. We assume
+     * on a 4 GHz machine the time-to-safepoint should never be more than 1 millisecond. 4 GHz means
+     * 4*10^9 Hz / second. So divided by 1000ms we get the number of cycles per MS the loop should
+     * not exceed.
+     */
+    //@formatter:off
+    private static final double MAX_NON_SAFEPOINT_LOOP_TIME = 4D * Math.pow(10D, 9D)/* == 4 GHz */ / 1000D /* ms */;
+    //@formatter:on
+
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.unlessRunAfter(this, GraphState.StageFlag.LOOP_OVERFLOWS_CHECKED, graphState);
@@ -355,10 +394,17 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     public static class SafepointOptimizer {
         private final StructuredGraph graph;
         private final MidTierContext context;
+        private final boolean simulateOnly;
 
         public SafepointOptimizer(StructuredGraph graph, MidTierContext context) {
+            this(graph, context, false);
+        }
+
+        /** Creates an optimizer that can either apply or conservatively simulate safepoint removal. */
+        public SafepointOptimizer(StructuredGraph graph, MidTierContext context, boolean simulateOnly) {
             this.graph = graph;
             this.context = context;
+            this.simulateOnly = simulateOnly;
         }
 
         /**
@@ -557,6 +603,10 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
          * that we can drop the safepoint because the body of the loop executes quickly enough.
          */
         public boolean loopIsInBriefRange(Loop loop) {
+            if (simulateOnly) {
+                int innerLoopTrips = CountedStripMiningPhase.Options.CountedStripMiningInnerLoopTrips.getValue(loop.loopBegin().getOptions());
+                return loopIsInIterationRange(loop, innerLoopTrips);
+            }
             return iterationRangeIsIn32Bit(loop);
         }
 

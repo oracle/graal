@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.test;
 import java.util.EnumSet;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import org.junit.Assert;
@@ -96,10 +97,13 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
         }
 
         ResolvedJavaMethod method = getResolvedJavaMethod("multiExitGuardTest");
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, true), method, EnumSet.of(DeoptimizationReason.NullCheckException), null,
+        // Keep loop peeling out of deoptimization-count checks focused on guard movement.
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, ConditionalEliminationPhase.Options.MoveGuardsUpwards, true), method, EnumSet.of(
+                        DeoptimizationReason.NullCheckException), null,
                         0, 41, null);
         resetCache();
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, false), method, EnumSet.of(DeoptimizationReason.NullCheckException), null,
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, ConditionalEliminationPhase.Options.MoveGuardsUpwards, false), method, EnumSet.of(
+                        DeoptimizationReason.NullCheckException), null,
                         0, 41, null);
     }
 
@@ -130,9 +134,11 @@ public class MoveGuardsLoopTest extends GraalCompilerTest {
         // check that we deopt, in this case we should optimize the guard into and before the loop
         // since it will unconditionally deopt
         ResolvedJavaMethod method = getResolvedJavaMethod("multiExitGuardTest2");
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, true), method, EnumSet.noneOf(DeoptimizationReason.class), null, 0, null);
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, ConditionalEliminationPhase.Options.MoveGuardsUpwards, true), method, EnumSet.noneOf(
+                        DeoptimizationReason.class), null, 0, null);
         resetCache();
-        executeActualCheckDeopt(new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.MoveGuardsUpwards, false), method, EnumSet.noneOf(DeoptimizationReason.class), null, 0, null);
+        executeActualCheckDeopt(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, ConditionalEliminationPhase.Options.MoveGuardsUpwards, false), method, EnumSet.noneOf(
+                        DeoptimizationReason.class), null, 0, null);
         resetCache();
     }
 
