@@ -32,6 +32,7 @@ import java.util.Objects;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -68,9 +69,12 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
     public final AssignedLocation[] fixedParameterAssignment;
     public final AssignedLocation[] returnSaving;
     public final SubstrateCallingConventionArgumentKind[] parameterKinds;
+    public final AssignedLocation[] additionalReturnAssignments;
+    public final JavaKind[] additionalReturnKinds;
 
     public final boolean destroysCallerSavedRegisters;
     public final boolean mayBeVarargs;
+    private final boolean unknownNativeABI;
 
     static final EnumMap<SubstrateCallingConventionKind, SubstrateCallingConventionType> outgoingTypes;
     static final EnumMap<SubstrateCallingConventionKind, SubstrateCallingConventionType> incomingTypes;
@@ -90,18 +94,22 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
 
     private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing) {
         this(kind, outgoing, AssignedLocation.EMPTY_ARRAY, AssignedLocation.EMPTY_ARRAY,
-                        SubstrateCallingConventionArgumentKind.EMPTY_ARRAY, true, true);
+                        SubstrateCallingConventionArgumentKind.EMPTY_ARRAY, AssignedLocation.EMPTY_ARRAY, new JavaKind[0], true, true, kind.isNativeABI());
     }
 
     private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing, AssignedLocation[] fixedRegisters, AssignedLocation[] returnSaving,
-                    SubstrateCallingConventionArgumentKind[] parameterKinds, boolean destroysCallerSavedRegisters, boolean mayBeVarargs) {
+                    SubstrateCallingConventionArgumentKind[] parameterKinds, AssignedLocation[] additionalReturnAssignments, JavaKind[] additionalReturnKinds,
+                    boolean destroysCallerSavedRegisters, boolean mayBeVarargs, boolean unknownNativeABI) {
         this.kind = kind;
         this.outgoing = outgoing;
         this.fixedParameterAssignment = fixedRegisters;
         this.returnSaving = returnSaving;
         this.destroysCallerSavedRegisters = destroysCallerSavedRegisters;
         this.mayBeVarargs = mayBeVarargs;
+        this.unknownNativeABI = unknownNativeABI;
         this.parameterKinds = parameterKinds;
+        this.additionalReturnAssignments = additionalReturnAssignments;
+        this.additionalReturnKinds = additionalReturnKinds;
     }
 
     /**
@@ -112,17 +120,43 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
      */
     public static SubstrateCallingConventionType makeCustom(boolean outgoing, AssignedLocation[] parameters, AssignedLocation[] returns) {
         return new SubstrateCallingConventionType(SubstrateCallingConventionKind.Custom, outgoing, Objects.requireNonNull(parameters), Objects.requireNonNull(returns),
-                        new SubstrateCallingConventionArgumentKind[parameters.length], true, true);
+                        new SubstrateCallingConventionArgumentKind[parameters.length], AssignedLocation.EMPTY_ARRAY, new JavaKind[0], true, true, true);
     }
 
     public static SubstrateCallingConventionType makeCustom(boolean outgoing, AssignedLocation[] parameters, AssignedLocation[] returns,
                     SubstrateCallingConventionArgumentKind[] parameterKinds, boolean destroysCallerSavedRegisters, boolean maybeVarargs) {
         return new SubstrateCallingConventionType(SubstrateCallingConventionKind.Custom, outgoing, Objects.requireNonNull(parameters), Objects.requireNonNull(returns),
-                        parameterKinds, destroysCallerSavedRegisters, maybeVarargs);
+                        parameterKinds, AssignedLocation.EMPTY_ARRAY, new JavaKind[0], destroysCallerSavedRegisters, maybeVarargs, true);
+    }
+
+    public static SubstrateCallingConventionType makeCustom(boolean outgoing, AssignedLocation[] parameters, AssignedLocation[] returns,
+                    SubstrateCallingConventionArgumentKind[] parameterKinds, AssignedLocation[] additionalReturnAssignments, JavaKind[] additionalReturnKinds,
+                    boolean destroysCallerSavedRegisters, boolean maybeVarargs) {
+        return makeCustom(outgoing, parameters, returns, parameterKinds, additionalReturnAssignments, additionalReturnKinds, destroysCallerSavedRegisters, maybeVarargs, true);
+    }
+
+    public static SubstrateCallingConventionType makeCustom(boolean outgoing, AssignedLocation[] parameters, AssignedLocation[] returns,
+                    SubstrateCallingConventionArgumentKind[] parameterKinds, AssignedLocation[] additionalReturnAssignments, JavaKind[] additionalReturnKinds,
+                    boolean destroysCallerSavedRegisters, boolean maybeVarargs, boolean unknownNativeABI) {
+        Objects.requireNonNull(additionalReturnAssignments);
+        Objects.requireNonNull(additionalReturnKinds);
+        if (additionalReturnAssignments.length != additionalReturnKinds.length) {
+            throw new IllegalArgumentException("Additional return assignments/kinds size mismatch");
+        }
+        return new SubstrateCallingConventionType(SubstrateCallingConventionKind.Custom, outgoing, Objects.requireNonNull(parameters), Objects.requireNonNull(returns),
+                        parameterKinds, additionalReturnAssignments, additionalReturnKinds, destroysCallerSavedRegisters, maybeVarargs, unknownNativeABI);
     }
 
     public boolean nativeABI() {
         return kind.isNativeABI();
+    }
+
+    /**
+     * Returns whether this convention uses a native ABI whose register assignments are not fully
+     * described by this object.
+     */
+    public boolean unknownNativeABI() {
+        return unknownNativeABI;
     }
 
     public boolean customABI() {
@@ -200,6 +234,9 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
                 allCandidatesFiltered.remove(fixedParameterAssignment[i].register());
             }
         }
+        for (AssignedLocation additionalReturn : additionalReturnAssignments) {
+            allCandidatesFiltered.remove(additionalReturn.register());
+        }
         return allCandidatesFiltered.stream().map(Register::asValue).toArray(Value[]::new);
     }
 
@@ -212,12 +249,15 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
             return false;
         }
         SubstrateCallingConventionType that = (SubstrateCallingConventionType) o;
-        return outgoing == that.outgoing && kind == that.kind && Arrays.equals(fixedParameterAssignment, that.fixedParameterAssignment) && Arrays.equals(returnSaving, that.returnSaving) &&
-                        Arrays.equals(parameterKinds, that.parameterKinds) && destroysCallerSavedRegisters == that.destroysCallerSavedRegisters && mayBeVarargs == that.mayBeVarargs;
+        return outgoing == that.outgoing && unknownNativeABI == that.unknownNativeABI && kind == that.kind && Arrays.equals(fixedParameterAssignment, that.fixedParameterAssignment) &&
+                        Arrays.equals(returnSaving, that.returnSaving) &&
+                        Arrays.equals(parameterKinds, that.parameterKinds) && Arrays.equals(additionalReturnAssignments, that.additionalReturnAssignments) &&
+                        Arrays.equals(additionalReturnKinds, that.additionalReturnKinds) && destroysCallerSavedRegisters == that.destroysCallerSavedRegisters && mayBeVarargs == that.mayBeVarargs;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(kind, outgoing, Arrays.hashCode(fixedParameterAssignment), Arrays.hashCode(returnSaving), Arrays.hashCode(parameterKinds), destroysCallerSavedRegisters, mayBeVarargs);
+        return Objects.hash(kind, outgoing, unknownNativeABI, Arrays.hashCode(fixedParameterAssignment), Arrays.hashCode(returnSaving), Arrays.hashCode(parameterKinds),
+                        Arrays.hashCode(additionalReturnAssignments), Arrays.hashCode(additionalReturnKinds), destroysCallerSavedRegisters, mayBeVarargs);
     }
 }

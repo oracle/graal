@@ -254,6 +254,34 @@ public final class GraalDirectives {
     }
 
     /**
+     * Returns {@code value} as an {@code int} while allowing the compiler to assume that it was
+     * sign-extended to a {@code long}. The caller must guarantee that this is true.
+     */
+    public static int assumeInt(long value) {
+        return (int) value;
+    }
+
+    /**
+     * Returns the {@code float} represented by the raw bits in {@code value} while allowing the
+     * compiler to assume that those bits were sign-extended to a {@code long}. The caller must
+     * guarantee that this is true.
+     */
+    public static float assumeFloat(long value) {
+        return Float.intBitsToFloat((int) value);
+    }
+
+    /**
+     * Returns a {@code long} whose value must not be observed. When used as an additional return
+     * value, the compiler may leave the corresponding fixed return register unchanged. The
+     * argument identifies the value whose dependency is being killed but does not constrain the
+     * result. In interpreted execution this method returns zero.
+     */
+    @SuppressWarnings("unused")
+    public static long arbitraryValue(long value) {
+        return 0;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
@@ -601,6 +629,14 @@ public final class GraalDirectives {
     }
 
     /**
+     * Invalidates the compiler's cached value for the named final instance field. Dominated field
+     * reads use a new opaque value loaded at this directive instead of a value cached before it.
+     * The receiver must be non-null and {@code fieldName} must be a compile-time constant.
+     */
+    public static void killFieldReadCache(Object receiver, String fieldName) {
+    }
+
+    /**
      * Do nothing, but also make sure the compiler doesn't do any optimizations across this call
      * until the specified {@link StageFlag} has been applied.
      *
@@ -715,6 +751,24 @@ public final class GraalDirectives {
     @SuppressWarnings("unused")
     public static <T> T opaqueUntilAfter(T value, StageFlag stage) {
         return value;
+    }
+
+    /** Anchors {@code value} at this control-flow position while preserving its stamp. */
+    @SuppressWarnings("unused")
+    public static <T> T anchorValue(T value) {
+        return value;
+    }
+
+    /** Anchors {@code value} at this control-flow position. */
+    @SuppressWarnings("unused")
+    public static long anchorValue(long value) {
+        return value;
+    }
+
+    /**
+     * Preserves the frame state at this program point without emitting machine code.
+     */
+    public static void preserveFrameStateHere() {
     }
 
     public static <T> T guardingNonNull(T value) {
