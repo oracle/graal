@@ -120,11 +120,8 @@ public final class LogDecorators {
                 throw new IllegalArgumentException("Invalid empty log decorator.");
             }
             Decorator decorator = Decorator.fromString(item);
-            int decoratorBit = decorator.bit();
-            if ((result & decoratorBit) != 0) {
-                throw new IllegalArgumentException("Duplicate log decorator '" + item + "'.");
-            }
-            result |= decoratorBit;
+            /* A decorator is enabled once even when the configuration names it repeatedly. */
+            result |= decorator.bit();
         }
         return new LogDecorators(result);
     }

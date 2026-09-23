@@ -121,9 +121,9 @@ public final class LogDecorations {
         switch (decorator) {
             case TIME -> {
                 long value = systemMillis();
-                writeDateTime(target, value, LibCHelper.SVM_localUTCOffsetSeconds(value), false);
+                writeDateTime(target, value, LibCHelper.SVM_localUTCOffsetSeconds(value));
             }
-            case UTCTIME -> writeDateTime(target, systemMillis(), 0, true);
+            case UTCTIME -> writeDateTime(target, systemMillis(), 0);
             case UPTIME -> writeRoundedUptime(target, uptimeNanos());
             case TIMEMILLIS -> target.signed(systemMillis()).string("ms");
             case UPTIMEMILLIS -> target.signed(uptimeNanos() / 1_000_000).string("ms");
@@ -158,11 +158,10 @@ public final class LogDecorations {
         return threadLocal ? LogThreadLocal.threadId() : threadId;
     }
 
-    /// Writes an ISO timestamp with millisecond precision, using `Z` for UTC or an explicit local
-    /// offset otherwise.
+    /// Writes an ISO timestamp with millisecond precision and a numeric UTC offset.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/time/LocalDate.java#L346-L379")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L241")
-    private static void writeDateTime(Log target, long systemMillis, int utcOffsetSeconds, boolean utc) {
+    private static void writeDateTime(Log target, long systemMillis, int utcOffsetSeconds) {
         long localSeconds = Math.floorDiv(systemMillis, 1_000) + utcOffsetSeconds;
         long epochDay = Math.floorDiv(localSeconds, SECONDS_PER_DAY);
         int secondOfDay = (int) Math.floorMod(localSeconds, SECONDS_PER_DAY);
@@ -202,15 +201,10 @@ public final class LogDecorations {
         writePadded(target, second, 2);
         target.character('.');
         writePadded(target, millisecondsAfterSecond, 3);
-        if (utc) {
-            target.character('Z');
-        } else {
-            int absoluteOffset = utcOffsetSeconds < 0 ? -utcOffsetSeconds : utcOffsetSeconds;
-            target.character(utcOffsetSeconds < 0 ? '-' : '+');
-            writePadded(target, absoluteOffset / 3_600, 2);
-            target.character(':');
-            writePadded(target, absoluteOffset / 60 % 60, 2);
-        }
+        int absoluteOffset = utcOffsetSeconds < 0 ? -utcOffsetSeconds : utcOffsetSeconds;
+        target.character(utcOffsetSeconds < 0 ? '-' : '+');
+        writePadded(target, absoluteOffset / 3_600, 2);
+        writePadded(target, absoluteOffset / 60 % 60, 2);
     }
 
     /// Writes the rounded uptime representation used by the normal decoration path.

@@ -465,7 +465,7 @@ final class LogAsyncWriter {
         try {
             LogDecorations decorations = writer.consumerDecorations;
             decorations.restore(LogTagSet.VALUES[record.getTagSetOrdinal()], record.getSystemMillis(), record.getSystemNanos(), record.getUptimeNanos(), record.getThreadId());
-            output.write(decorations, recordData(record), record.getMessageLength(), record.getPrefixLength(), LogLevel.VALUES[record.getLevelOrdinal()]);
+            output.write(decorations, recordData(record), record.getMessageLength(), LogLevel.VALUES[record.getLevelOrdinal()]);
             writeDroppedMessages(output);
         } catch (Throwable throwable) {
             /* A failed destination must not terminate the VM-lifetime consumer thread. */
@@ -583,7 +583,6 @@ final class LogAsyncWriter {
                     int lineLength) {
         record.setAllocationSize(allocationSize);
         record.setMessageLength(prefixLength + lineLength);
-        record.setPrefixLength(prefixLength);
         record.setOutputSlot(outputSlot);
         record.setLevelOrdinal(level.ordinal());
         record.setTagSetOrdinal(decorations.getTagSet().ordinal());
