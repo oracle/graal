@@ -22,6 +22,14 @@ reconfigure GC logging at run time. In an image without `-Xlog` support, those
 legacy options enable DEBUG or INFO output for the `gc` tag set on the low-level
 VM log.
 
+The native G1 collector has its own HotSpot logging implementation. SVM forwards
+the synchronized `PrintGC` and `VerboseGC` values so that the native collector
+follows the `gc` threshold configured on standard output, including later
+runtime changes. Native G1 messages still use the collector's standard output
+and formatting. An `-Xlog` file destination, decorators, folding, rotation, or
+asynchronous mode applies only to messages emitted through SVM's Java logging
+routes and is not forwarded to the native collector.
+
 ## Writing log messages
 
 `LogTagSet` provides level-specific methods such as `debug`, `info`, `warning`,
@@ -49,11 +57,14 @@ their prebuilt mutex, then perform the no-transition native write, byte
 accounting, rotation, and reopen in the same kind of critical section. A file
 output discards any preexisting active file contents at startup regardless of
 its rotation configuration; only output from the current process is rotated.
-Consequently, events cannot be interleaved on a destination, file
-rotation cannot occur between an event's lines, and formatting does not hold an
-output lock. The low-level VM log fallback uses the synchronization provided by
-`Log.log()` instead of the stream-output mutex. The safepoint consequences of a
-blocked raw write are described below.
+Consequently, synchronous events cannot be interleaved on a destination, file
+rotation cannot occur between their lines, and formatting does not hold an
+output lock. Asynchronous producers enqueue every line of an event contiguously
+relative to other events, but the consumer writes and applies rotation one line
+at a time, so one asynchronous event can span rotated files. The low-level VM
+log fallback uses the synchronization provided by `Log.log()` instead of the
+stream-output mutex. The safepoint consequences of a blocked raw write are
+described below.
 
 `LogDecorations` is a reusable event record. It captures the wall-clock
 timestamp, isolate uptime, and thread id once before an event is sent to its
@@ -69,11 +80,12 @@ that output is formatted.
 The helper converts that timestamp to local time and follows HotSpot's
 `local_to_UTC` calculation, using `tm_gmtoff` where available and the platform
 timezone value with a daylight-saving adjustment otherwise. On Windows it uses
-the standard timezone value returned by `_get_timezone` and applies the same
-daylight-saving correction. The result has the ISO-8601 local-to-UTC sign and
-avoids Java timezone objects and heap allocation on the event path. A delayed
-asynchronous event therefore uses the DST offset for its event timestamp rather
-than the offset current when the output happens to format it.
+`localtime_s` to obtain the local wall-clock fields for that instant and
+`_mkgmtime64` to reinterpret those fields as UTC, with their difference giving
+the local offset. The result has the ISO-8601 local-to-UTC sign and avoids Java
+timezone objects and heap allocation on the event path. A delayed asynchronous
+event therefore uses the DST offset for its event timestamp rather than the
+offset current when the output happens to format it.
 
 The thread-local message state is not recursive. A tag set must not be logged
 again from the same carrier thread while any message is open, including through
@@ -146,11 +158,18 @@ cycle would be possible:
 3. The VM-operation thread logs a message and waits for `PRODUCER_LOCK`.
 
 `LogAsyncWriter.enqueue` breaks this cycle by using `tryLock` for
-`PRODUCER_LOCK` during a VM operation. After acquiring it, the producer
+`PRODUCER_LOCK` on the VM operation executor. After acquiring it, the producer
 simulates reservations for the complete message under `CONSUMER_LOCK`. Failure
 to acquire the producer lock or reserve the whole message returns `false`, and
-`LogTagSet` writes the same event synchronously. An admitted VM-operation
-message never waits for queue space.
+`LogTagSet` writes the same event synchronously. An admitted executor message
+never waits for queue space. The executor predicate remains true through
+safepoint completion even after the individual operation has been cleared.
+
+Routing reconfiguration blocks new readers while it drains old routes and
+publishes replacement state. If the VM operation executor encounters that block,
+it writes the event to the low-level VM log instead of waiting for a
+configuration thread that may itself be waiting for the operation or safepoint
+to finish.
 
 The remaining queue lock order is acyclic. Producers acquire `PRODUCER_LOCK`
 before `CONSUMER_LOCK`. The consumer acquires only `CONSUMER_LOCK` and releases
@@ -200,13 +219,13 @@ When `-Xlog` is supported, the asynchronous writer is created by
 `LogConfiguration.logInitializationComplete` after command-line parsing and
 legacy-option diagnostics. Disabling logging first stops asynchronous publication
 and drains the writer, then removes all output routes before outputs are closed.
-A stale producer that retained the writer before
-deactivation drops its record instead of accessing an output that may have been
-closed. The consumer and its single queue chunk remain alive across runtime
-logging reconfiguration. Output slots are retained until the queue drains and
-then released. During VM teardown, the queue is drained and the consumer is
-terminated before the chunk is freed and isolate teardown waits for attached
-threads to exit. This is
+A stale producer that retained the writer before deactivation declines
+asynchronous publication and uses the synchronous output path while its routing
+reader scope keeps the destination alive. The consumer and its single queue
+chunk remain alive across runtime logging reconfiguration. Output slots are
+retained until the queue drains and then released. During VM teardown, the queue
+is drained and the consumer is terminated before the chunk is freed and isolate
+teardown waits for attached threads to exit. This is
 required for embedded VMs such as the Native Image `libjvm`, where returning
 from `DestroyJavaVM` destroys the isolate instead of ending the process. Images
 without `-Xlog` support do not create an asynchronous writer.
@@ -309,15 +328,17 @@ paths, with or without the `file=` prefix.
 
 ## File output and failure handling
 
-`LogFileOutput` expands `%p`, `%i`, `%t`, and `%hn`, converts the result to an
-absolute path, prepares the native active and archive paths, and opens the active
-file when the output is created. The `%i` placeholder is an SVM extension that
+`LogFileOutput` expands `%p`, `%i`, `%t`, and `%hn`, retains the resulting path
+as specified, prepares the native active and archive paths, and opens the active
+file when the output is created. Relative paths therefore remain relative. The
+`%i` placeholder is an SVM extension that
 expands to the current isolate ID, allowing isolates in the same process to use
 distinct output files; `%p` alone identifies only the process. File output does
 not create missing parent directories. If opening fails, it emits an emergency
 diagnostic containing the path and native error code, leaves the output
-configured, and does not abort the VM. A later event for an output whose
-descriptor is unavailable is safely ignored.
+configured, and does not abort the VM. Each later event whose descriptor is
+still unavailable retries opening the active file before safely skipping its
+write when the retry fails.
 
 Normal writes use the platform-specific `RawFileOperationSupport` implementation;
 `LoggingSupport` supplies the platform-specific archive delete and rename

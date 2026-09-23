@@ -27,7 +27,7 @@ package com.oracle.svm.core.logging;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMOperationControl;
 
 /// Tracks the destinations configured for one tag set.
 ///
@@ -128,13 +128,15 @@ public final class LogOutputList {
         return outputsByLevel[level.ordinal()];
     }
 
-    /// Starts a lock-free read and returns one coherent routing snapshot. A VM operation returns
-    /// `null` when reconfiguration has blocked readers because the thread that must unblock them
-    /// may be stopped at the VM operation's safepoint.
+    /// Starts a lock-free read and returns one coherent routing snapshot. The VM operation executor
+    /// returns `null` when reconfiguration has blocked readers because the thread that must unblock
+    /// them may be waiting for the operation to finish. The executor remains special until it
+    /// releases the VM operation mutex, including while completing a safepoint after the current
+    /// operation has been cleared.
     LogOutput[][] startReading() {
         for (;;) {
             while (readersBlocked) {
-                if (VMOperation.isInProgress()) {
+                if (VMOperationControl.mayExecuteVmOperations()) {
                     return null;
                 }
                 Thread.onSpinWait();

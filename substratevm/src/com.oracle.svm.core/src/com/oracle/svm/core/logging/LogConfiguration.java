@@ -382,14 +382,6 @@ public final class LogConfiguration {
         }
     }
 
-    /// Returns whether `key` is a direct runtime legacy GC update that the collector must observe.
-    /// During startup the native G1 argument parser has already processed the complete command
-    /// line, and synchronization from `-Xlog` must not replace that richer configuration.
-    public static boolean shouldForwardLegacyGCOptionToHeap(NotifyGCRuntimeOptionKey<?> key) {
-        boolean legacyLoggingOption = key == SubstrateGCOptions.PrintGC || key == SubstrateGCOptions.VerboseGC;
-        return !legacyLoggingOption || initializationComplete && !synchronizingLegacyGCOptions;
-    }
-
     /// Derives the GC threshold represented by the legacy options.
     private static LogLevel legacyGCLogLevel() {
         return SubstrateGCOptions.VerboseGC.getValue() ? LogLevel.DEBUG : SubstrateGCOptions.PrintGC.getValue() ? LogLevel.INFO : LogLevel.OFF;
@@ -418,8 +410,9 @@ public final class LogConfiguration {
         }
     }
 
-    /// Preserves a VM operation diagnostic when route reconfiguration has blocked normal readers.
-    /// The low-level VM log remains available without retaining mutable unified logging state.
+    /// Preserves a VM operation executor diagnostic when route reconfiguration has blocked normal
+    /// readers. The low-level VM log remains available without retaining mutable unified logging
+    /// state.
     static void writeVMOperationReconfigurationFallback(LogTagSet tagSet, LogMessage message) {
         LogDecorations decorations = LogDecorations.capture(LogDecorators.DEFAULT);
         vmlog.write(tagSet, decorations, message, LogLevel.TRACE);

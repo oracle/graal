@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,6 +61,7 @@ import com.oracle.svm.core.logging.LogSelection;
 import com.oracle.svm.core.logging.LogSelectionList;
 import com.oracle.svm.core.logging.LogTag;
 import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.core.logging.NativeMemoryLog;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
@@ -77,7 +79,8 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "-H:-UnlockExperimentalVMOptions",
                 "--add-exports=jdk.jfr/jdk.jfr.internal=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.option=ALL-UNNAMED",
-                "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.jdk=ALL-UNNAMED"
+                "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.jdk=ALL-UNNAMED",
+                "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.log=ALL-UNNAMED"
 })
 @SuppressWarnings("static-method")
 public final class UnifiedLoggingTest {
@@ -383,7 +386,8 @@ public final class UnifiedLoggingTest {
             checkContains(standaloneOutput, "][jfr,event] JFR event line 1", "the standalone event threshold should admit INFO records");
             checkContains(standaloneOutput, "][jfr,event] JFR event line 2", "standalone event routing should write every event line");
             checkNotContains(standaloneOutput, "][jfr,event] null", "standalone event routing should skip null entries");
-            checkContains(read(eventLogFile), "JFR event line 1\nJFR event line 2\n", "unified event routing should preserve one contiguous multiline message");
+            String separator = System.lineSeparator();
+            checkContains(read(eventLogFile), "JFR event line 1" + separator + "JFR event line 2" + separator, "unified event routing should preserve one contiguous multiline message");
             checkNotContains(read(eventLogFile), "null", "unified event routing should skip null entries");
         } finally {
             LogConfiguration.disableLogging();
@@ -506,10 +510,70 @@ public final class UnifiedLoggingTest {
         }
 
         String output = read(logFile);
+        String separator = System.lineSeparator();
         for (String prefix : new String[]{"first", "second"}) {
-            String block = prefix + " line 1\n" + prefix + " line 2\n" + prefix + " line 3\n";
+            String block = prefix + " line 1" + separator + prefix + " line 2" + separator + prefix + " line 3" + separator;
             checkContains(output, block, "concurrent event should remain contiguous for " + prefix);
         }
+        LogConfiguration.disableLogging();
+        delete(logFile);
+    }
+
+    /// Verifies that indentation on one shared message facade does not affect another thread.
+    @Test
+    public void testMessageIndentationIsThreadLocal() throws Exception {
+        String logFile = testLogFile("thread-local-indentation");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + logFile + ":none"), "indentation test configuration should be accepted");
+
+        CountDownLatch indentationSet = new CountDownLatch(1);
+        CountDownLatch releaseIndentedMessage = new CountDownLatch(1);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread indentedThread = new Thread(() -> {
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                NativeMemoryLog line = message.debug();
+                line.string("indented line 1");
+                line.indent(true);
+                line.string("indented line 2");
+                line.newline();
+                line.string("indented line 3");
+                indentationSet.countDown();
+                releaseIndentedMessage.await();
+            } catch (Throwable throwable) {
+                failure.set(throwable);
+                indentationSet.countDown();
+            }
+        });
+        Thread unindentedThread = new Thread(() -> {
+            try {
+                checkTrue(indentationSet.await(5, TimeUnit.SECONDS), "the indented thread should reach its logging scope");
+                try (LogMessage message = LogTagSet.class_load.message()) {
+                    NativeMemoryLog line = message.debug();
+                    line.string("unindented line 1");
+                    line.newline();
+                    line.string("unindented line 2");
+                }
+            } catch (Throwable throwable) {
+                failure.set(throwable);
+            }
+        });
+        try {
+            indentedThread.start();
+            unindentedThread.start();
+            unindentedThread.join();
+        } finally {
+            releaseIndentedMessage.countDown();
+            indentedThread.join();
+            unindentedThread.join();
+        }
+        if (failure.get() != null) {
+            throw new AssertionError("concurrent indentation test failed", failure.get());
+        }
+        String output = read(logFile);
+        String separator = System.lineSeparator();
+        checkContains(output, "unindented line 1" + separator + "unindented line 2", "another thread should retain zero indentation");
+        checkContains(output, "indented line 1" + separator + "  indented line 2" + separator + "  indented line 3", "message newlines should retain indentation");
         LogConfiguration.disableLogging();
         delete(logFile);
     }
@@ -890,6 +954,30 @@ public final class UnifiedLoggingTest {
             LogConfiguration.disableLogging();
         }
         checkTrue(completedWhileReadersBlocked, "VM operation logging should bypass a blocked route transition");
+    }
+
+    /// Verifies that safepoint completion does not wait for a route transition whose allocating
+    /// configuration thread may be waiting for the safepoint operation to finish.
+    @Test
+    public void testSafepointCompletionLoggingDuringRouteTransition() throws InterruptedException {
+        LogConfiguration.disableLogging();
+        TestLogOutput output = new TestLogOutput("safepoint-route-transition-output");
+        Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.safepoint;
+        Target_com_oracle_svm_core_logging_LogOutputList outputList = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) tagSet.outputList();
+        outputList.setOutputLevel(output, LogLevel.INFO);
+        Thread gcThread = new Thread(System::gc);
+        boolean completedWhileReadersBlocked;
+        outputList.readersBlocked = true;
+        try {
+            gcThread.start();
+            gcThread.join(5_000);
+            completedWhileReadersBlocked = !gcThread.isAlive();
+        } finally {
+            outputList.readersBlocked = false;
+            gcThread.join();
+            LogConfiguration.disableLogging();
+        }
+        checkTrue(completedWhileReadersBlocked, "safepoint completion logging should bypass a blocked route transition");
     }
 
     /// Verifies quoted file names, file-size parsing, folding, rotation, and invalid options.
