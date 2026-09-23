@@ -50,6 +50,7 @@ import jdk.graal.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
@@ -96,8 +97,12 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new OptimizeOffsetAddressPhase(canonicalizerWithGVN));
 
-        appendPhase(new FixReadsPhase(true,
-                        new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
+        if (PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options)) {
+            appendPhase(new FixReadsPhase(true, new PartialRedundancySchedulePhase()));
+        } else {
+            appendPhase(new FixReadsPhase(true,
+                            new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
+        }
 
         if (GraalOptions.OptReadElimination.getValue(options)) {
             appendPhase(new LowTierReadEliminationPhase(canonicalizerWithoutGVN));

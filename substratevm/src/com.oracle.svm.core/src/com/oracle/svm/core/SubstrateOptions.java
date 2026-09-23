@@ -102,6 +102,7 @@ import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase;
 import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
@@ -361,6 +362,9 @@ public class SubstrateOptions {
         /* Control flow duplication almost always increases code size. */
         disable(GraalOptions.OptDuplication, values);
         disable(PullThroughPhiPhase.Options.OptPullThroughPhi, values);
+
+        /* Partial redundancy scheduling duplicates operations and can increase code size. */
+        disable(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling, values);
 
         /*
          * Expanding checkcasts for performance increases code size.
