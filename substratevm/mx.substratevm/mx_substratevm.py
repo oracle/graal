@@ -262,6 +262,7 @@ GraalTags = Tags([
     'terminus',
     'debuginfotest',
     'standalone_pointsto_unittests',
+    'driver_unittests',
     'native_unittests',
     'generic_field_type',
     'runtime_assertions',
@@ -564,6 +565,10 @@ def svm_gate_body(args, tasks):
             else:
                 standalone_pointsto_unittest(['espresso'])
                 standalone_pointsto_unittest(['host'])
+
+    with Task('driver unittests', tasks, tags=[GraalTags.driver_unittests]) as t:
+        if t:
+            jvm_unittest_distribution('SVM_DRIVER_TESTS')
 
     with Task('native unittests', tasks, tags=[GraalTags.native_unittests, GraalTags.all_native_unittests]) as t:
         if t:
@@ -1540,6 +1545,15 @@ def _native_unittest(native_image, cmdline_args, custom_batch=None):
 
 def jvm_unittest(args):
     return mx_unittest.unittest(['--suite', 'substratevm'] + args)
+
+
+def jvm_unittest_distribution(distribution_name):
+    distribution = mx.distribution(distribution_name)
+    candidates = mx_unittest.find_test_candidates(['@Theory', '@Test', '@Parameters'], suite, get_jdk())
+    test_classes = sorted(test_class for test_class, dependency in candidates.items() if dependency == distribution)
+    if not test_classes:
+        mx.abort(f'No unit tests found in {distribution_name}. Did you forget to run "mx build"?')
+    return jvm_unittest(test_classes)
 
 
 @mx.command(suite_name=suite.name, command_name='standalone-pointsto-unittest', usage_msg='[host|espresso] [test-spec] [analysis-option ...]')
@@ -4080,6 +4094,8 @@ class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
             '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
             '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
             '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.core.common.util=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
             '--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED',
             '--add-exports=jdk.graal.compiler/jdk.graal.compiler.util.json=ALL-UNNAMED',
             '--add-exports=java.base/jdk.internal.module=jdk.graal.compiler.vmaccess',

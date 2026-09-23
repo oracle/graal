@@ -37,21 +37,22 @@ Use reachability metadata instead.
 These deprecated URL protocol options are omitted from the generated table; see [URL Protocols in Native Image](URLProtocols.md).
 
 <!-- BEGIN: build-options-table -->
+
 | Command | Type | Description | Default | Usage |
 |---------|------|-------------|---------|-------|
-| `--add-exports` | String | value <module>/<package>=<target-module>(,<target-module>)* updates <module> to export <package> to <target-module>, regardless of module declaration. <target-module> can be ALL-UNNAMED to export to all unnamed modules. | None | `--add-exports=add-exports` |
-| `--add-opens` | String | value <module>/<package>=<target-module>(,<target-module>)* updates <module> to open <package> to <target-module>, regardless of module declaration. | None | `--add-opens=add-opens` |
-| `--add-reads` | String | value <module>=<target-module>(,<target-module>)* updates <module> to read <target-module>, regardless of module declaration. <target-module> can be ALL-UNNAMED to read all unnamed modules. | None | `--add-reads=add-reads` |
+| `--add-exports` | String | value &lt;module&gt;/&lt;package&gt;=&lt;target-module&gt;(,&lt;target-module&gt;)* updates &lt;module&gt; to export &lt;package&gt; to &lt;target-module&gt;, regardless of module declaration. &lt;target-module&gt; can be ALL-UNNAMED to export to all unnamed modules. | None | `--add-exports=add-exports` |
+| `--add-opens` | String | value &lt;module&gt;/&lt;package&gt;=&lt;target-module&gt;(,&lt;target-module&gt;)* updates &lt;module&gt; to open &lt;package&gt; to &lt;target-module&gt;, regardless of module declaration. | None | `--add-opens=add-opens` |
+| `--add-reads` | String | value &lt;module&gt;=&lt;target-module&gt;(,&lt;target-module&gt;)* updates &lt;module&gt; to read &lt;target-module&gt;, regardless of module declaration. &lt;target-module&gt; can be ALL-UNNAMED to read all unnamed modules. | None | `--add-reads=add-reads` |
 | `--color` | String | color build output ('always', 'never', or 'auto') | None | `--color=color` |
 | `--emit` | String | emit additional data as a result of the build. Use 'build-report' to emit a detailed Build Report, for example: '--emit build-report' or '--emit build-report=/tmp/report.html' | None | `--emit=emit` |
 | `--enable-all-security-services` | String | add all security service classes to the generated image. | None | `--enable-all-security-services=enable-all-security-services` |
-| `--enable-monitoring` | String | enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain 'heapdump', 'jfr', 'jvmstat', 'jmxserver' (experimental), 'jmxclient' (experimental), 'threaddump', 'nmt' (experimental), 'jcmd' (experimental), or 'all' (deprecated behavior: defaults to 'all' if no argument is provided). For example: '--enable-monitoring=heapdump,jfr'. | <deprecated-default> | `--enable-monitoring=enable-monitoring` |
+| `--enable-monitoring` | String | enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain 'heapdump', 'jfr', 'jvmstat', 'jmxserver' (experimental), 'jmxclient' (experimental), 'threaddump', 'nmt' (experimental), 'jcmd' (experimental), or 'all' (deprecated behavior: defaults to 'all' if no argument is provided). For example: '--enable-monitoring=heapdump,jfr'. | &lt;deprecated-default&gt; | `--enable-monitoring=enable-monitoring` |
 | `--enable-native-access` | String | a comma-separated list of modules that are permitted to perform restricted native operations. The module name can also be ALL-UNNAMED. | None | `--enable-native-access=enable-native-access` |
 | `--enable-sbom` | String | assemble a Software Bill of Materials (SBOM) for the executable or shared library based on the results from the static analysis. Comma-separated list can contain 'embed' to store the SBOM in data sections of the binary, 'export' to save the SBOM in the output directory, 'classpath' to include the SBOM as a Java resource on the classpath at 'META-INF/native-image/sbom.json', 'hashes' to include component hashes, 'strict' to abort the build if any type (such as a class, interface, or annotation) cannot be matched to an SBOM component or if a component hash could not be created, 'cyclonedx' (the only format currently supported), and 'class-level' to include class-level metadata. Defaults to embedding an SBOM: '--enable-sbom=embed'. To disable the SBOM feature, use '--enable-sbom=false' on the command line. | embed | `--enable-sbom=--enable-sbom` |
 | `--exact-reachability-metadata` | String | enables exact and user-friendly handling of reflection, resources, JNI, and serialization. |  | `--exact-reachability-metadata=exact-reachability-metadata` |
 | `--exact-reachability-metadata-path` | String | trigger exact handling of reflection, resources, JNI, and serialization from all types in the given class-path or module-path entries. | None | `--exact-reachability-metadata-path=exact-reachability-metadata-path` |
 | `--features` | String | a comma-separated list of fully qualified Feature implementation classes | None | `--features=features` |
-| `--future-defaults` | String | enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'. | <default-value> | `--future-defaults=future-defaults` |
+| `--future-defaults` | String | enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'. | &lt;default-value&gt; | `--future-defaults=future-defaults` |
 | `--initialize-at-build-time` | String | a comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages. |  | `--initialize-at-build-time=initialize-at-build-time` |
 | `--initialize-at-run-time` | String | a comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at runtime and not during image building. An empty string is currently not supported. |  | `--initialize-at-run-time=initialize-at-run-time` |
 | `--libc` | String | selects the libc implementation to use. Available implementations: glibc, musl, bionic | None | `--libc=libc` |
@@ -70,21 +71,21 @@ These deprecated URL protocol options are omitted from the generated table; see 
 | `--silent` | String | silence build output | None | `--silent=silent` |
 | `--static` | String | build statically linked executable (requires static libc and zlib) | None | `--static=static` |
 | `--static-nolibc` | String | build statically linked executable with libc dynamically linked | None | `--static-nolibc=static-nolibc` |
-| `--target` | String | selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair. | None | `--target=target` |
+| `--target` | String | selects native-image compilation target (in &lt;OS&gt;-&lt;architecture&gt; format). Defaults to host's OS-architecture pair. | None | `--target=target` |
 | `--trace-object-instantiation` | String | comma-separated list of fully-qualified class names that object instantiation is traced for. | None | `--trace-object-instantiation=trace-object-instantiation` |
 | `-O` | String | control code optimizations: b - optimize for fastest build time, s - optimize for size, 0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance. | None | `-O=-O` |
 | `-Werror` | String | treat warnings as errors and terminate build. | all | `-Werror=-Werror` |
-| `-da` | String | also -da[:[packagename]...\\|:classname] or -disableassertions[:[packagename]...\\|:classname]. Disable assertions with specified granularity at run time. |  | `-da=-da` |
+| `-da` | String | also -da[:[packagename]...\|:classname] or -disableassertions[:[packagename]...\|:classname]. Disable assertions with specified granularity at run time. |  | `-da=-da` |
 | `-dsa` | String | also -disablesystemassertions. Disables assertions in all system classes at run time. | None | `-dsa=-dsa` |
-| `-ea` | String | also -ea[:[packagename]...\\|:classname] or -enableassertions[:[packagename]...\\|:classname]. Enable assertions with specified granularity at run time. |  | `-ea=-ea` |
+| `-ea` | String | also -ea[:[packagename]...\|:classname] or -enableassertions[:[packagename]...\|:classname]. Enable assertions with specified granularity at run time. |  | `-ea=-ea` |
 | `-esa` | String | also -enablesystemassertions. Enables assertions in all system classes at run time. | None | `-esa=-esa` |
 | `-g` | String | generate debugging information | 2 | `-g=-g` |
 | `-march` | String | generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8.1-a' on AArch64. Use -march=compatibility for best compatibility, or -march=native for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use -march=list. | None | `-march=-march` |
 | `-o` | String | name of the output file to be generated | None | `-o=-o` |
 | `--gc` | Enum | select native-image garbage collector implementation. Allowed values: 'epsilon', 'serial', 'G1'. | serial | `--gc=<value>` |
-| `--add-modules` | String | root modules to resolve in addition to the initial module. <module name> can also be ALL-DEFAULT, ALL-SYSTEM, ALL-MODULE-PATH. |  | `--add-modules <module name>[,<module name>...]` |
+| `--add-modules` | String | root modules to resolve in addition to the initial module. &lt;module name&gt; can also be ALL-DEFAULT, ALL-SYSTEM, ALL-MODULE-PATH. |  | `--add-modules <module name>[,<module name>...]` |
 | `--bundle-apply` | String | build an image from the given bundle file using the original arguments and files. If --bundle-create is passed after --bundle-apply, a new bundle is written with the applied plus additional arguments. |  | `--bundle-apply=some-bundle.nib[,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]` |
-| `--bundle-create` | String | in addition to image building, create a Native Image bundle file (*.nib file) that allows rebuilding of that image again at a later point. If a bundle-file gets passed, the bundle will be created with the given name; otherwise, the bundle-file name is derived from the image name. Bundle options can be extended with ',dry-run' and ',container'; 'dockerfile=<Dockerfile>' uses a user-provided Dockerfile. |  | `--bundle-create[=new-bundle.nib][,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]` |
+| `--bundle-create` | String | in addition to image building, create a Native Image bundle file (*.nib file) that allows rebuilding of that image again at a later point. If a bundle-file gets passed, the bundle will be created with the given name; otherwise, the bundle-file name is derived from the image name. Bundle options can be extended with ',dry-run' and ',container'; 'dockerfile=&lt;Dockerfile&gt;' uses a user-provided Dockerfile. |  | `--bundle-create[=new-bundle.nib][,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]` |
 | `--class-path` | Path | A : separated list of directories, JAR archives, and ZIP archives to search for class files. |  | `--class-path <class search path of directories and zip/jar files>` |
 | `--configurations-path` | Path | A : separated list of directories to be treated as option-configuration directories. |  | `--configurations-path <search path of option-configuration directories>` |
 | `--debug-attach` | String | attach to debugger during image building (default port is 8000) |  | `--debug-attach[=<port or host:port (* can be used as host meaning bind to all interfaces)>]` |
@@ -102,13 +103,14 @@ These deprecated URL protocol options are omitted from the generated table; see 
 | `--verbose` | Boolean | enable verbose output |  | `--verbose` |
 | `--version` | Boolean | print product version and exit |  | `--version` |
 | `-D` | String | set a system property for image build time only |  | `-D<name>=<value>` |
-| `-E` | String | allow native-image to access the given environment variable during image build. If <env-var-value> is omitted, the value is taken from the environment native-image was invoked from. |  | `-E<env-var-key>[=<env-var-value>]` |
-| `-J` | String | pass <flag> directly to the JVM running the image generator |  | `-J<flag>` |
+| `-E` | String | allow native-image to access the given environment variable during image build. If &lt;env-var-value&gt; is omitted, the value is taken from the environment native-image was invoked from. |  | `-E<env-var-key>[=<env-var-value>]` |
+| `-J` | String | pass &lt;flag&gt; directly to the JVM running the image generator |  | `-J<flag>` |
 | `-V` | String | provide values for placeholders in native-image.properties files |  | `-V<key>=<value>` |
 | `-classpath` | Path | class search path of directories and zip/jar files |  | `-classpath <class search path of directories and zip/jar files>` |
 | `-cp` | Path | class search path of directories and zip/jar files |  | `-cp <class search path of directories and zip/jar files>` |
 | `-p` | Path | module path |  | `-p <module path>` |
 | `@argument` | String | one or more argument files containing options |  | `@argument files` |
+
 <!-- END: build-options-table -->
 
 ## List of Useful Options

@@ -85,8 +85,8 @@ final class ComprehensiveOptions {
 
                     String command = escapeMarkdown(entry.getKey());
                     String type = determineOptionType(option);
-                    String description = escapeMarkdown(option.helpText());
-                    String defaultValue = option.defaultValue() != null ? escapeMarkdown(option.defaultValue()) : "None";
+                    String description = escapeMarkdownText(option.helpText());
+                    String defaultValue = option.defaultValue() != null ? escapeMarkdownText(option.defaultValue()) : "None";
                     String usage = "`" + escapeMarkdown(generateUsageExample(entry.getKey(), option)) + "`";
                     printedCommands.add(entry.getKey());
 
@@ -104,8 +104,8 @@ final class ComprehensiveOptions {
                     GroupInfo groupInfo = groupEntry.getValue();
                     String command = escapeMarkdown(commandName);
                     String type = "Enum";
-                    String description = escapeMarkdown(describeGroupOption(groupInfo));
-                    String defaultValue = groupInfo.defaultValues.isEmpty() ? "None" : escapeMarkdown(String.join(",", groupInfo.defaultValues));
+                    String description = escapeMarkdownText(describeGroupOption(groupInfo));
+                    String defaultValue = groupInfo.defaultValues.isEmpty() ? "None" : escapeMarkdownText(String.join(",", groupInfo.defaultValues));
                     String usage = "`" + escapeMarkdown(groupUsage(groupEntry.getKey())) + "`";
                     printedCommands.add(commandName);
 
@@ -124,8 +124,8 @@ final class ComprehensiveOptions {
                     }
                     String command = escapeMarkdown(entry.getKey());
                     String type = option.type();
-                    String description = escapeMarkdown(option.helpText());
-                    String defaultValue = escapeMarkdown(option.defaultValue());
+                    String description = escapeMarkdownText(option.helpText());
+                    String defaultValue = escapeMarkdownText(option.defaultValue());
                     String usage = "`" + escapeMarkdown(option.usage()) + "`";
 
                     println.accept(String.format(MARKDOWN_ROW_FORMAT,
@@ -564,7 +564,11 @@ final class ComprehensiveOptions {
         if (text == null) {
             return "";
         }
-        return text.replace("|", "\\|").replace("\\", "\\\\");
+        return text.replace("\\", "\\\\").replace("|", "\\|");
+    }
+
+    static String escapeMarkdownText(String text) {
+        return escapeMarkdown(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static String startLowerCase(String str) {
