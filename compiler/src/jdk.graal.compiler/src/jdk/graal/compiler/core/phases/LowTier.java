@@ -35,6 +35,7 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PlaceholderPhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
+import jdk.graal.compiler.phases.common.BreakChainedPhisPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;
@@ -58,9 +59,11 @@ import jdk.graal.compiler.virtual.phases.ea.LowTierReadEliminationPhase;
 
 public class LowTier extends BaseTier<LowTierContext> {
 
-    static class Options {
+    public static class Options {
 
         // @formatter:off
+        @Option(help = "Break chained phis", type = OptionType.Debug)
+        public static final OptionKey<Boolean> BreakChainedPhis = new OptionKey<>(true);
         @Option(help = "", type = OptionType.Debug)
         public static final OptionKey<Boolean> ProfileCompiledMethods = new OptionKey<>(false);
         // @formatter:on
@@ -116,6 +119,10 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new DeadCodeEliminationPhase(Required));
 
         appendPhase(new PropagateDeoptimizeProbabilityPhase());
+
+        if (Options.BreakChainedPhis.getValue(options)) {
+            appendPhase(new BreakChainedPhisPhase());
+        }
 
         appendPhase(new OptimizeExtendsPhase());
 

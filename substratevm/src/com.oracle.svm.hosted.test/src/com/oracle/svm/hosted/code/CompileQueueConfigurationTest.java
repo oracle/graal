@@ -39,6 +39,7 @@ import jdk.graal.compiler.core.phases.EconomyHighTier;
 import jdk.graal.compiler.core.phases.EconomyLowTier;
 import jdk.graal.compiler.core.phases.EconomyMarkFixReadsPhase;
 import jdk.graal.compiler.core.phases.EconomyMidTier;
+import jdk.graal.compiler.core.phases.LowTier;
 import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
@@ -124,6 +125,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
+        Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, true, true);
@@ -142,6 +144,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
+        Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, false, false);
@@ -155,6 +158,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
+        Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
     }
 
     @Test

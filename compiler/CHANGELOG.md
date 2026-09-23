@@ -3,6 +3,9 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
+* (GR-79593): Added `BreakChainedPhisPhase`, which splits chained loop phi values in the low tier to
+  improve register allocation. The optimization is enabled by default and can be disabled with
+  `-Djdk.graal.BreakChainedPhis=false`.
 * (GR-79588): Added a deduplication optimization that can reduce generated code size by sharing
   equivalent statements and expressions from converging control-flow branches. The optimization is
   enabled by default and can be disabled with `-Djdk.graal.OptDeDuplication=false`.

@@ -90,6 +90,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.phases.LowTier;
 import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningReassociationPhase;
@@ -365,6 +366,9 @@ public class SubstrateOptions {
          * Expanding checkcasts for performance increases code size.
          */
         disable(GraalOptions.EarlyExpandCheckCast, values);
+
+        /* Breaking chained phis can increase code size by adding copies. */
+        disable(LowTier.Options.BreakChainedPhis, values);
 
         if (disableLoopOptimizations) {
             /*
