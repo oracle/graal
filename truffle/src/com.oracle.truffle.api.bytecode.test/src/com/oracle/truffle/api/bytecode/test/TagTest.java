@@ -340,7 +340,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @Test
     public void testTagsEmptyErrors() {
-        parse((b) -> {
+        parseComplete((b) -> {
             b.beginRoot();
 
             assertFails(() -> b.beginTag(), IllegalArgumentException.class);

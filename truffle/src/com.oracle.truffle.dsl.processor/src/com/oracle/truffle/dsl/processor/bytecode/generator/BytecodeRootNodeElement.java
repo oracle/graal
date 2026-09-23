@@ -86,7 +86,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
@@ -492,12 +491,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             this.add(classToTag);
             CodeExecutableElement classToTagMethod = createMapTagMaskToTagsArray();
             this.add(classToTagMethod);
-
-            CodeExecutableElement initializeTagIndexToClass = this.add(createInitializeTagIndexToClass());
-            CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), type(Integer.class)),
-                            "CLASS_TO_TAG_MASK");
-            tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
-            this.add(tagToClass);
         }
 
         // Define helper methods for throwing exceptions.
@@ -1383,38 +1376,6 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         CodeTreeBuilder b = ex.getBuilder();
         b.statement("return BYTECODE.create(language, config, parser)");
         return ex;
-    }
-
-    private CodeExecutableElement createInitializeTagIndexToClass() {
-        DeclaredType classValue = context.getDeclaredType(ClassValue.class);
-        TypeMirror classValueType = generic(classValue, type(Integer.class));
-
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), classValueType,
-                        "initializeTagMaskToClass");
-        CodeTreeBuilder b = method.createBuilder();
-
-        b.startStatement();
-        b.string("return new ClassValue<>()").startBlock();
-        b.string("protected Integer computeValue(Class<?> type) ").startBlock();
-
-        boolean elseIf = false;
-        int index = 0;
-        for (TypeMirror tagClass : model.getProvidedTags()) {
-            elseIf = b.startIf(elseIf);
-            b.string("type == ").typeLiteral(tagClass);
-            b.end().startBlock();
-            b.startReturn().string(1 << index).end();
-            b.end();
-            index++;
-        }
-        createFailInvalidTag(b, "type");
-
-        b.end();
-
-        b.end();
-        b.end();
-
-        return method;
     }
 
     void createFailInvalidTag(CodeTreeBuilder b, String tagLocal) {
