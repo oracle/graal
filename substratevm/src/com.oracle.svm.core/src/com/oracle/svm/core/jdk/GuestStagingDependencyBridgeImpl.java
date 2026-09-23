@@ -121,9 +121,8 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
         LogConfiguration.legacyGCOptionValueChanged(key);
-        if (LogConfiguration.shouldForwardLegacyGCOptionToHeap(key)) {
-            Heap.getHeap().optionValueChanged(key);
-        }
+        /* Native collectors (e.g. G1) consume `PrintGC` and `VerboseGC`. */
+        Heap.getHeap().optionValueChanged(key);
     }
 
     @Override

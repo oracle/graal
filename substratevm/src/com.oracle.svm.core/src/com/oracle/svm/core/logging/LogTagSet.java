@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 
@@ -262,7 +262,7 @@ public enum LogTagSet {
          */
         LogOutput[][] configuration = outputList.startReading();
         if (configuration == null) {
-            /* A VM operation cannot wait for a reconfiguration thread stopped at its safepoint. */
+            /* The VM operation executor cannot wait for a thread that may need it to make progress. */
             LogConfiguration.writeVMOperationReconfigurationFallback(this, message);
             return;
         }
@@ -274,7 +274,7 @@ public enum LogTagSet {
             for (LogOutput output : outputs) {
                 LogLevel outputLevel = LogOutputList.levelFor(configuration, output);
                 if (asyncWriter == null || !asyncWriter.enqueue(output, decorations, message, outputLevel)) {
-                    if (asyncWriter != null && VMOperation.isInProgress() && !recordedVMOperationFallback) {
+                    if (asyncWriter != null && VMOperationControl.mayExecuteVmOperations() && !recordedVMOperationFallback) {
                         LogConfiguration.recordSynchronousEnqueueFromVMOperation();
                         recordedVMOperationFallback = true;
                     }
