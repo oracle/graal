@@ -311,8 +311,8 @@ public abstract class LogOutput {
             LogLevel lineLevel = message.lineLevel(index);
             if (outputLevel.enables(lineLevel)) {
                 hasLine = true;
-                writeRecordPrefix(decorations, lineLevel, tagSet);
-                message.writeLineTo(index, OUTPUT_BUFFER, foldMultilines, this, decorations, lineLevel, tagSet);
+                int decoratorWidth = writeRecordPrefix(decorations, lineLevel, tagSet);
+                message.writeLineTo(index, OUTPUT_BUFFER, foldMultilines, this, decoratorWidth);
                 OUTPUT_BUFFER.newline();
             }
         }
@@ -322,10 +322,10 @@ public abstract class LogOutput {
     }
 
     /// Writes one asynchronously queued message part using the copied event decorations.
-    final void write(LogDecorations decorations, CCharPointer message, int messageLength, int prefixLength, LogLevel level) {
+    final void write(LogDecorations decorations, CCharPointer message, int messageLength, LogLevel level) {
         OUTPUT_BUFFER.reset();
-        writeDecorators(decorations, level);
-        writeMessageBytes(message, messageLength, prefixLength, decorations, level);
+        int decoratorWidth = writeDecorators(decorations, level);
+        writeMessageBytes(message, messageLength, decoratorWidth);
         OUTPUT_BUFFER.newline();
         finishWrite();
     }
@@ -376,43 +376,43 @@ public abstract class LogOutput {
     }
 
     /// Copies a queued message into the output buffer, applying its multiline policy.
-    private void writeMessageBytes(CCharPointer message, int messageLength, int prefixLength, LogDecorations decorations, LogLevel level) {
+    private void writeMessageBytes(CCharPointer message, int messageLength, int decoratorWidth) {
         for (int position = 0; position < messageLength; position++) {
             char value = (char) message.read(position);
-            if (value == '\r' && position + 1 < messageLength && message.read(position + 1) == '\n') {
-                /* Treat CRLF as one line separator, as Java text APIs do. */
-                continue;
-            } else if (foldMultilines && value == '\\') {
+            if (foldMultilines && value == '\\') {
                 OUTPUT_BUFFER.character('\\').character('\\');
             } else if (foldMultilines && value == '\n') {
                 OUTPUT_BUFFER.character('\\').character('n');
             } else if (!foldMultilines && value == '\n') {
-                if (position + 1 < messageLength) {
-                    OUTPUT_BUFFER.newline();
-                    writeDecorators(decorations, level);
-                    if (prefixLength != 0) {
-                        OUTPUT_BUFFER.string(message, prefixLength);
-                    }
-                }
+                OUTPUT_BUFFER.newline();
+                writeContinuationPrefix(decoratorWidth);
             } else {
                 OUTPUT_BUFFER.character(value);
             }
         }
     }
 
-    /// Writes [#decorators] to the thread-local output buffer and returns their display width.
+    /// Writes [#decorators] to the thread-local output buffer and returns their bracketed width.
     private int writeDecorators(LogDecorations decorations, LogLevel level) {
         return writeDecorators(this.decorators, decorations, level);
     }
 
     /// Writes all metadata that precedes one physical log record.
-    void writeRecordPrefix(LogDecorations decorations, LogLevel level, LogTagSet tagSet) {
-        writeDecorators(decorations, level);
+    private int writeRecordPrefix(LogDecorations decorations, LogLevel level, LogTagSet tagSet) {
+        int decoratorWidth = writeDecorators(decorations, level);
         tagSet.writePrefix(OUTPUT_BUFFER);
+        return decoratorWidth;
     }
 
-    /// Writes `enabledDecorators` using values captured in `decorations` and returns their display
-    /// width.
+    /// Writes the blank marker that aligns an unfolded continuation with its first physical line.
+    void writeContinuationPrefix(int decoratorWidth) {
+        if (decoratorWidth != 0) {
+            OUTPUT_BUFFER.character('[').spaces(decoratorWidth - 2).character(']').character(' ');
+        }
+    }
+
+    /// Writes `enabledDecorators` using values captured in `decorations` and returns the combined
+    /// width of their bracketed values, excluding the trailing separator.
     private int writeDecorators(LogDecorators enabledDecorators, LogDecorations decorations, LogLevel level) {
         int decoratorsLength = 0;
         boolean decorated = false;
@@ -439,7 +439,6 @@ public abstract class LogOutput {
         }
         if (decorated) {
             OUTPUT_BUFFER.character(' ');
-            decoratorsLength++;
         }
         return decoratorsLength;
     }

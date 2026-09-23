@@ -153,24 +153,19 @@ public final class LogMessage implements AutoCloseable {
     }
 
     /// Writes one selected line to `other`, preserving or folding embedded newlines.
-    void writeLineTo(int index, Log other, boolean foldMultilines, LogOutput output, LogDecorations decorations, LogLevel level, LogTagSet lineTagSet) {
+    void writeLineTo(int index, Log other, boolean foldMultilines, LogOutput output, int decoratorWidth) {
         verifyLine(index);
         int start = lineStart(index);
         int end = index + 1 < lineCount() ? lineStart(index + 1) : lineBuffer.getPosition();
         for (int position = start; position < end; position++) {
             char value = (char) lineBuffer.getBuffer().read(position);
-            if (value == '\r' && position + 1 < end && lineBuffer.getBuffer().read(position + 1) == '\n') {
-                /* Treat CRLF as one line separator, as Java text APIs do. */
-                continue;
-            } else if (foldMultilines && value == '\\') {
+            if (foldMultilines && value == '\\') {
                 other.character('\\').character('\\');
             } else if (foldMultilines && value == '\n') {
                 other.character('\\').character('n');
             } else if (!foldMultilines && value == '\n') {
-                if (position + 1 < end) {
-                    other.newline();
-                    output.writeRecordPrefix(decorations, level, lineTagSet);
-                }
+                other.newline();
+                output.writeContinuationPrefix(decoratorWidth);
             } else {
                 other.character(value);
             }
