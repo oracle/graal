@@ -160,7 +160,7 @@ public class BundlePathMapTest {
     @Test
     public void consumesInlineExpertOptionsDetailSpelling() {
         NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
-        NativeImage.ArgumentQueue args = new NativeImage.ArgumentQueue("test");
+        NativeImage.ArgumentQueue args = new NativeImage.ArgumentQueue(null);
         args.add("--expert-options-detail=AbortOnTypeReachable");
 
         assertTrue(nativeImage.cmdLineOptionHandler.consume(args));
@@ -170,7 +170,7 @@ public class BundlePathMapTest {
     @Test
     public void consumesSplitExpertOptionsDetailSpelling() {
         NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
-        NativeImage.ArgumentQueue args = new NativeImage.ArgumentQueue("test");
+        NativeImage.ArgumentQueue args = new NativeImage.ArgumentQueue(null);
         args.add("--expert-options-detail");
         args.add("AbortOnTypeReachable");
 
