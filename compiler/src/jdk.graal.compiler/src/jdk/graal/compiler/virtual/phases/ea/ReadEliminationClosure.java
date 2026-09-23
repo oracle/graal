@@ -41,6 +41,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
@@ -187,10 +188,14 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                                     return false;
                                 }
                                 object = read.getAddress();
-                            } else if (node instanceof FieldAliasNode fieldAlias) {
-                                // Injects the aliasing relationship
-                                object = fieldAlias.getReceiver();
-                                access = fieldAlias.getAlias();
+                            } else if (node instanceof FieldAliasNode alias) {
+                                ValueNode receiver = GraphUtil.unproxify(alias.getReceiver());
+                                LoadCacheEntry key = new LoadCacheEntry(receiver, location);
+                                ValueNode value = getScalarAlias(alias.getAlias());
+                                ValueNode previous = state.getCacheEntry(key);
+                                GraalError.guarantee(previous == null || GraphUtil.unproxify(previous) == GraphUtil.unproxify(value), "conflicting field aliases: %s", alias);
+                                state.addCacheEntry(key, value);
+                                return false;
                             } else {
                                 // unknown node, no elimination possible
                                 assert deleted == false;
@@ -199,6 +204,9 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             object = GraphUtil.unproxify(object);
                             LoadCacheEntry identifier = new LoadCacheEntry(object, location);
                             ValueNode cachedValue = state.getCacheEntry(identifier);
+                            if (cachedValue == null && node instanceof LoadFieldNode loadFieldNode && loadFieldNode.field().isFinal()) {
+                                cachedValue = state.getCacheEntry(new LoadCacheEntry(object, new FieldLocationIdentity(loadFieldNode.field(), true)));
+                            }
 
                             if (cachedValue != null && areValuesReplaceable(access, cachedValue, considerGuards)) {
                                 effects.replaceAtUsages(access, cachedValue, (FixedNode) access);

@@ -181,14 +181,35 @@ public final class PEReadEliminationBlockState extends PartialEscapeBlockState<P
     }
 
     public void killReadCache() {
-        readCache.clear();
+        killReadCache(false);
+    }
+
+    public void killReadCache(boolean maybeKillImmutable) {
+        // Invalidating immutable field entries is optional: reusing them is valid, but keeping
+        // their values live across calls can introduce additional spills.
+        if (maybeKillImmutable) {
+            readCache.clear();
+            return;
+        }
+        Iterator<ReadCacheEntry> iterator = readCache.getKeys().iterator();
+        while (iterator.hasNext()) {
+            LocationIdentity identity = iterator.next().identity;
+            if (!(identity instanceof FieldLocationIdentity && identity.isImmutable())) {
+                iterator.remove();
+            }
+        }
     }
 
     public void killReadCache(LocationIdentity identity, int index) {
         Iterator<ReadCacheEntry> iter = readCache.getKeys().iterator();
         while (iter.hasNext()) {
             ReadCacheEntry entry = iter.next();
-            if (entry.identity.equals(identity) && (index == -1 || entry.index == -1 || index == entry.index || entry.overflowAccess)) {
+            // Unlike DGVN's LocationIdentity.overlaps check, a specific field kill also discards
+            // immutable entries, conservatively across receivers. This does not permit writes to
+            // immutable locations; see the producer contract in FieldAliasNode.
+            boolean sameField = identity instanceof FieldLocationIdentity field && entry.identity instanceof FieldLocationIdentity cachedField &&
+                            field.getField().equals(cachedField.getField());
+            if (sameField || (entry.identity.equals(identity) && (index == -1 || entry.index == -1 || index == entry.index || entry.overflowAccess))) {
                 iter.remove();
             }
         }

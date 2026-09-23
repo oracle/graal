@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.NeverStrengthenGraphWithConstants;
 import com.oracle.svm.core.SkipEpilogueSafepointCheck;
@@ -132,7 +133,8 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
         }
         StructuredGraph graph = BytecodeHandlerStubHelper.createStub(kit, method, 0, threading, nextOpcodeMethod,
                         () -> stubHolder.getBytecodeHandlers(interpreterHolder, config), config, targetMethod,
-                        SubstrateBytecodeHandlerUnwindPath::writeOnCallee);
+                        SubstrateBytecodeHandlerUnwindPath::writeOnCallee,
+                        InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method));
         if (needSafepoint) {
             for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
                 graph.addBeforeFixed(returnNode, graph.add(new SafepointNode()));
