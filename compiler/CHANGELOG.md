@@ -26,6 +26,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 * (GR-79597): Added early checkcast expansion to expose null and type checks as control flow for
   subsequent optimizations. It is enabled by default and can be disabled with
   `-Djdk.graal.EarlyExpandCheckCast=false`.
+* (GR-79590): Added speculative store checks, which can remove array store checks by speculating
+  that an array's declared type is exact. The optimization is enabled by default and can be
+  disabled with `-Djdk.graal.SpeculativeStoreCheck=false`.
 * (GR-79031): Added strip mining for counted and non-counted loops, loop inversion, loop rotation,
   and exact arithmetic optimization. Strip mining bounds long-running loop bodies to reduce
   safepoint overhead, loop inversion transforms while loops into guarded do-while loops to improve

@@ -31,6 +31,7 @@ import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.guards.GuardRangeGroupingPhase;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
+import jdk.graal.compiler.guards.optimistic.SpeculativeStoreChecksPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
@@ -215,6 +216,16 @@ public enum CEOptimization {
      *
      */
     EarlyExpandCheckCast(GraalOptions.EarlyExpandCheckCast, EarlyExpandCheckCastPhase.class),
+
+    /**
+     * {@link SpeculativeStoreChecksPhase} tries to remove array store checks by speculating that
+     * the <b>declared</b> type of the array is actually its <b>exact</b> type. This can improve
+     * program performance since less type checks are necessary.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link GraalOptions#SpeculativeStoreCheck}.
+     */
+    SpeculativeStoreChecks(GraalOptions.SpeculativeStoreCheck, SpeculativeStoreChecksPhase.class),
 
     /**
      * {@link PartialRedundancySchedulePhase} is Graal's implementation of partial redundancy
