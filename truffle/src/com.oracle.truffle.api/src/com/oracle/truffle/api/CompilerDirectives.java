@@ -809,8 +809,8 @@ public final class CompilerDirectives {
      * {@link LoopExplosionKind#MERGE_EXPLODE}. Using this outside of merge exploded methods will
      * lead to a compilation failure.
      *
-     * This method must be used directly before a loop and the return value has to be assigned back
-     * to the variable:
+     * Call this method once before the loop, preferably immediately before it, and assign the
+     * return value back to the variable:
      *
      * <pre>
      * int bci = 0;
@@ -821,17 +821,22 @@ public final class CompilerDirectives {
      * }
      * </pre>
      *
-     * A nested {@code int} value stored in objects virtualized by {@link EarlyEscapeAnalysis} can
-     * also be marked, for example {@code state.inner.key =
+     * Direct adjacency is not required, but the marked value must reach the first loop header
+     * unchanged and must not be consumed by an intervening merge-exploded loop. Key discovery
+     * happens only at initial entry; calling this method inside the loop is too late. Later
+     * iterations track the current value at the discovered location.
+     * <p>
+     * A nested {@code int} or {@code long} value stored in objects virtualized by
+     * {@link EarlyEscapeAnalysis} can also be marked, for example {@code state.inner.key =
      * CompilerDirectives.mergeExplodeKey(state.inner.key);}. This is only supported while every
      * object on that access path remains virtual and never escapes.
      * <p>
-     * Only a single variable can currently be annotated with this method; annotating multiple
-     * variables causes a compilation failure. This restriction will be lifted in a future release.
+     * Only a single variable can currently be marked with this method; marking multiple variables
+     * causes a compilation failure. This restriction will be lifted in a future release.
      * <p>
-     * At every iteration, the key value must be a compile-time constant {@code int} so the compiler
-     * can create a distinct merge point for each key value and correctly handle irreducibly
-     * exploded structures. If this is not upheld, a compilation failure occurs.
+     * At every iteration, the key value must be a compile-time constant {@code int} or {@code long}
+     * so the compiler can create a distinct merge point for each key value and correctly handle
+     * irreducibly exploded structures. If this is not upheld, a compilation failure occurs.
      * <p>
      * Other variables must have the same value at every iteration where the key matches (e.g.,
      * partial evaluate to the same constant or remain unchanged). If a non-key variable changes
@@ -841,10 +846,29 @@ public final class CompilerDirectives {
      *
      * @param i the variable that should be used as the merge key.
      * @return the unchanged value
-     *
      * @since 25.5
+     * @see #mergeExplodeKey(long)
      */
     public static int mergeExplodeKey(int i) {
+        return i;
+    }
+
+    /**
+     * Marks a {@code long} variable as the key used for merging loop iterations in methods
+     * annotated with {@link LoopExplosionKind#MERGE_EXPLODE}. Using this outside of merge exploded
+     * methods will lead to a compilation failure.
+     * <p>
+     * The usage and restrictions are the same as for {@link #mergeExplodeKey(int)}, including the
+     * requirement that the key be a compile-time constant at every loop header. For irreducible
+     * loops, {@code long} key values must also fit in the signed 32-bit {@code int} range. Values
+     * outside of this range will cause a compilation failure.
+     *
+     * @param i the variable that should be used as the merge key.
+     * @return the unchanged value
+     * @since 25.5
+     * @see #mergeExplodeKey(int)
+     */
+    public static long mergeExplodeKey(long i) {
         return i;
     }
 

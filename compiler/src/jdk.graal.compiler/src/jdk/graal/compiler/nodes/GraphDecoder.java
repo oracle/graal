@@ -2221,8 +2221,8 @@ public class GraphDecoder {
         if (loopScope.loopExplosionMergeKeyFilter != null) {
             values = loopScope.loopExplosionMergeKeyFilter.resolveMarkedValues(frameState);
             for (ValueNode node : values) {
-                if (!node.isConstant() || node.asJavaConstant().getJavaKind() != JavaKind.Int) {
-                    throw new PermanentBailoutException("Graal implementation restriction: merge keys must partial evaluate to int constants at the loop header. %s",
+                if (!node.isConstant() || (node.asJavaConstant().getJavaKind() != JavaKind.Int && node.asJavaConstant().getJavaKind() != JavaKind.Long)) {
+                    throw new PermanentBailoutException("Graal implementation restriction: merge keys must partial evaluate to int or long constants at the loop header. %s",
                                     node);
                 }
             }
@@ -2240,7 +2240,7 @@ public class GraphDecoder {
      */
     private static PermanentBailoutException nestedMergeKeyRequiresVirtualObject(String reason) {
         return new PermanentBailoutException("Graal implementation restriction: nested CompilerDirectives.mergeExplodeKey cannot be used because %s. " +
-                        "For a nested key, every object on the path to the keyed int must be virtualized by " +
+                        "For a nested key, every object on the path to the keyed value must be virtualized by " +
                         "EarlyEscapeAnalysis and remain non-escaping at every iteration of the merge-exploded loop. " +
                         "If an object escapes or becomes materialized, mark a scalar local instead.",
                         reason);
@@ -3776,13 +3776,14 @@ class LoopDetector implements Runnable {
     }
 
     /**
-     * Coerces the loop variable to an int-sized value for use as an {@link IntegerSwitchNode} input.
-     * This method should only be used by {@link #handleIrreducibleLoop} to implement the top-level
-     * switch over loop entrypoints.
-     * <b>
+     * Coerces the loop variable to an int-sized value for use as an {@link IntegerSwitchNode}
+     * input. This method should only be used by {@link #handleIrreducibleLoop} to implement the
+     * top-level switch over loop entrypoints.
+     * <p>
      * When the loop variable is long, we coerce it using a {@link NarrowNode}. This is safe because
      * each switch key is statically checked to be representable as an int by {@link #asInt}. In
      * pseudocode, this looks like:
+     *
      * <pre>
      * long bci = ...;                     // loopVariablePhi
      * switch(Narrow(bci, Integer.SIZE)) { // switchValue

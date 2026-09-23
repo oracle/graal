@@ -548,13 +548,15 @@ public class TruffleGraphBuilderPlugins {
             }
         });
 
-        r.register(new RequiredInvocationPlugin("mergeExplodeKey", int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.add(new LoopExplosionKeyNode(value)));
-                return true;
-            }
-        });
+        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
+            r.register(new RequiredInvocationPlugin("mergeExplodeKey", kind.toJavaClass()) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(kind, b.add(new LoopExplosionKeyNode(value)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static Class<?> getJavaClass(JavaKind kind) {

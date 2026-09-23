@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -46,7 +47,8 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.code.BailoutException;
 
 /**
- * Tests the {@link CompilerDirectives#mergeExplodeKey(int)} system for explicit merge explode keys.
+ * Tests {@link CompilerDirectives#mergeExplodeKey(int)} and
+ * {@link CompilerDirectives#mergeExplodeKey(long)} for explicit merge explode keys.
  */
 @SuppressWarnings("deprecation")
 public class MergeExplodeKeyTest extends PartialEvaluationTest {
@@ -65,6 +67,24 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
         VirtualState inner;
 
         NestedVirtualState(VirtualState inner) {
+            this.inner = inner;
+        }
+    }
+
+    static final class LongVirtualState {
+        long key;
+
+        @EarlyInline
+        LongVirtualState(long key) {
+            this.key = key;
+        }
+    }
+
+    static final class NestedLongVirtualState {
+        final LongVirtualState inner;
+
+        @EarlyInline
+        NestedLongVirtualState(LongVirtualState inner) {
             this.inner = inner;
         }
     }
@@ -581,6 +601,193 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
             this.left = child;
             this.right = child;
         }
+    }
+
+    @Test
+    public void scalarLongKeyCanBeUsedAfterLoop() {
+        assertLongKeyProgram("scalarLongKeyCanBeUsedAfterLoop", false, false);
+    }
+
+    @Test
+    public void nestedLongFieldCanBeUsedAsMergeKey() {
+        assertLongKeyProgram("nestedLongFieldCanBeUsedAsMergeKey", true, false);
+    }
+
+    @Test
+    public void scalarLongKeyInIrreducibleLoop() {
+        assertLongKeyProgram("scalarLongKeyInIrreducibleLoop", false, true);
+    }
+
+    @Test
+    public void nestedLongFieldKeyInIrreducibleLoop() {
+        assertLongKeyProgram("nestedLongFieldKeyInIrreducibleLoop", true, true);
+    }
+
+    @Test
+    public void unmarkedLongVariableInIrreducibleLoop() {
+        assertLongKeyProgram("unmarkedLongVariableInIrreducibleLoop", longKeyProgram(false, true, false), true);
+    }
+
+    @Test
+    public void longKeysAboveIntRangeInIrreducibleLoopsFail() {
+        assertOutOfRangeLongKeysFail((long) Integer.MAX_VALUE + 1);
+    }
+
+    @Test
+    public void longKeysBelowIntRangeInIrreducibleLoopsFail() {
+        assertOutOfRangeLongKeysFail((long) Integer.MIN_VALUE - 1);
+    }
+
+    private void assertOutOfRangeLongKeysFail(long key) {
+        for (boolean nested : new boolean[]{false, true}) {
+            assertOutOfRangeLongKeyFails(longKeyProgram(nested, true, true, key), key);
+        }
+        assertOutOfRangeLongKeyFails(longKeyProgram(false, true, false, key), key);
+    }
+
+    private void assertOutOfRangeLongKeyFails(RootNode root, long key) {
+        // Exercise every entry variant and several backedges before compilation.
+        for (int entry = 0; entry < 3; entry++) {
+            for (int transitions = 0; transitions <= 5; transitions++) {
+                root.getCallTarget().call(entry, transitions);
+            }
+        }
+        Assert.assertEquals(key, root.getCallTarget().call(1, 1));
+        BailoutException bailout = Assert.assertThrows(BailoutException.class, () -> partialEval(root, new Object[]{0, 0}));
+        Assert.assertTrue(bailout.getMessage(), bailout.getMessage().contains("a long value that is representable as int"));
+    }
+
+    private void assertLongKeyProgram(String name, boolean nested, boolean irreducible) {
+        assertLongKeyProgram(name, longKeyProgram(nested, irreducible, true), irreducible);
+    }
+
+    private void assertLongKeyProgram(String name, RootNode root, boolean irreducible) {
+        assertLongKeyResults(root.getCallTarget(), irreducible);
+        OptimizedCallTarget target = compileHelper(name, root, new Object[]{0, 0});
+        assertLongKeyResults(target, irreducible);
+        Assert.assertTrue("Long-key dispatch must not invalidate the compiled target", target.isValid());
+    }
+
+    private static final long HIGH_LONG_KEY = 1L << 30;
+
+    private static void assertLongKeyResults(CallTarget target, boolean irreducible) {
+        long[][] keysByEntry = {
+                        {-0x8000_0000L, 0x7fff_ffffL, HIGH_LONG_KEY, -0x8000_0000L, 0x7fff_ffffL, HIGH_LONG_KEY},
+                        {-0x8000_0000L, HIGH_LONG_KEY, -0x8000_0000L, HIGH_LONG_KEY, -0x8000_0000L, HIGH_LONG_KEY},
+                        {-0x8000_0000L, HIGH_LONG_KEY, 0x7fff_ffffL, HIGH_LONG_KEY, 0x7fff_ffffL, HIGH_LONG_KEY}};
+        for (int entry = 0; entry < keysByEntry.length; entry++) {
+            for (int transitions = 0; transitions < keysByEntry[entry].length; transitions++) {
+                long expected = irreducible ? keysByEntry[entry][transitions] : HIGH_LONG_KEY;
+                Assert.assertEquals(expected, target.call(entry, transitions));
+            }
+        }
+    }
+
+    private static RootNode longKeyProgram(boolean nested, boolean irreducible, boolean markKey) {
+        return longKeyProgram(nested, irreducible, markKey, HIGH_LONG_KEY);
+    }
+
+    private static RootNode longKeyProgram(boolean nested, boolean irreducible, boolean markKey, long thirdKey) {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                int entry = (int) frame.getArguments()[0];
+                LoopControl control = new LoopControl(false, (int) frame.getArguments()[1]);
+                return nested ? executeNested(entry, control, irreducible, thirdKey) : executeScalar(entry, control, irreducible, markKey, thirdKey);
+            }
+
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            private static long executeScalar(int entry, LoopControl control, boolean irreducible, boolean markKey, long thirdKey) {
+                long key = 0L;
+                if (markKey) {
+                    key = CompilerDirectives.mergeExplodeKey(key);
+                }
+                while (true) {
+                    CompilerAsserts.partialEvaluationConstant(key);
+                    if (key != 0L) {
+                        if (irreducible ? exitIrreducibleLoop(control) : key == thirdKey) {
+                            break;
+                        }
+                    }
+                    key = nextLongKey(key, entry, thirdKey);
+                }
+                return key;
+            }
+
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            private static long executeNested(int entry, LoopControl control, boolean irreducible, long thirdKey) {
+                NestedLongVirtualState state = new NestedLongVirtualState(new LongVirtualState(0L));
+                LongVirtualState alias = state.inner;
+                state.inner.key = CompilerDirectives.mergeExplodeKey(state.inner.key);
+                while (true) {
+                    CompilerAsserts.partialEvaluationConstant(state.inner.key);
+                    if (state.inner.key != 0L) {
+                        if (irreducible ? exitIrreducibleLoop(control) : state.inner.key == thirdKey) {
+                            break;
+                        }
+                    }
+                    alias.key = nextLongKey(state.inner.key, entry, thirdKey);
+                }
+                return alias.key;
+            }
+        };
+    }
+
+    @EarlyInline
+    private static long nextLongKey(long key, int entry, long thirdKey) {
+        if (key == 0L) {
+            opaqueAdd(0, entry);
+            return -0x8000_0000L;
+        } else if (key == -0x8000_0000L) {
+            /* Residual calls keep the two entries from folding to a non-constant key. */
+            if (entry == 0) {
+                opaqueAdd(1, 1);
+                return 0x7fff_ffffL;
+            }
+            opaqueAdd(1, 2);
+            return thirdKey;
+        } else if (key == 0x7fff_ffffL) {
+            return thirdKey;
+        } else if (key == thirdKey) {
+            /* Backedges to the inner and outer cycles exercise dispatcher reconstruction. */
+            if (entry == 2) {
+                opaqueAdd(2, 1);
+                return 0x7fff_ffffL;
+            }
+            opaqueAdd(2, 2);
+            return -0x8000_0000L;
+        } else {
+            throw new IllegalStateException();
+        }
+    }
+
+    @Test
+    public void nonConstantLongKeyFails() {
+        RootNode root = new RootNode(null) {
+            @Override
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            public Object execute(VirtualFrame frame) {
+                long key = CompilerDirectives.mergeExplodeKey(-0x8000_0000L);
+                while (key != 0x7fff_ffffL) {
+                    key = opaqueLong(0x7fff_ffffL);
+                }
+                return key;
+            }
+        };
+        Assert.assertEquals(0x7fff_ffffL, root.getCallTarget().call());
+        try {
+            partialEval(root);
+            Assert.fail("Expected a bailout for a non-constant long merge key");
+        } catch (BailoutException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("merge keys must partial evaluate to int or long constants"));
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static long opaqueLong(long value) {
+        return value;
     }
 
     @Test
