@@ -542,6 +542,8 @@ public class NativeImageGeneratorRunner {
             if (imageName.isEmpty()) {
                 throw UserError.abort("No output file name specified. Use '%s'", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
+            Path imageNamePath = Path.of(imageName);
+            assert imageNamePath.equals(imageNamePath.getFileName()) : "Expected a simple filename for -H:Name, got: " + imageName;
             try {
                 Map<ResolvedJavaMethod, CEntryPointData> entryPoints = new HashMap<>();
                 MainEntryPoint mainEntryPoint = null;

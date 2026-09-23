@@ -30,22 +30,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiFunction;
+
+import com.oracle.svm.driver.BundlePathMap.PathStyle;
+import com.oracle.svm.driver.BundlePathMap.PortablePath;
 
 final class BundleSupportArgumentRewriter {
     private static final String OUTPUT_OPTION = "-o";
 
     private final APIOptionHandler apiOptionHandler;
-    private final BundlePathMap.PathStyle sourcePathStyle;
-    private final Map<Path, Path> pathCanonicalizations;
-    private final Map<Path, Path> pathSubstitutions;
-    private final Path rootDir;
+    private final PathStyle sourcePathStyle;
+    private final Map<PortablePath, PortablePath> pathCanonicalizations;
+    private final Map<PortablePath, PortablePath> pathSubstitutions;
+    private final BiFunction<PortablePath, PortablePath, Path> lowerToNativePath;
 
-    BundleSupportArgumentRewriter(APIOptionHandler apiOptionHandler, BundlePathMap.PathStyle sourcePathStyle, Map<Path, Path> pathCanonicalizations, Map<Path, Path> pathSubstitutions, Path rootDir) {
+    BundleSupportArgumentRewriter(APIOptionHandler apiOptionHandler, PathStyle sourcePathStyle, Map<PortablePath, PortablePath> pathCanonicalizations,
+                    Map<PortablePath, PortablePath> pathSubstitutions, BiFunction<PortablePath, PortablePath, Path> lowerToNativePath) {
         this.apiOptionHandler = Objects.requireNonNull(apiOptionHandler);
         this.sourcePathStyle = sourcePathStyle;
         this.pathCanonicalizations = pathCanonicalizations;
         this.pathSubstitutions = pathSubstitutions;
-        this.rootDir = rootDir;
+        this.lowerToNativePath = lowerToNativePath;
     }
 
     /**
@@ -87,10 +92,13 @@ final class BundleSupportArgumentRewriter {
     }
 
     private String rewriteImageName(String rawImageName) {
-        if (BundlePathMap.isSourceAbsolute(rawImageName, sourcePathStyle)) {
-            return BundlePathMap.sourceFileName(rawImageName, sourcePathStyle);
+        // Bundle replay redirects the output directory, so only the source-platform filename matters.
+        PortablePath imageName = PortablePath.parseSource(sourcePathStyle, rawImageName).getFileName();
+        if (imageName == null) {
+            throw NativeImage.showError("Invalid image output argument '" + OUTPUT_OPTION + " " + rawImageName + "': path must contain a filename.");
         }
-        return BundlePathMap.toCurrentPlatformRelativePath(rawImageName, sourcePathStyle);
+        // Preserve native filename syntax, including literal Unix backslashes.
+        return sourcePathStyle == PathStyle.currentSourceStyle() ? imageName.sourcePathText() : imageName.platformRelativePathText();
     }
 
     /**
@@ -101,15 +109,9 @@ final class BundleSupportArgumentRewriter {
         if (rawPath.isEmpty()) {
             return rawPath;
         }
-        Path portablePath = BundlePathMap.portableSourcePath(rawPath, sourcePathStyle);
-        Path canonicalPath = pathCanonicalizations.getOrDefault(portablePath, portablePath);
-        Path substitutedPath = pathSubstitutions.get(canonicalPath);
-        if (substitutedPath != null) {
-            return rootDir.resolve(substitutedPath).toString();
-        }
-        if (sourcePathStyle == BundlePathMap.PathStyle.Windows && BundlePathMap.PathStyle.currentSourceStyle() == BundlePathMap.PathStyle.Windows) {
-            return BundlePathMap.decodeToCurrentPlatformPath(portablePath.toString(), sourcePathStyle);
-        }
-        return portablePath.toString();
+        PortablePath portablePath = PortablePath.parseSource(sourcePathStyle, rawPath);
+        PortablePath canonicalPath = pathCanonicalizations.getOrDefault(portablePath, portablePath);
+        PortablePath substitutedPath = pathSubstitutions.get(canonicalPath);
+        return lowerToNativePath.apply(canonicalPath, substitutedPath).toString();
     }
 }

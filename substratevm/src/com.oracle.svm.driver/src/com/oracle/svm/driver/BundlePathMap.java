@@ -26,9 +26,14 @@ package com.oracle.svm.driver;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -55,22 +60,547 @@ final class BundlePathMap {
         static PathStyle fromBundlePlatform(String platform) {
             return platform.startsWith("windows") ? Windows : Unix;
         }
+
+        private char comparisonChar(char value) {
+            return this == Windows ? Character.toUpperCase(value) : value;
+        }
     }
 
-    record PortablePath(PathStyle style, String text) {
-        Path asInternalPath() {
-            return Path.of(text);
+    enum RootKind {
+        Relative(false),
+        Absolute(true),
+        DriveRelative(false),
+        DriveAbsolute(true),
+        DirectoryRelative(false),
+        UNC(true),
+        Unavailable(false);
+
+        private final boolean absolute;
+
+        RootKind(boolean absolute) {
+            this.absolute = absolute;
+        }
+
+        boolean isAbsolute() {
+            return absolute;
+        }
+
+        /* `WindowsPath.getParent()` treats every Windows path type except `RELATIVE` as rooted. */
+        private boolean hasRoot() {
+            return this != Relative;
+        }
+
+        /*
+         * `WindowsPath.normalize()` prevents `..` from escaping `ABSOLUTE`, `UNC`, and
+         * `DIRECTORY_RELATIVE` roots.
+         */
+        private boolean cannotEscapeRoot() {
+            return absolute || this == DirectoryRelative;
+        }
+    }
+
+    /// A path in the portable on-disk bundle representation. Its style, root kind, and payload text
+    /// must remain attached while the path is parsed, mapped, transformed, and serialized.
+    ///
+    /// A `PortablePath` may be converted to a native {@link Path} only as the final step before
+    /// filesystem access. The resulting native path must never be converted back to a
+    /// `PortablePath`; paths entering the portable domain from a native path are encoded exactly
+    /// once.
+    ///
+    /// The `BundleRelative`/`Unavailable` sentinel is a substitution destination with no path
+    /// payload. It records an input that must remain unavailable on every replay; it must never
+    /// participate in path operations or be materialized as the original source location.
+    static final class PortablePath {
+
+        static final PortablePath UNAVAILABLE = new PortablePath(PathStyle.BundleRelative, RootKind.Unavailable, "");
+
+        private final PathStyle style;
+        private final RootKind kind;
+        private final String text;
+
+        private final PathComponents components;
+
+        private PortablePath(PathStyle style, RootKind kind, String text) {
+            this(style, kind, PathComponents.parse(style, kind, text));
+        }
+
+        private PortablePath(PathStyle style, RootKind kind, PathComponents components) {
+            this.style = style;
+            this.kind = kind;
+            this.text = components.payloadText();
+            this.components = components;
+        }
+
+        static PortablePath parseLegacy(PathStyle style, String text) {
+            List<String> components = PathComponents.split(text);
+            if (style == PathStyle.BundleRelative) {
+                return new PortablePath(style, RootKind.Relative, new PathComponents("", components));
+            }
+            if (style == PathStyle.Unix) {
+                return new PortablePath(style, text.startsWith("/") ? RootKind.Absolute : RootKind.Relative, new PathComponents("", components));
+            }
+            if (text.startsWith("/")) {
+                if (components.size() < 2 || !winPrefix.equals(components.get(0))) {
+                    throw PathComponents.malformedLegacyWindows(text);
+                }
+                String root = components.get(1);
+                if ("unc".equals(root)) {
+                    if (components.size() < 4) {
+                        throw PathComponents.malformedLegacyWindows(text);
+                    }
+                    return new PortablePath(style, RootKind.UNC, new PathComponents(String.join("/", components.subList(2, 4)), components.subList(4, components.size())));
+                }
+                if ("root".equals(root)) {
+                    return new PortablePath(style, RootKind.DirectoryRelative, new PathComponents("", components.subList(2, components.size())));
+                }
+                if (PathComponents.isEncodedDrive(root)) {
+                    return new PortablePath(style, RootKind.DriveAbsolute, new PathComponents(root, components.subList(2, components.size())));
+                }
+                throw PathComponents.malformedLegacyWindows(text);
+            }
+            if (!components.isEmpty() && winDriveRelativePrefix.equals(components.get(0))) {
+                if (components.size() < 2 || !PathComponents.isEncodedDrive(components.get(1))) {
+                    throw PathComponents.malformedLegacyWindows(text);
+                }
+                return new PortablePath(style, RootKind.DriveRelative, new PathComponents(components.get(1), components.subList(2, components.size())));
+            }
+            if (!components.isEmpty() && winRelativePrefix.equals(components.get(0))) {
+                return new PortablePath(style, RootKind.Relative, new PathComponents("", components.subList(1, components.size())));
+            }
+            throw PathComponents.malformedLegacyWindows(text);
+        }
+
+        public static PortablePath parseSource(PathStyle style, String rawPath) {
+            if (style == PathStyle.BundleRelative) {
+                throw new IllegalArgumentException("Expected a source path style");
+            }
+            if (style == PathStyle.Unix) {
+                RootKind kind = rawPath.startsWith("/") ? RootKind.Absolute : RootKind.Relative;
+                return new PortablePath(style, kind, new PathComponents("", PathComponents.split(rawPath)));
+            }
+            String normalized = rawPath.replace('/', '\\');
+            if (normalized.startsWith("\\\\")) {
+                List<String> components = PathComponents.splitWindows(normalized.substring(2));
+                if (components.size() < 2) {
+                    // An incomplete UNC root must not become a current-drive-relative path.
+                    throw new IllegalArgumentException("UNC path must contain a server and a share: " + rawPath);
+                }
+                String prefix = String.join("/", components.subList(0, 2));
+                return new PortablePath(style, RootKind.UNC, new PathComponents(prefix, components.subList(2, components.size())));
+            }
+            if (normalized.length() >= 3 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':' && normalized.charAt(2) == '\\') {
+                String prefix = Character.toString(Character.toLowerCase(normalized.charAt(0)));
+                return new PortablePath(style, RootKind.DriveAbsolute, new PathComponents(prefix, PathComponents.splitWindows(normalized.substring(3))));
+            }
+            if (normalized.length() >= 2 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':') {
+                String prefix = Character.toString(Character.toLowerCase(normalized.charAt(0)));
+                return new PortablePath(style, RootKind.DriveRelative, new PathComponents(prefix, PathComponents.splitWindows(normalized.substring(2))));
+            }
+            if (normalized.startsWith("\\")) {
+                return new PortablePath(style, RootKind.DirectoryRelative, new PathComponents("", PathComponents.splitWindows(normalized.substring(1))));
+            }
+            return new PortablePath(style, RootKind.Relative, new PathComponents("", PathComponents.splitWindows(normalized)));
+        }
+
+        /// Represents an absolute source path as a file URI without accessing the replay filesystem.
+        URI toFileURI() {
+            if (!isAbsolute()) {
+                throw new IllegalArgumentException("Expected an absolute source path");
+            }
+            String path = sourcePathText();
+            String host = "";
+            if (style == PathStyle.Windows) {
+                path = path.replace('\\', '/');
+                if (kind == RootKind.UNC) {
+                    int slash = path.indexOf('/', 2);
+                    host = path.substring(2, slash);
+                    path = path.substring(slash);
+                    // Match WindowsUriSupport.toUri for IPv6 UNC server names.
+                    if (host.endsWith(windowsIPv6LiteralSuffix)) {
+                        host = host.substring(0, host.length() - windowsIPv6LiteralSuffix.length()).replace('-', ':').replace('s', '%');
+                    }
+                } else {
+                    path = "/" + path;
+                }
+            }
+            try {
+                return new URI("file", host, path, null);
+            } catch (URISyntaxException e) {
+                if (kind != RootKind.UNC) {
+                    throw new IllegalArgumentException("Cannot represent source path as a file URI", e);
+                }
+                // WindowsUriSupport.toUri encodes UNC hosts with reserved characters in the path.
+                try {
+                    return new URI("file", null, "//" + sourcePathText().replace('\\', '/'), null);
+                } catch (URISyntaxException invalidPath) {
+                    throw new IllegalArgumentException("Cannot represent UNC path as a file URI", invalidPath);
+                }
+            }
+        }
+
+        static PortablePath parseFileURI(PathStyle style, URI uri) {
+            if (!uri.isAbsolute()) {
+                throw new IllegalArgumentException("URI is not absolute");
+            }
+            if (uri.isOpaque()) {
+                throw new IllegalArgumentException("URI is not hierarchical");
+            }
+            if (!"file".equalsIgnoreCase(uri.getScheme())) {
+                throw new IllegalArgumentException("URI scheme is not \"file\"");
+            }
+            if (uri.getRawFragment() != null) {
+                throw new IllegalArgumentException("URI has a fragment component");
+            }
+            if (uri.getRawQuery() != null) {
+                throw new IllegalArgumentException("URI has a query component");
+            }
+            String path = uri.getPath();
+            if (path.isEmpty()) {
+                throw new IllegalArgumentException("URI path component is empty");
+            }
+            if (style == PathStyle.Unix) {
+                if (uri.getRawAuthority() != null) {
+                    throw new IllegalArgumentException("URI has an authority component");
+                }
+            } else if (style == PathStyle.Windows) {
+                /* `WindowsUriSupport.fromUri` maps a file URI authority to a UNC server. */
+                String authority = uri.getRawAuthority();
+                if (authority != null && !authority.isEmpty()) {
+                    String host = uri.getHost();
+                    if (host == null) {
+                        throw new IllegalArgumentException("URI authority component has undefined host");
+                    }
+                    if (uri.getUserInfo() != null) {
+                        throw new IllegalArgumentException("URI authority component has user-info");
+                    }
+                    if (uri.getPort() != -1) {
+                        throw new IllegalArgumentException("URI authority component has port number");
+                    }
+                    // Match the inverse IPv6 conversion in WindowsUriSupport.fromUri.
+                    if (host.startsWith("[")) {
+                        host = host.substring(1, host.length() - 1).replace(':', '-').replace('%', 's') + windowsIPv6LiteralSuffix;
+                    }
+                    path = "\\\\" + host + path;
+                } else if (path.length() > 2 && path.charAt(2) == ':') {
+                    /* `WindowsUriSupport.fromUri` converts "/c:/foo" to "c:/foo". */
+                    path = path.substring(1);
+                }
+            }
+            return parseSource(style, path);
+        }
+
+        PathStyle style() {
+            return style;
+        }
+
+        RootKind kind() {
+            return kind;
+        }
+
+        String text() {
+            return text;
+        }
+
+        String sourcePathText() {
+            requireAvailable();
+            return switch (style) {
+                case BundleRelative -> text;
+                case Unix -> kind == RootKind.Absolute ? "/" + text : text;
+                case Windows -> components.windowsPathText(kind);
+            };
+        }
+
+        String platformRelativePathText() {
+            if (isAbsolute()) {
+                throw new IllegalArgumentException("Expected a relative path but got " + this);
+            }
+            List<String> currentPlatformSegments;
+            if (style == PathStyle.Windows) {
+                currentPlatformSegments = new ArrayList<>(components.segments());
+                if (kind == RootKind.DriveRelative) {
+                    String drive = components.prefix().toUpperCase(Locale.ROOT);
+                    if (currentPlatformSegments.isEmpty()) {
+                        return drive + ":";
+                    }
+                    currentPlatformSegments.set(0, drive + ":" + currentPlatformSegments.getFirst());
+                }
+            } else {
+                currentPlatformSegments = Stream.of(unixSeparatorPattern.split(text.replace('\\', '/'))).filter(segment -> !segment.isEmpty()).toList();
+            }
+            if (currentPlatformSegments.isEmpty()) {
+                return "";
+            }
+            Path relativePath = Path.of(currentPlatformSegments.getFirst(), currentPlatformSegments.subList(1, currentPlatformSegments.size()).toArray(String[]::new));
+            return relativePath.toString();
+        }
+
+        boolean isAbsolute() {
+            requireAvailable();
+            return kind.isAbsolute();
+        }
+
+        PortablePath getFileName() {
+            requireAvailable();
+            PathComponents fileName = components.fileName();
+            return fileName == null ? null : new PortablePath(style, RootKind.Relative, fileName);
+        }
+
+        PortablePath getParent() {
+            requireAvailable();
+            PathComponents parent = components.parent(kind.hasRoot());
+            return parent == null ? null : new PortablePath(style, kind, parent);
+        }
+
+        /*
+         * Keep Windows resolution aligned with `sun.nio.fs.WindowsPath.resolve(Path)`.
+         * `Relative`, `DirectoryRelative`, and `DriveRelative` correspond to its `RELATIVE`,
+         * `DIRECTORY_RELATIVE`, and `DRIVE_RELATIVE` cases, respectively.
+         */
+        PortablePath resolve(String otherPath) {
+            requireAvailable();
+            PortablePath other = parseSource(style, otherPath);
+            if (other.kind == RootKind.Relative && other.text.isEmpty()) {
+                return this;
+            }
+            if (other.isAbsolute()) {
+                return other;
+            }
+            if (style != PathStyle.Windows || other.kind == RootKind.Relative) {
+                return resolveRelative(other);
+            }
+            return switch (other.kind) {
+                case DirectoryRelative -> resolveWindowsDirectoryRelative(other);
+                case DriveRelative -> resolveWindowsDriveRelative(other);
+                case Relative, Absolute, DriveAbsolute, UNC, Unavailable -> throw new AssertionError(other.kind);
+            };
+        }
+
+        /* Resolve an ordinary `RELATIVE` other path as in `WindowsPath`. */
+        private PortablePath resolveRelative(PortablePath other) {
+            ArrayList<String> resolved = new ArrayList<>(components.segments());
+            resolved.addAll(other.components.segments());
+            return new PortablePath(style, kind, components.withSegments(resolved));
+        }
+
+        /*
+         * The `WindowsPath` `DIRECTORY_RELATIVE` case keeps only the base root. Resolving
+         * `\\child` against `C:base` therefore produces the drive-absolute `C:\\child`.
+         */
+        private PortablePath resolveWindowsDirectoryRelative(PortablePath other) {
+            return switch (this.kind) {
+                case DriveRelative, DriveAbsolute -> new PortablePath(style, RootKind.DriveAbsolute, components.withSegments(other.components.segments()));
+                case UNC -> new PortablePath(style, RootKind.UNC, components.withSegments(other.components.segments()));
+                case Relative, DirectoryRelative -> other;
+                case Absolute, Unavailable -> throw new AssertionError(kind);
+            };
+        }
+
+        /*
+         * The `WindowsPath` `DRIVE_RELATIVE` case combines paths only when the base is absolute and
+         * uses the same drive. Otherwise the drive-relative child remains unchanged.
+         */
+        private PortablePath resolveWindowsDriveRelative(PortablePath other) {
+            if (this.kind == RootKind.DriveAbsolute && components.prefix().equals(other.components.prefix())) {
+                return resolveRelative(other);
+            }
+            return other;
+        }
+
+        PortablePath normalize() {
+            requireAvailable();
+            return new PortablePath(style, kind, components.normalize(kind.cannotEscapeRoot()));
+        }
+
+        private void requireAvailable() {
+            if (kind == RootKind.Unavailable) {
+                throw new IllegalStateException("Unavailable substitution has no filesystem path");
+            }
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof PortablePath other && style == other.style && kind == other.kind && pathTextEquals(other.text);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(style, kind, pathTextHashCode());
+        }
+
+        private boolean pathTextEquals(String otherText) {
+            if (text.length() != otherText.length()) {
+                return false;
+            }
+            for (int index = 0; index < text.length(); index++) {
+                if (style.comparisonChar(text.charAt(index)) != style.comparisonChar(otherText.charAt(index))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private int pathTextHashCode() {
+            int hash = 0;
+            for (int index = 0; index < text.length(); index++) {
+                hash = 31 * hash + style.comparisonChar(text.charAt(index));
+            }
+            return hash;
+        }
+
+        @Override
+        public String toString() {
+            return "PortablePath[style=" + style + ", kind=" + kind + ", text=" + text + "]";
+        }
+
+        private record PathComponents(String prefix, List<String> segments) {
+            private PathComponents {
+                segments = List.copyOf(segments);
+            }
+
+            private static PathComponents parse(PathStyle style, RootKind kind, String text) {
+                if (text.startsWith("/")) {
+                    throw malformed(style, kind, text);
+                }
+                List<String> components = split(text);
+                return switch (style) {
+                    case BundleRelative -> {
+                        if (kind != RootKind.Relative && !(kind == RootKind.Unavailable && text.isEmpty())) {
+                            throw malformed(style, kind, text);
+                        }
+                        yield new PathComponents("", components);
+                    }
+                    case Unix -> {
+                        if (kind != RootKind.Relative && kind != RootKind.Absolute) {
+                            throw malformed(style, kind, text);
+                        }
+                        yield new PathComponents("", components);
+                    }
+                    case Windows -> parseWindows(kind, text, components);
+                };
+            }
+
+            private static PathComponents parseWindows(RootKind kind, String text, List<String> components) {
+                return switch (kind) {
+                    case Relative, DirectoryRelative -> new PathComponents("", components);
+                    case DriveRelative, DriveAbsolute -> {
+                        if (components.isEmpty() || !isEncodedDrive(components.getFirst())) {
+                            throw malformed(PathStyle.Windows, kind, text);
+                        }
+                        yield new PathComponents(components.getFirst(), components.subList(1, components.size()));
+                    }
+                    case UNC -> {
+                        if (components.size() < 2) {
+                            throw malformed(PathStyle.Windows, kind, text);
+                        }
+                        yield new PathComponents(String.join("/", components.subList(0, 2)), components.subList(2, components.size()));
+                    }
+                    case Absolute, Unavailable -> throw malformed(PathStyle.Windows, kind, text);
+                };
+            }
+
+            private static List<String> split(String text) {
+                return Stream.of(unixSeparatorPattern.split(text)).filter(component -> !component.isEmpty()).toList();
+            }
+
+            private static List<String> splitWindows(String text) {
+                return Stream.of(windowsSeparatorPattern.split(text)).filter(component -> !component.isEmpty()).toList();
+            }
+
+            private static IllegalArgumentException malformed(PathStyle style, RootKind kind, String text) {
+                return new IllegalArgumentException("Malformed portable path with style " + style + ", kind " + kind + ", and text " + text);
+            }
+
+            private static IllegalArgumentException malformedLegacyWindows(String text) {
+                return new IllegalArgumentException("Malformed legacy portable Windows path " + text);
+            }
+
+            private static boolean isEncodedDrive(String component) {
+                return component.length() == 1 && component.charAt(0) >= 'a' && component.charAt(0) <= 'z';
+            }
+
+            private PathComponents parent(boolean hasRoot) {
+                if (segments.isEmpty()) {
+                    return null;
+                }
+                if (segments.size() > 1) {
+                    return withSegments(segments.subList(0, segments.size() - 1));
+                }
+                if (hasRoot) {
+                    return withSegments(List.of());
+                }
+                return null;
+            }
+
+            private PathComponents fileName() {
+                if (segments.isEmpty()) {
+                    return null;
+                }
+                return new PathComponents("", List.of(segments.getLast()));
+            }
+
+            private PathComponents normalize(boolean cannotEscapeRoot) {
+                ArrayList<String> normalized = new ArrayList<>(segments.size());
+                for (String segment : segments) {
+                    if (".".equals(segment)) {
+                        continue;
+                    } else if ("..".equals(segment)) {
+                        if (!normalized.isEmpty() && !"..".equals(normalized.getLast())) {
+                            /* A parent segment cancels the nearest preceding non-parent segment. */
+                            normalized.removeLast();
+                        } else if (!cannotEscapeRoot) {
+                            /*
+                             * Preserve unmatched parent segments for relative and drive-relative
+                             * paths. Absolute and directory-relative paths cannot escape their root.
+                             */
+                            normalized.add(segment);
+                        }
+                    } else {
+                        normalized.add(segment);
+                    }
+                }
+                return withSegments(normalized);
+            }
+
+            private PathComponents withSegments(List<String> pathSegments) {
+                return new PathComponents(prefix, pathSegments);
+            }
+
+            private String payloadText() {
+                return joinPrefixAndSegments(prefix, segments);
+            }
+
+            private String windowsPathText(RootKind kind) {
+                String suffix = String.join("\\", segments);
+                return switch (kind) {
+                    case Relative -> suffix;
+                    case DriveRelative -> prefix.toUpperCase(Locale.ROOT) + ":" + suffix;
+                    case DriveAbsolute -> prefix.toUpperCase(Locale.ROOT) + ":\\" + suffix;
+                    case DirectoryRelative -> "\\" + suffix;
+                    case UNC -> "\\\\" + prefix.replace('/', '\\') + (suffix.isEmpty() ? "" : "\\" + suffix);
+                    case Absolute, Unavailable -> throw malformed(PathStyle.Windows, kind, payloadText());
+                };
+            }
+
+            private static String joinPrefixAndSegments(String prefix, List<String> pathSegments) {
+                String suffix = String.join("/", pathSegments);
+                if (prefix.isEmpty()) {
+                    return suffix;
+                }
+                return suffix.isEmpty() ? prefix : prefix + "/" + suffix;
+            }
         }
     }
 
     private static final String srcField = "src";
     private static final String dstField = "dst";
     private static final String styleField = "style";
+    private static final String kindField = "kind";
     private static final String textField = "text";
 
     private static final String winPrefix = "win";
     private static final String winRelativePrefix = "win-rel";
     private static final String winDriveRelativePrefix = "win-drive-rel";
+    private static final String windowsIPv6LiteralSuffix = ".ipv6-literal.net";
 
     private static final Pattern windowsSeparatorPattern = Pattern.compile("[\\\\/]+");
     private static final Pattern unixSeparatorPattern = Pattern.compile("/+");
@@ -79,17 +609,17 @@ final class BundlePathMap {
     }
 
     /**
-     * Main bundle-file entry point for reading a path map from disk into the current platform's
-     * internal {@link Path} representation.
-     *
-     * Parses a portable path mapping file and registers its entries into the given in-memory path
-     * map using the current platform's internal {@link Path} representation.
+     * Parses a portable path mapping file without discarding its path style or encoded text.
      */
-    static void parseAndRegister(Reader reader, Map<Path, Path> pathMap) throws IOException {
+    static void parseAndRegister(Reader reader, Map<PortablePath, PortablePath> pathMap) throws IOException {
         Object json = new BundleJSONParser(reader).parse();
         for (var rawEntry : BundleConfigurationParser.asList(json, "Expected a list of path substitution objects")) {
             var entry = BundleConfigurationParser.asMap(rawEntry, "Expected a substitution object");
-            pathMap.put(parsePortablePath(entry, srcField).asInternalPath(), parsePortablePath(entry, dstField).asInternalPath());
+            PortablePath source = parsePortablePath(entry, srcField);
+            if (source.kind() == RootKind.Unavailable) {
+                throw new BundleJSONParserException("Unavailable is only valid as a path substitution destination");
+            }
+            pathMap.put(source, parsePortablePath(entry, dstField));
         }
     }
 
@@ -103,14 +633,27 @@ final class BundlePathMap {
         if (rawStyle == null) {
             throw new BundleJSONParserException("Expected " + styleField + "-field in portable path object");
         }
-        Object rawText = pathObject.get(textField);
-        if (rawText == null) {
-            throw new BundleJSONParserException("Expected " + textField + "-field in portable path object");
-        }
         try {
-            return new PortablePath(PathStyle.valueOf(rawStyle.toString()), rawText.toString());
+            PathStyle style = PathStyle.valueOf(rawStyle.toString());
+            Object rawKind = pathObject.get(kindField);
+            RootKind kind = rawKind == null ? null : RootKind.valueOf(rawKind.toString());
+            if (kind == RootKind.Unavailable) {
+                if (style != PathStyle.BundleRelative || pathObject.containsKey(textField)) {
+                    throw new BundleJSONParserException("Unavailable paths require BundleRelative style and no text field");
+                }
+                return PortablePath.UNAVAILABLE;
+            }
+            Object rawText = pathObject.get(textField);
+            if (rawText == null) {
+                throw new BundleJSONParserException("Expected " + textField + "-field in portable path object");
+            }
+            if (kind != null) {
+                return new PortablePath(style, kind, rawText.toString());
+            }
+            // The kind field was added in bundle format version 2.
+            return PortablePath.parseLegacy(style, rawText.toString());
         } catch (IllegalArgumentException ex) {
-            throw new BundleJSONParserException("Unknown portable path style '" + rawStyle + "'");
+            throw new BundleJSONParserException("Malformed portable path " + pathObject);
         }
     }
 
@@ -119,7 +662,7 @@ final class BundlePathMap {
      * schema.
      */
     static PortablePath sourcePath(Path path, PathStyle sourceStyle) {
-        return new PortablePath(sourceStyle, toPortableSourcePathText(path.toString(), sourceStyle));
+        return PortablePath.parseSource(sourceStyle, path.toString());
     }
 
     /**
@@ -127,7 +670,14 @@ final class BundlePathMap {
      * schema.
      */
     static PortablePath bundlePath(Path path) {
-        return new PortablePath(PathStyle.BundleRelative, encodeBundlePathText(path));
+        return new PortablePath(PathStyle.BundleRelative, RootKind.Relative, encodeBundlePathText(path));
+    }
+
+    static Path resolveBundlePath(Path bundleRoot, PortablePath path) {
+        if (path.style() != PathStyle.BundleRelative || path.kind() != RootKind.Relative) {
+            throw new IllegalArgumentException("Expected a bundle-relative path but got " + path);
+        }
+        return bundleRoot.resolve(Path.of(path.text()));
     }
 
     static <T> Stream<Map.Entry<T, T>> withoutIdentityMappings(Map<T, T> pathMap) {
@@ -135,112 +685,22 @@ final class BundlePathMap {
     }
 
     /**
-     * Main replay entry point for converting a source-platform path string into the portable lookup
-     * key used by the in-memory path maps.
-     */
-    static Path portableSourcePath(String rawPath, PathStyle sourceStyle) {
-        return Path.of(toPortableSourcePathText(rawPath, sourceStyle));
-    }
-
-    /**
-     * Main replay entry point for deriving an output file name from a source-platform image path.
-     */
-    static String sourceFileName(String rawPath, PathStyle sourceStyle) {
-        Path fileName = portableSourcePath(rawPath, sourceStyle).getFileName();
-        return fileName == null ? rawPath : fileName.toString();
-    }
-
-    /**
-     * Main replay entry point for checking source-platform absolute-path semantics without
-     * depending on the current host platform.
-     */
-    static boolean isSourceAbsolute(String rawPath, PathStyle sourceStyle) {
-        if (rawPath.isEmpty()) {
-            return false;
-        }
-        if (sourceStyle == PathStyle.Windows) {
-            String normalized = rawPath.replace('/', '\\');
-            if (normalized.startsWith("\\\\") || normalized.startsWith("\\")) {
-                return true;
-            }
-            return normalized.length() >= 3 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':' && normalized.charAt(2) == '\\';
-        }
-        String normalized = rawPath.replace('\\', '/');
-        return normalized.startsWith("/");
-    }
-
-    /**
-     * Main replay entry point for reinterpreting a source-platform relative path using the current
-     * host platform's separator semantics.
-     */
-    static String toCurrentPlatformRelativePath(String rawPath, PathStyle sourceStyle) {
-        if (rawPath.isEmpty()) {
-            return rawPath;
-        }
-        String normalized = sourceStyle == PathStyle.Windows ? rawPath.replace('/', '\\') : rawPath.replace('\\', '/');
-        String[] rawSegments = (sourceStyle == PathStyle.Windows ? windowsSeparatorPattern : unixSeparatorPattern).split(normalized);
-        List<String> segments = Stream.of(rawSegments).filter(segment -> !segment.isEmpty()).toList();
-        if (segments.isEmpty()) {
-            return "";
-        }
-        Path relativePath = Path.of(segments.getFirst(), segments.subList(1, segments.size()).toArray(String[]::new));
-        return relativePath.toString();
-    }
-
-    /**
-     * Converts a source-platform path string into the portable text form used both on disk and for
-     * replay lookup keys.
-     */
-    static String toPortableSourcePathText(String rawPath, PathStyle sourceStyle) {
-        return sourceStyle == PathStyle.Windows ? WindowsPortablePathCodec.encode(rawPath) : rawPath;
-    }
-
-    /**
-     * Main replay entry point for restoring a portable source path to the current platform's native
-     * path text. Only Windows-source paths replayed on Windows need decoding.
-     */
-    static String decodeToCurrentPlatformPath(String portablePathText, PathStyle sourceStyle) {
-        if (sourceStyle == PathStyle.Windows && OS.WINDOWS.isCurrent()) {
-            return WindowsPortablePathCodec.decode(portablePathText);
-        }
-        return portablePathText;
-    }
-
-    /**
      * Prints a path mapping entry using the portable on-disk bundle schema.
      */
-    static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter writer, PathStyle sourceStyle, boolean destinationIsBundleRelative) throws IOException {
-        printPathMapping(entry, writer, sourceStyle, destinationIsBundleRelative, false);
-    }
-
-    static void printPortablePathMapping(Map.Entry<Path, Path> entry, JsonWriter writer, PathStyle sourceStyle, boolean destinationIsBundleRelative) throws IOException {
-        printPathMapping(entry, writer, sourceStyle, destinationIsBundleRelative, true);
-    }
-
-    private static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter writer, PathStyle sourceStyle, boolean destinationIsBundleRelative, boolean entryIsPortable) throws IOException {
-        PortablePath srcPath;
-        PortablePath dstPath;
-        if (entryIsPortable) {
-            srcPath = portablePath(entry.getKey(), sourceStyle);
-            dstPath = portablePath(entry.getValue(), destinationIsBundleRelative ? PathStyle.BundleRelative : sourceStyle);
-        } else {
-            srcPath = sourcePath(entry.getKey(), sourceStyle);
-            dstPath = destinationIsBundleRelative ? bundlePath(entry.getValue()) : sourcePath(entry.getValue(), sourceStyle);
-        }
-        printPathMapping(srcPath, dstPath, writer);
-    }
-
-    private static void printPathMapping(PortablePath srcPath, PortablePath dstPath, JsonWriter writer) throws IOException {
+    static void printPathMapping(Map.Entry<PortablePath, PortablePath> entry, JsonWriter writer) throws IOException {
         writer.append('{').quote(srcField).append(':');
-        printPortablePath(srcPath, writer);
+        printPortablePath(entry.getKey(), writer);
         writer.append(',').quote(dstField).append(':');
-        printPortablePath(dstPath, writer);
+        printPortablePath(entry.getValue(), writer);
         writer.append('}');
     }
 
     private static void printPortablePath(PortablePath portablePath, JsonWriter writer) throws IOException {
         writer.append('{').quote(styleField).append(':').quote(portablePath.style().name());
-        writer.append(',').quote(textField).append(':').quote(portablePath.text());
+        writer.append(',').quote(kindField).append(':').quote(portablePath.kind().name());
+        if (portablePath.kind() != RootKind.Unavailable) {
+            writer.append(',').quote(textField).append(':').quote(portablePath.text());
+        }
         writer.append('}');
     }
 
@@ -250,89 +710,4 @@ final class BundlePathMap {
                         .collect(Collectors.joining("/"));
     }
 
-    private static PortablePath portablePath(Path path, PathStyle style) {
-        return new PortablePath(style, toPortablePathText(path));
-    }
-
-    private static String toPortablePathText(Path path) {
-        return path.toString().replace('\\', '/');
-    }
-
-    private static final class WindowsPortablePathCodec {
-        private WindowsPortablePathCodec() {
-        }
-
-        private static String encode(String rawPath) {
-            String normalized = rawPath.replace('/', '\\');
-            if (normalized.startsWith("\\\\")) {
-                String[] components = windowsSeparatorPattern.split(normalized.substring(2));
-                if (components.length >= 2) {
-                    return "/" + PortablePathTextSupport.joinSegments(winPrefix, "unc") + PortablePathTextSupport.appendSegments(components);
-                }
-            }
-            if (normalized.length() >= 3 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':' && normalized.charAt(2) == '\\') {
-                return "/" + PortablePathTextSupport.joinSegments(winPrefix, Character.toString(Character.toLowerCase(normalized.charAt(0)))) +
-                                PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized.substring(3)));
-            }
-            if (normalized.length() >= 2 && Character.isLetter(normalized.charAt(0)) && normalized.charAt(1) == ':') {
-                return PortablePathTextSupport.joinSegments(winDriveRelativePrefix, Character.toString(Character.toLowerCase(normalized.charAt(0)))) +
-                                PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized.substring(2)));
-            }
-            if (normalized.startsWith("\\")) {
-                return "/" + PortablePathTextSupport.joinSegments(winPrefix, "root") + PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized.substring(1)));
-            }
-            return PortablePathTextSupport.joinSegments(winRelativePrefix) + PortablePathTextSupport.appendSegments(windowsSeparatorPattern.split(normalized));
-        }
-
-        private static String decode(String portablePathText) {
-            String absoluteWinPrefix = "/" + winPrefix;
-            if (portablePathText.startsWith(absoluteWinPrefix + "/unc/")) {
-                List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/unc/").length())));
-                if (segments.size() >= 2) {
-                    return "\\\\" + String.join("\\", segments);
-                }
-            }
-            if (portablePathText.startsWith(absoluteWinPrefix + "/root/")) {
-                return "\\" + PortablePathTextSupport.joinWindowsSegments(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/root/").length())));
-            }
-            if (portablePathText.startsWith(absoluteWinPrefix + "/")) {
-                List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((absoluteWinPrefix + "/").length())));
-                if (!segments.isEmpty()) {
-                    String drive = segments.getFirst();
-                    String tail = PortablePathTextSupport.joinWindowsSegments(segments.subList(1, segments.size()).toArray(String[]::new));
-                    return Character.toUpperCase(drive.charAt(0)) + ":" + (tail.isEmpty() ? "\\" : "\\" + tail);
-                }
-            }
-            if (portablePathText.startsWith(winDriveRelativePrefix + "/")) {
-                List<String> segments = List.of(unixSeparatorPattern.split(portablePathText.substring((winDriveRelativePrefix + "/").length())));
-                if (!segments.isEmpty()) {
-                    String drive = segments.getFirst();
-                    String tail = PortablePathTextSupport.joinWindowsSegments(segments.subList(1, segments.size()).toArray(String[]::new));
-                    return Character.toUpperCase(drive.charAt(0)) + ":" + tail;
-                }
-            }
-            if (portablePathText.startsWith(winRelativePrefix + "/")) {
-                return PortablePathTextSupport.joinWindowsSegments(unixSeparatorPattern.split(portablePathText.substring((winRelativePrefix + "/").length())));
-            }
-            return portablePathText;
-        }
-    }
-
-    private static final class PortablePathTextSupport {
-        private PortablePathTextSupport() {
-        }
-
-        private static String joinSegments(String... segments) {
-            return Stream.of(segments).filter(segment -> segment != null && !segment.isEmpty()).collect(Collectors.joining("/"));
-        }
-
-        private static String appendSegments(String[] segments) {
-            String suffix = Stream.of(segments).filter(segment -> !segment.isEmpty()).collect(Collectors.joining("/"));
-            return suffix.isEmpty() ? "" : "/" + suffix;
-        }
-
-        private static String joinWindowsSegments(String[] segments) {
-            return Stream.of(segments).filter(segment -> !segment.isEmpty()).collect(Collectors.joining("\\"));
-        }
-    }
 }
