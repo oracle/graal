@@ -3552,100 +3552,100 @@ public class TagTest extends AbstractInstructionTest {
         }
     }
 
-    static class TestTag1 extends Tag {
+    public static class TestTag1 extends Tag {
     }
 
-    static class TestTag2 extends Tag {
+    public static class TestTag2 extends Tag {
     }
 
-    static class TestTag3 extends Tag {
+    public static class TestTag3 extends Tag {
     }
 
-    static class TestTag4 extends Tag {
+    public static class TestTag4 extends Tag {
     }
 
-    static class TestTag5 extends Tag {
+    public static class TestTag5 extends Tag {
     }
 
-    static class TestTag6 extends Tag {
+    public static class TestTag6 extends Tag {
     }
 
-    static class TestTag7 extends Tag {
+    public static class TestTag7 extends Tag {
     }
 
-    static class TestTag8 extends Tag {
+    public static class TestTag8 extends Tag {
     }
 
-    static class TestTag9 extends Tag {
+    public static class TestTag9 extends Tag {
     }
 
-    static class TestTag10 extends Tag {
+    public static class TestTag10 extends Tag {
     }
 
-    static class TestTag11 extends Tag {
+    public static class TestTag11 extends Tag {
     }
 
-    static class TestTag12 extends Tag {
+    public static class TestTag12 extends Tag {
     }
 
-    static class TestTag13 extends Tag {
+    public static class TestTag13 extends Tag {
     }
 
-    static class TestTag14 extends Tag {
+    public static class TestTag14 extends Tag {
     }
 
-    static class TestTag15 extends Tag {
+    public static class TestTag15 extends Tag {
     }
 
-    static class TestTag16 extends Tag {
+    public static class TestTag16 extends Tag {
     }
 
-    static class TestTag17 extends Tag {
+    public static class TestTag17 extends Tag {
     }
 
-    static class TestTag18 extends Tag {
+    public static class TestTag18 extends Tag {
     }
 
-    static class TestTag19 extends Tag {
+    public static class TestTag19 extends Tag {
     }
 
-    static class TestTag20 extends Tag {
+    public static class TestTag20 extends Tag {
     }
 
-    static class TestTag21 extends Tag {
+    public static class TestTag21 extends Tag {
     }
 
-    static class TestTag22 extends Tag {
+    public static class TestTag22 extends Tag {
     }
 
-    static class TestTag23 extends Tag {
+    public static class TestTag23 extends Tag {
     }
 
-    static class TestTag24 extends Tag {
+    public static class TestTag24 extends Tag {
     }
 
-    static class TestTag25 extends Tag {
+    public static class TestTag25 extends Tag {
     }
 
-    static class TestTag26 extends Tag {
+    public static class TestTag26 extends Tag {
     }
 
-    static class TestTag27 extends Tag {
+    public static class TestTag27 extends Tag {
     }
 
-    static class TestTag28 extends Tag {
+    public static class TestTag28 extends Tag {
     }
 
-    static class TestTag29 extends Tag {
+    public static class TestTag29 extends Tag {
     }
 
-    static class TestTag30 extends Tag {
+    public static class TestTag30 extends Tag {
     }
 
-    static class TestTag31 extends Tag {
+    public static class TestTag31 extends Tag {
     }
 
-    static class TestTag32 extends Tag {
+    public static class TestTag32 extends Tag {
     }
 
     static class TestTag33 extends Tag {
