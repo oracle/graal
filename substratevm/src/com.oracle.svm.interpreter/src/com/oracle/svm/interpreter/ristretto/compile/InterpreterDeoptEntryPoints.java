@@ -270,6 +270,10 @@ public class InterpreterDeoptEntryPoints {
      */
     public static Object executeInterpreterFrames(RistrettoDeoptimizedInterpreterFrame deoptFrame, RistrettoVirtualInterpreterFrame current, Object pendingExceptionObject, boolean hasPendingException)
                     throws Throwable {
+        if (current.getMethod().isSynchronized() && current.getFrameInfo().getNumLocks() > 0) {
+            VMError.guarantee(Thread.holdsLock(current.getFrame().getLock(0)), "Synchronized method monitor is not owned by the current thread during deoptimization.");
+        }
+
         Object returnValue = null;
         Throwable pendingException = null;
         boolean inject = false;
