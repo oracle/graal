@@ -151,7 +151,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         for (BytecodeDSLModel model : models) {
             parseBytecodeDSLModel(typeElement, model, model.getTemplateTypeAnnotation());
             if (model.hasErrors()) {
-                // we only need one copy of the error messages.
+                BytecodeDSLBuiltins.addBackwardCompatibleOperationsOnError(model);
+                // We only need one copy of the error messages, so we can abort early.
                 break;
             }
 

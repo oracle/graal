@@ -2905,7 +2905,7 @@ final class BuilderElement extends AbstractElement {
                     buildConstantOperandValidation(b, operationArgument.builderType(), operationArgument.name());
                 }
                 for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
-                    String constantOperandValue = emitConstantOperand(b, prologOperation.operationEndArguments[i], prologOperation.constantOperandAfterNames.get(i));
+                    String constantOperandValue = emitConstantOperand(b, prologOperation.operationEndArguments[i]);
                     InstructionImmediate immediate = prologOperation.instruction().constantOperandImmediates.get(after.get(i));
                     b.statement(BytecodeRootNodeElement.writeImmediate("state.bc", operationStack.read(rootOperation, operationFields.prologBci), constantOperandValue, immediate.encoding()));
                 }
@@ -3814,14 +3814,11 @@ final class BuilderElement extends AbstractElement {
             return List.of();
         }
 
-        List<ConstantOperandModel> constantOperandsBefore = operation.constantOperands.before();
-        if (constantOperandsBefore.isEmpty()) {
-            return List.of();
-        }
-
-        List<String> result = new ArrayList<>(constantOperandsBefore.size());
-        for (int i = 0; i < constantOperandsBefore.size(); i++) {
-            result.add(emitConstantOperand(b, operation.operationBeginArguments[i], operation.getConstantOperandBeforeName(i)));
+        List<String> result = new ArrayList<>(operation.constantOperands.before().size());
+        for (OperationArgument argument : operation.operationBeginArguments) {
+            if (argument.constantOperand().isPresent()) {
+                result.add(emitConstantOperand(b, argument));
+            }
         }
         return result;
     }
@@ -3848,8 +3845,8 @@ final class BuilderElement extends AbstractElement {
         boolean inEmit = !operation.hasChildren();
         Map<ConstantOperandModel, String> resultMap = new IdentityHashMap<>();
         if (inEmit) {
-            for (int i = 0; i < before.size(); i++) {
-                resultMap.put(before.get(i), emitConstantOperand(b, operation.operationBeginArguments[i], operation.getConstantOperandBeforeName(i)));
+            for (OperationArgument argument : operation.operationBeginArguments) {
+                argument.constantOperand().ifPresent(constantOperand -> resultMap.put(constantOperand, emitConstantOperand(b, argument)));
             }
         } else {
             List<OperationField> fields = operationFields.getConstants(before, false);
@@ -3859,13 +3856,13 @@ final class BuilderElement extends AbstractElement {
         }
         for (int i = 0; i < after.size(); i++) {
             if (model.prolog != null && operation == model.prolog.operation) {
-                /**
+                /*
                  * Special case: when emitting the prolog in beginRoot, end constants are not yet
                  * known. They will be patched in endRoot.
                  */
                 resultMap.put(after.get(i), UNINIT);
             } else {
-                resultMap.put(after.get(i), emitConstantOperand(b, operation.operationEndArguments[i], operation.getConstantOperandAfterName(i)));
+                resultMap.put(after.get(i), emitConstantOperand(b, operation.operationEndArguments[i]));
             }
 
         }
@@ -3980,14 +3977,14 @@ final class BuilderElement extends AbstractElement {
         return args;
     }
 
-    private String emitConstantOperand(CodeTreeBuilder b, OperationArgument argument, String constantOperandName) {
+    private String emitConstantOperand(CodeTreeBuilder b, OperationArgument argument) {
         ConstantOperandModel constantOperand = argument.constantOperand().orElseThrow(() -> new AssertionError("Operation argument " + argument + " did not have a constant operand."));
         if (constantOperand.kind() == ImmediateKind.CONSTANT) {
-            /**
+            /*
              * Eagerly allocate space for the constants. Even if the node is not emitted (e.g., it's
              * a disabled instrumentation), we need the constant pool to be stable.
              */
-            String constantPoolIndex = constantOperandName + "Index";
+            String constantPoolIndex = argument.logicalName() + "Index";
             b.startDeclaration(type(int.class), constantPoolIndex);
             b.startCall("state.addConstant");
             if (ElementUtils.typeEquals(argument.builderType(), constantOperand.type())) {

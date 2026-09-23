@@ -70,6 +70,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIlle
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -789,8 +790,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.startBlock();
 
             boolean rootNodeAvailable = false;
+            InstructionModel representativeInstruction = instructions.getFirst();
             for (InstructionImmediate immediate : group.immediates()) {
-                String localName = immediate.name();
+                String localName = representativeInstruction.resolveOperationArgument(immediate).map(OperationArgument::name).orElse(immediate.name());
                 CodeTree declareImmediate = CodeTreeBuilder.createBuilder() //
                                 .startDeclaration(immediate.kind().toDeclaredType(parent.context), localName) //
                                 .tree(BytecodeRootNodeElement.readImmediate("bc", "bci", immediate)) //
