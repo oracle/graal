@@ -219,20 +219,14 @@ public final class SpecializationData extends TemplateMethod {
                 return true;
             }
         }
-        if (isNodeReceiverBound(getLimitExpression())) {
+        DSLExpression limit = getLimitExpression();
+        if (limit != null && isNodeReceiverBound(limit)) {
             return true;
         }
         return false;
     }
 
-    /**
-     * @return whether the node receiver is referenced in {@code expression}; {@code null} is treated
-     *         as unbound (e.g. when the parser dropped a redundant limit expression)
-     */
     public boolean isNodeReceiverBound(DSLExpression expression) {
-        if (expression == null) {
-            return false;
-        }
         for (Variable variable : expression.findBoundVariables()) {
             if (isNodeReceiverVariable(variable.getResolvedVariable())) {
                 return true;
