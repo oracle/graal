@@ -90,14 +90,16 @@ public final class FrameInfoRetention {
 
     /**
      * Returns whether the compilation root permits pruning. Individual frame chains may still
-     * require all values when frame information was explicitly requested.
+     * require all values when frame information was explicitly requested. Ordinary native debug
+     * information can describe unavailable locals, so it does not prevent pruning. Source-level
+     * debugging (enabled by O0) requires local values and therefore disables pruning.
      */
     public static boolean canPruneFrameStateValues(HostedMethod method) {
         if (!isInterpreterBytecodeHandlerStub(method)) {
             return false;
         }
         assert !method.canDeoptimize() && !method.isDeoptTarget() : method;
-        return !SubstrateOptions.useDebugInfoGeneration() && !SubstrateOptions.getSourceLevelDebug();
+        return !SubstrateOptions.getSourceLevelDebug();
     }
 
     private static boolean isInterpreterBytecodeHandlerStub(ResolvedJavaMethod method) {
