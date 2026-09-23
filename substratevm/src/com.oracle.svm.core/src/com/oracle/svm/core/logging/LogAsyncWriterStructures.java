@@ -38,8 +38,8 @@ final class LogAsyncWriterStructures {
     }
 
     // @formatter:off
-    /// A variable-sized queue entry whose raw header is followed immediately by inline prefix and
-    /// message bytes. The complete allocation is contiguous and never wraps around the end of the
+    /// A variable-sized queue entry whose raw header is followed immediately by inline payload
+    /// bytes. The complete allocation is contiguous and never wraps around the end of the
     /// [queue][QueueState] chunk.
     @RawStructure
     interface Record extends PointerBase {
@@ -48,9 +48,6 @@ final class LogAsyncWriterStructures {
 
         @RawField int  getMessageLength();
         @RawField void setMessageLength(int value);
-
-        @RawField int  getPrefixLength();
-        @RawField void setPrefixLength(int value);
 
         @RawField int  getOutputSlot();
         @RawField void setOutputSlot(int value);

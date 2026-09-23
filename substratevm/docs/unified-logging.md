@@ -376,20 +376,28 @@ JFR record through either or both sinks does not allocate on the Java heap.
 
 ## Comparison with HotSpot unified logging
 
+This comparison uses HotSpot from OpenJDK JDK 25 build 36
+([`jdk-25+36`](https://github.com/openjdk/jdk/tree/jdk-25%2B36)) as its baseline.
 The relevant HotSpot implementation uses linked output lists, reader tracking,
 file stream locks, a rotation semaphore, and native asynchronous buffers; see
-[`logTagSet.cpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logTagSet.cpp),
-[`logOutputList.hpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logOutputList.hpp),
-[`logFileOutput.cpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logFileOutput.cpp),
-and [`logAsyncWriter.hpp`](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/logging/logAsyncWriter.hpp).
-SVM uses the same broad configuration model but a smaller runtime design:
+[`logTagSet.cpp`](https://github.com/openjdk/jdk/blob/jdk-25%2B36/src/hotspot/share/logging/logTagSet.cpp),
+[`logOutputList.hpp`](https://github.com/openjdk/jdk/blob/jdk-25%2B36/src/hotspot/share/logging/logOutputList.hpp),
+[`logFileOutput.cpp`](https://github.com/openjdk/jdk/blob/jdk-25%2B36/src/hotspot/share/logging/logFileOutput.cpp),
+and [`logAsyncWriter.hpp`](https://github.com/openjdk/jdk/blob/jdk-25%2B36/src/hotspot/share/logging/logAsyncWriter.hpp).
+SVM uses the same broad configuration model but a smaller runtime design.
+
+The main user-visible difference is:
+
+* HotSpot formats an asynchronous-drop warning with the output's configured
+  decorators. SVM always uses `time`, `uptime`, `pid`, `tid`, and `level` for
+  this warning, even when the output is configured with `none`.
 
 | Area | HotSpot | SVM |
 | --- | --- | --- |
 | Available tag sets | Every tag set instantiated by HotSpot logging sites. | Every tag set used by the SVM runtime. |
-| Runtime modes | Synchronous by default; `-Xlog:async` adds a bounded queue and writer thread. | Synchronous by default; `-Xlog:async[:drop\|stall]` uses a preallocated native byte queue and a writer thread. VM operations preflight complete messages and write synchronously when immediate admission is unsafe. |
+| Runtime modes | Synchronous by default; `-Xlog:async[:drop\|stall]` adds native ping-pong buffers and a writer thread. | Synchronous by default; `-Xlog:async[:drop\|stall]` uses a preallocated native byte queue and a writer thread. VM operations preflight complete messages and write synchronously when immediate admission is unsafe. |
 | Output routing | Per-level linked-list heads with atomic reader tracking. | Per-tag-set, per-level immutable output arrays published through volatile fields. The legacy GC fallback uses the same table with a low-level VM-log destination. |
-| Configuration | `ConfigurationLock` and reader counts protect updates and delayed reclamation; `jcmd VM.log` supports runtime changes. | Synchronized configuration methods publish replacement arrays. Configuration is startup-oriented except for GC verbosity changes through `MemoryMXBean`. |
+| Configuration | `ConfigurationLock` and reader counts protect updates and delayed reclamation; `jcmd VM.log` supports runtime changes. | Synchronized configuration methods publish replacement arrays. Configuration is startup-oriented except for GC verbosity changes through `MemoryMXBean` and `RuntimeOptions.set` with `PrintGC` or `VerboseGC`. |
 | Synchronous output locking | `FileLocker` protects writes; a rotation semaphore covers file rotation. | Stream outputs use an uninterruptible critical section to serialize no-transition native writes with a dedicated `VMMutex`; file outputs use the same pattern with a prebuilt `VMMutex` across the no-transition write, accounting, rotation, and reopen. VM operations use the same serialized paths. |
 | Asynchronous buffering and locking | Native ping-pong buffers and producer and consumer synchronization protect the queue. | One native chunk contains a variable number of word-aligned raw records with inline bytes. Native ring state, `VMMutex` producer and consumer locks, and a `VMCondition` coordinate publication, waiting, consumption, flushing, and VM teardown. The daemon consumer waits in native state and is terminated before the chunk is freed at isolate destruction. |
 | Decoration state | Resolved event decorations can remain in asynchronous messages. | Event-only decorations live in fast thread-local state and are copied into each asynchronous queue record; line levels remain explicit per line or record. |

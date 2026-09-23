@@ -116,7 +116,7 @@ public final class UnifiedLoggingTest {
         expectFailure(() -> LogTag.fromString("bad tag"), "invalid tag was accepted");
     }
 
-    /// Verifies decorator defaults, abbreviations, combinations, and duplicate rejection.
+    /// Verifies decorator defaults, abbreviations, combinations, and duplicate handling.
     @Test
     public void testDecorators() {
         checkEquals(LogDecorators.DEFAULT.size(), 3, "default decorator count should be three");
@@ -132,7 +132,9 @@ public final class UnifiedLoggingTest {
         LogDecorators combined = ((Target_com_oracle_svm_core_logging_LogDecorators) (Object) first).union(LogDecorators.parse("tags"));
         checkEquals(combined.size(), 3, "decorator union should contain three decorators");
         checkTrue(combined.contains(LogDecorators.Decorator.LEVEL), "decorator union should retain the level decorator");
-        expectFailure(() -> LogDecorators.parse("uptime,uptime"), "duplicate decorator was accepted");
+        LogDecorators duplicate = LogDecorators.parse("uptime,u");
+        checkEquals(duplicate.size(), 1, "duplicate decorator names should enable one decorator");
+        checkTrue(duplicate.contains(LogDecorators.Decorator.UPTIME), "duplicate decorator aliases should retain the decorator");
         expectFailure(() -> LogDecorators.parse("unknown"), "invalid decorator was accepted");
     }
 
@@ -406,13 +408,39 @@ public final class UnifiedLoggingTest {
         }
         LogTagSet.class_load.trace("trace line");
         LogTagSet.class_load.debug("embedded line 1\nembedded line 2\n");
+        LogTagSet.class_load.debug("embedded CRLF line 1\r\nembedded CRLF line 2\r\n");
         String output = read(logFile);
         checkContains(output, "[info][class,load] info line", "INFO message should include its level and tags");
         checkContains(output, "[debug][class,load] debug line", "DEBUG message should include its level and tags");
         checkNotContains(output, "trace line", "disabled TRACE message should not be written");
-        checkContains(output, "[debug][class,load] embedded line 1\n[debug][class,load] embedded line 2\n", "embedded records should each include metadata without adding a blank record");
+        String messagePrefix = "[debug][class,load] ";
+        String continuationPrefix = continuationPrefix(messagePrefix);
+        String separator = System.lineSeparator();
+        checkContains(output, messagePrefix + "embedded line 1" + separator + continuationPrefix + "embedded line 2" + separator + continuationPrefix + separator,
+                        "an unfolded continuation and terminal empty line should use blank markers aligned with the decorations");
+        checkRawContains(output, messagePrefix + "embedded CRLF line 1\r" + separator + continuationPrefix + "embedded CRLF line 2\r" + separator + continuationPrefix + separator,
+                        "a synchronous CRLF message should retain carriage returns as message content");
         LogConfiguration.disableLogging();
         delete(logFile);
+    }
+
+    /// Verifies that wall-clock decorators use HotSpot's numeric UTC-offset format.
+    @Test
+    public void testTimestampDecorators() throws IOException {
+        String logFile = testLogFile("timestamps");
+        LogConfiguration.disableLogging();
+        delete(logFile);
+        try {
+            checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":time,utctime"), "timestamp configuration should be accepted");
+            LogTagSet.class_load.info("timestamp message");
+            String line = lineContaining(read(logFile), "timestamp message");
+            String timestamp = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}";
+            checkTrue(line.matches("\\[" + timestamp + "[+-]\\d{4}\\]\\[" + timestamp + "\\+0000\\] timestamp message"),
+                            "time and utctime should use numeric offsets without a colon");
+        } finally {
+            LogConfiguration.disableLogging();
+            delete(logFile);
+        }
     }
 
     /// Verifies that the `tid` decorator uses the operating-system thread identifier.
@@ -557,13 +585,15 @@ public final class UnifiedLoggingTest {
         LogTagSet.class_load.info("asynchronous CRLF line 1\r\nasynchronous CRLF line 2\r\n");
         LogConfiguration.disableLogging();
         String output = read(logFile);
-        checkContains(output, "[info][class,load] asynchronous line 1\n[info][class,load] asynchronous line 2\n",
-                        "asynchronous records should retain producer metadata and omit a trailing blank record");
-        checkContains(output, "asynchronous CRLF line 1\n[info][class,load] asynchronous CRLF line 2\n", "asynchronous CRLF should produce one separator");
-        checkNotContains(removePlatformLineSeparators(output), "\r", "asynchronous CRLF should not retain carriage returns");
+        String messagePrefix = "[info][class,load] ";
+        String continuationPrefix = continuationPrefix(messagePrefix);
+        String separator = System.lineSeparator();
+        checkContains(output, messagePrefix + "asynchronous line 1" + separator + continuationPrefix + "asynchronous line 2" + separator + continuationPrefix + separator,
+                        "an asynchronous continuation and terminal empty line should use blank markers aligned with the decorations");
+        checkRawContains(output, messagePrefix + "asynchronous CRLF line 1\r" + separator + continuationPrefix + "asynchronous CRLF line 2\r" + separator + continuationPrefix + separator,
+                        "asynchronous CRLF should retain carriage returns as message content");
         String foldedOutput = read(foldedLogFile);
-        checkContains(foldedOutput, "asynchronous CRLF line 1\\nasynchronous CRLF line 2\\n", "folded asynchronous CRLF should produce one escaped separator");
-        checkNotContains(removePlatformLineSeparators(foldedOutput), "\r", "folded asynchronous CRLF should not retain carriage returns");
+        checkRawContains(foldedOutput, "asynchronous CRLF line 1\r\\nasynchronous CRLF line 2\r\\n", "folded asynchronous CRLF should retain carriage returns before escaped newlines");
         delete(logFile);
         delete(foldedLogFile);
     }
@@ -896,9 +926,9 @@ public final class UnifiedLoggingTest {
         LogTagSet.class_load.debug("first\\part\nsecond");
         LogTagSet.class_load.debug("first\r\nsecond");
         String foldedMessage = "first\\\\part" + "\\n" + "second";
-        checkContains(read(rotatingLogFile), foldedMessage, "multiline event should be folded");
-        checkContains(read(rotatingLogFile), "first\\nsecond", "CRLF should be folded as one line separator");
-        checkNotContains(read(rotatingLogFile), "first\r", "CRLF should not retain the carriage return");
+        String foldedOutput = read(rotatingLogFile);
+        checkContains(foldedOutput, foldedMessage, "multiline event should be folded");
+        checkRawContains(foldedOutput, "first\r\\nsecond", "folded CRLF should retain its carriage return before the escaped newline");
         LogConfiguration.disableLogging();
         delete(rotatingLogFile);
         delete(invalidLogFile);
@@ -1404,6 +1434,11 @@ public final class UnifiedLoggingTest {
         checkTrue(debugInfoPrefix.endsWith("[info][class,load]"), "normalized decorations should contain the INFO level and class-load tags");
     }
 
+    /// Creates the blank continuation marker for a decorated prefix that includes its separator.
+    private static String continuationPrefix(String decoratedPrefix) {
+        return "[" + " ".repeat(decoratedPrefix.length() - 3) + "] ";
+    }
+
     /// Finds the physical output line containing `message`.
     private static String lineContaining(String output, String message) {
         return output.lines().filter(line -> line.contains(message)).findFirst().orElseThrow(() -> new AssertionError("No output line contains <" + message + "> in <" + output + ">"));
@@ -1480,14 +1515,16 @@ public final class UnifiedLoggingTest {
         }
     }
 
+    /// Fails the test when a target string does not contain the searched text exactly.
+    private static void checkRawContains(String target, String searched, String comparison) {
+        if (!target.contains(searched)) {
+            throw new AssertionError(comparison + ": expected target string <" + target + "> to contain searched substring exactly <" + searched + ">");
+        }
+    }
+
     /// Converts platform-specific line endings so that log content can be compared consistently.
     private static String normalizeLineEndings(String value) {
         return value.replace("\r\n", "\n").replace('\r', '\n');
-    }
-
-    /// Removes output separators so carriage returns originating in message content remain visible.
-    private static String removePlatformLineSeparators(String value) {
-        return value.replace(System.lineSeparator(), "");
     }
 
     /// Fails the test when a target string contains a searched substring.
