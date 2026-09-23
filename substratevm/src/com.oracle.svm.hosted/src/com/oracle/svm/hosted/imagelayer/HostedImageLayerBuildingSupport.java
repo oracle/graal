@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.imagelayer;
 import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.APP_LAYER_ONLY_TRAIT;
 
 import java.io.IOException;
+import java.lang.invoke.MethodType;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -360,8 +361,12 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
              * Module needs to be initialized in the application layer because of ALL_UNNAMED_MODULE
              * and EVERYONE_MODULE. This allows to have a consistent hash code for those modules at
              * run time and build time.
+             *
+             * MethodType needs its static state initialized in the application layer so that its
+             * intern table contains MethodType instances from every image layer.
              */
             LayeredImageOptions.ApplicationLayerInitializedClasses.update(values, Module.class.getName());
+            LayeredImageOptions.ApplicationLayerInitializedClasses.update(values, MethodType.class.getName());
 
             classLoaderSupport.initializePathDigests(digestIgnorePath);
         }
