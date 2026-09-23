@@ -70,6 +70,7 @@ import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase.Options;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode;
 import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode.VectorSimplifier;
@@ -213,6 +214,16 @@ public enum CEOptimization {
      *
      */
     EarlyExpandCheckCast(GraalOptions.EarlyExpandCheckCast, EarlyExpandCheckCastPhase.class),
+
+    /**
+     * {@link PartialRedundancySchedulePhase} is Graal's implementation of partial redundancy
+     * elimination. An optimization that tries to improve program performance by removing
+     * (partially) redundant operations along branches.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase.Options#PartialRedundancyScheduling}.
+     */
+    PartialRedundancyElimination(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling, PartialRedundancySchedulePhase.class),
 
     /**
      * {@link SchedulePhase} is Graal's implementation of an instruction scheduling algorithm for

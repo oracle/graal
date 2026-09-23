@@ -53,6 +53,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.FixReadsPhase;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase;
 import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
@@ -124,6 +125,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
         Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
 
@@ -143,6 +145,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
         Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
 
@@ -157,6 +160,7 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
         Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
     }
