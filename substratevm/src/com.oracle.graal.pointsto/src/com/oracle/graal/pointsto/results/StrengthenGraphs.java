@@ -44,8 +44,10 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -210,7 +212,7 @@ public abstract class StrengthenGraphs {
         var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
         var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
 
-        preStrengthenGraphs(graph, method);
+        applyPreStrengthenGraphs(graph, method);
 
         graph.resetDebug(debug);
         if (beforeCounters != null) {
@@ -240,6 +242,38 @@ public abstract class StrengthenGraphs {
         }
     }
 
+    /** Runs the inspection hook and assertion-checks its structurally read-only contract. */
+    @SuppressWarnings("try")
+    private void applyPreStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
+        if (!Assertions.assertionsEnabled()) {
+            preStrengthenGraphs(graph, method);
+            return;
+        }
+
+        Graph.Mark graphMark = graph.getMark();
+        int edgeModificationCount = graph.getEdgeModificationCount();
+        Graph.NodeEventListener listener = new Graph.NodeEventListener() {
+            @Override
+            public void changed(Graph.NodeEvent event, Node node) {
+                switch (event) {
+                    case NODE_ADDED, NODE_REMOVED, INPUT_CHANGED, CONTROL_FLOW_CHANGED -> throw new AssertionError(
+                                    "preStrengthenGraphs must not structurally modify the graph: " + event + " for " + node);
+                    default -> {
+                    }
+                }
+            }
+        };
+        try (Graph.NodeEventScope scope = graph.trackNodeEvents(listener)) {
+            preStrengthenGraphs(graph, method);
+        }
+        assert graphMark.isCurrent() : "preStrengthenGraphs added nodes";
+        assert edgeModificationCount == graph.getEdgeModificationCount() : "preStrengthenGraphs modified graph edges";
+    }
+
+    /**
+     * Inspects {@code graph} before analysis results are materialized. Implementations must not add,
+     * remove, replace, or rewire nodes.
+     */
     protected abstract void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 
     protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
