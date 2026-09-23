@@ -43,7 +43,7 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.log.Log;
@@ -63,11 +63,12 @@ import jdk.graal.compiler.options.OptionType;
 ///
 /// Producers are serialized by [#PRODUCER_LOCK], while [#CONSUMER_LOCK] protects the byte
 /// [queue][QueueState] and coordinates producers with the single consumer. Ordinary producers may wait for queue
-/// capacity in stall mode. A thread executing a VM operation must not perform such a wait because
-/// the consumer, or a producer holding a required lock, could have been stopped for the VM
-/// operation's safepoint.
+/// capacity in stall mode. The VM operation executor must not perform such a wait because the
+/// consumer, or a producer holding a required lock, could have been stopped for the operation's
+/// safepoint. This restriction remains in force while the executor completes the safepoint after
+/// clearing the current operation.
 ///
-/// VM operation [#enqueue] calls avoid that dependency as follows:
+/// VM operation executor [#enqueue] calls avoid that dependency as follows:
 ///
 /// - [#PRODUCER_LOCK] is acquired with [VMMutex#tryLock()]. Failure selects synchronous output
 ///   immediately instead of waiting for a producer that might be stopped at the safepoint.
@@ -225,8 +226,8 @@ final class LogAsyncWriter {
             return false;
         }
 
-        boolean vmOperationInProgress = VMOperation.isInProgress();
-        if (vmOperationInProgress) {
+        boolean vmOperationExecutor = VMOperationControl.mayExecuteVmOperations();
+        if (vmOperationExecutor) {
             /*
              * VMMutex.hasOwner() is not sufficient here. A producer can be stopped while returning
              * from the native lock call, after acquiring the platform mutex but before recording
@@ -254,8 +255,8 @@ final class LogAsyncWriter {
 
             QueueState state = LoggingSupport.singleton().asyncLogWriterQueueState();
             int lineCount = message.lineCount();
-            if (vmOperationInProgress) {
-                /* A VM operation must admit the complete message without waiting. */
+            if (vmOperationExecutor) {
+                /* The VM operation executor must admit the complete message without waiting. */
                 CONSUMER_LOCK.lock();
                 try {
                     if (!canReserveMessage(state, message, lineCount, outputLevel, prefixLength)) {
@@ -294,7 +295,7 @@ final class LogAsyncWriter {
                 try {
                     Record record = reserveRecord(state, allocationSize);
                     while (record.isNull() && stall && active) {
-                        VMError.guarantee(!vmOperationInProgress, "Logging in a VM operation checks first if the message fits in the queue");
+                        VMError.guarantee(!vmOperationExecutor, "The VM operation executor checks first if the message fits in the queue");
                         /* Keep the producer lock while waiting, so later producers cannot overtake this message. */
                         CONSUMER_CONDITION.block();
                         record = reserveRecord(state, allocationSize);

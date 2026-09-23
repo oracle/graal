@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.logging;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -53,6 +55,7 @@ public final class LogThreadLocal implements ThreadListener {
 
     /// Gets the state installed for the current platform thread by [#afterThreadStart] or its first
     /// logging scope.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Data get() {
         return state.get();
     }
@@ -86,6 +89,7 @@ public final class LogThreadLocal implements ThreadListener {
         data.setActiveTagSet(tagSet.ordinal() + 1);
         data.setLineCount(0);
         data.setMostDetailedLevel(LogLevel.OFF.ordinal());
+        data.setMessageIndentation(0);
         NativeMemoryLog.reset(data.getMessageBuffer());
     }
 
@@ -94,6 +98,7 @@ public final class LogThreadLocal implements ThreadListener {
         data.setActiveTagSet(0);
         data.setLineCount(0);
         data.setMostDetailedLevel(LogLevel.OFF.ordinal());
+        data.setMessageIndentation(0);
         NativeMemoryLog.reset(data.getMessageBuffer());
     }
 
@@ -115,6 +120,32 @@ public final class LogThreadLocal implements ThreadListener {
             case OUTPUT -> data.setOutputBuffer(buffer);
             case DECORATOR -> data.setDecoratorBuffer(buffer);
             default -> VMError.shouldNotReachHere(kind.name());
+        }
+    }
+
+    /// Gets the indentation for one thread-local log buffer.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static int indentation(NativeMemoryLog.BufferKind kind) {
+        Data data = get();
+        if (kind == NativeMemoryLog.BufferKind.MESSAGE) {
+            return data.getMessageIndentation();
+        } else if (kind == NativeMemoryLog.BufferKind.OUTPUT) {
+            return data.getOutputIndentation();
+        } else {
+            return data.getDecoratorIndentation();
+        }
+    }
+
+    /// Sets the indentation for one thread-local log buffer.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void setIndentation(NativeMemoryLog.BufferKind kind, int value) {
+        Data data = get();
+        if (kind == NativeMemoryLog.BufferKind.MESSAGE) {
+            data.setMessageIndentation(value);
+        } else if (kind == NativeMemoryLog.BufferKind.OUTPUT) {
+            data.setOutputIndentation(value);
+        } else {
+            data.setDecoratorIndentation(value);
         }
     }
 
@@ -210,6 +241,9 @@ public final class LogThreadLocal implements ThreadListener {
     ///     int lineCapacity;
     ///     int mostDetailedLevel;
     ///     int activeTagSet;
+    ///     int messageIndentation;
+    ///     int outputIndentation;
+    ///     int decoratorIndentation;
     ///     long systemMillis;
     ///     long systemNanos;
     ///     long uptimeNanos;
@@ -241,6 +275,15 @@ public final class LogThreadLocal implements ThreadListener {
 
         @RawField int  getActiveTagSet();
         @RawField void setActiveTagSet(int value);
+
+        @RawField int  getMessageIndentation();
+        @RawField void setMessageIndentation(int value);
+
+        @RawField int  getOutputIndentation();
+        @RawField void setOutputIndentation(int value);
+
+        @RawField int  getDecoratorIndentation();
+        @RawField void setDecoratorIndentation(int value);
 
         @RawField long getSystemMillis();
         @RawField void setSystemMillis(long value);

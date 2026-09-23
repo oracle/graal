@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.logging;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -38,6 +40,7 @@ import com.oracle.svm.core.log.RealLog;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
@@ -48,10 +51,19 @@ public final class NativeMemoryLog extends RealLog {
 
     private static final int INITIAL_CAPACITY = 1024;
 
+    /// Uses LF because [LogMessage#writeLineTo] expands it into the platform line separator.
+    /// Storing CRLF would preserve the CR as message content before adding that separator.
+    private static final byte[] MESSAGE_LINE_SEPARATOR = {'\n'};
+
     /// Identifies the fast thread-local buffer used by a stateless log facade.
     public enum BufferKind {
+        /// Holds the text and indentation of a message while its logging scope is open.
         MESSAGE,
+
+        /// Holds a fully rendered record before it is written to a configured output.
         OUTPUT,
+
+        /// Holds a rendered decoration while its width and padding are determined.
         DECORATOR
     }
 
@@ -59,6 +71,27 @@ public final class NativeMemoryLog extends RealLog {
 
     public NativeMemoryLog(BufferKind kind) {
         this.kind = kind;
+    }
+
+    /// Gets LF for message buffers so output formatting can add the platform separator once.
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected byte[] lineSeparator() {
+        return kind == BufferKind.MESSAGE ? MESSAGE_LINE_SEPARATOR : super.lineSeparator();
+    }
+
+    /// Gets indentation from the current thread because this log object is a shared facade.
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected int indentation() {
+        return LogThreadLocal.indentation(kind);
+    }
+
+    /// Stores indentation on the current thread because this log object is a shared facade.
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected void setIndentation(int value) {
+        LogThreadLocal.setIndentation(kind, value);
     }
 
     /// Appends raw log bytes, growing the current thread's native buffer when necessary.
@@ -120,12 +153,14 @@ public final class NativeMemoryLog extends RealLog {
     public void clear() {
         Data data = data();
         LogThreadLocal.setBuffer(kind, Word.nullPointer());
+        LogThreadLocal.setIndentation(kind, 0);
         NullableNativeMemory.free(data);
     }
 
     /// Clears the current contents while retaining the allocated native buffer.
     public void reset() {
         reset(data());
+        LogThreadLocal.setIndentation(kind, 0);
     }
 
     /// Applies doubling growth algorithm to the native buffer.
