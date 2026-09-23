@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * This node is used to temporarily track the arguments to a call which was inlined before analysis
  * so that its parameter flows can be passed to other methods. The node itself will be deleted
- * during AnalysisStrengthenGraphsPhase.
+ * during graph strengthening.
  */
 @NodeInfo(cycles = CYCLES_0, size = NodeSize.SIZE_0)
 public class InlinedInvokeArgumentsNode extends FixedWithNextNode {
