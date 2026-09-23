@@ -46,6 +46,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.interpreter.CremaFeature;
 import com.oracle.svm.interpreter.InterpreterFeature;
+import com.oracle.svm.interpreter.RistrettoInterpreterSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.ristretto.compile.InterpreterDeoptEntryPoints;
@@ -117,6 +118,7 @@ public final class RistrettoFeature implements InternalFeature {
     @Override
     public void onRegistration(OnRegistrationAccess access) {
         ImageSingletons.add(RistrettoFeature.class, this);
+        ImageSingletons.add(RistrettoInterpreterSupport.class, new RistrettoInterpreterSupportImpl());
     }
 
     @Override

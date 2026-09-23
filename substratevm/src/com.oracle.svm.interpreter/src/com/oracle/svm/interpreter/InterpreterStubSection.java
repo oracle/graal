@@ -103,9 +103,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
-import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
-import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
-import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
@@ -1351,15 +1348,7 @@ public abstract class InterpreterStubSection {
         if (!SubstrateOptions.useRistretto()) {
             return Word.nullPointer();
         }
-        RistrettoMethod rMethod = (com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod) interpreterMethod.getRistrettoMethod();
-        if (rMethod != null) {
-            SubstrateInstalledCodeImpl ic = rMethod.installedCode;
-            // entryPoint != isValid (means it is not deoptimized yet)
-            if (ic != null && ic.getEntryPoint() != 0) {
-                return Word.pointer(ic.getEntryPoint());
-            }
-        }
-        return Word.nullPointer();
+        return RistrettoInterpreterSupport.singleton().getInstalledCodeEntryPoint(interpreterMethod);
     }
 
     @Uninterruptible(reason = REASON_DEOPT_INSTALLED_CODE)
@@ -1375,7 +1364,7 @@ public abstract class InterpreterStubSection {
             return leaveInterpreter(entryPoint, interpreterMethod, args);
         }
 
-        if (SubstrateOptions.useRistretto() && RistrettoOptions.JITXComp.getValue()) {
+        if (SubstrateOptions.useRistretto() && RistrettoInterpreterSupport.singleton().isJITXCompEnabled()) {
             /*
              * In Xcomp mode, the first interpreter entry waits for compilation of the method. The
              * interruptible compile helper returns only a success signal; re-read the installed
@@ -1395,7 +1384,7 @@ public abstract class InterpreterStubSection {
 
     @Uninterruptible(reason = "Ristretto compilation is interruptible.", calleeMustBe = false)
     private static SubstrateInstalledCodeImpl compileImmediatelyForXCompInterruptibly(InterpreterResolvedJavaMethod interpreterMethod) {
-        return RistrettoProfileSupport.compileImmediatelyForXComp(interpreterMethod);
+        return (SubstrateInstalledCodeImpl) RistrettoInterpreterSupport.singleton().compileImmediatelyForXComp(interpreterMethod);
     }
 
     @Uninterruptible(reason = "No JIT compiled code found, so it is safe to switch to interruptible code.", calleeMustBe = false)

@@ -1887,7 +1887,6 @@ suite = {
                 "com.oracle.svm.interpreter.metadata",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.graal",
-                "compiler:GRAAL",
             ],
             "requires" : [
                 "java.base"
@@ -1904,6 +1903,34 @@ suite = {
                 ],
             },
             "checkstyleVersion" : "10.21.0",
+            "javaCompliance": "24+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "substratevm:SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+            "jacoco": "exclude",
+        },
+
+        "com.oracle.svm.interpreter.ristretto": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.interpreter",
+                "compiler:GRAAL",
+            ],
+            "requires" : [
+                "java.base"
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.meta.annotation",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.site",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.interpreter",
             "javaCompliance": "24+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -2021,6 +2048,7 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.g1",
                 "com.oracle.svm.jdwp.resident",
+                "com.oracle.svm.interpreter.ristretto",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",

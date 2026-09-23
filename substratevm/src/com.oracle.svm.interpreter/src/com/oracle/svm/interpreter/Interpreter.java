@@ -277,8 +277,6 @@ import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.TableSwitch;
 import com.oracle.svm.interpreter.metadata.UnsupportedResolutionException;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
-import com.oracle.svm.interpreter.ristretto.RistrettoOSRSupport;
-import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.VMError;
@@ -758,7 +756,7 @@ public final class Interpreter {
              */
             final MethodProfile methodProfile;
             if (SubstrateOptions.useRistretto()) {
-                methodProfile = RistrettoProfileSupport.profileMethodEntry(method);
+                methodProfile = RistrettoInterpreterSupport.singleton().profileMethodEntry(method);
             } else {
                 methodProfile = null;
             }
@@ -3581,7 +3579,7 @@ public final class Interpreter {
         if (targetBCI <= curBCI) {
             GraalDirectives.safepoint();
             if (SubstrateOptions.useRistretto() && !frame.forceStayInInterpreter) {
-                OSRResult result = RistrettoOSRSupport.tryOSR(frame.method, frame.methodProfile, frame, (int) targetBCI, (int) stackTop);
+                OSRResult result = RistrettoInterpreterSupport.singleton().tryOSR(frame.method, frame.methodProfile, frame, (int) targetBCI, (int) stackTop);
                 if (result != null) {
                     if (result.exception() != null) {
                         throw new OSRException(result.exception());
