@@ -76,7 +76,7 @@ import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
 import com.oracle.svm.guest.staging.hub.Hybrid;
-import com.oracle.svm.core.layered.LayeredFieldValue;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointBuiltins.CEntryPointBuiltinImplementation;
 import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;

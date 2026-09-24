@@ -51,7 +51,7 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithReceiverBasedAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
-import com.oracle.svm.core.layered.LayeredFieldValue;
+import com.oracle.svm.guest.staging.layered.LayeredFieldValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
