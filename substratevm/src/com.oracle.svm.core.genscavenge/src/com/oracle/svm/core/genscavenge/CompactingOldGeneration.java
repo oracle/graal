@@ -55,7 +55,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;

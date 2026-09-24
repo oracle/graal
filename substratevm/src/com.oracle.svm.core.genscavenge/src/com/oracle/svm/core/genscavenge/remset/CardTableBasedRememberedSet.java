@@ -52,7 +52,7 @@ import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;

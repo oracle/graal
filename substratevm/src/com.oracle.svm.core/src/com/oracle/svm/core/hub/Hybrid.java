@@ -31,6 +31,7 @@ import java.lang.annotation.Target;
 
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
+import com.oracle.svm.guest.staging.hub.HubType;
 
 /**
  * Defines that the annotated class should have a Hybrid layout. Hybrid layouts are hybrids between

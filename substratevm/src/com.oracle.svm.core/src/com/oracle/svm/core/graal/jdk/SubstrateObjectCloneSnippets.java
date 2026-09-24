@@ -45,7 +45,7 @@ import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
