@@ -30,7 +30,7 @@ import java.lang.ref.SoftReference;
 
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
-import jdk.graal.compiler.core.common.NumUtil;
+import com.oracle.svm.shared.util.NumUtil;
 
 @DuplicatedInNativeCode
 public enum ReferenceType {

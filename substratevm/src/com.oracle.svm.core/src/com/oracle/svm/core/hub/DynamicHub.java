@@ -48,6 +48,7 @@ import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNIN
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.util.NumUtil.safeToByte;
 
 import java.io.InputStream;
 import java.io.Serializable;
@@ -492,7 +493,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.componentType = componentHub;
 
         assert layerId < DynamicImageLayerInfo.CREMA_LAYER_ID;
-        this.layerId = NumUtil.safeToByte(layerId);
+        this.layerId = safeToByte(layerId);
 
         this.flags = flags;
 
@@ -664,7 +665,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         writeObject(hub, dynamicHubOffsets.getComponentTypeOffset(), componentHub);
 
         writeInt(hub, dynamicHubOffsets.getReferenceMapCompressedOffsetOffset(), referenceMapCompressedOffset);
-        writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
+        writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
 
         if ((modifiers & ACC_ENUM) != 0 && DynamicHub.toClass(superHub) == Enum.class) {
             companion.enumConstantsReference = new LazyFinalReference<>(hub.new EnumConstantsSupplier());

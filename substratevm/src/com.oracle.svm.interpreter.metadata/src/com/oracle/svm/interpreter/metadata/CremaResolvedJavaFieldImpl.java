@@ -42,7 +42,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 
-import jdk.graal.compiler.core.common.NumUtil;
+import com.oracle.svm.shared.util.NumUtil;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 

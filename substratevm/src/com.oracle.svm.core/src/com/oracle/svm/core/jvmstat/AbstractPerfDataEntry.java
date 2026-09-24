@@ -30,7 +30,7 @@ import java.util.Arrays;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.impl.Word;
 
-import jdk.graal.compiler.core.common.NumUtil;
+import com.oracle.svm.shared.util.NumUtil;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
