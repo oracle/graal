@@ -22,16 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.guest.staging.hub;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
-import com.oracle.svm.guest.staging.hub.HubType;
 
 /**
  * Defines that the annotated class should have a Hybrid layout. Hybrid layouts are hybrids between
@@ -41,9 +37,9 @@ import com.oracle.svm.guest.staging.hub.HubType;
  *
  * <p>
  * The location of the identity hashcode is configuration-dependent and will follow the same
- * placement convention as an array. See {@link ObjectLayout} for more information on where the
+ * placement convention as an array. See {@code ObjectLayout} for more information on where the
  * identity hash can be placed. @Hybrid objects are treated the same way as instance classes for
- * determining whether (and where) they have a monitor slot; See {@link MultiThreadedMonitorSupport}
+ * determining whether (and where) they have a monitor slot; See {@code MultiThreadedMonitorSupport}
  * for more information on monitor slot placement.
  *
  * <pre>
@@ -61,11 +57,11 @@ import com.oracle.svm.guest.staging.hub.HubType;
  * </pre>
  *
  * <p>
- * Hybrid objects have one of the instance {@link HubType}s but a {@link LayoutEncoding} like an
+ * Hybrid objects have one of the instance {@link HubType}s but a {@code LayoutEncoding} like an
  * array. This is important to keep in mind because methods such as {@link Class#isInstance} will
  * return {@code true} and {@link Class#isArray()} will return {@code false}, while
- * {@link LayoutEncoding#isPureInstance} will return {@code false} and
- * {@link LayoutEncoding#isArrayLike} will return {@code true} for hybrid objects.
+ * {@code LayoutEncoding#isPureInstance} will return {@code false} and
+ * {@code LayoutEncoding#isArrayLike} will return {@code true} for hybrid objects.
  *
  * <p>
  * Note that the array part of a hybrid object may only contain primitive data but no object
