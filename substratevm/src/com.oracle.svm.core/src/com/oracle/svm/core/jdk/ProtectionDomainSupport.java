@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.core.util.LazyFinalReference;
+import com.oracle.svm.guest.staging.util.LazyFinalReference;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
