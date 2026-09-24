@@ -2681,11 +2681,41 @@ public abstract class DynamicObject implements TruffleObject {
         }
 
         static PutAllPlan preparePutAllAndApply(Object[] keys, Object[] values, int mode, int[] flags, Shape startShape, Property[] existingPropertiesOpt, DynamicObject object) {
-            Shape oldShape = startShape;
-            Shape newShape = startShape;
-            Property[] oldProperties = existingPropertiesOpt;
-            Property[] newProperties = new Property[keys.length];
             boolean preparing = object == null;
+            Shape oldShape = startShape;
+            while (!Flags.isPutIfAbsent(mode) && (Flags.isUpdateFlags(mode) || keys.length > 1)) {
+                Property[] oldProperties = oldShape == startShape && existingPropertiesOpt != null
+                                ? existingPropertiesOpt
+                                : getPropertiesOrNull(oldShape, keys);
+                Shape batchShape = ObsolescenceStrategy.tryReplaceProperties(oldShape, keys, values, flags, mode, oldProperties);
+                if (!oldShape.isValid()) {
+                    if (preparing) {
+                        return null;
+                    }
+                    // Generalization can relocate untouched properties, too. Migrate all storage
+                    // before preparing the stores against the new, valid source shape.
+                    updateShape(object);
+                    oldShape = object.getShape();
+                    continue;
+                }
+                if (batchShape == null) {
+                    break;
+                }
+                Property[] newProperties = getPropertiesOrNull(batchShape, keys);
+                if (Flags.isUpdateFlags(mode) && !canStoreAll(newProperties, values, flags)) {
+                    // A repeated key's final flags may not match every entry's requested flags.
+                    break;
+                }
+                if (preparing) {
+                    return new PutAllPlan(batchShape, oldProperties, newProperties);
+                } else {
+                    performPutAll(object, keys, values, mode, flags, oldShape, batchShape, oldProperties, newProperties);
+                    return null;
+                }
+            }
+            Shape newShape = oldShape;
+            Property[] oldProperties = oldShape == startShape ? existingPropertiesOpt : null;
+            Property[] newProperties = new Property[keys.length];
             int i = 0;
             while (i < keys.length) {
                 Object key = keys[i];

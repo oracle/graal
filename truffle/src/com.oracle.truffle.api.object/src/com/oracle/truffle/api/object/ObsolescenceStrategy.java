@@ -557,6 +557,112 @@ abstract class ObsolescenceStrategy {
     }
 
     /**
+     * Prepares replacements of distinct existing properties. Representation changes are replayed
+     * before flag changes: obsolete shapes must retain their original flags in their successors.
+     * Returns null for the sequential fallback. Does not read or write receiver storage.
+     */
+    static Shape tryReplaceProperties(Shape shape, Object[] keys, Object[] values, int[] flags, int putFlags, Property[] properties) {
+        if (properties == null || !shape.isValid() || shape.isShared() || Flags.isPutIfAbsent(putFlags)) {
+            return null;
+        }
+        boolean generalize = false;
+        for (int i = 0; i < properties.length; i++) {
+            Property property = properties[i];
+            if (property == null) {
+                return null;
+            }
+            if (!property.getLocation().canStoreValue(values[i])) {
+                generalize = true;
+            }
+        }
+        Shape newShape = shape;
+        if (generalize) {
+            if (keys.length < 2) {
+                return null;
+            }
+            EconomicMap<Object, Integer> replacements = EconomicMap.create();
+            for (int i = 0; i < keys.length; i++) {
+                // Earlier fitting values can also be stored after the upcast. Do not replace a pending generalization.
+                if (replacements.containsKey(keys[i]) || properties[i].getLocation().isValue()) {
+                    return null;
+                }
+                if (!properties[i].getLocation().canStoreValue(values[i])) {
+                    replacements.put(keys[i], i);
+                }
+            }
+            newShape = tryGeneralizeProperties(shape, replacements, values, putFlags);
+            if (newShape == null) {
+                return null;
+            }
+        }
+        return Flags.isUpdateFlags(putFlags) ? trySetPropertyFlags(newShape, keys, flags, 0, 0) : newShape;
+    }
+
+    private static Shape tryGeneralizeProperties(Shape shape, EconomicMap<Object, Integer> replacements, Object[] values, int putFlags) {
+        EconomicSet<Object> remaining = EconomicSet.create();
+        remaining.addAll(replacements.getKeys());
+        List<Transition> transitions = collectPropertyTransitions(shape, remaining, false);
+        if (transitions == null) {
+            return null;
+        }
+        synchronized (shape.getMutex()) {
+            if (!shape.isValid()) {
+                return null;
+            }
+            Shape newShape = shape;
+            for (int i = 0; i < transitions.size(); i++) {
+                newShape = newShape.getParent();
+                if (!newShape.isValid()) {
+                    // A concurrently added descendant may have escaped ancestor invalidation.
+                    // Mark the source obsolete as well, so the caller cannot skip migration.
+                    rebuildObsoleteShape(shape, newShape);
+                    return null;
+                }
+            }
+            for (int i = transitions.size() - 1; i >= 0; i--) {
+                Transition transition = transitions.get(i);
+                newShape = applyTransition(newShape, transition, true);
+                if (transition instanceof AddPropertyTransition add) {
+                    Integer index = replacements.get(add.getPropertyKey());
+                    if (index != null) {
+                        Property property = newShape.getProperty(add.getPropertyKey());
+                        Object newValue = values[index];
+                        if (!property.getLocation().canStore(newValue)) {
+                            // Generalize at the owning shape, before replaying any descendants.
+                            // Replaying a full suffix here for every key would be quadratic again.
+                            assert newShape.getLastProperty().equals(property);
+                            newShape = generalizeOwningShape(newShape, property, newValue, putFlags);
+                        }
+                    }
+                }
+            }
+            return newShape;
+        }
+    }
+
+    /**
+     * Collects the suffix back to the last introduction/replacement of each requested key.
+     * Generalization currently excludes direct replacements; flag-only replay supports them.
+     */
+    private static List<Transition> collectPropertyTransitions(Shape shape, EconomicSet<Object> remaining, boolean allowDirectReplace) {
+        List<Transition> transitions = new ArrayList<>();
+        Shape prefix = shape;
+        while (!remaining.isEmpty() && prefix != shape.getRoot()) {
+            Transition transition = prefix.getTransitionFromParent();
+            if (transition instanceof AddPropertyTransition add) {
+                remaining.remove(add.getPropertyKey());
+            } else if (allowDirectReplace && transition instanceof DirectReplacePropertyTransition replace) {
+                remaining.remove(replace.getPropertyKey());
+            } else if (!(transition instanceof ObjectTypeTransition || transition instanceof ObjectFlagsTransition)) {
+                return null;
+            }
+            transitions.add(transition);
+            prefix = prefix.getParent();
+        }
+        return remaining.isEmpty() ? transitions : null;
+    }
+
+    /**
      * Prepares a batch of flag changes without writing object storage. A null result requests the
      * sequential fallback. In particular, duplicate keys must preserve sequential semantics.
      */
@@ -608,28 +714,27 @@ abstract class ObsolescenceStrategy {
             return cachedShape;
         }
 
-        List<Transition> transitions = new ArrayList<>();
+        EconomicSet<Object> remaining = EconomicSet.create();
+        remaining.addAll(replacements.getKeys());
+        List<Transition> transitions = collectPropertyTransitions(shape, remaining, true);
+        if (transitions == null) {
+            return null;
+        }
         Shape prefix = shape;
-        while (!replacements.isEmpty() && prefix != shape.getRoot()) {
-            Transition transition = prefix.getTransitionFromParent();
+        for (int i = 0; i < transitions.size(); i++) {
+            Transition transition = transitions.get(i);
             if (transition instanceof AddPropertyTransition add) {
                 Property replacement = replacements.removeKey(add.getPropertyKey());
                 if (replacement != null) {
-                    transition = newAddPropertyTransition(replacement);
+                    transitions.set(i, newAddPropertyTransition(replacement));
                 }
             } else if (transition instanceof DirectReplacePropertyTransition replace) {
                 Property replacement = replacements.removeKey(replace.getPropertyKey());
                 if (replacement != null) {
-                    transition = new DirectReplacePropertyTransition(replace.getPropertyBefore(), replacement);
+                    transitions.set(i, new DirectReplacePropertyTransition(replace.getPropertyBefore(), replacement));
                 }
-            } else if (!(transition instanceof ObjectTypeTransition || transition instanceof ObjectFlagsTransition)) {
-                return null;
             }
-            transitions.add(transition);
             prefix = prefix.getParent();
-        }
-        if (!replacements.isEmpty()) {
-            return null;
         }
 
         Shape newShape = prefix;
@@ -931,10 +1036,8 @@ abstract class ObsolescenceStrategy {
             final Shape owningShape = getOwningShape(oldShape, oldProperty);
             synchronized (oldShape.getMutex()) {
                 if (owningShape.isValid()) {
-                    Shape oldParentShape = owningShape.getParent();
-                    Location newLocation = oldParentShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
-                    Property newProperty = new Property(oldProperty.getKey(), newLocation, oldProperty.getFlags());
-                    return obsoleteAndMakeShapeWithProperty(oldProperty, oldShape, owningShape, newProperty);
+                    generalizeOwningShape(owningShape, oldProperty, value, putFlags);
+                    return rebuildObsoleteShape(oldShape, owningShape);
                 } else {
                     Shape newShape = rebuildObsoleteShape(oldShape, owningShape);
                     Property newPropertyAfterReshape = newShape.getProperty(oldProperty.getKey());
@@ -972,12 +1075,14 @@ abstract class ObsolescenceStrategy {
         }
     }
 
-    private static Shape obsoleteAndMakeShapeWithProperty(Property oldProperty, Shape oldShape, Shape owningShape, Property newProperty) {
+    private static Shape generalizeOwningShape(Shape owningShape, Property oldProperty, Object value, int putFlags) {
+        Location newLocation = owningShape.getParent().allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
+        Property newProperty = new Property(oldProperty.getKey(), newLocation, oldProperty.getFlags());
         Shape newOwningShape = makeNewOwningShape(owningShape, newProperty);
         assert owningShape != newOwningShape;
         // both owning shapes should be valid, but we cannot assert this due to a possible race
         Obsolescence.markObsolete(owningShape, newOwningShape, oldProperty, newProperty);
-        return rebuildObsoleteShape(oldShape, owningShape);
+        return newOwningShape;
     }
 
     private static Shape makeNewOwningShape(Shape owningShape, Property newProperty) {

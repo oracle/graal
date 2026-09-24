@@ -305,6 +305,103 @@ public class PutAllTest {
     }
 
     @Test
+    public void duplicateGeneralizationMatchesScalar() {
+        Object[] repeated = {"x", new String("x")};
+        Object[][] valueCases = {{7, "string"}, {7, 2.5}, {7, 8L}, {"string", 7}, {"string", 2.5}};
+        int[][] flagCases = {null, {0, 0}, {0, 1}, {1, 0}};
+        for (boolean fields : new boolean[]{false, true}) {
+            for (boolean casts : new boolean[]{false, true}) {
+                for (boolean batchFirst : new boolean[]{false, true}) {
+                    for (Object[] values : valueCases) {
+                        for (int[] flags : flagCases) {
+                            checkDuplicateGeneralization(fields, casts, batchFirst, repeated, values, flags);
+                        }
+                    }
+                    for (int[] flags : new int[][]{null, {0, 0, 1}, {1, 0, 1}}) {
+                        checkDuplicateGeneralization(fields, casts, batchFirst, new Object[]{"y", new String("y"), "x"}, new Object[]{10, 11, "string"}, flags);
+                    }
+                }
+            }
+        }
+    }
+
+    private void checkDuplicateGeneralization(boolean fields, boolean casts, boolean batchFirst, Object[] keys, Object[] values, int[] flags) {
+        Shape root = root(fields, casts, false);
+        Object[] all = {"x", "y", "untouched"};
+        Object[] initial = {0, 1, new Object()};
+        DynamicObject batch = object(root, all, initial);
+        DynamicObject scalar = object(root, all, initial);
+        if (!batchFirst) {
+            sequential(scalar, keys, values, flags);
+        }
+        var node = createNode();
+        if (flags == null) {
+            node.execute(batch, keys, values);
+        } else {
+            node.executeWithFlags(batch, keys, values, flags);
+        }
+        if (batchFirst) {
+            sequential(scalar, keys, values, flags);
+        }
+        DynamicObject.UpdateShapeNode.getUncached().execute(batch);
+        DynamicObject.UpdateShapeNode.getUncached().execute(scalar);
+        assertSame(scalar.getShape(), batch.getShape());
+        Object[] expected = initial.clone();
+        int[] expectedFlags = new int[all.length];
+        for (int i = 0; i < keys.length; i++) {
+            int index = Arrays.asList(all).indexOf(keys[i]);
+            expected[index] = values[i];
+            expectedFlags[index] = flags == null ? 0 : flags[i];
+        }
+        checkValues(batch, all, expected);
+        checkValues(scalar, all, expected);
+        for (int i = 0; i < all.length; i++) {
+            assertEquals(expectedFlags[i], batch.getShape().getProperty(all[i]).getFlags());
+        }
+    }
+
+    @Test
+    public void duplicateInitialNoopFlagsKeepPerEntryDescriptors() {
+        Shape root = root(false, false, false);
+        Object[] keys = {"x", new String("x")};
+        var node = createNode();
+        for (int i = 0; i < 3; i++) {
+            DynamicObject object = object(root, new Object[]{"x"}, new Object[]{0});
+            node.executeWithFlags(object, keys, new Object[]{1, 2}, new int[]{0, 1});
+            assertEquals(2, DynamicObject.GetNode.getUncached().execute(object, "x", null));
+            assertEquals(1, object.getShape().getProperty("x").getFlags());
+        }
+    }
+
+    @Test
+    public void fittingDuplicatesPreserveValuesAfterGeneralization() {
+        Object[] all = {"x", "y"};
+        for (Object value : new Object[]{"string", 2.5, 8L}) {
+            DynamicObject object = object(root(false, true, false), all, new Object[]{0, 1});
+            createNode().execute(object, new Object[]{"x", new String("x")}, new Object[]{7, value});
+            checkValues(object, all, new Object[]{value, 1});
+            assertTrue(object.getShape().isValid());
+            var location = object.getShape().getProperty("x").getLocation();
+            assertTrue(location.canStore(7));
+            assertTrue(location.canStore(value));
+            Class<?> expectedType = value instanceof Double ? double.class : value instanceof Long ? long.class : Object.class;
+            assertEquals(expectedType, DOTestAsserts.getLocationType(location));
+        }
+        DynamicObject object = object(root(false, true, false), all, new Object[]{0, 1});
+        createNode().execute(object, new Object[]{"y", new String("y"), "x"}, new Object[]{10, 11, "string"});
+        checkValues(object, all, new Object[]{"string", 11});
+        for (Object value : new Object[]{7, 2.5}) {
+            DynamicObject repeated = object(root(false, true, false), all, new Object[]{0, 1});
+            createNode().execute(repeated, new Object[]{"x", new String("x")}, new Object[]{"string", value});
+            checkValues(repeated, all, new Object[]{value, 1});
+        }
+        Shape constant = Shape.newBuilder().layout(TestDynamicObjectMinimal.class, MethodHandles.lookup()).addConstantProperty("x", 0, 0).build();
+        DynamicObject withConstant = object(constant, new Object[]{"y"}, new Object[]{1});
+        createNode().execute(withConstant, new Object[]{"x", "x"}, new Object[]{0, "string"});
+        checkValues(withConstant, all, new Object[]{"string", 1});
+    }
+
+    @Test
     public void putAllDuplicateKeyModes() {
         DynamicObject object = new TestDynamicObjectMinimal(root(false, false, false));
         var put = createNode();
