@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.snippets;
+package com.oracle.svm.guest.staging.snippets;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -30,7 +30,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.graal.code.StubCallingConvention;
 
 /**
  * Used for methods that are targets for foreign calls.
@@ -42,7 +41,7 @@ import com.oracle.svm.core.graal.code.StubCallingConvention;
 @Target(ElementType.METHOD)
 public @interface SubstrateForeignCallTarget {
 
-    /** When true, use {@link StubCallingConvention}. */
+    /** When true, use {@code StubCallingConvention}. */
     boolean stubCallingConvention();
 
     /**
