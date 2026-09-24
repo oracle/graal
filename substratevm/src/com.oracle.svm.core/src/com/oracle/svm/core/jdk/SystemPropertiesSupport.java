@@ -145,7 +145,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("java.vm.version", vm.version);
 
         initializeProperty("java.class.path", "");
-        initializeProperty("jdk.module.path", "");
 
         initializeProperty("sun.arch.data.model", Integer.toString(SubstrateTarget.getWordKind().getBitCount()));
 
