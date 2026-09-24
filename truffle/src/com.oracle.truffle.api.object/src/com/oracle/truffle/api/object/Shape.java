@@ -1568,6 +1568,14 @@ public final class Shape {
         }
     }
 
+    void onPropertyTransitions(Property[] properties) {
+        if (allowPropertyAssumptions()) {
+            for (Property property : properties) {
+                invalidatePropertyAssumption(property.getKey(), false);
+            }
+        }
+    }
+
     private void invalidatePropertyAssumption(Object propertyKey, boolean onlyExisting) {
         PropertyAssumptions propertyAssumptions = onlyExisting
                         ? getPropertyAssumptions()

@@ -51,6 +51,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -2294,6 +2295,218 @@ public abstract class DynamicObject implements TruffleObject {
         @NeverDefault
         public static GetPropertyArrayNode getUncached() {
             return DynamicObjectFactory.GetPropertyArrayNodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Sets or updates the flags of multiple existing properties. Missing keys are ignored; no
+     * properties are created and no property values are assigned. "All" refers to the supplied
+     * keys, not all properties of the receiver.
+     *
+     * {@snippet file = "com/oracle/truffle/api/object/DynamicObjectSnippets.java" region =
+     * "com.oracle.truffle.api.object.DynamicObjectSnippets.SetAllPropertyFlags"}
+     * <p>
+     * Keys follow the identity-based caching contract of {@link SetPropertyFlagsNode}. Duplicate
+     * keys are processed in input order, as separate calls to that node would be. Cached nodes may
+     * retain the supplied keys and per-key flags arrays. These arrays must not be modified after
+     * being passed to a cached node, including between executions. Use new arrays for different
+     * keys or flags. No input array may be modified during execution.
+     *
+     * @since 25.5
+     */
+    @ImportStatic(DynamicObject.class)
+    @GeneratePackagePrivate
+    @GenerateUncached
+    @GenerateInline(false)
+    public abstract static class SetAllPropertyFlagsNode extends Node {
+
+        SetAllPropertyFlagsNode() {
+        }
+
+        /**
+         * Sets the flags of every supplied, existing key to {@code flags}.
+         *
+         * @since 25.5
+         */
+        public final void execute(DynamicObject receiver, Object[] keys, int flags) {
+            executeImpl(receiver, Objects.requireNonNull(keys), null, 0, flags);
+        }
+
+        /**
+         * Sets each supplied, existing key's flags to the corresponding array element.
+         *
+         * @throws IllegalArgumentException if the keys and flags array lengths differ
+         * @since 25.5
+         */
+        public final void execute(DynamicObject receiver, Object[] keys, int[] flags) {
+            if (keys.length != flags.length) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException("arrays must have the same length");
+            }
+            executeImpl(receiver, keys, flags, 0, 0);
+        }
+
+        /**
+         * Adds the given flags to each supplied, existing property.
+         *
+         * @since 25.5
+         */
+        public final void executeAdd(DynamicObject receiver, Object[] keys, int addedFlags) {
+            executeImpl(receiver, Objects.requireNonNull(keys), null, ~0, addedFlags);
+        }
+
+        /**
+         * Removes the given flags from each supplied, existing property.
+         *
+         * @since 25.5
+         */
+        public final void executeRemove(DynamicObject receiver, Object[] keys, int removedFlags) {
+            executeImpl(receiver, Objects.requireNonNull(keys), null, ~removedFlags, 0);
+        }
+
+        /**
+         * Removes, then adds flags to each supplied, existing property. Addition wins when masks
+         * overlap.
+         *
+         * @since 25.5
+         */
+        public final void executeRemoveAndAdd(DynamicObject receiver, Object[] keys, int removedFlags, int addedFlags) {
+            executeImpl(receiver, Objects.requireNonNull(keys), null, ~removedFlags, addedFlags);
+        }
+
+        abstract void executeImpl(DynamicObject receiver, Object[] keys, int[] flags, int andFlags, int orFlags);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {
+                        "shape == oldShape",
+                        "keysMatch(keys, cachedKeys)",
+                        "flagsMatch(flags, cachedFlags)", "andFlags == cachedAnd", "orFlags == cachedOr",
+                        "newShape != null"
+        }, assumptions = "oldShapeValid", limit = "SHAPE_CACHE_LIMIT")
+        static void doCached(DynamicObject receiver, Object[] keys, int[] flags, int andFlags, int orFlags,
+                        @Bind("receiver.getShape()") Shape shape,
+                        @Cached("shape") Shape oldShape,
+                        @Cached(value = "keys", dimensions = 1) Object[] cachedKeys,
+                        @Cached(value = "flags", dimensions = 1) int[] cachedFlags,
+                        @Cached("andFlags") int cachedAnd,
+                        @Cached("orFlags") int cachedOr,
+                        @Cached("prepare(oldShape, cachedKeys, cachedFlags, cachedAnd, cachedOr)") Shape newShape,
+                        @Cached("oldShape.getValidAbstractAssumption()") AbstractAssumption oldShapeValid) {
+            assert verifyPlan(oldShape, newShape, cachedKeys, cachedFlags, cachedAnd, cachedOr);
+            if (newShape == oldShape) {
+                return;
+            }
+            DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
+            maybeUpdateShape(receiver, newShape);
+        }
+
+        @TruffleBoundary
+        @Specialization(replaces = "doCached")
+        static void doGeneric(DynamicObject receiver, Object[] keys, int[] flags, int andFlags, int orFlags) {
+            for (;;) { // TERMINATION ARGUMENT: retry only to update obsolete shapes
+                updateShape(receiver);
+                Shape oldShape = receiver.getShape();
+                Shape newShape = prepare(oldShape, keys, flags, andFlags, orFlags);
+                if (!oldShape.isValid()) {
+                    continue;
+                }
+                if (newShape == null) {
+                    /*
+                     * Sequential fallback when batch preparation is unsupported, e.g., shared
+                     * shapes, a repeated key whose earlier occurrence changes its flags, or
+                     * unsupported property locations/transition histories. Preserve input order so
+                     * repeated keys observe earlier flag changes.
+                     */
+                    SetPropertyFlagsNode single = SetPropertyFlagsNode.getUncached();
+                    for (int i = 0; i < keys.length; i++) {
+                        if (flags == null) {
+                            single.executeRemoveAndAdd(receiver, keys[i], ~andFlags, orFlags);
+                        } else {
+                            single.execute(receiver, keys[i], flags[i]);
+                        }
+                    }
+                    return;
+                }
+                if (newShape == oldShape) {
+                    return;
+                }
+                DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
+                updateShape(receiver, newShape);
+                return;
+            }
+        }
+
+        static Shape prepare(Shape shape, Object[] keys, int[] flags, int andFlags, int orFlags) {
+            return ObsolescenceStrategy.trySetPropertyFlags(shape, keys, flags, andFlags, orFlags);
+        }
+
+        @TruffleBoundary
+        private static boolean verifyPlan(Shape oldShape, Shape newShape, Object[] keys, int[] flags, int andFlags, int orFlags) {
+            EconomicMap<Object, Integer> expectedFlags = EconomicMap.create();
+            boolean changed = false;
+            for (int i = 0; i < keys.length; i++) {
+                Object key = keys[i];
+                Property property = oldShape.getProperty(key);
+                if (property != null) {
+                    int previousFlags = expectedFlags.get(key, property.getFlags());
+                    int newFlags = flags == null ? (previousFlags & andFlags) | orFlags : flags[i];
+                    changed |= previousFlags != newFlags;
+                    expectedFlags.put(key, newFlags);
+                }
+            }
+            assert (newShape != oldShape) == changed : "Cached keys or flags array no longer matches the set-all-property-flags plan";
+            assert newShape.getPropertyMap().size() == oldShape.getPropertyMap().size() : newShape;
+            for (Property property : oldShape.getPropertyMap().values()) {
+                int expected = expectedFlags.get(property.getKey(), property.getFlags());
+                Property newProperty = newShape.getProperty(property.getKey());
+                assert newProperty != null && newProperty.getFlags() == expected : "Cached keys or flags array no longer matches the set-all-property-flags plan: " + property.getKey();
+            }
+            return true;
+        }
+
+        @ExplodeLoop
+        static boolean keysMatch(Object[] keys, Object[] cachedKeys) {
+            if (keys.length != cachedKeys.length) {
+                return false;
+            }
+            for (int i = 0; i < cachedKeys.length; i++) {
+                if (keys[i] != cachedKeys[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @ExplodeLoop
+        static boolean flagsMatch(int[] flags, int[] cachedFlags) {
+            if (flags == null || cachedFlags == null) {
+                return flags == cachedFlags;
+            }
+            if (flags.length != cachedFlags.length) {
+                return false;
+            }
+            for (int i = 0; i < cachedFlags.length; i++) {
+                if (flags[i] != cachedFlags[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * @since 25.5
+         */
+        @NeverDefault
+        public static SetAllPropertyFlagsNode create() {
+            return DynamicObjectFactory.SetAllPropertyFlagsNodeGen.create();
+        }
+
+        /**
+         * @since 25.5
+         */
+        @NeverDefault
+        public static SetAllPropertyFlagsNode getUncached() {
+            return DynamicObjectFactory.SetAllPropertyFlagsNodeGen.getUncached();
         }
     }
 

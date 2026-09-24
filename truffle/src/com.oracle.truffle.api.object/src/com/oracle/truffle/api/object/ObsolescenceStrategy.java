@@ -54,6 +54,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -552,6 +554,98 @@ abstract class ObsolescenceStrategy {
         } else {
             return indirectReplaceProperty(shape, oldProperty, newProperty);
         }
+    }
+
+    /**
+     * Prepares a batch of flag changes without writing object storage. A null result requests the
+     * sequential fallback. In particular, duplicate keys must preserve sequential semantics.
+     */
+    static Shape trySetPropertyFlags(Shape shape, Object[] keys, int[] flags, int andFlags, int orFlags) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!shape.isValid() || shape.isShared()) {
+            return null;
+        }
+        if (keys.length == 0) {
+            return shape;
+        }
+        if (keys.length == 1) {
+            Property property = shape.getProperty(keys[0]);
+            if (property == null) {
+                return shape;
+            }
+            int newFlags = flags == null ? (property.getFlags() & andFlags) | orFlags : flags[0];
+            return shape.setPropertyFlags(property, newFlags);
+        }
+        EconomicMap<Object, Property> replacements = EconomicMap.create();
+        List<Property> changed = new ArrayList<>();
+        for (int i = 0; i < keys.length; i++) {
+            Object key = keys[i];
+            // Missing keys and earlier no-ops are harmless; duplicates after a change need the sequential fallback.
+            if (replacements.containsKey(key)) {
+                return null;
+            }
+            Property property = shape.getProperty(key);
+            if (property != null) {
+                int newFlags = flags == null ? (property.getFlags() & andFlags) | orFlags : flags[i];
+                if (newFlags != property.getFlags()) {
+                    if (property.getLocation().isValue()) {
+                        return null;
+                    }
+                    Property replacement = property.copyWithFlags(newFlags);
+                    replacements.put(key, replacement);
+                    changed.add(replacement);
+                }
+            }
+        }
+        if (changed.isEmpty()) {
+            return shape;
+        }
+        Property[] properties = changed.toArray(Property[]::new);
+        var batchTransition = new Transition.ReplacePropertiesTransition(properties);
+        shape.onPropertyTransitions(properties);
+        Shape cachedShape = shape.queryTransition(batchTransition);
+        if (cachedShape != null) {
+            return cachedShape;
+        }
+
+        List<Transition> transitions = new ArrayList<>();
+        Shape prefix = shape;
+        while (!replacements.isEmpty() && prefix != shape.getRoot()) {
+            Transition transition = prefix.getTransitionFromParent();
+            if (transition instanceof AddPropertyTransition add) {
+                Property replacement = replacements.removeKey(add.getPropertyKey());
+                if (replacement != null) {
+                    transition = newAddPropertyTransition(replacement);
+                }
+            } else if (transition instanceof DirectReplacePropertyTransition replace) {
+                Property replacement = replacements.removeKey(replace.getPropertyKey());
+                if (replacement != null) {
+                    transition = new DirectReplacePropertyTransition(replace.getPropertyBefore(), replacement);
+                }
+            } else if (!(transition instanceof ObjectTypeTransition || transition instanceof ObjectFlagsTransition)) {
+                return null;
+            }
+            transitions.add(transition);
+            prefix = prefix.getParent();
+        }
+        if (!replacements.isEmpty()) {
+            return null;
+        }
+
+        Shape newShape = prefix;
+        boolean obsolete = false;
+        for (int i = transitions.size() - 1; i >= 0; i--) {
+            obsolete |= !newShape.isValid();
+            newShape = applyTransition(newShape, transitions.get(i), false);
+            if (obsolete && newShape.isValid()) {
+                newShape.invalidateValidAssumption();
+            }
+        }
+        newShape = shape.addIndirectTransition(batchTransition, newShape);
+        for (Property property : properties) {
+            ensureSameTypeOrMoreGeneral(newShape.getProperty(property.getKey()), property);
+        }
+        return newShape;
     }
 
     private static Shape indirectReplaceProperty(Shape shape, Property oldProperty, Property newProperty) {
