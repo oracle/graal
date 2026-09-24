@@ -31,6 +31,8 @@ import com.oracle.svm.core.gc.shared.NativeGCOptions;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.g1.nativelib.G1Library;
+import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.guest.staging.log.Log;
 
 public class G1GC implements GC {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -50,6 +52,11 @@ public class G1GC implements GC {
     @Override
     public String getName() {
         return "G1 GC";
+    }
+
+    @Override
+    public void writeLogPrefix(LogTagSet logTagSet, Log log) {
+        /* Native G1 logging adds any GC-specific prefix before entering Java logging. */
     }
 
     @Override
