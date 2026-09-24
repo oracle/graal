@@ -41,6 +41,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
 import com.oracle.svm.core.jfr.events.SafepointEndEvent;
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -177,16 +178,14 @@ public final class Safepoint {
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
 
-        logSafepoint = LogTagSet.safepoint.isInfo();
+        logSafepoint = HasXlogSupport.get() && LogTagSet.safepoint.isInfo();
         if (logSafepoint) {
             safepointBeginTimeNs = System.nanoTime();
             if (safepointEndTimeNs == 0) {
                 safepointEndTimeNs = Isolates.getStartTimeNanos();
             }
-            if (logSafepoint) {
-                safepointSyncTimeNs = 0;
-                appTimeNs = safepointBeginTimeNs - safepointEndTimeNs;
-            }
+            safepointSyncTimeNs = 0;
+            appTimeNs = safepointBeginTimeNs - safepointEndTimeNs;
             /* Every safepoint contributes to the next enabled time-since-last measurement. */
             safepointEndTimeNs = 0;
         }
@@ -210,7 +209,9 @@ public final class Safepoint {
 
         safepointState = AT_SAFEPOINT;
         safepointId = safepointId.add(1);
-        safepointReason = reason;
+        if (logSafepoint) {
+            safepointReason = reason;
+        }
         SafepointBeginEvent.emit(getSafepointId(), numJavaThreads, startTicks);
         return acquiredThreadsLock;
     }
@@ -251,7 +252,10 @@ public final class Safepoint {
         SafepointEndEvent.emit(getSafepointId(), startTicks);
         VMThreads.singleton().cleanupExitedOsThreads();
 
-        safepointEndTimeNs = System.nanoTime();
+        if (HasXlogSupport.get()) {
+            /* Preserve the interval start even if safepoint logging is enabled only later. */
+            safepointEndTimeNs = System.nanoTime();
+        }
         if (logSafepoint) {
             LogMessage message = LogTagSet.safepoint.message();
             try {

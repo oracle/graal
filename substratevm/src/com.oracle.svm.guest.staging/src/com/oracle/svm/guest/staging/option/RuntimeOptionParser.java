@@ -472,6 +472,7 @@ public final class RuntimeOptionParser {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/hotspot/share/runtime/arguments.cpp")
     private static String[] parseJavaVMOptions(String[] args, ParseContext context) {
         int newIdx = 0;
+        boolean strictRuntimeJavaOptions = GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions();
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
             String arg = args[oldIdx];
             if (arg.startsWith(LOG_FILE_OPTION_PREFIX)) {
@@ -481,16 +482,16 @@ public final class RuntimeOptionParser {
                 }
                 continue;
             }
-            if (parseProperty(arg, context) || parseLegacyGCOption(arg) ||
-                            (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
-                                            parsePreviewOption(arg) ||
-                                            parseVerifyOption(arg) ||
-                                            parseXBootClasspathAppendOption(arg, context) ||
-                                            parseRecognizedJavaOption(arg)))) {
+            if (parseProperty(arg, context)) {
                 continue;
             }
-            args[newIdx] = arg;
-            newIdx++;
+            if (parseLegacyGCOption(arg)) {
+                continue;
+            }
+            if (strictRuntimeJavaOptions && parseStrictJavaVMOption(arg, context)) {
+                continue;
+            }
+            args[newIdx++] = arg;
         }
 
         /*
@@ -500,6 +501,15 @@ public final class RuntimeOptionParser {
         initializeProperties(context.properties);
 
         return newIdx == args.length ? args : Arrays.copyOf(args, newIdx);
+    }
+
+    /// Parses options accepted only when strict Java VM option compatibility is enabled.
+    private static boolean parseStrictJavaVMOption(String arg, ParseContext context) {
+        return parseModuleOption(arg, context) ||
+                        parsePreviewOption(arg) ||
+                        parseVerifyOption(arg) ||
+                        parseXBootClasspathAppendOption(arg, context) ||
+                        parseRecognizedJavaOption(arg);
     }
 
     private static boolean parseVerifyOption(String arg) {
@@ -522,7 +532,15 @@ public final class RuntimeOptionParser {
         return true;
     }
 
-    /// Applies legacy GC options in command-line order with `-Xlog` selections.
+    /// Applies legacy GC options in command-line order with `-Xlog` selections. Generic runtime
+    /// options are normally applied after system properties are initialized, but delaying these
+    /// options would lose their ordering relative to `-Xlog`.
+    ///
+    /// This early pass remains correct only while every option that directly or transitively
+    /// changes the same logging configuration is handled here. The current setters are `-Xlog`,
+    /// `PrintGC`, and `VerboseGC`, and all three run in this ordered phase. A new interacting option
+    /// must either join this phase together with all options that can update it or motivate a
+    /// redesign that records ordered actions and replays them after property initialization.
     private static boolean parseLegacyGCOption(String arg) {
         if (arg.equals("-XX:+PrintGC") || arg.equals("-XX:-PrintGC") || arg.equals("-XX:+VerboseGC") || arg.equals("-XX:-VerboseGC")) {
             String[] remaining = singleton().parse(new String[]{arg}, false);

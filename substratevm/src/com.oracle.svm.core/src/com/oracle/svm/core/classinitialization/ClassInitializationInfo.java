@@ -645,7 +645,11 @@ public final class ClassInitializationInfo {
             initLock.unlock();
         }
 
-        /* Trace only after this thread has claimed initialization and released the state lock. */
+        /*
+         * Trace only after this thread has claimed initialization and released the state lock. The
+         * runtime logging path is restricted to classes initialized at build time, so it cannot
+         * recursively enter this slow path.
+         */
         if (HasXlogSupport.get() && LogTagSet.class_init.isInfo()) {
             traceClassInitialization(hub, hasInitializer);
         }
@@ -729,8 +733,9 @@ public final class ClassInitializationInfo {
         }
     }
 
-    /// Emits class initialization diagnostics without allowing tracing failures to strand the
-    /// class in the `BeingInitialized` state.
+    /// Emits class initialization diagnostics. A logging failure is fatal because unified logging
+    /// is VM-internal infrastructure and must not let ordinary exceptions escape.
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private static void traceClassInitialization(DynamicHub hub, boolean hasInitializer) {
         try {
             int sequence = TRACE_CLASS_INIT_COUNTER.getAndIncrement();
@@ -746,8 +751,8 @@ public final class ClassInitializationInfo {
                 }
                 line.string("'").string(method).string(" by thread \"").string(Thread.currentThread().getName()).string("\"");
             }
-        } catch (Throwable ignored) {
-            /* Tracing must not alter class initialization state or semantics. */
+        } catch (Throwable cause) {
+            throw VMError.shouldNotReachHere("Unified logging must not throw exceptions.", cause);
         }
     }
 
