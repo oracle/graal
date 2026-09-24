@@ -29,10 +29,12 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig.Mode;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
@@ -151,9 +153,37 @@ public final class HeapImpl extends Heap {
         return MultiLayeredImageSingleton.getAllLayers(ImageHeapInfo.class);
     }
 
+    @Override
+    public boolean isRuntimeStateTrimSupported(Mode mode) {
+        return !GCImpl.hasNeverCollectPolicy();
+    }
+
     @Fold
     static HeapChunkProvider getChunkProvider() {
         return getHeapImpl().chunkProvider;
+    }
+
+    @Override
+    public void trimRuntimeState(Mode mode) {
+        VMOperation.guaranteeInProgressAtSafepoint("HeapImpl.trimRuntimeState");
+        VMError.guarantee(NoAllocationVerifier.isActive(), "A NoAllocationVerifier must be active.");
+
+        GCCause gcCause = mode == Mode.LATENCY ? GCCause.RuntimeStateTrimYoungGC : GCCause.RuntimeStateTrimFullGC;
+        gcImpl.collect(gcCause);
+
+        if (mode == Mode.SIZE) {
+            getChunkProvider().freeUnusedAlignedChunks();
+            ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
+        }
+
+        boolean cleanUnusedMemory = mode == Mode.BALANCED || mode == Mode.SIZE;
+        if (cleanUnusedMemory) {
+            boolean cleanFillerObjectMemory = mode == Mode.SIZE;
+            getHeapImpl().makeParseable();
+            getYoungGeneration().clean(true, cleanFillerObjectMemory);
+            getOldGeneration().clean(true, cleanFillerObjectMemory);
+            getChunkProvider().cleanUnusedAlignedChunks();
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

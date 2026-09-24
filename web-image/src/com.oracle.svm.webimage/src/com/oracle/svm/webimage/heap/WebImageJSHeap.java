@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig.Mode;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
@@ -36,6 +37,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -140,6 +142,17 @@ public class WebImageJSHeap extends Heap {
     @Override
     public void endSafepoint() {
 
+    }
+
+    @Override
+    public boolean isRuntimeStateTrimSupported(Mode mode) {
+        return mode == Mode.LATENCY;
+    }
+
+    @Override
+    public void trimRuntimeState(Mode mode) {
+        assert mode == Mode.LATENCY;
+        gc.collect(GCCause.RuntimeStateTrimYoungGC);
     }
 
     @Override

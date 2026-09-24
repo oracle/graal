@@ -52,6 +52,8 @@ public abstract class OldGeneration extends Generation {
 
     abstract void releaseSpaces(ChunkReleaser chunkReleaser);
 
+    abstract void clean(boolean cleanUnusedMemory, boolean cleanFillerObjectMemory);
+
     abstract void swapSpaces();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

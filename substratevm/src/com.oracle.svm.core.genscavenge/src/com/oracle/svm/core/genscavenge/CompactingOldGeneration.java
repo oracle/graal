@@ -510,6 +510,11 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
+    void clean(boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
+        space.clean(cleanUnusedMemory, cleanFillerObjectMemory);
+    }
+
+    @Override
     void swapSpaces() {
         // Compacting in-place, no spaces to swap.
     }

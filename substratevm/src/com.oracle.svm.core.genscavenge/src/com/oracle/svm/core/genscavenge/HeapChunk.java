@@ -28,6 +28,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import java.util.function.IntUnaryOperator;
 
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -239,6 +240,27 @@ public final class HeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setEndOffset(Header<?> that, UnsignedWord newEnd) {
         that.setEndOffset(newEnd);
+    }
+
+    /** Cleans the unallocated tail and filler-object payloads of a heap chunk. */
+    @Uninterruptible(reason = "Uses raw pointers to access heap chunks.")
+    static void clean(Header<?> that, Pointer objectsStart, boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
+        Pointer top = getTopPointer(that);
+        if (cleanFillerObjectMemory) {
+            Pointer p = objectsStart;
+            while (p.belowThan(top)) {
+                Object obj = p.toObjectNonNull();
+                UnsignedWord size = LayoutEncoding.getSizeFromObjectInlineInGC(obj);
+                if (FillerObjectUtil.isFillerObject(obj)) {
+                    FillerObjectUtil.cleanFillerObjectMemory(obj);
+                }
+                p = p.add(size);
+            }
+        }
+        if (cleanUnusedMemory) {
+            Pointer limit = getEndPointer(that);
+            UnmanagedMemoryUtil.fill(top, limit.subtract(top), (byte) 0);
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -490,6 +490,62 @@ meth public abstract java.lang.String deprecatedMessage()
 meth public abstract java.lang.String help()
 meth public abstract java.lang.String name()
 
+CLSS public final org.graalvm.nativeimage.RuntimeStateTrimCallbackException
+innr public final static !enum Phase
+cons public init(org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase,int)
+meth public int statusCode()
+meth public org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase phase()
+supr java.lang.RuntimeException
+hfds phase,serialVersionUID,statusCode
+
+CLSS public final static !enum org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase
+ outer org.graalvm.nativeimage.RuntimeStateTrimCallbackException
+fld public final static org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase AFTER
+fld public final static org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase BEFORE
+meth public static org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase valueOf(java.lang.String)
+meth public static org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase[] values()
+supr java.lang.Enum<org.graalvm.nativeimage.RuntimeStateTrimCallbackException$Phase>
+
+CLSS public final org.graalvm.nativeimage.RuntimeStateTrimConfig
+innr public abstract interface static AfterRuntimeStateTrim
+innr public abstract interface static BeforeRuntimeStateTrim
+innr public final static !enum Mode
+innr public final static Builder
+meth public org.graalvm.nativeimage.RuntimeStateTrimConfig$AfterRuntimeStateTrim afterRuntimeStateTrim()
+meth public org.graalvm.nativeimage.RuntimeStateTrimConfig$BeforeRuntimeStateTrim beforeRuntimeStateTrim()
+meth public org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode mode()
+meth public static org.graalvm.nativeimage.RuntimeStateTrimConfig$Builder builder(org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode)
+supr java.lang.Object
+hfds afterRuntimeStateTrim,beforeRuntimeStateTrim,mode
+
+CLSS public abstract interface static org.graalvm.nativeimage.RuntimeStateTrimConfig$AfterRuntimeStateTrim
+ outer org.graalvm.nativeimage.RuntimeStateTrimConfig
+intf org.graalvm.nativeimage.c.function.CFunctionPointer
+meth public abstract int invoke()
+
+CLSS public abstract interface static org.graalvm.nativeimage.RuntimeStateTrimConfig$BeforeRuntimeStateTrim
+ outer org.graalvm.nativeimage.RuntimeStateTrimConfig
+intf org.graalvm.nativeimage.c.function.CFunctionPointer
+meth public abstract int invoke()
+
+CLSS public final static org.graalvm.nativeimage.RuntimeStateTrimConfig$Builder
+ outer org.graalvm.nativeimage.RuntimeStateTrimConfig
+meth public org.graalvm.nativeimage.RuntimeStateTrimConfig build()
+meth public org.graalvm.nativeimage.RuntimeStateTrimConfig$Builder afterRuntimeStateTrim(org.graalvm.nativeimage.RuntimeStateTrimConfig$AfterRuntimeStateTrim)
+meth public org.graalvm.nativeimage.RuntimeStateTrimConfig$Builder beforeRuntimeStateTrim(org.graalvm.nativeimage.RuntimeStateTrimConfig$BeforeRuntimeStateTrim)
+meth public org.graalvm.nativeimage.RuntimeStateTrimConfig$Builder mode(org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode)
+supr java.lang.Object
+hfds afterRuntimeStateTrim,beforeRuntimeStateTrim,mode
+
+CLSS public final static !enum org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode
+ outer org.graalvm.nativeimage.RuntimeStateTrimConfig
+fld public final static org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode BALANCED
+fld public final static org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode LATENCY
+fld public final static org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode SIZE
+meth public static org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode valueOf(java.lang.String)
+meth public static org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode[] values()
+supr java.lang.Enum<org.graalvm.nativeimage.RuntimeStateTrimConfig$Mode>
+
 CLSS public final org.graalvm.nativeimage.StackValue
 meth public static <%0 extends org.graalvm.word.PointerBase> {%%0} get(int)
 meth public static <%0 extends org.graalvm.word.PointerBase> {%%0} get(int,int)
@@ -525,6 +581,7 @@ supr java.lang.Object
 CLSS public final org.graalvm.nativeimage.VMRuntime
 meth public static void dumpHeap(java.lang.String,boolean) throws java.io.IOException
 meth public static void initialize()
+meth public static void trimRuntimeState(org.graalvm.nativeimage.RuntimeStateTrimConfig)
 meth public static void shutdown()
 supr java.lang.Object
 

@@ -834,7 +834,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void uncommitUnusedMemory() {
-        assert VMOperation.isGCInProgress() : "may only be called by the GC";
+        assert VMOperation.isInProgressAtSafepoint() : "may only be called at safepoint";
         assert !lock.hasOwner() : "Must not be locked";
         uncommitUnusedMemory0();
     }
@@ -896,6 +896,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getReservedAddressSpaceSize() {
         return reservedAddressSpaceSize;
     }
