@@ -124,7 +124,7 @@ final class LogAsyncWriter {
 
     /// Destinations are kept in Java state and referenced from raw records by a slot number that
     /// remains stable until every referring record has drained.
-    private volatile LogOutput[] outputSlots = new LogOutput[4];
+    private volatile LogOutputConfiguration[] outputSlots = new LogOutputConfiguration[4];
 
     /// Number of populated entries in [#outputSlots].
     private int outputSlotCount;
@@ -181,20 +181,24 @@ final class LogAsyncWriter {
     }
 
     /// Registers `output` before a route that refers to it becomes visible to producers.
-    void registerOutput(LogOutput output) {
+    LogOutputConfiguration registerOutput(LogOutputConfiguration output) {
         PRODUCER_LOCK.lock();
         try {
             for (int index = 0; index < outputSlotCount; index++) {
                 if (outputSlots[index] == output) {
-                    return;
+                    return output;
+                }
+                if (outputSlots[index].output() == output.output() && outputSlots[index].decorators().mask() == output.decorators().mask()) {
+                    return outputSlots[index];
                 }
             }
             if (outputSlotCount == outputSlots.length) {
-                LogOutput[] expanded = new LogOutput[outputSlots.length * 2];
+                LogOutputConfiguration[] expanded = new LogOutputConfiguration[outputSlots.length * 2];
                 System.arraycopy(outputSlots, 0, expanded, 0, outputSlots.length);
                 outputSlots = expanded;
             }
             outputSlots[outputSlotCount++] = output;
+            return output;
         } finally {
             PRODUCER_LOCK.unlock();
         }
@@ -221,7 +225,7 @@ final class LogAsyncWriter {
 
     /// Enqueues every selected message part, copying its native bytes before returning. Returns
     /// `false` when the caller must use synchronous output instead.
-    boolean enqueue(LogOutput output, LogDecorations decorations, LogMessage message, LogLevel outputLevel) {
+    boolean enqueue(LogOutputConfiguration output, LogDecorations decorations, LogMessage message, LogLevel outputLevel) {
         if (Thread.currentThread() == worker) {
             return false;
         }
@@ -276,7 +280,7 @@ final class LogAsyncWriter {
                     }
                     if (!canReserveMessage(state, message, lineCount, outputLevel, prefixLength)) {
                         /* Drop one complete logical event rather than publishing selected fragments. */
-                        output.droppedAsyncMessages.incrementAndGet();
+                        output.output().droppedAsyncMessages.incrementAndGet();
                         return true;
                     }
                 } finally {
@@ -462,11 +466,12 @@ final class LogAsyncWriter {
     /// Formats and writes a claimed raw record while the consumer is back in Java state.
     private static void writeRecord(Record record) {
         LogAsyncWriter writer = LogConfiguration.asyncWriterInstance();
-        LogOutput output = writer.outputForSlot(record.getOutputSlot());
+        LogOutputConfiguration outputConfiguration = writer.outputForSlot(record.getOutputSlot());
+        LogOutput output = outputConfiguration.output();
         try {
             LogDecorations decorations = writer.consumerDecorations;
             decorations.restore(LogTagSet.VALUES[record.getTagSetOrdinal()], record.getSystemMillis(), record.getSystemNanos(), record.getUptimeNanos(), record.getThreadId());
-            output.write(decorations, recordData(record), record.getMessageLength(), LogLevel.VALUES[record.getLevelOrdinal()]);
+            output.write(decorations, recordData(record), record.getMessageLength(), LogLevel.VALUES[record.getLevelOrdinal()], outputConfiguration.decorators());
             writeDroppedMessages(output);
         } catch (Throwable throwable) {
             /* A failed destination must not terminate the VM-lifetime consumer thread. */
@@ -619,8 +624,8 @@ final class LogAsyncWriter {
     }
 
     /// Gets an output slot without allocating in the producer path.
-    private int findOutputSlot(LogOutput output) {
-        LogOutput[] slots = outputSlots;
+    private int findOutputSlot(LogOutputConfiguration output) {
+        LogOutputConfiguration[] slots = outputSlots;
         for (int index = 0; index < outputSlotCount; index++) {
             if (slots[index] == output) {
                 return index;
@@ -630,9 +635,9 @@ final class LogAsyncWriter {
     }
 
     /// Resolves a raw record's output slot after returning to Java state.
-    private LogOutput outputForSlot(int slot) {
+    private LogOutputConfiguration outputForSlot(int slot) {
         VMError.guarantee(slot >= 0 && slot < outputSlotCount, "Invalid asynchronous log output slot.");
-        LogOutput result = outputSlots[slot];
+        LogOutputConfiguration result = outputSlots[slot];
         VMError.guarantee(result != null, "Asynchronous log output slot was cleared too early.");
         return result;
     }
@@ -641,7 +646,7 @@ final class LogAsyncWriter {
     /// and an empty queue ensure that no producer or consumer can race with the reset.
     private void flushDroppedMessages() {
         for (int index = 0; index < outputSlotCount; index++) {
-            LogOutput output = outputSlots[index];
+            LogOutput output = outputSlots[index].output();
             try {
                 writeDroppedMessages(output);
             } catch (Throwable throwable) {
