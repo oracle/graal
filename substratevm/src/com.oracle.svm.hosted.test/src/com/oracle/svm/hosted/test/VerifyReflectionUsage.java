@@ -131,7 +131,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets"),
                     clazz("com.oracle.svm.core.heap.dump.HeapDumpWriter"),
                     clazz("com.oracle.svm.core.hub.PredefinedClassesSupport"),
-                    clazz("com.oracle.svm.core.hub.ReferenceType"),
                     clazz("com.oracle.svm.core.hub.registry.AbstractClassRegistry"),
                     clazz("com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry"),
                     clazz("com.oracle.svm.core.hub.registry.ClassRegistries"),
