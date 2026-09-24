@@ -25,8 +25,12 @@
 package jdk.graal.compiler.core.test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.phases.MidTier;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.nodes.ChainedPhiValueSplitNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 import org.junit.Test;
 
 public class ChainedPhiTest extends GraalCompilerTest {
@@ -42,7 +46,12 @@ public class ChainedPhiTest extends GraalCompilerTest {
 
     @Test
     public void test0() {
-        StructuredGraph graph = getFinalGraph("snippet0");
+        // Preserve the loop shape so the test exercises the chained-phi transformation directly.
+        OptionValues loopOptions = new OptionValues(getInitialOptions(),
+                        GraalOptions.PartialUnroll, false,
+                        LoopInversionPhase.Options.LoopInversion, false,
+                        MidTier.Options.StripMineCountedLoops, false);
+        StructuredGraph graph = getFinalGraph(getResolvedJavaMethod("snippet0"), loopOptions);
         assertTrue(graph.getNodes().filter(ChainedPhiValueSplitNode.class).isNotEmpty());
     }
 
