@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,23 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
+import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -46,33 +52,56 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
 import com.oracle.svm.hosted.phases.DynamicAccessDetectionPhase;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
+import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ProfileData;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.TriState;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
-    private final Boolean trackDynamicAccess;
-    private final Boolean trackJavaHomeAccess;
-    private final Boolean trackJavaHomeAccessDetailed;
+    private final boolean trackDynamicAccess;
+    private final boolean trackJavaHomeAccess;
+    private final boolean trackJavaHomeAccessDetailed;
+    private final boolean allowArtificialInstanceOfProfiles;
+    private final boolean usesClosedTypeWorldHubLayout;
 
     public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
+        this(bb, converter, true);
+    }
+
+    /**
+     * Creates graph strengthening for Native Image.
+     *
+     * @param allowArtificialInstanceOfProfiles whether static-analysis results may be used to
+     *            create artificial profiles for {@link InstanceOfNode}s
+     */
+    public SubstrateStrengthenGraphs(Inflation bb, Universe converter, boolean allowArtificialInstanceOfProfiles) {
         super(bb, converter);
-        trackDynamicAccess = DynamicAccessDetectionSupport.isDynamicAccessTrackingEnabled();
-        trackJavaHomeAccess = SubstrateOptions.TrackJavaHomeAccess.getValue();
-        trackJavaHomeAccessDetailed = SubstrateOptions.TrackJavaHomeAccessDetailed.getValue();
+        this.trackDynamicAccess = DynamicAccessDetectionSupport.isDynamicAccessTrackingEnabled();
+        this.trackJavaHomeAccess = SubstrateOptions.TrackJavaHomeAccess.getValue();
+        this.trackJavaHomeAccessDetailed = SubstrateOptions.TrackJavaHomeAccessDetailed.getValue();
+        this.allowArtificialInstanceOfProfiles = allowArtificialInstanceOfProfiles;
+        this.usesClosedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
     }
 
     @Override
@@ -164,6 +193,220 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     protected static boolean needsProfiles(StructuredGraph graph) {
         /* We do not need any profiles in methods for JIT compilation at image run time. */
         return !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method());
+    }
+
+    /**
+     * Tries to infer an artificial profile from analysis results. If successful, the profile is
+     * assigned to the {@code instanceof} node.
+     * <p>
+     * The artificial profile of a type check {@code inputType instanceof checkedType} is based on
+     * the potential types the static {@code inputType} can have. Artificial profiles are only added
+     * if the number of possible types is very small. The maximum number of injected types depends
+     * on the hub layout and whether the type check is an interface check.
+     */
+    @Override
+    protected void maybeAssignInstanceOfProfiles(InstanceOfNode iof) {
+        if (iof.graph() == null || !needsProfiles(iof.graph()) || !allowArtificialInstanceOfProfiles) {
+            return;
+        }
+
+        ObjectStamp checkedStamp = iof.getCheckedStamp();
+        if (checkedStamp.isExactType()) {
+            return;
+        }
+
+        ObjectStamp inputStamp = (ObjectStamp) iof.getValue().stamp(NodeView.DEFAULT);
+        HostedType inputType = (HostedType) converter.lookup(inputStamp.type());
+        HostedType checkedType = (HostedType) converter.lookup(checkedStamp.type());
+
+        int maxTypes = getMaxTypes(checkedType, iof.getOptions());
+
+        /*
+         * 1) Identify what should be collected.
+         *
+         * Depending on the branch probability, fast paths might be only useful for types that
+         * succeed or fail the instanceof check.
+         *
+         * Corner case: If the static type of the inputType is Object, we decide to collect all
+         * subtypes of the checkedType which are assignable to the inputType. This way only fast
+         * paths for succeeding instanceof checks can be created. This is not done if the branch
+         * profile suggests that the true branch probability is unlikely. In that case, no profile
+         * is injected.
+         */
+        boolean collectAssignable = true;
+        boolean collectNotAssignable = true;
+        if (inputType != null) {
+            CollectableTypes toCollect = identifyTypesToCollect(iof);
+            collectAssignable = toCollect.collectPassing;
+            collectNotAssignable = toCollect.collectFailing;
+        } else {
+            /* The static type of inputType is Object. */
+            for (IfNode ifNode : iof.usages().filter(IfNode.class)) {
+                if (ifNode.getTrueSuccessorProbability() <= 0.5) {
+                    return;
+                }
+            }
+            /*
+             * Swap inputType and checkedType to collect just types which would succeed the
+             * instanceof check.
+             */
+            inputType = checkedType;
+            checkedType = null;
+        }
+
+        /*
+         * 2) Collect types.
+         *
+         * Try to collect assignable and not assignable types up to maxTypes. If this fails or the
+         * maximum number of types is exceeded, return without injecting a profile.
+         */
+        ArrayList<HostedType> assignableTypes = new ArrayList<>();
+        ArrayList<HostedType> notAssignableTypes = new ArrayList<>();
+        if (!collectTypesForInstanceofProfile(inputType, checkedType, maxTypes, collectAssignable, assignableTypes, collectNotAssignable, notAssignableTypes)) {
+            return;
+        }
+
+        /*
+         * 3) Create and inject the profile.
+         *
+         * The not-recorded probability is only zero if all possible types have been added under a
+         * closed type world.
+         */
+        int numberOfTypes = assignableTypes.size() + notAssignableTypes.size();
+        if (numberOfTypes > 0 && numberOfTypes <= maxTypes) {
+            double notRecordedProbability = isClosedTypeWorld && collectAssignable && collectNotAssignable ? 0.0d : BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
+            double probability = (1.0 - notRecordedProbability) / numberOfTypes;
+            JavaTypeProfile.ProfiledType[] profiledTypes = createProfiledTypes(assignableTypes, notAssignableTypes, probability);
+
+            JavaTypeProfile profile = new JavaTypeProfile(inputStamp.nonNull() ? TriState.FALSE : TriState.TRUE, notRecordedProbability, profiledTypes);
+            iof.setProfile(profile, iof.getAnchor());
+        }
+    }
+
+    /**
+     * Uses the branch-profile information from the usages of {@code iof} to identify whether the
+     * type check is likely to pass or fail. When the trusted profile indicates a tendency, only
+     * exact types for the corresponding fast paths are selected. If no trusted profile establishes
+     * a tendency, both passing and failing types are selected.
+     *
+     * @return the passing and failing type categories to collect
+     */
+    private static CollectableTypes identifyTypesToCollect(InstanceOfNode iof) {
+        boolean collectPassing = false;
+        boolean collectFailing = false;
+
+        for (IfNode ifNode : iof.usages().filter(IfNode.class)) {
+            if (ProfileData.ProfileSource.isTrusted(ifNode.profileSource())) {
+                if (ifNode.getTrueSuccessorProbability() >= BranchProbabilityNode.LIKELY_PROBABILITY) {
+                    collectPassing = true;
+                } else if (ifNode.getTrueSuccessorProbability() <= BranchProbabilityNode.NOT_LIKELY_PROBABILITY) {
+                    collectFailing = true;
+                }
+            } else {
+                /* Untrusted profile data cannot justify excluding either category. */
+                collectPassing = true;
+                collectFailing = true;
+                break;
+            }
+        }
+        if (!collectPassing && !collectFailing) {
+            /* Trusted profiles with balanced probabilities do not establish a tendency. */
+            collectPassing = true;
+            collectFailing = true;
+        }
+
+        return new CollectableTypes(collectPassing, collectFailing);
+    }
+
+    /** Passing and failing concrete-type categories selected for artificial profile synthesis. */
+    private record CollectableTypes(boolean collectPassing, boolean collectFailing) {
+    }
+
+    /**
+     * Creates profiled types from {@code assignableTypes} and {@code notAssignableTypes}. Each
+     * profiled type has the same {@code probability}.
+     */
+    private static JavaTypeProfile.ProfiledType[] createProfiledTypes(ArrayList<HostedType> assignableTypes, ArrayList<HostedType> notAssignableTypes, double probability) {
+        JavaTypeProfile.ProfiledType[] profiledTypes = new JavaTypeProfile.ProfiledType[assignableTypes.size() + notAssignableTypes.size()];
+        int index = 0;
+        for (HostedType type : assignableTypes) {
+            profiledTypes[index++] = new JavaTypeProfile.ProfiledType(type, probability);
+        }
+        for (HostedType type : notAssignableTypes) {
+            profiledTypes[index++] = new JavaTypeProfile.ProfiledType(type, probability);
+        }
+        return profiledTypes;
+    }
+
+    /** Returns the exact-type hint budget used by the selected type-check lowering. */
+    private int getMaxTypes(HostedType checkedType, OptionValues options) {
+        if (usesClosedTypeWorldHubLayout) {
+            return TypeSnippets.getTypeCheckMaxHints(options);
+        }
+        return OpenTypeWorldSnippets.getTypeCheckMaxHints(checkedType.isInterface(), options);
+    }
+
+    /**
+     * Collects each reachable concrete subtype of {@code inputType} at most once. Depending on
+     * {@code collectAssignable} and {@code collectNotAssignable}, types are classified relative to
+     * {@code checkedType} and stored in {@code assignableTypes} or {@code notAssignableTypes}.
+     *
+     * @return whether all types were collected without encountering the object-array state
+     *         explosion or exceeding {@code maxTypes}; when the limit is exceeded, the lists may
+     *         contain the first over-budget type
+     */
+    private static boolean collectTypesForInstanceofProfile(HostedType inputType, HostedType checkedType, int maxTypes, boolean collectAssignable, ArrayList<HostedType> assignableTypes,
+                    boolean collectNotAssignable, ArrayList<HostedType> notAssignableTypes) {
+        ArrayDeque<HostedType> worklist = new ArrayDeque<>();
+        EconomicSet<HostedType> visitedTypes = EconomicSet.create(Equivalence.IDENTITY);
+
+        checkConcreteAssignable(inputType, checkedType, assignableTypes, notAssignableTypes, collectAssignable, collectNotAssignable);
+        visitedTypes.add(inputType);
+        worklist.add(inputType);
+        while (!worklist.isEmpty()) {
+            var elementalType = worklist.peek().getElementalType();
+            if (elementalType.isJavaLangObject()) {
+                /*
+                 * Object arrays of arbitrary dimension lead to state explosion as AnyArray[][] is
+                 * a subtype of Object[], etc.
+                 */
+                return false;
+            }
+            HostedType[] types = worklist.removeFirst().getSubTypes();
+            for (HostedType type : types) {
+                if (!visitedTypes.add(type) || !type.getWrapped().isReachable()) {
+                    continue;
+                }
+                if (checkConcreteAssignable(type, checkedType, assignableTypes, notAssignableTypes, collectAssignable, collectNotAssignable) &&
+                                assignableTypes.size() + notAssignableTypes.size() > maxTypes) {
+                    return false;
+                }
+                worklist.add(type);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * If {@code inputType} is concrete, adds it to the selected list according to whether it is
+     * assignable to {@code checkedType}.
+     *
+     * @return whether {@code inputType} was added to one of the lists
+     */
+    private static boolean checkConcreteAssignable(HostedType inputType, HostedType checkedType, ArrayList<HostedType> assignableTypes, ArrayList<HostedType> notAssignableTypes,
+                    boolean collectAssignable, boolean collectNotAssignable) {
+        if (!inputType.isInterface() && inputType.isConcrete()) {
+            if (checkedType == null || checkedType.isAssignableFrom(inputType)) {
+                if (collectAssignable) {
+                    assignableTypes.add(inputType);
+                    return true;
+                }
+            } else if (collectNotAssignable) {
+                notAssignableTypes.add(inputType);
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
