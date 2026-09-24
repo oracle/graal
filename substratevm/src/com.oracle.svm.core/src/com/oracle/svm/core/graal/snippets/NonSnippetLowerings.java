@@ -38,8 +38,9 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
@@ -51,7 +52,7 @@ import com.oracle.svm.core.graal.nodes.MethodOffsetToPointerNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodRefStamp;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
@@ -473,7 +474,7 @@ public abstract class NonSnippetLowerings {
                              * In runtime-compiled code, we emit indirect calls via the respective
                              * heap objects to avoid patching and creating trampolines.
                              */
-                            JavaConstant codeInfo = SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo());
+                            JavaConstant codeInfo = SubstrateObjectConstant.forObject(ImageCodeInfoProvider.getImageCodeInfo(targetMethod));
                             ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
                             ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(wordKind, knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
                             AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));

@@ -184,7 +184,7 @@ public class UniverseBuilder {
                 assert previous == null : "Overwriting analysis key";
             }
 
-            // see SharedMethod#getIndirectCallTarget for more information
+            // see com.oracle.svm.jvmci.shared.meta.SharedMethod#getIndirectCallTarget for more information
             if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 OpenTypeWorldSupport.singleton().computeIndirectCallTargets(hUniverse, hUniverse.methods);
             } else {

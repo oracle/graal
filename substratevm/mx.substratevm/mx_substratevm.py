@@ -814,6 +814,7 @@ def _run_terminus_gate(args):
 
 
 def _run_terminus_user_feature_gate(args):
+    """Run user-feature tests for host/Espresso and the guest-module test only for fully isolated Espresso."""
     espresso_compiler_stub = 'espresso-compiler-stub'
     if not mx.suite(espresso_compiler_stub, fatalIfMissing=False):
         mx.abort(f'The {espresso_compiler_stub} suite is required for the Terminus user-feature test.\n'
@@ -868,6 +869,34 @@ def _run_terminus_user_feature_gate(args):
         if not expected_stacktrace.search(output):
             mx.abort(f'The {vmaccess_name} native-image output did not match the expected user-feature exception '
                      f'stack trace. Captured output:\n{output}')
+
+    module_test_class = 'com.oracle.svm.test.terminus.GuestModuleLayerTest'
+    module_exception = f'{module_test_class}$ModuleLayerTestException'
+    captured = mx.LinesOutputCapture()
+    with tempfile.TemporaryDirectory() as image_dir:
+        with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+            image_path = native_image(args.extra_image_builder_arguments +
+                                      svm_experimental_options([f'-H:Path={image_dir}']) + [
+                                          '-cp', test_distribution,
+                                          '-Dorg.graalvm.nativeimage.vmaccess.name=espresso',
+                                          '--features=' + module_test_class + '$TestFeature',
+                                          module_test_class,
+                                      ], out=mx.TeeOutputCapture(captured), err=mx.TeeOutputCapture(captured),
+                                      nonZeroIsFatal=False)
+
+        output = '\n'.join(captured.lines)
+        if exists(image_path):
+            mx.abort('The Terminus guest module layer native-image build unexpectedly succeeded for VMAccess espresso.\n'
+                     'The feature should throw after verifying the guest boot module set. Captured output:\n' + output)
+
+    expected_module_failure = re.compile(
+        rf'^Error: Feature defined by {re.escape(module_test_class + "$TestFeature")} unexpectedly failed with a\(n\) '
+        rf'{re.escape(module_exception)}\.[^\r\n]*(?:\r?\n|$)'
+        rf'^Caused by: {re.escape(module_exception)}: {re.escape("guest-module-layer-sentinel")}(?:\r?\n|$)',
+        re.MULTILINE)
+    if not expected_module_failure.search(output):
+        mx.abort('The Espresso native-image output did not match the expected guest module layer '
+                 'sentinel failure. Captured output:\n' + output)
 
 
 def _compute_native_unittest_args(extra_build_args=None, include_svm_test_features=True):
@@ -2214,12 +2243,14 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     # On the other hand, SVM_SHARED contains code that is shared between the guest and the builder. Conceptually, the
     # module is loaded twice, once in the guest and once in the builder. Thus, it can not be used for data sharing,
     # e.g., via static fields. It is only for sharing implementation for functionality that is used in both.
-    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM_GUEST_STAGING', 'substratevm:SVM_SHARED', 'sdk:VMACCESS_GUEST'],
+    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM_GUEST_STAGING', 'substratevm:SVM_SHARED', 'substratevm:SVM_JVMCI_GUEST', 'substratevm:SVM_JVMCI_GUEST_STAGING', 'substratevm:SVM_JVMCI_SHARED', 'sdk:VMACCESS_GUEST'],
     builder_jar_distributions=[
         'substratevm:SVM',
         'substratevm:SVM_CONFIGURE',
         'substratevm:SVM_GUEST_STAGING',
         'substratevm:SVM_SHARED',
+        'substratevm:SVM_JVMCI_GUEST_STAGING',
+        'substratevm:SVM_JVMCI_SHARED',
         'espresso-shared:ESPRESSO_SVM',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',

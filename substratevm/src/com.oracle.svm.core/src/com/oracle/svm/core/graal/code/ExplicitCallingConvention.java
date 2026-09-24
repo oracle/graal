@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ExplicitCallingConventionGuestValue;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

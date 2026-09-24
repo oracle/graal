@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.pltgot;
 
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.MethodAddressResolver;
 import com.oracle.svm.hosted.image.AbstractImage;
 

@@ -27,7 +27,7 @@ package com.oracle.svm.core.c;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import org.graalvm.nativeimage.ImageSingletons;
 

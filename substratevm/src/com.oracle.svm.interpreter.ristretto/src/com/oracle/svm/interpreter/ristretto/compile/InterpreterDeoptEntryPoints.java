@@ -33,6 +33,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
@@ -85,7 +86,7 @@ public class InterpreterDeoptEntryPoints {
      * The backend-specific epilogue restores {@code revertSp}, optionally restores the caller base
      * pointer, reinstalls {@code oldReturnAddress}, and then jumps to {@code interpEntryPoint}.
      */
-    @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterDeoptEntryPointStub)
+    @DeoptStub(stubType = DeoptStub.StubType.InterpreterDeoptEntryPointStub)
     @Uninterruptible(reason = "Custom deopt-stub epilogue rewrites the active stack frame.")
     @NeverInline("custom prologue and epilogue")
     @SuppressWarnings("unused")

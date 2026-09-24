@@ -45,8 +45,9 @@ import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
@@ -241,7 +242,7 @@ public class RistrettoUtils {
         } else if (declaringClass instanceof InterpreterResolvedJavaType interpreterType) {
             return interpreterType.getJavaClass();
         } else if (declaringClass instanceof SharedType sharedType) {
-            return DynamicHub.toClass(sharedType.getHub());
+            return DynamicHub.toClass(DynamicHubProvider.getHub(sharedType));
         }
         throw VMError.shouldNotReachHere("Unexpected declaring class for runtime Java declaring-class lookup: " + declaringClass);
     }

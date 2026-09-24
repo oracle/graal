@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class DynamicImageLayerInfo {

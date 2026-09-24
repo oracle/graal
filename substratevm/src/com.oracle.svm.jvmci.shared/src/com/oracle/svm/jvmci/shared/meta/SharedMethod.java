@@ -22,16 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.meta;
+package com.oracle.svm.jvmci.shared.meta;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -102,23 +100,18 @@ public interface SharedMethod extends ResolvedJavaMethod {
     SharedMethod getIndirectCallTarget();
 
     /**
-     * Returns the deopt stub type for the stub methods in {@link Deoptimizer}. Only used when
+     * Returns the deopt stub type for the stub methods in {@code Deoptimizer}. Only used when
      * compiling the deopt stubs during image generation.
      */
-    Deoptimizer.StubType getDeoptStubType();
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    ImageCodeInfo getImageCodeInfo();
+    DeoptStub.StubType getDeoptStubType();
 
     boolean hasImageCodeOffset();
 
     int getImageCodeOffset();
 
     /**
-     * Returns the encoded relative IP of this method's deoptimization entry point in image code.
-     *
-     * @see com.oracle.svm.core.code.CodeInfoAccess#relativeIP(com.oracle.svm.core.code.CodeInfo,
-     *      org.graalvm.nativeimage.c.function.CodePointer)
+     * Returns the encoded relative IP of this method's deoptimization entry point in image code. See
+     * {@code CodeInfoAccess.relativeIP(CodeInfo, CodePointer)}.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int getImageCodeDeoptOffset();

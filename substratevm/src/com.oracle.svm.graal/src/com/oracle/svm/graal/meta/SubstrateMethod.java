@@ -44,15 +44,15 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
@@ -346,8 +346,8 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
-    public Deoptimizer.StubType getDeoptStubType() {
-        return Deoptimizer.StubType.NoDeoptStub;
+    public DeoptStub.StubType getDeoptStubType() {
+        return DeoptStub.StubType.NoDeoptStub;
     }
 
     @Override
