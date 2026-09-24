@@ -1821,61 +1821,95 @@ public final class Shape {
 
 }
 
+/**
+ * Root-wide property assumptions, published as immutable snapshots. Map operations do not acquire
+ * a lock; invalidating an assumption may still synchronize in the runtime.
+ */
 final class PropertyAssumptions {
-    private final EconomicMap<Object, Assumption> stablePropertyAssumptions;
+    private volatile UnorderedTrieMap<Object, Assumption> stablePropertyAssumptions;
+
+    private static final VarHandle MAP_UPDATER;
+    static {
+        try {
+            MAP_UPDATER = MethodHandles.lookup().findVarHandle(PropertyAssumptions.class, "stablePropertyAssumptions", UnorderedTrieMap.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     PropertyAssumptions() {
-        this.stablePropertyAssumptions = EconomicMap.create();
+        this.stablePropertyAssumptions = UnorderedTrieMap.empty();
     }
 
-    synchronized Assumption getPropertyAssumption(Object propertyName) {
+    Assumption getPropertyAssumption(Object propertyName) {
         CompilerAsserts.neverPartOfCompilation();
-        EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
-        Assumption assumption = map.get(propertyName);
-        if (assumption != null) {
-            return assumption;
-        }
-        assumption = Truffle.getRuntime().createAssumption(propertyName.toString());
-        map.put(propertyName, assumption);
-        propertyAssumptionsCreated.inc();
-        return assumption;
-    }
-
-    synchronized void invalidatePropertyAssumption(Object propertyName, boolean onlyExisting) {
-        CompilerAsserts.neverPartOfCompilation();
-        EconomicMap<Object, Assumption> map = stablePropertyAssumptions;
-        Assumption assumption = map.get(propertyName);
-        if (assumption == Assumption.NEVER_VALID) {
-            return;
-        }
-        if (assumption != null) {
-            assumption.invalidate("invalidatePropertyAssumption");
-        }
-        /*
-         * Direct property transitions can happen only once per object as they always lead to new
-         * shapes, so we only need to invalidate already registered assumptions.
-         *
-         * Indirect property transitions, OTOH, can form transition cycles in the shape tree that
-         * may cause toggling between existing shapes for the same object, and since already cached
-         * shape transitions fly under the radar of future property assumptions, we have to block
-         * any future assumptions from being registered for this property.
-         */
-        if (assumption != null || !onlyExisting) {
-            map.put(propertyName, Assumption.NEVER_VALID);
+        Assumption newAssumption = null;
+        while (true) {
+            var map = stablePropertyAssumptions;
+            Assumption assumption = map.get(propertyName);
             if (assumption != null) {
-                propertyAssumptionsRemoved.inc();
-            } else {
-                propertyAssumptionsBlocked.inc();
+                return assumption;
+            }
+            if (newAssumption == null) {
+                newAssumption = Truffle.getRuntime().createAssumption(propertyName.toString());
+            }
+            var newMap = map.copyAndPut(propertyName, newAssumption);
+            if (MAP_UPDATER.compareAndSet(this, map, newMap)) {
+                propertyAssumptionsCreated.inc();
+                return newAssumption;
             }
         }
     }
 
-    synchronized void invalidateAllPropertyAssumptions() {
+    void invalidatePropertyAssumption(Object propertyName, boolean onlyExisting) {
         CompilerAsserts.neverPartOfCompilation();
-        for (Assumption assumption : stablePropertyAssumptions.getValues()) {
-            assumption.invalidate("invalidateAllPropertyAssumptions");
+        while (true) {
+            var map = stablePropertyAssumptions;
+            Assumption assumption = map.get(propertyName);
+            if (assumption == Assumption.NEVER_VALID || (assumption == null && onlyExisting)) {
+                return;
+            }
+            if (assumption != null) {
+                /*
+                 * Invalidate before publishing NEVER_VALID. Otherwise another invalidator could
+                 * observe the marker and return while the old assumption is still valid.
+                 */
+                assumption.invalidate("invalidatePropertyAssumption");
+            }
+            /*
+             * Direct property transitions can happen only once per object as they always lead to new
+             * shapes, so we only need to invalidate already registered assumptions.
+             *
+             * Indirect property transitions, OTOH, can form transition cycles in the shape tree that
+             * may cause toggling between existing shapes for the same object, and since already cached
+             * shape transitions fly under the radar of future property assumptions, we have to block
+             * any future assumptions from being registered for this property.
+             */
+            var newMap = map.copyAndPut(propertyName, Assumption.NEVER_VALID);
+            if (MAP_UPDATER.compareAndSet(this, map, newMap)) {
+                if (assumption != null) {
+                    propertyAssumptionsRemoved.inc();
+                } else {
+                    propertyAssumptionsBlocked.inc();
+                }
+                return;
+            }
         }
-        stablePropertyAssumptions.clear();
+    }
+
+    void invalidateAllPropertyAssumptions() {
+        CompilerAsserts.neverPartOfCompilation();
+        while (true) {
+            var map = stablePropertyAssumptions;
+            /*
+             * Do not clear first: old assumptions must be invalid before new ones can be registered
+             * in their place. Retry if the snapshot changed, including any concurrent registrations.
+             */
+            map.forEach((key, assumption) -> assumption.invalidate("invalidateAllPropertyAssumptions"));
+            if (MAP_UPDATER.compareAndSet(this, map, UnorderedTrieMap.empty())) {
+                return;
+            }
+        }
     }
 
 }
