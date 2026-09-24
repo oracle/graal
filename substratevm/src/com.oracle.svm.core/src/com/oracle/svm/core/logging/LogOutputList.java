@@ -25,9 +25,6 @@
 package com.oracle.svm.core.logging;
 
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com.oracle.svm.core.thread.VMOperationControl;
 
 /// Tracks the destinations configured for one tag set.
 ///
@@ -54,9 +51,9 @@ import com.oracle.svm.core.thread.VMOperationControl;
 /// individual lines, without retaining a separate output-to-threshold map or scanning disabled
 /// destinations during logging.
 ///
-/// Readers retain an immutable array snapshot without locking. Runtime configuration publishes a
-/// replacement snapshot and waits for readers of the previous snapshot before changing mutable
-/// destination formatting state or releasing output resources.
+/// Readers retain one immutable configuration without locking. Runtime configuration publishes a
+/// replacement configuration, while readers that already started continue to use the routing and
+/// formatting state that they observed.
 ///
 /// For example, consider the following message:
 ///
@@ -77,153 +74,90 @@ import com.oracle.svm.core.thread.VMOperationControl;
 /// ```
 public final class LogOutputList {
     /// Shared empty result avoids allocation when a level is disabled.
-    private static final LogOutput[] NO_OUTPUTS = {};
+    private static final LogOutputConfiguration[] NO_OUTPUTS = {};
 
-    /// List of outputs configured for each level.
-    private volatile LogOutput[][] outputsByLevel = emptyOutputsByLevel();
-
-    /// Caches the most detailed enabled level for [#isLevel].
-    private volatile LogLevel mostDetailedLevel = LogLevel.OFF;
-
-    /// Counts log sites that may retain a published output array.
-    private final AtomicInteger activeReaders = new AtomicInteger();
-
-    /// Prevents a configuration drain from being starved by newly starting readers.
-    private volatile boolean readersBlocked;
+    /// Complete routing and formatting state published with one volatile write.
+    private volatile Configuration configuration = Configuration.empty();
 
     public LogLevel getMostDetailedLevel() {
-        return mostDetailedLevel;
+        return configuration.mostDetailedLevel;
     }
 
-    synchronized void setOutputLevel(LogOutput output, LogLevel level) {
-        LogOutput[][] currentOutputsByLevel = outputsByLevel;
+    synchronized void setOutputLevel(LogOutputConfiguration outputConfiguration, LogLevel level) {
+        Configuration current = configuration;
+        LogOutput output = outputConfiguration.output();
         // Every non-off destination enables error messages, so this array preserves global order.
-        LogOutput[] configuredOutputs = currentOutputsByLevel[LogLevel.ERROR.ordinal()];
+        LogOutputConfiguration[] configuredOutputs = current.outputsByLevel[LogLevel.ERROR.ordinal()];
         int outputOrder = indexOf(configuredOutputs, output);
         if (outputOrder < 0) {
             outputOrder = configuredOutputs.length;
         }
 
-        LogOutput[][] newOutputsByLevel = emptyOutputsByLevel();
+        LogOutputConfiguration[][] newOutputsByLevel = emptyOutputsByLevel();
         for (LogLevel messageLevel : LogLevel.VALUES) {
             if (messageLevel != LogLevel.OFF) {
-                newOutputsByLevel[messageLevel.ordinal()] = updateOutputs(currentOutputsByLevel[messageLevel.ordinal()], configuredOutputs, output, outputOrder, level.enables(messageLevel));
+                newOutputsByLevel[messageLevel.ordinal()] = updateOutputs(current.outputsByLevel[messageLevel.ordinal()], configuredOutputs, outputConfiguration, outputOrder,
+                                level.enables(messageLevel));
             }
         }
-        outputsByLevel = newOutputsByLevel;
-        mostDetailedLevel = findMostDetailedLevel(newOutputsByLevel);
+        configuration = new Configuration(newOutputsByLevel);
     }
 
     synchronized void clear() {
-        outputsByLevel = emptyOutputsByLevel();
-        mostDetailedLevel = LogLevel.OFF;
+        configuration = Configuration.empty();
     }
 
     boolean isLevel(LogLevel level) {
-        return mostDetailedLevel.enables(level);
+        return configuration.mostDetailedLevel.enables(level);
     }
 
-    /// Gets the immutable published destinations that enable `level`.
-    LogOutput[] outputsFor(LogLevel level) {
-        return outputsByLevel[level.ordinal()];
-    }
-
-    /// Starts a lock-free read and returns one coherent routing snapshot. The VM operation executor
-    /// returns `null` when reconfiguration has blocked readers because the thread that must unblock
-    /// them may be waiting for the operation to finish. The executor remains special until it
-    /// releases the VM operation mutex, including while completing a safepoint after the current
-    /// operation has been cleared.
-    LogOutput[][] startReading() {
-        for (;;) {
-            while (readersBlocked) {
-                if (VMOperationControl.mayExecuteVmOperations()) {
-                    return null;
-                }
-                Thread.onSpinWait();
-            }
-            activeReaders.incrementAndGet();
-            if (!readersBlocked) {
-                return outputsByLevel;
-            }
-            activeReaders.decrementAndGet();
-        }
-    }
-
-    /// Completes a lock-free read started by [#startReading].
-    void endReading() {
-        int readers = activeReaders.decrementAndGet();
-        assert readers >= 0;
-    }
-
-    /// Waits until no log site can retain a routing snapshot published before this call.
-    void waitUntilNoReaders() {
-        readersBlocked = true;
-        while (activeReaders.get() != 0) {
-            Thread.onSpinWait();
-        }
-    }
-
-    /// Allows log sites to retain the replacement routing snapshot after configuration completes.
-    void allowReaders() {
-        readersBlocked = false;
-    }
-
-    /// Gets the destinations that enable `level` from `configuration`.
-    static LogOutput[] outputsFor(LogOutput[][] configuration, LogLevel level) {
-        return configuration[level.ordinal()];
+    /// Gets the immutable routing configuration currently published for this tag set.
+    Configuration configuration() {
+        return configuration;
     }
 
     /// Gets the threshold configured for `output`, or [LogLevel#OFF] when it is disabled.
     LogLevel levelFor(LogOutput output) {
-        return levelFor(outputsByLevel, output);
-    }
-
-    /// Gets the threshold configured for `output` in `configuration`.
-    static LogLevel levelFor(LogOutput[][] configuration, LogOutput output) {
-        for (int index = LogLevel.TRACE.ordinal(); index < LogLevel.VALUES.length; index++) {
-            LogLevel level = LogLevel.VALUES[index];
-            if (indexOf(configuration[level.ordinal()], output) >= 0) {
-                return level;
-            }
-        }
-        return LogLevel.OFF;
+        return configuration.levelFor(output);
     }
 
     /// Updates one level's immutable output list while preserving configuration order.
-    private static LogOutput[] updateOutputs(LogOutput[] currentOutputs, LogOutput[] configuredOutputs, LogOutput output, int outputOrder, boolean enabled) {
+    private static LogOutputConfiguration[] updateOutputs(LogOutputConfiguration[] currentOutputs, LogOutputConfiguration[] configuredOutputs, LogOutputConfiguration outputConfiguration,
+                    int outputOrder, boolean enabled) {
+        LogOutput output = outputConfiguration.output();
         int currentOutputIndex = indexOf(currentOutputs, output);
         int newLength = currentOutputs.length - (currentOutputIndex < 0 ? 0 : 1) + (enabled ? 1 : 0);
         if (newLength == 0) {
             return NO_OUTPUTS;
         }
 
-        LogOutput[] newOutputs = new LogOutput[newLength];
+        LogOutputConfiguration[] newOutputs = new LogOutputConfiguration[newLength];
         int insertIndex = 0;
         if (enabled) {
-            for (LogOutput currentOutput : currentOutputs) {
-                if (currentOutput != output && indexOf(configuredOutputs, currentOutput) < outputOrder) {
+            for (LogOutputConfiguration currentOutput : currentOutputs) {
+                if (currentOutput.output() != output && indexOf(configuredOutputs, currentOutput.output()) < outputOrder) {
                     insertIndex++;
                 }
             }
         }
         int newOutputIndex = 0;
-        for (LogOutput currentOutput : currentOutputs) {
-            if (currentOutput == output) {
+        for (LogOutputConfiguration currentOutput : currentOutputs) {
+            if (currentOutput.output() == output) {
                 continue;
             }
             if (enabled && newOutputIndex == insertIndex) {
-                newOutputs[newOutputIndex++] = output;
+                newOutputs[newOutputIndex++] = outputConfiguration;
             }
             newOutputs[newOutputIndex++] = currentOutput;
         }
         if (enabled && newOutputIndex < newOutputs.length) {
-            newOutputs[newOutputIndex] = output;
+            newOutputs[newOutputIndex] = outputConfiguration;
         }
         return newOutputs;
     }
 
     /// Finds the most detailed message level with at least one configured destination.
-    private static LogLevel findMostDetailedLevel(LogOutput[][] outputsByLevel) {
+    private static LogLevel findMostDetailedLevel(LogOutputConfiguration[][] outputsByLevel) {
         for (LogLevel messageLevel : LogLevel.VALUES) {
             if (messageLevel != LogLevel.OFF && outputsByLevel[messageLevel.ordinal()].length != 0) {
                 return messageLevel;
@@ -233,18 +167,57 @@ public final class LogOutputList {
     }
 
     /// Finds `output` in the immutable output list by identity.
-    private static int indexOf(LogOutput[] outputs, LogOutput output) {
+    private static int indexOf(LogOutputConfiguration[] outputs, LogOutput output) {
         for (int index = 0; index < outputs.length; index++) {
-            if (outputs[index] == output) {
+            if (outputs[index].output() == output) {
                 return index;
             }
         }
         return -1;
     }
 
-    private static LogOutput[][] emptyOutputsByLevel() {
-        LogOutput[][] result = new LogOutput[LogLevel.VALUES.length][];
+    private static LogOutputConfiguration[][] emptyOutputsByLevel() {
+        LogOutputConfiguration[][] result = new LogOutputConfiguration[LogLevel.VALUES.length][];
         Arrays.fill(result, NO_OUTPUTS);
         return result;
+    }
+
+    /// One immutable copy-on-write routing configuration.
+    static final class Configuration {
+        private final LogOutputConfiguration[][] outputsByLevel;
+        private final LogLevel mostDetailedLevel;
+        private final LogDecorators decorators;
+
+        private Configuration(LogOutputConfiguration[][] outputsByLevel) {
+            this.outputsByLevel = outputsByLevel;
+            this.mostDetailedLevel = findMostDetailedLevel(outputsByLevel);
+            LogDecorators decoratorUnion = LogDecorators.NONE;
+            for (LogOutputConfiguration output : outputsByLevel[LogLevel.ERROR.ordinal()]) {
+                decoratorUnion = decoratorUnion.union(output.decorators());
+            }
+            this.decorators = decoratorUnion;
+        }
+
+        static Configuration empty() {
+            return new Configuration(emptyOutputsByLevel());
+        }
+
+        LogOutputConfiguration[] outputsFor(LogLevel level) {
+            return outputsByLevel[level.ordinal()];
+        }
+
+        LogLevel levelFor(LogOutput output) {
+            for (int index = LogLevel.TRACE.ordinal(); index < LogLevel.VALUES.length; index++) {
+                LogLevel level = LogLevel.VALUES[index];
+                if (indexOf(outputsByLevel[level.ordinal()], output) >= 0) {
+                    return level;
+                }
+            }
+            return LogLevel.OFF;
+        }
+
+        LogDecorators decorators() {
+            return decorators;
+        }
     }
 }

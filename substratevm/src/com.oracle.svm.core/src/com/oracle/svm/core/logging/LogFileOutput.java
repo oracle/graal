@@ -333,6 +333,11 @@ final class LogFileOutput extends LogOutput {
         return Word.pointer(rawDescriptor);
     }
 
+    /// Gets the descriptor for tests that exercise the behavior of an externally closed output.
+    RawFileDescriptor testingDescriptor() {
+        return descriptor();
+    }
+
     /// Expands process, isolate, startup time, and host placeholders in `name`.
     static String expandFilename(String name) {
         String expanded = name;

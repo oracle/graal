@@ -30,7 +30,6 @@ import java.lang.management.MemoryMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +51,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.LogConfiguration;
+import com.oracle.svm.core.logging.LogConfiguration.TestingBackdoor;
 import com.oracle.svm.core.logging.LogDecorators;
 import com.oracle.svm.core.logging.LogLevel;
 import com.oracle.svm.core.logging.LogMessage;
@@ -70,6 +70,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
+import com.oracle.svm.shared.collections.EnumBitmask;
 import com.oracle.svm.test.NativeImageBuildArgs;
 
 /// Exercises the SVM unified logging implementation through the native JUnit runner.
@@ -132,7 +133,7 @@ public final class UnifiedLoggingTest {
             checkTrue(LogDecorators.parse(decorator.label().toUpperCase()).contains(decorator), "decorator names should be case-insensitive");
         }
         LogDecorators first = LogDecorators.parse("uptime,level");
-        LogDecorators combined = ((Target_com_oracle_svm_core_logging_LogDecorators) (Object) first).union(LogDecorators.parse("tags"));
+        LogDecorators combined = TestingBackdoor.union(first, LogDecorators.parse("tags"));
         checkEquals(combined.size(), 3, "decorator union should contain three decorators");
         checkTrue(combined.contains(LogDecorators.Decorator.LEVEL), "decorator union should retain the level decorator");
         LogDecorators duplicate = LogDecorators.parse("uptime,u");
@@ -153,10 +154,9 @@ public final class UnifiedLoggingTest {
         checkTrue(wildcard.wildcard(), "wildcard selection should set the wildcard flag");
         checkTrue(wildcard.selects(LogTagSet.class_load_cause), "wildcard selection should select class+load+cause");
         checkFalse(wildcard.selects(LogTagSet.logging), "wildcard selection should not select logging");
-        Target_com_oracle_svm_core_logging_LogSelection exactTarget = (Target_com_oracle_svm_core_logging_LogSelection) (Object) exact;
-        checkEquals(exactTarget.tagCount(), 2, "exact selection should contain two tags");
+        checkEquals(TestingBackdoor.selectionTagCount(exact), 2, "exact selection should contain two tags");
         StringBuilder description = new StringBuilder();
-        exactTarget.describeOn(description);
+        TestingBackdoor.describeSelection(exact, description);
         checkEquals(description.toString(), "class+load=debug", "selection description should match the parsed selection");
 
         LogSelectionList precedence = LogSelectionList.parse("class+load*=debug,class+load+cause=off");
@@ -164,7 +164,8 @@ public final class UnifiedLoggingTest {
         checkSame(precedence.levelFor(LogTagSet.class_load_cause), LogLevel.OFF, "specific selection should override the wildcard selection");
         checkEquals(precedence.levelFor(LogTagSet.logging), null, "unmatched selection should leave logging without a level");
 
-        checkTrue(exactTarget.consistsOf(EnumSet.of(LogTag.class_, LogTag.load)), "selection should retain class and load tags");
+        int expectedTagMask = EnumBitmask.flagBit(LogTag.class_) | EnumBitmask.flagBit(LogTag.load);
+        checkTrue(TestingBackdoor.selectionConsistsOf(exact, expectedTagMask), "selection should retain class and load tags");
         String invalidLevel = failureMessage(() -> LogSelection.parse("class+load=waring"));
         checkContains(invalidLevel, "Invalid level 'waring' in log selection", "selection should report invalid levels");
         checkContains(invalidLevel, "Did you mean 'warning'?", "selection level errors should retain suggestions");
@@ -183,22 +184,21 @@ public final class UnifiedLoggingTest {
         LogOutputList list = new LogOutputList();
         LogOutput first = new TestLogOutput("first");
         LogOutput second = new TestLogOutput("second");
-        Target_com_oracle_svm_core_logging_LogOutputList target = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) list;
-        target.setOutputLevel(first, LogLevel.INFO);
-        target.setOutputLevel(second, LogLevel.DEBUG);
-        checkSame(target.levelFor(first), LogLevel.INFO, "first output should have INFO level");
-        checkSame(target.levelFor(second), LogLevel.DEBUG, "second output should have DEBUG level");
-        checkTrue(target.isLevel(LogLevel.DEBUG), "DEBUG should be enabled by the second output");
-        checkFalse(target.isLevel(LogLevel.TRACE), "TRACE should not be enabled");
-        checkEquals(Arrays.asList(target.outputsFor(LogLevel.ERROR)), Arrays.asList(first, second), "ERROR outputs should preserve insertion order");
-        target.setOutputLevel(first, LogLevel.WARNING);
-        checkSame(target.levelFor(first), LogLevel.WARNING, "first output should update to WARNING level");
-        target.setOutputLevel(second, LogLevel.OFF);
-        checkSame(target.levelFor(second), LogLevel.OFF, "second output should update to OFF level");
-        checkEquals(target.outputsFor(LogLevel.ERROR).length, 1, "OFF output should be removed from ERROR outputs");
-        target.clear();
-        checkFalse(target.isLevel(LogLevel.ERROR), "cleared output list should not enable ERROR");
-        checkEquals(target.outputsFor(LogLevel.ERROR).length, 0, "cleared output list should have no ERROR outputs");
+        TestingBackdoor.setOutputLevel(list, first, LogLevel.INFO);
+        TestingBackdoor.setOutputLevel(list, second, LogLevel.DEBUG);
+        checkSame(TestingBackdoor.levelFor(list, first), LogLevel.INFO, "first output should have INFO level");
+        checkSame(TestingBackdoor.levelFor(list, second), LogLevel.DEBUG, "second output should have DEBUG level");
+        checkTrue(TestingBackdoor.isLevel(list, LogLevel.DEBUG), "DEBUG should be enabled by the second output");
+        checkFalse(TestingBackdoor.isLevel(list, LogLevel.TRACE), "TRACE should not be enabled");
+        checkEquals(Arrays.asList(TestingBackdoor.outputsFor(list, LogLevel.ERROR)), Arrays.asList(first, second), "ERROR outputs should preserve insertion order");
+        TestingBackdoor.setOutputLevel(list, first, LogLevel.WARNING);
+        checkSame(TestingBackdoor.levelFor(list, first), LogLevel.WARNING, "first output should update to WARNING level");
+        TestingBackdoor.setOutputLevel(list, second, LogLevel.OFF);
+        checkSame(TestingBackdoor.levelFor(list, second), LogLevel.OFF, "second output should update to OFF level");
+        checkEquals(TestingBackdoor.outputsFor(list, LogLevel.ERROR).length, 1, "OFF output should be removed from ERROR outputs");
+        TestingBackdoor.clear(list);
+        checkFalse(TestingBackdoor.isLevel(list, LogLevel.ERROR), "cleared output list should not enable ERROR");
+        checkEquals(TestingBackdoor.outputsFor(list, LogLevel.ERROR).length, 0, "cleared output list should have no ERROR outputs");
     }
 
     /// Verifies that runtime option parsing preserves an existing logging configuration on both
@@ -207,14 +207,13 @@ public final class UnifiedLoggingTest {
     public void testRuntimeOptionParsingPreservesLoggingConfiguration() {
         LogConfiguration.disableLogging();
         TestLogOutput output = new TestLogOutput("runtime-option-parser");
-        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(LogSelectionList.parse("class+load=debug"), output, LogDecorators.NONE);
-        Target_com_oracle_svm_core_logging_LogTagSet classLoadTagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
-        Target_com_oracle_svm_core_logging_LogOutputList classLoadOutputs = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) classLoadTagSet.outputList();
+        TestingBackdoor.configureOutput(LogSelectionList.parse("class+load=debug"), output, LogDecorators.NONE);
+        LogOutputList classLoadOutputs = TestingBackdoor.outputList(LogTagSet.class_load);
         try {
             RuntimeOptionParser.parseAndConsumeAllOptions(new String[0], false);
-            checkSame(classLoadOutputs.levelFor(output), LogLevel.DEBUG, "successful runtime parsing should preserve logging");
+            checkSame(TestingBackdoor.levelFor(classLoadOutputs, output), LogLevel.DEBUG, "successful runtime parsing should preserve logging");
             expectFailure(() -> RuntimeOptionParser.parseAndConsumeAllOptions(new String[]{"-XX:UnknownUnifiedLoggingTestOption=1"}, false), "invalid runtime option was accepted");
-            checkSame(classLoadOutputs.levelFor(output), LogLevel.DEBUG, "failed runtime parsing should preserve logging");
+            checkSame(TestingBackdoor.levelFor(classLoadOutputs, output), LogLevel.DEBUG, "failed runtime parsing should preserve logging");
         } finally {
             LogConfiguration.disableLogging();
         }
@@ -224,25 +223,25 @@ public final class UnifiedLoggingTest {
     @Test
     public void testAsyncLogBufferOptionAndPacking() {
         checkEquals(RuntimeOptions.get("AsyncLogBufferSize"), 2L * 1024 * 1024, "AsyncLogBufferSize should default to 2M");
-        Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(100L * 1024);
-        Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(50L * 1024 * 1024);
-        expectFailure(() -> Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(100L * 1024 - 1), "AsyncLogBufferSize accepted a value below 100K");
-        expectFailure(() -> Target_com_oracle_svm_core_logging_LogAsyncWriter.validateBufferSize(50L * 1024 * 1024 + 1), "AsyncLogBufferSize accepted a value above 50M");
+        TestingBackdoor.validateBufferSize(100L * 1024);
+        TestingBackdoor.validateBufferSize(50L * 1024 * 1024);
+        expectFailure(() -> TestingBackdoor.validateBufferSize(100L * 1024 - 1), "AsyncLogBufferSize accepted a value below 100K");
+        expectFailure(() -> TestingBackdoor.validateBufferSize(50L * 1024 * 1024 + 1), "AsyncLogBufferSize accepted a value above 50M");
 
-        int emptyRecordSize = Target_com_oracle_svm_core_logging_LogAsyncWriter.recordSize(0, 0);
-        int oneByteRecordSize = Target_com_oracle_svm_core_logging_LogAsyncWriter.recordSize(0, 1);
+        int emptyRecordSize = TestingBackdoor.recordSize(0, 0);
+        int oneByteRecordSize = TestingBackdoor.recordSize(0, 1);
         checkEquals(emptyRecordSize % Long.BYTES, 0, "empty asynchronous records should be word aligned");
         checkEquals(oneByteRecordSize % Long.BYTES, 0, "nonempty asynchronous records should be word aligned");
         checkTrue(oneByteRecordSize > emptyRecordSize, "the first payload byte should require another aligned word");
-        checkTrue(Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferSizeIsImmutable(), "AsyncLogBufferSize should be immutable after startup");
+        checkTrue(TestingBackdoor.bufferSizeIsImmutable(), "AsyncLogBufferSize should be immutable after startup");
     }
 
     /// Verifies that startup timestamp formatting uses its explicit native local offset.
     @Test
     public void testStartupTimestamp() {
-        checkEquals(Target_com_oracle_svm_core_logging_LogConfiguration.formatStartupTimestamp(0, 0), "1970-01-01_00-00-00", "UTC startup timestamp");
-        checkEquals(Target_com_oracle_svm_core_logging_LogConfiguration.formatStartupTimestamp(0, 19_800), "1970-01-01_05-30-00", "positive-offset startup timestamp");
-        checkEquals(Target_com_oracle_svm_core_logging_LogConfiguration.formatStartupTimestamp(0, -28_800), "1969-12-31_16-00-00", "negative-offset startup timestamp");
+        checkEquals(TestingBackdoor.formatStartupTimestamp(0, 0), "1970-01-01_00-00-00", "UTC startup timestamp");
+        checkEquals(TestingBackdoor.formatStartupTimestamp(0, 19_800), "1970-01-01_05-30-00", "positive-offset startup timestamp");
+        checkEquals(TestingBackdoor.formatStartupTimestamp(0, -28_800), "1969-12-31_16-00-00", "negative-offset startup timestamp");
     }
 
     /// Verifies that repeated logging completion does not emit startup records or register startup
@@ -251,9 +250,9 @@ public final class UnifiedLoggingTest {
     public void testLoggingCompletionIsIdempotent() {
         LogConfiguration.disableLogging();
         CapturingLogOutput output = new CapturingLogOutput();
-        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(LogSelectionList.parse("logging=info"), output, LogDecorators.NONE);
-        boolean previousInitializationComplete = Target_com_oracle_svm_core_logging_LogConfiguration.initializationComplete;
-        Target_com_oracle_svm_core_logging_LogConfiguration.initializationComplete = false;
+        TestingBackdoor.configureOutput(LogSelectionList.parse("logging=info"), output, LogDecorators.NONE);
+        boolean previousInitializationComplete = TestingBackdoor.initializationComplete();
+        TestingBackdoor.setInitializationComplete(false);
         try {
             LogConfiguration.logInitializationComplete();
             String firstCompletionOutput = output.contents();
@@ -261,7 +260,7 @@ public final class UnifiedLoggingTest {
             LogConfiguration.logInitializationComplete();
             checkEquals(output.contents(), firstCompletionOutput, "second completion should not emit startup diagnostics");
         } finally {
-            Target_com_oracle_svm_core_logging_LogConfiguration.initializationComplete = previousInitializationComplete;
+            TestingBackdoor.setInitializationComplete(previousInitializationComplete);
             LogConfiguration.disableLogging();
         }
     }
@@ -270,17 +269,16 @@ public final class UnifiedLoggingTest {
     @Test
     public void testConfiguration() {
         LogConfiguration.disableLogging();
-        LogOutput stdout = (LogOutput) (Object) Target_com_oracle_svm_core_logging_LogConfiguration.stdout;
-        LogOutput stderr = (LogOutput) (Object) Target_com_oracle_svm_core_logging_LogConfiguration.stderr;
-        Target_com_oracle_svm_core_logging_LogOutput stdoutOutput = (Target_com_oracle_svm_core_logging_LogOutput) (Object) stdout;
+        LogOutput stdout = TestingBackdoor.stdout();
+        LogOutput stderr = TestingBackdoor.stderr();
         checkEquals(stdout.name(), "stdout", "stdout alias should resolve to stdout");
         checkEquals(stderr.name(), "stderr", "stderr alias should resolve to stderr");
-        checkContains(stdoutOutput.describe(), "all=off", "disabled stdout description should include all=off");
+        checkContains(TestingBackdoor.describe(stdout), "all=off", "disabled stdout description should include all=off");
         MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
         memoryMXBean.setVerbose(true);
         checkTrue(memoryMXBean.isVerbose(), "the memory management bean should report verbose GC logging as enabled");
         checkTrue(LogTagSet.gc.isInfo(), "the management update should enable INFO GC logging");
-        checkContains(stdoutOutput.describe(), "gc=info", "the stdout description should include the management update");
+        checkContains(TestingBackdoor.describe(stdout), "gc=info", "the stdout description should include the management update");
         memoryMXBean.setVerbose(false);
         checkFalse(memoryMXBean.isVerbose(), "the memory management bean should report verbose GC logging as disabled");
         checkFalse(LogTagSet.gc.isError(), "the management update should disable GC logging");
@@ -302,15 +300,14 @@ public final class UnifiedLoggingTest {
         checkFalse(Boolean.TRUE.equals(RuntimeOptions.get("VerboseGC")), "GC OFF configuration should disable VerboseGC");
         checkFalse(LogConfiguration.parseCommandLineArgument("-verbose"), "non-Xlog option should be rejected by the logger");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:stdout:none"), "stdout configuration should be accepted");
-        checkContains(stdoutOutput.describe(), "class+load=debug", "stdout description should include the configured selection");
+        checkContains(TestingBackdoor.describe(stdout), "class+load=debug", "stdout description should include the configured selection");
         checkTrue(LogTagSet.class_load.isDebug(), "configured class+load tag set should enable DEBUG");
         checkFalse(LogTagSet.logging.isDebug(), "unconfigured logging tag set should not enable DEBUG");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=verbose"), "invalid configuration level was accepted");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:stdout:unknown"), "invalid configuration decorator was accepted");
         TestLogOutput transactionalOutput = new TestLogOutput("transactional-options");
-        Target_com_oracle_svm_core_logging_LogOutput transactionalTarget = (Target_com_oracle_svm_core_logging_LogOutput) (Object) transactionalOutput;
-        expectFailure(() -> transactionalTarget.parseOptionsIfFirstConfiguration("foldmultilines=true,unknown=value"), "invalid output option was accepted");
-        checkTrue(transactionalTarget.parseOptionsIfFirstConfiguration("foldmultilines=false"), "rejected output options should not consume the first configuration");
+        expectFailure(() -> TestingBackdoor.parseOptionsIfFirstConfiguration(transactionalOutput, "foldmultilines=true,unknown=value"), "invalid output option was accepted");
+        checkTrue(TestingBackdoor.parseOptionsIfFirstConfiguration(transactionalOutput, "foldmultilines=false"), "rejected output options should not consume the first configuration");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:stall"), "stall-mode async configuration should be accepted");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:HELP"), "the help directive should be case-sensitive");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:DISABLE"), "the disable directive should be case-sensitive");
@@ -318,9 +315,9 @@ public final class UnifiedLoggingTest {
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:async:STALL"), "the async mode should be case-sensitive");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:async:invalid"), "invalid async mode was accepted");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:disable"), "disable configuration should be accepted");
-        checkTrue(Target_com_oracle_svm_core_logging_LogConfiguration.asyncRequested, "disable should preserve an earlier asynchronous logging request");
+        checkTrue(TestingBackdoor.asyncRequested(), "disable should preserve an earlier asynchronous logging request");
         LogConfiguration.disableLogging();
-        LogOutput uppercaseStdout = Target_com_oracle_svm_core_logging_LogConfiguration.findOrCreateOutput("STDOUT");
+        LogOutput uppercaseStdout = TestingBackdoor.findOrCreateOutput("STDOUT");
         checkFalse(uppercaseStdout == stdout, "the stdout output alias should be case-sensitive");
         checkEquals(uppercaseStdout.name(), "file=STDOUT", "an uppercase output alias should denote a file name");
         LogConfiguration.disableLogging();
@@ -615,7 +612,7 @@ public final class UnifiedLoggingTest {
     public void testAsyncThreadLocalInitialization() throws Exception {
         LogConfiguration.disableLogging();
         AtomicBoolean initialized = new AtomicBoolean(true);
-        Thread synchronousThread = new Thread(() -> initialized.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized()));
+        Thread synchronousThread = new Thread(() -> initialized.set(TestingBackdoor.threadLocalIsInitialized()));
         synchronousThread.start();
         synchronousThread.join();
         checkFalse(initialized.get(), "synchronous-only thread start should not allocate logging state");
@@ -623,7 +620,7 @@ public final class UnifiedLoggingTest {
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async"), "async configuration should be accepted");
             LogConfiguration.logInitializationComplete();
-            Thread asynchronousThread = new Thread(() -> initialized.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized()));
+            Thread asynchronousThread = new Thread(() -> initialized.set(TestingBackdoor.threadLocalIsInitialized()));
             asynchronousThread.start();
             asynchronousThread.join();
             checkTrue(initialized.get(), "async thread start should allocate logging state before running Java code");
@@ -753,26 +750,26 @@ public final class UnifiedLoggingTest {
         AtomicBoolean initializedAfterDisable = new AtomicBoolean();
         AtomicReference<Throwable> configurationFailure = new AtomicReference<>();
         Thread configurationThread = new Thread(() -> {
-            initializedBeforeDisable.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized());
+            initializedBeforeDisable.set(TestingBackdoor.threadLocalIsInitialized());
             configurationThreadReady.countDown();
             try {
                 disableRequested.await();
                 LogConfiguration.disableLogging();
-                initializedAfterDisable.set(Target_com_oracle_svm_core_logging_LogThreadLocal.isInitialized());
+                initializedAfterDisable.set(TestingBackdoor.threadLocalIsInitialized());
             } catch (Throwable throwable) {
                 configurationFailure.set(throwable);
             }
         });
         configurationThread.start();
         configurationThreadReady.await();
-        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(LogSelectionList.parse("class+load=info"), firstOutput, LogDecorators.NONE);
-        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(LogSelectionList.parse("module+load=info"), secondOutput, LogDecorators.NONE);
+        TestingBackdoor.configureOutput(LogSelectionList.parse("class+load=info"), firstOutput, LogDecorators.NONE);
+        TestingBackdoor.configureOutput(LogSelectionList.parse("module+load=info"), secondOutput, LogDecorators.NONE);
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async drop-reporting mode should be accepted");
             LogConfiguration.logInitializationComplete();
             LogTagSet.class_load.info("blocked before filling the asynchronous queue");
             firstOutput.awaitFirstWrite();
-            int bufferCapacity = Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferCapacity();
+            int bufferCapacity = TestingBackdoor.bufferCapacity();
             int lineCount = bufferCapacity / ASYNC_QUEUE_FILLER.length() * 2;
             for (int index = 0; index < lineCount; index++) {
                 LogTagSet.class_load.info(ASYNC_QUEUE_FILLER + " drop-reporting line " + index);
@@ -807,11 +804,11 @@ public final class UnifiedLoggingTest {
             LogConfiguration.disableLogging();
             ThreadRecordingLogOutput output = new ThreadRecordingLogOutput();
             LogSelectionList selections = LogSelectionList.parse("class+load=info");
-            Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
+            TestingBackdoor.configureOutput(selections, output, LogDecorators.NONE);
             try {
                 checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:" + mode), "async oversized-record mode should be accepted");
                 LogConfiguration.logInitializationComplete();
-                String oversized = "x".repeat(Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferCapacity());
+                String oversized = "x".repeat(TestingBackdoor.bufferCapacity());
                 Thread producer = Thread.currentThread();
                 LogTagSet.class_load.info(oversized);
                 checkSame(output.writingThread, producer, "an oversized record should use synchronous output in " + mode + " mode");
@@ -828,12 +825,12 @@ public final class UnifiedLoggingTest {
         LogConfiguration.disableLogging();
         ThreadRecordingLogOutput output = new ThreadRecordingLogOutput();
         LogSelectionList selections = LogSelectionList.parse("class+load=info");
-        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
+        TestingBackdoor.configureOutput(selections, output, LogDecorators.NONE);
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async reactivation mode should be accepted");
             LogConfiguration.logInitializationComplete();
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:disable"), "runtime disable should be accepted");
-            Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
+            TestingBackdoor.configureOutput(selections, output, LogDecorators.NONE);
             LogTagSet.class_load.info("message after runtime reactivation");
             LogConfiguration.disableLogging();
             checkFalse(output.writingThread == Thread.currentThread(), "reactivated asynchronous output should use the consumer thread");
@@ -843,14 +840,14 @@ public final class UnifiedLoggingTest {
         }
     }
 
-    /// Verifies that runtime reconfiguration drains records using the previous output state.
+    /// Verifies that runtime reconfiguration publishes a copy without waiting for readers and that
+    /// queued records retain the formatting state with which they were routed.
     @Test
-    public void testAsyncReconfigurationFlushesQueuedRecords() throws Exception {
+    public void testAsyncReconfigurationUsesCopyOnWriteConfiguration() throws Exception {
         LogConfiguration.disableLogging();
-        BlockingThreadRecordingLogOutput output = new BlockingThreadRecordingLogOutput();
+        BlockingCapturingLogOutput output = new BlockingCapturingLogOutput();
         LogSelectionList selections = LogSelectionList.parse("class+load=info");
-        Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.NONE);
-        Thread reconfiguration = null;
+        TestingBackdoor.configureOutput(selections, output, LogDecorators.NONE);
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async reconfiguration test mode should be accepted");
             LogConfiguration.logInitializationComplete();
@@ -858,26 +855,18 @@ public final class UnifiedLoggingTest {
             output.awaitFirstWrite();
             LogTagSet.class_load.info("queued before reconfiguration");
 
-            AtomicBoolean reconfigurationFinished = new AtomicBoolean();
-            reconfiguration = new Thread(() -> {
-                Target_com_oracle_svm_core_logging_LogConfiguration.configureOutput(selections, output, LogDecorators.parse("uptimenanos"));
-                reconfigurationFinished.set(true);
-            });
-            reconfiguration.start();
-
-            Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
-            awaitDecorator(tagSet, LogDecorators.Decorator.UPTIMENANOS);
-            checkFalse(reconfigurationFinished.get(), "reconfiguration should wait for the blocked asynchronous record");
+            TestingBackdoor.configureOutput(selections, output, LogDecorators.parse("uptimenanos"));
+            LogTagSet.class_load.info("after reconfiguration");
 
             output.releaseFirstWrite();
-            reconfiguration.join();
-            checkTrue(reconfigurationFinished.get(), "reconfiguration should finish after the asynchronous queue drains");
-            checkEquals(output.writeCount.get(), 2, "reconfiguration should drain every record using the previous output state");
+            LogConfiguration.disableLogging();
+            String lineSeparator = System.lineSeparator();
+            checkContains(output.contents(), "blocked before reconfiguration" + lineSeparator + "queued before reconfiguration" + lineSeparator,
+                            "records routed before reconfiguration should retain undecorated formatting");
+            checkContains(output.contents(), "ns] after reconfiguration", "records routed after reconfiguration should use the new decorators");
+            checkEquals(output.writeCount(), 3, "copy-on-write reconfiguration should preserve every record");
         } finally {
             output.releaseFirstWrite();
-            if (reconfiguration != null) {
-                reconfiguration.join();
-            }
             LogConfiguration.disableLogging();
         }
     }
@@ -891,10 +880,9 @@ public final class UnifiedLoggingTest {
         delete(logFile);
         BlockingThreadRecordingLogOutput output = new BlockingThreadRecordingLogOutput();
         TestLogOutput secondOutput = new TestLogOutput("second-vm-operation-output");
-        Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
-        Target_com_oracle_svm_core_logging_LogOutputList outputList = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) tagSet.outputList();
-        outputList.setOutputLevel(output, LogLevel.INFO);
-        outputList.setOutputLevel(secondOutput, LogLevel.INFO);
+        LogOutputList outputList = TestingBackdoor.outputList(LogTagSet.class_load);
+        TestingBackdoor.setOutputLevel(outputList, output, LogLevel.INFO);
+        TestingBackdoor.setOutputLevel(outputList, secondOutput, LogLevel.INFO);
         try {
             String loggingOption = "-Xlog:logging=debug:file=" + logFile + ":none";
             checkTrue(LogConfiguration.parseCommandLineArgument(loggingOption), "logging statistics output should be accepted: " + loggingOption);
@@ -906,12 +894,12 @@ public final class UnifiedLoggingTest {
             output.awaitFirstWrite();
             checkTrue(output.firstWritingThread != queuedOperation.executingThread, "a VM operation should use asynchronous output when its message fits in the queue");
             /* More bytes than the queue can hold leave it full while the consumer is blocked. */
-            int lineCount = Target_com_oracle_svm_core_logging_LogAsyncWriter.bufferCapacity() / ASYNC_QUEUE_FILLER.length() * 2;
+            int lineCount = TestingBackdoor.bufferCapacity() / ASYNC_QUEUE_FILLER.length() * 2;
             for (int index = 0; index < lineCount; index++) {
                 LogTagSet.class_load.info(ASYNC_QUEUE_FILLER + " queued line " + index);
             }
             /* Small records consume any gap that was too short for another filler record. */
-            int smallLineCount = ASYNC_QUEUE_FILLER.length() / Target_com_oracle_svm_core_logging_LogAsyncWriter.recordSize(0, 0) * 2;
+            int smallLineCount = ASYNC_QUEUE_FILLER.length() / TestingBackdoor.recordSize(0, 0) * 2;
             for (int index = 0; index < smallLineCount; index++) {
                 LogTagSet.class_load.info("x");
             }
@@ -930,54 +918,6 @@ public final class UnifiedLoggingTest {
             LogConfiguration.disableLogging();
             delete(logFile);
         }
-    }
-
-    /// Verifies that a VM operation does not wait for a route transition that may be blocked by
-    /// the operation itself.
-    @Test
-    public void testVMOperationLoggingDuringRouteTransition() throws InterruptedException {
-        LogConfiguration.disableLogging();
-        TestLogOutput output = new TestLogOutput("route-transition-output");
-        Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.class_load;
-        Target_com_oracle_svm_core_logging_LogOutputList outputList = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) tagSet.outputList();
-        outputList.setOutputLevel(output, LogLevel.INFO);
-        Thread operationThread = new Thread(() -> new NonSafepointLoggingVMOperation().enqueue());
-        boolean completedWhileReadersBlocked;
-        outputList.readersBlocked = true;
-        try {
-            operationThread.start();
-            operationThread.join(5_000);
-            completedWhileReadersBlocked = !operationThread.isAlive();
-        } finally {
-            outputList.readersBlocked = false;
-            operationThread.join();
-            LogConfiguration.disableLogging();
-        }
-        checkTrue(completedWhileReadersBlocked, "VM operation logging should bypass a blocked route transition");
-    }
-
-    /// Verifies that safepoint completion does not wait for a route transition whose allocating
-    /// configuration thread may be waiting for the safepoint operation to finish.
-    @Test
-    public void testSafepointCompletionLoggingDuringRouteTransition() throws InterruptedException {
-        LogConfiguration.disableLogging();
-        TestLogOutput output = new TestLogOutput("safepoint-route-transition-output");
-        Target_com_oracle_svm_core_logging_LogTagSet tagSet = (Target_com_oracle_svm_core_logging_LogTagSet) (Object) LogTagSet.safepoint;
-        Target_com_oracle_svm_core_logging_LogOutputList outputList = (Target_com_oracle_svm_core_logging_LogOutputList) (Object) tagSet.outputList();
-        outputList.setOutputLevel(output, LogLevel.INFO);
-        Thread gcThread = new Thread(System::gc);
-        boolean completedWhileReadersBlocked;
-        outputList.readersBlocked = true;
-        try {
-            gcThread.start();
-            gcThread.join(5_000);
-            completedWhileReadersBlocked = !gcThread.isAlive();
-        } finally {
-            outputList.readersBlocked = false;
-            gcThread.join();
-            LogConfiguration.disableLogging();
-        }
-        checkTrue(completedWhileReadersBlocked, "safepoint completion logging should bypass a blocked route transition");
     }
 
     /// Verifies quoted file names, file-size parsing, folding, rotation, and invalid options.
@@ -1199,8 +1139,8 @@ public final class UnifiedLoggingTest {
             LogTagSet.class_load.debug("message after deletion 2");
 
             // Close the file descriptor for the log file
-            LogOutput output = Target_com_oracle_svm_core_logging_LogConfiguration.findOrCreateOutput(logFile);
-            RawFileOperationSupport.RawFileDescriptor descriptor = ((Target_com_oracle_svm_core_logging_LogFileOutput) (Object) output).descriptor();
+            LogOutput output = TestingBackdoor.findOrCreateOutput(logFile);
+            RawFileOperationSupport.RawFileDescriptor descriptor = TestingBackdoor.descriptor(output);
             checkTrue(RawFileOperationSupport.nativeByteOrder().close(descriptor), "deleted log file descriptor should close successfully");
 
             // The first `debug` call below should produce a warning on the console:
@@ -1310,6 +1250,11 @@ public final class UnifiedLoggingTest {
             return interrupted;
         }
 
+        /// Gets the number of records that reached the output.
+        int writeCount() {
+            return writeCount.get();
+        }
+
         /// Allows the asynchronous consumer to drain the queue.
         void releaseFirstWrite() {
             releaseFirstWrite.countDown();
@@ -1371,17 +1316,6 @@ public final class UnifiedLoggingTest {
         }
     }
 
-    /// Waits until a reconfiguration publishes a transition containing `decorator`.
-    private static void awaitDecorator(Target_com_oracle_svm_core_logging_LogTagSet tagSet, LogDecorators.Decorator decorator) {
-        long deadline = System.nanoTime() + 5_000_000_000L;
-        while (!tagSet.decorators.contains(decorator)) {
-            if (System.nanoTime() >= deadline) {
-                throw new AssertionError("Timed out waiting for the " + decorator.label() + " decorator transition");
-            }
-            Thread.onSpinWait();
-        }
-    }
-
     /// Waits for post-termination thread listeners to release native logging state.
     private static void awaitLoggingMemory(long expected) {
         long deadline = System.nanoTime() + 5_000_000_000L;
@@ -1411,19 +1345,6 @@ public final class UnifiedLoggingTest {
         protected void operate() {
             executingThread = Thread.currentThread();
             LogTagSet.class_load.info("message from VM operation");
-        }
-    }
-
-    /// Logs from a VM operation without stopping the test thread at a safepoint.
-    private static final class NonSafepointLoggingVMOperation extends JavaVMOperation {
-        NonSafepointLoggingVMOperation() {
-            super(VMOperationInfos.get(NonSafepointLoggingVMOperation.class, "Unified logging during route transition", VMOperation.SystemEffect.NONE));
-        }
-
-        /// Emits a message while the VM operation is in progress.
-        @Override
-        protected void operate() {
-            LogTagSet.class_load.info("message from non-safepoint VM operation");
         }
     }
 

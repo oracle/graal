@@ -138,6 +138,11 @@ public final class LogDecorators {
         return Integer.bitCount(decorators);
     }
 
+    /// Gets the compact representation used by immutable output configurations.
+    int mask() {
+        return decorators;
+    }
+
     /// Returns whether no decorators are enabled.
     public boolean isEmpty() {
         return decorators == 0;
