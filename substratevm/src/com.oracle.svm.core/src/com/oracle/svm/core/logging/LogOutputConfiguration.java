@@ -22,11 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.logging;
+package com.oracle.svm.core.logging;
 
-import com.oracle.svm.core.annotate.TargetClass;
-
-/// Exposes the package-private stream-output type to the native JUnit test.
-@TargetClass(className = "com.oracle.svm.core.logging.LogFileStreamOutput")
-public final class Target_com_oracle_svm_core_logging_LogFileStreamOutput {
+/// Immutable formatting state for one destination. A [LogOutput] retains this object so that a
+/// concurrent reconfiguration cannot change how an already started message is written.
+record LogOutputConfiguration(LogOutput output, LogDecorators decorators) {
 }

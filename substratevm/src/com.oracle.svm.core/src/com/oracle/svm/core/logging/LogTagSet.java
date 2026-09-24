@@ -27,17 +27,14 @@ package com.oracle.svm.core.logging;
 import static com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.collections.EnumBitmask;
 
 /// Represents a combination of tags for which messages can be logged.
 /// Single-line messages are logged with [#info], [#trace], [#debug],
@@ -96,17 +93,15 @@ public enum LogTagSet {
     /// Decoration spelling used when the `tags` decorator is enabled.
     private final String commaSeparatedLabel;
 
-    /// Ordered tags preserve the instantiated `LogTagSetMapping` template arguments.
-    private final List<LogTag> tags;
+    /// Ordered tags preserve the instantiated `LogTagSetMapping` template arguments, or are null
+    /// for the no-tag set.
+    private final LogTag[] tags;
 
-    /// Set form supports order-independent selector matching.
-    private final EnumSet<LogTag> tagSet;
+    /// Bitmask form supports compact order-independent selector matching.
+    private final int tagMask;
 
     /// Per-tag-set destination thresholds form the runtime configuration.
     private final LogOutputList outputList;
-
-    /// Union of decorators configured on all active outputs for this tag set.
-    private volatile LogDecorators decorators = LogDecorators.NONE;
 
     /// Shared object for building a message for this tag set.
     private final LogMessage logMessage;
@@ -128,13 +123,13 @@ public enum LogTagSet {
         label = derivedLabel;
         commaSeparatedLabel = derivedLabel.replace('+', ',');
         if (derivedLabel.isEmpty()) {
-            tags = List.of();
-            tagSet = EnumSet.noneOf(LogTag.class);
+            /* The no-tag set has no ordered representation to retain. */
+            tags = null;
         } else {
-            tags = Arrays.stream(derivedLabel.split("\\+")).map(LogTag::fromString).toList();
-            tagSet = EnumSet.copyOf(tags);
+            tags = Arrays.stream(derivedLabel.split("\\+")).map(LogTag::fromString).toArray(LogTag[]::new);
         }
-        isGC = tagSet.contains(LogTag.gc);
+        tagMask = tags == null ? 0 : EnumBitmask.computeBitmask(tags);
+        isGC = EnumBitmask.hasBit(tagMask, LogTag.gc);
     }
 
     private final boolean isGC;
@@ -158,46 +153,21 @@ public enum LogTagSet {
         return this == logging ? "Logging for the log framework itself" : null;
     }
 
-    public List<LogTag> tags() {
+    LogTag[] tags() {
         return tags;
     }
 
-    Set<LogTag> tagSet() {
-        return tagSet;
+    int tagMask() {
+        return tagMask;
     }
 
     LogOutputList outputList() {
         return outputList;
     }
 
-    /// Recomputes the decorator union from all currently active outputs.
-    void updateDecorators() {
-        updateDecorators(LogDecorators.NONE);
-    }
-
-    /// Recomputes the decorator union while retaining `requiredDecorators` for an output whose
-    /// configuration is being changed.
-    void updateDecorators(LogDecorators requiredDecorators) {
-        LogDecorators updatedDecorators = requiredDecorators;
-        for (LogOutput output : outputList.outputsFor(LogLevel.ERROR)) {
-            updatedDecorators = updatedDecorators.union(output.decorators());
-        }
-        decorators = updatedDecorators;
-    }
-
-    /// Waits until no log site can retain an earlier output configuration for this tag set.
-    void waitUntilNoReaders() {
-        outputList.waitUntilNoReaders();
-    }
-
-    /// Allows log sites to read the replacement output configuration.
-    void allowReaders() {
-        outputList.allowReaders();
-    }
-
     /// Returns whether `level` is enabled on any configured or fallback output.
     public boolean isLevel(LogLevel level) {
-        return outputList.isLevel(level);
+        return (isGC || HasXlogSupport.get()) && outputList.isLevel(level);
     }
 
     /// Returns whether trace messages are enabled on any output.
@@ -256,33 +226,21 @@ public enum LogTagSet {
 
     /// Writes one complete native memory message to every output enabled for one of its lines.
     void write(LogMessage message) {
-        /*
-         * The reader scope starts before decorations are captured and remains active until every
-         * synchronous write or asynchronous copy has released the output reference.
-         */
-        LogOutput[][] configuration = outputList.startReading();
-        if (configuration == null) {
-            /* The VM operation executor cannot wait for a thread that may need it to make progress. */
-            LogConfiguration.writeVMOperationReconfigurationFallback(this, message);
-            return;
-        }
-        try {
-            LogOutput[] outputs = LogOutputList.outputsFor(configuration, message.getMostSevereLevel());
-            LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
-            LogDecorations decorations = LogDecorations.capture(decorators);
-            boolean recordedVMOperationFallback = false;
-            for (LogOutput output : outputs) {
-                LogLevel outputLevel = LogOutputList.levelFor(configuration, output);
-                if (asyncWriter == null || !asyncWriter.enqueue(output, decorations, message, outputLevel)) {
-                    if (asyncWriter != null && VMOperationControl.mayExecuteVmOperations() && !recordedVMOperationFallback) {
-                        LogConfiguration.recordSynchronousEnqueueFromVMOperation();
-                        recordedVMOperationFallback = true;
-                    }
-                    output.write(this, decorations, message, outputLevel);
+        LogOutputList.Configuration configuration = outputList.configuration();
+        LogOutputConfiguration[] outputs = configuration.outputsFor(message.getMostSevereLevel());
+        LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
+        LogDecorations decorations = LogDecorations.capture(configuration.decorators());
+        boolean recordedVMOperationFallback = false;
+        for (LogOutputConfiguration outputConfiguration : outputs) {
+            LogOutput output = outputConfiguration.output();
+            LogLevel outputLevel = configuration.levelFor(output);
+            if (asyncWriter == null || !asyncWriter.enqueue(outputConfiguration, decorations, message, outputLevel)) {
+                if (asyncWriter != null && com.oracle.svm.core.thread.VMOperationControl.mayExecuteVmOperations() && !recordedVMOperationFallback) {
+                    LogConfiguration.recordSynchronousEnqueueFromVMOperation();
+                    recordedVMOperationFallback = true;
                 }
+                output.write(this, decorations, message, outputLevel, outputConfiguration.decorators());
             }
-        } finally {
-            outputList.endReading();
         }
     }
 

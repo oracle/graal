@@ -26,14 +26,14 @@ package com.oracle.svm.core.logging;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
+
+import com.oracle.svm.shared.collections.EnumBitmask;
 
 /// Represents one selection of tags and a level, such as `class+load*=debug`.
 public final class LogSelection {
     /// Tags named by this selection.
-    private final Set<LogTag> tags;
+    private final int tagMask;
 
     /// A wildcard selects tag sets containing at least the named tags.
     private final boolean wildcard;
@@ -41,8 +41,8 @@ public final class LogSelection {
     /// Threshold installed on every matching tag set.
     private final LogLevel level;
 
-    LogSelection(Set<LogTag> tags, boolean wildcard, LogLevel level) {
-        this.tags = tags.isEmpty() ? EnumSet.noneOf(LogTag.class) : EnumSet.copyOf(tags);
+    LogSelection(int tagMask, boolean wildcard, LogLevel level) {
+        this.tagMask = tagMask;
         this.wildcard = wildcard;
         this.level = level;
     }
@@ -66,7 +66,7 @@ public final class LogSelection {
         }
 
         if (tagsText.equals("all")) {
-            return new LogSelection(EnumSet.noneOf(LogTag.class), true, level);
+            return new LogSelection(0, true, level);
         }
         boolean wildcard = tagsText.endsWith("*");
         if (wildcard) {
@@ -76,7 +76,7 @@ public final class LogSelection {
             throw new IllegalArgumentException("Missing log tags in selection '" + value + "'.");
         }
 
-        EnumSet<LogTag> tags = EnumSet.noneOf(LogTag.class);
+        int tagMask = 0;
         for (String tagText : tagsText.split("\\+", -1)) {
             if (tagText.isEmpty()) {
                 throw new IllegalArgumentException("Invalid empty tag in selection '" + value + "'.");
@@ -87,14 +87,16 @@ public final class LogSelection {
             } catch (IllegalArgumentException ex) {
                 throw selectionError("Invalid tag '" + tagText + "' in log selection '" + value + "'.", ex);
             }
-            if (!tags.add(tag)) {
+            int tagBit = EnumBitmask.flagBit(tag);
+            if ((tagMask & tagBit) != 0) {
                 throw new IllegalArgumentException("Log selection contains duplicates of tag " + tag.label() + ".");
             }
+            tagMask |= tagBit;
         }
-        if (tags.size() > 5) {
+        if (Integer.bitCount(tagMask) > 5) {
             throw new IllegalArgumentException("Log selections may contain at most five tags.");
         }
-        return new LogSelection(tags, wildcard, level);
+        return new LogSelection(tagMask, wildcard, level);
     }
 
     /// Adds the selection context while retaining the detailed parser diagnostic.
@@ -105,8 +107,8 @@ public final class LogSelection {
 
     /// Returns whether this selection selects `tagSet`.
     public boolean selects(LogTagSet tagSet) {
-        Set<LogTag> candidate = tagSet.tagSet();
-        return wildcard ? candidate.containsAll(tags) : candidate.equals(tags);
+        int candidateMask = tagSet.tagMask();
+        return wildcard ? (candidateMask & tagMask) == tagMask : candidateMask == tagMask;
     }
 
     public LogLevel level() {
@@ -119,23 +121,25 @@ public final class LogSelection {
 
     /// Gets the number of tags named by this selection.
     int tagCount() {
-        return tags.size();
+        return Integer.bitCount(tagMask);
     }
 
-    /// Returns whether this selection contains exactly `candidateTags`, ignoring wildcard mode.
-    boolean consistsOf(Set<LogTag> candidateTags) {
-        return tags.equals(candidateTags);
+    /// Returns whether this selection contains exactly `candidateTagMask`, ignoring wildcard mode.
+    boolean consistsOf(int candidateTagMask) {
+        return tagMask == candidateTagMask;
     }
 
     /// Appends this selection in the command-line configuration syntax.
     void describeOn(StringBuilder result) {
         boolean first = true;
-        for (LogTag tag : tags) {
-            if (!first) {
-                result.append('+');
+        for (LogTag tag : LogTag.values()) {
+            if (EnumBitmask.hasBit(tagMask, tag)) {
+                if (!first) {
+                    result.append('+');
+                }
+                result.append(tag.label());
+                first = false;
             }
-            result.append(tag.label());
-            first = false;
         }
         if (wildcard) {
             result.append('*');
@@ -143,43 +147,16 @@ public final class LogSelection {
         result.append('=').append(level.label());
     }
 
-    public Set<LogTag> tags() {
-        return Set.copyOf(tags);
-    }
-
     /// Finds the closest instantiated tag sets for an unmatched selection.
     List<String> suggestions() {
         List<LogTagSet> candidates = new ArrayList<>();
         for (LogTagSet tagSet : LogTagSet.values()) {
-            if (!tagSet.tagSet().isEmpty() && !disjoint(tagSet.tagSet(), tags)) {
+            if (tagSet.tagMask() != 0 && (tagSet.tagMask() & tagMask) != 0) {
                 candidates.add(tagSet);
             }
         }
-        candidates.sort(Comparator.comparingInt((LogTagSet tagSet) -> overlap(tagSet.tagSet(), tags)).reversed().thenComparingInt(tagSet -> symmetricDifference(tagSet.tagSet(), tags)).thenComparing(
-                        LogTagSet::label));
+        candidates.sort(Comparator.comparingInt((LogTagSet tagSet) -> Integer.bitCount(tagSet.tagMask() & tagMask)).reversed()
+                        .thenComparingInt(tagSet -> Integer.bitCount(tagSet.tagMask() ^ tagMask)).thenComparing(LogTagSet::label));
         return candidates.stream().limit(5).map(LogTagSet::label).toList();
-    }
-
-    private static boolean disjoint(Set<LogTag> left, Set<LogTag> right) {
-        for (LogTag tag : left) {
-            if (right.contains(tag)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static int overlap(Set<LogTag> left, Set<LogTag> right) {
-        int result = 0;
-        for (LogTag tag : left) {
-            if (right.contains(tag)) {
-                result++;
-            }
-        }
-        return result;
-    }
-
-    private static int symmetricDifference(Set<LogTag> left, Set<LogTag> right) {
-        return left.size() + right.size() - 2 * overlap(left, right);
     }
 }
