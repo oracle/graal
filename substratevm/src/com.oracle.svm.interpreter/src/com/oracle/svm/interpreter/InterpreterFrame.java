@@ -531,6 +531,19 @@ public final class InterpreterFrame {
     // region Lock accessors
 
     /**
+     * Sets this frame's locks. The first {@code initialLockCount} entries must be non-null monitor
+     * objects in acquisition order, including repeated acquisitions. Remaining entries must be null.
+     * The caller relinquishes ownership of the array, which this frame modifies as locks are
+     * acquired and released.
+     */
+    public void setLocks(Object[] initialLocks, int initialLockCount) {
+        assert locks == EMPTY && lockCount == 0;
+        assert initialLockCount >= 0 && initialLockCount <= initialLocks.length;
+        locks = initialLocks;
+        lockCount = initialLockCount;
+    }
+
+    /**
      * Returns the object stored in the specified lock slot.
      *
      * @param index the lock slot index

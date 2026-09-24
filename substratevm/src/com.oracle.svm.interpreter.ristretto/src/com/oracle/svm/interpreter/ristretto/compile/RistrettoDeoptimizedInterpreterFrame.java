@@ -44,6 +44,7 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.VirtualFrame;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
@@ -62,6 +63,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * <pre>
  * deopt stub sees source stack frame + gp/fp return registers
+ *   -> relock eliminated monitors on the deoptimized thread
  *   -> snapshot pending exception or pending top-frame result into this object
  *   -> tear down the compiled frame and jump to InterpreterDeoptEntryPoints
  *   -> Java resume code consumes the one-shot payload and continues in the interpreter
@@ -72,6 +74,7 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
     private final PinnedObject pin;
     private final RistrettoVirtualInterpreterFrame bottomFrame;
     private final RistrettoInstalledCode rCode;
+    private RelockObjectData[] objectsToRelock;
 
     /* Carries the pending exception object across the deopt handoff. */
     private Object pendingExceptionObject;
@@ -102,12 +105,14 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
     private final char[] completedMessage;
 
     @SuppressWarnings("this-escape")
-    public RistrettoDeoptimizedInterpreterFrame(long frameSize, RistrettoVirtualInterpreterFrame bottomFrame, RistrettoInstalledCode rCode, CodePointer sourcePC, boolean pinFrame) {
+    public RistrettoDeoptimizedInterpreterFrame(long frameSize, RistrettoVirtualInterpreterFrame bottomFrame, RistrettoInstalledCode rCode, CodePointer sourcePC, boolean pinFrame,
+                    RelockObjectData[] objectsToRelock) {
         this.frameSize = frameSize;
         this.pin = pinFrame ? PinnedObject.create(this) : null;
         this.bottomFrame = bottomFrame;
         this.rCode = rCode;
         this.sourcePC = sourcePC;
+        this.objectsToRelock = objectsToRelock;
         StringBuilderLog sbl = new StringBuilderLog();
         sbl.string("deoptStub: completed ").string(pinFrame ? "eagerly" : "lazily").string(" for DeoptimizedFrame at ").hex(Word.objectToUntrackedPointer(this)).newline();
         this.completedMessage = sbl.getResult().toCharArray();
@@ -290,6 +295,12 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
     @Uninterruptible(reason = "Custom deopt-stub epilogue rewrites the active stack frame.")
     public UnsignedWord continueInterpreterDeoptimization(Pointer originalStackPointer, UnsignedWord gpResult, UnsignedWord fpResult, boolean hasException, Object gpResultObject) {
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
+
+        /* Frame construction may run on another thread. Restore ownership only on this thread. */
+        for (RelockObjectData objectToRelock : objectsToRelock) {
+            MonitorSupport.singleton().doRelockObject(objectToRelock.getObject(), objectToRelock.getLockData());
+        }
+        objectsToRelock = null;
 
         /* Caller stack pointer after the compiled source frame has been removed from the stack. */
         Pointer revertSp = originalStackPointer.add(WordFactory.unsigned(getSourceTotalFrameSize()));
