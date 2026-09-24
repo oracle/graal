@@ -83,7 +83,7 @@ import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.Foreig
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_BoundMethodHandle;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider;

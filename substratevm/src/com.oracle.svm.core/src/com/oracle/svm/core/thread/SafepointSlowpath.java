@@ -37,7 +37,7 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;

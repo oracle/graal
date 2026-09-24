@@ -52,7 +52,7 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;

@@ -37,6 +37,7 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
