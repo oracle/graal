@@ -1112,6 +1112,7 @@ public class NativeImageGenerator {
                 UserErrorSupportImpl.init();
 
                 AutomaticallyRegisteredImageSingletonHandler.registerImageSingletons(loader);
+                GuestImageGeneratorSupport.installIsolateArgumentParser();
 
                 featureHandler.registerFeatures(loader, originalMetaAccess, debug);
                 BuildPhaseProviderImpl.markFeatureRegistrationFinished();

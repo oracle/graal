@@ -28,10 +28,13 @@ import java.io.PrintStream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeStateTrimConfig;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * Temporary bridge for cutting builder-to-guest migration dependencies.
@@ -42,18 +45,10 @@ import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
  */
 public interface GuestStagingDependencyBridge {
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static GuestStagingDependencyBridge singleton() {
         return ImageSingletons.lookup(GuestStagingDependencyBridge.class);
     }
-
-    /**
-     * Delegates to
-     * {@code com.oracle.svm.core.IsolateArgumentParser.singleton().verifyOptionValues()}.
-     * <p>
-     * Remove this method when {@code com.oracle.svm.core.IsolateArgumentParser} moves to
-     * guest/staging (GR-77356).
-     */
-    void verifyIsolateArgumentOptionValues();
 
     /**
      * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useEpsilonGC()}.
@@ -91,30 +86,6 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when reference layout information becomes guest-owned.
      */
     int getHeapCompressionShift();
-
-    /**
-     * Verifies and records an updated minimum heap size.
-     * <p>
-     * Remove this method when heap-size verification and isolate-argument storage move to
-     * guest/staging (GR-77356).
-     */
-    void minHeapSizeOptionValueChanged(long newValue);
-
-    /**
-     * Verifies and records an updated maximum heap size.
-     * <p>
-     * Remove this method when heap-size verification and isolate-argument storage move to
-     * guest/staging (GR-77356).
-     */
-    void maxHeapSizeOptionValueChanged(long newValue);
-
-    /**
-     * Verifies and records an updated maximum young-generation size.
-     * <p>
-     * Remove this method when heap-size verification and isolate-argument storage move to
-     * guest/staging (GR-77356).
-     */
-    void maxNewSizeOptionValueChanged(long newValue);
 
     /**
      * Delegates to {@code com.oracle.svm.core.heap.Heap.getHeap().optionValueChanged(key)}.
@@ -186,11 +157,61 @@ public interface GuestStagingDependencyBridge {
      * <p>
      * Remove this method when isolate startup policy moves to guest/staging.
      */
-    boolean shouldParseRuntimeOptions();
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean shouldParseRuntimeOptions(boolean isCompilationIsolate);
+
+    /**
+     * Returns whether libc support is available in the image.
+     * <p>
+     * Remove this method when libc support moves to guest/staging (GR-79128).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isLibCSupported();
+
+    /**
+     * Returns the current libc errno value.
+     * <p>
+     * Remove this method when libc support moves to guest/staging (GR-79128).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int libcErrno();
+
+    /**
+     * Sets the libc errno value.
+     * <p>
+     * Remove this method when libc support moves to guest/staging (GR-79128).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void libcSetErrno(int value);
+
+    /**
+     * Checks whether a character is a decimal digit according to libc.
+     * <p>
+     * Remove this method when libc support moves to guest/staging (GR-79128).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int libcIsDigit(int value);
+
+    /**
+     * Returns the length of a libc string.
+     * <p>
+     * Remove this method when libc support moves to guest/staging (GR-79128).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    UnsignedWord libcStrlen(CCharPointer string);
+
+    /**
+     * Parses an unsigned long integer using libc.
+     * <p>
+     * Remove this method when libc support moves to guest/staging (GR-79128).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    UnsignedWord libcStrtoull(CCharPointer string, CCharPointerPointer endPtr, int base);
 
     /// Returns whether strict runtime Java option handling is enabled.
     ///
     /// Remove this method when `StrictRuntimeJavaOptions` moves to guest/staging.
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean strictRuntimeJavaOptions();
 
     /**

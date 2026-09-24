@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.shared.imagelayer.LayeredGuestFoldResolver;
@@ -101,7 +102,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         if (shouldInitialize) {
             RuntimeOptionParser.singleton().validateOptionsAfterParsing();
 
-            GuestStagingDependencyBridge.singleton().verifyIsolateArgumentOptionValues();
+            IsolateArgumentParser.singleton().verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
 
             executeHooks(startupHooks);
@@ -113,9 +114,10 @@ public final class RuntimeSupport implements VMRuntimeSupport {
 
     /**
      * Adds a VM-level initialization hook. Initialization hooks are executed during isolate
-     * initialization, before runtime options are parsed. The executed code should therefore not try
-     * to access any runtime options. If it is necessary to access a runtime option, then its value
-     * must be parsed early and accessed via {@code com.oracle.svm.core.IsolateArgumentParser}.
+     * initialization, before runtime options are parsed. The executed code should therefore not
+     * try to access any runtime options. If it is necessary to access a runtime option, then its
+     * value must be parsed early and accessed via
+     * {@code com.oracle.svm.guest.staging.IsolateArgumentParser}.
      */
     public void addInitializationHook(Hook initHook) {
         addHook(initializationHooks, initHook);

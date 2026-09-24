@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
@@ -232,7 +233,7 @@ public final class RuntimeOptionParser {
     /// Note that the logic of whether to parse options must be in sync with the isolate argument
     /// parser. [GuestStagingDependencyBridge#shouldParseRuntimeOptions] provides that policy here.
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        if (!GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions()) {
+        if (!GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions(IsolateArgumentParser.isCompilationIsolate())) {
             return initialArgs;
         }
 
