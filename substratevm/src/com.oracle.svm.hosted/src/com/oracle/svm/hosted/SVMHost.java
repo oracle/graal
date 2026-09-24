@@ -95,7 +95,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.hub.ReferenceType;
+import com.oracle.svm.guest.staging.hub.ReferenceType;
 import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;

@@ -144,6 +144,7 @@ import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.guest.staging.hub.HubType;
+import com.oracle.svm.guest.staging.hub.ReferenceType;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
