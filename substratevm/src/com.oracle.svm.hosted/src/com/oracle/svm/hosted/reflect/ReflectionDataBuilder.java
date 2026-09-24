@@ -1089,7 +1089,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForRecordComponent(ResolvedJavaRecordComponent recordComponent) {
-        universe.lookup(recordComponent.getType()).registerAsReachable("Type of a record component registered for reflection");
+        ResolvedJavaType componentType = recordComponent.getType().resolve(recordComponent.getDeclaringRecord());
+        universe.lookup(componentType).registerAsReachable("Type of a record component registered for reflection");
         registerTypesForAnnotations(recordComponent);
         registerTypesForTypeAnnotations(recordComponent);
     }
