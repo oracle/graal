@@ -52,6 +52,11 @@ public final class GraalOptions {
     @Option(help = "Tries to improve code generation by making checkcast operations better optimizable early in the compilation pipeline.", type = OptionType.Expert)
     public static final OptionKey<Boolean> EarlyExpandCheckCast = new OptionKey<>(true);
 
+    @Option(help = "Speculates that arrays have exact type to optimize store checks. " +
+                   "This can improve performance because less store checks have to be performed. " +
+                   "(Dependent on loop invariant code motion.)", type = OptionType.Expert)
+    public static final OptionKey<Boolean> SpeculativeStoreCheck = new OptionKey<>(true);
+
     @Option(help = "Performs early loop-invariant code motion.", type = OptionType.Expert)
     public static final OptionKey<Boolean> EarlyLICM = new OptionKey<>(true);
 

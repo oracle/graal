@@ -37,6 +37,7 @@ import jdk.graal.compiler.duplication.phases.MethodDuplicationPhase;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.duplication.phases.simulation.FixedDuplicationSimulationConfig;
+import jdk.graal.compiler.guards.optimistic.SpeculativeStoreChecksPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
@@ -190,6 +191,9 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
         if (injectLoopCounterStamps && !GraalOptions.FullUnroll.getValue(options) && !GraalOptions.LoopUnswitch.getValue(options)) {
             appendPhase(new InjectLoopCounterStampsPhase());
+        }
+        if (GraalOptions.SpeculativeStoreCheck.getValue(options)) {
+            appendPhase(new SpeculativeStoreChecksPhase());
         }
         appendPhase(new HighTierLoweringPhase(canonicalizer));
     }

@@ -31,6 +31,7 @@ import org.junit.Test;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.guards.optimistic.SpeculativeStoreChecksPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
@@ -39,6 +40,7 @@ import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 
@@ -111,6 +113,27 @@ public class HighTierPhaseOrderTest extends GraalCompilerTest {
                         LoopRotationPhase.Options.HighTierLoopRotation, true);
         List<BasePhase<? super HighTierContext>> phases = new HighTier(options).getPhases();
         Assert.assertEquals("rotation must be omitted without a loop optimization anchor", -1, findIndex(phases, LoopRotationPhase.class, 0));
+    }
+
+    /// Verifies that speculative store checks run once immediately before high-tier lowering.
+    @Test
+    public void speculativeStoreChecksPrecedeLowering() {
+        List<BasePhase<? super HighTierContext>> phases = new HighTier(getInitialOptions()).getPhases();
+        int speculativeStoreChecks = indexOf(phases, SpeculativeStoreChecksPhase.class, 0);
+        int lowering = indexOf(phases, HighTierLoweringPhase.class, speculativeStoreChecks + 1);
+
+        Assert.assertEquals("speculative store checks must occur exactly once", 1,
+                        phases.stream().filter(SpeculativeStoreChecksPhase.class::isInstance).count());
+        Assert.assertEquals("speculative store checks must immediately precede lowering", lowering - 1, speculativeStoreChecks);
+    }
+
+    /// Verifies that speculative store checks can be disabled independently.
+    @Test
+    public void speculativeStoreChecksCanBeDisabled() {
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.SpeculativeStoreCheck, false);
+        List<BasePhase<? super HighTierContext>> phases = new HighTier(options).getPhases();
+        Assert.assertEquals("speculative store checks must be omitted when disabled", -1,
+                        findIndex(phases, SpeculativeStoreChecksPhase.class, 0));
     }
 
     /// Finds the first phase of type `phaseClass` at or after `startIndex`.
