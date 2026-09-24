@@ -49,6 +49,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
@@ -59,8 +60,8 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
 
 /// Owns the configuration for `-Xlog` and the GC logging fallback used when that command line
-/// interface is unavailable. Runtime changes wait for active log sites and drain asynchronous
-/// records before mutable output state is replaced.
+/// interface is unavailable. Runtime changes publish immutable copies so active synchronous and
+/// asynchronous records retain the routing and formatting state with which they started.
 public final class LogConfiguration {
     /// Preserves configuration insertion order for deterministic teardown and diagnostics.
     private static final List<LogFileOutput> OUTPUTS = new ArrayList<>();
@@ -114,6 +115,122 @@ public final class LogConfiguration {
     private LogConfiguration() {
     }
 
+    /// Provides deliberate access to logging internals for native JUnit tests without relying on
+    /// substitutions that mirror implementation details.
+    public static final class TestingBackdoor {
+        private TestingBackdoor() {
+        }
+
+        public static LogDecorators union(LogDecorators left, LogDecorators right) {
+            return left.union(right);
+        }
+
+        public static int selectionTagCount(LogSelection selection) {
+            return selection.tagCount();
+        }
+
+        public static boolean selectionConsistsOf(LogSelection selection, int tagMask) {
+            return selection.consistsOf(tagMask);
+        }
+
+        public static void describeSelection(LogSelection selection, StringBuilder result) {
+            selection.describeOn(result);
+        }
+
+        public static void setOutputLevel(LogOutputList list, LogOutput output, LogLevel level) {
+            list.setOutputLevel(output.configuration(), level);
+        }
+
+        public static void clear(LogOutputList list) {
+            list.clear();
+        }
+
+        public static boolean isLevel(LogOutputList list, LogLevel level) {
+            return list.isLevel(level);
+        }
+
+        public static LogOutput[] outputsFor(LogOutputList list, LogLevel level) {
+            LogOutputConfiguration[] configurations = list.configuration().outputsFor(level);
+            LogOutput[] outputs = new LogOutput[configurations.length];
+            for (int index = 0; index < configurations.length; index++) {
+                outputs[index] = configurations[index].output();
+            }
+            return outputs;
+        }
+
+        public static LogLevel levelFor(LogOutputList list, LogOutput output) {
+            return list.levelFor(output);
+        }
+
+        public static LogOutputList outputList(LogTagSet tagSet) {
+            return tagSet.outputList();
+        }
+
+        public static int bufferCapacity() {
+            return LogAsyncWriter.bufferCapacity();
+        }
+
+        public static boolean bufferSizeIsImmutable() {
+            return LogAsyncWriter.bufferSizeIsImmutable();
+        }
+
+        public static int recordSize(int prefixLength, int lineLength) {
+            return LogAsyncWriter.recordSize(prefixLength, lineLength);
+        }
+
+        public static void validateBufferSize(Long value) {
+            LogAsyncWriter.validateBufferSize(value);
+        }
+
+        public static String formatStartupTimestamp(long systemMillis, int localUTCOffsetSeconds) {
+            return LogConfiguration.formatStartupTimestamp(systemMillis, localUTCOffsetSeconds);
+        }
+
+        public static LogOutput findOrCreateOutput(String value) {
+            return LogConfiguration.findOrCreateOutput(value);
+        }
+
+        public static void configureOutput(LogSelectionList selections, LogOutput output, LogDecorators decorators) {
+            LogConfiguration.configureOutput(selections, output, decorators);
+        }
+
+        public static LogOutput stdout() {
+            return stdout;
+        }
+
+        public static LogOutput stderr() {
+            return stderr;
+        }
+
+        public static boolean asyncRequested() {
+            return asyncRequested;
+        }
+
+        public static boolean initializationComplete() {
+            return initializationComplete;
+        }
+
+        public static void setInitializationComplete(boolean value) {
+            initializationComplete = value;
+        }
+
+        public static String describe(LogOutput output) {
+            return output.describe();
+        }
+
+        public static boolean parseOptionsIfFirstConfiguration(LogOutput output, String options) {
+            return output.parseOptionsIfFirstConfiguration(options);
+        }
+
+        public static boolean threadLocalIsInitialized() {
+            return LogThreadLocal.isInitialized();
+        }
+
+        public static RawFileDescriptor descriptor(LogOutput output) {
+            return ((LogFileOutput) output).testingDescriptor();
+        }
+    }
+
     /// Captures process metadata and installs the baseline logging configuration before runtime
     /// options are parsed when the `-Xlog` interface is supported.
     public static void initialize() {
@@ -123,8 +240,7 @@ public final class LogConfiguration {
             long systemMillis = TimeUtils.currentTimeMillis();
             startupTimestamp = formatStartupTimestamp(systemMillis, LibCHelper.SVM_localUTCOffsetSeconds(systemMillis));
             for (LogTagSet tagSet : LogTagSet.values()) {
-                tagSet.outputList().setOutputLevel(stdout, LogLevel.WARNING);
-                tagSet.updateDecorators();
+                tagSet.outputList().setOutputLevel(stdout.configuration(), LogLevel.WARNING);
             }
             stdout.updateConfigString();
             stderr.updateConfigString();
@@ -231,42 +347,13 @@ public final class LogConfiguration {
 
     /// Applies `selections` and `decorators` to `output` while preserving concurrent log records.
     private static void configureOutput(LogSelectionList selections, LogOutput output, LogDecorators decorators) {
-        registerAsyncOutput(output);
-        LogDecorators transitionDecorators = output.decorators().union(decorators);
-        boolean[] affectedTagSets = new boolean[LogTagSet.VALUES.length];
+        LogOutputConfiguration outputConfiguration = registerAsyncOutput(output.configure(decorators));
         for (LogTagSet tagSet : LogTagSet.VALUES) {
             LogLevel level = selections.levelFor(tagSet);
-            boolean hasOutput = tagSet.outputList().levelFor(output) != LogLevel.OFF;
-            boolean affected = hasOutput || level != null;
-            affectedTagSets[tagSet.ordinal()] = affected;
-            if (affected && level != LogLevel.OFF) {
-                /* Capture every value required by either side of the configuration transition. */
-                tagSet.updateDecorators(transitionDecorators);
-            }
-        }
-        for (LogTagSet tagSet : LogTagSet.VALUES) {
-            if (affectedTagSets[tagSet.ordinal()]) {
-                tagSet.waitUntilNoReaders();
-            }
-        }
-        try {
-            drainAsyncWriter();
-            output.setDecorators(decorators);
-            for (LogTagSet tagSet : LogTagSet.VALUES) {
-                if (affectedTagSets[tagSet.ordinal()]) {
-                    LogLevel level = selections.levelFor(tagSet);
-                    if (level != null) {
-                        tagSet.outputList().setOutputLevel(output, level);
-                    }
-                    tagSet.updateDecorators();
-                }
-            }
-        } finally {
-            /* A failed reconfiguration must not leave future logging blocked. */
-            for (LogTagSet tagSet : LogTagSet.VALUES) {
-                if (affectedTagSets[tagSet.ordinal()]) {
-                    tagSet.allowReaders();
-                }
+            LogLevel oldLevel = tagSet.outputList().levelFor(output);
+            if (level != null || oldLevel != LogLevel.OFF) {
+                /* Each tag set publishes routing and formatting as one immutable snapshot. */
+                tagSet.outputList().setOutputLevel(outputConfiguration, level != null ? level : oldLevel);
             }
         }
         output.updateConfigString();
@@ -338,22 +425,9 @@ public final class LogConfiguration {
     private static void updateGCLoggingLocked(LogLevel level) {
         boolean hasXlogSupport = HasXlogSupport.get();
         LogOutput output = hasXlogSupport ? stdout : vmlog;
-        registerAsyncOutput(output);
         LogDecorators decorators = !hasXlogSupport && level != LogLevel.OFF ? new LogDecorators(UPTIME.bit()) : output.decorators();
-        if (level != LogLevel.OFF) {
-            /* A concurrent log site can safely observe either side of the transition. */
-            LogTagSet.gc.updateDecorators(output.decorators().union(decorators));
-        }
-        /* Publish the formatting state before making a newly enabled output visible. */
-        output.setDecorators(decorators);
-        LogTagSet.gc.outputList().setOutputLevel(output, level);
-        LogTagSet.gc.waitUntilNoReaders();
-        try {
-            drainAsyncWriter();
-            LogTagSet.gc.updateDecorators();
-        } finally {
-            LogTagSet.gc.allowReaders();
-        }
+        LogOutputConfiguration outputConfiguration = registerAsyncOutput(output.configure(decorators));
+        LogTagSet.gc.outputList().setOutputLevel(outputConfiguration, level);
         if (hasXlogSupport) {
             stdout.updateConfigString();
         }
@@ -410,14 +484,6 @@ public final class LogConfiguration {
         }
     }
 
-    /// Preserves a VM operation executor diagnostic when route reconfiguration has blocked normal
-    /// readers. The low-level VM log remains available without retaining mutable unified logging
-    /// state.
-    static void writeVMOperationReconfigurationFallback(LogTagSet tagSet, LogMessage message) {
-        LogDecorations decorations = LogDecorations.capture(LogDecorators.DEFAULT);
-        vmlog.write(tagSet, decorations, message, LogLevel.TRACE);
-    }
-
     /// Flushes asynchronous records, reports fallback statistics, and removes every output
     /// configuration.
     public static void disableLogging() {
@@ -448,17 +514,6 @@ public final class LogConfiguration {
         reportSynchronousEnqueuesFromVMOperations();
         for (LogTagSet tagSet : LogTagSet.values()) {
             tagSet.outputList().clear();
-        }
-        try {
-            waitUntilNoReaders();
-            for (LogTagSet tagSet : LogTagSet.values()) {
-                tagSet.updateDecorators();
-            }
-        } finally {
-            /* Teardown and failed initialization must not strand a blocked logging thread. */
-            for (LogTagSet tagSet : LogTagSet.values()) {
-                tagSet.allowReaders();
-            }
         }
         stdout.updateConfigString();
         stderr.updateConfigString();
@@ -524,7 +579,7 @@ public final class LogConfiguration {
                 startWriter = true;
             }
             for (LogTagSet tagSet : LogTagSet.VALUES) {
-                for (LogOutput output : tagSet.outputList().outputsFor(LogLevel.ERROR)) {
+                for (LogOutputConfiguration output : tagSet.outputList().configuration().outputsFor(LogLevel.ERROR)) {
                     asyncWriterInstance.registerOutput(output);
                 }
             }
@@ -549,19 +604,9 @@ public final class LogConfiguration {
     }
 
     /// Registers a destination before an active asynchronous route can publish its slot.
-    private static void registerAsyncOutput(LogOutput output) {
+    private static LogOutputConfiguration registerAsyncOutput(LogOutputConfiguration output) {
         LogAsyncWriter writer = asyncWriter;
-        if (writer != null) {
-            writer.registerOutput(output);
-        }
-    }
-
-    /// Drains records that precede a runtime configuration change without disabling async output.
-    private static void drainAsyncWriter() {
-        LogAsyncWriter writer = asyncWriter;
-        if (writer != null) {
-            LogAsyncWriter.flush();
-        }
+        return writer == null ? output : writer.registerOutput(output);
     }
 
     /// Stops publication and drains the writer before configured outputs are closed or reused.
@@ -570,13 +615,6 @@ public final class LogConfiguration {
         if (writer != null) {
             asyncWriter = null;
             writer.deactivateAndFlush();
-        }
-    }
-
-    /// Waits until all log sites have released configurations published before a routing update.
-    private static void waitUntilNoReaders() {
-        for (LogTagSet tagSet : LogTagSet.VALUES) {
-            tagSet.waitUntilNoReaders();
         }
     }
 

@@ -27,9 +27,7 @@ package com.oracle.svm.core.logging;
 import static com.oracle.svm.core.logging.LogAsyncWriter.Options.AsyncLogBufferSize;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -63,8 +61,8 @@ public abstract class LogOutput {
     /// queue was full.
     final AtomicInteger droppedAsyncMessages = new AtomicInteger();
 
-    /// Decorators enabled for this destination.
-    private volatile LogDecorators decorators = LogDecorators.DEFAULT;
+    /// Formatting state used by configurations published after the latest reconfiguration.
+    private volatile LogOutputConfiguration configuration;
 
     /// Controls whether newlines and backslashes are escaped onto one physical line.
     private volatile boolean foldMultilines;
@@ -81,6 +79,7 @@ public abstract class LogOutput {
 
     protected LogOutput(String name) {
         this.name = name;
+        this.configuration = new LogOutputConfiguration(this, LogDecorators.DEFAULT);
     }
 
     private static AtomicInteger[] createDecoratorPadding() {
@@ -100,7 +99,7 @@ public abstract class LogOutput {
         StringBuilder result = new StringBuilder(name).append(' ').append(configString);
         boolean hasDecorator = false;
         for (LogDecorators.Decorator decorator : LogDecorators.VALUES) {
-            if (decorators.contains(decorator)) {
+            if (configuration.decorators().contains(decorator)) {
                 result.append(hasDecorator ? ',' : ' ').append(decorator.label());
                 hasDecorator = true;
             }
@@ -111,8 +110,16 @@ public abstract class LogOutput {
         return result.toString();
     }
 
-    protected final void setDecorators(LogDecorators decorators) {
-        this.decorators = decorators;
+    /// Creates and publishes immutable formatting state for new routes to this output.
+    final LogOutputConfiguration configure(LogDecorators decorators) {
+        LogOutputConfiguration newConfiguration = new LogOutputConfiguration(this, decorators);
+        configuration = newConfiguration;
+        return newConfiguration;
+    }
+
+    /// Gets the formatting state used by newly published routes.
+    final LogOutputConfiguration configuration() {
+        return configuration;
     }
 
     /// Reconstructs the compact threshold configuration from the current tag-set levels.
@@ -209,43 +216,41 @@ public abstract class LogOutput {
     /// Adds all useful exact and wildcard selections based on one tag set.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logOutput.cpp#L125-L195")
     private static void addSelections(LogTagSet tagSet, LogLevel level, List<LogSelection> selections) {
-        List<LogTag> tags = tagSet.tags();
-        if (tags.isEmpty()) {
+        if (tagSet.tagMask() == 0) {
             return;
         }
-        addSubsets(tags, 0, EnumSet.noneOf(LogTag.class), level, selections);
+        LogTag[] tags = tagSet.tags();
+        addSubsets(tags, 0, 0, level, selections);
     }
 
     /// Visits the subsets of `tags` from `index`, adding each non-empty subset to `selections`
-    /// with `level` and using `subset` as the mutable accumulator during recursion.
+    /// with `level` and using `tagMask` as the compact accumulator during recursion.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logOutput.cpp#L79-L123")
-    private static void addSubsets(List<LogTag> tags, int index, EnumSet<LogTag> subset, LogLevel level, List<LogSelection> selections) {
-        if (index == tags.size()) {
-            if (subset.isEmpty()) {
+    private static void addSubsets(LogTag[] tags, int index, int tagMask, LogLevel level, List<LogSelection> selections) {
+        if (index == tags.length) {
+            if (tagMask == 0) {
                 return;
             }
-            addSelectionVariants(subset, level, selections);
+            addSelectionVariants(tagMask, level, selections);
             return;
         }
-        addSubsets(tags, index + 1, subset, level, selections);
-        subset.add(tags.get(index));
-        addSubsets(tags, index + 1, subset, level, selections);
-        subset.remove(tags.get(index));
+        addSubsets(tags, index + 1, tagMask, level, selections);
+        addSubsets(tags, index + 1, tagMask | com.oracle.svm.shared.collections.EnumBitmask.flagBit(tags[index]), level, selections);
     }
 
     /// Adds exact and wildcard forms when they match an instantiated tag set.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logOutput.cpp#L141-L195")
-    private static void addSelectionVariants(Set<LogTag> subset, LogLevel level, List<LogSelection> selections) {
+    private static void addSelectionVariants(int tagMask, LogLevel level, List<LogSelection> selections) {
         for (LogSelection existing : selections) {
-            if (existing.level() == level && existing.consistsOf(subset)) {
+            if (existing.level() == level && existing.consistsOf(tagMask)) {
                 return;
             }
         }
-        LogSelection exact = new LogSelection(subset, false, level);
+        LogSelection exact = new LogSelection(tagMask, false, level);
         if (matchesTagSet(exact)) {
             selections.add(exact);
         }
-        LogSelection wildcard = new LogSelection(subset, true, level);
+        LogSelection wildcard = new LogSelection(tagMask, true, level);
         if (matchesTagSet(wildcard)) {
             selections.add(wildcard);
         }
@@ -264,7 +269,7 @@ public abstract class LogOutput {
 
     /// Gets the decorators configured for this output.
     final LogDecorators decorators() {
-        return decorators;
+        return configuration.decorators();
     }
 
     /// Parses output options only during the output's first configuration.
@@ -303,7 +308,7 @@ public abstract class LogOutput {
     }
 
     /// Writes one complete message to this output.
-    final void write(LogTagSet tagSet, LogDecorations decorations, LogMessage message, LogLevel outputLevel) {
+    final void write(LogTagSet tagSet, LogDecorations decorations, LogMessage message, LogLevel outputLevel, LogDecorators configuredDecorators) {
         OUTPUT_BUFFER.reset();
         int lineCount = message.lineCount();
         boolean hasLine = false;
@@ -311,7 +316,7 @@ public abstract class LogOutput {
             LogLevel lineLevel = message.lineLevel(index);
             if (outputLevel.enables(lineLevel)) {
                 hasLine = true;
-                int decoratorWidth = writeRecordPrefix(decorations, lineLevel, tagSet);
+                int decoratorWidth = writeRecordPrefix(configuredDecorators, decorations, lineLevel, tagSet);
                 message.writeLineTo(index, OUTPUT_BUFFER, foldMultilines, this, decoratorWidth);
                 OUTPUT_BUFFER.newline();
             }
@@ -322,9 +327,9 @@ public abstract class LogOutput {
     }
 
     /// Writes one asynchronously queued message part using the copied event decorations.
-    final void write(LogDecorations decorations, CCharPointer message, int messageLength, LogLevel level) {
+    final void write(LogDecorations decorations, CCharPointer message, int messageLength, LogLevel level, LogDecorators configuredDecorators) {
         OUTPUT_BUFFER.reset();
-        int decoratorWidth = writeDecorators(decorations, level);
+        int decoratorWidth = writeDecorators(configuredDecorators, decorations, level);
         writeMessageBytes(message, messageLength, decoratorWidth);
         OUTPUT_BUFFER.newline();
         finishWrite();
@@ -393,13 +398,9 @@ public abstract class LogOutput {
     }
 
     /// Writes [#decorators] to the thread-local output buffer and returns their bracketed width.
-    private int writeDecorators(LogDecorations decorations, LogLevel level) {
-        return writeDecorators(this.decorators, decorations, level);
-    }
-
     /// Writes all metadata that precedes one physical log record.
-    private int writeRecordPrefix(LogDecorations decorations, LogLevel level, LogTagSet tagSet) {
-        int decoratorWidth = writeDecorators(decorations, level);
+    private int writeRecordPrefix(LogDecorators configuredDecorators, LogDecorations decorations, LogLevel level, LogTagSet tagSet) {
+        int decoratorWidth = writeDecorators(configuredDecorators, decorations, level);
         tagSet.writePrefix(OUTPUT_BUFFER);
         return decoratorWidth;
     }
