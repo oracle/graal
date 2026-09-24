@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;

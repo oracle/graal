@@ -53,8 +53,8 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.IsolateArguments;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArguments;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateDiagnostics;

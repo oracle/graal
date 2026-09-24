@@ -48,6 +48,7 @@ import com.oracle.svm.core.SubstrateDiagnostics.DumpCodeCacheHistory;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpDeoptStubPointer;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpRecentDeoptimizations;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpRuntimeCodeInfoMemory;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;

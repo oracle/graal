@@ -30,7 +30,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.IsolateArguments;
+import com.oracle.svm.guest.staging.IsolateArguments;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;

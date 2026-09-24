@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;

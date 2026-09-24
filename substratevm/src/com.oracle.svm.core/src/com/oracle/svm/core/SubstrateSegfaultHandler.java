@@ -48,6 +48,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.log.CoreLogSupport;
