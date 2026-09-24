@@ -1883,8 +1883,12 @@ public class NativeImageGenerator {
         midTier.findPhase(LoopSafepointInsertionPhase.class).set(new SubstrateSafepointInsertionPhase());
 
         if (hosted) {
-            /* Native debuggers consume local values independently of runtime metadata encoding. */
-            if (!SubstrateOptions.useDebugInfoGeneration() && !SubstrateOptions.getSourceLevelDebug()) {
+            /*
+             * Native debug info supports unavailable locals. Preserve all values only for
+             * source-level debugging; the phase itself restricts pruning to eligible handler roots.
+             * Keep this guard consistent with FrameInfoRetention.canPruneFrameStateValues.
+             */
+            if (!SubstrateOptions.getSourceLevelDebug()) {
                 var retentionPosition = lowTier.findPhase(FinalCanonicalizerPhase.class);
                 if (retentionPosition == null) {
                     retentionPosition = lowTier.findPhase(SchedulePhase.FinalSchedulePhase.class);
