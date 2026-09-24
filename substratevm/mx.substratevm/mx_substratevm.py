@@ -3108,6 +3108,99 @@ def cinterfacetutorial(args):
     native_image_context_run(_cinterfacetutorial, args)
 
 
+# The platform and Graal modules of a small JDK that can run the image builder: no java.se and no
+# java.sql, which is what a distribution that ships a slimmed-down JDK (rather than a full one)
+# would leave out. jlink adds whatever these require.
+_small_jdk_modules = [
+    'java.base',
+    'java.compiler',
+    'java.instrument',
+    'java.logging',
+    'java.management',
+    'java.xml',
+    'jdk.graal.compiler',
+    'jdk.graal.compiler.management',
+    'jdk.graal.compiler.options',
+    'jdk.internal.vm.ci',
+    'jdk.jfr',
+    'jdk.management',
+    'jdk.management.jfr',
+    'jdk.zipfs',
+    'org.graalvm.collections',
+    'org.graalvm.jniutils',
+    'org.graalvm.nativeimage',
+    'org.graalvm.nativeimage.libgraal',
+    'org.graalvm.polyglot',
+    'org.graalvm.truffle.compiler',
+    'org.graalvm.word',
+]
+
+
+def _build_small_jdk(vm_home, output_dir, modules):
+    """
+    Builds a small JDK that can run native-image, from the GraalVM at vm_home: a jlink image of the
+    given modules, plus the native-image launcher and the lib directories the launcher needs. The
+    builder's own modules stay on their module path in lib/svm/builder, as in the GraalVM, and are
+    resolved against the small JDK when native-image starts. lib/truffle is copied too: the driver
+    adds the Truffle runtime to the builder module path if it is there.
+    """
+    if exists(output_dir):
+        mx.rmtree(output_dir)
+    mx_util.ensure_dir_exists(dirname(output_dir))
+    mx.run([join(vm_home, 'bin', mx.exe_suffix('jlink')),
+            '--module-path', join(vm_home, 'jmods'),
+            '--add-modules', ','.join(modules),
+            '--output', output_dir])
+    for lib_dir in ('graalvm', 'svm', 'static', 'truffle'):
+        source = join(vm_home, 'lib', lib_dir)
+        if exists(source):
+            shutil.copytree(source, join(output_dir, 'lib', lib_dir), symlinks=False)
+    # The launcher script finds the JDK relative to its own location in lib/svm/bin, so bin/native-image
+    # is a link to it, as in the GraalVM.
+    os.symlink(join('..', 'lib', 'svm', 'bin', 'native-image'), join(output_dir, 'bin', 'native-image'))
+    return output_dir
+
+
+def _smalljdktest(args):
+    """
+    Builds a small JDK without java.sql from the GraalVM, and builds and runs a hello world image
+    with the native-image of that small JDK. The image builder must not need java.sql.
+    """
+    if mx.is_windows():
+        mx.abort('smalljdktest is not supported on Windows: it uses the native-image launcher script.')
+    vm_home = _vm_home(None)
+    small_jdk = _build_small_jdk(vm_home, join(svmbuild_dir(), 'small-jdk'), _small_jdk_modules)
+
+    listed = mx.OutputCapture()
+    mx.run([join(small_jdk, 'bin', 'java'), '--list-modules'], out=listed)
+    modules = [line.split('@')[0] for line in listed.data.splitlines()]
+    if 'java.sql' in modules:
+        mx.abort('The small JDK contains java.sql, so it does not test that the builder can do without it.')
+
+    build_dir = join(svmbuild_dir(), 'small-jdk-hello')
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    mx_util.ensure_dir_exists(build_dir)
+    with open(join(build_dir, 'HelloWorld.java'), 'w') as source:
+        source.write('public class HelloWorld { public static void main(String[] args) { System.out.println("Hello from a small JDK"); } }\n')
+    mx.run([join(vm_home, 'bin', mx.exe_suffix('javac')), '-d', build_dir, join(build_dir, 'HelloWorld.java')])
+
+    with native_image_context(hosted_assertions=False, native_image_cmd=join(small_jdk, 'bin', 'native-image')) as native_image:
+        native_image(['-cp', build_dir, '-o', join(build_dir, 'helloworld'), 'HelloWorld'] + args)
+    output = mx.OutputCapture()
+    mx.run([join(build_dir, 'helloworld')], out=output)
+    if output.data.strip() != 'Hello from a small JDK':
+        mx.abort('Unexpected output of the image built with the small JDK: ' + output.data)
+
+
+@mx.command(suite.name, 'smalljdktest', 'Runs native-image from a small JDK without java.sql')
+def smalljdktest(args):
+    """
+    builds a small JDK without java.sql from the GraalVM and builds a hello world image with it.
+    """
+    _smalljdktest(args)
+
+
 @mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
 def java_agent_test(args):
     def build_and_run(args, binary_path, native_image, agents, agents_arg):
