@@ -188,7 +188,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.core.snippets.SnippetRuntime"),
                     clazz("com.oracle.svm.core.snippets.SnippetRuntime$SubstrateForeignCallDescriptor"),
                     clazz("com.oracle.svm.core.util.Counter"),
-                    clazz("com.oracle.svm.core.util.LazyFinalReference"),
                     clazz("com.oracle.svm.driver.APIOptionHandler"),
                     clazz("com.oracle.svm.driver.BundleSupport"),
                     clazz("com.oracle.svm.driver.launcher.BundleLauncher"),

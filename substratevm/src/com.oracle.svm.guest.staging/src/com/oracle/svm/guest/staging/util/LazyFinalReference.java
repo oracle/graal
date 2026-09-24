@@ -22,11 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.guest.staging.util;
 
 import java.util.function.Supplier;
 
 import com.oracle.svm.shared.util.VMError;
+
 import jdk.internal.misc.Unsafe;
 
 /**
