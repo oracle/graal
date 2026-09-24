@@ -51,6 +51,13 @@ import com.oracle.svm.shared.collections.EnumBitmask;
 /// the legacy `VerboseGC` and `PrintGC` options. The same level predicates and message APIs apply
 /// to configured and fallback routes.
 ///
+/// Runtime logging is VM-internal infrastructure. Emitting a message must either succeed or
+/// terminate with a fatal VM error; it must not let an ordinary exception escape into its caller.
+/// Any code reachable while emitting a message may therefore use only VM-internal classes or JDK
+/// classes that are guaranteed to be initialized at build time. Otherwise, logging during class
+/// initialization could trigger another class initialization, recursively reenter logging, and
+/// cause incorrect behavior or a deadlock.
+///
 /// @see LogTagSetGenerator
 public enum LogTagSet {
     // START GENERATED
