@@ -56,6 +56,7 @@ import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConvertNode;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
@@ -170,6 +171,14 @@ public final class PartialRedundancySchedulePhase extends BasePhase<CoreProvider
             this.maxSplitsPerNode = Options.MaxSplitsPerNode.getValue(options);
         }
 
+        @Override
+        public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
+            cfg = ControlFlowGraph.computeForSchedule(graph);
+            // Make fast-path hints available before deciding whether to split shared expressions.
+            cfg.markFastPathBlocks();
+            super.run(graph, selectedStrategy, immutableGraph);
+        }
+
         class UsageNode {
             UsageNode(HIRBlock block, int depth) {
                 this.block = block;
@@ -199,18 +208,18 @@ public final class PartialRedundancySchedulePhase extends BasePhase<CoreProvider
 
             public double optimize() {
                 double myFrequency = block.getRelativeFrequency();
-                boolean isThreading = isThreadedSwitchBlock();
+                boolean preferSplitting = block.isFastPathBlock();
                 if (this.usages.size() == 0) {
                     // This block does not have usages => check if we should split or accumulate.
                     double childSum = 0;
                     for (UsageNode child : children) {
                         childSum += child.optimize();
-                        if (!isThreading) {
+                        if (!preferSplitting) {
                             childSum += EPSILON;
                         }
                     }
                     double curWin = myFrequency - childSum;
-                    if (isThreading || curWin > myFrequency * MIN_WIN_FRACTION) {
+                    if (preferSplitting || curWin > myFrequency * MIN_WIN_FRACTION) {
                         // Take decision to split => it is beneficial to put definition into
                         // children.
                         win = curWin;
