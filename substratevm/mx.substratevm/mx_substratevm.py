@@ -449,6 +449,8 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
     if '--static' not in image_args:
         cinterfacetutorial(extra_image_args)
+        if not mx.is_windows():  # The C driver relies on alarm(3), which Windows does not have.
+            jnidestroyvmtest(extra_image_args)
     clinittest(extra_image_args)
 
 
@@ -1686,6 +1688,53 @@ def _cinterfacetutorial(native_image, args=None):
 
     # Start the C executable
     mx.run([join(build_dir, 'cinterfacetutorial')])
+
+
+def _jnidestroyvmtest(native_image, args=None):
+    """
+    Builds a shared library image and a C program that creates a VM in it through the JNI
+    invocation interface, runs a main method that leaves an interrupt-swallowing daemon thread
+    behind, and calls DestroyJavaVM as the JDK's launcher does. DestroyJavaVM must return. The
+    program's own alarm ends the run if it does not.
+    """
+    args = [] if args is None else args
+    if mx.get_os() == 'windows':
+        mx.abort('jnidestroyvmtest is not supported on Windows: its C driver uses alarm(3).')
+    test_proj = mx.dependency('com.oracle.svm.test.jni.invocation')
+    native_dir = join(test_proj.dir, 'native')
+    build_dir = join(svmbuild_dir(), test_proj.name, 'build')
+
+    # clean / create output directory
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    mx_util.ensure_dir_exists(build_dir)
+
+    # Build the shared library from Java code
+    native_image(['--shared', '-o', join(build_dir, 'libjnidestroyvm'), '-H:ConfigurationFileDirectories=' + native_dir,
+                  '-cp', test_proj.output_dir()] + args)
+
+    # Build the C executable. It needs the JNI headers of the JDK that runs the build.
+    jdk_home = get_jdk().home
+    jni_platform_dir = 'darwin' if mx.is_darwin() else 'linux'
+    mx.run(['cc', '-g', join(native_dir, 'jnidestroyvm.c'),
+            '-I' + join(jdk_home, 'include'), '-I' + join(jdk_home, 'include', jni_platform_dir),
+            '-I.', '-L.', '-ljnidestroyvm',
+            '-Wl,-rpath,' + build_dir,
+            '-o', 'jnidestroyvm'],
+           cwd=build_dir)
+
+    # The same program against HotSpot's libjvm, which is the reference: the JNI specification has
+    # DestroyJavaVM wait for non-daemon threads only, and HotSpot lets it return.
+    hotspot_lib_dir = join(jdk_home, 'lib', 'server')
+    mx.run(['cc', '-g', join(native_dir, 'jnidestroyvm.c'),
+            '-I' + join(jdk_home, 'include'), '-I' + join(jdk_home, 'include', jni_platform_dir),
+            '-L' + hotspot_lib_dir, '-ljvm', '-Wl,-rpath,' + hotspot_lib_dir,
+            '-o', 'jnidestroyvm-hotspot'],
+           cwd=build_dir)
+
+    # Start the C executables: HotSpot first, so a failure there says that the test is wrong.
+    mx.run([join(build_dir, 'jnidestroyvm-hotspot'), test_proj.output_dir()])
+    mx.run([join(build_dir, 'jnidestroyvm')])
 
 
 _helloworld_variants = {
@@ -3106,6 +3155,15 @@ def cinterfacetutorial(args):
     runs all tutorials for the C interface.
     """
     native_image_context_run(_cinterfacetutorial, args)
+
+
+@mx.command(suite.name, 'jnidestroyvmtest', 'Runs the JNI DestroyJavaVM test')
+def jnidestroyvmtest(args):
+    """
+    creates a VM in a shared library image through JNI and destroys it while a daemon thread that
+    ignores interrupts is running.
+    """
+    native_image_context_run(_jnidestroyvmtest, args)
 
 
 @mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
