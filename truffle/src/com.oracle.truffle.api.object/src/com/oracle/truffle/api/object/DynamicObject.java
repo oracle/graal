@@ -50,7 +50,8 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.IntStream;
+
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1206,7 +1207,7 @@ public abstract class DynamicObject implements TruffleObject {
         static boolean removePropertyGeneric(DynamicObject receiver, Shape cachedShape, Property cachedProperty) {
             updateShape(receiver, cachedShape);
             Shape oldShape = receiver.getShape();
-            Property existingProperty = reusePropertyLookup(cachedShape, cachedProperty, oldShape);
+            Property existingProperty = reusePropertyLookup(cachedShape, cachedProperty, oldShape, cachedProperty.getKey());
 
             Map<Object, Object> archive = null;
             assert (archive = DynamicObjectSupport.archive(receiver)) != null;
@@ -1915,13 +1916,12 @@ public abstract class DynamicObject implements TruffleObject {
 
         @TruffleBoundary
         private static void changePropertyFlagsGeneric(DynamicObject receiver, Shape cachedShape, Property cachedProperty, int propertyFlags) {
-            assert cachedProperty != null;
-            assert cachedProperty.getFlags() != propertyFlags;
+            assert cachedProperty != null && cachedProperty.getFlags() != propertyFlags : cachedProperty;
 
             updateShape(receiver, cachedShape);
 
             Shape oldShape = receiver.getShape();
-            final Property existingProperty = reusePropertyLookup(cachedShape, cachedProperty, oldShape);
+            final Property existingProperty = reusePropertyLookup(cachedShape, cachedProperty, oldShape, cachedProperty.getKey());
             Shape newShape = oldShape.setPropertyFlags(existingProperty, propertyFlags);
             if (newShape != oldShape) {
                 DynamicObjectSupport.setShapeWithStoreFence(receiver, newShape);
@@ -1961,11 +1961,11 @@ public abstract class DynamicObject implements TruffleObject {
         }
     }
 
-    static Property reusePropertyLookup(Shape cachedShape, Property cachedProperty, Shape updatedShape) {
+    static Property reusePropertyLookup(Shape cachedShape, Property cachedProperty, Shape updatedShape, Object key) {
         if (updatedShape == cachedShape) {
             return cachedProperty;
         } else {
-            return updatedShape.getProperty(cachedProperty.getKey());
+            return updatedShape.getProperty(key);
         }
     }
 
@@ -2301,6 +2301,11 @@ public abstract class DynamicObject implements TruffleObject {
      * Adds or sets multiple properties in bulk. Behaves like {@link PutNode}, but is usually more
      * efficient for cases like object initialization where more than a few properties are added at
      * once.
+     * <p>
+     * Cached nodes may retain the supplied keys array. Its elements must not be modified after
+     * being passed to a cached node, including between executions. Use a new array for different
+     * keys. Values and property flags arrays are not retained and may be modified between
+     * executions. No input array may be modified during execution.
      *
      * @see #execute(DynamicObject, Object[], Object[])
      * @see #executeIfAbsent(DynamicObject, Object[], Object[])
@@ -2377,7 +2382,7 @@ public abstract class DynamicObject implements TruffleObject {
          * @since 25.1
          */
         public final void executeWithFlags(DynamicObject receiver, Object[] keys, Object[] values, int[] propertyFlags) {
-            executeImpl(receiver, keys, values, propertyFlags, Flags.DEFAULT);
+            executeImpl(receiver, keys, values, propertyFlags, Flags.UPDATE_FLAGS);
         }
 
         /**
@@ -2389,7 +2394,7 @@ public abstract class DynamicObject implements TruffleObject {
          * @since 25.1
          */
         public final void executeWithFlagsIfPresent(DynamicObject receiver, Object[] keys, Object[] values, int[] propertyFlags) {
-            executeImpl(receiver, keys, values, propertyFlags, Flags.IF_PRESENT);
+            executeImpl(receiver, keys, values, propertyFlags, Flags.IF_PRESENT | Flags.UPDATE_FLAGS);
         }
 
         /**
@@ -2401,7 +2406,7 @@ public abstract class DynamicObject implements TruffleObject {
          * @since 25.1
          */
         public final void executeWithFlagsIfAbsent(DynamicObject receiver, Object[] keys, Object[] values, int[] propertyFlags) {
-            executeImpl(receiver, keys, values, propertyFlags, Flags.IF_ABSENT);
+            executeImpl(receiver, keys, values, propertyFlags, Flags.IF_ABSENT | Flags.UPDATE_FLAGS);
         }
 
         abstract void executeImpl(DynamicObject receiver, Object[] keys, Object[] values, int[] propertyFlags, int mode);
@@ -2467,7 +2472,6 @@ public abstract class DynamicObject implements TruffleObject {
             Shape newShape = startShape;
             Property[] oldProperties = existingPropertiesOpt;
             Property[] newProperties = new Property[keys.length];
-            boolean updatedShape = false;
             boolean preparing = object == null;
             int i = 0;
             while (i < keys.length) {
@@ -2476,9 +2480,20 @@ public abstract class DynamicObject implements TruffleObject {
                 int propertyFlags = flags == null ? 0 : flags[i];
                 Property newProperty;
                 Property existingProperty;
-                if (existingPropertiesOpt != null && !updatedShape) {
-                    existingProperty = existingPropertiesOpt[i];
-                    assert Objects.equals(existingProperty, newShape.getProperty(key)) : key;
+                if (existingPropertiesOpt != null) {
+                    Property cachedProperty = existingPropertiesOpt[i];
+                    /*
+                     * Puts never remove properties, and IF_PRESENT never adds them. Initial
+                     * presence can therefore decide these skips even when earlier entries changed
+                     * the shape.
+                     */
+                    boolean skip = (Flags.isPutIfAbsent(mode) && cachedProperty != null) ||
+                                    (Flags.isPutIfPresent(mode) && cachedProperty == null);
+                    if (skip && oldShape.isValid()) {
+                        newProperties[i++] = null;
+                        continue;
+                    }
+                    existingProperty = reusePropertyLookup(startShape, cachedProperty, newShape, key);
                 } else {
                     existingProperty = newShape.getProperty(key);
                 }
@@ -2519,7 +2534,6 @@ public abstract class DynamicObject implements TruffleObject {
                          * locations, restart from the beginning with the updated shape.
                          */
                         updateShape(object);
-                        updatedShape = true;
                         oldShape = newShape = object.getShape();
                         // restart after shape migration
                         i = 0;
@@ -2552,6 +2566,7 @@ public abstract class DynamicObject implements TruffleObject {
         @ExplodeLoop
         static void performPutAll(DynamicObject receiver, Object[] keys, Object[] values, int mode, int[] pflags,
                         Shape oldShape, Shape newShape, Property[] oldProperties, Property[] newProperties) {
+            assert verifyPlan(keys, mode, oldShape, newProperties);
             if (oldShape != newShape) {
                 DynamicObjectSupport.grow(receiver, oldShape, newShape);
             }
@@ -2586,26 +2601,63 @@ public abstract class DynamicObject implements TruffleObject {
             assert verifyPropertyValues(receiver, keys, values, mode, oldShape, newShape);
         }
 
-        private static boolean verifyPropertyValues(DynamicObject receiver, Object[] keys, Object[] values, int mode, Shape oldShape, Shape newShape) {
-            return IntStream.range(0, keys.length).allMatch(i -> {
+        @TruffleBoundary
+        private static boolean verifyPlan(Object[] keys, int mode, Shape oldShape, Property[] properties) {
+            assert keys.length == properties.length : "Cached keys array no longer matches the put-all plan";
+            EconomicSet<Object> seen = Flags.isPutIfAbsent(mode) ? EconomicSet.create() : null;
+            for (int i = 0; i < keys.length; i++) {
                 Object key = keys[i];
+                Property property = properties[i];
+                Property oldProperty = oldShape.getProperty(key);
+                boolean skipped;
+                if (Flags.isPutIfAbsent(mode)) {
+                    skipped = oldProperty != null || !seen.add(key);
+                } else {
+                    skipped = Flags.isPutIfPresent(mode) && oldProperty == null;
+                }
+                assert (property == null) == skipped : "Cached keys array no longer matches the put-all plan: " + key;
+                assert property == null || property.getKey().equals(key) : "Cached keys array no longer matches the put-all plan: " + key;
+            }
+            return true;
+        }
+
+        private static boolean verifyPropertyValues(DynamicObject receiver, Object[] keys, Object[] values, int mode, Shape oldShape, Shape newShape) {
+            EconomicSet<Object> checked = EconomicSet.create();
+            for (int n = 0; n < keys.length; n++) {
+                // A duplicate key's first write wins for IF_ABSENT; otherwise its last write wins.
+                int i = Flags.isPutIfAbsent(mode) ? n : keys.length - 1 - n;
+                Object key = keys[i];
+                if (!checked.add(key)) {
+                    continue;
+                }
                 if (Flags.isPutIfAbsent(mode) && oldShape.getProperty(key) != null) {
                     assert newShape.getProperty(key).equals(oldShape.getProperty(key)) : key;
-                    return true;
+                    continue;
                 }
                 if (Flags.isPutIfPresent(mode) && oldShape.getProperty(key) == null) {
                     assert newShape.getProperty(key) == null : key;
-                    return true;
+                    continue;
                 }
                 Object newValue = GetNode.getUncached().execute(receiver, key, null);
-                assert Objects.equals(values[i], newValue) : "key=" + key + " expectedValue=" + values[i] + " actualValue=" + newValue;
-                return true;
-            });
+                Object expectedValue = values[i];
+                if (expectedValue instanceof Integer intValue) {
+                    if (newValue instanceof Double && newShape.getLayout().isAllowedIntToDouble()) {
+                        expectedValue = intValue.doubleValue();
+                    } else if (newValue instanceof Long && newShape.getLayout().isAllowedIntToLong()) {
+                        expectedValue = intValue.longValue();
+                    }
+                }
+                assert Objects.equals(expectedValue, newValue) : "key=" + key + " expectedValue=" + expectedValue + " actualValue=" + newValue;
+            }
+            return true;
         }
 
         @ExplodeLoop
         static boolean keysEqual(Object[] cachedKeys, Object[] keys) {
             CompilerAsserts.partialEvaluationConstant(cachedKeys.length);
+            if (cachedKeys.length != keys.length) {
+                return false;
+            }
             for (int i = 0; i < cachedKeys.length; i++) {
                 if (cachedKeys[i] != keys[i]) {
                     return false;
