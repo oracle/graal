@@ -55,6 +55,5 @@ public interface GC {
     ///
     /// @param logTagSet tag set for log line
     /// @param log the buffer to which the line's content will be written
-    default void writeLogPrefix(LogTagSet logTagSet, Log log) {
-    }
+    void writeLogPrefix(LogTagSet logTagSet, Log log);
 }
