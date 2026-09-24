@@ -192,8 +192,8 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected void lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool) {
-        super.lowerNewArrayToVector(newArray, tool, wordTypes.asKind(newArray.elementType()));
+    protected boolean lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool) {
+        return super.lowerNewArrayToVector(newArray, tool, wordTypes.asKind(newArray.elementType()));
     }
 
     @Override

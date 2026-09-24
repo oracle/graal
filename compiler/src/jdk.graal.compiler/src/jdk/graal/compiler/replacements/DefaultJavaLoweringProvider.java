@@ -1598,11 +1598,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                  */
                 return true;
             } else if (n instanceof NewArrayNode) {
-                lowerNewArrayToVector((NewArrayNode) n, tool);
-                return true;
+                return lowerNewArrayToVector((NewArrayNode) n, tool);
             } else if (n instanceof DynamicNewArrayNode) {
-                lowerDynamicNewArrayToVector((DynamicNewArrayNode) n, tool);
-                return true;
+                return lowerDynamicNewArrayToVector((DynamicNewArrayNode) n, tool);
             }
         }
         if (n instanceof LoadVectorNode) {
@@ -1616,14 +1614,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
     }
 
     @SuppressWarnings("try")
-    protected void lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool) {
-        lowerNewArrayToVector(newArray, tool, getStorageKind(newArray.elementType()));
+    protected boolean lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool) {
+        return lowerNewArrayToVector(newArray, tool, getStorageKind(newArray.elementType()));
     }
 
     // Lower the array with vectorized initialization. The element kind must be determined by the
     // caller: SVM has special treatment for Word types.
     @SuppressWarnings("try")
-    protected void lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool, JavaKind elementKind) {
+    protected boolean lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool, JavaKind elementKind) {
+        VectorArchitecture vectorArch = getVectorArchitecture();
+        if (elementKind == JavaKind.Object && (vectorArch == null || !vectorArch.supportsObjectVectorization())) {
+            return false;
+        }
         try (DebugCloseable position = newArray.withNodeSourcePosition()) {
             StructuredGraph graph = newArray.graph();
             ResolvedJavaType elementType = newArray.elementType();
@@ -1638,11 +1640,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                             newArray.stateBefore()));
             loweredNewArray.setEmitMemoryBarrier(newArray.emitMemoryBarrier());
             graph.replaceFixedWithFixed(newArray, loweredNewArray);
+            return true;
         }
     }
 
     @SuppressWarnings("try")
-    protected void lowerDynamicNewArrayToVector(DynamicNewArrayNode newArray, LoweringTool tool) {
+    protected boolean lowerDynamicNewArrayToVector(DynamicNewArrayNode newArray, LoweringTool tool) {
+        VectorArchitecture vectorArch = getVectorArchitecture();
+        if (newArray.getKnownElementKind() == JavaKind.Object && (vectorArch == null || !vectorArch.supportsObjectVectorization())) {
+            return false;
+        }
         try (DebugCloseable position = newArray.withNodeSourcePosition()) {
             StructuredGraph graph = newArray.graph();
             // use the expected "shape" for the length
@@ -1661,6 +1668,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                                 newArray.stateBefore()));
             }
             graph.replaceFixedWithFixed(newArray, loweredNewArray);
+            return true;
         }
     }
 
