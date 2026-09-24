@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.guest.staging.c.function;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 /**
- * Isolates require that all function pointers to image methods are in immutable classes. This class
- * can be used as an immutable indirection for mutable classes that need to store a function
- * pointer.
+ * Annotation for an invocation method defined in a sub-interface of {@link CFunctionPointer}. The
+ * method is called with the internal calling convention for Java methods, which is subject to
+ * change at any time.
  */
-public class FunctionPointerHolder {
-
-    public final CFunctionPointer functionPointer;
-
-    public FunctionPointerHolder(CFunctionPointer functionPointer) {
-        this.functionPointer = functionPointer;
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+@Platforms(Platform.HOSTED_ONLY.class)
+public @interface InvokeJavaFunctionPointer {
 }
