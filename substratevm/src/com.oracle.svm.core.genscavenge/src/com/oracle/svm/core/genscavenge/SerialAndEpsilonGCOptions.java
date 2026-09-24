@@ -77,7 +77,7 @@ public final class SerialAndEpsilonGCOptions {
     public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
 
     @Option(help = "Print information about TLABs. Printed when The TLABs are retired before a GC, and during the resizing of the TLABs. Serial and epsilon GC only.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> PrintTLAB = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
+    public static final RuntimeOptionKey<Boolean> PrintTLAB = new RuntimeOptionKey<>(false, null, SERIAL_OR_EPSILON_GC_ONLY);
 
     @Option(help = "Print information about the metaspace on shutdown. Serial and epsilon GC only.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> PrintMetaspace = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
