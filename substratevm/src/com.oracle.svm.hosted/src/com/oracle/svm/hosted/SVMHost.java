@@ -93,7 +93,7 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.guest.staging.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.guest.staging.hub.ReferenceType;
 import com.oracle.svm.guest.staging.hub.HubType;

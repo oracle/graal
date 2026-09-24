@@ -297,7 +297,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         for (int j = 0; j < count; j++) {
             int typeIndex = ClassfileParser.parseAnnotation(stream);
             Symbol<?> annotType = parsed.getConstantPool().utf8At(typeIndex, "annotation type");
-            if (SVMTypes.com_oracle_svm_core_hub_Hybrid.equals(annotType)) {
+            if (SVMTypes.com_oracle_svm_guest_staging_hub_Hybrid.equals(annotType)) {
                 throw new ClassFormatError("Cannot load @Hybrid classes at runtime");
             }
         }
