@@ -97,6 +97,12 @@ public class ShenandoahBarrierSet extends BarrierSet {
     }
 
     @Override
+    public boolean supportsObjectArrayRangeBarriers() {
+        /* GR-54355: Object vectorization is not supported with Shenandoah. */
+        return false;
+    }
+
+    @Override
     public BarrierType postAllocationInitBarrier(BarrierType original) {
         assert original == BarrierType.FIELD || original == BarrierType.ARRAY : "only for write barriers: " + original;
         return BarrierType.POST_INIT_WRITE;

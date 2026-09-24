@@ -234,22 +234,16 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Parallel("UseParallelGC"),
         G1("UseG1GC"),
         Epsilon("UseEpsilonGC"),
-        // GR-54355 ZGC and Shenandoah require extra work to support vectorization
-        Z("UseZGC", false),
-        Shenandoah("UseShenandoahGC", false);
+        Z("UseZGC"),
+        Shenandoah("UseShenandoahGC");
 
         HotSpotGC(String flag) {
-            this(true, true, true, flagIsSet(flag));
+            this(true, true, flagIsSet(flag));
         }
 
-        HotSpotGC(String flag, boolean supportsVectorization) {
-            this(true, true, supportsVectorization, flagIsSet(flag));
-        }
-
-        HotSpotGC(boolean supported, boolean expectNamePresent, boolean supportsVectorization, Predicate<GraalHotSpotVMConfig> predicate) {
+        HotSpotGC(boolean supported, boolean expectNamePresent, Predicate<GraalHotSpotVMConfig> predicate) {
             this.supported = supported;
             this.expectNamePresent = expectNamePresent;
-            this.supportsVectorization = supportsVectorization;
             this.predicate = predicate;
         }
 
@@ -262,15 +256,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
          * Specifies if this GC is supported by Graal.
          */
         final boolean supported;
-
-        /**
-         * Specifies if this GC supports vectorization of objects.
-         */
-        final boolean supportsVectorization;
-
-        public boolean supportsVectorization() {
-            return supportsVectorization;
-        }
 
         /**
          * Specifies if {@link #name()} is expected to be present in the {@code CollectedHeap::Name}

@@ -70,6 +70,7 @@ public abstract class VectorArchitecture {
      */
     protected final int oopVectorStride;
     protected final boolean useCompressedOops;
+    private final boolean enableObjectVectorization;
     /**
      * A mask stamp corresponding to the size of a vectorizable oop.
      */
@@ -85,17 +86,23 @@ public abstract class VectorArchitecture {
             return false;
         }
         VectorArchitecture that = (VectorArchitecture) o;
-        return oopVectorStride == that.oopVectorStride && useCompressedOops == that.useCompressedOops && Objects.equals(oopMaskStamp, that.oopMaskStamp);
+        return oopVectorStride == that.oopVectorStride && useCompressedOops == that.useCompressedOops && enableObjectVectorization == that.enableObjectVectorization &&
+                        Objects.equals(oopMaskStamp, that.oopMaskStamp);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(oopVectorStride, useCompressedOops, oopMaskStamp);
+        return Objects.hash(oopVectorStride, useCompressedOops, enableObjectVectorization, oopMaskStamp);
     }
 
     protected VectorArchitecture(int oopVectorStride, boolean useCompressedOops) {
+        this(oopVectorStride, useCompressedOops, true);
+    }
+
+    protected VectorArchitecture(int oopVectorStride, boolean useCompressedOops, boolean enableObjectVectorization) {
         this.oopVectorStride = oopVectorStride;
         this.useCompressedOops = useCompressedOops;
+        this.enableObjectVectorization = enableObjectVectorization;
         this.oopMaskStamp = IntegerStamp.create(oopVectorStride * Byte.SIZE, -1, 0);
         this.cachedMaxVectorLength = 0;
     }
@@ -199,7 +206,14 @@ public abstract class VectorArchitecture {
      *         operations on vector of type {@code stamp} in memory
      */
     public boolean isVectorizableObjectStamp(Stamp stamp) {
-        return (useCompressedOops ? stamp instanceof NarrowOopStamp : stamp instanceof ObjectStamp);
+        return enableObjectVectorization && (useCompressedOops ? stamp instanceof NarrowOopStamp : stamp instanceof ObjectStamp);
+    }
+
+    /**
+     * Returns whether high-level vectors may contain object references.
+     */
+    public boolean supportsObjectVectorization() {
+        return enableObjectVectorization;
     }
 
     /**
