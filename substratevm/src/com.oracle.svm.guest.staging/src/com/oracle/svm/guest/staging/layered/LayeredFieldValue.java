@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layered;
+package com.oracle.svm.guest.staging.layered;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 
 /**
  * Denotes a field which requires a {@link LayeredFieldValueTransformer} when building layered
