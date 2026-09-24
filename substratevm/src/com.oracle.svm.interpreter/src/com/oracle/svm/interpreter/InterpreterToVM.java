@@ -737,6 +737,14 @@ public final class InterpreterToVM {
         InterpreterUtil.assertion(field.getOffset() >= 0, "Bad field offset");
     }
 
+    @AlwaysInline("Fold the secondary type-check outlining policy at the call site")
+    public static boolean isAssignableFrom(DynamicHub typeHub, DynamicHub instanceHub, boolean outlineSecondary) {
+        if (outlineSecondary) {
+            return ClassIsAssignableFromNode.isAssignableFrom(typeHub, instanceHub, true);
+        }
+        return ClassIsAssignableFromNode.isAssignableFrom(typeHub, instanceHub, false);
+    }
+
     /**
      * Subtyping among Array Types The following rules define the direct supertype relation among
      * array types:

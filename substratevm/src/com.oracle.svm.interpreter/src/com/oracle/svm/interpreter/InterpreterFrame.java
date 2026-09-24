@@ -102,7 +102,7 @@ public final class InterpreterFrame {
     private int lockCount;
     private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
 
-    private static final Object[] EMPTY = new Object[0];
+    static final Object[] EMPTY = new Object[0];
 
     // region Frame lifecycle and arguments
 
