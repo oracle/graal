@@ -57,7 +57,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
@@ -165,16 +164,16 @@ public final class Shape {
      */
     private volatile Object predecessorShape;
 
-    private static final AtomicReferenceFieldUpdater<Shape, Object> TRANSITION_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, Object.class, "transitionMap");
-    private static final AtomicReferenceFieldUpdater<Shape, AbstractAssumption> LEAF_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Shape.class, AbstractAssumption.class,
-                    "leafAssumption");
-    private static final AtomicReferenceFieldUpdater<Shape, PropertyAssumptions> PROPERTY_ASSUMPTIONS_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(Shape.class, PropertyAssumptions.class, "sharedPropertyAssumptions");
-
+    private static final VarHandle TRANSITION_MAP_UPDATER;
+    private static final VarHandle LEAF_ASSUMPTION_UPDATER;
+    private static final VarHandle PROPERTY_ASSUMPTIONS_UPDATER;
     private static final VarHandle PREDECESSOR_SHAPE_UPDATER;
     static {
         var lookup = MethodHandles.lookup();
         try {
+            TRANSITION_MAP_UPDATER = lookup.findVarHandle(Shape.class, "transitionMap", Object.class);
+            LEAF_ASSUMPTION_UPDATER = lookup.findVarHandle(Shape.class, "leafAssumption", AbstractAssumption.class);
+            PROPERTY_ASSUMPTIONS_UPDATER = lookup.findVarHandle(Shape.class, "sharedPropertyAssumptions", PropertyAssumptions.class);
             PREDECESSOR_SHAPE_UPDATER = lookup.findVarHandle(Shape.class, "predecessorShape", Object.class);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new ExceptionInInitializerError(e);
@@ -875,7 +874,7 @@ public final class Shape {
             AbstractAssumption prev;
             AbstractAssumption next;
             do {
-                prev = LEAF_ASSUMPTION_UPDATER.get(this);
+                prev = (AbstractAssumption) LEAF_ASSUMPTION_UPDATER.getVolatile(this);
                 if (prev != null) {
                     return prev;
                 } else {
@@ -1423,7 +1422,7 @@ public final class Shape {
         Object prev;
         Object next;
         do {
-            prev = TRANSITION_MAP_UPDATER.get(this);
+            prev = TRANSITION_MAP_UPDATER.getVolatile(this);
             if (prev == null) {
                 invalidateLeafAssumption();
                 next = newSingleEntry(transition, successor);
@@ -1627,7 +1626,7 @@ public final class Shape {
     void invalidateLeafAssumption() {
         AbstractAssumption prev;
         do {
-            prev = LEAF_ASSUMPTION_UPDATER.get(this);
+            prev = (AbstractAssumption) LEAF_ASSUMPTION_UPDATER.getVolatile(this);
             if (prev == Assumption.NEVER_VALID) {
                 break;
             }

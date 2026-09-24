@@ -42,8 +42,9 @@ package com.oracle.truffle.api.object;
 
 import static com.oracle.truffle.api.object.ObjectStorageOptions.UseVarHandle;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -179,8 +180,14 @@ abstract class ExtLocations {
 
         @CompilationFinal volatile TypeAssumption typeAssumption;
 
-        private static final AtomicReferenceFieldUpdater<ObjectLocation, TypeAssumption> TYPE_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
-                        ObjectLocation.class, TypeAssumption.class, "typeAssumption");
+        private static final VarHandle TYPE_ASSUMPTION_UPDATER;
+        static {
+            try {
+                TYPE_ASSUMPTION_UPDATER = MethodHandles.lookup().findVarHandle(ObjectLocation.class, "typeAssumption", TypeAssumption.class);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
 
         static final boolean LAZY_TYPE_ASSUMPTION = false;
 
