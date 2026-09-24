@@ -134,7 +134,7 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.reflect.CremaSerializationConstructorAccessor;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
-import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
+import com.oracle.svm.guest.staging.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
