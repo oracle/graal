@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.test;
 
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -32,6 +33,8 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.extended.MonitorExit;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
@@ -48,6 +51,26 @@ public class FloatingReadTest extends GraphScheduleTest {
 
     public static void changeField(Container c) {
         c.a = 0xcafebabe;
+    }
+
+    public static int readField(Container c) {
+        return c.a;
+    }
+
+    @Test
+    public void testFixedReadsRetainMemoryDependencies() {
+        StructuredGraph graph = parseEager(getResolvedJavaMethod("readField"), AllowAssumptions.NO,
+                        new OptionValues(getInitialOptions(), GraalOptions.OptFloatingReads, false));
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new HighTierLoweringPhase(canonicalizer).apply(graph, getProviders());
+        new FloatingReadPhase(canonicalizer).apply(graph, getProviders());
+        Assert.assertEquals(0, graph.getNodes().filter(FloatingReadNode.class).count());
+        Assert.assertTrue(graph.getNodes().filter(ReadNode.class).isNotEmpty());
+        for (ReadNode read : graph.getNodes().filter(ReadNode.class)) {
+            if (read.getLocationIdentity().isMutable()) {
+                Assert.assertNotNull(read.getLastLocationAccess());
+            }
+        }
     }
 
     public static synchronized int test1Snippet() {
