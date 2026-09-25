@@ -512,6 +512,9 @@ def svm_gate_body(args, tasks):
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+StrictRuntimeJavaOptions']))
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+ClassForNameRespectsClassLoader', '-H:+StrictRuntimeJavaOptions']))
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+RuntimeClassLoading', '-H:+AllowJRTFileSystem', '-H:+StrictRuntimeJavaOptions']))
+            sqlmoduletest(args.extra_image_builder_arguments)
+            if not mx.is_windows():  # smalljdktest uses the native-image launcher script
+                smalljdktest(args.extra_image_builder_arguments)
 
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
