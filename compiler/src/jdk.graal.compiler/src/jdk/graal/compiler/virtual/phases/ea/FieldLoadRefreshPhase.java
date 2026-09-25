@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.virtual.FieldAliasNode;
 import jdk.graal.compiler.phases.BasePhase;
@@ -86,6 +87,10 @@ public final class FieldLoadRefreshPhase extends BasePhase<CoreProviders> {
         }
         ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeDominators(true).build();
         for (Node call : graph.getNodes().filter(node -> node instanceof Invoke).snapshot()) {
+            // Native calls can require a thread-state transition before heap reads are safe.
+            if (!(((Invoke) call).callTarget() instanceof MethodCallTargetNode)) {
+                continue;
+            }
             FixedWithNextNode position = call instanceof WithExceptionNode withException ? withException.next() : (FixedWithNextNode) call;
             for (FieldAliasNode alias : aliases) {
                 if (dominates(cfg, alias, (FixedNode) call)) {
