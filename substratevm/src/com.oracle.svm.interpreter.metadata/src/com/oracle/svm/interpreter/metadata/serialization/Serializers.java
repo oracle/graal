@@ -51,6 +51,7 @@ import com.oracle.svm.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPoolPrimitiveEntry;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -524,6 +525,13 @@ public final class Serializers {
                         out.writeLong(value.getRawValue());
                     });
 
+    static final ValueSerializer<InterpreterConstantPoolPrimitiveEntry> PRIMITIVE_ENTRY = createSerializer(
+                    (_, in) -> new InterpreterConstantPoolPrimitiveEntry(in.readInt(), in.readLong()),
+                    (_, out, value) -> {
+                        out.writeInt(value.tag());
+                        out.writeLong(value.primitiveValue());
+                    });
+
     // Register this serializer for JavaConstant.NULL_POINTER.getClass().
     static final ValueSerializer<? extends JavaConstant> NULL_CONSTANT = createSerializer(
                     (_, _) -> {
@@ -795,6 +803,7 @@ public final class Serializers {
                     ExceptionHandler.class,
                     ExceptionHandler[].class,
                     PrimitiveConstant.class,
+                    InterpreterConstantPoolPrimitiveEntry.class,
                     JavaConstant.NULL_POINTER.getClass(),
                     MethodType.class,
                     InterpreterConstantPool.class,
@@ -833,6 +842,7 @@ public final class Serializers {
                         .registerSerializer(ExceptionHandler.class, EXCEPTION_HANDLER)
                         .registerSerializer(ExceptionHandler[].class, ofReferenceArray(ExceptionHandler[]::new))
                         .registerSerializer(PrimitiveConstant.class, PRIMITIVE_CONSTANT)
+                        .registerSerializer(InterpreterConstantPoolPrimitiveEntry.class, PRIMITIVE_ENTRY)
                         .registerSerializer(nullConstantClass, NULL_CONSTANT)
                         .registerSerializer(MethodType.class, METHOD_TYPE)
                         .registerSerializer(InterpreterConstantPool.class, CONSTANT_POOL)
