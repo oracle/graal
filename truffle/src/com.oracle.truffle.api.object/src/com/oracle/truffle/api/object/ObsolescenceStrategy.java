@@ -392,7 +392,12 @@ abstract class ObsolescenceStrategy {
     }
 
     private static Shape addPropertyInner(Shape shape, Property property) {
-        AddPropertyTransition addTransition = newAddPropertyTransition(property);
+        return addPropertyInner(shape, newAddPropertyTransition(property));
+    }
+
+    private static Shape addPropertyInner(Shape shape, AddPropertyTransition addTransition) {
+        Property property = addTransition.getProperty();
+        assert Objects.equals(addTransition.getLocationOrType(), toLocationOrType(property.getLocation()));
         shape.onPropertyTransition(addTransition);
         Shape cachedShape = shape.queryTransition(addTransition);
         Shape newShape;
@@ -442,14 +447,14 @@ abstract class ObsolescenceStrategy {
     }
 
     private static Shape applyTransition(Shape shape, Transition transition, boolean append) {
-        if (transition instanceof AddPropertyTransition) {
-            Property property = ((AddPropertyTransition) transition).getProperty();
+        if (transition instanceof AddPropertyTransition addTransition) {
             Shape newShape;
             if (append) {
+                Property property = addTransition.getProperty();
                 Property newProperty = property.relocate(shape.allocator().moveLocation(property.getLocation()));
                 newShape = addProperty(shape, newProperty, true);
             } else {
-                newShape = addProperty(shape, property, false);
+                newShape = addPropertyInner(shape, addTransition);
             }
             return newShape;
         } else if (transition instanceof ObjectTypeTransition) {
