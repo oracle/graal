@@ -67,34 +67,50 @@ public final class JfrUnifiedLogging {
 
     /// Writes a JFR system error when the corresponding unified tag set is enabled.
     public static void logJfrSystemError(String message) {
-        if (!HasXlogSupport.get()) {
-            return;
+        if (HasXlogSupport.get() && LogTagSet.jfr_system.isError()) {
+            LogMessage logMessage = LogTagSet.jfr_system.message();
+            try {
+                logMessage.line(LogLevel.ERROR).string(message);
+            } finally {
+                logMessage.close();
+            }
         }
-        LogTagSet.jfr_system.log(LogLevel.ERROR, message);
     }
 
     /// Writes a JFR informational message when the corresponding unified tag set is enabled.
     public static void logJfrInfo(String message) {
-        if (!HasXlogSupport.get()) {
-            return;
+        if (HasXlogSupport.get() && LogTagSet.jfr.isInfo()) {
+            LogMessage logMessage = LogTagSet.jfr.message();
+            try {
+                logMessage.info().string(message);
+            } finally {
+                logMessage.close();
+            }
         }
-        LogTagSet.jfr.log(LogLevel.INFO, message);
     }
 
     /// Writes a JFR warning when the corresponding unified tag set is enabled.
     public static void logJfrWarning(String message) {
-        if (!HasXlogSupport.get()) {
-            return;
+        if (HasXlogSupport.get() && LogTagSet.jfr.isWarning()) {
+            LogMessage logMessage = LogTagSet.jfr.message();
+            try {
+                logMessage.line(LogLevel.WARNING).string(message);
+            } finally {
+                logMessage.close();
+            }
         }
-        LogTagSet.jfr.log(LogLevel.WARNING, message);
     }
 
     /// Writes a JFR setting warning when the corresponding unified tag set is enabled.
     public static void logJfrSettingWarning(String message) {
-        if (!HasXlogSupport.get()) {
-            return;
+        if (HasXlogSupport.get() && LogTagSet.jfr_setting.isWarning()) {
+            LogMessage logMessage = LogTagSet.jfr_setting.message();
+            try {
+                logMessage.line(LogLevel.WARNING).string(message);
+            } finally {
+                logMessage.close();
+            }
         }
-        LogTagSet.jfr_setting.log(LogLevel.WARNING, message);
     }
 
     /// Routes one JFR record to unified logging.
@@ -103,7 +119,15 @@ public final class JfrUnifiedLogging {
             return;
         }
         LogLevel logLevel = LogLevel.forInt(level, verifyLogLevelException);
-        logTagSets[tagSetId].log(logLevel, message);
+        LogTagSet logTag = logTagSets[tagSetId];
+        if (logTag.isLevel(logLevel)) {
+            LogMessage logMessage = logTag.message();
+            try {
+                logMessage.line(logLevel).string(message);
+            } finally {
+                logMessage.close();
+            }
+        }
     }
 
     /// Routes one multiline JFR event to unified logging as a single message.

@@ -379,21 +379,23 @@ public final class LogConfiguration {
 
             initializeAsyncWriter();
             if (logging.isInfo()) {
-                logging.info("Log configuration fully initialized.");
-                for (String desc : AVAILABLE_DESCRIPTIONS) {
-                    logging.info(desc);
-                }
+                try (LogMessage message = logging.message()) {
+                    message.info().string("Log configuration fully initialized.");
+                    for (String desc : AVAILABLE_DESCRIPTIONS) {
+                        message.info().string(desc);
+                    }
 
-                if (logging.isDebug()) {
-                    logging.debug(AVAILABLE_TAG_SETS);
-                }
+                    if (logging.isDebug()) {
+                        message.debug().string(AVAILABLE_TAG_SETS);
+                    }
 
-                logging.info("Log output configuration:");
-                int index = 0;
-                logging.info(describeOutput(index++, stdout));
-                logging.info(describeOutput(index++, stderr));
-                for (LogFileOutput output : OUTPUTS) {
-                    logging.info(describeOutput(index++, output));
+                    message.info().string("Log output configuration:");
+                    int index = 0;
+                    message.info().string(describeOutput(index++, stdout));
+                    message.info().string(describeOutput(index++, stderr));
+                    for (LogFileOutput output : OUTPUTS) {
+                        message.info().string(describeOutput(index++, output));
+                    }
                 }
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.tearDownLogging());
@@ -627,7 +629,7 @@ public final class LogConfiguration {
     /// because the asynchronous queue could not be used without blocking.
     private static void reportSynchronousEnqueuesFromVMOperations() {
         long count = VM_OPERATION_SYNCHRONOUS_ENQUEUE_COUNT.getAndSet(0);
-        if (count != 0 && logging.isDebug()) {
+        if (HasXlogSupport.get() && count != 0 && logging.isDebug()) {
             LogMessage message = logging.message();
             try {
                 message.debug().string("VM operation log messages that used synchronous mode because the asynchronous queue was unavailable: ").unsigned(count);

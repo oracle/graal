@@ -555,11 +555,15 @@ public final class ClassInitializationInfo {
         try {
             boolean traceVerification = HasXlogSupport.get() && LogTagSet.class_init.isInfo() && RuntimeClassLoading.Options.ClassVerification.getValue().needsVerification(hub.getClassLoader());
             if (traceVerification) {
-                LogTagSet.class_init.info("Start class verification for: " + hub.getName());
+                try (LogMessage message = LogTagSet.class_init.message()) {
+                    message.info().string("Start class verification for: ").string(hub.getName());
+                }
             }
             CremaSupport.singleton().prepareAndVerify(hub);
             if (traceVerification) {
-                LogTagSet.class_init.info("End class verification for: " + hub.getName());
+                try (LogMessage message = LogTagSet.class_init.message()) {
+                    message.info().string("End class verification for: ").string(hub.getName());
+                }
             }
         } finally {
             if (Platform.includedIn(NATIVE_ONLY.class)) {
