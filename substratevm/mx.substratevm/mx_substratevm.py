@@ -3201,6 +3201,49 @@ def smalljdktest(args):
     _smalljdktest(args)
 
 
+def _sqlmoduletest(native_image, args=None):
+    """
+    Builds and runs an application module that requires java.sql, with the native-image of the
+    GraalVM. java.sql is a system module that the image builder itself does not require (see
+    `smalljdktest`), so the driver has to add it to the builder's boot layer for the application.
+    """
+    args = [] if args is None else args
+    build_dir = join(svmbuild_dir(), 'sql-module')
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    module_dir = join(build_dir, 'src', 'sqlapp')
+    package_dir = join(module_dir, 'example')
+    mx_util.ensure_dir_exists(package_dir)
+    with open(join(module_dir, 'module-info.java'), 'w') as source:
+        source.write('module sqlapp {\n    requires java.sql;\n}\n')
+    with open(join(package_dir, 'Main.java'), 'w') as source:
+        source.write('package example;\n'
+                     'public class Main {\n'
+                     '    public static void main(String[] args) {\n'
+                     '        System.out.println(java.sql.Date.valueOf("2026-09-24").toLocalDate());\n'
+                     '    }\n'
+                     '}\n')
+    modules_dir = join(build_dir, 'modules')
+    mx_util.ensure_dir_exists(modules_dir)
+    mx.run([join(_vm_home(None), 'bin', mx.exe_suffix('javac')), '-d', join(modules_dir, 'sqlapp'),
+            join(module_dir, 'module-info.java'), join(package_dir, 'Main.java')])
+
+    image = join(build_dir, 'sqlapp')
+    native_image(['--module-path', modules_dir, '--module', 'sqlapp/example.Main', '-o', image] + args)
+    output = mx.OutputCapture()
+    mx.run([image], out=output)
+    if output.data.strip() != '2026-09-24':
+        mx.abort('Unexpected output of the image built from the module that requires java.sql: ' + output.data)
+
+
+@mx.command(suite.name, 'sqlmoduletest', 'Builds an image from an application module that requires java.sql')
+def sqlmoduletest(args):
+    """
+    builds and runs an image from an application module that requires java.sql.
+    """
+    native_image_context_run(_sqlmoduletest, args, hosted_assertions=False) if False else native_image_context_run(_sqlmoduletest, args)
+
+
 @mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
 def java_agent_test(args):
     def build_and_run(args, binary_path, native_image, agents, agents_arg):
