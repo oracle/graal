@@ -42,6 +42,7 @@ package org.graalvm.wasm.api;
 
 import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.NO_MEMORY_MAXIMUM;
 
@@ -122,6 +123,7 @@ public class WebAssembly extends Dictionary {
         addMember("mem_alloc", new Executable(WebAssembly::memAlloc));
         addMember("mem_grow", new Executable(WebAssembly::memGrow));
         addMember("mem_max", new Executable(WebAssembly::memMax));
+        addMember("mem_has_address_type_64", new Executable(WebAssembly::memHasAddressType64));
         addMember("mem_set_grow_callback", new Executable(WebAssembly::memSetGrowCallback));
         addMember("mem_as_byte_buffer", new Executable(WebAssembly::memAsByteBuffer));
         addMember("mem_set_notify_callback", new Executable(WebAssembly::memSetNotifyCallback));
@@ -716,11 +718,12 @@ public class WebAssembly extends Dictionary {
     }
 
     private static String memoryTypeToInteropString(WasmModule module, int memoryIndex) {
+        String addressType = module.memoryHasIndexType64(memoryIndex) ? "i64" : "i32";
         String shared = module.memoryIsShared(memoryIndex) ? "shared" : "single";
         if (module.memoryHasMaximumSize(memoryIndex)) {
-            return shared + " " + Long.toUnsignedString(module.memoryMaximumSize(memoryIndex));
+            return addressType + " " + shared + " " + Long.toUnsignedString(module.memoryMaximumSize(memoryIndex));
         }
-        return shared;
+        return addressType + " " + shared;
     }
 
     private static String globalValueTypeToInteropString(WasmModule module, int globalIndex) {
@@ -764,23 +767,43 @@ public class WebAssembly extends Dictionary {
         } else {
             shared = false;
         }
-        return memAlloc(initialSize, maximumSize, shared);
+        final boolean addressType64;
+        if (args.length > 3) {
+            try {
+                addressType64 = lib.asBoolean(args[3]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Memory address type flag must be convertible to boolean");
+            }
+        } else {
+            addressType64 = false;
+        }
+        return memAlloc(initialSize, maximumSize, shared, addressType64);
     }
 
     public static WasmMemory memAlloc(long initial, long maximum, boolean shared) {
+        return memAlloc(initial, maximum, shared, false);
+    }
+
+    public static WasmMemory memAlloc(long initial, long maximum, boolean shared, boolean addressType64) {
         final WasmContext context = WasmContext.get(null);
+        if (addressType64 && !context.getContextOptions().supportMemory64()) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "64-bit indexed memories require wasm.Memory64");
+        }
         boolean useUnsafeMemory = context.getContextOptions().useUnsafeMemory();
         boolean directByteBufferMemoryAccess = context.getContextOptions().directByteBufferMemoryAccess();
         if (shared && maximum == NO_MEMORY_MAXIMUM) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Shared memory must have a maximum size");
         }
-        final long effectiveMaximum = maximum == NO_MEMORY_MAXIMUM ? MAX_MEMORY_DECLARATION_SIZE : maximum;
+        final long declarationLimit = addressType64 ? MAX_MEMORY_64_DECLARATION_SIZE : MAX_MEMORY_DECLARATION_SIZE;
+        final long effectiveMaximum = maximum == NO_MEMORY_MAXIMUM ? declarationLimit : maximum;
         if (Long.compareUnsigned(initial, effectiveMaximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds max memory size");
+        } else if (Long.compareUnsigned(effectiveMaximum, declarationLimit) > 0) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Max memory size exceeds declaration limit");
         } else if (Long.compareUnsigned(initial, WasmMemoryFactory.getMaximumAllowedSize(shared, useUnsafeMemory, directByteBufferMemoryAccess)) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds implementation limit");
         }
-        return WasmMemoryFactory.createMemory(initial, maximum, false, shared, useUnsafeMemory, directByteBufferMemoryAccess, context);
+        return WasmMemoryFactory.createMemory(initial, maximum, addressType64, shared, useUnsafeMemory, directByteBufferMemoryAccess, context);
     }
 
     private static Object memGrow(Object[] args) {
@@ -788,19 +811,32 @@ public class WebAssembly extends Dictionary {
         if (!(args[0] instanceof WasmMemory memory)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
         }
-        if (!(args[1] instanceof Integer)) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be integer");
-        }
-        int delta = (Integer) args[1];
+        final long delta = asMemoryAddress(args[1], memory.hasIndexType64());
         return memGrow(memory, delta);
     }
 
-    public static long memGrow(WasmMemory memory, int delta) {
+    private static long asMemoryAddress(Object value, boolean addressType64) {
+        final long address;
+        try {
+            address = InteropLibrary.getUncached().asLong(value);
+        } catch (UnsupportedMessageException e) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Memory address must be convertible to a 64-bit integer");
+        }
+        if (!addressType64 && (address < 0 || address > 0xFFFF_FFFFL)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "32-bit memory address must be a non-negative unsigned 32-bit integer");
+        }
+        return address;
+    }
+
+    public static long memGrow(WasmMemory memory, long delta) {
         WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
         final long previousSize = memoryLib.grow(memory, delta);
         if (previousSize == -1) {
-            final long targetSize = Math.addExact(memoryLib.size(memory), delta);
-            final boolean exceedsDeclaredMaximum = memory.hasDeclaredMaxSize() && Long.compareUnsigned(targetSize, memory.declaredMaxSize()) > 0;
+            boolean exceedsDeclaredMaximum = false;
+            if (memory.hasDeclaredMaxSize()) {
+                final long remainingSize = memory.declaredMaxSize() - memoryLib.size(memory);
+                exceedsDeclaredMaximum = Long.compareUnsigned(delta, remainingSize) > 0;
+            }
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, exceedsDeclaredMaximum ? "Cannot grow memory above max limit" : "Cannot grow memory above implementation limit");
         }
         return previousSize;
@@ -816,6 +852,14 @@ public class WebAssembly extends Dictionary {
 
     public static long memMax(WasmMemory memory) {
         return memory.declaredMaxSize();
+    }
+
+    private static Object memHasAddressType64(Object[] args) {
+        checkArgumentCount(args, 1);
+        if (!(args[0] instanceof WasmMemory memory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        return memory.hasIndexType64();
     }
 
     private static Object memSetGrowCallback(Object[] args) {
