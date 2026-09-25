@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -155,12 +155,13 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
             }
             id = sources.size() + 1;
             sourceIDs.put(source, id);
-            dapSource = from(source, truffleContext);
-            sources.add(new DAPSourceWrapper(dapSource, source));
-            String path = dapSource.getPath();
-            if (path != null) {
-                sourcesByPath.put(path, source);
-                task = toRunOnLoad.remove(path);
+            Pair<String, Boolean> pathSrcRef = getPath(source, truffleContext);
+            String runtimePath = pathSrcRef.getLeft();
+            dapSource = from(source, runtimePath, useSourceReference(runtimePath, pathSrcRef.getRight()));
+            sources.add(new DAPSourceWrapper(dapSource, source, runtimePath, pathSrcRef.getRight()));
+            if (runtimePath != null) {
+                sourcesByPath.put(runtimePath, source);
+                task = toRunOnLoad.remove(runtimePath);
             }
         }
         DebugProtocolClient client = context.getClient();
@@ -173,21 +174,32 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
         return dapSource;
     }
 
-    private com.oracle.truffle.tools.dap.types.Source from(Source source, TruffleContext truffleContext) {
-        if (source == null) {
-            return null;
-        }
+    private com.oracle.truffle.tools.dap.types.Source from(Source source, String runtimePath, boolean sourceReference) {
         com.oracle.truffle.tools.dap.types.Source src = com.oracle.truffle.tools.dap.types.Source.create().setName(source.getName());
-        Pair<String, Boolean> pathSrcRef = getPath(source, truffleContext);
-        String path = pathSrcRef.getLeft();
-        if (path != null) {
-            src.setPath(path);
+        if (runtimePath != null) {
+            src.setPath(sourceReference ? runtimePath : context.runtimeToClientPath(runtimePath));
         }
-        if (pathSrcRef.getRight()) {
+        if (sourceReference) {
             assert Thread.holdsLock(sourcesLock);
             src.setSourceReference(sourceIDs.get(source));
         }
         return src;
+    }
+
+    /** Refresh sources that may have been cached before launch or attach supplied mappings. */
+    void refreshClientPaths() {
+        synchronized (sourcesLock) {
+            for (DAPSourceWrapper source : sources) {
+                boolean sourceReference = useSourceReference(source.runtimePath, source.defaultSourceReference);
+                // Recreate the descriptor: optional JSON setters ignore null instead of removing
+                // an existing sourceReference.
+                source.dapSource = from(source.truffleSource, source.runtimePath, sourceReference);
+            }
+        }
+    }
+
+    private boolean useSourceReference(String runtimePath, boolean defaultSourceReference) {
+        return context.hasPathMappings() ? !context.isRuntimePathMapped(runtimePath) : defaultSourceReference;
     }
 
     private Pair<String, Boolean> getPath(Source source, TruffleContext truffleContext) {
@@ -245,12 +257,16 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
 
     private static final class DAPSourceWrapper {
 
-        final com.oracle.truffle.tools.dap.types.Source dapSource;
+        com.oracle.truffle.tools.dap.types.Source dapSource;
         final Source truffleSource;
+        final String runtimePath;
+        final boolean defaultSourceReference;
 
-        DAPSourceWrapper(com.oracle.truffle.tools.dap.types.Source dapSource, Source truffleSource) {
+        DAPSourceWrapper(com.oracle.truffle.tools.dap.types.Source dapSource, Source truffleSource, String runtimePath, boolean defaultSourceReference) {
             this.dapSource = dapSource;
             this.truffleSource = truffleSource;
+            this.runtimePath = runtimePath;
+            this.defaultSourceReference = defaultSourceReference;
         }
 
     }
