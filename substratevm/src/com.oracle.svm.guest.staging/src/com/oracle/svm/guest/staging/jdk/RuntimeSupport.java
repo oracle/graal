@@ -38,6 +38,7 @@ import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
+import com.oracle.svm.shared.imagelayer.LayeredGuestFoldResolver;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -73,7 +74,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     public RuntimeSupport() {
     }
 
-    @GuestFold
+    @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
     public static RuntimeSupport getRuntimeSupport() {
         return ImageSingletons.lookup(RuntimeSupport.class);
     }
