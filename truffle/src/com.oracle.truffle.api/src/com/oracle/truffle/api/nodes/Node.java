@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -452,7 +452,13 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Returns properties of this node interesting for debugging and can be overwritten by
-     * subclasses to add their own custom properties.
+     * subclasses to add their own custom properties. This method may be called on a compiler thread
+     * without an entered guest context. Implementations must not execute guest code or rely on a
+     * guest context being entered.
+     * <p>
+     * Debug property values should be strings, boxed primitive values, classes, or enums. Other
+     * values may be represented using an opaque identity string; their {@link Object#toString()}
+     * method is not invoked implicitly.
      *
      * @return the properties as a key/value hash map
      * @since 0.8 or earlier

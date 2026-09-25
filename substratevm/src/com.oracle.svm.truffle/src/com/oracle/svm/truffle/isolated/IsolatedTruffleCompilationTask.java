@@ -27,6 +27,7 @@ package com.oracle.svm.truffle.isolated;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -204,7 +205,7 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
     private static void writeDebugMapValue(BinaryOutput out, Object object) {
         Object useValue = object;
         if (!BinaryOutput.isTypedValue(useValue)) {
-            useValue = object.toString();
+            useValue = Objects.toIdentityString(object);
         }
         out.writeTypedValue(useValue);
     }
