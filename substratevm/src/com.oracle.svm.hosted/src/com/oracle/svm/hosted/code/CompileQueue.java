@@ -1319,8 +1319,8 @@ public class CompileQueue {
     protected OptionValues getCustomizedOptions(HostedMethod method, DebugContext debug) {
         OptionValues customizedOptions = debug.getOptions();
         if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method)) {
-            // Keep handler reads fixed to avoid extending live ranges and increasing register pressure.
-            customizedOptions = new OptionValues(customizedOptions, GraalOptions.OptFloatingReads, false);
+            // Keep handler reads fixed and branch-local to avoid increasing register pressure.
+            customizedOptions = new OptionValues(customizedOptions, GraalOptions.OptFloatingReads, false, GraalOptions.OptDeduplicateReadsAcrossBranches, false);
         }
         if (omitPriorityInliningTuning()) {
             return customizedOptions;

@@ -136,6 +136,12 @@ final class InterpreterOperandStack {
         top++;
     }
 
+    /** Replaces the top operand with a reference without changing the stack height. */
+    @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
+    void replaceTopObject(InterpreterFrame frame, Object value) {
+        frame.setReference(top, -1, value);
+    }
+
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     void pushReturnAddress(InterpreterFrame frame, int targetBCI) {
         Object value = ReturnAddress.create(targetBCI);

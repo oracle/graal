@@ -130,6 +130,14 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return uncheckedCachedEntryAt(cpi);
     }
 
+    /**
+     * Returns the backing cache array, not a copy. Runtime constant-pool resolution updates entries
+     * in this same array, so callers retaining it can read subsequently resolved entries.
+     */
+    public Object[] rawCachedEntries() {
+        return cachedEntries;
+    }
+
     public int uncheckedIntAt(long cpi) {
         Object entry = uncheckedCachedEntryAt(cpi);
         assert entry == null || entry instanceof PrimitiveConstant;
