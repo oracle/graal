@@ -153,6 +153,14 @@ public final class YoungGeneration extends Generation {
         }
     }
 
+    void clean(boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
+        getEden().clean(cleanUnusedMemory, cleanFillerObjectMemory);
+        for (int i = 0; i < maxSurvivorSpaces; i++) {
+            getSurvivorFromSpaceAt(i).clean(cleanUnusedMemory, cleanFillerObjectMemory);
+            getSurvivorToSpaceAt(i).clean(cleanUnusedMemory, cleanFillerObjectMemory);
+        }
+    }
+
     void swapSpaces() {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorFromSpaceAt(i).isEmpty() : "Survivor fromSpace should be empty.";

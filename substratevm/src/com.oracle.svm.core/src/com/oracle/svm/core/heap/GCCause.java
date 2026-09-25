@@ -68,6 +68,8 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause DiagnosticCommand = new GCCause("Diagnostic Command", 6, true);
     @DuplicatedInNativeCode public static final GCCause WhiteBoxTestYoungGC = new GCCause("WhiteBox Initiated Young GC", 7, false);
     @DuplicatedInNativeCode public static final GCCause WhiteBoxTestFullGC = new GCCause("WhiteBox Initiated Full GC", 8, true);
+    @DuplicatedInNativeCode public static final GCCause RuntimeStateTrimYoungGC = new GCCause("Runtime-State Trim Young GC", 9, false);
+    @DuplicatedInNativeCode public static final GCCause RuntimeStateTrimFullGC = new GCCause("Runtime-State Trim Full GC", 10, true);
 
     private final int id;
     private final String name;
@@ -175,6 +177,8 @@ class GCCauseFeature implements InternalFeature {
                 support.installGCCause(GCCause.DiagnosticCommand);
                 support.installGCCause(GCCause.WhiteBoxTestYoungGC);
                 support.installGCCause(GCCause.WhiteBoxTestFullGC);
+                support.installGCCause(GCCause.RuntimeStateTrimYoungGC);
+                support.installGCCause(GCCause.RuntimeStateTrimFullGC);
 
                 var gcCauseList = GCCause.getGCCauses();
                 idToGCCauseName = (idx) -> gcCauseList.get(idx).getName();

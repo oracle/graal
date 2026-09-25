@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig.Mode;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -138,6 +139,15 @@ public abstract class Heap {
 
     /** Reset the heap to the normal execution state. */
     public abstract void endSafepoint();
+
+    /** Returns whether this heap supports the selected runtime-state trim mode. */
+    public abstract boolean isRuntimeStateTrimSupported(Mode mode);
+
+    /**
+     * Performs the garbage collection and heap cleanup required by the selected runtime-state trim
+     * mode.
+     */
+    public abstract void trimRuntimeState(Mode mode);
 
     /** Returns the alignment in bytes that the heap base must adhere to at runtime. */
     @Fold

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,16 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.impl;
+package org.graalvm.nativeimage;
 
-import org.graalvm.nativeimage.RuntimeStateTrimConfig;
+import java.util.Objects;
 
-public interface VMRuntimeSupport {
+/**
+ * Thrown when a runtime-state trim callback reports a nonzero status code.
+ *
+ * @since 25.5
+ */
+public final class RuntimeStateTrimCallbackException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
 
-    void initialize();
+    /** Identifies the callback that reported the failure. */
+    public enum Phase {
+        /** The callback invoked before runtime-state trimming. */
+        BEFORE,
+        /** The callback invoked after runtime-state trimming. */
+        AFTER
+    }
 
-    void shutdown();
+    private final Phase phase;
+    private final int statusCode;
 
-    void trimRuntimeState(RuntimeStateTrimConfig config);
+    /**
+     * Creates an exception for a callback failure.
+     *
+     * @param phase the callback that reported the failure
+     * @param statusCode the nonzero status code returned by the callback
+     * @throws IllegalArgumentException if {@code statusCode} is zero
+     */
+    public RuntimeStateTrimCallbackException(Phase phase, int statusCode) {
+        super(createMessage(phase, statusCode));
+        this.phase = phase;
+        this.statusCode = statusCode;
+    }
 
+    /** Returns the callback that reported the failure. */
+    public Phase phase() {
+        return phase;
+    }
+
+    /** Returns the nonzero status code returned by the callback. */
+    public int statusCode() {
+        return statusCode;
+    }
+
+    private static String createMessage(Phase phase, int statusCode) {
+        Objects.requireNonNull(phase, "Phase must be non null");
+        if (statusCode == 0) {
+            throw new IllegalArgumentException("Status code must be nonzero");
+        }
+        return "The " + phase + " runtime-state trim callback failed with status code " + statusCode + ".";
+    }
 }

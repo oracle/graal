@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -86,8 +87,8 @@ final class HeapChunkProvider {
         if (result.isNull()) {
             /* Unused list was empty, need to allocate memory. */
             result = (AlignedHeader) ChunkBasedCommittedMemoryProvider.get().allocateAlignedChunk(chunkSize, HeapParameters.getAlignedHeapChunkAlignment());
-            AlignedHeapChunk.initialize(result, chunkSize);
         }
+        AlignedHeapChunk.initialize(result, chunkSize);
         assert HeapChunk.getTopOffset(result).equal(AlignedHeapChunk.getObjectsStartOffset());
         assert HeapChunk.getSize(result).equal(chunkSize);
 
@@ -207,7 +208,7 @@ final class HeapChunkProvider {
     }
 
     private void freeUnusedAlignedChunksAtSafepoint(UnsignedWord count) {
-        assert VMOperation.isGCInProgress();
+        assert VMOperation.isInProgressAtSafepoint();
         if (count.equal(0)) {
             return;
         }
@@ -222,6 +223,37 @@ final class HeapChunkProvider {
         }
         unusedAlignedChunks.set(chunk);
         numUnusedAlignedChunks.subtractAndGet(released);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void cleanUnusedAlignedChunks() {
+        assert VMOperation.isInProgressAtSafepoint();
+
+        UnsignedWord chunkSize = HeapParameters.getAlignedHeapChunkSize();
+        UnsignedWord count = numUnusedAlignedChunks.get();
+        AlignedHeader chunk = unusedAlignedChunks.get();
+        UnsignedWord zeroed = Word.zero();
+        while (chunk.isNonNull() && zeroed.belowThan(count)) {
+            AlignedHeader next = HeapChunk.getNext(chunk);
+            Pointer start = HeapChunk.asPointer(chunk);
+            Pointer end = HeapChunk.getEndPointer(chunk);
+            UnmanagedMemoryUtil.fill(start, end.subtract(start), (byte) 0);
+            /*
+             * Restore the fields that do not generally have valid zero values: top and end describe
+             * an empty chunk for diagnostics, and next preserves the free-list linkage. All other
+             * header fields have valid zero values while the chunk remains unused.
+             */
+            HeapChunk.setEndOffset(chunk, chunkSize);
+            HeapChunk.setTopPointer(chunk, AlignedHeapChunk.getObjectsStart(chunk));
+            HeapChunk.setNext(chunk, next);
+            chunk = next;
+            zeroed = zeroed.add(1);
+        }
+    }
+
+    void freeUnusedAlignedChunks() {
+        VMOperation.guaranteeInProgressAtSafepoint("HeapChunkProvider.freeUnusedAlignedChunks");
+        freeUnusedAlignedChunksAtSafepoint(numUnusedAlignedChunks.get());
     }
 
     /** Acquire an UnalignedHeapChunk from the operating system. */

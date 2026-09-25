@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig.Mode;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -455,6 +456,18 @@ public final class G1Heap extends Heap {
     @Override
     public void endSafepoint() {
         G1Library.endSafepoint();
+    }
+
+    @Override
+    public boolean isRuntimeStateTrimSupported(Mode mode) {
+        return mode == Mode.LATENCY;
+    }
+
+    @Override
+    public void trimRuntimeState(Mode mode) {
+        // [GR-77514] Implement additional runtime-state trim modes.
+        assert mode == Mode.LATENCY;
+        gc.collect(GCCause.RuntimeStateTrimYoungGC);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

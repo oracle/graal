@@ -27,6 +27,7 @@ package com.oracle.svm.guest.staging;
 import java.io.PrintStream;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.log.Log;
@@ -251,4 +252,13 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when runtime option parsing fully moves to guest/staging.
      */
     void endOfParsing();
+
+    /**
+     * Delegates to
+     * {@code com.oracle.svm.core.RuntimeStateTrimSupport.trimRuntimeState(config)}.
+     * <p>
+     * Remove this method when {@code com.oracle.svm.core.RuntimeStateTrimSupport} moves
+     * to guest/staging.
+     */
+    void trimRuntimeState(RuntimeStateTrimConfig config);
 }

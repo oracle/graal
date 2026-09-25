@@ -28,8 +28,10 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
 
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
@@ -47,6 +49,11 @@ public class FillerObjectUtil {
     private static final Class<?> ARRAY_CLASS = FillerArray.class;
     private static final JavaKind ARRAY_ELEMENT_KIND = JavaKind.Int;
     private static final int ARRAY_ELEMENT_SIZE = ARRAY_ELEMENT_KIND.getByteCount();
+
+    @Fold
+    static int instanceHeaderSize() {
+        return ObjectLayout.singleton().getFirstFieldOffset();
+    }
 
     @Fold
     static int instanceMinSize() {
@@ -73,5 +80,27 @@ public class FillerObjectUtil {
             FormatObjectNode.formatObject(p, FillerObject.class, rememberedSet, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
         }
         assert LayoutEncoding.getSizeFromObjectInGC(p.toObject()).equal(size);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean isFillerObject(Object object) {
+        Class<?> clazz = object.getClass();
+        return clazz == ARRAY_CLASS || clazz == FillerObject.class;
+    }
+
+    /** Zeros the non-header memory of a filler object without changing its array length. */
+    @Uninterruptible(reason = "Uses raw pointers to access filler objects.")
+    static void cleanFillerObjectMemory(Object object) {
+        int contentOffset;
+        if (object.getClass() == ARRAY_CLASS) {
+            contentOffset = arrayBaseOffset();
+        } else {
+            assert object.getClass() == FillerObject.class;
+            contentOffset = instanceHeaderSize();
+        }
+
+        Pointer pointer = Word.objectToUntrackedPointer(object);
+        UnsignedWord size = LayoutEncoding.getSizeFromObjectInlineInGC(object);
+        UnmanagedMemoryUtil.fill(pointer.add(contentOffset), size.subtract(contentOffset), (byte) 0);
     }
 }

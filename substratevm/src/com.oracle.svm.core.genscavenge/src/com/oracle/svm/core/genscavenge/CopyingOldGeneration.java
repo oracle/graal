@@ -115,6 +115,12 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
+    void clean(boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
+        getFromSpace().clean(cleanUnusedMemory, cleanFillerObjectMemory);
+        getToSpace().clean(cleanUnusedMemory, cleanFillerObjectMemory);
+    }
+
+    @Override
     @Uninterruptible(reason = CORE_GC_CODE)
     void beginPromotion(boolean completeCollection) {
         if (!completeCollection) {
