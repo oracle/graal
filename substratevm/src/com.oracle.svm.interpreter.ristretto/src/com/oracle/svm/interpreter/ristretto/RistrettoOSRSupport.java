@@ -36,10 +36,10 @@ import com.oracle.svm.interpreter.SemanticJavaException;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
-import com.oracle.svm.interpreter.ristretto.meta.RistrettoOSRBackedgeState;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationManager;
 import com.oracle.svm.interpreter.ristretto.profile.RistrettoCompilationRequest;
-import com.oracle.svm.interpreter.ristretto.profile.RistrettoProfileSupport;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.VMError;
 
 /**
@@ -77,25 +77,39 @@ public final class RistrettoOSRSupport {
      * Checks whether the current backward branch should enter OSR-compiled Ristretto code.
      *
      * <pre>
-     * if OSR is disabled or the operand stack is not empty:
-     *     stay in the interpreter
-     * count = methodProfile.profileOSRBackedge(targetBCI)
-     * entry = ristrettoMethod.osrBackedgeState(targetBCI)
-     * if count crossed threshold:
-     *     submit one OSR compile for targetBCI
-     * every ~1024 later backedges while compilation is pending:
+     * increment and check the OSR backedge counter for targetBCI
+     * if an OSR attempt is due:
+     *     if the operand stack is not empty:
+     *         stay in the interpreter
+     *     if count exceeds the current threshold:
+     *         submit one OSR compile for targetBCI if necessary
      *     poll installed code
-     * if installed code exists:
-     *     leave the interpreter through the compiled entry point
+     *     if installed code exists:
+     *         leave the interpreter through the compiled entry point
      * </pre>
      *
      * The per-target state is precomputed from the method bytecodes in {@link RistrettoMethod}, so the
      * hot interpreter path does not allocate or hash while executing a loop backedge.
+     * This method returns normally when execution should remain interpreted. If it enters compiled
+     * code, it transfers the result or exception to the interpreter entry boundary through an internal
+     * control-flow marker and does not return to bytecode dispatch.
+     *
+     * The caller must establish that OSR is enabled for this activation and supply its non-null
+     * method profile. The operand-stack check stays in the slow path to keep its frame access and
+     * comparison out of the inlined backedge fast path. An attempt with a nonempty stack returns
+     * without submitting compilation or entering OSR code.
      */
-    public static OSRResult tryOSR(InterpreterResolvedJavaMethod method, MethodProfile methodProfile, InterpreterFrame frame, int targetBCI, int top) {
-        if (methodProfile == null || !RistrettoProfileSupport.isEnabled() || !RistrettoOptions.JITEnableCompilation.getValue() || !RistrettoOptions.JITUseOnStackReplacement.getValue()) {
-            return null;
+    @AlwaysInline("Keep the reduced OSR backedge fast path in bytecode-handler stubs")
+    public static void tryOSR(InterpreterResolvedJavaMethod method, MethodProfile methodProfile, InterpreterFrame frame, int targetBCI, int top) {
+        int osrThreshold = RistrettoOptions.getJITCompilerOSRBackedgeThreshold();
+        if (!methodProfile.profileOSRBackedgeAndShouldProcess(targetBCI, osrThreshold)) {
+            return;
         }
+        tryOSRSlowPath(method, frame, targetBCI, top);
+    }
+
+    @NeverInline("Keep Ristretto OSR machinery out of bytecode-handler stubs")
+    private static void tryOSRSlowPath(InterpreterResolvedJavaMethod method, InterpreterFrame frame, int targetBCI, int top) {
         if (top != frame.getOperandStackStart()) {
             /*
              * Reject OSR when the backedge has live operand-stack values. Ristretto's OSR entry
@@ -103,17 +117,10 @@ public final class RistrettoOSRSupport {
              * operand-stack values. This matches HotSpot OSR semantics: C1 and C2 only enter OSR when
              * the operand stack is empty and otherwise bail out of OSR compilation.
              */
-            return null;
+            return;
         }
-
         RistrettoMethod rMethod = RistrettoMethod.getOrCreate(method);
-        RistrettoOSRBackedgeState backedge = rMethod.getOSRBackedgeState(targetBCI);
-        if (backedge == null) {
-            return null;
-        }
-        long backedgeCount = methodProfile.profileOSRBackedge(targetBCI);
-        int osrThreshold = RistrettoOptions.getJITCompilerOSRBackedgeThreshold();
-        if (backedgeCount > osrThreshold && RistrettoOptions.matchesJITCompileOnly(method)) {
+        if (rMethod.getProfile().getOSRBackedgeCount(targetBCI) > RistrettoOptions.getJITCompilerOSRBackedgeThreshold() && RistrettoOptions.matchesJITCompileOnly(method)) {
             int requestId = rMethod.claimOSRCompilationRequest(targetBCI);
             if (requestId != RistrettoMethod.NO_OSR_COMPILATION_REQUEST) {
                 RistrettoCompilationManager.get().submitCompilationRequestForCurrentMode(new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_OSR_COMPILATION_PRIORITY,
@@ -122,9 +129,7 @@ public final class RistrettoOSRSupport {
             }
         }
 
-        if (!methodProfile.shouldPollOSRBackedgeCode(targetBCI)) {
-            return null;
-        }
+        // Installed OSR code can be entered independently of the current compilation threshold.
         CFunctionPointer entryPoint = rMethod.getOSRInstalledCodeEntryPointIfLive(targetBCI);
         if (entryPoint.isNull()) {
             /*
@@ -132,14 +137,14 @@ public final class RistrettoOSRSupport {
              * frame has not been hidden yet, and Interpreter.execute0 keeps normal monitor-cleanup
              * ownership for the current activation.
              */
-            return null;
+            return;
         }
         /*
          * The compiled OSR body has now produced the logical Java method result, or threw out of the
          * compiled continuation. The interpreter owns the control-flow mechanism that leaves the
          * current bytecode dispatch frame.
          */
-        return enterOSR(method, frame, entryPoint);
+        throw enterOSR(method, frame, entryPoint).asControlTransferException();
     }
 
     private static OSRResult enterOSR(InterpreterResolvedJavaMethod method, InterpreterFrame frame, CFunctionPointer entryPoint) {
@@ -149,11 +154,12 @@ public final class RistrettoOSRSupport {
             /*
              * The compiled or deoptimized continuation owns the live logical Java frame after OSR. Keep
              * the replaced interpreter frame hidden from stack walking until it leaves the interpreter.
-             * This is intentionally not undone locally: beforeJumpChecks converts the result into an
-             * OSRReturn/OSRException marker, and Interpreter.execute0 is the boundary that unwinds the
-             * old activation with interpreter-frame lock cleanup disabled. If OSR deoptimizes and
-             * resumes interpretation, InterpreterDeoptEntryPoints resumes through a new interpreter
-             * frame that is visible to Java stack walking.
+             * This is intentionally not undone locally: tryOSRSlowPath converts the result into an
+             * OSRReturn/OSRException marker after this method restores the current OSR frame, and
+             * Interpreter.execute0 is the boundary that unwinds the old activation with
+             * interpreter-frame lock cleanup disabled. If OSR deoptimizes and resumes interpretation,
+             * InterpreterDeoptEntryPoints resumes through a new interpreter frame that is visible to
+             * Java stack walking.
              */
             frame.hideFromStackWalking();
             try {

@@ -96,18 +96,24 @@ public interface RistrettoInterpreterSupport {
     CFunctionPointer getInstalledCodeEntryPoint(InterpreterResolvedJavaMethod method);
 
     /**
-     * Performs back-edge profiling, and will divert execution to OSR compiled code if and when
-     * that loop becomes hot.
+     * Returns whether the startup compilation options enable OSR. An interpreter activation must
+     * additionally have a method profile and allow leaving the interpreter before attempting OSR.
+     */
+    boolean useOSR();
+
+    /**
+     * Performs back-edge profiling and may divert execution to OSR-compiled code. The caller must
+     * establish that OSR is enabled for this activation and supply its non-null method profile.
+     * Returns normally when execution should remain interpreted; otherwise, transfers the compiled
+     * result or exception to the interpreter entry boundary through an internal control-flow marker.
      *
      * @param method        the method containing the backward branch
      * @param methodProfile the profile associated with the current interpreter activation
      * @param frame         the active interpreter frame
      * @param targetBCI     the bytecode index reached by the backward branch
      * @param top           the current operand-stack top for the frame
-     * @return the result of OSR execution, or {@code null} when execution should remain
-     *         interpreted
      */
-    Interpreter.OSRResult tryOSR(InterpreterResolvedJavaMethod method, MethodProfile methodProfile, InterpreterFrame frame, int targetBCI, int top);
+    void tryOSR(InterpreterResolvedJavaMethod method, MethodProfile methodProfile, InterpreterFrame frame, int targetBCI, int top);
 
     /**
      * Creates a deoptimized frame for resuming compiled execution in the interpreter.

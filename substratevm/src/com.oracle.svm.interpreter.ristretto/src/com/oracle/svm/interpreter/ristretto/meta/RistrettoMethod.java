@@ -697,13 +697,15 @@ public final class RistrettoMethod extends SubstrateMethod {
             code.invalidate();
         }
         if (published && installCode) {
-            getProfile().resetOSRBackedgeCodePoll(targetBCI);
+            getProfile().resetOSRBackedgeProcessing(targetBCI);
         }
         return published;
     }
 
     public void onOSRCompilationFailure(int targetBCI, int requestId) {
-        requireOSRBackedgeState(targetBCI).onCompilationFailure(requestId);
+        if (requireOSRBackedgeState(targetBCI).onCompilationFailure(requestId)) {
+            getProfile().resetOSRBackedgeProcessing(targetBCI);
+        }
     }
 
     public void onOSRPermanentCompilationFailure(int targetBCI, int requestId) {
@@ -810,10 +812,8 @@ public final class RistrettoMethod extends SubstrateMethod {
             if (reprofile) {
                 RistrettoDiagnostics.ReprofileRequested.getAndIncrement();
                 getProfile().reprofile();
-                getProfile().resetOSRBackedgeProfile(invalidatedTargetBCI);
-            } else {
-                getProfile().resetOSRBackedgeProfile(invalidatedTargetBCI);
             }
+            getProfile().resetOSRBackedgeProfile(invalidatedTargetBCI);
             return true;
         }
         return false;
