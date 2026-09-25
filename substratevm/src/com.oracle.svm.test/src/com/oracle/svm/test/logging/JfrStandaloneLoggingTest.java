@@ -44,6 +44,7 @@ import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.core.logging.LogLevel;
+import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
@@ -67,7 +68,7 @@ public final class JfrStandaloneLoggingTest {
         LogConfiguration.updateGCLogging(LogLevel.INFO);
         try {
             long baseline = NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Logging);
-            Thread writer = new Thread(() -> LogTagSet.gc.info("fallback thread-local lifecycle message"));
+            Thread writer = new Thread(() -> writeEnabledGCLine(LogLevel.INFO, "fallback thread-local lifecycle message"));
             writer.start();
             writer.join();
             awaitLoggingMemory(baseline);
@@ -100,8 +101,8 @@ public final class JfrStandaloneLoggingTest {
             NoAllocationVerifier verifier = NoAllocationVerifier.factory("standalone JFR logging", false);
             verifier.open();
             try {
-                LogTagSet.gc.info("fallback GC info");
-                LogTagSet.gc.debug("filtered fallback GC debug");
+                writeEnabledGCLine(LogLevel.INFO, "fallback GC info");
+                writeEnabledGCLine(LogLevel.DEBUG, "filtered fallback GC debug");
                 jdk.jfr.internal.Logger.log(jdk.jfr.internal.LogTag.JFR, jdk.jfr.internal.LogLevel.INFO, "standalone JFR info");
                 jdk.jfr.internal.Logger.logEvent(jdk.jfr.internal.LogLevel.INFO, EVENT_LINES, false);
                 logging.logJfrWarning("standalone direct warning", true);
@@ -111,11 +112,11 @@ public final class JfrStandaloneLoggingTest {
 
             LogConfiguration.updateGCLogging(LogLevel.DEBUG);
             assertTrue("DEBUG fallback logging must be enabled", LogTagSet.gc.isDebug());
-            LogTagSet.gc.debug("fallback GC debug");
+            writeEnabledGCLine(LogLevel.DEBUG, "fallback GC debug");
             memoryMXBean.setVerbose(false);
             assertFalse("the memory management bean must report verbose GC logging as disabled", memoryMXBean.isVerbose());
             assertFalse("fallback GC logging must be disabled", LogTagSet.gc.isError());
-            LogTagSet.gc.info("disabled fallback GC info");
+            writeEnabledGCLine(LogLevel.INFO, "disabled fallback GC info");
 
             String output = Files.readString(Path.of(logFile));
             assertTrue("fallback logging must use the legacy uptime and GC prefix", output.contains("s] GC(") && output.contains("fallback GC info"));
@@ -135,6 +136,18 @@ public final class JfrStandaloneLoggingTest {
             logging.parseConfiguration("all=warning");
             closeLog.execute(false);
             Files.deleteIfExists(Path.of(logFile));
+        }
+    }
+
+    /// Writes one GC fallback line without requiring unified logging support.
+    private static void writeEnabledGCLine(LogLevel level, String text) {
+        if (LogTagSet.gc.isLevel(level)) {
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                message.line(level).string(text);
+            } finally {
+                message.close();
+            }
         }
     }
 

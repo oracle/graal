@@ -24,28 +24,38 @@
  */
 package com.oracle.svm.core.logging;
 
-import static com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-
 import java.util.Arrays;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.collections.EnumBitmask;
+import com.oracle.svm.shared.util.VMError;
 
 /// Represents a combination of tags for which messages can be logged.
-/// Single-line messages are logged with [#info], [#trace], [#debug],
-/// [#error] or [#warning]:
+/// Code that prepares a message for a tag set other than `gc` must put the folded
+/// `HasXlogSupport.get()` check before the level predicate and write the message through
+/// [#message()]:
 ///
 /// ```
-/// LogTagSet.class_load.info(className + " loader=" + loaderDesc);
+/// if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
+///     try (LogMessage message = LogTagSet.class_load.message()) {
+///         message.info().string(className).string(" loader=").string(loaderDesc);
+///     }
+/// }
 /// ```
 ///
-/// Multi-line messages are logged by [#message]. See [LogMessage] for
-/// more details.
+/// Keeping the support check visible at the call site lets image analysis discard the guarded
+/// code, including message construction, when `-Xlog` support is unavailable. Writing values
+/// directly to the message's [NativeMemoryLog] also avoids intermediate string allocation. These
+/// properties keep the minimal image size small and let allocation-restricted callers construct
+/// messages without Java heap allocation. Such callers must use `try`-`finally` as documented in
+/// [LogMessage]. The `gc` tag set deliberately omits the support check because legacy GC logging
+/// remains available without `-Xlog` support.
+///
+/// Both single-line and multi-line messages are logged by [#message()].
 ///
 /// In an image without `-Xlog` support, the `gc` tag set can be routed to the low-level VM log by
 /// the legacy `VerboseGC` and `PrintGC` options. The same level predicates and message APIs apply
@@ -174,7 +184,8 @@ public enum LogTagSet {
 
     /// Returns whether `level` is enabled on any configured or fallback output.
     public boolean isLevel(LogLevel level) {
-        return (isGC || HasXlogSupport.get()) && outputList.isLevel(level);
+        VMError.guarantee(isGC || HasXlogSupport.get(), "Only GC logging is available without -Xlog support.");
+        return outputList.isLevel(level);
     }
 
     /// Returns whether trace messages are enabled on any output.
@@ -202,30 +213,8 @@ public enum LogTagSet {
         return isLevel(LogLevel.ERROR);
     }
 
-    /// Writes a single line message to every output enabled for `level`.
-    ///
-    /// Within one thread, calls to this method for a specific tag set
-    /// must not be made within the scope of an open message. That is,
-    /// this must not be called from a thread that currently has
-    /// [started][LogMessage#line(LogLevel)] writing to this object's
-    /// [message][#message()] and has not yet [closed][LogMessage#close()]
-    /// the message.
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Unified logging must not allocate at run time.")
-    public void log(LogLevel level, String message) {
-        if (!isLevel(level)) {
-            return;
-        }
-        LogMessage msg = message();
-        // Cannot use try-with-resources here as it violates RestrictHeapAccess
-        try {
-            msg.line(level).string(message);
-        } finally {
-            msg.close();
-        }
-    }
-
-    /// Opens a multi-line message for this tag set. This must be used in a try-with-resources
-    /// or try-finally statement as documented in [LogMessage].
+    /// Opens a message for this tag set. This must be used in a try-with-resources or try-finally
+    /// statement as documented in [LogMessage].
     public LogMessage message() {
         LogThreadLocal.activate(this);
         return logMessage;
@@ -249,46 +238,6 @@ public enum LogTagSet {
                 output.write(this, decorations, message, outputLevel, outputConfiguration.decorators());
             }
         }
-    }
-
-    /// Writes a trace message as one atomic event.
-    ///
-    /// Must not be called on a thread that has an open [#message()].
-    /// See [#log] for more details.
-    public void trace(String message) {
-        log(LogLevel.TRACE, message);
-    }
-
-    /// Writes a debug message as one atomic event.
-    ///
-    /// Must not be called on a thread that has an open [#message()].
-    /// See [#log] for more details.
-    public void debug(String message) {
-        log(LogLevel.DEBUG, message);
-    }
-
-    /// Writes an informational message as one atomic event.
-    ///
-    /// Must not be called on a thread that has an open [#message()].
-    /// See [#log] for more details.
-    public void info(String message) {
-        log(LogLevel.INFO, message);
-    }
-
-    /// Writes a warning message as one atomic event.
-    ///
-    /// Must not be called on a thread that has an open [#message()].
-    /// See [#log] for more details.
-    public void warning(String message) {
-        log(LogLevel.WARNING, message);
-    }
-
-    /// Writes an error message as one atomic event.
-    ///
-    /// Must not be called on a thread that has an open [#message()].
-    /// See [#log] for more details.
-    public void error(String message) {
-        log(LogLevel.ERROR, message);
     }
 
     public LogLevel getMostDetailedLevel() {

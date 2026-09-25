@@ -33,6 +33,7 @@ import java.util.Set;
 
 import javax.lang.model.SourceVersion;
 
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -129,7 +130,7 @@ public final class ModuleNative {
         synchronized (moduleLock) {
             addDefinedModule(loader, module);
         }
-        if (module.isNamed() && LogTagSet.module_load.isInfo()) {
+        if (HasXlogSupport.get() && module.isNamed() && LogTagSet.module_load.isInfo()) {
             try (LogMessage message = LogTagSet.module_load.message()) {
                 message.info().string(module.getName()).string(" location: ").string(location);
             }

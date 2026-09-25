@@ -32,9 +32,29 @@ routes and is not forwarded to the native collector.
 
 ## Writing log messages
 
-`LogTagSet` provides level-specific methods such as `debug`, `info`, `warning`,
-and `error`. An enabled single-line log message uses the tag set's shared
-`LogMessage` to record one line and then commits it.
+Every message is logged against a specifix tag set value (e.g. `LogTagSet.class_load`).
+It starts with a level predicate so minimal work is done when the tag set is not configured
+to log at the level specified in the predicate. Except for `LogTagSet.gc`, the folded
+`HasXlogSupport.get()` check should precede the predicate to keep unified logging
+infrastructure out of images that do not support parsing `-Xlog`:
+
+```java
+if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
+    try (LogMessage message = LogTagSet.class_load.message()) {
+        message.info().string(className).string(" loader=").string(loaderDescription);
+    }
+}
+```
+
+Ideally, applying `@AlwaysInline` to the level predicates would make the explicit
+`HasXlogSupport.get()` check at each logging site unnecessary. However, inlining is not guaranteed
+to happen before analysis, so the annotation cannot be relied upon to fold the guarded message
+construction away. The support check therefore remains explicit at each non-GC logging site.
+
+Values are appended directly to the message's native buffer instead of being combined with Java
+string concatenation. Allocation-restricted code uses an equivalent `try`-`finally` statement as
+described by `LogMessage`. The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
+`VerboseGC` can route it to the low-level VM log in images without `-Xlog` support.
 
 The level predicates and message APIs use the same output table for configured
 `-Xlog` routes and the legacy GC fallback. The fallback is filtered in the same
