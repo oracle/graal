@@ -518,7 +518,14 @@ public final class GCImpl implements GC {
                     message.close();
                 }
             }
-            LogTagSet.gc.debug(cause.getName());
+            if (LogTagSet.gc.isDebug()) {
+                LogMessage message = LogTagSet.gc.message();
+                try {
+                    message.debug().string(cause.getName());
+                } finally {
+                    message.close();
+                }
+            }
         }
     }
 

@@ -36,8 +36,9 @@ import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.VMError;
 
-/// Represents a multi-line logging scope that does not allocate on the Java heap and whose lines
-/// are committed as one event to either configured `-Xlog` outputs or a legacy fallback route.
+/// Represents a logging scope containing one or more lines that does not allocate on the Java heap.
+/// Its lines are committed as one event to either configured `-Xlog` outputs or a legacy fallback
+/// route.
 ///
 /// Each [LogTagSet] has one shared facade, while mutable message bytes, line metadata, and event
 /// decorations are owned by the current carrier thread. A carrier thread may have only one open
@@ -47,9 +48,11 @@ import com.oracle.svm.shared.util.VMError;
 /// statement:
 ///
 /// ```
-/// try (LogMessage msg = LogTagSet.class_load.message()) {
-///     msg.info().string("info message");
-///     msg.debug().string("debug message");
+/// if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
+///     try (LogMessage msg = LogTagSet.class_load.message()) {
+///         msg.info().string("info message");
+///         msg.debug().string("debug message");
+///     }
 /// }
 /// ```
 ///
@@ -57,12 +60,14 @@ import com.oracle.svm.shared.util.VMError;
 /// allocation-restricted context uses try-finally instead:
 ///
 /// ```
-/// LogMessage msg = LogTagSet.gc.message();
-/// try {
-///     msg.info().string("info message");
-///     msg.debug().string("debug message");
-/// } finally {
-///     msg.close();
+/// if (LogTagSet.gc.isInfo()) {
+///     LogMessage msg = LogTagSet.gc.message();
+///     try {
+///         msg.info().string("info message");
+///         msg.debug().string("debug message");
+///     } finally {
+///         msg.close();
+///     }
 /// }
 /// ```
 ///

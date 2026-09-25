@@ -178,8 +178,9 @@ public final class Safepoint {
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
 
-        logSafepoint = HasXlogSupport.get() && LogTagSet.safepoint.isInfo();
-        if (logSafepoint) {
+        boolean shouldLogSafepoint = HasXlogSupport.get() && LogTagSet.safepoint.isInfo();
+        logSafepoint = shouldLogSafepoint;
+        if (shouldLogSafepoint) {
             safepointBeginTimeNs = System.nanoTime();
             if (safepointEndTimeNs == 0) {
                 safepointEndTimeNs = Isolates.getStartTimeNanos();
@@ -205,11 +206,11 @@ public final class Safepoint {
         ImageSingletons.lookup(Heap.class).prepareForSafepoint();
 
         safepointState = SYNCHRONIZING;
-        int numJavaThreads = requestThreadsEnterSafepoint(reason, logSafepoint);
+        int numJavaThreads = requestThreadsEnterSafepoint(reason, shouldLogSafepoint);
 
         safepointState = AT_SAFEPOINT;
         safepointId = safepointId.add(1);
-        if (logSafepoint) {
+        if (shouldLogSafepoint) {
             safepointReason = reason;
         }
         SafepointBeginEvent.emit(getSafepointId(), numJavaThreads, startTicks);
@@ -219,8 +220,10 @@ public final class Safepoint {
     /** Let all threads proceed from their safepoint. */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
     void endSafepoint(boolean acquiredThreadsLock) {
-        if (logSafepoint) {
-            safepointLeaveTimeNs = System.nanoTime();
+        if (HasXlogSupport.get()) {
+            if (logSafepoint) {
+                safepointLeaveTimeNs = System.nanoTime();
+            }
         }
 
         assert VMOperationControl.mayExecuteVmOperations();
@@ -255,22 +258,22 @@ public final class Safepoint {
         if (HasXlogSupport.get()) {
             /* Preserve the interval start even if safepoint logging is enabled only later. */
             safepointEndTimeNs = System.nanoTime();
-        }
-        if (logSafepoint) {
-            LogMessage message = LogTagSet.safepoint.message();
-            try {
-                message.info().string("Safepoint ").unsigned(this.safepointId) //
-                                .string(" \"").string(safepointReason) //
-                                .string("\", Time since last: ").signed(appTimeNs) //
-                                .string(" ns, Reaching safepoint: ").signed(safepointSyncTimeNs - safepointBeginTimeNs) //
-                                .string(" ns, At safepoint: ").signed(safepointLeaveTimeNs - safepointSyncTimeNs) //
-                                .string(" ns, Leaving safepoint: ").signed(safepointEndTimeNs - safepointLeaveTimeNs) //
-                                .string(" ns, Total: ").signed(safepointEndTimeNs - safepointBeginTimeNs) //
-                                .string(" ns, Threads: ") //
-                                .signed(numRunningThreads).string(" runnable, ") //
-                                .signed(numAllThreads).string(" total");
-            } finally {
-                message.close();
+            if (logSafepoint) {
+                LogMessage message = LogTagSet.safepoint.message();
+                try {
+                    message.info().string("Safepoint ").unsigned(this.safepointId) //
+                                    .string(" \"").string(safepointReason) //
+                                    .string("\", Time since last: ").signed(appTimeNs) //
+                                    .string(" ns, Reaching safepoint: ").signed(safepointSyncTimeNs - safepointBeginTimeNs) //
+                                    .string(" ns, At safepoint: ").signed(safepointLeaveTimeNs - safepointSyncTimeNs) //
+                                    .string(" ns, Leaving safepoint: ").signed(safepointEndTimeNs - safepointLeaveTimeNs) //
+                                    .string(" ns, Total: ").signed(safepointEndTimeNs - safepointBeginTimeNs) //
+                                    .string(" ns, Threads: ") //
+                                    .signed(numRunningThreads).string(" runnable, ") //
+                                    .signed(numAllThreads).string(" total");
+                } finally {
+                    message.close();
+                }
             }
         }
     }

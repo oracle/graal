@@ -50,6 +50,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.core.logging.LogConfiguration.TestingBackdoor;
 import com.oracle.svm.core.logging.LogDecorators;
@@ -301,8 +302,8 @@ public final class UnifiedLoggingTest {
         checkFalse(LogConfiguration.parseCommandLineArgument("-verbose"), "non-Xlog option should be rejected by the logger");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:stdout:none"), "stdout configuration should be accepted");
         checkContains(TestingBackdoor.describe(stdout), "class+load=debug", "stdout description should include the configured selection");
-        checkTrue(LogTagSet.class_load.isDebug(), "configured class+load tag set should enable DEBUG");
-        checkFalse(LogTagSet.logging.isDebug(), "unconfigured logging tag set should not enable DEBUG");
+        checkTrue(HasXlogSupport.get() && LogTagSet.class_load.isDebug(), "configured class+load tag set should enable DEBUG");
+        checkFalse(HasXlogSupport.get() && LogTagSet.logging.isDebug(), "unconfigured logging tag set should not enable DEBUG");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=verbose"), "invalid configuration level was accepted");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:stdout:unknown"), "invalid configuration decorator was accepted");
         TestLogOutput transactionalOutput = new TestLogOutput("transactional-options");
@@ -403,13 +404,15 @@ public final class UnifiedLoggingTest {
         String logFile = testLogFile("messages");
         delete(logFile);
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + logFile + ":level,tags"), "message configuration should be accepted");
-        try (LogMessage message = LogTagSet.class_load.message()) {
-            message.line(LogLevel.INFO).string("info line");
-            message.line(LogLevel.DEBUG).string("debug line");
+        if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                message.line(LogLevel.INFO).string("info line");
+                message.line(LogLevel.DEBUG).string("debug line");
+            }
         }
-        LogTagSet.class_load.trace("trace line");
-        LogTagSet.class_load.debug("embedded line 1\nembedded line 2\n");
-        LogTagSet.class_load.debug("embedded CRLF line 1\r\nembedded CRLF line 2\r\n");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.TRACE, "trace line");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "embedded line 1\nembedded line 2\n");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "embedded CRLF line 1\r\nembedded CRLF line 2\r\n");
         String output = read(logFile);
         checkContains(output, "[info][class,load] info line", "INFO message should include its level and tags");
         checkContains(output, "[debug][class,load] debug line", "DEBUG message should include its level and tags");
@@ -433,7 +436,7 @@ public final class UnifiedLoggingTest {
         delete(logFile);
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":time,utctime"), "timestamp configuration should be accepted");
-            LogTagSet.class_load.info("timestamp message");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "timestamp message");
             String line = lineContaining(read(logFile), "timestamp message");
             String timestamp = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}";
             checkTrue(line.matches("\\[" + timestamp + "[+-]\\d{4}\\]\\[" + timestamp + "\\+0000\\] timestamp message"),
@@ -452,7 +455,7 @@ public final class UnifiedLoggingTest {
         delete(logFile);
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":tid"), "thread-id configuration should be accepted");
-            LogTagSet.class_load.info("thread-id message");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "thread-id message");
             String line = lineContaining(read(logFile), "thread-id message");
             int decoratorEnd = line.indexOf(']');
             long threadId = Long.parseLong(line.substring(1, decoratorEnd).strip());
@@ -528,15 +531,19 @@ public final class UnifiedLoggingTest {
         CountDownLatch releaseIndentedMessage = new CountDownLatch(1);
         AtomicReference<Throwable> failure = new AtomicReference<>();
         Thread indentedThread = new Thread(() -> {
-            try (LogMessage message = LogTagSet.class_load.message()) {
-                NativeMemoryLog line = message.debug();
-                line.string("indented line 1");
-                line.indent(true);
-                line.string("indented line 2");
-                line.newline();
-                line.string("indented line 3");
-                indentationSet.countDown();
-                releaseIndentedMessage.await();
+            try {
+                if (HasXlogSupport.get() && LogTagSet.class_load.isDebug()) {
+                    try (LogMessage message = LogTagSet.class_load.message()) {
+                        NativeMemoryLog line = message.debug();
+                        line.string("indented line 1");
+                        line.indent(true);
+                        line.string("indented line 2");
+                        line.newline();
+                        line.string("indented line 3");
+                        indentationSet.countDown();
+                        releaseIndentedMessage.await();
+                    }
+                }
             } catch (Throwable throwable) {
                 failure.set(throwable);
                 indentationSet.countDown();
@@ -545,11 +552,13 @@ public final class UnifiedLoggingTest {
         Thread unindentedThread = new Thread(() -> {
             try {
                 checkTrue(indentationSet.await(5, TimeUnit.SECONDS), "the indented thread should reach its logging scope");
-                try (LogMessage message = LogTagSet.class_load.message()) {
-                    NativeMemoryLog line = message.debug();
-                    line.string("unindented line 1");
-                    line.newline();
-                    line.string("unindented line 2");
+                if (HasXlogSupport.get() && LogTagSet.class_load.isDebug()) {
+                    try (LogMessage message = LogTagSet.class_load.message()) {
+                        NativeMemoryLog line = message.debug();
+                        line.string("unindented line 1");
+                        line.newline();
+                        line.string("unindented line 2");
+                    }
                 }
             } catch (Throwable throwable) {
                 failure.set(throwable);
@@ -583,9 +592,11 @@ public final class UnifiedLoggingTest {
         delete(logFile);
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFile + ":none"), "empty message configuration should be accepted");
         // The empty scope must still be closed to release the carrier's event state.
-        LogMessage emptyMessage = LogTagSet.class_load.message();
-        emptyMessage.close();
-        LogTagSet.class_load.info("message after empty scope");
+        if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
+            LogMessage emptyMessage = LogTagSet.class_load.message();
+            emptyMessage.close();
+        }
+        writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "message after empty scope");
         checkContains(read(logFile), "message after empty scope", "closing an empty scope should permit the next message");
         LogConfiguration.disableLogging();
         delete(logFile);
@@ -598,8 +609,10 @@ public final class UnifiedLoggingTest {
         LogConfiguration.disableLogging();
         long baseline = NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Logging);
         Thread writer = new Thread(() -> {
-            try (LogMessage message = LogTagSet.class_load.message()) {
-                message.debug().string("thread-local lifecycle message");
+            if (HasXlogSupport.get() && LogTagSet.class_load.isDebug()) {
+                try (LogMessage message = LogTagSet.class_load.message()) {
+                    message.debug().string("thread-local lifecycle message");
+                }
             }
         });
         writer.start();
@@ -642,8 +655,8 @@ public final class UnifiedLoggingTest {
                         "folded async message configuration should be accepted");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async"), "async configuration should be accepted");
         LogConfiguration.logInitializationComplete();
-        LogTagSet.class_load.info("asynchronous line 1\nasynchronous line 2\n");
-        LogTagSet.class_load.info("asynchronous CRLF line 1\r\nasynchronous CRLF line 2\r\n");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "asynchronous line 1\nasynchronous line 2\n");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "asynchronous CRLF line 1\r\nasynchronous CRLF line 2\r\n");
         LogConfiguration.disableLogging();
         String output = read(logFile);
         String messagePrefix = "[info][class,load] ";
@@ -683,11 +696,11 @@ public final class UnifiedLoggingTest {
     public void testAsyncRawMessages() throws IOException {
         String logFile = testLogFile("async-raw-messages");
         startAsyncLogging(logFile, "class+load=debug", "drop");
-        LogTagSet.class_load.debug("1Debug");
-        LogTagSet.class_load.info("1Info");
-        LogTagSet.class_load.warning("1Warning");
-        LogTagSet.class_load.error("1Error");
-        LogTagSet.class_load.trace("1Trace");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "1Debug");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "1Info");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.WARNING, "1Warning");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.ERROR, "1Error");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.TRACE, "1Trace");
         LogConfiguration.disableLogging();
 
         String output = read(logFile);
@@ -706,13 +719,15 @@ public final class UnifiedLoggingTest {
         startAsyncLogging(logFile, "class+load=debug,logging=debug", "drop");
         final int multiLineCount = 20;
         String[] expectedLines = new String[multiLineCount];
-        try (LogMessage message = LogTagSet.class_load.message()) {
-            for (int index = 0; index < multiLineCount; index++) {
-                expectedLines[index] = "nonbreakable log message line-" + index;
-                message.line(LogLevel.DEBUG).string(expectedLines[index]);
+        if (HasXlogSupport.get() && LogTagSet.class_load.isDebug()) {
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                for (int index = 0; index < multiLineCount; index++) {
+                    expectedLines[index] = "nonbreakable log message line-" + index;
+                    message.line(LogLevel.DEBUG).string(expectedLines[index]);
+                }
             }
         }
-        LogTagSet.logging.debug("a noisy message from another logger");
+        writeEnabledLine(LogTagSet.logging, LogLevel.DEBUG, "a noisy message from another logger");
         LogConfiguration.disableLogging();
 
         String output = read(logFile);
@@ -727,7 +742,7 @@ public final class UnifiedLoggingTest {
         startAsyncLogging(logFile, "class+load=info", "stall");
         final int messageCount = 4096;
         for (int index = 0; index < messageCount; index++) {
-            LogTagSet.class_load.info("stall message " + index);
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "stall message ", index);
         }
         LogConfiguration.disableLogging();
 
@@ -767,14 +782,14 @@ public final class UnifiedLoggingTest {
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async drop-reporting mode should be accepted");
             LogConfiguration.logInitializationComplete();
-            LogTagSet.class_load.info("blocked before filling the asynchronous queue");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "blocked before filling the asynchronous queue");
             firstOutput.awaitFirstWrite();
             int bufferCapacity = TestingBackdoor.bufferCapacity();
             int lineCount = bufferCapacity / ASYNC_QUEUE_FILLER.length() * 2;
             for (int index = 0; index < lineCount; index++) {
-                LogTagSet.class_load.info(ASYNC_QUEUE_FILLER + " drop-reporting line " + index);
+                writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, ASYNC_QUEUE_FILLER, " drop-reporting line ", index);
             }
-            LogTagSet.module_load.info(ASYNC_QUEUE_FILLER + " dropped without a preceding accepted record");
+            writeEnabledLine(LogTagSet.module_load, LogLevel.INFO, ASYNC_QUEUE_FILLER, " dropped without a preceding accepted record");
 
             firstOutput.releaseFirstWrite();
             disableRequested.countDown();
@@ -810,7 +825,7 @@ public final class UnifiedLoggingTest {
                 LogConfiguration.logInitializationComplete();
                 String oversized = "x".repeat(TestingBackdoor.bufferCapacity());
                 Thread producer = Thread.currentThread();
-                LogTagSet.class_load.info(oversized);
+                writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, oversized);
                 checkSame(output.writingThread, producer, "an oversized record should use synchronous output in " + mode + " mode");
                 checkEquals(output.writeCount.get(), 1, "an oversized record should be written completely once in " + mode + " mode");
             } finally {
@@ -831,7 +846,7 @@ public final class UnifiedLoggingTest {
             LogConfiguration.logInitializationComplete();
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:disable"), "runtime disable should be accepted");
             TestingBackdoor.configureOutput(selections, output, LogDecorators.NONE);
-            LogTagSet.class_load.info("message after runtime reactivation");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "message after runtime reactivation");
             LogConfiguration.disableLogging();
             checkFalse(output.writingThread == Thread.currentThread(), "reactivated asynchronous output should use the consumer thread");
             checkEquals(output.writeCount.get(), 1, "reactivated asynchronous output should write the record once");
@@ -851,12 +866,12 @@ public final class UnifiedLoggingTest {
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:async:drop"), "async reconfiguration test mode should be accepted");
             LogConfiguration.logInitializationComplete();
-            LogTagSet.class_load.info("blocked before reconfiguration");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "blocked before reconfiguration");
             output.awaitFirstWrite();
-            LogTagSet.class_load.info("queued before reconfiguration");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "queued before reconfiguration");
 
             TestingBackdoor.configureOutput(selections, output, LogDecorators.parse("uptimenanos"));
-            LogTagSet.class_load.info("after reconfiguration");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "after reconfiguration");
 
             output.releaseFirstWrite();
             LogConfiguration.disableLogging();
@@ -896,12 +911,12 @@ public final class UnifiedLoggingTest {
             /* More bytes than the queue can hold leave it full while the consumer is blocked. */
             int lineCount = TestingBackdoor.bufferCapacity() / ASYNC_QUEUE_FILLER.length() * 2;
             for (int index = 0; index < lineCount; index++) {
-                LogTagSet.class_load.info(ASYNC_QUEUE_FILLER + " queued line " + index);
+                writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, ASYNC_QUEUE_FILLER, " queued line ", index);
             }
             /* Small records consume any gap that was too short for another filler record. */
             int smallLineCount = ASYNC_QUEUE_FILLER.length() / TestingBackdoor.recordSize(0, 0) * 2;
             for (int index = 0; index < smallLineCount; index++) {
-                LogTagSet.class_load.info("x");
+                writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "x");
             }
 
             LoggingVMOperation operation = new LoggingVMOperation();
@@ -929,8 +944,8 @@ public final class UnifiedLoggingTest {
         String existingLogFile = testLogFile("file-output-existing");
         delete(logFile);
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=\"" + logFile + "\":none:filecount=2,filesize=1"), "file output configuration should be accepted");
-        LogTagSet.class_load.debug("first");
-        LogTagSet.class_load.debug("second");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "first");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "second");
         checkTrue(Files.exists(Path.of(logFile)), "configured log file should be created: " + logFile);
         checkTrue(Files.exists(Path.of(logFile + ".0")), "size-based log rotation should create an archive: " + logFile + ".0");
         LogConfiguration.disableLogging();
@@ -941,7 +956,7 @@ public final class UnifiedLoggingTest {
         delete(existingLogFile + ".0");
         Files.writeString(Path.of(existingLogFile), "existing log contents");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + existingLogFile + ":none:filecount=2"), "existing file output configuration should be accepted");
-        LogTagSet.class_load.debug("new active log contents");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "new active log contents");
         LogConfiguration.disableLogging();
         checkFalse(Files.exists(Path.of(existingLogFile + ".0")), "a preexisting active file should not be archived at startup");
         checkNotContains(read(existingLogFile), "existing log contents", "startup should discard preexisting active file contents");
@@ -951,8 +966,8 @@ public final class UnifiedLoggingTest {
         delete(rotatingLogFile);
         delete(rotatingLogFile + ".0");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + rotatingLogFile + ":none:foldmultilines=true"), "folding configuration should be accepted");
-        LogTagSet.class_load.debug("first\\part\nsecond");
-        LogTagSet.class_load.debug("first\r\nsecond");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "first\\part\nsecond");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "first\r\nsecond");
         String foldedMessage = "first\\\\part" + "\\n" + "second";
         String foldedOutput = read(rotatingLogFile);
         checkContains(foldedOutput, foldedMessage, "multiline event should be folded");
@@ -975,7 +990,7 @@ public final class UnifiedLoggingTest {
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + indexedLogFile + ":none"), "indexed output configuration should be accepted");
         checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:#2"), "a reported file output index should resolve to its existing output");
         expectFailure(() -> LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:#3"), "an unknown output index was accepted");
-        LogTagSet.class_load.debug("indexed output message");
+        writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "indexed output message");
         checkContains(read(indexedLogFile), "indexed output message", "the reported output index should not become a filename");
         LogConfiguration.disableLogging();
         delete(indexedLogFile);
@@ -1012,7 +1027,7 @@ public final class UnifiedLoggingTest {
         delete(logFile);
         try {
             checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=info:file=" + logFilePattern + ":none"), "isolate file output configuration should be accepted");
-            LogTagSet.class_load.info("isolate-specific file output");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "isolate-specific file output");
             LogConfiguration.disableLogging();
             checkContains(read(logFile), "isolate-specific file output", "the isolate placeholder should identify the current isolate");
         } finally {
@@ -1066,7 +1081,7 @@ public final class UnifiedLoggingTest {
                 Files.deleteIfExists(path);
                 String option = "-Xlog:class+load=debug:" + output + ":none";
                 checkTrue(LogConfiguration.parseCommandLineArgument(option), "Windows file output path should be accepted: " + option);
-                LogTagSet.class_load.debug("Windows path output");
+                writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "Windows path output");
                 checkContains(read(path.toString()), "Windows path output", "Windows file output should receive log messages");
             }
         } finally {
@@ -1090,7 +1105,7 @@ public final class UnifiedLoggingTest {
                 Files.createSymbolicLink(Path.of(symlink), Path.of(logFile).toAbsolutePath());
                 checkTrue(LogConfiguration.parseCommandLineArgument("-Xlog:class+load=debug:file=" + symlink + ":none:invalid=1"), "symbolic links should resolve to an existing aliased output");
             }
-            LogTagSet.class_load.debug("existing output message");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "existing output message");
             checkContains(read(logFile), "existing output message", "existing file output should remain usable");
         } finally {
             LogConfiguration.disableLogging();
@@ -1109,7 +1124,7 @@ public final class UnifiedLoggingTest {
         try {
             String option = "-Xlog:class+load=debug:file=" + logFile + ":none";
             checkTrue(LogConfiguration.parseCommandLineArgument(option), "file output with a missing parent directory should be accepted: " + option);
-            LogTagSet.class_load.debug("message for unavailable log file");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "message for unavailable log file");
             checkFalse(Files.exists(logFile), "a log file should not be created when its parent directory is missing: " + logFile);
         } finally {
             LogConfiguration.disableLogging();
@@ -1128,15 +1143,15 @@ public final class UnifiedLoggingTest {
         try {
             String option = "-Xlog:class+load=debug:file=" + logFile + ":none";
             checkTrue(LogConfiguration.parseCommandLineArgument(option), "file output configuration should be accepted: " + option);
-            LogTagSet.class_load.debug("message before deletion");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "message before deletion");
             checkTrue(Files.exists(Path.of(logFile)), "configured log file should exist before deletion: " + logFile);
             Files.delete(Path.of(logFile));
             checkFalse(Files.exists(Path.of(logFile)), "log file should be absent after deletion: " + logFile);
 
             // These calls will succeed as a Unix process can continue to read and write to an open file
             // descriptor even after the file's directory entry has been deleted using unlink() or rm.
-            LogTagSet.class_load.debug("message after deletion 1");
-            LogTagSet.class_load.debug("message after deletion 2");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "message after deletion 1");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "message after deletion 2");
 
             // Close the file descriptor for the log file
             LogOutput output = TestingBackdoor.findOrCreateOutput(logFile);
@@ -1148,9 +1163,9 @@ public final class UnifiedLoggingTest {
             // Could not write to log: file=logging-test-file-output-deleted-while-open.log
             //
             // The remaining calls silently do nothing but do not crash the VM.
-            LogTagSet.class_load.debug("message after closing descriptor 1");
-            LogTagSet.class_load.debug("message after closing descriptor 2");
-            LogTagSet.class_load.debug("message after closing descriptor 3");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "message after closing descriptor 1");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "message after closing descriptor 2");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "message after closing descriptor 3");
         } finally {
             LogConfiguration.disableLogging();
             delete(logFile);
@@ -1344,7 +1359,7 @@ public final class UnifiedLoggingTest {
         @Override
         protected void operate() {
             executingThread = Thread.currentThread();
-            LogTagSet.class_load.info("message from VM operation");
+            writeEnabledLine(LogTagSet.class_load, LogLevel.INFO, "message from VM operation");
         }
     }
 
@@ -1367,7 +1382,7 @@ public final class UnifiedLoggingTest {
                     Thread.onSpinWait();
                 }
                 for (int index = 0; index < 10; index++) {
-                    LogTagSet.class_load.debug("allocation-free output");
+                    writeEnabledLine(LogTagSet.class_load, LogLevel.DEBUG, "allocation-free output");
                 }
             }
         }
@@ -1391,10 +1406,12 @@ public final class UnifiedLoggingTest {
             while (!start.get()) {
                 Thread.onSpinWait();
             }
-            try (LogMessage message = LogTagSet.class_load.message()) {
-                message.debug().string(prefix + " line 1");
-                message.debug().string(prefix + " line 2");
-                message.debug().string(prefix + " line 3");
+            if (HasXlogSupport.get() && LogTagSet.class_load.isDebug()) {
+                try (LogMessage message = LogTagSet.class_load.message()) {
+                    message.debug().string(prefix).string(" line 1");
+                    message.debug().string(prefix).string(" line 2");
+                    message.debug().string(prefix).string(" line 3");
+                }
             }
         }
     }
@@ -1420,9 +1437,50 @@ public final class UnifiedLoggingTest {
 
     /// Writes one message whose lines are visible to different output thresholds.
     private static void writeMixedLevelMessage(String messagePrefix) {
-        try (LogMessage message = LogTagSet.class_load.message()) {
-            message.line(LogLevel.DEBUG).string(messagePrefix + " debug line");
-            message.line(LogLevel.INFO).string(messagePrefix + " info line");
+        if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
+            try (LogMessage message = LogTagSet.class_load.message()) {
+                message.line(LogLevel.DEBUG).string(messagePrefix).string(" debug line");
+                message.line(LogLevel.INFO).string(messagePrefix).string(" info line");
+            }
+        }
+    }
+
+    /// Writes one test line using the guarded, allocation-free protocol required at runtime.
+    private static void writeEnabledLine(LogTagSet tagSet, LogLevel level, String text) {
+        if (HasXlogSupport.get() && tagSet.isLevel(level)) {
+            LogMessage message = tagSet.message();
+            try {
+                message.line(level).string(text);
+            } finally {
+                message.close();
+            }
+        }
+    }
+
+    /// Writes two text fragments as one enabled line without concatenating them.
+    private static void writeEnabledLine(LogTagSet tagSet, LogLevel level, String first, String second) {
+        if (HasXlogSupport.get() && tagSet.isLevel(level)) {
+            try (LogMessage message = tagSet.message()) {
+                message.line(level).string(first).string(second);
+            }
+        }
+    }
+
+    /// Writes text fragments and a number as one enabled line without concatenating them.
+    private static void writeEnabledLine(LogTagSet tagSet, LogLevel level, String first, String second, int value) {
+        if (HasXlogSupport.get() && tagSet.isLevel(level)) {
+            try (LogMessage message = tagSet.message()) {
+                message.line(level).string(first).string(second).signed(value);
+            }
+        }
+    }
+
+    /// Writes text and a number as one enabled line without concatenating them.
+    private static void writeEnabledLine(LogTagSet tagSet, LogLevel level, String text, int value) {
+        if (HasXlogSupport.get() && tagSet.isLevel(level)) {
+            try (LogMessage message = tagSet.message()) {
+                message.line(level).string(text).signed(value);
+            }
         }
     }
 

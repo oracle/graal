@@ -44,6 +44,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.ModuleNative;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogLevel;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
@@ -354,7 +355,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     }
 
     private static void traceDefine(ClassDefinitionInfo info, ClassLoader loader, Class<?> clazz) {
-        if (LogTagSet.class_load.isInfo()) {
+        if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
             DynamicHub hub = DynamicHub.fromClass(clazz);
             ResolvedJavaType interpreterType = hub.getInterpreterType();
             String className = interpreterType.toJavaName();
@@ -363,7 +364,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
         String pattern = RuntimeClassLoading.Options.LogClassLoadingCauseFor.getValue();
 
-        if (pattern != null && LogTagSet.class_load_cause.isInfo()) {
+        if (HasXlogSupport.get() && pattern != null && LogTagSet.class_load_cause.isInfo()) {
             String className = DynamicHub.fromClass(clazz).getInterpreterType().toJavaName();
             if (pattern.equals("*") || className.contains(pattern)) {
                 /* Stack capture can allocate and must complete before entering the logging scope. */

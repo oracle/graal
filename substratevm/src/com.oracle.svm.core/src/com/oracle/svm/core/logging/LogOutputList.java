@@ -58,9 +58,11 @@ import java.util.Arrays;
 /// For example, consider the following message:
 ///
 /// ```
-/// try (LogMessage msg = LogTagSet.class_load.message()) {
-///     msg.info().string("info message");
-///     msg.debug().string("debug message");
+/// if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
+///     try (LogMessage msg = LogTagSet.class_load.message()) {
+///         msg.info().string("info message");
+///         msg.debug().string("debug message");
+///     }
 /// }
 /// ```
 ///

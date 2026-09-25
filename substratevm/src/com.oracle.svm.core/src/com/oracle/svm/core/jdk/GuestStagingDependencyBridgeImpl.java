@@ -26,8 +26,8 @@ package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
 
-import org.graalvm.nativeimage.RuntimeStateTrimConfig;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
@@ -46,6 +46,7 @@ import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogConfiguration;
+import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
@@ -272,7 +273,9 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     private static void reportImageModule(Module module, EconomicSet<Module> reportedModules) {
         String moduleName = ModuleNative.getName(module);
         if (moduleName != null && reportedModules.add(module)) {
-            LogTagSet.module_load_image.info(moduleName + " location: image");
+            try (LogMessage message = LogTagSet.module_load_image.message()) {
+                message.info().string(moduleName).string(" location: image");
+            }
         }
     }
 
