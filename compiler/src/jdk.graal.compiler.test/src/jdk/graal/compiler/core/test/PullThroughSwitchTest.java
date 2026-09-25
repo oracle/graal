@@ -28,11 +28,22 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.options.OptionValues;
 
 public class PullThroughSwitchTest extends GraalCompilerTest {
 
@@ -177,6 +188,45 @@ public class PullThroughSwitchTest extends GraalCompilerTest {
         test("switchReduce3NodesPattern", 12);
         highTierSwitches = -1;
         fixedNodesBeforeSwitch = -1;
+    }
+
+    @Test
+    public void testReadDeduplicationOption() {
+        testReadDeduplicationOption(false);
+    }
+
+    @Test
+    public void testLoweredReadDeduplicationOption() {
+        testReadDeduplicationOption(true);
+    }
+
+    private void testReadDeduplicationOption(boolean lowered) {
+        for (boolean enabled : new boolean[]{true, false}) {
+            OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.OptDeduplicateReadsAcrossBranches, enabled);
+            StructuredGraph graph = parseEager("switchReduceOnlyOneNodePattern", AllowAssumptions.NO, options);
+            if (lowered) {
+                // Replace loads before canonicalization so deduplication sees fixed ReadNodes.
+                for (LoadFieldNode load : graph.getNodes().filter(LoadFieldNode.class).snapshot()) {
+                    ConstantNode base = ConstantNode.forConstant(getConstantReflection().asJavaClass(load.field().getDeclaringClass()), getMetaAccess(), graph);
+                    OffsetAddressNode address = graph.addOrUnique(new OffsetAddressNode(base, ConstantNode.forLong(load.field().getOffset(), graph)));
+                    ReadNode read = graph.add(new ReadNode(address, new FieldLocationIdentity(load.field()), load.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
+                    graph.replaceFixedWithFixed(load, read);
+                }
+                Assert.assertTrue(graph.getNodes().filter(ReadNode.class).isNotEmpty());
+                Assert.assertEquals(0, graph.getNodes().filter(LoadFieldNode.class).count());
+            }
+            createCanonicalizerPhase().apply(graph, getProviders());
+            SwitchNode sw = graph.getNodes().filter(SwitchNode.class).first();
+            Assert.assertNotNull(sw);
+            int fixedNodes = 0;
+            for (FixedNode node : GraphUtil.predecessorIterable((FixedNode) sw.predecessor())) {
+                if (node == graph.start()) {
+                    break;
+                }
+                fixedNodes++;
+            }
+            Assert.assertEquals("Read should only move above the switch when enabled", enabled ? 1 : 0, fixedNodes);
+        }
     }
 
     // default value is -1

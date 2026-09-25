@@ -41,6 +41,7 @@ import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.code.SourceStackTraceBailoutException;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
@@ -85,11 +86,13 @@ import jdk.graal.compiler.nodes.WithExceptionNode;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.extended.SwitchCaseProbabilityNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.MemoryPhiNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
@@ -1537,6 +1540,9 @@ public class GraphUtil {
             for (Node successor : split.successors()) {
                 if (successor instanceof BeginNode begin && begin.next() instanceof FixedWithNextNode fwn) {
                     if (successor.hasUsages()) {
+                        return;
+                    }
+                    if (!GraalOptions.OptDeduplicateReadsAcrossBranches.getValue(split.getOptions()) && (fwn instanceof LoadFieldNode || fwn instanceof ReadNode)) {
                         return;
                     }
                     if (fwn instanceof AbstractBeginNode || fwn instanceof ControlFlowAnchored || fwn instanceof MemoryAnchorNode || fwn instanceof SwitchCaseProbabilityNode) {

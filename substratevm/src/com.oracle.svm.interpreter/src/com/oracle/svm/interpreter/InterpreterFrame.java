@@ -35,6 +35,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.SteppingControl;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
@@ -73,13 +74,12 @@ public final class InterpreterFrame {
 
     // endregion Execution flag constants
 
+    final byte[] code;
     private final long[] primitives;
     private final Object[] references;
 
+    private final Object[] cachedEntries;
     final InterpreterResolvedJavaMethod method;
-    final byte[] code;
-
-    // region Compilation state and shared flags
 
     /**
      * Profile used by this activation, or {@code null} when profiling is disabled or unavailable.
@@ -87,20 +87,18 @@ public final class InterpreterFrame {
      * indirection in invocation and backedge handlers.
      */
     MethodProfile methodProfile;
+    private final Object[] arguments;
+
+    DebugState debugState;
+    private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
+    private Object[] locks;
+    private short lockCount;
+
     /**
      * Compilation and stack-walking flags. Compilation flags are installed when interpretation
      * starts; stack-walking visibility is independent and must be preserved when installing them.
      */
     private byte flags;
-
-    // endregion Compilation state and shared flags
-
-    DebugState debugState;
-
-    private final Object[] arguments;
-    private Object[] locks;
-    private int lockCount;
-    private InterpreterFrameSourceInfo syntheticStackTraceCallerInfo;
 
     static final Object[] EMPTY = new Object[0];
 
@@ -110,6 +108,8 @@ public final class InterpreterFrame {
         int slotCount = method.getMaxLocals() + method.getMaxStackSize();
         this.method = method;
         this.code = method.getInterpretedCode();
+        InterpreterConstantPool constantPool = method.getConstantPool();
+        this.cachedEntries = constantPool == null ? null : constantPool.rawCachedEntries();
         this.primitives = new long[slotCount];
         this.references = new Object[slotCount];
         this.arguments = arguments;
@@ -126,6 +126,10 @@ public final class InterpreterFrame {
      */
     public static InterpreterFrame create(InterpreterResolvedJavaMethod method, Object... arguments) {
         return new InterpreterFrame(method, arguments);
+    }
+
+    Object uncheckedPeekCachedEntry(long cpi) {
+        return UNSAFE.getReference(cachedEntries, Unsafe.ARRAY_OBJECT_BASE_OFFSET + cpi * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
     }
 
     /**
@@ -583,7 +587,7 @@ public final class InterpreterFrame {
         assert locks == EMPTY && lockCount == 0;
         assert initialLockCount >= 0 && initialLockCount <= initialLocks.length;
         locks = initialLocks;
-        lockCount = initialLockCount;
+        lockCount = initialLockCount > Short.MAX_VALUE ? -1 : (short) initialLockCount;
     }
 
     /**
@@ -610,7 +614,9 @@ public final class InterpreterFrame {
             if (lockCount >= locks.length) {
                 ensureLocksCapacity(lockCount + 1);
             }
-            locks[lockCount++] = ref;
+            locks[lockCount] = ref;
+            // Preserve all acquisitions, using the scan fallback when the counter is exhausted.
+            lockCount = lockCount == Short.MAX_VALUE ? -1 : (short) (lockCount + 1);
         } else {
             // Unbalanced locks, linear scan.
             for (int i = 0; i < locks.length; ++i) {

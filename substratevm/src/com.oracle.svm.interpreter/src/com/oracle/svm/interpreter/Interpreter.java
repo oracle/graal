@@ -24,6 +24,15 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Boolean;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Byte;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Char;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Double;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Float;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Int;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Long;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Object;
+import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Short;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterToVM.nullCheck;
 import static com.oracle.svm.interpreter.InterpreterUtil.invalidOpcode;
@@ -249,6 +258,7 @@ import java.util.Objects;
 
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.NeverInlineTrivial;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
@@ -265,6 +275,8 @@ import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.SteppingControl;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
+import com.oracle.svm.interpreter.metadata.CremaResolvedJavaFieldImpl;
+import com.oracle.svm.interpreter.metadata.CremaResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedInvokeGenericJavaMethod;
@@ -3154,8 +3166,8 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = GETSTATIC)
         private static long getstaticHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            InterpreterResolvedJavaField resolvedJavaField = resolveField(frame.method, GETSTATIC, frame.code, curBCI);
-            getStaticField(frame, resolvedJavaField, virtualStack);
+            StaticStorage staticStorage = getStaticStorage(curBCI, frame, GETSTATIC);
+            getField(frame, staticStorage.field, virtualStack, staticStorage.type, true, staticStorage.storage);
             return advanceToNextBytecode(curBCI, GETSTATIC, frame, virtualStack);
         }
 
@@ -3163,31 +3175,33 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = GETFIELD)
         private static long getfieldHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
             InterpreterResolvedJavaField resolvedJavaField = resolveField(frame.method, GETFIELD, frame.code, curBCI);
-            getInstanceField(frame, resolvedJavaField, virtualStack);
+            assert !resolvedJavaField.isStatic();
+            getField(frame, resolvedJavaField, virtualStack, resolvedJavaField.getJavaKind().getBasicType(), false, null);
             return advanceToNextBytecode(curBCI, GETFIELD, frame, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_GETSTATIC)
         private static long quickGetstaticHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(frame.method, GETSTATIC, BytecodeStream.uncheckedReadCPI2(frame.code, curBCI));
-            getStaticField(frame, resolvedJavaField, virtualStack);
+            StaticStorage staticStorage = quickGetStaticStorage(curBCI, frame);
+            getField(frame, staticStorage.field, virtualStack, staticStorage.type, true, staticStorage.storage);
             return advanceToNextBytecode(curBCI, QUICK_GETSTATIC, frame, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_GETFIELD)
         private static long quickGetfieldHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            InterpreterResolvedJavaField resolvedJavaField = resolveQuickenedField(frame.method, GETFIELD, BytecodeStream.uncheckedReadCPI2(frame.code, curBCI));
-            getInstanceField(frame, resolvedJavaField, virtualStack);
+            InterpreterResolvedJavaField resolvedJavaField = getQuickenedJavaField(curBCI, frame);
+            assert !resolvedJavaField.isStatic();
+            getField(frame, resolvedJavaField, virtualStack, resolvedJavaField.getJavaKind().getBasicType(), false, null);
             return advanceToNextBytecode(curBCI, QUICK_GETFIELD, frame, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = PUTSTATIC)
         private static long putstaticHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            InterpreterResolvedJavaField field = resolveField(frame.method, PUTSTATIC, frame.code, curBCI);
-            putStaticField(frame, field, virtualStack);
+            StaticStorage staticStorage = getStaticStorage(curBCI, frame, PUTSTATIC);
+            putField(frame, staticStorage.field, virtualStack, staticStorage.type, true, staticStorage.storage);
             return advanceToNextBytecode(curBCI, PUTSTATIC, frame, virtualStack);
         }
 
@@ -3195,23 +3209,27 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = PUTFIELD)
         private static long putfieldHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
             InterpreterResolvedJavaField field = resolveField(frame.method, PUTFIELD, frame.code, curBCI);
-            putInstanceField(frame, field, virtualStack);
+            assert !field.isStatic();
+            assert !field.isUnmaterializedConstant();
+            putField(frame, field, virtualStack, field.getJavaKind().getBasicType(), false, null);
             return advanceToNextBytecode(curBCI, PUTFIELD, frame, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_PUTSTATIC)
         private static long quickPutstaticHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            InterpreterResolvedJavaField field = resolveQuickenedField(frame.method, PUTSTATIC, BytecodeStream.uncheckedReadCPI2(frame.code, curBCI));
-            putStaticField(frame, field, virtualStack);
+            StaticStorage staticStorage = quickGetStaticStorage(curBCI, frame);
+            putField(frame, staticStorage.field, virtualStack, staticStorage.type, true, staticStorage.storage);
             return advanceToNextBytecode(curBCI, QUICK_PUTSTATIC, frame, virtualStack);
         }
 
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = QUICK_PUTFIELD)
         private static long quickPutfieldHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            InterpreterResolvedJavaField field = resolveQuickenedField(frame.method, PUTFIELD, BytecodeStream.uncheckedReadCPI2(frame.code, curBCI));
-            putInstanceField(frame, field, virtualStack);
+            InterpreterResolvedJavaField field = getQuickenedJavaField(curBCI, frame);
+            assert !field.isStatic();
+            assert !field.isUnmaterializedConstant();
+            putField(frame, field, virtualStack, field.getJavaKind().getBasicType(), false, null);
             return advanceToNextBytecode(curBCI, QUICK_PUTFIELD, frame, virtualStack);
         }
 
@@ -4108,17 +4126,6 @@ public final class Interpreter {
         }
     }
 
-    private static InterpreterResolvedJavaField resolveQuickenedField(InterpreterResolvedJavaMethod method, int opcode, char cpi) {
-        assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : Bytecodes.nameOf(opcode);
-        assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
-        try {
-            // The first execution cached the resolved field after applying opcode-specific access checks.
-            return (InterpreterResolvedJavaField) getConstantPool(method).uncheckedPeekCachedEntry(cpi);
-        } catch (Throwable t) {
-            throw InterpreterUtil.shouldNotReachHere("Quickened field access must use an already resolved field entry", t);
-        }
-    }
-
     private static void quickenFieldAccess(byte[] code, long bci, int opcode) {
         // Patch only the opcode: the CPI operand and BCI layout stay identical.
         BytecodeStream.patchOpcodeOpaque(code, bci, Bytecodes.quickenedFieldAccess(opcode));
@@ -4217,171 +4224,242 @@ public final class Interpreter {
 
     // region Field read/write
 
-    /**
-     * Pops the value from the operand stack and stores it in a static field.
-     * The field must already be resolved and verified.
-     */
-    @AlwaysInline("Keep stack access in the bytecode-handler stub")
-    private static void putStaticField(InterpreterFrame frame, InterpreterResolvedJavaField field, InterpreterOperandStack virtualStack) {
-        assert field.isStatic();
-        assert !field.isUnmaterializedConstant();
-        InterpreterToVM.ensureClassInitialized(field.getDeclaringClass());
+    @AlwaysInline("Keep static field storage lookup in the bytecode-handler stub")
+    private static InterpreterResolvedJavaField getQuickenedJavaField(long curBCI, InterpreterFrame frame) {
+        long cpi = BytecodeStream.uncheckedReadCPI2(frame.code, curBCI);
+        assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
 
-        JavaKind kind = field.getJavaKind();
-        Object receiver = field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum());
+        Object entry = frame.uncheckedPeekCachedEntry(cpi);
 
-        putFieldImpl(frame, field, kind, receiver, virtualStack);
-    }
+        if (entry == null) {
+            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+        }
 
-    /**
-     * Pops and null-checks the receiver below the field value on the operand stack, then pops the
-     * value and stores it in an instance field.
-     * The field must already be resolved and verified.
-     */
-    @AlwaysInline("Keep stack access in the bytecode-handler stub")
-    private static void putInstanceField(InterpreterFrame frame, InterpreterResolvedJavaField field, InterpreterOperandStack virtualStack) {
-        assert !field.isStatic();
-        assert !field.isUnmaterializedConstant();
-
-        JavaKind kind = field.getJavaKind();
-        int slotCount = kind.getSlotCount();
-        Object receiver = nullCheck(virtualStack.peekObject(frame, -slotCount - 1));
-
-        putFieldImpl(frame, field, kind, receiver, virtualStack);
-        virtualStack.pop1(frame);
-    }
-
-    @AlwaysInline("Keep stack access in the bytecode-handler stub")
-    private static void putFieldImpl(InterpreterFrame frame, InterpreterResolvedJavaField field, JavaKind kind, Object receiver, InterpreterOperandStack virtualStack) {
-        switch (kind) {
-            case Boolean -> {
-                InterpreterToVM.setFieldBoolean(stackIntToBoolean(virtualStack.peekInt(frame, -1)), receiver, field, true);
-                virtualStack.pop1(frame, false);
-            }
-            case Byte -> {
-                InterpreterToVM.setFieldByte((byte) virtualStack.peekInt(frame, -1), receiver, field, true);
-                virtualStack.pop1(frame, false);
-            }
-            case Char -> {
-                InterpreterToVM.setFieldChar((char) virtualStack.peekInt(frame, -1), receiver, field, true);
-                virtualStack.pop1(frame, false);
-            }
-            case Short -> {
-                InterpreterToVM.setFieldShort((short) virtualStack.peekInt(frame, -1), receiver, field, true);
-                virtualStack.pop1(frame, false);
-            }
-            case Int -> {
-                InterpreterToVM.setFieldInt(virtualStack.peekInt(frame, -1), receiver, field, true);
-                virtualStack.pop1(frame, false);
-            }
-            case Double -> {
-                InterpreterToVM.setFieldDouble(virtualStack.peekDouble(frame, -1), receiver, field, true);
-                virtualStack.pop2(frame, false);
-            }
-            case Float -> {
-                InterpreterToVM.setFieldFloat(virtualStack.peekFloat(frame, -1), receiver, field, true);
-                virtualStack.pop1(frame, false);
-            }
-            case Long -> {
-                InterpreterToVM.setFieldLong(virtualStack.peekLong(frame, -1), receiver, field, true);
-                virtualStack.pop2(frame, false);
-            }
-            case Object -> {
-                InterpreterToVM.setFieldObject(virtualStack.peekObject(frame, -1), receiver, field, true);
-                virtualStack.pop1(frame);
-            }
-            default -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
+        Class<?> hub = entry.getClass();
+        if (hub == InterpreterResolvedJavaField.class) {
+            return uncheckedCast(entry, InterpreterResolvedJavaField.class);
+        } else if (hub == CremaResolvedJavaFieldImpl.class) {
+            return uncheckedCast(entry, CremaResolvedJavaFieldImpl.class);
+        } else {
+            throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
     }
 
     /**
-     * Loads a static field and stores its value on the operand stack.
+     * A resolved static field, its JVM basic-type tag, and the primitive or object storage containing
+     * its value. Shared by the quickened and resolving static-field handlers.
+     */
+    private record StaticStorage(InterpreterResolvedJavaField field, int type, Object storage) {
+    }
+
+    @AlwaysInline("Keep static field storage lookup in the bytecode-handler stub")
+    private static StaticStorage getStaticStorage(long curBCI, InterpreterFrame frame, int opcode) {
+        InterpreterResolvedJavaField resolvedJavaField = resolveField(frame.method, opcode, frame.code, curBCI);
+        assert resolvedJavaField.isStatic();
+        InterpreterToVM.ensureClassInitialized(resolvedJavaField.getDeclaringClass());
+
+        int basicType = resolvedJavaField.getJavaKind().getBasicType();
+        boolean isPrimitive = basicType != JVM_ArrayType_Object;
+        Object storage;
+
+        if (resolvedJavaField.getClass() == InterpreterResolvedJavaField.class) {
+            storage = isPrimitive ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(resolvedJavaField.getInstalledLayerNum())
+                            : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(resolvedJavaField.getInstalledLayerNum());
+        } else if (resolvedJavaField.getClass() == CremaResolvedJavaFieldImpl.class) {
+            storage = resolvedJavaField.getDeclaringClass().getStaticStorage(isPrimitive, resolvedJavaField.getInstalledLayerNum());
+        } else {
+            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+        }
+
+        return new StaticStorage(resolvedJavaField, basicType, storage);
+    }
+
+    @AlwaysInline("Keep static field storage lookup in the bytecode-handler stub")
+    private static StaticStorage quickGetStaticStorage(long curBCI, InterpreterFrame frame) {
+        long cpi = BytecodeStream.uncheckedReadCPI2(frame.code, curBCI);
+        assert cpi != 0 : "Quickened field access requires a resolved constant pool index";
+
+        Object entry = frame.uncheckedPeekCachedEntry(cpi);
+
+        if (entry == null) {
+            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+        }
+
+        InterpreterResolvedJavaField resolvedJavaField;
+        Class<?> hub = entry.getClass();
+        int basicType;
+        Object storage;
+
+        if (hub == InterpreterResolvedJavaField.class) {
+            resolvedJavaField = uncheckedCast(entry, InterpreterResolvedJavaField.class);
+            InterpreterToVM.ensureClassInitialized(resolvedJavaField.getDeclaringClass());
+            basicType = resolvedJavaField.getJavaKind().getBasicType();
+            if (basicType != JVM_ArrayType_Object) {
+                storage = StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(resolvedJavaField.getInstalledLayerNum());
+            } else {
+                storage = StaticFieldsSupport.getStaticObjectFieldsAtRuntime(resolvedJavaField.getInstalledLayerNum());
+            }
+        } else if (hub == CremaResolvedJavaFieldImpl.class) {
+            resolvedJavaField = uncheckedCast(entry, CremaResolvedJavaFieldImpl.class);
+            assert resolvedJavaField.getDeclaringClass() instanceof CremaResolvedObjectType;
+            CremaResolvedObjectType declaringClass = uncheckedCast(resolvedJavaField.getDeclaringClass(), CremaResolvedObjectType.class);
+            InterpreterToVM.ensureClassInitialized(declaringClass);
+            basicType = resolvedJavaField.getJavaKind().getBasicType();
+            storage = declaringClass.getStaticStorage(basicType != JVM_ArrayType_Object, resolvedJavaField.getInstalledLayerNum());
+        } else {
+            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+        }
+
+        assert resolvedJavaField.isStatic();
+        return new StaticStorage(resolvedJavaField, basicType, storage);
+    }
+
+    /**
+     * Pops the value from the operand stack and stores it in the field at the given storage.
      * The field must already be resolved and verified.
      */
     @AlwaysInline("Keep stack access in the bytecode-handler stub")
-    private static void getStaticField(InterpreterFrame frame, InterpreterResolvedJavaField field, InterpreterOperandStack virtualStack) {
-        assert field.isStatic();
-        InterpreterToVM.ensureClassInitialized(field.getDeclaringClass());
+    private static void putField(InterpreterFrame frame, InterpreterResolvedJavaField field, InterpreterOperandStack virtualStack, int basicType, boolean isStatic, Object staticReceiver) {
+        assert !field.isUnmaterializedConstant();
+        switch (basicType) {
+            case JVM_ArrayType_Boolean -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -2));
+                boolean value = stackIntToBoolean(virtualStack.peekInt(frame, -1));
+                InterpreterToVM.setFieldBoolean(value, receiver, field, true);
+                virtualStack.pop1(frame, false);
+            }
+            case JVM_ArrayType_Char -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -2));
+                char value = (char) virtualStack.peekInt(frame, -1);
+                InterpreterToVM.setFieldChar(value, receiver, field, true);
+                virtualStack.pop1(frame, false);
+            }
+            case JVM_ArrayType_Float -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -2));
+                float value = virtualStack.peekFloat(frame, -1);
+                InterpreterToVM.setFieldFloat(value, receiver, field, true);
+                virtualStack.pop1(frame, false);
+            }
+            case JVM_ArrayType_Double -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -3));
+                double value = virtualStack.peekDouble(frame, -1);
+                InterpreterToVM.setFieldDouble(value, receiver, field, true);
+                virtualStack.pop2(frame, false);
+            }
+            case JVM_ArrayType_Byte -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -2));
+                byte value = (byte) virtualStack.peekInt(frame, -1);
+                InterpreterToVM.setFieldByte(value, receiver, field, true);
+                virtualStack.pop1(frame, false);
+            }
+            case JVM_ArrayType_Short -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -2));
+                short value = (short) virtualStack.peekInt(frame, -1);
+                InterpreterToVM.setFieldShort(value, receiver, field, true);
+                virtualStack.pop1(frame, false);
+            }
+            case JVM_ArrayType_Int -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -2));
+                int value = virtualStack.peekInt(frame, -1);
+                InterpreterToVM.setFieldInt(value, receiver, field, true);
+                virtualStack.pop1(frame, false);
+            }
+            case JVM_ArrayType_Long -> {
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -3));
+                long value = virtualStack.peekLong(frame, -1);
+                InterpreterToVM.setFieldLong(value, receiver, field, true);
+                virtualStack.pop2(frame, false);
+            }
+            default -> {
+                assert basicType == JVM_ArrayType_Object;
+                Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -2));
+                Object value = virtualStack.peekObject(frame, -1);
+                InterpreterToVM.setFieldObject(value, receiver, field, true);
+                virtualStack.pop1(frame);
+            }
+        }
 
-        JavaKind kind = field.getJavaKind();
-        Object receiver = field.getDeclaringClass().getStaticStorage(kind.isPrimitive(), field.getInstalledLayerNum());
+        if (!isStatic) {
+            virtualStack.pop1(frame);
+        }
+    }
 
+    /**
+     * Loads the field and stores its value on the operand stack. For an instance field, the
+     * storage is popped and replaced with the loaded value.
+     */
+    @AlwaysInline("Keep stack access in the bytecode-handler stub")
+    private static void getField(InterpreterFrame frame, InterpreterResolvedJavaField field, InterpreterOperandStack virtualStack, int basicType, boolean isStatic, Object staticReceiver) {
+        Object receiver = isStatic ? staticReceiver : nullCheck(virtualStack.peekObject(frame, -1));
         // @formatter:off
-        switch (kind) {
-            case Boolean -> virtualStack.pushInt(frame, InterpreterToVM.getFieldBoolean(receiver, field, true) ? 1 : 0);
-            case Byte    -> virtualStack.pushInt(frame, InterpreterToVM.getFieldByte(receiver, field, true));
-            case Char    -> virtualStack.pushInt(frame, InterpreterToVM.getFieldChar(receiver, field, true));
-            case Short   -> virtualStack.pushInt(frame, InterpreterToVM.getFieldShort(receiver, field, true));
-            case Int     -> virtualStack.pushInt(frame, InterpreterToVM.getFieldInt(receiver, field, true));
-            case Double  -> virtualStack.pushDouble(frame, InterpreterToVM.getFieldDouble(receiver, field, true));
-            case Float   -> virtualStack.pushFloat(frame, InterpreterToVM.getFieldFloat(receiver, field, true));
-            case Long    -> virtualStack.pushLong(frame, InterpreterToVM.getFieldLong(receiver, field, true));
-            case Object  -> virtualStack.pushObject(frame, InterpreterToVM.getFieldObject(receiver, field, true));
-            default      -> throw InterpreterUtil.shouldNotReachHereAtRuntime();
-        }
-        // @formatter:on
-    }
-
-    /**
-     * Pops and null-checks the receiver, then stores the loaded instance field value on the operand
-     * stack in place of the receiver.
-     * The field must already be resolved and verified.
-     */
-    @AlwaysInline("Keep stack access in the bytecode-handler stub")
-    private static void getInstanceField(InterpreterFrame frame, InterpreterResolvedJavaField field, InterpreterOperandStack virtualStack) {
-        assert !field.isStatic();
-
-        Object receiver = nullCheck(virtualStack.peekObject(frame, -1));
-
-        JavaKind kind = field.getJavaKind();
-        switch (kind) {
-            case Boolean -> {
-                int value = InterpreterToVM.getFieldBoolean(receiver, field, true) ? 1 : 0;
-                virtualStack.pop1(frame);
+        switch (basicType) {
+            case JVM_ArrayType_Boolean -> {
+                boolean value = InterpreterToVM.getFieldBoolean(receiver, field, true);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
+                virtualStack.pushInt(frame, value ? 1 : 0);
+            }
+            case JVM_ArrayType_Char -> {
+                char value = InterpreterToVM.getFieldChar(receiver, field, true);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
                 virtualStack.pushInt(frame, value);
             }
-            case Byte -> {
-                int value = InterpreterToVM.getFieldByte(receiver, field, true);
-                virtualStack.pop1(frame);
-                virtualStack.pushInt(frame, value);
-            }
-            case Char -> {
-                int value = InterpreterToVM.getFieldChar(receiver, field, true);
-                virtualStack.pop1(frame);
-                virtualStack.pushInt(frame, value);
-            }
-            case Short -> {
-                int value = InterpreterToVM.getFieldShort(receiver, field, true);
-                virtualStack.pop1(frame);
-                virtualStack.pushInt(frame, value);
-            }
-            case Int -> {
-                int value = InterpreterToVM.getFieldInt(receiver, field, true);
-                virtualStack.pop1(frame);
-                virtualStack.pushInt(frame, value);
-            }
-            case Double -> {
-                double value = InterpreterToVM.getFieldDouble(receiver, field, true);
-                virtualStack.pop1(frame);
-                virtualStack.pushDouble(frame, value);
-            }
-            case Float -> {
+            case JVM_ArrayType_Float -> {
                 float value = InterpreterToVM.getFieldFloat(receiver, field, true);
-                virtualStack.pop1(frame);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
                 virtualStack.pushFloat(frame, value);
             }
-            case Long -> {
+            case JVM_ArrayType_Double -> {
+                double value = InterpreterToVM.getFieldDouble(receiver, field, true);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
+                virtualStack.pushDouble(frame, value);
+            }
+            case JVM_ArrayType_Byte -> {
+                byte value = InterpreterToVM.getFieldByte(receiver, field, true);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
+                virtualStack.pushInt(frame, value);
+            }
+            case JVM_ArrayType_Short -> {
+                short value = InterpreterToVM.getFieldShort(receiver, field, true);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
+                virtualStack.pushInt(frame, value);
+            }
+            case JVM_ArrayType_Int -> {
+                int value = InterpreterToVM.getFieldInt(receiver, field, true);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
+                virtualStack.pushInt(frame, value);
+            }
+            case JVM_ArrayType_Long -> {
                 long value = InterpreterToVM.getFieldLong(receiver, field, true);
-                virtualStack.pop1(frame);
+                if (!isStatic) {
+                    virtualStack.pop1(frame);
+                }
                 virtualStack.pushLong(frame, value);
             }
-            case Object -> {
+            default -> {
+                assert basicType == JVM_ArrayType_Object;
                 Object value = InterpreterToVM.getFieldObject(receiver, field, true);
-                virtualStack.pop1(frame);
-                virtualStack.pushObject(frame, value);
+                if (isStatic) {
+                    virtualStack.pushObject(frame, value);
+                } else {
+                    virtualStack.replaceTopObject(frame, value);
+                }
             }
-            default -> throw VMError.shouldNotReachHereAtRuntime();
         }
+        // @formatter:on
     }
 
     // endregion Field read/write
