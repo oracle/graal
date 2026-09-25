@@ -79,7 +79,7 @@ public class WasmLMAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
-    public Word getTLABInfo() {
+    public Word getThreadLocalData() {
         return Word.nullPointer();
     }
 

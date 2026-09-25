@@ -27,6 +27,7 @@ package com.oracle.svm.guest.staging.core.threadlocal;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 
 /**
  * Represents a fast thread local variable of type {@link Object}. See
@@ -38,7 +39,7 @@ import org.graalvm.nativeimage.Platforms;
  * type check. In other words, it is the responsibility of the user to not violate the contract and
  * store a value with a wrong type.
  */
-@SuppressWarnings({"unused"})
+@SuppressWarnings({"unused", "static-method"})
 public final class FastThreadLocalObject<T> extends FastThreadLocal {
 
     private final Class<T> valueClass;
@@ -92,5 +93,13 @@ public final class FastThreadLocalObject<T> extends FastThreadLocal {
 
     public boolean compareAndSet(IsolateThread thread, T expect, T update) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
+    }
+
+    public Pointer getAddress() {
+        throw new IllegalArgumentException("VM thread local variable cannot be accessed during native image generation");
+    }
+
+    public Pointer getAddress(IsolateThread thread) {
+        throw new IllegalArgumentException("VM thread local variable cannot be accessed during native image generation");
     }
 }

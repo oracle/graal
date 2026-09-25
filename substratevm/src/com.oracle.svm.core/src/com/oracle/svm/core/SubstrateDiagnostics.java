@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -90,7 +89,7 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.guest.staging.JavaMainSupport;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
@@ -118,17 +117,17 @@ public class SubstrateDiagnostics {
     private static final int MAX_THREADS_TO_PRINT = 100_000;
     private static final int MAX_FRAME_ANCHORS_TO_PRINT_PER_THREAD = 1000;
 
-    private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1, "SubstrateDiagnostics.threadOnlyAttachedForCrashHandler");
+    private static final FastThreadLocalBoolean threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBoolean("SubstrateDiagnostics.threadOnlyAttachedForCrashHandler");
     private static final ImageCodeLocationInfoPrinter imageCodeLocationInfoPrinter = new ImageCodeLocationInfoPrinter();
     private static final StackFramePrintVisitor stackFramePrinter = new StackFramePrintVisitor();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
-        threadOnlyAttachedForCrashHandler.getAddress(thread).write((byte) 1);
+        threadOnlyAttachedForCrashHandler.set(thread, true);
     }
 
     public static boolean isThreadOnlyAttachedForCrashHandler(IsolateThread thread) {
-        return threadOnlyAttachedForCrashHandler.getAddress(thread).read() != 0;
+        return threadOnlyAttachedForCrashHandler.get(thread);
     }
 
     @Fold

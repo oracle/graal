@@ -34,7 +34,7 @@ import org.graalvm.word.WordBase;
  * Represents a fast thread local variable of type {@link WordBase word}. See
  * {@link FastThreadLocalFactory} for details and restrictions of VM thread local variables.
  */
-@SuppressWarnings({"unused"})
+@SuppressWarnings({"unused", "static-method"})
 public final class FastThreadLocalWord<T extends WordBase> extends FastThreadLocal {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -82,12 +82,10 @@ public final class FastThreadLocalWord<T extends WordBase> extends FastThreadLoc
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
     }
 
-    @SuppressWarnings("static-method")
     public WordPointer getAddress() {
         throw new IllegalArgumentException("VM thread local variable cannot be accessed during native image generation");
     }
 
-    @SuppressWarnings("static-method")
     public WordPointer getAddress(IsolateThread thread) {
         throw new IllegalArgumentException("VM thread local variable cannot be accessed during native image generation");
     }

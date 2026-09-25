@@ -219,9 +219,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter long ipOffset,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
+        Word threadLocalData = getThreadLocalData();
+        Word top = readTlabTop(threadLocalData);
+        Word end = readTlabEnd(threadLocalData);
         ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // A negative array length will result in an array size larger than the largest possible
@@ -231,7 +231,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         Object result;
         if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
+            writeTlabTop(threadLocalData, newTop);
             emitPrefetchAllocate(newTop, true);
             result = formatStoredContinuation(encodeAsTLABObjectHeader(hub), allocationSize, length, top, emitMemoryBarrier, ipOffset, profilingData.snippetCounters);
         } else {
@@ -252,9 +252,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationSnippets.AllocationProfilingData profilingData) {
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
+        Word threadLocalData = getThreadLocalData();
+        Word top = readTlabTop(threadLocalData);
+        Word end = readTlabEnd(threadLocalData);
         ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // A negative array length will result in an array size larger than the largest possible
@@ -265,7 +265,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         Object result;
         if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
+            writeTlabTop(threadLocalData, newTop);
             emitPrefetchAllocate(newTop, true);
             result = formatPod(encodeAsTLABObjectHeader(hub), hub, allocationSize, arrayLength, referenceMap, top, AllocationSnippets.FillContent.WITH_ZEROES,
                             emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
@@ -613,23 +613,23 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public Word getTLABInfo() {
-        return gcAllocationSupport().getTLABInfo();
+    public Word getThreadLocalData() {
+        return gcAllocationSupport().getThreadLocalData();
     }
 
     @Override
-    public Word readTlabTop(Word tlabInfo) {
-        return tlabInfo.readWord(gcAllocationSupport().tlabTopOffset(), TLAB_TOP_IDENTITY);
+    public Word readTlabTop(Word threadLocalData) {
+        return threadLocalData.readWord(gcAllocationSupport().tlabTopOffset(), TLAB_TOP_IDENTITY);
     }
 
     @Override
-    public Word readTlabEnd(Word tlabInfo) {
-        return tlabInfo.readWord(gcAllocationSupport().tlabEndOffset(), TLAB_END_IDENTITY);
+    public Word readTlabEnd(Word threadLocalData) {
+        return threadLocalData.readWord(gcAllocationSupport().tlabEndOffset(), TLAB_END_IDENTITY);
     }
 
     @Override
-    public void writeTlabTop(Word tlabInfo, Word newTop) {
-        tlabInfo.writeWord(gcAllocationSupport().tlabTopOffset(), newTop, TLAB_TOP_IDENTITY);
+    public void writeTlabTop(Word threadLocalData, Word newTop) {
+        threadLocalData.writeWord(gcAllocationSupport().tlabTopOffset(), newTop, TLAB_TOP_IDENTITY);
     }
 
     @Fold

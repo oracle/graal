@@ -98,7 +98,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
-    public Word getTLABInfo() {
+    public Word getThreadLocalData() {
         return ThreadLocalAllocation.getTlabAddress();
     }
 

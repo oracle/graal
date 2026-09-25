@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.webimage.wasm;
 
-import java.util.List;
+import java.util.ArrayList;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -40,7 +40,6 @@ import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.hosted.thread.VMThreadLocalCollector;
@@ -68,7 +67,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @Platforms(WebImageWasmLMPlatform.class)
 public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
 
-    private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
+    private final VMThreadLocalCollector threadLocalCollector = new WebImageWasmLMThreadLocalCollector();
 
     @Override
     public void duringSetup(DuringSetupAccess config) {
@@ -96,6 +95,7 @@ public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
 
             registerAccessors(r, valueClass, false);
             registerAccessors(r, valueClass, true);
+            registerAddressAccessors(r);
 
             /* compareAndSet() method without the VMThread parameter. */
             r.register(new RequiredInvocationPlugin("compareAndSet", Receiver.class, valueClass, valueClass) {
@@ -113,24 +113,24 @@ public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
             });
         }
 
-        Class<?>[] typesWithGetAddress = new Class<?>[]{FastThreadLocalBytes.class, FastThreadLocalWord.class};
-        for (Class<?> type : typesWithGetAddress) {
-            Registration r = new Registration(plugins.getInvocationPlugins(), type);
-            /* getAddress() method without the VMThread parameter. */
-            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    return handleGetAddress(b, targetMethod, receiver);
-                }
-            });
-            /* getAddress() method with the VMThread parameter. */
-            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
-                    return handleGetAddress(b, targetMethod, receiver);
-                }
-            });
-        }
+        registerAddressAccessors(new Registration(plugins.getInvocationPlugins(), FastThreadLocalBytes.class));
+    }
+
+    private void registerAddressAccessors(Registration r) {
+        /* getAddress() method without the VMThread parameter. */
+        r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return handleGetAddress(b, targetMethod, receiver);
+            }
+        });
+        /* getAddress() method with the VMThread parameter. */
+        r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
+                return handleGetAddress(b, targetMethod, receiver);
+            }
+        });
     }
 
     private void registerAccessors(Registration r, Class<?> valueClass, boolean isVolatile) {
@@ -204,27 +204,37 @@ public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
-        threadLocalCollector.sortThreadLocals();
-        List<VMThreadLocalInfo> sortedThreadLocalInfos = threadLocalCollector.getSortedThreadLocalInfos();
-        ObjectLayout layout = ObjectLayout.singleton();
-        int nextObject = 0;
-        int nextPrimitive = 0;
-        for (VMThreadLocalInfo info : sortedThreadLocalInfos) {
-            if (info.isObject) {
-                info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObject));
-                nextObject += 1;
-            } else {
-                assert nextPrimitive % Math.min(8, info.sizeInBytes) == 0 : "alignment mismatch: " + info.sizeInBytes + ", " + nextPrimitive;
-                info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, nextPrimitive));
-                nextPrimitive += info.sizeInBytes;
-            }
-        }
-
-        WebImageWasmVMThreadLocalSTSupport support = ImageSingletons.lookup(WebImageWasmVMThreadLocalSTSupport.class);
-        support.objectThreadLocals = new Object[nextObject];
-        support.primitiveThreadLocals = new byte[nextPrimitive];
+        threadLocalCollector.layoutThreadLocals();
 
         /* Remember the final sorted list. */
-        VMThreadLocalInfos.setInfos(sortedThreadLocalInfos);
+        VMThreadLocalInfos.setInfos(threadLocalCollector.getSortedThreadLocalInfos());
+    }
+
+    private static class WebImageWasmLMThreadLocalCollector extends VMThreadLocalCollector {
+        /**
+         * Assigns offsets relative to separate object and primitive arrays, preserving the processing
+         * order within each array. Returns the combined size of the array contents without headers.
+         */
+        @Override
+        protected int assignOffsets(ArrayList<VMThreadLocalInfo> threadLocals) {
+            ObjectLayout layout = ObjectLayout.singleton();
+            int nextObject = 0;
+            int nextPrimitive = 0;
+            for (VMThreadLocalInfo info : threadLocals) {
+                if (info.isObject) {
+                    info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObject));
+                    nextObject += 1;
+                } else {
+                    nextPrimitive = NumUtil.roundUp(nextPrimitive, Math.min(8, info.sizeInBytes));
+                    info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, nextPrimitive));
+                    nextPrimitive += info.sizeInBytes;
+                }
+            }
+
+            WebImageWasmVMThreadLocalSTSupport support = ImageSingletons.lookup(WebImageWasmVMThreadLocalSTSupport.class);
+            support.objectThreadLocals = new Object[nextObject];
+            support.primitiveThreadLocals = new byte[nextPrimitive];
+            return nextPrimitive + nextObject * layout.getReferenceSize();
+        }
     }
 }
