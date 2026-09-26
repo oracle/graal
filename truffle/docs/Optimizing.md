@@ -8,6 +8,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Optimizing/
 # Optimizing Truffle Interpreters
 
 This document discusses tools for optimizing or debugging Truffle interpreters for peak temporal performance.
+For a starting point on writing interpreter code that partial evaluation can optimize effectively, see [Writing Truffle Interpreters for Partial Evaluation](./PartialEvaluation.md).
 
 ## Strategy
 

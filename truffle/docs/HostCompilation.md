@@ -12,6 +12,7 @@ For the following document, we disambiguate between host and guest compilation.
 * Guest compilation is applied to guest language code. This kind of compilation uses Partial Evaluation and Futamura projections to derive optimized code from Truffle ASTs and bytecodes.
 
 This section discusses domain-specific host compilations applied to Truffle AST and bytecode interpreters.
+For guidance on writing interpreter code for guest compilation using partial evaluation, see [Writing Truffle Interpreters for Partial Evaluation](./PartialEvaluation.md).
 
 ## Host Inlining
 
