@@ -513,6 +513,9 @@ def svm_gate_body(args, tasks):
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+StrictRuntimeJavaOptions']))
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+ClassForNameRespectsClassLoader', '-H:+StrictRuntimeJavaOptions']))
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+RuntimeClassLoading', '-H:+AllowJRTFileSystem', '-H:+StrictRuntimeJavaOptions']))
+            sqlmoduletest(args.extra_image_builder_arguments)
+            if not mx.is_windows():  # smalljdktest uses the native-image launcher script
+                smalljdktest(args.extra_image_builder_arguments)
 
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
@@ -3151,6 +3154,142 @@ def cinterfacetutorial(args):
     runs all tutorials for the C interface.
     """
     native_image_context_run(_cinterfacetutorial, args)
+
+
+# The platform and Graal modules of a small JDK that can run the image builder: no java.se and no
+# java.sql, which is what a distribution that ships a slimmed-down JDK (rather than a full one)
+# would leave out. jlink adds whatever these require.
+_small_jdk_modules = [
+    'java.base',
+    'java.compiler',
+    'java.instrument',
+    'java.logging',
+    'java.management',
+    'java.xml',
+    'jdk.graal.compiler',
+    'jdk.graal.compiler.management',
+    'jdk.graal.compiler.options',
+    'jdk.internal.vm.ci',
+    'jdk.jfr',
+    'jdk.management',
+    'jdk.management.jfr',
+    'jdk.zipfs',
+    'org.graalvm.collections',
+    'org.graalvm.jniutils',
+    'org.graalvm.nativeimage',
+    'org.graalvm.nativeimage.libgraal',
+    'org.graalvm.polyglot',
+    'org.graalvm.truffle.compiler',
+    'org.graalvm.word',
+]
+
+
+def _build_small_jdk(vm_home, output_dir, modules):
+    """
+    Builds a small JDK that can run native-image, from the GraalVM at vm_home: a jlink image of the
+    given modules, plus the native-image launcher and the lib directories the launcher needs. The
+    builder's own modules stay on their module path in lib/svm/builder, as in the GraalVM, and are
+    resolved against the small JDK when native-image starts. lib/truffle is copied too: the driver
+    adds the Truffle runtime to the builder module path if it is there.
+    """
+    if exists(output_dir):
+        mx.rmtree(output_dir)
+    mx_util.ensure_dir_exists(dirname(output_dir))
+    mx.run([join(vm_home, 'bin', mx.exe_suffix('jlink')),
+            '--module-path', join(vm_home, 'jmods'),
+            '--add-modules', ','.join(modules),
+            '--output', output_dir])
+    for lib_dir in ('graalvm', 'svm', 'static', 'truffle'):
+        source = join(vm_home, 'lib', lib_dir)
+        if exists(source):
+            shutil.copytree(source, join(output_dir, 'lib', lib_dir), symlinks=False)
+    # The launcher script finds the JDK relative to its own location in lib/svm/bin, so bin/native-image
+    # is a link to it, as in the GraalVM.
+    os.symlink(join('..', 'lib', 'svm', 'bin', 'native-image'), join(output_dir, 'bin', 'native-image'))
+    return output_dir
+
+
+def _smalljdktest(args):
+    """
+    Builds a small JDK without java.sql from the GraalVM, and builds and runs a hello world image
+    with the native-image of that small JDK. The image builder must not need java.sql.
+    """
+    if mx.is_windows():
+        mx.abort('smalljdktest is not supported on Windows: it uses the native-image launcher script.')
+    vm_home = _vm_home(None)
+    small_jdk = _build_small_jdk(vm_home, join(svmbuild_dir(), 'small-jdk'), _small_jdk_modules)
+
+    listed = mx.OutputCapture()
+    mx.run([join(small_jdk, 'bin', 'java'), '--list-modules'], out=listed)
+    modules = [line.split('@')[0] for line in listed.data.splitlines()]
+    if 'java.sql' in modules:
+        mx.abort('The small JDK contains java.sql, so it does not test that the builder can do without it.')
+
+    build_dir = join(svmbuild_dir(), 'small-jdk-hello')
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    mx_util.ensure_dir_exists(build_dir)
+    with open(join(build_dir, 'HelloWorld.java'), 'w') as source:
+        source.write('public class HelloWorld { public static void main(String[] args) { System.out.println("Hello from a small JDK"); } }\n')
+    mx.run([join(vm_home, 'bin', mx.exe_suffix('javac')), '-d', build_dir, join(build_dir, 'HelloWorld.java')])
+
+    with native_image_context(hosted_assertions=False, native_image_cmd=join(small_jdk, 'bin', 'native-image')) as native_image:
+        native_image(['-cp', build_dir, '-o', join(build_dir, 'helloworld'), 'HelloWorld'] + args)
+    output = mx.OutputCapture()
+    mx.run([join(build_dir, 'helloworld')], out=output)
+    if output.data.strip() != 'Hello from a small JDK':
+        mx.abort('Unexpected output of the image built with the small JDK: ' + output.data)
+
+
+@mx.command(suite.name, 'smalljdktest', 'Runs native-image from a small JDK without java.sql')
+def smalljdktest(args):
+    """
+    builds a small JDK without java.sql from the GraalVM and builds a hello world image with it.
+    """
+    _smalljdktest(args)
+
+
+def _sqlmoduletest(native_image, args=None):
+    """
+    Builds and runs an application module that requires java.sql, with the native-image of the
+    GraalVM. java.sql is a system module that the image builder itself does not require (see
+    `smalljdktest`), so the driver has to add it to the builder's boot layer for the application.
+    """
+    args = [] if args is None else args
+    build_dir = join(svmbuild_dir(), 'sql-module')
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    module_dir = join(build_dir, 'src', 'sqlapp')
+    package_dir = join(module_dir, 'example')
+    mx_util.ensure_dir_exists(package_dir)
+    with open(join(module_dir, 'module-info.java'), 'w') as source:
+        source.write('module sqlapp {\n    requires java.sql;\n}\n')
+    with open(join(package_dir, 'Main.java'), 'w') as source:
+        source.write('package example;\n'
+                     'public class Main {\n'
+                     '    public static void main(String[] args) {\n'
+                     '        System.out.println(java.sql.Date.valueOf("2026-09-24").toLocalDate());\n'
+                     '    }\n'
+                     '}\n')
+    modules_dir = join(build_dir, 'modules')
+    mx_util.ensure_dir_exists(modules_dir)
+    mx.run([join(_vm_home(None), 'bin', mx.exe_suffix('javac')), '-d', join(modules_dir, 'sqlapp'),
+            join(module_dir, 'module-info.java'), join(package_dir, 'Main.java')])
+
+    image = join(build_dir, 'sqlapp')
+    native_image(['--module-path', modules_dir, '--module', 'sqlapp/example.Main', '-o', image] + args)
+    output = mx.OutputCapture()
+    mx.run([image], out=output)
+    if output.data.strip() != '2026-09-24':
+        mx.abort('Unexpected output of the image built from the module that requires java.sql: ' + output.data)
+
+
+@mx.command(suite.name, 'sqlmoduletest', 'Builds an image from an application module that requires java.sql')
+def sqlmoduletest(args):
+    """
+    builds and runs an image from an application module that requires java.sql.
+    """
+    native_image_context_run(_sqlmoduletest, args, hosted_assertions=False) if False else native_image_context_run(_sqlmoduletest, args)
 
 
 @mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
