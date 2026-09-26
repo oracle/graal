@@ -90,7 +90,7 @@ public final class IsStaticFinalFieldInitializedNode extends FixedWithNextNode i
             StaticFinalFieldFoldingSingleton singleton = StaticFinalFieldFoldingSingleton.singleton();
             Integer fieldCheckIndex = singleton.getFieldCheckIndex(field);
             assert fieldCheckIndex != null : "Field must be optimizable: " + field;
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(singleton.fieldInitializationStatus), tool.getMetaAccess(), graph());
+            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(singleton.fieldInitializationStatusConstant(fieldCheckIndex, tool), tool.getMetaAccess(), graph());
             ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
 
             replacementNode = graph().addOrUniqueWithInputs(LoadIndexedNode.create(graph().getAssumptions(), fieldInitializationStatusNode, fieldCheckIndexNode,

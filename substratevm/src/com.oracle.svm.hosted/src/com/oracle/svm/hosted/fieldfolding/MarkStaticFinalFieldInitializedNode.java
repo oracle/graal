@@ -78,7 +78,7 @@ public final class MarkStaticFinalFieldInitializedNode extends AbstractStateSpli
         StaticFinalFieldFoldingSingleton singleton = StaticFinalFieldFoldingSingleton.singleton();
         Integer fieldCheckIndex = singleton.getFieldCheckIndex(field);
         if (fieldCheckIndex != null) {
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(singleton.fieldInitializationStatus), tool.getMetaAccess(), graph());
+            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(singleton.fieldInitializationStatusConstant(fieldCheckIndex, tool), tool.getMetaAccess(), graph());
             ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
             ConstantNode trueNode = ConstantNode.forBoolean(true, graph());
             StoreIndexedNode replacementNode = graph().add(new StoreIndexedNode(fieldInitializationStatusNode, fieldCheckIndexNode, null, null, JavaKind.Boolean, trueNode));
