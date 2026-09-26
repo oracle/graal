@@ -158,7 +158,8 @@ public abstract class BytecodeNode extends Node {
      * store the bytecode index in the frame}; be sure to read the documentation before using this
      * feature.
      *
-     * @return the bytecode index stored in the frame
+     * @return the bytecode index stored in the frame, or {@code -1} if no bytecode index has been
+     *         stored in the frame yet
      * @throws UnsupportedOperationException if the interpreter does not always store the bytecode
      *             index in the frame. See {@link GenerateBytecode#storeBytecodeIndexInFrame()}
      * @since 24.2
