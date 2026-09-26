@@ -27,6 +27,8 @@ package com.oracle.svm.hosted.webimage.wasm.ast.visitors;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import com.oracle.svm.hosted.webimage.options.WebImageOptions;
 import com.oracle.svm.hosted.webimage.wasm.WebImageWasmOptions;
@@ -375,15 +377,79 @@ public class WasmPrinter extends WasmVisitor {
     @Override
     @SuppressWarnings("try")
     public void visitModule(WasmModule m) {
+        collectDeclarativeFuncRefs(m);
+
         parenOpen("module");
         space();
         try (var ignored = new Indenter()) {
             super.visitModule(m);
+            emitDeclarativeFuncRefs(m);
         }
         newline();
 
         print(')');
         newline();
+    }
+
+    /**
+     * Emits declarative element segments for all functions referenced by {@code ref.func}.
+     * <p>
+     * In WAT: {@code (elem declare func $f1 $f2 ...)}
+     */
+    private void emitDeclarativeFuncRefs(WasmModule m) {
+        Set<WasmId.Func> funcRefs = m.getDeclarativeFuncRefs();
+        if (funcRefs.isEmpty()) {
+            return;
+        }
+
+        newline();
+        newline();
+        printComment("Declarative element segment for ref.func declarations");
+        newline();
+        parenOpen("elem declare func");
+        for (WasmId.Func func : funcRefs) {
+            space();
+            printId(func);
+        }
+        parenClose();
+    }
+
+    /**
+     * Scans all functions and globals for {@code ref.func} instructions and registers them
+     * as declarative function references in the module.
+     * <p>
+     * Per the WebAssembly spec, functions referenced by {@code ref.func} outside of active
+     * or passive element segments must be declared in a declarative element segment
+     * ({@code (elem declare func ...)}).
+     */
+    private void collectDeclarativeFuncRefs(WasmModule m) {
+        Set<WasmId.Func> funcRefs = new LinkedHashSet<>();
+
+        // Collect from function bodies
+        RefFuncCollector collector = new RefFuncCollector(funcRefs);
+        for (Function func : m.getFunctions()) {
+            collector.visitFunction(func);
+        }
+
+        // Collect from global initializers
+        for (Global global : m.getGlobals().sequencedValues()) {
+            collector.visitInstruction(global.init);
+        }
+
+        // Collect from table element initializers
+        for (Table table : m.getTables()) {
+            if (table.elements != null) {
+                for (Instruction elem : table.elements) {
+                    collector.visitInstruction(elem);
+                }
+            }
+        }
+
+        // Functions already in active table elements don't need declarative declaration,
+        // but including them is harmless and simpler than filtering.
+        for (WasmId.Func func : funcRefs) {
+            m.addDeclarativeFuncRef(func);
+        }
     }
 
     @Override
@@ -1482,5 +1548,23 @@ public class WasmPrinter extends WasmVisitor {
             super.visitAnyExternConversion(inst);
         }
         newline();
+    }
+
+    /**
+     * Visitor that collects all function IDs referenced by {@code ref.func} instructions.
+     */
+    private static class RefFuncCollector extends WasmVisitor {
+
+        private final Set<WasmId.Func> funcRefs;
+
+        RefFuncCollector(Set<WasmId.Func> funcRefs) {
+            this.funcRefs = funcRefs;
+        }
+
+        @Override
+        public void visitRefFunc(Instruction.RefFunc inst) {
+            funcRefs.add(inst.func);
+            super.visitRefFunc(inst);
+        }
     }
 }
