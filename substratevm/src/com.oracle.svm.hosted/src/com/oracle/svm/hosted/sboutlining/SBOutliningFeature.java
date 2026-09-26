@@ -355,7 +355,7 @@ final class OutlineIndyStringConcatPlugin implements NodePlugin {
                 MethodType originalType = b.getSnippetReflection().asObject(MethodType.class, m.getType());
                 // erasing types to reduce the number of outlined method signature types.
                 MethodType erasedType = originalType.erase();
-                MethodType concatType = MethodType.methodType(originalType.returnType(), erasedType.parameterArray());
+                MethodType concatType = MethodType.methodType(String.class, erasedType.parameterArray());
 
                 String recipe = b.getSnippetReflection().asObject(String.class, staticArgs.getFirst());
                 assert recipe != null;
