@@ -271,22 +271,31 @@ public final class VTableBuilder {
             type.openTypeWorldDispatchTableSlotTargets = aggregatedTable.toArray(HostedMethod[]::new);
 
             boolean[] validTarget = new boolean[aggregatedTable.size()];
-            for (int i = 0; i < aggregatedTable.size(); i++) {
-                HostedMethod method = aggregatedTable.get(i);
-                /*
-                 * To avoid segfaults when jumping to address 0, all unused dispatch table entries
-                 * are filled with a stub that reports a fatal error.
-                 */
-                HostedMethod targetMethod = invalidDispatchTableEntryHandler;
-                if (type.isInstantiated()) {
-                    var resolvedMethod = (HostedMethod) type.resolveConcreteMethod(method, type);
-                    if (resolvedMethod != null) {
-                        targetMethod = resolvedMethod;
-                        validTarget[i] = true;
-                    }
-                }
+            /*
+             * To avoid segfaults when jumping to address 0, all unused dispatch table entries
+             * are filled with a stub that reports a fatal error.
+             */
+            Arrays.fill(type.openTypeWorldDispatchTables, invalidDispatchTableEntryHandler);
 
-                type.openTypeWorldDispatchTables[i] = targetMethod;
+            boolean instantiated = type.isInstantiated();
+            /*
+             * A shared layer can install a hub for a type that will only be instantiated in a
+             * later layer. Resolve implementations already invoked in this layer so their
+             * compiled code is used directly instead of leaving an unresolvable vtable symbol.
+             */
+            if (instantiated || ImageLayerBuildingSupport.buildingSharedLayer()) {
+                for (int i = 0; i < aggregatedTable.size(); i++) {
+                    var target = (HostedMethod) type.resolveConcreteMethod(aggregatedTable.get(i), type);
+                    if (target == null) {
+                        continue;
+                    }
+                    if (!instantiated && !target.getWrapped().isImplementationInvoked()) {
+                        continue;
+                    }
+
+                    type.openTypeWorldDispatchTables[i] = target;
+                    validTarget[i] = true;
+                }
             }
 
             if (openHubUtils.shouldRegisterType(type)) {
