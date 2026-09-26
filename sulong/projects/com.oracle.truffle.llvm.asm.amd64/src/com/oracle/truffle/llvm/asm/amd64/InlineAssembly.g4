@@ -127,10 +127,17 @@ assembly_instruction :
   | binary_op32
   | binary_op64
   | binary_op
+  | sse_binary_op
   | imul_div
+  | fma_op
   | jump
   | int_value
   )
+  ;
+
+fma_op :
+  op=( 'vfmadd231ps' | 'vfmadd231pd' | 'vminps' | 'vminpd' | 'vmaxps' | 'vmaxpd' )
+  a=operand ',' b=operand ',' c=operand          { factory.createTernaryOperation($op.getText(), $a.op, $b.op, $c.op); }
   ;
 
 int_value :
@@ -642,6 +649,11 @@ binary_op :
   | 'bsr'
   )
   a=operand ',' b=operand                        { factory.createBinaryOperationImplicitSize($op.getText(), $a.op, $b.op); }
+  ;
+
+sse_binary_op :
+  op=( 'minps' | 'minpd' | 'maxps' | 'maxpd' )
+  a=operand ',' b=operand                        { factory.createBinaryOperation($op.getText(), $a.op, $b.op); }
   ;
 
 ////////////////////////////////////////////////////////////////////////////////
