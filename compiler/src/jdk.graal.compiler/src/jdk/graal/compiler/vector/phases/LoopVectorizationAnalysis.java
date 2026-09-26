@@ -1013,9 +1013,16 @@ public final class LoopVectorizationAnalysis {
         NodeFlood flood = inputFlood != null ? inputFlood : new NodeFlood(value.graph());
         flood.add(value);
         for (Node node : flood) {
-            if (node instanceof ValueNode && ((ValueNode) node).stamp(NodeView.DEFAULT) instanceof SimdStamp) {
-                loop.loopBegin().getDebug().log(DebugContext.DETAILED_LEVEL, "can't vectorize SIMD value %s", node);
-                return false;
+            if (node instanceof ValueNode valueNode) {
+                Stamp stamp = valueNode.stamp(NodeView.DEFAULT);
+                if (stamp instanceof SimdStamp) {
+                    loop.loopBegin().getDebug().log(DebugContext.DETAILED_LEVEL, "can't vectorize SIMD value %s", node);
+                    return false;
+                }
+                if (!arch.supportsObjectVectorization() && stamp instanceof AbstractObjectStamp) {
+                    loop.loopBegin().getDebug().log(DebugContext.DETAILED_LEVEL, "can't vectorize object value %s", node);
+                    return false;
+                }
             }
             if (loop.isOutsideLoop(node)) {
                 continue;
