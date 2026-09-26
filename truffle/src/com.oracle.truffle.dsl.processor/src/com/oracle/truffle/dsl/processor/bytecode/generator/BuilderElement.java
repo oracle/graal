@@ -815,6 +815,12 @@ final class BuilderElement extends AbstractElement {
         b.statement("break");
         b.end(); // create object
 
+        b.startCase().staticReference(serializationElements.codeCreateOuterObject).end().startBlock();
+        b.startDeclaration(deserializationElement.asType(), "objectContext").string("context.getContext(buffer.readShort())").end();
+        b.statement("context.consts.add(objectContext.consts.get(buffer.readInt()))");
+        b.statement("break");
+        b.end(); // create outer object
+
         b.startCase().staticReference(serializationElements.codeCreateFinallyGenerator).end().startBlock();
         b.statement("byte[] finallyGeneratorBytes = new byte[buffer.readInt()]");
         b.statement("buffer.readFully(finallyGeneratorBytes)");
@@ -9297,16 +9303,18 @@ final class BuilderElement extends AbstractElement {
         private final CodeVariableElement codeCreateFinallyGenerator = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_FINALLY_GENERATOR", "-6");
         private final CodeVariableElement codeEndFinallyGenerator = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_GENERATOR", "-7");
         private final CodeVariableElement codeEndSerialize = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-8");
+        private final CodeVariableElement codeCreateOuterObject = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OUTER_OBJECT", "-9");
 
         private final CodeVariableElement buffer = addField(this, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
         private final CodeVariableElement callback = addField(this, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
         private final CodeVariableElement outer = addField(this, Set.of(PRIVATE, FINAL), this.asType(), "outer");
         private final CodeVariableElement depth = addField(this, Set.of(PRIVATE, FINAL), type(int.class), "depth");
         private final CodeVariableElement objects = addField(this, Set.of(PRIVATE, FINAL),
-                        generic(HashMap.class, Object.class, Integer.class), "objects");
+                        generic(IdentityHashMap.class, Object.class, Integer.class), "objects");
         private final CodeVariableElement builtNodes = addField(this, Set.of(PRIVATE, FINAL), generic(ArrayList.class, model.getTemplateType().asType()), "builtNodes");
         private final CodeVariableElement rootStack = addField(this, Set.of(PRIVATE, FINAL), generic(ArrayDeque.class, serializationRootNode.asType()), "rootStack");
         private final CodeVariableElement labelCount = addField(this, Set.of(PRIVATE), int.class, "labelCount");
+        private final CodeVariableElement referencedDepth = addField(this, Set.of(PRIVATE), int.class, "referencedDepth");
 
         private final CodeVariableElement[] codeBegin;
         private final CodeVariableElement[] codeEnd;
@@ -9315,7 +9323,7 @@ final class BuilderElement extends AbstractElement {
             super(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SerializationState");
             this.getImplements().add(types.BytecodeSerializer_SerializerContext);
 
-            objects.createInitBuilder().startNew("HashMap<>").end();
+            objects.createInitBuilder().startNew("IdentityHashMap<>").end();
             builtNodes.createInitBuilder().startNew("ArrayList<>").end();
             rootStack.createInitBuilder().startNew("ArrayDeque<>").end();
 
@@ -9344,6 +9352,7 @@ final class BuilderElement extends AbstractElement {
             this.add(createPushConstructor());
 
             this.add(createSerializeObject());
+            this.add(createSerializeOuterObject());
             this.add(createWriteBytecodeNode());
         }
 
@@ -9386,39 +9395,85 @@ final class BuilderElement extends AbstractElement {
             b.end();
             b.statement("buffer.writeInt(serializationRoot.contextDepth)");
             b.statement("buffer.writeInt(serializationRoot.rootIndex)");
+            b.statement("this.", referencedDepth.getName(), " = Math.max(this.", referencedDepth.getName(), ", serializationRoot.contextDepth)");
 
             return ex;
         }
 
+        /**
+         * Objects are identified by reference. Each serialization context (the root and each
+         * finally generator) has its own object table, but an object is only created once: in the
+         * outermost context whose root nodes it references. Inner contexts refer to objects of
+         * outer contexts using {@code CODE_$CREATE_OUTER_OBJECT}. This ensures that finally
+         * generators, which are deserialized once per emitted handler, observe the same objects
+         * as each other and as the enclosing code.
+         */
         private CodeExecutableElement createSerializeObject() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "serializeObject");
             method.addParameter(new CodeVariableElement(type(Object.class), "object"));
             method.addThrownType(type(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
-            String argumentName = "object";
-            String index = "index";
+            b.startDeclaration(declaredType(Integer.class), "index").startCall("objects.get").string("object").end(2);
+            b.startIf().string("index != null").end().startBlock();
+            b.statement("return index");
+            b.end();
 
-            b.startDeclaration(declaredType(Integer.class), index).startCall("objects.get").string(argumentName).end(2);
-            b.startIf().string(index + " == null").end().startBlock();
-            b.startAssign(index).string("objects.size()").end();
-            b.startStatement().startCall("objects.put").string(argumentName).string(index).end(2);
+            b.startFor().type(this.asType()).string(" s = outer; s != null; s = s.outer").end().startBlock();
+            b.startDeclaration(declaredType(Integer.class), "outerIndex").startCall("s.objects.get").string("object").end(2);
+            b.startIf().string("outerIndex != null").end().startBlock();
+            b.statement("return serializeOuterObject(object, s, outerIndex)");
+            b.end();
+            b.end();
 
             b.startIf().string("object == null").end().startBlock();
-            b.startStatement();
-            b.string(buffer.getName(), ".").startCall("writeShort").string(codeCreateNull.getName()).end();
+            b.statement("index = objects.size()");
+            b.statement("objects.put(null, index)");
+            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateNull).end().end();
+            b.statement("return index");
             b.end();
-            b.end().startElseBlock();
 
-            b.startStatement();
-            b.string(buffer.getName(), ".").startCall("writeShort").string(codeCreateObject.getName()).end();
-            b.end();
+            b.startIf().string("outer == null").end().startBlock();
+            b.statement("index = objects.size()");
+            b.statement("objects.put(object, index)");
+            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateObject).end().end();
             b.statement("callback.serialize(this, buffer, object)");
+            b.statement("return index");
             b.end();
 
+            b.lineComment("Serialize to a temporary buffer to determine the outermost context that can create the object.");
+            b.startDeclaration(declaredType(ByteArrayOutputStream.class), "objectBytes").startNew(declaredType(ByteArrayOutputStream.class)).end().end();
+            b.statement("this.", referencedDepth.getName(), " = 0");
+            b.startStatement().startCall("callback.serialize").string("this").startNew(declaredType(DataOutputStream.class)).string("objectBytes").end().string("object").end().end();
+            b.declaration(this.asType(), "target", "this");
+            b.startWhile().string("target.depth > this.", referencedDepth.getName()).end().startBlock();
+            b.statement("target = target.outer");
             b.end();
+            b.statement("int targetIndex = target.objects.size()");
+            b.statement("target.objects.put(object, targetIndex)");
+            b.startStatement().string("target.", buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateObject).end().end();
+            b.statement("target.", buffer.getName(), ".write(objectBytes.toByteArray())");
+            b.startIf().string("target == this").end().startBlock();
+            b.statement("return targetIndex");
+            b.end();
+            b.statement("return serializeOuterObject(object, target, targetIndex)");
+            return method;
+        }
 
-            b.statement("return ", index);
+        private CodeExecutableElement createSerializeOuterObject() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "serializeOuterObject");
+            method.addParameter(new CodeVariableElement(type(Object.class), "object"));
+            method.addParameter(new CodeVariableElement(this.asType(), "target"));
+            method.addParameter(new CodeVariableElement(type(int.class), "targetIndex"));
+            method.addThrownType(type(IOException.class));
+            CodeTreeBuilder b = method.createBuilder();
+
+            b.statement("int index = objects.size()");
+            b.statement("objects.put(object, index)");
+            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateOuterObject).end().end();
+            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").string(BytecodeRootNodeElement.safeCastShort("target.depth")).end().end();
+            b.statement(buffer.getName(), ".writeInt(targetIndex)");
+            b.statement("return index");
             return method;
         }
 
