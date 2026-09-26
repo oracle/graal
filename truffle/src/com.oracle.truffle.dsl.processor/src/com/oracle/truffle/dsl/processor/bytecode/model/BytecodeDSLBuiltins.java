@@ -498,7 +498,11 @@ public class BytecodeDSLBuiltins {
         OperationModel clearLocalOperation = m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
                         ClearLocal clears {@code local} in the current frame.
                         Until a value is written to the local, a subsequent LoadLocal %s.
-                        """, loadIllegalLocalBehaviour(m)), "ClearLocal", BytecodeDSLModel.RegistrationMode.OPTIONAL_BUILTIN);
+                        <p>
+                        When {@link %s#boxingEliminationTypes() boxing elimination} is enabled, the default clear marks the slot illegal, so a later object load throws {@link com.oracle.truffle.api.frame.FrameSlotTypeException}.
+                        Specify {@link %s#defaultLocalValue()} to store an object default instead and keep the cleared slot object-typed.
+                        The same applies to the automatic clear when a {@link %s#enableBlockScoping() block-scoped} local falls out of scope.
+                        """, loadIllegalLocalBehaviour(m), GENERATE_BYTECODE, GENERATE_BYTECODE, GENERATE_BYTECODE), "ClearLocal", BytecodeDSLModel.RegistrationMode.OPTIONAL_BUILTIN);
         if (clearLocalOperation != null) {
             clearLocalOperation.setVoid(true)//
                             .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to clear"))//
