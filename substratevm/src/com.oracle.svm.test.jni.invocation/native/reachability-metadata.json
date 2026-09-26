@@ -1,0 +1,16 @@
+{
+  "reflection": [
+    {
+      "type": "com.oracle.svm.test.jni.invocation.DaemonMain",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "main",
+          "parameterTypes": [
+            "java.lang.String[]"
+          ]
+        }
+      ]
+    }
+  ]
+}
