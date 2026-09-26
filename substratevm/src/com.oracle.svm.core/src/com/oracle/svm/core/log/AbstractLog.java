@@ -57,6 +57,18 @@ abstract class AbstractLog implements Log {
 
     private int indent;
 
+    /// Gets the indentation owned by this log.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected int indentation() {
+        return indent;
+    }
+
+    /// Updates the indentation owned by this log.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected void setIndentation(int value) {
+        indent = value;
+    }
+
     /** Writes the logging data. This method is used by all the logging methods below. */
     protected abstract Log rawBytes(CCharPointer bytes, UnsignedWord length);
 
@@ -168,8 +180,14 @@ abstract class AbstractLog implements Log {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void newline0() {
-        string0(NEWLINE);
-        spaces0(indent);
+        string0(lineSeparator());
+        spaces0(indentation());
+    }
+
+    /// Gets the platform line separator emitted by newline operations.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected byte[] lineSeparator() {
+        return NEWLINE;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -411,7 +429,7 @@ abstract class AbstractLog implements Log {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void redent0(boolean addOrRemove) {
         int delta = addOrRemove ? 2 : -2;
-        indent = max(0, indent + delta);
+        setIndentation(max(0, indentation() + delta));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -422,12 +440,12 @@ abstract class AbstractLog implements Log {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void resetIndentation0() {
-        indent = 0;
+        setIndentation(0);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final int getIndentation0() {
-        return indent;
+        return indentation();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -555,6 +573,7 @@ abstract class AbstractLog implements Log {
             for (int i = 0; i < chunkLength; i++) {
                 int index = chunkOffset + i;
                 byte b;
+                /* GR-79513 tracks encoding non-ASCII text instead of narrowing UTF-16 values. */
                 if (value instanceof String s) {
                     b = (byte) charAt(s, index);
                 } else if (value instanceof char[] arr) {

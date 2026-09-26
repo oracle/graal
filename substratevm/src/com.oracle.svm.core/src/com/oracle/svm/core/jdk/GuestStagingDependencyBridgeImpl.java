@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.RuntimeStateTrimConfig;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
@@ -43,6 +44,10 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogConfiguration;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.HeapSizeVerifier;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
@@ -116,6 +121,8 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
+        LogConfiguration.legacyGCOptionValueChanged(key);
+        /* Native collectors (e.g. G1) consume `PrintGC` and `VerboseGC`. */
         Heap.getHeap().optionValueChanged(key);
     }
 
@@ -156,6 +163,28 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public boolean parseXLogOption(String arg) {
+        HasXlogSupport.require();
+        boolean parsed = LogConfiguration.parseCommandLineArgument(arg);
+        if (arg.equalsIgnoreCase("-Xlog:help")) {
+            System.exit(0);
+        }
+        return parsed;
+    }
+
+    @Override
+    public void initializeLogging() {
+        LogConfiguration.initialize();
+    }
+
+    @Override
+    public void abortLoggingInitialization() {
+        if (HasXlogSupport.get()) {
+            LogConfiguration.abortInitialization();
+        }
+    }
+
+    @Override
     public boolean shouldParseRuntimeOptions() {
         return SubstrateOptions.ParseRuntimeOptions.getValue() ||
                         RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
@@ -188,11 +217,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public void enableTraceClassLoading() {
-        RuntimeClassLoading.Options.TraceClassLoading.update(true);
-    }
-
-    @Override
     public void updateRuntimeAssertionStatus(String classOrPackage, boolean enable) {
         AssertionsSupport.singleton().updateRuntimeAssertionStatus(classOrPackage, enable);
     }
@@ -209,17 +233,49 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void endOfParsing() {
-        maybeReportImageClasses();
+        LogConfiguration.logInitializationComplete();
+        if (HasXlogSupport.get()) {
+            maybeReportImageClasses();
+        }
     }
 
     private static void maybeReportImageClasses() {
-        if (RuntimeClassLoading.isSupported() && RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
+        boolean logClassLoad = LogTagSet.class_load_image.isInfo();
+        boolean logModuleLoad = LogTagSet.module_load_image.isInfo();
+        if (logClassLoad || logModuleLoad) {
+            EconomicSet<Module> reportedModules = EconomicSet.create();
+            if (logModuleLoad) {
+                /*
+                 * Logging initialization completes while parsing options, before the startup hook
+                 * augments the boot layer with modules from the runtime module path. The boot layer
+                 * therefore still contains exactly the modules included in the image here.
+                 */
+                for (Module module : ModuleLayer.boot().modules()) {
+                    reportImageModule(module, reportedModules);
+                }
+            }
             Heap.getHeap().visitLoadedClasses((cls) -> {
                 DynamicHub hub = DynamicHub.fromClass(cls);
                 if (!hub.isArray() && !hub.isPrimitive()) {
-                    Log.log().string(AbstractRuntimeClassRegistry.traceMessage(hub.getName(), hub.getClassLoader(), null, "load", "image")).newline();
+                    if (logClassLoad) {
+                        ClassLoader loader = hub.getClassLoader();
+                        AbstractRuntimeClassRegistry.traceMessage(LogTagSet.class_load_image, hub.getName(), loader, null, "image");
+                    }
+                    if (logModuleLoad) {
+                        reportImageModule(hub.getModule(), reportedModules);
+                    }
                 }
             });
+        }
+    }
+
+    /// Reports `module` once if it is named.
+    private static void reportImageModule(Module module, EconomicSet<Module> reportedModules) {
+        String moduleName = ModuleNative.getName(module);
+        if (moduleName != null && reportedModules.add(module)) {
+            try (LogMessage message = LogTagSet.module_load_image.message()) {
+                message.info().string(moduleName).string(" location: image");
+            }
         }
     }
 

@@ -36,9 +36,11 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_LogTag {
+    /// Most detailed threshold required by either SVM logging sink.
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTagSetLevel.class) //
     volatile int tagSetLevel;
 
+    /// Numeric JDK identifier used to index precomputed logging tables.
     @Alias public int id;
 }
 
@@ -46,7 +48,7 @@ public final class Target_jdk_jfr_internal_LogTag {
 class ComputeTagSetLevel implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        // Reset the value as it gets set during the image build.
+        // Reset the value as it can get set during the image build.
         return JfrLogConfiguration.JfrLogLevel.OFF.level;
     }
 }
