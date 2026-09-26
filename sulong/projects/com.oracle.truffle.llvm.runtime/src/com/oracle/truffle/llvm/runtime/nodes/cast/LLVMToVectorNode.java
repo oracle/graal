@@ -29,11 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.cast;
 
+import java.nio.ByteBuffer;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -1231,6 +1235,18 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        @TruffleBoundary
+        protected LLVMFloatVector doIVarBit(LLVMIVarBit from) {
+            assert from.getBitSize() == getVectorLength() * Float.SIZE;
+            ByteBuffer buffer = ByteBuffer.wrap(from.getBytes());
+            final float[] vector = new float[getVectorLength()];
+            for (int i = getVectorLength() - 1; i >= 0; i--) {
+                vector[i] = buffer.getFloat();
+            }
+            return LLVMFloatVector.create(vector);
+        }
+
+        @Specialization
         protected LLVMFloatVector doFloat(float from) {
             float[] vector = new float[]{from};
             return LLVMFloatVector.create(vector);
@@ -1334,6 +1350,22 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
         @Specialization
         protected LLVMDoubleVector doLong(long from) {
             return doDouble(Double.longBitsToDouble(from));
+        }
+
+        /*
+         * Reverse of the wide-vector bitcast (e.g. i256 -> <4 x double>): getBytes()
+         * is big-endian, so the first double read is the highest-index element.
+         */
+        @Specialization
+        @TruffleBoundary
+        protected LLVMDoubleVector doIVarBit(LLVMIVarBit from) {
+            assert from.getBitSize() == getVectorLength() * Double.SIZE;
+            ByteBuffer buffer = ByteBuffer.wrap(from.getBytes());
+            final double[] vector = new double[getVectorLength()];
+            for (int i = getVectorLength() - 1; i >= 0; i--) {
+                vector[i] = buffer.getDouble();
+            }
+            return LLVMDoubleVector.create(vector);
         }
 
         @Specialization
