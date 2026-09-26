@@ -55,6 +55,7 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
@@ -132,7 +133,7 @@ public final class IsolateArgumentParser {
     public IsolateArgumentParser() {
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static IsolateArgumentParser singleton() {
         return ImageSingletons.lookup(IsolateArgumentParser.class);
     }
@@ -269,7 +270,7 @@ public final class IsolateArgumentParser {
         result.write('\0');
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static List<RuntimeOptionKey<?>> getOptions() {
         return singleton().options;
     }

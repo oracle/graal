@@ -209,7 +209,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     public void initNodeClassMap() {
         assert nodeClassMap == null : "cannot re-initialize the nodeClassMap";
         byte[] encodedGlobalNodeClassMap = graphStore.read(snapshot.getNodeClassMapLocation());
-        SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, null, universe.getSnippetReflection(), null);
+        SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(null, universe.getSnippetReflection(), null);
         nodeClassMap = (NodeClassMap) ObjectCopier.decode(decoder, encodedGlobalNodeClassMap);
     }
 
@@ -998,7 +998,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
 
     private EncodedGraph getEncodedGraph(AnalysisMethod analysisMethod, String location) {
         byte[] encodedAnalyzedGraph = graphStore.read(location);
-        SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection(), nodeClassMap);
+        SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphDecoder(analysisMethod, universe.getSnippetReflection(), nodeClassMap);
         EncodedGraph encodedGraph = (EncodedGraph) ObjectCopier.decode(decoder, encodedAnalyzedGraph);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
             if (buildingApplicationLayer && encodedGraph.getObject(i) instanceof ImageSingletonDataImpl data) {
@@ -1019,7 +1019,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             PersistedAnalysisMethodData.Loader methodData = getMethodData(analysisMethod);
             byte[] encodedAnalyzedGraph = graphStore.read(methodData.getStrengthenedGraphLocation());
             SnippetReflectionProvider snippetReflection = universe.getSnippetReflection();
-            SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphHostedToAnalysisElementsDecoder(this, analysisMethod, snippetReflection, nodeClassMap);
+            SVMImageLayerSnapshotUtil.AbstractSVMGraphDecoder decoder = imageLayerSnapshotUtil.getGraphHostedToAnalysisElementsDecoder(analysisMethod, snippetReflection, nodeClassMap);
             EncodedGraph graph = (EncodedGraph) ObjectCopier.decode(decoder,
                             encodedAnalyzedGraph);
             for (Object o : graph.getObjects()) {

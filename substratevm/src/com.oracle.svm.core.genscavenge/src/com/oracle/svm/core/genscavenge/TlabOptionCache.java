@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
@@ -64,7 +65,7 @@ public class TlabOptionCache {
     public TlabOptionCache() {
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static TlabOptionCache singleton() {
         return ImageSingletons.lookup(TlabOptionCache.class);
     }

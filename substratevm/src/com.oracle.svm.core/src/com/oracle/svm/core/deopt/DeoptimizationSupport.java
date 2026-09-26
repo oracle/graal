@@ -32,9 +32,10 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
-import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -63,13 +64,13 @@ public class DeoptimizationSupport {
      *
      * This method can be called as early as during {@link Feature#afterRegistration}.
      */
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean enabled() {
         VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished(), "DeoptimizationSupport.enabled() must not be called before the feature registration is finished.");
         return ImageSingletons.contains(DeoptimizationCanaryFeature.class);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static DeoptimizationSupport get() {
         return ImageSingletons.lookup(DeoptimizationSupport.class);
     }

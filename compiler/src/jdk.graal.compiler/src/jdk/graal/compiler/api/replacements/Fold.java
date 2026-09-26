@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Supplier;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Annotates a method replaced by a compile-time constant. A (resolved) call to the annotated method
@@ -39,6 +42,26 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Fold {
+
+    /**
+     * Controls how the {@link Fold} value is resolved.
+     */
+    Class<? extends Resolver<?>> resolver() default DefaultResolver.class;
+
+    interface Resolver<C> {
+        /**
+         * Produces a constant for one {@link Fold} invocation.
+         */
+        JavaConstant resolve(C context, Supplier<JavaConstant> computation);
+    }
+
+    /** Uses the default resolution policy provided by the compiler environment. */
+    final class DefaultResolver implements Resolver<Object> {
+        @Override
+        public JavaConstant resolve(Object context, Supplier<JavaConstant> computation) {
+            return computation.get();
+        }
+    }
 
     /**
      * Annotates a parameter to an {@link Fold}-annotated method. This parameter will be

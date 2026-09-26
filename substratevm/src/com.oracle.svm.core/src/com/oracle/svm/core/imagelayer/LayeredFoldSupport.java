@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.headers;
+package com.oracle.svm.core.imagelayer;
+
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
-import com.oracle.svm.shared.Uninterruptible;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
-public class WindowsAPIs {
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static int getLastError() {
-        return win().getLastError();
+/** Resolves {@code Fold} invocations while building an image layer. */
+public interface LayeredFoldSupport {
+    static LayeredFoldSupport singleton() {
+        return ImageSingletons.lookup(LayeredFoldSupport.class);
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static int wsaGetLastError() {
-        return win().wsaGetLastError();
-    }
-
-    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
-    public static boolean isSupported() {
-        return ImageSingletons.contains(WindowsAPIsSupport.class);
-    }
-
-    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
-    static WindowsAPIsSupport win() {
-        return ImageSingletons.lookup(WindowsAPIsSupport.class);
-    }
+    ValueNode resolve(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] arguments, Supplier<JavaConstant> computation);
 }

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
-import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.svm.hosted.methodhandles.InjectedInvokerRenamingSubstitutionProcessor.isInjectedInvokerType;
 import static com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor.isMethodHandleType;
 import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor.isProxyType;
@@ -46,10 +44,13 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -63,9 +64,9 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.hosted.ForeignHostedSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.VMFeature;
@@ -100,7 +101,6 @@ import jdk.graal.compiler.util.ObjectCopierInputStream;
 import jdk.graal.compiler.util.ObjectCopierOutputStream;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -264,15 +264,12 @@ public class SVMImageLayerSnapshotUtil {
         return new SVMGraphEncoder(externalValues, nodeClassMap);
     }
 
-    public AbstractSVMGraphDecoder getGraphHostedToAnalysisElementsDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider,
-                    NodeClassMap nodeClassMap) {
-
-        return new SVMGraphHostedToAnalysisElementsDecoder(EncodedGraph.class, imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
+    public AbstractSVMGraphDecoder getGraphHostedToAnalysisElementsDecoder(AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+        return new SVMGraphHostedToAnalysisElementsDecoder(EncodedGraph.class, analysisMethod, snippetReflectionProvider, nodeClassMap);
     }
 
-    public AbstractSVMGraphDecoder getGraphDecoder(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod,
-                    SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
-        return new SVMGraphDecoder(EncodedGraph.class, imageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
+    public AbstractSVMGraphDecoder getGraphDecoder(AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+        return new SVMGraphDecoder(EncodedGraph.class, analysisMethod, snippetReflectionProvider, nodeClassMap);
     }
 
     /**
@@ -381,24 +378,11 @@ public class SVMImageLayerSnapshotUtil {
         return method.format("%R %H.%n(%P)");
     }
 
-    public static void forcePersistConstant(ImageHeapConstant imageHeapConstant) {
-        AnalysisUniverse universe = imageHeapConstant.getType().getUniverse();
-        universe.getHeapScanner().markReachable(imageHeapConstant, PERSISTED_CONSTANT);
-
-        imageHeapConstant.getType().registerAsTrackedAcrossLayers(imageHeapConstant);
-        /* If this is a Class constant persist the corresponding type. */
-        ConstantReflectionProvider constantReflection = universe.getBigbang().getConstantReflectionProvider();
-        AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(imageHeapConstant);
-        if (typeFromClassConstant != null) {
-            typeFromClassConstant.registerAsTrackedAcrossLayers(imageHeapConstant);
-        }
-    }
-
     public static class SVMGraphEncoder extends ObjectCopier.Encoder {
         @SuppressWarnings("this-escape")
         public SVMGraphEncoder(Map<Object, Field> externalValues, NodeClassMap nodeClassMap) {
             super(externalValues);
-            addBuiltin(new ImageHeapConstantBuiltIn(null));
+            addBuiltin(new ImageHeapConstantBuiltIn(HostedImageLayerBuildingSupport.singleton().getWriter(), null));
             addBuiltin(new AnalysisTypeBuiltIn(null));
             addBuiltin(new AnalysisMethodBuiltIn(null, null));
             addBuiltin(new AnalysisFieldBuiltIn(null));
@@ -422,14 +406,14 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     public abstract static class AbstractSVMGraphDecoder extends ObjectCopier.Decoder {
-        private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
+        protected final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
 
         @SuppressWarnings("this-escape")
-        public AbstractSVMGraphDecoder(Class<?> clazz, SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider,
-                        NodeClassMap nodeClassMap) {
+        public AbstractSVMGraphDecoder(Class<?> clazz, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
             super(clazz);
-            this.imageLayerBuildingSupport = imageLayerLoader.getImageLayerBuildingSupport();
-            addBuiltin(new ImageHeapConstantBuiltIn(imageLayerLoader));
+            this.imageLayerBuildingSupport = HostedImageLayerBuildingSupport.singleton();
+            SVMImageLayerLoader imageLayerLoader = imageLayerBuildingSupport.getLoader();
+            addBuiltin(new ImageHeapConstantBuiltIn(null, imageLayerLoader));
             addBuiltin(new AnalysisTypeBuiltIn(imageLayerLoader));
             addBuiltin(new AnalysisMethodBuiltIn(imageLayerLoader, analysisMethod));
             addBuiltin(new AnalysisFieldBuiltIn(imageLayerLoader));
@@ -457,21 +441,21 @@ public class SVMImageLayerSnapshotUtil {
 
     public static class SVMGraphHostedToAnalysisElementsDecoder extends AbstractSVMGraphDecoder {
         @SuppressWarnings("this-escape")
-        public SVMGraphHostedToAnalysisElementsDecoder(Class<?> clazz, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
-                        SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
-            super(clazz, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
-            addBuiltin(new HostedToAnalysisTypeDecoderBuiltIn(svmImageLayerLoader));
-            addBuiltin(new HostedToAnalysisMethodDecoderBuiltIn(svmImageLayerLoader));
+        public SVMGraphHostedToAnalysisElementsDecoder(Class<?> clazz, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+            super(clazz, analysisMethod, snippetReflectionProvider, nodeClassMap);
+            SVMImageLayerLoader imageLayerLoader = imageLayerBuildingSupport.getLoader();
+            addBuiltin(new HostedToAnalysisTypeDecoderBuiltIn(imageLayerLoader));
+            addBuiltin(new HostedToAnalysisMethodDecoderBuiltIn(imageLayerLoader));
         }
     }
 
     public static class SVMGraphDecoder extends AbstractSVMGraphDecoder {
         @SuppressWarnings("this-escape")
-        public SVMGraphDecoder(Class<?> clazz, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod,
-                        SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
-            super(clazz, svmImageLayerLoader, analysisMethod, snippetReflectionProvider, nodeClassMap);
-            addBuiltin(new HostedTypeBuiltIn(svmImageLayerLoader));
-            addBuiltin(new HostedMethodBuiltIn(svmImageLayerLoader));
+        public SVMGraphDecoder(Class<?> clazz, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider, NodeClassMap nodeClassMap) {
+            super(clazz, analysisMethod, snippetReflectionProvider, nodeClassMap);
+            SVMImageLayerLoader imageLayerLoader = imageLayerBuildingSupport.getLoader();
+            addBuiltin(new HostedTypeBuiltIn(imageLayerLoader));
+            addBuiltin(new HostedMethodBuiltIn(imageLayerLoader));
         }
     }
 
@@ -502,17 +486,19 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     public static class ImageHeapConstantBuiltIn extends ObjectCopier.Builtin {
+        private final SVMImageLayerWriter imageLayerWriter;
         private final SVMImageLayerLoader imageLayerLoader;
 
-        protected ImageHeapConstantBuiltIn(SVMImageLayerLoader imageLayerLoader) {
-            super(ImageHeapConstant.class, ImageHeapInstance.class, ImageHeapObjectArray.class, ImageHeapPrimitiveArray.class);
+        protected ImageHeapConstantBuiltIn(SVMImageLayerWriter imageLayerWriter, SVMImageLayerLoader imageLayerLoader) {
+            super(ImageHeapConstant.class, ImageHeapInstance.class, ImageHeapObjectArray.class, ImageHeapPrimitiveArray.class, ImageHeapRelocatableConstant.class);
+            this.imageLayerWriter = imageLayerWriter;
             this.imageLayerLoader = imageLayerLoader;
         }
 
         @Override
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             ImageHeapConstant imageHeapConstant = (ImageHeapConstant) obj;
-            forcePersistConstant(imageHeapConstant);
+            imageLayerWriter.forcePersistConstant(imageHeapConstant);
             stream.writePackedUnsignedInt(ImageHeapConstant.getConstantID(imageHeapConstant));
         }
 

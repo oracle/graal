@@ -29,6 +29,7 @@ import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
@@ -79,6 +80,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -193,6 +195,16 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
 
     void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType);
+
+    /**
+     * Replaces an invocation of a method annotated with {@code Fold}. Implementations can execute
+     * the Java implementation or return another value that represents a constant resolved outside
+     * the current compilation context.
+     */
+    @SuppressWarnings("unused")
+    default ValueNode executeFold(ResolvedJavaMethod targetMethod, ValueNode[] arguments, Supplier<JavaConstant> operation) {
+        return ConstantNode.forConstant(operation.get(), getMetaAccess(), getGraph());
+    }
 
     /**
      * Creates a snap shot of the current frame state with the BCI of the instruction after the one

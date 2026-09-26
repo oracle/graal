@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.CONSTRUCTOR_NAME;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.GENERATED_SERIALIZATION;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSISTED_CONSTANT;
 import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initInts;
 import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initSortedArray;
 import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initStringList;
@@ -77,8 +78,8 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.jni.JNIJavaCallVariantWrapperMethod;
-import com.oracle.svm.hosted.lambda.LambdaProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.lambda.LambdaParser;
+import com.oracle.svm.hosted.lambda.LambdaProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -113,6 +114,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.LambdaUtils;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 
@@ -133,6 +135,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
      */
     private final Map<String, AnalysisMethod> methodDescriptors = new HashMap<>();
     private final Map<AnalysisMethod, Set<AnalysisMethod>> polymorphicSignatureCallers = new ConcurrentHashMap<>();
+    /** Constants that must be present in the layer snapshot without becoming image-heap roots. */
+    private final Set<ImageHeapConstant> constantsToPersist = ConcurrentHashMap.newKeySet();
 
     private NativeImageHeap nativeImageHeap;
     private HostedUniverse hUniverse;
@@ -172,6 +176,30 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         this.hUniverse = hUniverse;
     }
 
+    void forcePersistConstant(ImageHeapConstant imageHeapConstant) {
+        aUniverse.getHeapScanner().markReachable(imageHeapConstant, PERSISTED_CONSTANT);
+        trackConstantAcrossLayers(imageHeapConstant);
+    }
+
+    /**
+     * Persists a constant's identity and relinking information without making it or the objects
+     * referenced by its fields reachable. Its contents remain unmaterialized in the snapshot.
+     */
+    void persistConstant(ImageHeapConstant imageHeapConstant) {
+        constantsToPersist.add(imageHeapConstant);
+        trackConstantAcrossLayers(imageHeapConstant);
+    }
+
+    private void trackConstantAcrossLayers(ImageHeapConstant imageHeapConstant) {
+        imageHeapConstant.getType().registerAsTrackedAcrossLayers(imageHeapConstant);
+        /* If this is a Class constant persist the corresponding type. */
+        ConstantReflectionProvider constantReflection = aUniverse.getBigbang().getConstantReflectionProvider();
+        AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(imageHeapConstant);
+        if (typeFromClassConstant != null) {
+            typeFromClassConstant.registerAsTrackedAcrossLayers(imageHeapConstant);
+        }
+    }
+
     public void dumpFiles() {
         graphWriter.writeNodeClassMap(snapshotWriter);
 
@@ -208,7 +236,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         // Late constant scan so all of them are known with values available (readers installed)
         constantSnapshotWriter = new SVMImageConstantSnapshotWriter(imageLayerSnapshotUtil, nativeImageHeap, aUniverse, internedStringsIdentityMap);
-        constantSnapshotWriter.collectConstants(imageHeap);
+        constantSnapshotWriter.collectConstants(imageHeap, constantsToPersist);
 
         snapshotWriter.setNextTypeId(aUniverse.getNextTypeId());
         snapshotWriter.setNextMethodId(aUniverse.getNextMethodId());

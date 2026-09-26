@@ -40,6 +40,7 @@ import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.Pair;
 
@@ -74,6 +75,7 @@ import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.DeoptBciSupplier;
@@ -402,6 +404,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
+        public ValueNode executeFold(ResolvedJavaMethod targetMethod, ValueNode[] arguments, Supplier<JavaConstant> operation) {
+            return PEGraphDecoder.this.executeFold(this, targetMethod, arguments, operation);
+        }
+
+        @Override
         public BailoutException bailout(String string) {
             BailoutException bailout = new PermanentBailoutException(string);
             throw GraphUtil.createBailoutException(string, bailout, methodScope.getCallStack());
@@ -527,6 +534,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected IntrinsicContext getIntrinsic() {
         return null;
+    }
+
+    /** Allows environments embedding the decoder to customize {@link Fold} resolution. */
+    @SuppressWarnings("unused")
+    protected ValueNode executeFold(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] arguments, Supplier<JavaConstant> operation) {
+        return ConstantNode.forConstant(operation.get(), b.getMetaAccess(), b.getGraph());
     }
 
     protected class PEAppendGraphBuilderContext extends PENonAppendGraphBuilderContext {

@@ -249,7 +249,8 @@ public abstract class GeneratedPlugin {
                     int argIdx,
                     TypeMirror type,
                     int nodeIdx,
-                    boolean checkShouldDefer) {
+                    boolean checkShouldDefer,
+                    boolean assertNonNull) {
         Function<Integer, String> argFormatter = (i) -> String.format("args[%d]", i);
         if (hasRawtypeWarning(type)) {
             out.printf("        @SuppressWarnings({\"rawtypes\"})\n");
@@ -293,7 +294,9 @@ public abstract class GeneratedPlugin {
                 case DECLARED:
                     out.printf("            %s = %s.asObject(%s.class, %s.asJavaConstant());\n", argName, deps.use(processor, WellKnownDependency.SNIPPET_REFLECTION), getErasedType(type),
                                     argFormatter.apply(nodeIdx));
-                    out.printf("            assert %s != null;\n", argName);
+                    if (assertNonNull) {
+                        out.printf("            assert %s != null;\n", argName);
+                    }
                     break;
                 default:
                     throw new IllegalArgumentException(type.toString());

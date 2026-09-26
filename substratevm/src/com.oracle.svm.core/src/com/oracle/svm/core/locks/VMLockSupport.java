@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
@@ -66,7 +67,7 @@ public class VMLockSupport {
     @Platforms(Platform.HOSTED_ONLY.class) //
     private ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer;
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static VMLockSupport singleton() {
         return ImageSingletons.lookup(VMLockSupport.class);
     }

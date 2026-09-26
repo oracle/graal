@@ -76,6 +76,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignDowncallPlan;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallData;
@@ -160,13 +161,13 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         abiUtils.generateTrampolineTemplate(backend, this.trampolineTemplate);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean isLibcSupported() {
         VMError.guarantee(BuildPhaseProvider.isSetupFinished());
         return LibC.isSupported();
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean isWindowsApiSupported() {
         VMError.guarantee(BuildPhaseProvider.isSetupFinished());
         return WindowsAPIs.isSupported();

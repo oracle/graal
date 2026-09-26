@@ -24,14 +24,20 @@
  */
 package jdk.graal.compiler.replacements.processor;
 
+import static jdk.graal.compiler.processor.AbstractProcessor.getAnnotationValue;
 import static jdk.graal.compiler.processor.AbstractProcessor.getSimpleName;
+
+import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 
 import jdk.graal.compiler.processor.AbstractProcessor;
@@ -56,14 +62,26 @@ public final class FoldHandler extends AnnotationHandler {
         }
 
         ExecutableElement foldMethod = (ExecutableElement) element;
+        TypeMirror resolverMirror = getAnnotationValue(annotation, "resolver", TypeMirror.class);
+        TypeElement resolver = processor.asTypeElement(resolverMirror);
         if (foldMethod.getReturnType().getKind() == TypeKind.VOID) {
             processor.env().getMessager().printMessage(Kind.ERROR,
                             String.format("A @%s method must not be void as it won't yield a compile-time constant (the reason for supporting folding!).", getSimpleName(FOLD_CLASS_NAME)), element,
                             annotation);
         } else if (foldMethod.getModifiers().contains(Modifier.PRIVATE)) {
             processor.env().getMessager().printMessage(Kind.ERROR, String.format("A @%s method must not be private.", getSimpleName(FOLD_CLASS_NAME)), element, annotation);
+        } else if (!validateResolver(resolver)) {
+            processor.env().getMessager().printMessage(Kind.ERROR, String.format("The @%s resolver %s must be a concrete class with a declared zero-argument constructor and must be static if nested.",
+                            getSimpleName(FOLD_CLASS_NAME), resolver.getQualifiedName()), foldMethod, annotation);
         } else {
             generator.addPlugin(new GeneratedFoldPlugin(foldMethod));
         }
+    }
+
+    private static boolean validateResolver(TypeElement resolver) {
+        List<ExecutableElement> constructors = ElementFilter.constructorsIn(resolver.getEnclosedElements());
+        boolean hasNoArgumentConstructor = constructors.stream().anyMatch(constructor -> constructor.getParameters().isEmpty());
+        return resolver.getKind() == ElementKind.CLASS && !resolver.getModifiers().contains(Modifier.ABSTRACT) &&
+                        (!resolver.getNestingKind().isNested() || resolver.getModifiers().contains(Modifier.STATIC)) && hasNoArgumentConstructor;
     }
 }
