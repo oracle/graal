@@ -278,9 +278,14 @@ public final class VTableBuilder {
                  * are filled with a stub that reports a fatal error.
                  */
                 HostedMethod targetMethod = invalidDispatchTableEntryHandler;
-                if (type.isInstantiated()) {
+                /*
+                 * A shared layer can install a hub for a type that will only be instantiated in a
+                 * later layer. Resolve implementations already invoked in this layer so their
+                 * compiled code is used directly instead of leaving an unresolvable vtable symbol.
+                 */
+                if (type.isInstantiated() || ImageLayerBuildingSupport.buildingSharedLayer()) {
                     var resolvedMethod = (HostedMethod) type.resolveConcreteMethod(method, type);
-                    if (resolvedMethod != null) {
+                    if (resolvedMethod != null && (type.isInstantiated() || resolvedMethod.getWrapped().isImplementationInvoked())) {
                         targetMethod = resolvedMethod;
                         validTarget[i] = true;
                     }
