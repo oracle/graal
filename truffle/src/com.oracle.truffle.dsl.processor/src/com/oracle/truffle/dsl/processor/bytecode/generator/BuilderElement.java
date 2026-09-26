@@ -3782,20 +3782,27 @@ final class BuilderElement extends AbstractElement {
     }
 
     private void buildConstantOperandValidation(CodeTreeBuilder b, TypeMirror type, String name) {
-        if (!ElementUtils.isPrimitive(type)) {
+        /*
+         * Reference constants may be null. They share one constant-pool slot via ConstantsBuffer.add(null).
+         * Local accessors are handles, so null is still rejected before scope validation.
+         */
+        boolean localAccessor = ElementUtils.typeEquals(type, types.LocalAccessor);
+        boolean localRangeAccessor = ElementUtils.typeEquals(type, types.LocalRangeAccessor);
+        boolean materializedLocalAccessor = ElementUtils.typeEquals(type, types.MaterializedLocalAccessor);
+        if (localAccessor || localRangeAccessor || materializedLocalAccessor) {
             b.startIf().string(name, " == null").end().startBlock();
-            b.startThrow().startCall("state.failArgument").doubleQuote("The " + name + " parameter must not be null. Constant operands do not permit null values.").end().end();
+            b.startThrow().startCall("state.failArgument").doubleQuote("The " + name + " parameter must not be null.").end().end();
             b.end();
         }
 
-        if (ElementUtils.typeEquals(type, types.LocalAccessor)) {
+        if (localAccessor) {
             emitValidateLocalScope(b, false, name);
-        } else if (ElementUtils.typeEquals(type, types.LocalRangeAccessor)) {
+        } else if (localRangeAccessor) {
             String element = name + "Element";
             b.startFor().type(types.BytecodeLocal).string(" " + element + " : " + name).end().startBlock();
             emitValidateLocalScope(b, false, element);
             b.end();
-        } else if (ElementUtils.typeEquals(type, types.MaterializedLocalAccessor)) {
+        } else if (materializedLocalAccessor) {
             emitValidateLocalScope(b, true, name);
         }
     }
