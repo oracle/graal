@@ -344,6 +344,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
             ImageHeapScanner heapScanner = universe.getHeapScanner();
             HostedValuesProvider hostedValuesProvider = universe.getHostedValuesProvider();
+            /* Constant reflection snapshots speculatively and must not mark the object reachable. */
             value = heapScanner.createImageHeapConstant(hostedValuesProvider.readFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
         }
 

@@ -70,6 +70,18 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
+ * Maintains shadow-heap snapshots and their semantic reachability. Creating or structurally
+ * traversing an {@link ImageHeapConstant} does not make it reachable; speculative compiler and
+ * cache entries may remain unreachable.
+ * <p>
+ * Every object retained by a final runtime-heap edge must pass through
+ * {@link #markReachable(JavaConstant, ObjectScanner.ScanReason)}. The first transition validates
+ * hosted objects, runs reachability callbacks, registers the object and its type, and recursively
+ * scans its contents.
+ * <p>
+ * Field-value availability is polled. An unavailable field is skipped without notification and
+ * must be revisited by a later scan, explicit rescan, or heap verification.
+ * <p>
  * Scanning is triggered when:
  * <ul>
  * <li>a static final field is marked as accessed, or</li>s
@@ -201,8 +213,9 @@ public abstract class ImageHeapScanner {
 
         /*
          * Snapshot all static fields. This reads the raw field value of all fields regardless of
-         * reachability status. The field value is processed when a field is marked as reachable, in
-         * onFieldValueReachable().
+         * reachability status. Executing a task creates a structural snapshot without marking an
+         * object value reachable. The field value is processed when a field is marked as reachable,
+         * in onFieldValueReachable().
          */
         ResolvedJavaField[] staticFields = type.getStaticFields();
         TypeData data = new TypeData(staticFields.length);
@@ -243,7 +256,11 @@ public abstract class ImageHeapScanner {
         return constant;
     }
 
-    /** Create an {@link ImageHeapConstant} from a raw hosted object. */
+    /**
+     * Creates or retrieves a structural snapshot for {@code object} without marking it reachable.
+     * Callers that retain it in the runtime heap must call
+     * {@link #markReachable(JavaConstant, ScanReason)}.
+     */
     public JavaConstant createImageHeapConstant(Object object, ScanReason reason) {
         /*
          * First, get the hosted constant representation and pre-process the object if necessary,
@@ -256,7 +273,7 @@ public abstract class ImageHeapScanner {
 
     /**
      * Create an {@link ImageHeapConstant} from a hosted constant, if that constant represents an
-     * object, otherwise return the input content.
+     * object, otherwise return the input content. This does not mark the snapshot reachable.
      */
     public JavaConstant createImageHeapConstant(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
@@ -507,6 +524,7 @@ public abstract class ImageHeapScanner {
         return onFieldValueReachable(field, receiver, ValueSupplier.eagerValue(fieldValue), reason, onAnalysisModified);
     }
 
+    /** Snapshots a field value, marks it reachable, and reports the field edge to analysis. */
     JavaConstant onFieldValueReachable(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         // Static field can be read for constant folding before being marked as reachable.
         AnalysisError.guarantee(field.isStatic() || field.isReachable(), "Field value is only reachable when field is reachable: %s", field);
@@ -520,6 +538,9 @@ public abstract class ImageHeapScanner {
         return createFieldValue(field, null, rawValue, reason);
     }
 
+    /**
+     * Materializes a field-value snapshot without marking it reachable or notifying analysis.
+     */
     @SuppressWarnings("unused")
     protected JavaConstant createFieldValue(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason) {
         /*
@@ -602,6 +623,10 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
+    /**
+     * Marks an object constant reachable. The first transition retains {@code reason} and schedules
+     * validation, callbacks, type registration, and recursive scanning.
+     */
     public JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
         return markReachable(constant, reason, null);
     }
@@ -687,6 +712,10 @@ public abstract class ImageHeapScanner {
         }
     }
 
+    /**
+     * Polls whether the field value may be read. Returning {@code false} does not schedule a retry.
+     */
+    // GR-79995: Replace polling with explicit availability-transition notifications.
     @SuppressWarnings("unused")
     public boolean isValueAvailable(AnalysisField field, JavaConstant receiver) {
         return true;
@@ -741,10 +770,11 @@ public abstract class ImageHeapScanner {
     /**
      * Trigger rescanning of an instance field. If the receiver value or field value were not
      * scanned before they will first be scanned and added to the shadow heap, then the value will
-     * be linked to the field. If the value is already in the shadow heap it will not be rescanned,
-     * i.e., its fields will not be followed, with an exception: if the value is a known collection
-     * type ({@code Object[]}, {@link Collection}, {@link Map}, or {@link EconomicMap}) then its
-     * elements will be rescanned too.
+     * be linked to the field. If the value is already in the shadow heap and reachable it will not
+     * be rescanned, i.e., its fields will not be followed. An equal but unreachable
+     * {@link ImageHeapConstant} is processed through the normal field-reachability path. If the
+     * value is a known collection type ({@code Object[]}, {@link Collection}, {@link Map}, or
+     * {@link EconomicMap}) then its elements will be rescanned too.
      * <p>
      * The provided {@link ResolvedJavaField} must be the original field owned by
      * {@link GuestAccess}, not an analysis wrapper. Use

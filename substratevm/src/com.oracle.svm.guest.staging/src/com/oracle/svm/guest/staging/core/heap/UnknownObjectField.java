@@ -44,12 +44,12 @@ import org.graalvm.nativeimage.hosted.Feature;
  * field's analysis type. The specified classes must conservatively cover all values that the field
  * can contain after it becomes available.
  * <p>
- * Making the value available does not automatically rescan the field. Late heap verification
- * performed by {@code HeapSnapshotVerifier} can materialize, scan, and include an object value
- * without guaranteeing that reachability callbacks registered through
- * {@link Feature.DuringSetupAccess#registerObjectReachabilityHandler} are executed. Internal users
- * that require these callbacks must arrange an explicit
- * {@code ImageHeapScanner.rescanField(...)} at a supported phase after the value becomes available.
+ * Availability is polled rather than notified. Becoming available does not enqueue field
+ * processing; a later scan, rescan, or heap verification must revisit the field. Object values then
+ * follow normal reachability processing, including callbacks registered through
+ * {@link Feature.DuringSetupAccess#registerObjectReachabilityHandler}, even if an equal speculative
+ * snapshot exists. Clients that require earlier processing must explicitly rescan the static root
+ * or instance field.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
