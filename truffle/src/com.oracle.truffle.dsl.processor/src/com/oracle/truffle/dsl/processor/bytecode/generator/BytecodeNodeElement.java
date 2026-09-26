@@ -90,6 +90,9 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private static final String METADATA_FIELD_NAME = "osrMetadata_";
     static final String FORCE_UNCACHED_THRESHOLD = "Integer.MIN_VALUE";
+    // Generated field name. null is a valid guest value, so it cannot mean "operand still on the stack".
+    static final String NO_UNEXPECTED_RESULT = "NO_UNEXPECTED_RESULT";
+    private boolean noUnexpectedResultField;
     final InterpreterTier tier;
     final Map<InstructionModel, CodeExecutableElement> instructionSlowPaths = new LinkedHashMap<>();
     final HandlerLayout handlerLayout;
@@ -1558,6 +1561,18 @@ final class BytecodeNodeElement extends AbstractElement {
         this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), nodeArrayType, "EMPTY_NODES")).createInitBuilder().string("new Node[0]");
         this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(boolean[].class), "EMPTY_EXCEPTION_PROFILES")).createInitBuilder().string("new boolean[0]");
         return ex;
+    }
+
+    /**
+     * Emits {@code private static final Object NO_UNEXPECTED_RESULT = new Object()} the first time
+     * a slow-path handler needs to distinguish a missing operand from a {@code null} guest value.
+     */
+    void ensureNoUnexpectedResultField() {
+        if (noUnexpectedResultField) {
+            return;
+        }
+        noUnexpectedResultField = true;
+        this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), NO_UNEXPECTED_RESULT)).createInitBuilder().startNew(type(Object.class)).end();
     }
 
     private CodeExecutableElement createSetUncachedThreshold() {

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.lang.reflect.Field;
 
@@ -693,6 +694,56 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "c.Abs",
                         "return");
 
+    }
+
+    @Test
+    public void testStoreLocalNullAfterPrimitive() {
+        // A long stored through an Object-producing operation quickens store.local to $Long.
+        // A later null is a guest value: the slow path must store it, not re-read a cleared slot.
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot();
+
+            BytecodeLocal local = b.createLocal();
+
+            b.beginStoreLocal(local);
+            b.beginLongOrNull();
+            b.emitLoadArgument(0);
+            b.endLongOrNull();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.LongOrNull",
+                        "store.local",
+                        "load.local",
+                        "return");
+
+        assertEquals(1L, node.getCallTarget().call(Boolean.TRUE));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.LongOrNull$Object",
+                        "store.local$Long",
+                        "load.local$Long",
+                        "return");
+
+        assertNull(node.getCallTarget().call(Boolean.FALSE));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.LongOrNull$Object",
+                        "store.local$generic",
+                        "load.local$generic",
+                        "return");
+
+        assertEquals(1L, node.getCallTarget().call(Boolean.TRUE));
     }
 
     @Test
@@ -2803,6 +2854,18 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             @Specialization
             public static Object doFloatInt(float x, int y) {
                 return x + y;
+            }
+        }
+
+        /*
+         * Produces a boxed long or null without a primitive return quickening, so store.local
+         * specializes to $Long (Object operand) rather than $Long$Long.
+         */
+        @Operation
+        static final class LongOrNull {
+            @Specialization
+            static Object doObject(boolean produceLong) {
+                return produceLong ? 1L : null;
             }
         }
 
