@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.LoopExplosionKeyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
@@ -946,6 +947,51 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void repeatedEarlyInlinedUnmarkedInnerLoops() {
+        for (boolean explicitOuterKey : new boolean[]{false, true}) {
+            RootNode root = earlyInlinedUnmarkedInnerLoopProgram(explicitOuterKey);
+            Assert.assertEquals(18, root.getCallTarget().call(4));
+            OptimizedCallTarget target = compileHelper("repeatedEarlyInlinedUnmarkedInnerLoops", root, new Object[]{4});
+            for (int input : new int[]{0, 4, 7}) {
+                Assert.assertEquals(3 * (input + 2), target.call(input));
+                Assert.assertTrue(target.isValid());
+            }
+        }
+    }
+
+    private static RootNode earlyInlinedUnmarkedInnerLoopProgram(boolean explicitOuterKey) {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return dispatch((int) frame.getArguments()[0], explicitOuterKey);
+            }
+
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            private static int dispatch(int input, boolean explicitKey) {
+                int outer = 0;
+                if (explicitKey) {
+                    outer = CompilerDirectives.mergeExplodeKey(outer);
+                }
+                int result = 0;
+                while (outer < 3) {
+                    result += innerLoop(input);
+                    outer++;
+                }
+                return result;
+            }
+
+            @EarlyInline
+            private static int innerLoop(int input) {
+                int inner = 0;
+                while (inner < 2) {
+                    inner++;
+                }
+                return input + inner;
+            }
+        };
+    }
+
+    @Test
     public void repeatedInnerLoopKeys() {
         int iterations = 128;
         RootNode root = repeatedInnerLoopKeyProgram(iterations);
@@ -986,17 +1032,19 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
 
     @Test
     public void mergeKeysFromDifferentLoopInstancesHaveBoundedCollisions() {
-        MergeKeyDecoder decoder = createMergeKeyDecoder();
-        CountingKeyEquivalence equivalence = new CountingKeyEquivalence();
-        EconomicMap<Object, Object> keys = EconomicMap.create(equivalence);
-        int loopInstances = 256;
-        for (int i = 0; i < loopInstances; i++) {
-            Object key = decoder.keyForNewLoopInstance();
-            keys.put(key, key);
+        for (boolean explicitKey : new boolean[]{false, true}) {
+            MergeKeyDecoder decoder = createMergeKeyDecoder();
+            CountingKeyEquivalence equivalence = new CountingKeyEquivalence();
+            EconomicMap<Object, Object> keys = EconomicMap.create(equivalence);
+            int loopInstances = 256;
+            for (int i = 0; i < loopInstances; i++) {
+                Object key = decoder.keyForNewLoopInstance(explicitKey);
+                keys.put(key, key);
+            }
+            Assert.assertEquals("Each loop instance must have a distinct merge key", loopInstances, keys.size());
+            /* Allow ordinary collisions, but not a single quadratic collision chain. */
+            Assert.assertTrue("Excessive merge-key comparisons: " + equivalence.comparisons, equivalence.comparisons < 16 * loopInstances);
         }
-        Assert.assertEquals("Each loop instance has a distinct merge-key filter", loopInstances, keys.size());
-        /* Allow ordinary collisions, but not a single quadratic collision chain. */
-        Assert.assertTrue("Excessive merge-key comparisons: " + equivalence.comparisons, equivalence.comparisons < 16 * loopInstances);
     }
 
     private static final class CountingKeyEquivalence extends Equivalence {
@@ -1155,12 +1203,19 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
             Assert.assertSame(value, createLoopExplosionKey(loopScope, state).values.getFirst());
         }
 
-        Object keyForNewLoopInstance() {
+        Object keyForNewLoopInstance(boolean explicitKey) {
             LoopScope loopScope = createInitialLoopScope(methodScope, null);
-            LoopExplosionKeyNode marker = graph.addWithoutUnique(new LoopExplosionKeyNode(ConstantNode.forInt(0, graph)));
-            FrameState state = graph.add(new FrameState(null, null, 0, List.of(marker), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
+            ValueNode value = ConstantNode.forInt(0, graph);
+            if (explicitKey) {
+                value = graph.addWithoutUnique(new LoopExplosionKeyNode(value));
+            }
+            FrameState state = graph.add(new FrameState(null, null, 0, List.of(value), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
             loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, state);
-            return createLoopExplosionKey(loopScope, state);
+            Object key = createLoopExplosionKey(loopScope, state);
+            Object equivalentKey = createLoopExplosionKey(loopScope, state);
+            Assert.assertEquals("Equal states in one loop instance must still match", key, equivalentKey);
+            Assert.assertEquals(key.hashCode(), equivalentKey.hashCode());
+            return key;
         }
     }
 }

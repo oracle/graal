@@ -1335,23 +1335,30 @@ public class GraphDecoder {
         public final LoopExplosionMergeKeyFilter filter;
         /**
          * A subset of values that should be matched. If this is not null, the frame state values
-         * will be ignored for equality. However if the value lists match and the frame state
+         * will be ignored for equality. However, if the value lists match and the frame state
          * doesn't, an exception is thrown.
          */
         public final List<ValueNode> values;
+        /**
+         * Identity shared by all iterations of one loop entry. Distinguishes independently entered
+         * loop instances, regardless of whether they have an explicit merge key filter.
+         */
+        private final Object loopIdentity;
         /** Cached hash code. */
         private final int hashCode;
         /** Whether virtual object values need structural comparison instead of identity comparison. */
         private final boolean hasVirtualObjects;
 
         @SuppressWarnings("hiding")
-        protected LoopExplosionKey(FrameState state, List<ValueNode> values, LoopExplosionMergeKeyFilter filter) {
+        protected LoopExplosionKey(FrameState state, List<ValueNode> values, LoopScope loopScope) {
             this.state = state;
             this.values = values;
-            this.filter = filter;
+            this.filter = loopScope.loopExplosionMergeKeyFilter;
+            this.loopIdentity = loopScope.nextIterations;
 
             boolean hasVirtualObjects = false;
             int h = state.bci;
+            h = h * 31 + System.identityHashCode(loopIdentity);
             if (values == null) {
                 for (ValueNode value : state.values()) {
                     if (value == null) {
@@ -1369,8 +1376,6 @@ public class GraphDecoder {
                     }
                 }
             } else {
-                /* Equality distinguishes the filters of independently entered loop instances. */
-                h = h * 31 + System.identityHashCode(filter);
                 for (ValueNode value : values) {
                     h = h * 31 + value.hashCode();
                 }
@@ -1391,13 +1396,14 @@ public class GraphDecoder {
             if (this.state.bci != other.state.bci) {
                 return false;
             }
+            if (this.loopIdentity != other.loopIdentity) {
+                return false;
+            }
             if ((this.values == null) != (other.values == null)) {
                 return false;
             }
-            if (this.filter != other.filter) {
-                return false;
-            }
 
+            assert this.filter == other.filter : Assertions.errorMessageContext("filter", this.filter, "otherFilter", other.filter);
             assert this.state.outerFrameState() == other.state.outerFrameState() : Assertions.errorMessage(this.state, this.state.outerFrameState(), other.state, other.state.outerFrameState());
 
             return this.values == null
@@ -2231,7 +2237,7 @@ public class GraphDecoder {
          * In case there are no marked variables, we fall back to using the entire frame state as
          * the key. This ensures compatibility with old code that doesn't use explicit keys yet.
          */
-        return new LoopExplosionKey(frameState, values, loopScope.loopExplosionMergeKeyFilter);
+        return new LoopExplosionKey(frameState, values, loopScope);
     }
 
     /**
