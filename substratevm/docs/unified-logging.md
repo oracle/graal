@@ -450,14 +450,3 @@ SVM's design is optimized for a native image whose tag sets and output routing
 are known from startup configuration. It avoids dynamic reader reclamation in
 the event path, while its asynchronous queue uses explicit VM locking
 primitives so waiting and flushing remain usable without Java heap allocation.
-
-## Testing
-
-The native JUnit coverage is in `UnifiedLoggingTest`. It can be run with:
-
-```text
-mx native-unittest com.oracle.svm.test.logging.UnifiedLoggingTest
-```
-
-`JfrStandaloneLoggingTest` covers standalone JFR and fallback GC logging in an
-image without `-Xlog` support.
