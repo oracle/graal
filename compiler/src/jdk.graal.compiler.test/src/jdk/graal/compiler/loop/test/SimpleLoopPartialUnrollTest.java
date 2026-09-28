@@ -40,7 +40,8 @@ import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
-import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
@@ -65,7 +66,7 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class LoopPartialUnrollTest extends GraalCompilerTest {
+public class SimpleLoopPartialUnrollTest extends GraalCompilerTest {
 
     boolean check = true;
 
@@ -305,15 +306,16 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
     @Override
     protected Suites createSuites(OptionValues opts) {
         // Keep loop inversion out of checks that inspect the partial-unroll main loop.
-        OptionValues options = new OptionValues(opts, LoopInversionPhase.Options.LoopInversion, false);
+        OptionValues options = new OptionValues(opts, LoopInversionPhase.Options.LoopInversion, false,
+                        AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, false);
         Suites suites = super.createSuites(options).copy();
         PhaseSuite<MidTierContext> mid = suites.getMidTier();
-        ListIterator<BasePhase<? super MidTierContext>> iter = mid.findPhase(LoopPartialUnrollPhase.class);
+        ListIterator<BasePhase<? super MidTierContext>> iter = mid.findPhase(SimpleLoopPartialUnrollPhase.class);
         BasePhase<? super MidTierContext> partialUnoll = iter.previous();
         if (iter.previous().getClass() != FrameStateAssignmentPhase.class) {
-            // Ensure LoopPartialUnrollPhase runs immediately after FrameStateAssignment, so it gets
+            // Ensure SimpleLoopPartialUnrollPhase runs immediately after FrameStateAssignment, so it gets
             // priority over other optimizations in these tests.
-            mid.findPhase(LoopPartialUnrollPhase.class).remove();
+            mid.findPhase(SimpleLoopPartialUnrollPhase.class).remove();
             ListIterator<BasePhase<? super MidTierContext>> fsa = mid.findPhase(FrameStateAssignmentPhase.class);
             fsa.add(partialUnoll);
         }

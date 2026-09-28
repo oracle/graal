@@ -31,15 +31,19 @@ import org.junit.Test;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.phases.MidTier;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningReassociationPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
+import jdk.graal.compiler.phases.common.GuardLoweringPhase;
+import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.common.OptimizeExactArithmeticPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
@@ -164,6 +168,42 @@ public class MidTierPhaseOrderTest extends GraalCompilerTest {
         List<BasePhase<? super MidTierContext>> phases = new MidTier(options).getPhases();
         Assert.assertEquals("strip-mining reassociation must be omitted without partial unrolling", -1,
                         findIndex(phases, CountedStripMiningReassociationPhase.class, 0));
+    }
+
+    /// Verifies the aggressive unrolling cleanup and guard-lowering order.
+    @Test
+    public void aggressivePartialUnrollingPrecedesGuardLowering() {
+        OptionValues options = new OptionValues(getInitialOptions(),
+                        GraalOptions.PartialUnroll, true,
+                        AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, true,
+                        AggressivePartialUnrollPhase.Options.MidTierPartialUnrolling, true);
+        List<BasePhase<? super MidTierContext>> phases = new MidTier(options).getPhases();
+
+        int unrolling = indexOf(phases, AggressivePartialUnrollPhase.class, 0);
+        int guardLowering = indexOf(phases, GuardLoweringPhase.class, unrolling + 1);
+        Assert.assertTrue("aggressive unrolling must follow iterative conditional elimination", IterativeConditionalEliminationPhase.class.isInstance(phases.get(unrolling - 1)));
+        Assert.assertEquals("guard lowering must immediately follow aggressive unrolling", unrolling + 1, guardLowering);
+    }
+
+    /// Verifies that the master switch disables aggressive partial unrolling and rejects an
+    /// explicitly contradictory option combination.
+    @Test
+    public void partialUnrollingIsTheMasterSwitch() {
+        OptionValues disabled = new OptionValues(getInitialOptions(), GraalOptions.PartialUnroll, false);
+        List<BasePhase<? super MidTierContext>> phases = new MidTier(disabled).getPhases();
+        Assert.assertEquals("partial unrolling must disable aggressive unrolling", -1,
+                        findIndex(phases, AggressivePartialUnrollPhase.class, 0));
+        Assert.assertEquals("partial unrolling must disable simple unrolling", -1,
+                        findIndex(phases, SimpleLoopPartialUnrollPhase.class, 0));
+
+        List<BasePhase<? super MidTierContext>> enabled = new MidTier(getInitialOptions()).getPhases();
+        Assert.assertNotEquals("partial unrolling must enable simple unrolling", -1,
+                        findIndex(enabled, SimpleLoopPartialUnrollPhase.class, 0));
+
+        OptionValues contradictory = new OptionValues(getInitialOptions(), GraalOptions.PartialUnroll, false,
+                        AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, true);
+        Assert.assertThrows("explicitly enabling aggressive unrolling without partial unrolling must fail", IllegalArgumentException.class,
+                        () -> new MidTier(contradictory));
     }
 
     /// Finds the first phase of type `phaseClass` at or after `startIndex`.

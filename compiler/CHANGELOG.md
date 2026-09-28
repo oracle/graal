@@ -3,6 +3,10 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
+* (GR-79881, GR-79883): Added aggressive partial loop unrolling and simulation-based loop peeling to the community
+  compiler. Aggressive partial unrolling is enabled by default and can be disabled with
+  `-Djdk.graal.AggressivePartialUnroll=false`. The original simple partial unrolling remains
+  available, and all partial unrolling is controlled by the master `-Djdk.graal.PartialUnroll=false` option.
 * (GR-79593): Added `BreakChainedPhisPhase`, which splits chained loop phi values in the low tier to
   improve register allocation. The optimization is enabled by default and can be disabled with
   `-Djdk.graal.BreakChainedPhis=false`.

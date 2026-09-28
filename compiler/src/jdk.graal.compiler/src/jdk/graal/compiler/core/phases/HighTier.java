@@ -33,18 +33,22 @@ import java.util.function.Consumer;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NativeImageSupport;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.duplication.phases.MethodDuplicationPhase;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.duplication.phases.simulation.FixedDuplicationSimulationConfig;
 import jdk.graal.compiler.guards.optimistic.SpeculativeStoreChecksPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPeeling;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPolicies;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -57,6 +61,7 @@ import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
@@ -85,6 +90,7 @@ public class HighTier extends BaseTier<HighTierContext> {
 
     @SuppressWarnings("this-escape")
     public HighTier(OptionValues options) {
+        AggressivePartialUnrollPhase.Options.checkPartialUnroll(options);
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
 
@@ -173,7 +179,9 @@ public class HighTier extends BaseTier<HighTierContext> {
             appendPhase(new BoxNodeIdentityPhase());
         }
 
-        this.<HighTierContext> appendControlFlowDuplicationPhases(this::appendPhase, options, canonicalizer);
+        if (isControlFlowDuplicationEnabled(options)) {
+            this.<HighTierContext> appendControlFlowDuplicationBlock(this::appendPhase, options, canonicalizer, loopPolicies);
+        }
 
         if (GraalOptions.PartialEscapeAnalysis.getValue(options)) {
             PhaseSuite<CoreProviders> cleanup = createFinalPEACleanup(options, canonicalizer);
@@ -203,6 +211,32 @@ public class HighTier extends BaseTier<HighTierContext> {
         return PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options) || GraalOptions.OptDuplication.getValue(options);
     }
 
+    /// Adds aggressive partial unrolling and the cleanup phases surrounding control flow
+    /// duplication through `phaseConsumer`.
+    protected final <C extends CoreProviders> void appendControlFlowDuplicationBlock(Consumer<BasePhase<? super C>> phaseConsumer, OptionValues options,
+                    CanonicalizerPhase canonicalizer, LoopPolicies loopPolicies) {
+        if (AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.getValue(options) && GraalOptions.PartialUnroll.getValue(options) &&
+                        AggressivePartialUnrollPhase.Options.HighTierPartialUnrolling.getValue(options)) {
+            if (GraalOptions.ConditionalElimination.getValue(options)) {
+                phaseConsumer.accept(new ConditionalEliminationPhase(canonicalizer, false, false));
+            }
+            phaseConsumer.accept(new AggressivePartialUnrollPhase(loopPolicies, canonicalizer, true));
+            if (GraalOptions.OptReadElimination.getValue(options)) {
+                phaseConsumer.accept(new ReadEliminationPhase(canonicalizer));
+            }
+        }
+        if (GraalOptions.OptReadElimination.getValue(options)) {
+            if (GraalOptions.ConditionalElimination.getValue(options)) {
+                phaseConsumer.accept(new IterativeConditionalEliminationPhase(canonicalizer, false));
+            }
+            phaseConsumer.accept(new ReadEliminationPhase(canonicalizer));
+        }
+        this.<C> appendControlFlowDuplicationPhases(phaseConsumer, options, canonicalizer);
+        if (GraalOptions.ConditionalElimination.getValue(options)) {
+            phaseConsumer.accept(new IterativeConditionalEliminationPhase(canonicalizer, false));
+        }
+    }
+
     /// Adds the enabled control flow duplication phases through `phaseConsumer`.
     protected final <C extends CoreProviders> void appendControlFlowDuplicationPhases(Consumer<BasePhase<? super C>> phaseConsumer, OptionValues options,
                     CanonicalizerPhase canonicalizer) {
@@ -217,17 +251,75 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
     }
 
-    /// Removes the top-level control flow duplication phases so a subclass can reposition them.
-    protected final void removeControlFlowDuplicationPhases() {
-        removePhase(PullThroughPhiPhase.class);
-        ListIterator<BasePhase<? super HighTierContext>> duplicationPosition = findPhase(DuplicationPhase.class);
-        if (duplicationPosition != null) {
-            duplicationPosition.previous();
-            duplicationPosition.remove();
-            BasePhase<? super HighTierContext> precedingPhase = duplicationPosition.previous();
-            assert precedingPhase instanceof DeadCodeEliminationPhase : precedingPhase;
-            duplicationPosition.remove();
+    /// Removes the top-level block added by [#appendControlFlowDuplicationBlock] so a subclass can
+    /// reposition it without changing the ordering of its cleanup phases.
+    protected final void removeControlFlowDuplicationBlock(OptionValues options) {
+        if (!isControlFlowDuplicationEnabled(options)) {
+            return;
         }
+
+        boolean aggressiveUnrolling = AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.getValue(options) && GraalOptions.PartialUnroll.getValue(options) &&
+                        AggressivePartialUnrollPhase.Options.HighTierPartialUnrolling.getValue(options);
+        boolean conditionalElimination = GraalOptions.ConditionalElimination.getValue(options);
+        boolean readElimination = GraalOptions.OptReadElimination.getValue(options);
+        ListIterator<BasePhase<? super HighTierContext>> position;
+        if (aggressiveUnrolling) {
+            position = findPhase(AggressivePartialUnrollPhase.class);
+            GraalError.guarantee(position != null, "Aggressive partial unrolling phase is missing");
+            position.previous();
+            if (conditionalElimination) {
+                position.previous();
+            }
+        } else {
+            if (PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options)) {
+                position = findPhase(PullThroughPhiPhase.class);
+                GraalError.guarantee(position != null, "Pull-through-phi phase is missing");
+                position.previous();
+            } else {
+                position = findPhase(DuplicationPhase.class);
+                GraalError.guarantee(position != null, "Duplication phase is missing");
+                position.previous();
+                position.previous();
+            }
+            if (readElimination) {
+                position.previous();
+                if (conditionalElimination) {
+                    position.previous();
+                }
+            }
+        }
+
+        if (aggressiveUnrolling) {
+            if (conditionalElimination) {
+                removeNextPhase(position, ConditionalEliminationPhase.class);
+            }
+            removeNextPhase(position, AggressivePartialUnrollPhase.class);
+            if (readElimination) {
+                removeNextPhase(position, ReadEliminationPhase.class);
+            }
+        }
+        if (readElimination) {
+            if (conditionalElimination) {
+                removeNextPhase(position, IterativeConditionalEliminationPhase.class);
+            }
+            removeNextPhase(position, ReadEliminationPhase.class);
+        }
+        if (PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options)) {
+            removeNextPhase(position, PullThroughPhiPhase.class);
+        }
+        if (GraalOptions.OptDuplication.getValue(options)) {
+            removeNextPhase(position, DeadCodeEliminationPhase.class);
+            removeNextPhase(position, DuplicationPhase.class);
+        }
+        if (conditionalElimination) {
+            removeNextPhase(position, IterativeConditionalEliminationPhase.class);
+        }
+    }
+
+    private static void removeNextPhase(ListIterator<BasePhase<? super HighTierContext>> position, Class<?> expectedClass) {
+        BasePhase<? super HighTierContext> phase = position.next();
+        GraalError.guarantee(expectedClass.isInstance(phase), "Expected %s, found %s", expectedClass.getName(), phase.getClass().getName());
+        position.remove();
     }
 
     /// Creates the box optimization and optional control flow duplication phases that clean up and
@@ -246,6 +338,9 @@ public class HighTier extends BaseTier<HighTierContext> {
 
     @Override
     public LoopPolicies createLoopPolicies(OptionValues options) {
+        if (SimulationBasedLoopPeeling.Options.SimulationBasedLoopPeeling.getValue(options)) {
+            return new SimulationBasedLoopPolicies(SimulationBasedLoopPeeling.getHighTierPeelingFactors(options));
+        }
         return new DefaultLoopPolicies();
     }
 }

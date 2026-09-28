@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,10 +46,25 @@ import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.phases.common.util.LoopUtility;
+import jdk.graal.compiler.vector.nodes.VectorNode;
+import jdk.graal.compiler.vector.nodes.op.VectorOperation;
 
-public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
+/// Performs restricted partial unrolling for counted loops without control flow in the loop body.
+/// Such loops contain only a header block, a body block, and an exit block. This phase runs after
+/// proxy removal, so it does not require proxy nodes. It is enabled by the master
+/// [GraalOptions#PartialUnroll] option and has no phase-specific option. The
+/// [AggressivePartialUnrollPhase] runs earlier while proxy nodes are available, requires loop-exit
+/// proxy nodes, and supports arbitrary loop shapes using additional cost and benefit heuristics.
+///
+/// ```java
+/// for (int i = 0; i < n; i++) {
+///     body(i);
+/// }
+/// // The simple phase can unroll this three-block loop without proxy nodes.
+/// ```
+public class SimpleLoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
-    public LoopPartialUnrollPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
+    public SimpleLoopPartialUnrollPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
         super(policies, canonicalizer);
     }
 
@@ -70,7 +85,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                 for (Loop loop : dataCounted.countedLoops()) {
                     if (LoopTransformations.isUnrollableLoop(loop)) {
                         graph.getDebug().log(DebugContext.INFO_LEVEL, "Loop %s can be unrolled, now checking if we should", loop);
-                        if (getPolicies().shouldPartiallyUnroll(loop, context)) {
+                        if (shouldPartiallyUnroll(loop, context)) {
                             if (loop.loopBegin().isSimpleLoop()) {
                                 // First perform the pre/post transformation and do the partial
                                 // unroll when we come around again.
@@ -113,6 +128,19 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                 }
             }
         }
+    }
+
+    private boolean shouldPartiallyUnroll(Loop loop, CoreProviders context) {
+        if (!getPolicies().shouldPartiallyUnroll(loop, context)) {
+            return false;
+        }
+        // Vector operations have already been formed when this late phase runs.
+        for (jdk.graal.compiler.graph.Node node : loop.inside().nodes()) {
+            if (node instanceof VectorNode || node instanceof VectorOperation) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
