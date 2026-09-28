@@ -106,7 +106,9 @@ public class OutlinedSBMethod extends NonBytecodeMethod {
         ValueNode returnNode;
         try {
             MethodHandle graphBuilderMH;
-            if (methodType.returnType().equals(String.class)) {
+            ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(methodType.returnType());
+            ResolvedJavaType stringType = providers.getMetaAccess().lookupJavaType(String.class);
+            if (returnType.isAssignableFrom(stringType)) {
                 graphBuilderMH = new SubstrateStringConcatFactory(kit).makeConcat(methodType);
             } else {
                 graphBuilderMH = new SubstrateSBConcatFactory(kit).makeConcat(methodType.dropParameterTypes(0, 1));
