@@ -45,6 +45,8 @@ import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.MethodMetadat
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.RecordComponentMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ReflectParameterMetadata;
 
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Inherited;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
@@ -803,6 +805,13 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      */
     @Override
     public void encodeAllAndInstall() {
+        // A later layer could add annotations and invalidate our installed AnnotationData.
+        boolean assignEmptyAnnotationData = ImageLayerBuildingSupport.lastImageBuild();
+        Map<HostedType, Boolean> cachedNoInheritableAnnotations = new HashMap<>();
+        Class<? extends Annotation> inheritedAnnotationType = Inherited.class;
+        Map<Class<?>, ClassMetadata> metadataByClass = new HashMap<>();
+        classData.forEach((type, metadata) -> metadataByClass.put(type.getJavaClass(), metadata));
+
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         int typesIndex = encodeAndAddCollection(buf, sortedTypes.toArray(HostedType.EMPTY_ARRAY), this::encodeType, false);
         assert typesIndex == 0;
@@ -831,6 +840,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 if (anySet(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex, signersEncodingIndex)) {
                     hub.setHubMetadata(enclosingMethodInfoIndex, annotationsIndex, typeAnnotationsIndex, classesEncodingIndex, permittedSubclassesIndex, nestMembersEncodingIndex,
                                     signersEncodingIndex);
+                }
+                if (assignEmptyAnnotationData && classMetadata.annotations.length == 0) {
+                    HostedType superclass = declaringType.getSuperclass();
+                    if (superclass == null || hasNoInheritableAnnotations(superclass, inheritedAnnotationType, metadataByClass, cachedNoInheritableAnnotations)) {
+                        hub.setEmptyAnnotationData();
+                    }
                 }
             }
 
@@ -977,6 +992,47 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 encodeOtherString(buf, field.deletedReason);
             }
         }
+    }
+
+    private boolean hasNoInheritableAnnotations(HostedType type, Class<? extends Annotation> inheritedAnnotationType, Map<Class<?>, ClassMetadata> metadataByClass,
+                    Map<HostedType, Boolean> cachedResults) {
+        Boolean cached = cachedResults.get(type);
+        if (cached != null) {
+            return cached;
+        }
+        boolean result = true;
+        ClassMetadata metadata = classData.get(type);
+        if (metadata == null) {
+            result = false;
+        }
+        if (result && type.getSuperclass() != null) {
+            result = hasNoInheritableAnnotations(type.getSuperclass(), inheritedAnnotationType, metadataByClass, cachedResults);
+        }
+        if (result) {
+            for (AnnotationValue annotation : metadata.annotations) {
+                if (annotation.isAnnotationFormatException()) {
+                    result = false;
+                    break;
+                }
+                Class<? extends Annotation> annotationType = annotation.getType();
+                ClassMetadata annotationMetadata = metadataByClass.get(annotationType);
+                if (annotationMetadata == null || !hasNoDeclaredAnnotation(annotationMetadata, inheritedAnnotationType)) {
+                    result = false;
+                    break;
+                }
+            }
+        }
+        cachedResults.put(type, result);
+        return result;
+    }
+
+    private static boolean hasNoDeclaredAnnotation(ClassMetadata metadata, Class<? extends Annotation> annotationType) {
+        for (AnnotationValue annotation : metadata.annotations) {
+            if (annotation.isAnnotationFormatException() || annotation.getType() == annotationType) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void encodeConditions(UnsafeArrayTypeWriter buf, RuntimeConditionSet conditions) {
