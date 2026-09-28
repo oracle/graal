@@ -576,6 +576,10 @@ public final class InterpreterFrame {
     /**
      * Clears the active operand stack slots in this frame.
      *
+     * Revisit this clearing loop if we need to distinguish the pre-BCI and post-BCI frame
+     * states precisely: exception dispatch clears the old operands and installs the exception
+     * before entering the handler, and a safepoint in this loop could observe a partial update.
+     *
      * @param top the exclusive upper bound of the active operand stack
      */
     public void clearOperandStack(long top) {
@@ -799,6 +803,11 @@ public final class InterpreterFrame {
         if (!InterpreterConstantPool.isUnresolved(entry)) {
             return entry;
         }
+        return resolveConstantPoolEntry(cpi, accessingClass);
+    }
+
+    @NeverInline("Keep constant-pool resolution and cache publication out of bytecode-handler stubs")
+    private Object resolveConstantPoolEntry(long cpi, InterpreterResolvedObjectType accessingClass) {
         return method.getConstantPool().resolvedAt((int) cpi, accessingClass);
     }
 

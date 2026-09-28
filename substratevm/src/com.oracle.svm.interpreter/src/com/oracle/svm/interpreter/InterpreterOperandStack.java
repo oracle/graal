@@ -115,16 +115,6 @@ final class InterpreterOperandStack {
         top += slotDelta;
     }
 
-    /**
-     * Returns the net operand-stack size change since {@code initialTop}.
-     *
-     * @param initialTop the stack top before the operations
-     */
-    @AlwaysInline("Keep InterpreterOperandStack access in the caller")
-    int slotDeltaFrom(long initialTop) {
-        return (int) (top - initialTop);
-    }
-
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     void pushInt(InterpreterFrame frame, int value) {
         frame.setPrimitive(top, 0, value);
