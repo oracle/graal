@@ -158,7 +158,7 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
     public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
         int preFinalCost = preUnAnchoredFinalStateTransitionRef == DFACaptureGroupLazyTransition.NO_TRANSITION ? 0
                         : DFACaptureGroupLazyTransition.getCost(preUnAnchoredFinalStateTransitionRef, executor);
-        int finalCost = unAnchoredFinalStateTransitionRef == DFACaptureGroupLazyTransition.NO_TRANSITION ? 0
+        int finalCost = unAnchoredFinalStateTransitionRef == DFACaptureGroupPartialTransition.NO_TRANSITION ? 0
                         : DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), unAnchoredFinalStateTransitionRef);
         return preFinalCost + finalCost;
     }

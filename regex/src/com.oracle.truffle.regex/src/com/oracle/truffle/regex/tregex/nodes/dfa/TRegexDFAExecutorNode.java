@@ -587,6 +587,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     CompilerAsserts.partialEvaluationConstant(isSimpleMatchers);
                     CompilerAsserts.partialEvaluationConstant(isUTF8);
                     if (isSimpleMatchers) {
+                        assert SequentialMatchers.getMaxBytes(sequentialMatcherRecords, matcherRecordRef) <= 1;
                         final int c = inputReadAndDecode(locals, codeRange);
                         int matcherRefs = SequentialMatchers.getLaneRef(sequentialMatcherRecords, matcherRecordRef, 0);
                         CompilerAsserts.partialEvaluationConstant(matcherRefs);

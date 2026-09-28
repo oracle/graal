@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -115,8 +114,9 @@ import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
  * <li>{@link Kind#branchesIndirect}: {@code selectorByteCount == 2 * (branchCount - 1)}; the
  * payload contains one unsigned 16-bit predecessor transition index for each branch except the
  * last, which is the fallback branch.</li>
- * <li>{@link Kind#branchesLookupTable}: the predecessor transition index addresses the selector
- * payload directly, and the selected byte is the unsigned branch index.</li>
+ * <li>{@link Kind#branchesLookupTable}: the selector payload contains one byte per predecessor
+ * transition ({@code selectorByteCount == predecessorCount}). The predecessor transition index
+ * addresses the payload directly, and the selected byte is the unsigned branch index.</li>
  * </ul>
  * {@link #NO_TRANSITION} denotes an absent record. Reference {@link #EMPTY_TRANSITION} is reserved
  * for the canonical empty single transition.
@@ -244,7 +244,7 @@ public final class DFACaptureGroupLazyTransition {
     }
 
     /** Builds and content-deduplicates the two executor-owned capture-group transition arrays. */
-    public static final class Builder {
+    public static final class FlatRecordBuilder {
 
         @SuppressWarnings("rawtypes") private static final Equivalence BYTE_ARRAY_EQUIVALENCE = new Equivalence() {
             @Override
@@ -260,11 +260,11 @@ public final class DFACaptureGroupLazyTransition {
 
         private final ByteArrayBuffer partialTransitionRecords = new ByteArrayBuffer();
         private final ByteArrayBuffer lazyTransitionRecords = new ByteArrayBuffer();
-        private final IdentityHashMap<byte[], Integer> partialTransitionRefs = new IdentityHashMap<>();
+        private final EconomicMap<byte[], Integer> partialTransitionRefs = EconomicMap.create(Equivalence.IDENTITY);
         private final EconomicMap<byte[], Integer> lazyTransitionRefs = EconomicMap.create(BYTE_ARRAY_EQUIVALENCE);
         private final HashMap<Integer, byte[]> partialTransitionRecordsByRef;
 
-        public Builder(boolean debugMode) {
+        public FlatRecordBuilder(boolean debugMode) {
             partialTransitionRecordsByRef = debugMode ? new HashMap<>() : null;
             int emptyPartialTransitionRef = getOrCreatePartialTransitionRef(DFACaptureGroupPartialTransition.getEmptyRecord());
             int emptyLazyTransitionRef = createSingle(DFACaptureGroupPartialTransition.getEmptyRecord());

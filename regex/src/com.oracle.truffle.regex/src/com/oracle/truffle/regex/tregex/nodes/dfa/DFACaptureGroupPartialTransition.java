@@ -130,6 +130,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  */
 public final class DFACaptureGroupPartialTransition {
 
+    public static final int NO_TRANSITION = -1;
     public static final int FINAL_STATE_RESULT_INDEX = 0;
 
     private static final int FIELD_PRE_REORDER_FINAL_STATE_RESULT_INDEX = 0;
@@ -328,8 +329,7 @@ public final class DFACaptureGroupPartialTransition {
                         numberOfIndexClears,
                         numberOfLastGroupUpdates,
                         commonOperations.length());
-        int offset = RECORD_HEADER_SIZE;
-        offset = copyRecordTo(firstRecord, commonRecord, offset, RECORD_HEADER_SIZE, reorderSwapsLength + arrayCopiesLength);
+        int offset = copyRecordTo(firstRecord, getReorderSwapsOffset(), commonRecord, getReorderSwapsOffset(), reorderSwapsLength + arrayCopiesLength);
         offset = commonOperations.copyTo(commonRecord, offset);
         assert offset == commonRecord.length;
         return commonRecord;
@@ -343,7 +343,7 @@ public final class DFACaptureGroupPartialTransition {
             if (getPreReorderFinalStateResultIndex(firstRecord) != getPreReorderFinalStateResultIndex(currentRecord) ||
                             getReorderSwapsLength(firstRecord) != getReorderSwapsLength(currentRecord) ||
                             getArrayCopiesLength(firstRecord) != getArrayCopiesLength(currentRecord) ||
-                            !recordRangeEquals(firstRecord, RECORD_HEADER_SIZE, currentRecord, RECORD_HEADER_SIZE, length)) {
+                            !recordRangeEquals(firstRecord, getReorderSwapsOffset(), currentRecord, getReorderSwapsOffset(), length)) {
                 return false;
             }
         }
@@ -376,14 +376,16 @@ public final class DFACaptureGroupPartialTransition {
     }
 
     /**
-     * Removes all operations present in {@code recordB} from {@code recordA}. Reordering and
-     * array-copy records must be identical.
+     * Removes all operations present in {@code recordB} from {@code recordA}. Reorder and
+     * array-copy sections in {@code recordB} may be empty, in which case the corresponding section
+     * in {@code recordA} is retained. Non-empty sections must be identical to those in
+     * {@code recordA} and are removed.
      */
     public static byte[] subtract(byte[] recordA, byte[] recordB, CompilationBuffer compilationBuffer) {
         int reorderSwapsLength = getReorderSwapsLength(recordB) == 0 ? getReorderSwapsLength(recordA) : 0;
         int arrayCopiesLength = getArrayCopiesLength(recordB) == 0 ? getArrayCopiesLength(recordA) : 0;
         assert getReorderSwapsLength(recordB) == 0 || getReorderSwapsLength(recordA) == getReorderSwapsLength(recordB) &&
-                        recordRangeEquals(recordA, RECORD_HEADER_SIZE, recordB, RECORD_HEADER_SIZE, getReorderSwapsLength(recordA));
+                        recordRangeEquals(recordA, getReorderSwapsOffset(), recordB, getReorderSwapsOffset(), getReorderSwapsLength(recordA));
         assert getArrayCopiesLength(recordB) == 0 || getArrayCopiesLength(recordA) == getArrayCopiesLength(recordB) &&
                         recordRangeEquals(recordA, getArrayCopiesOffset(recordA), recordB, getArrayCopiesOffset(recordB), getArrayCopiesLength(recordA));
         ByteArrayBuffer subtractedOperations = compilationBuffer.getByteArrayBuffer();
@@ -408,12 +410,9 @@ public final class DFACaptureGroupPartialTransition {
                         numberOfIndexClears,
                         numberOfLastGroupUpdates,
                         subtractedOperations.length());
-        int offset = RECORD_HEADER_SIZE;
-        if (reorderSwapsLength != 0) {
-            offset = copyRecordTo(recordA, subtractedRecord, offset, RECORD_HEADER_SIZE, reorderSwapsLength);
-        }
-        if (arrayCopiesLength != 0) {
-            offset = copyRecordTo(recordA, subtractedRecord, offset, getArrayCopiesOffset(recordA), arrayCopiesLength);
+        int offset = getReorderSwapsOffset();
+        if (reorderSwapsLength + arrayCopiesLength != 0) {
+            offset = copyRecordTo(recordA, getReorderSwapsOffset(), subtractedRecord, getReorderSwapsOffset(), reorderSwapsLength + arrayCopiesLength);
         }
         offset = subtractedOperations.copyTo(subtractedRecord, offset);
         assert offset == subtractedRecord.length;
@@ -468,7 +467,7 @@ public final class DFACaptureGroupPartialTransition {
         };
     }
 
-    private static int copyRecordTo(byte[] sourceRecord, byte[] targetRecord, int targetOffset, int sourceOffset, int length) {
+    private static int copyRecordTo(byte[] sourceRecord, int sourceOffset, byte[] targetRecord, int targetOffset, int length) {
         System.arraycopy(sourceRecord, sourceOffset, targetRecord, targetOffset, length);
         return targetOffset + length;
     }
@@ -483,6 +482,10 @@ public final class DFACaptureGroupPartialTransition {
 
     public static boolean isEmpty(byte[] partialTransitionRecord) {
         return partialTransitionRecord == EMPTY_RECORD;
+    }
+
+    private static boolean doesReorderResults(byte[] partialTransitionRecord) {
+        return doesReorderResults(partialTransitionRecord, 0);
     }
 
     public static boolean doesReorderResults(byte[] partialTransitionRecords, int partialTransitionRef) {
@@ -505,11 +508,12 @@ public final class DFACaptureGroupPartialTransition {
      * {@code afterIndexOf} method.
      */
     public static boolean hasLoopToSelfDependency(byte[] partialTransitionRecord) {
-        if (doesReorderResults(partialTransitionRecord, 0)) {
+        if (doesReorderResults(partialTransitionRecord)) {
+            // Reordered transitions are applied for every loop iteration, so this flag is unused.
             return false;
         }
-        int arrayCopiesOffset = getArrayCopiesOffset(partialTransitionRecord, 0);
-        int arrayCopiesEnd = arrayCopiesOffset + getArrayCopiesLength(partialTransitionRecord, 0);
+        int arrayCopiesOffset = getArrayCopiesOffset(partialTransitionRecord);
+        int arrayCopiesEnd = arrayCopiesOffset + getArrayCopiesLength(partialTransitionRecord);
         for (int offset = arrayCopiesOffset; offset < arrayCopiesEnd; offset += 2) {
             int arraycopySource = Byte.toUnsignedInt(partialTransitionRecord[offset]);
             int arraycopyTarget = Byte.toUnsignedInt(partialTransitionRecord[offset + 1]);
@@ -591,12 +595,20 @@ public final class DFACaptureGroupPartialTransition {
         return Byte.toUnsignedInt(partialTransitionRecords[partialTransitionRef + FIELD_INDEX_UPDATES_LENGTH + operationKind.ordinal()]);
     }
 
+    private static int getReorderSwapsOffset() {
+        return RECORD_HEADER_SIZE;
+    }
+
+    private static int getReorderSwapsOffset(int partialTransitionRef) {
+        return partialTransitionRef + RECORD_HEADER_SIZE;
+    }
+
     private static int getArrayCopiesOffset(byte[] partialTransitionRecord) {
         return getArrayCopiesOffset(partialTransitionRecord, 0);
     }
 
     private static int getArrayCopiesOffset(byte[] partialTransitionRecords, int partialTransitionRef) {
-        return partialTransitionRef + RECORD_HEADER_SIZE + getReorderSwapsLength(partialTransitionRecords, partialTransitionRef);
+        return getReorderSwapsOffset(partialTransitionRef) + getReorderSwapsLength(partialTransitionRecords, partialTransitionRef);
     }
 
     private static int getIndexUpdatesOffset(byte[] partialTransitionRecord) {
@@ -724,14 +736,14 @@ public final class DFACaptureGroupPartialTransition {
             assert Byte.toUnsignedInt(partialTransitionRecords[offset]) == 0;
             offset++;
             int numberOfIndices = Byte.toUnsignedInt(partialTransitionRecords[offset++]);
-            writeDirect(partialTransitionRecords, results, 0, rowLength, offset, numberOfIndices, currentIndex);
+            writeDirect(partialTransitionRecords, offset, numberOfIndices, results, 0, rowLength, currentIndex);
             offset += numberOfIndices;
         }
         if (indexClearsLength != 0) {
             assert Byte.toUnsignedInt(partialTransitionRecords[offset]) == 0;
             offset++;
             int numberOfIndices = Byte.toUnsignedInt(partialTransitionRecords[offset++]);
-            writeDirect(partialTransitionRecords, results, 0, rowLength, offset, numberOfIndices, -1);
+            writeDirect(partialTransitionRecords, offset, numberOfIndices, results, 0, rowLength, -1);
             offset += numberOfIndices;
         }
         if (executor.tracksLastGroup() && lastGroupUpdatesLength == 1) {
@@ -742,10 +754,11 @@ public final class DFACaptureGroupPartialTransition {
 
     @ExplodeLoop
     private static void applyReorder(byte[] partialTransitionRecords, int partialTransitionRef, int[] currentResultOrder) {
+        int offset = getReorderSwapsOffset(partialTransitionRef);
         int length = getReorderSwapsLength(partialTransitionRecords, partialTransitionRef);
         for (int i = 0; i < length; i += 2) {
-            final int source = Byte.toUnsignedInt(partialTransitionRecords[partialTransitionRef + RECORD_HEADER_SIZE + i]);
-            final int target = Byte.toUnsignedInt(partialTransitionRecords[partialTransitionRef + RECORD_HEADER_SIZE + i + 1]);
+            final int source = Byte.toUnsignedInt(partialTransitionRecords[offset + i]);
+            final int target = Byte.toUnsignedInt(partialTransitionRecords[offset + i + 1]);
             CompilerAsserts.partialEvaluationConstant(source);
             CompilerAsserts.partialEvaluationConstant(target);
             final int tmp = currentResultOrder[source];
@@ -776,14 +789,14 @@ public final class DFACaptureGroupPartialTransition {
         for (int i = 0; i < length; i++) {
             int targetArray = Byte.toUnsignedInt(partialTransitionRecords[currentOffset++]);
             int numberOfIndices = Byte.toUnsignedInt(partialTransitionRecords[currentOffset++]);
-            writeDirect(partialTransitionRecords, results, currentResultOrder[targetArray], rowLength, currentOffset, numberOfIndices, currentIndex);
+            writeDirect(partialTransitionRecords, currentOffset, numberOfIndices, results, currentResultOrder[targetArray], rowLength, currentIndex);
             currentOffset += numberOfIndices;
         }
         return currentOffset;
     }
 
     @ExplodeLoop
-    private static void writeDirect(byte[] partialTransitionRecords, int[] array, int offset, int rowLength, int indicesOffset, int numberOfIndices, int value) {
+    private static void writeDirect(byte[] partialTransitionRecords, int indicesOffset, int numberOfIndices, int[] array, int offset, int rowLength, int value) {
         int maskedOffset = DFACaptureGroupTrackingData.maskRowStart(array, offset, rowLength);
         for (int i = 0; i < numberOfIndices; i++) {
             int index = Byte.toUnsignedInt(partialTransitionRecords[indicesOffset + i]);
@@ -811,11 +824,12 @@ public final class DFACaptureGroupPartialTransition {
         int reorderSwapsLength = getReorderSwapsLength(partialTransitionRecord);
         if (reorderSwapsLength > 0) {
             sb.append(System.lineSeparator()).append("reorderSwaps: [");
+            int reorderSwapsOffset = getReorderSwapsOffset();
             for (int i = 0; i < reorderSwapsLength; i++) {
                 if (i > 0) {
                     sb.append(", ");
                 }
-                sb.append(partialTransitionRecord[RECORD_HEADER_SIZE + i]);
+                sb.append(Byte.toUnsignedInt(partialTransitionRecord[reorderSwapsOffset + i]));
             }
             sb.append("]");
         }
@@ -831,6 +845,16 @@ public final class DFACaptureGroupPartialTransition {
         }
         indexManipulationsToString(partialTransitionRecord, sb, getIndexUpdatesOffset(partialTransitionRecord), getIndexClearsOffset(partialTransitionRecord), "indexUpdates");
         indexManipulationsToString(partialTransitionRecord, sb, getIndexClearsOffset(partialTransitionRecord), getLastGroupUpdatesOffset(partialTransitionRecord), "indexClears");
+        int lastGroupUpdatesLength = getOperationCount(partialTransitionRecord, OperationKind.lastGroupUpdates);
+        if (lastGroupUpdatesLength > 0) {
+            sb.append(System.lineSeparator()).append("lastGroupUpdates: ");
+            int offset = getLastGroupUpdatesOffset(partialTransitionRecord);
+            for (int i = 0; i < lastGroupUpdatesLength; i++) {
+                int targetArray = Byte.toUnsignedInt(partialTransitionRecord[offset++]);
+                int lastGroup = Byte.toUnsignedInt(partialTransitionRecord[offset++]);
+                sb.append(System.lineSeparator()).append("    ").append(targetArray).append(" <- ").append(lastGroup);
+            }
+        }
         return sb.toString();
     }
 
@@ -856,7 +880,8 @@ public final class DFACaptureGroupPartialTransition {
 
     @TruffleBoundary
     public static JsonValue toJson(byte[] partialTransitionRecord, int id) {
-        JsonObject json = Json.obj(Json.prop("id", id), Json.prop("reorderSwaps", dataRangeToJsonArray(partialTransitionRecord, RECORD_HEADER_SIZE, getReorderSwapsLength(partialTransitionRecord))));
+        JsonObject json = Json.obj(Json.prop("id", id),
+                        Json.prop("reorderSwaps", dataRangeToJsonArray(partialTransitionRecord, getReorderSwapsOffset(), getReorderSwapsLength(partialTransitionRecord))));
         int arrayCopiesOffset = getArrayCopiesOffset(partialTransitionRecord);
         JsonArray copies = Json.array();
         for (int i = 0; i < getArrayCopiesLength(partialTransitionRecord); i += 2) {
@@ -865,22 +890,35 @@ public final class DFACaptureGroupPartialTransition {
             copies.append(Json.obj(Json.prop("source", source), Json.prop("target", target)));
         }
         json.append(Json.prop("arrayCopies", copies));
-        indexManipulationsToJson(partialTransitionRecord, json, getIndexUpdatesOffset(partialTransitionRecord), getIndexClearsOffset(partialTransitionRecord), "indexUpdates");
-        indexManipulationsToJson(partialTransitionRecord, json, getIndexClearsOffset(partialTransitionRecord), getLastGroupUpdatesOffset(partialTransitionRecord), "indexClears");
+        json.append(Json.prop("indexUpdates",
+                        indexManipulationsToJson(partialTransitionRecord, getIndexUpdatesOffset(partialTransitionRecord), getIndexClearsOffset(partialTransitionRecord))));
+        json.append(Json.prop("indexClears",
+                        indexManipulationsToJson(partialTransitionRecord, getIndexClearsOffset(partialTransitionRecord), getLastGroupUpdatesOffset(partialTransitionRecord))));
+        JsonArray lastGroupUpdates = Json.array();
+        int offset = getLastGroupUpdatesOffset(partialTransitionRecord);
+        int lastGroupUpdatesLength = getOperationCount(partialTransitionRecord, OperationKind.lastGroupUpdates);
+        for (int i = 0; i < lastGroupUpdatesLength; i++) {
+            int targetArray = Byte.toUnsignedInt(partialTransitionRecord[offset++]);
+            int lastGroup = Byte.toUnsignedInt(partialTransitionRecord[offset++]);
+            lastGroupUpdates.append(Json.obj(Json.prop("target", targetArray), Json.prop("lastGroup", lastGroup)));
+        }
+        json.append(Json.prop("lastGroupUpdates", lastGroupUpdates));
         return json;
     }
 
     @TruffleBoundary
-    private static void indexManipulationsToJson(byte[] partialTransitionRecord, JsonObject json, int offset, int end, String name) {
+    private static JsonArray indexManipulationsToJson(byte[] partialTransitionRecord, int offset, int end) {
+        JsonArray operations = Json.array();
         int currentOffset = offset;
         while (currentOffset < end) {
             int targetArray = Byte.toUnsignedInt(partialTransitionRecord[currentOffset++]);
             int numberOfIndices = Byte.toUnsignedInt(partialTransitionRecord[currentOffset++]);
-            json.append(Json.prop(name, Json.obj(Json.prop("target", targetArray),
+            operations.append(Json.obj(Json.prop("target", targetArray),
                             Json.prop("groupStarts", groupBoundariesToJsonArray(partialTransitionRecord, currentOffset, numberOfIndices, true)),
-                            Json.prop("groupEnds", groupBoundariesToJsonArray(partialTransitionRecord, currentOffset, numberOfIndices, false)))));
+                            Json.prop("groupEnds", groupBoundariesToJsonArray(partialTransitionRecord, currentOffset, numberOfIndices, false))));
             currentOffset += numberOfIndices;
         }
+        return operations;
     }
 
     @TruffleBoundary

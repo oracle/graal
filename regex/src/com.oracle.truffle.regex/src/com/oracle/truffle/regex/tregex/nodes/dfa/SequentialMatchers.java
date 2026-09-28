@@ -125,12 +125,17 @@ public final class SequentialMatchers {
             }
         };
 
-        private final IntArrayBuffer[] buffers;
+        // DFA-wide state that accumulates entries over the entire DFA generation.
         private final CharMatchers.Builder charMatcherBuilder = new CharMatchers.Builder();
         private final IntArrayBuffer matcherRecords = new IntArrayBuffer();
-        private final IntArrayBuffer matcherRecordBuffer = new IntArrayBuffer();
         private final EconomicMap<int[], Integer> matcherRecordRefs = EconomicMap.create(INT_ARRAY_EQUIVALENCE);
+
+        // Per-state data reset between states.
+        private final IntArrayBuffer[] buffers;
         private short noMatchSuccessor = -1;
+
+        // Scratch storage used only by createMatcherRecord; it carries no state between calls.
+        private final IntArrayBuffer matcherRecordBuffer = new IntArrayBuffer();
 
         public Builder(int nBuffers) {
             assert 0 < nBuffers && nBuffers <= NUMBER_OF_LANES;

@@ -163,7 +163,7 @@ public final class DFAGenerator implements JsonConvertible {
     private final Counter cgPartialTransitionIDCounter = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxDFACGPartialTransitions, "too many partial transitions");
     private final EconomicMap<byte[], Integer> cgPartialTransitionIds = EconomicMap.create(BYTE_ARRAY_EQUIVALENCE);
     private final ArrayList<byte[]> cgPartialTransitionRecords = new ArrayList<>();
-    private final DFACaptureGroupLazyTransition.Builder cgTransitionRecordBuilder;
+    private final DFACaptureGroupLazyTransition.FlatRecordBuilder cgTransitionRecordBuilder;
     private final DFASimpleCGTransition.Builder simpleCGTransitionBuilder = new DFASimpleCGTransition.Builder();
     private int maxNumberOfNfaStates = 1;
     private boolean hasAmbiguousStates = false;
@@ -194,7 +194,7 @@ public final class DFAGenerator implements JsonConvertible {
         this.pruneUnambiguousPaths = executorProps.isBackward() && nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
         this.compilationBuffer = compilationBuffer;
         this.cgPartialTransitions = debugMode() ? new ArrayList<>() : null;
-        this.cgTransitionRecordBuilder = new DFACaptureGroupLazyTransition.Builder(debugMode());
+        this.cgTransitionRecordBuilder = new DFACaptureGroupLazyTransition.FlatRecordBuilder(debugMode());
         this.bfsTraversalCur = needBFSTraversalLists() ? new ArrayList<>() : null;
         this.bfsTraversalNext = needBFSTraversalLists() ? new ArrayList<>() : null;
         byte[] emptyCGPartialTransitionRecord = internCGPartialTransition(DFACaptureGroupPartialTransition.getEmptyRecord());
@@ -1888,7 +1888,7 @@ public final class DFAGenerator implements JsonConvertible {
         int maxDedupSize = 0;
         // for every successor, group all preceding transitions by DFACaptureGroupPartialTransition
         for (int i = 0; i < maps.length; i++) {
-            EconomicMap<byte[], ArrayList<Integer>> dedup = EconomicMap.create();
+            EconomicMap<byte[], ArrayList<Integer>> dedup = EconomicMap.create(Equivalence.IDENTITY);
             maps[i] = dedup;
             for (int j = 0; j < s.getPredecessors().length; j++) {
                 DFACaptureGroupLazyTransitionBuilder predecessor = getLazyTransitionBuilder(s.getPredecessors()[j]);
@@ -1958,7 +1958,7 @@ public final class DFAGenerator implements JsonConvertible {
             lazyPreFinalTransitionRef = createWithLookup(s, maps, iTransitionToFinalState);
         }
         s.setLazyTransitionRefs(lazyTransitionRefs);
-        int cgLoopToSelfRef = DFACaptureGroupLazyTransition.NO_TRANSITION;
+        int cgLoopToSelfRef = DFACaptureGroupPartialTransition.NO_TRANSITION;
         boolean cgLoopToSelfHasDependency = false;
         if (loopToSelf >= 0) {
             byte[] cgLoopToSelfRecord = getLazyTransitionBuilder(s.getSuccessors()[loopToSelf]).getPartialTransitionRecords()[loopToSelf];
@@ -2270,7 +2270,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private int createCGFinalTransition(NFAStateTransition transition) {
         if (transition == null) {
-            return DFACaptureGroupLazyTransition.NO_TRANSITION;
+            return DFACaptureGroupPartialTransition.NO_TRANSITION;
         }
         GroupBoundaries groupBoundaries = transition.getGroupBoundaries();
         ByteArrayBuffer emptyReorderSwapsAndArrayCopies = compilationBuffer.getByteArrayBuffer();
