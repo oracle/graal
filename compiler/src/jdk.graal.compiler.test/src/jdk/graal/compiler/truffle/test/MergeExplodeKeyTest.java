@@ -26,8 +26,6 @@ package jdk.graal.compiler.truffle.test;
 
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -1031,34 +1029,9 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     @Test
-    public void mergeKeysFromDifferentLoopInstancesHaveBoundedCollisions() {
+    public void mergeStatesAreLocalToLoopEntries() {
         for (boolean explicitKey : new boolean[]{false, true}) {
-            MergeKeyDecoder decoder = createMergeKeyDecoder();
-            CountingKeyEquivalence equivalence = new CountingKeyEquivalence();
-            EconomicMap<Object, Object> keys = EconomicMap.create(equivalence);
-            int loopInstances = 256;
-            for (int i = 0; i < loopInstances; i++) {
-                Object key = decoder.keyForNewLoopInstance(explicitKey);
-                keys.put(key, key);
-            }
-            Assert.assertEquals("Each loop instance must have a distinct merge key", loopInstances, keys.size());
-            /* Allow ordinary collisions, but not a single quadratic collision chain. */
-            Assert.assertTrue("Excessive merge-key comparisons: " + equivalence.comparisons, equivalence.comparisons < 16 * loopInstances);
-        }
-    }
-
-    private static final class CountingKeyEquivalence extends Equivalence {
-        int comparisons;
-
-        @Override
-        public boolean equals(Object a, Object b) {
-            comparisons++;
-            return a.equals(b);
-        }
-
-        @Override
-        public int hashCode(Object object) {
-            return object.hashCode();
+            createMergeKeyDecoder().assertEntryLocalMergeStates(explicitKey);
         }
     }
 
@@ -1191,8 +1164,8 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
             /*
              * Backtrack from an empty root, a cyclic child, and its alias before finding the key.
              */
-            loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, state);
-            Assert.assertNotNull(loopScope.loopExplosionMergeKeyFilter);
+            loopScope.loopEntryState.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, state);
+            Assert.assertNotNull(loopScope.loopEntryState.loopExplosionMergeKeyFilter);
             Assert.assertSame(value, createLoopExplosionKey(loopScope, state).values.getFirst());
 
             /* Reuse the recorded path with the next iteration's virtual state. */
@@ -1203,19 +1176,41 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
             Assert.assertSame(value, createLoopExplosionKey(loopScope, state).values.getFirst());
         }
 
-        Object keyForNewLoopInstance(boolean explicitKey) {
-            LoopScope loopScope = createInitialLoopScope(methodScope, null);
-            ValueNode value = ConstantNode.forInt(0, graph);
-            if (explicitKey) {
-                value = graph.addWithoutUnique(new LoopExplosionKeyNode(value));
+        void assertEntryLocalMergeStates(boolean explicitKey) {
+            LoopScope[] entries = new LoopScope[16];
+            int keysPerEntry = 16;
+            for (int entry = 0; entry < entries.length; entry++) {
+                LoopScope loopScope = createInitialLoopScope(methodScope, null);
+                entries[entry] = loopScope;
+                var states = loopScope.loopEntryState.iterationStates;
+                Assert.assertTrue("A new loop entry must have its own empty merge-state map", states.isEmpty());
+                ValueNode value = ConstantNode.forInt(0, graph);
+                if (explicitKey) {
+                    value = graph.addWithoutUnique(new LoopExplosionKeyNode(value));
+                }
+                FrameState initialState = graph.add(new FrameState(null, null, 0, List.of(value), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
+                loopScope.loopEntryState.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, initialState);
+                /* Exercise both the linear and hashed representations of each entry's map. */
+                for (int i = 0; i < keysPerEntry; i++) {
+                    FrameState state = graph.add(new FrameState(null, null, 0, List.of(ConstantNode.forInt(i, graph)), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
+                    LoopExplosionKey key = createLoopExplosionKey(loopScope, state);
+                    Assert.assertFalse(states.containsKey(key));
+                    states.put(key, null);
+                    LoopExplosionKey equivalentKey = createLoopExplosionKey(loopScope, state.duplicate());
+                    Assert.assertEquals("Equal states in one loop entry must still match", key, equivalentKey);
+                    Assert.assertEquals(key.hashCode(), equivalentKey.hashCode());
+                    Assert.assertTrue(states.containsKey(equivalentKey));
+                    Assert.assertEquals(i + 1, states.size());
+                }
             }
-            FrameState state = graph.add(new FrameState(null, null, 0, List.of(value), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
-            loopScope.loopExplosionMergeKeyFilter = computeMergeKeyFilter(loopScope, state);
-            Object key = createLoopExplosionKey(loopScope, state);
-            Object equivalentKey = createLoopExplosionKey(loopScope, state);
-            Assert.assertEquals("Equal states in one loop instance must still match", key, equivalentKey);
-            Assert.assertEquals(key.hashCode(), equivalentKey.hashCode());
-            return key;
+            for (LoopScope loopScope : entries) {
+                var states = loopScope.loopEntryState.iterationStates;
+                Assert.assertEquals("Later entries must not change an earlier entry's map", keysPerEntry, states.size());
+                for (int i = 0; i < keysPerEntry; i++) {
+                    FrameState state = graph.add(new FrameState(null, null, 0, List.of(ConstantNode.forInt(i, graph)), 1, 0, 0, FrameState.StackState.BeforePop, false, null, null, null));
+                    Assert.assertTrue(states.containsKey(createLoopExplosionKey(loopScope, state)));
+                }
+            }
         }
     }
 }
