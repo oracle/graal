@@ -65,6 +65,13 @@ public final class LogThreadLocal implements ThreadListener {
         return get().isNonNull();
     }
 
+    /// Gets whether the current thread has an open logging message without initializing its
+    /// logging state.
+    static boolean hasActiveMessage() {
+        Data data = get();
+        return data.isNonNull() && data.getActiveTagSet() != 0;
+    }
+
     /// Gets the state for `isolateThread`, allocating it when the thread-start listener did not
     /// preallocate it.
     @Uninterruptible(reason = "May be called before a thread is fully started.")

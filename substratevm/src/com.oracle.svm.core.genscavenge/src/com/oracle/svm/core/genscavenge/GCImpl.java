@@ -393,7 +393,12 @@ public final class GCImpl implements GC {
         accounting.beforeCollectOnce(completeCollection);
         policy.onCollectionBegin(completeCollection, beginNanoTime);
 
-        doCollectCore();
+        LogTagSet.enterGCUnsafeRegion();
+        try {
+            doCollectCore();
+        } finally {
+            LogTagSet.exitGCUnsafeRegion();
+        }
         if (complete) {
             lastWholeHeapExaminedNanos = System.nanoTime();
         }

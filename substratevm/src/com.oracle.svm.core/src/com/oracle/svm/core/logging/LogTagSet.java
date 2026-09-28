@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.collections.EnumBitmask;
 import com.oracle.svm.shared.util.VMError;
@@ -68,6 +70,12 @@ import com.oracle.svm.shared.util.VMError;
 /// initialization could trigger another class initialization, recursively reenter logging, and
 /// cause incorrect behavior or a deadlock.
 ///
+/// Unified logging must not access Java heap objects while a collector is moving or scanning them.
+/// The Serial GC therefore brackets its collection core with [#enterGCUnsafeRegion()] and
+/// [#exitGCUnsafeRegion()]. The level predicates, [#message()], and the final write all fail fast
+/// inside that region. Other collectors that execute unified logging call sites while Java heap
+/// objects are unsafe must establish an equivalent boundary.
+///
 /// @see LogTagSetGenerator
 public enum LogTagSet {
     // START GENERATED
@@ -103,6 +111,10 @@ public enum LogTagSet {
     // END GENERATED
 
     static final LogTagSet[] VALUES = LogTagSet.values();
+
+    /// Marks the current collector thread while Java heap objects are unsafe to access from the
+    /// unified logging implementation.
+    private static final FastThreadLocalInt gcUnsafeRegion = FastThreadLocalFactory.createInt("LogTagSet.gcUnsafeRegion");
 
     /// External selector spelling in HotSpot tag order.
     private final String label;
@@ -184,6 +196,7 @@ public enum LogTagSet {
 
     /// Returns whether `level` is enabled on any configured or fallback output.
     public boolean isLevel(LogLevel level) {
+        guaranteeGCLoggingIsSafe();
         VMError.guarantee(isGC || HasXlogSupport.get(), "Only GC logging is available without -Xlog support.");
         return outputList.isLevel(level);
     }
@@ -216,12 +229,14 @@ public enum LogTagSet {
     /// Opens a message for this tag set. This must be used in a try-with-resources or try-finally
     /// statement as documented in [LogMessage].
     public LogMessage message() {
+        guaranteeGCLoggingIsSafe();
         LogThreadLocal.activate(this);
         return logMessage;
     }
 
     /// Writes one complete native memory message to every output enabled for one of its lines.
     void write(LogMessage message) {
+        guaranteeGCLoggingIsSafe();
         LogOutputList.Configuration configuration = outputList.configuration();
         LogOutputConfiguration[] outputs = configuration.outputsFor(message.getMostSevereLevel());
         LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
@@ -238,6 +253,24 @@ public enum LogTagSet {
                 output.write(this, decorations, message, outputLevel, outputConfiguration.decorators());
             }
         }
+    }
+
+    /// Marks the current thread as entering a collector region where unified logging cannot safely
+    /// access Java heap objects. No logging message may span the region boundary.
+    public static void enterGCUnsafeRegion() {
+        VMError.guarantee(!LogThreadLocal.hasActiveMessage(), "A unified logging message must not cross into a GC unsafe region.");
+        VMError.guarantee(gcUnsafeRegion.get() == 0, "Nested GC unsafe regions are not allowed.");
+        gcUnsafeRegion.set(1);
+    }
+
+    /// Marks the current thread as leaving the collector region established by
+    /// [#enterGCUnsafeRegion()].
+    public static void exitGCUnsafeRegion() {
+        gcUnsafeRegion.set(0);
+    }
+
+    private static void guaranteeGCLoggingIsSafe() {
+        VMError.guarantee(gcUnsafeRegion.get() == 0, "Unified logging cannot access Java heap objects inside a GC unsafe region.");
     }
 
     public LogLevel getMostDetailedLevel() {
