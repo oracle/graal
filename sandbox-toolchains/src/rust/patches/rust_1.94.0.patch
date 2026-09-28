@@ -1,0 +1,496 @@
+diff --git a/compiler/rustc_codegen_llvm/src/back/write.rs b/compiler/rustc_codegen_llvm/src/back/write.rs
+index bcadb6f0de9..55dd18f0975 100644
+--- a/compiler/rustc_codegen_llvm/src/back/write.rs
++++ b/compiler/rustc_codegen_llvm/src/back/write.rs
+@@ -754,6 +754,7 @@ pub(crate) unsafe fn llvm_optimize(
+             config.no_builtins,
+             config.emit_lifetime_markers,
+             enzyme_fn,
++            cgcx.sandbox,
+             print_before_enzyme,
+             print_after_enzyme,
+             print_passes,
+diff --git a/compiler/rustc_codegen_llvm/src/llvm/ffi.rs b/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
+index a90013801c8..58c689d7b40 100644
+--- a/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
++++ b/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
+@@ -19,6 +19,7 @@ use std::ptr;
+ 
+ use bitflags::bitflags;
+ use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
++use rustc_session::config::SandboxMode;
+ 
+ use super::RustString;
+ use super::debuginfo::{
+@@ -2374,6 +2375,7 @@ unsafe extern "C" {
+         DisableSimplifyLibCalls: bool,
+         EmitLifetimeMarkers: bool,
+         RunEnzyme: *const c_void,
++        SandboxMode: SandboxMode,
+         PrintBeforeEnzyme: bool,
+         PrintAfterEnzyme: bool,
+         PrintPasses: bool,
+diff --git a/compiler/rustc_codegen_ssa/src/back/write.rs b/compiler/rustc_codegen_ssa/src/back/write.rs
+index 3e36bd8552b..3078a66c9f6 100644
+--- a/compiler/rustc_codegen_ssa/src/back/write.rs
++++ b/compiler/rustc_codegen_ssa/src/back/write.rs
+@@ -29,6 +29,7 @@ use rustc_middle::ty::TyCtxt;
+ use rustc_session::Session;
+ use rustc_session::config::{
+     self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
++    SandboxMode,
+ };
+ use rustc_span::source_map::SourceMap;
+ use rustc_span::{FileName, InnerSpan, Span, SpanData, sym};
+@@ -326,6 +327,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
+     // Resources needed when running LTO
+     pub prof: SelfProfilerRef,
+     pub lto: Lto,
++    pub sandbox: SandboxMode,
+     pub save_temps: bool,
+     pub fewer_names: bool,
+     pub time_trace: bool,
+@@ -1292,6 +1294,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
+     let cgcx = CodegenContext::<B> {
+         crate_types: tcx.crate_types().to_vec(),
+         lto: sess.lto(),
++        sandbox: sess.sandbox(),
+         fewer_names: sess.fewer_names(),
+         save_temps: sess.opts.cg.save_temps,
+         time_trace: sess.opts.unstable_opts.llvm_time_trace,
+diff --git a/compiler/rustc_driver_impl/src/lib.rs b/compiler/rustc_driver_impl/src/lib.rs
+index a328298d3b1..b8e9efe1ed6 100644
+--- a/compiler/rustc_driver_impl/src/lib.rs
++++ b/compiler/rustc_driver_impl/src/lib.rs
+@@ -52,7 +52,7 @@ use rustc_parse::lexer::StripTokens;
+ use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
+ use rustc_session::config::{
+     CG_OPTIONS, CrateType, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
+-    UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
++    SandboxMode, UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
+ };
+ use rustc_session::getopts::{self, Matches};
+ use rustc_session::lint::{Lint, LintId};
+@@ -212,6 +212,29 @@ pub fn diagnostics_registry() -> Registry {
+     Registry::new(rustc_errors::codes::DIAGNOSTICS)
+ }
+ 
++fn parse_explicit_target(args: &[String]) -> Option<String> {
++    let mut explicit_target = None;
++    let mut i = 0;
++    while i < args.len() {
++        let arg = &args[i];
++        if let Some(target) = arg.strip_prefix("--target=") {
++            explicit_target = Some(target.to_string());
++        } else if arg == "--target" && i + 1 < args.len() {
++            i += 1;
++            explicit_target = Some(args[i].clone());
++        }
++        i += 1;
++    }
++    explicit_target
++}
++
++fn get_sandbox_mode(args: &[String]) -> SandboxMode {
++    parse_explicit_target(args)
++        .as_deref()
++        .map(SandboxMode::from_target_name)
++        .unwrap_or(SandboxMode::OFF)
++}
++
+ /// This is the primary entry point for rustc.
+ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
+     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
+@@ -226,12 +249,31 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send))
+     // the compiler with @empty_file as argv[0] and no more arguments.
+     let at_args = at_args.get(1..).unwrap_or_default();
+ 
+-    let args = args::arg_expand_all(&default_early_dcx, at_args);
++    let mut args = args::arg_expand_all(&default_early_dcx, at_args);
++
++    let sandbox_mode = get_sandbox_mode(&args);
++
++    if sandbox_mode == SandboxMode::SWCFI {
++        args.push("-Zfunction-return=thunk-extern".to_string());
++        args.push("-Zcf-protection=full".to_string());
++        args.push("-Zplt".to_string());
++        args.push("-Cllvm-args=-sandbox-cfi-mode=swcfi".to_string());
++        args.push("-Ctarget-feature=-crt-static".to_string());
++    } else if sandbox_mode == SandboxMode::HWCFI {
++        args.push("-Cllvm-args=-sandbox-cfi-mode=hwcfi".to_string());
++        args.push("-Ctarget-feature=-crt-static".to_string());
++    }
+ 
+     let Some(matches) = handle_options(&default_early_dcx, &args) else {
+         return;
+     };
+ 
++    let verbose = matches.opt_present("verbose");
++    if verbose {
++        safe_println!("[rustc-driver] sandbox_mode:     {}", sandbox_mode.as_str());
++        safe_println!("[rustc-driver] cli:              {}", args.join(" "));
++    }
++
+     let sopts = config::build_session_options(&mut default_early_dcx, &matches);
+     // fully initialize ice path static once unstable options are available as context
+     let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
+diff --git a/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp b/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+index 733f5fd0df0..24306a6b091 100644
+--- a/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
++++ b/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+@@ -51,6 +51,8 @@
+ #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
+ #include "llvm/Transforms/Utils/FunctionImportUtils.h"
+ #include "llvm/Transforms/Utils/NameAnonGlobals.h"
++#include "llvm/Transforms/Utils/NativeSandbox.h"
++#include "llvm/Support/raw_ostream.h"
+ #include <set>
+ #include <string>
+ #include <vector>
+@@ -187,6 +189,12 @@ static OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
+   }
+ }
+ 
++enum class LLVMRustSandboxMode {
++  OFF,
++  SWCFI,
++  HWCFI,
++};
++
+ enum class LLVMRustRelocModel {
+   Static,
+   PIC,
+@@ -565,7 +573,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
+     bool EmitThinLTOSummary, bool MergeFunctions, bool UnrollLoops,
+     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
+     bool EmitLifetimeMarkers, registerEnzymeAndPassPipelineFn EnzymePtr,
+-    bool PrintBeforeEnzyme, bool PrintAfterEnzyme, bool PrintPasses,
++    LLVMRustSandboxMode SandboxMode, bool PrintBeforeEnzyme,
++    bool PrintAfterEnzyme, bool PrintPasses,
+     LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
+     const char *PGOUsePath, bool InstrumentCoverage,
+     const char *InstrProfileOutput, const char *PGOSampleUsePath,
+@@ -924,6 +933,19 @@ extern "C" LLVMRustResult LLVMRustOptimize(
+       MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+     }
+   }
++  if (SandboxMode == LLVMRustSandboxMode::SWCFI ||
++      SandboxMode == LLVMRustSandboxMode::HWCFI) {
++    if (SandboxMode == LLVMRustSandboxMode::SWCFI) {
++      if (!TheModule->getModuleFlag("SandboxModeSWCFI"))
++        TheModule->addModuleFlag(llvm::Module::Error, "SandboxModeSWCFI", 1);
++    }
++    if (SandboxMode == LLVMRustSandboxMode::HWCFI) {
++      if (!TheModule->getModuleFlag("SandboxModeHWCFI"))
++        TheModule->addModuleFlag(llvm::Module::Error, "SandboxModeHWCFI", 1);
++    }
++    MPM.addPass(NativeSandboxPass());
++    MPM.addPass(createModuleToFunctionPassAdaptor(NativeSandboxPass()));
++  }
+   if (PrintPasses) {
+     // Print all passes from the PM:
+     std::string Pipeline;
+@@ -940,6 +962,14 @@ extern "C" LLVMRustResult LLVMRustOptimize(
+   for (Module::iterator I = TheModule->begin(), E = TheModule->end(); I != E;)
+     UpgradeCallsToIntrinsic(&*I++); // must be post-increment, as we remove
+ 
++  // printf("print pipeline\n");
++  // outs() << "===================================PIPELINE======================================================\n";
++  // MPM.printPipeline(outs(), [&PIC](StringRef ClassName) {
++  //   auto PassName = PIC.getPassNameForClassName(ClassName);
++  //   return PassName.empty() ? ClassName : PassName;
++  // });
++  // outs() << "\n";
++
+   MPM.run(*TheModule, MAM);
+   return LLVMRustResult::Success;
+ }
+diff --git a/compiler/rustc_session/src/config.rs b/compiler/rustc_session/src/config.rs
+index f0dc5b9ac48..f8d0322ecec 100644
+--- a/compiler/rustc_session/src/config.rs
++++ b/compiler/rustc_session/src/config.rs
+@@ -497,6 +497,39 @@ pub enum IncrementalStateAssertion {
+     NotLoaded,
+ }
+ 
++/// Sandbox mode derived from the compilation target.
++#[derive(Clone, Copy, PartialEq, Hash, Debug)]
++#[repr(C)]
++pub enum SandboxMode {
++    OFF,
++    SWCFI,
++    HWCFI,
++}
++
++impl SandboxMode {
++    pub fn from_target_name(target: &str) -> Self {
++        if target == "x86_64-graalos_swcfi-linux-musl" {
++            Self::SWCFI
++        } else if target == "x86_64-graalos_hwcfi-linux-musl" {
++            Self::HWCFI
++        } else {
++            Self::OFF
++        }
++    }
++
++    pub fn from_target_triple(target: &TargetTuple) -> Self {
++        Self::from_target_name(target.tuple())
++    }
++
++    pub fn as_str(self) -> &'static str {
++        match self {
++            Self::OFF => "off",
++            Self::SWCFI => "swcfi",
++            Self::HWCFI => "hwcfi",
++        }
++    }
++}
++
+ /// The different settings that can be enabled via the `-Z location-detail` flag.
+ #[derive(Copy, Clone, PartialEq, Hash, Debug)]
+ pub struct LocationDetail {
+diff --git a/compiler/rustc_session/src/session.rs b/compiler/rustc_session/src/session.rs
+index 1a0ec600af4..48a55a656ec 100644
+--- a/compiler/rustc_session/src/session.rs
++++ b/compiler/rustc_session/src/session.rs
+@@ -39,6 +39,7 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, Varian
+ use crate::config::{
+     self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
+     Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
++    SandboxMode,
+ };
+ use crate::filesearch::FileSearch;
+ use crate::lint::LintId;
+@@ -578,6 +579,14 @@ impl Session {
+             .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+     }
+ 
++    pub fn sandbox(&self) -> SandboxMode {
++        let sandbox_mode = SandboxMode::from_target_triple(&self.opts.target_triple);
++        if self.opts.verbose {
++            println!("[rust] sandbox mode: {:#?}", sandbox_mode);
++        }
++        sandbox_mode
++    }
++
+     /// Calculates the flavor of LTO to use for this compilation.
+     pub fn lto(&self) -> config::Lto {
+         // If our target has codegen requirements ignore the command line
+diff --git a/compiler/rustc_target/src/spec/mod.rs b/compiler/rustc_target/src/spec/mod.rs
+index 57effe3a866..c5ec9250538 100644
+--- a/compiler/rustc_target/src/spec/mod.rs
++++ b/compiler/rustc_target/src/spec/mod.rs
+@@ -1482,6 +1482,8 @@ supported_targets! {
+     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
+     ("aarch64_be-unknown-linux-musl", aarch64_be_unknown_linux_musl),
+     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
++    ("x86_64-graalos_swcfi-linux-musl", x86_64_unknown_linux_musl_swcfi),
++    ("x86_64-graalos_hwcfi-linux-musl", x86_64_unknown_linux_musl_hwcfi),
+     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
+     ("i586-unknown-linux-musl", i586_unknown_linux_musl),
+     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
+diff --git a/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_hwcfi.rs b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_hwcfi.rs
+new file mode 100644
+index 00000000000..729a7a12861
+--- /dev/null
++++ b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_hwcfi.rs
+@@ -0,0 +1,8 @@
++use crate::spec::Target;
++
++pub(crate) fn target() -> Target {
++    let mut target = super::x86_64_unknown_linux_musl::target();
++    target.llvm_target = "x86_64-unknown-linux-musl_hwcfi".into();
++    target.metadata.description = Some("64-bit Linux with musl 1.2.5 and HWCFI".into());
++    target
++}
+diff --git a/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_swcfi.rs b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_swcfi.rs
+new file mode 100644
+index 00000000000..0eb8526c1d6
+--- /dev/null
++++ b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_swcfi.rs
+@@ -0,0 +1,8 @@
++use crate::spec::Target;
++
++pub(crate) fn target() -> Target {
++    let mut target = super::x86_64_unknown_linux_musl::target();
++    target.llvm_target = "x86_64-unknown-linux-musl_swcfi".into();
++    target.metadata.description = Some("64-bit Linux with musl 1.2.5 and SWCFI".into());
++    target
++}
+diff --git a/library/std/src/sys/process/unix/unix.rs b/library/std/src/sys/process/unix/unix.rs
+index 460d5ec0f07..51c49d1b018 100644
+--- a/library/std/src/sys/process/unix/unix.rs
++++ b/library/std/src/sys/process/unix/unix.rs
+@@ -52,6 +52,20 @@ cfg_select! {
+ ////////////////////////////////////////////////////////////////////////////////
+ 
+ impl Command {
++    fn spawn_trace_enabled() -> bool {
++        crate::env::var_os("RUST_STD_SPAWN_TRACE").is_some()
++    }
++
++    fn spawn_trace(&self, message: &str) {
++        if Self::spawn_trace_enabled() {
++            eprintln!(
++                "[std::process::spawn] program={:?} {}",
++                self.get_program_cstr(),
++                message
++            );
++        }
++    }
++
+     pub fn spawn(
+         &mut self,
+         default: Stdio,
+@@ -73,6 +87,7 @@ impl Command {
+         if let Some(ret) = self.posix_spawn(&theirs, envp.as_ref())? {
+             return Ok((ret, ours));
+         }
++        self.spawn_trace("falling back to fork+exec");
+ 
+         #[cfg(target_os = "linux")]
+         let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
+@@ -432,6 +447,7 @@ impl Command {
+         _: &ChildPipes,
+         _: Option<&CStringArray>,
+     ) -> io::Result<Option<Process>> {
++        self.spawn_trace("posix_spawn unavailable on this target");
+         Ok(None)
+     }
+ 
+@@ -457,13 +473,30 @@ impl Command {
+         use crate::mem::MaybeUninit;
+         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
+ 
+-        if self.get_gid().is_some()
+-            || self.get_uid().is_some()
+-            || (self.env_saw_path() && !self.program_is_path())
+-            || !self.get_closures().is_empty()
+-            || self.get_groups().is_some()
+-            || self.get_chroot().is_some()
+-        {
++        let has_gid = self.get_gid().is_some();
++        let has_uid = self.get_uid().is_some();
++        let needs_path_search = self.env_saw_path() && !self.program_is_path();
++        let has_pre_exec_closures = !self.get_closures().is_empty();
++        let has_groups = self.get_groups().is_some();
++        let has_chroot = self.get_chroot().is_some();
++
++        if has_gid || has_uid || has_pre_exec_closures || has_groups || has_chroot {
++            self.spawn_trace("posix_spawn rejected: unsupported spawn configuration");
++            if has_gid {
++                self.spawn_trace("posix_spawn detail: gid override requested");
++            }
++            if has_uid {
++                self.spawn_trace("posix_spawn detail: uid override requested");
++            }
++            if has_pre_exec_closures {
++                self.spawn_trace("posix_spawn detail: pre_exec closure(s) configured");
++            }
++            if has_groups {
++                self.spawn_trace("posix_spawn detail: groups override requested");
++            }
++            if has_chroot {
++                self.spawn_trace("posix_spawn detail: chroot requested");
++            }
+             return Ok(None);
+         }
+ 
+@@ -494,6 +527,7 @@ impl Command {
+                 if self.get_create_pidfd() {
+                     let mut support = PIDFD_SUPPORTED.load(Ordering::Relaxed);
+                     if support == FORK_EXEC {
++                        self.spawn_trace("posix_spawn rejected: pidfd support requires fork+exec path");
+                         return Ok(None);
+                     }
+                     if support == UNKNOWN {
+@@ -521,6 +555,7 @@ impl Command {
+                         }
+                         PIDFD_SUPPORTED.store(support, Ordering::Relaxed);
+                         if support == FORK_EXEC {
++                            self.spawn_trace("posix_spawn rejected: pidfd probe determined fork+exec path");
+                             return Ok(None);
+                         }
+                     }
+@@ -539,9 +574,11 @@ impl Command {
+         {
+             if let Some(version) = sys::os::glibc_version() {
+                 if version < (2, 24) {
++                    self.spawn_trace("posix_spawn rejected: glibc version is older than 2.24");
+                     return Ok(None);
+                 }
+             } else {
++                self.spawn_trace("posix_spawn rejected: glibc version unknown");
+                 return Ok(None);
+             }
+         }
+@@ -647,6 +684,7 @@ impl Command {
+                     // ENOENT when used with posix_spawn_file_actions_addchdir_np
+                     // which was introduced in macOS 10.15.
+                     if self.get_program_kind() == ProgramKind::Relative {
++                        self.spawn_trace("posix_spawn rejected: apple cwd+relative program path bug workaround");
+                         return Ok(None);
+                     }
+                 }
+@@ -655,7 +693,10 @@ impl Command {
+                 // fork/exec path.
+                 match get_posix_spawn_addchdir() {
+                     Some(f) => Some((f, cwd)),
+-                    None => return Ok(None),
++                    None => {
++                        self.spawn_trace("posix_spawn rejected: posix_spawn addchdir API unavailable");
++                        return Ok(None);
++                    }
+                 }
+             }
+             None => None,
+@@ -768,6 +809,10 @@ impl Command {
+             #[cfg(target_os = "nto")]
+             let spawn_fn = retrying_libc_posix_spawnp;
+ 
++            if needs_path_search {
++                self.spawn_trace("posix_spawn detail: PATH lookup mode requested (using posix_spawnp)");
++            }
++
+             #[cfg(target_os = "linux")]
+             if self.get_create_pidfd() && PIDFD_SUPPORTED.load(Ordering::Relaxed) == SPAWN {
+                 let mut pidfd: libc::c_int = -1;
+@@ -785,6 +830,7 @@ impl Command {
+                     && e.raw_os_error() == Some(libc::ENOSYS)
+                 {
+                     PIDFD_SUPPORTED.store(FORK_EXEC, Ordering::Relaxed);
++                    self.spawn_trace("posix_spawn rejected: pidfd_spawnp returned ENOSYS, switching to fork+exec");
+                     return Ok(None);
+                 }
+                 spawn_res?;
+diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
+index 2e16f2cf27e..fd50ee78371 100644
+--- a/src/bootstrap/bootstrap.py
++++ b/src/bootstrap/bootstrap.py
+@@ -1159,7 +1159,8 @@ class RustBuild(object):
+         if self.use_locked_deps:
+             args.append("--locked")
+         if self.use_vendored_sources:
+-            args.append("--frozen")
++            if "--offline" not in os.environ.get('CARGOFLAGS', ''):
++                args.append("--frozen")
+         if self.get_toml("metrics", "build"):
+             args.append("--features")
+             args.append("build-metrics")
+diff --git a/src/bootstrap/src/core/builder/cargo.rs b/src/bootstrap/src/core/builder/cargo.rs
+index dda0b40cb69..cce3b6b81e9 100644
+--- a/src/bootstrap/src/core/builder/cargo.rs
++++ b/src/bootstrap/src/core/builder/cargo.rs
+@@ -1355,7 +1355,11 @@ impl Builder<'_> {
+             cargo.arg("--locked");
+         }
+         if self.config.vendor || self.is_sudo {
+-            cargo.arg("--frozen");
++            // If explicitly requested an offline build, use --offline.
++            // Otherwise, default to --frozen for vendored builds.
++            if !env::var_os("CARGOFLAGS").map_or(false, |s| s.to_string_lossy().contains("--offline")) {
++                cargo.arg("--frozen");
++            }
+         }
+ 
+         // Try to use a sysroot-relative bindir, in case it was configured absolutely.
