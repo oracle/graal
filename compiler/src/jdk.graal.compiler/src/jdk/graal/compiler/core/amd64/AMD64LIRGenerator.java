@@ -608,6 +608,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return emitCondMoveOp(Condition.EQ, asAllocatable(trueValue), loadNonInlinableConstant(falseValue), false, false);
     }
 
+    /** Emits a constant-mask memory test followed by a conditional result. */
+    public Variable emitIntegerTestMoveMemory(OperandSize size, AMD64AddressValue address, int mask, LIRFrameState state, Value trueValue, Value falseValue) {
+        AMD64MIOp op = size == BYTE ? AMD64MIOp.TESTB : AMD64MIOp.TEST;
+        append(new AMD64BinaryConsumer.MemoryConstOp(op, size, address, mask, state));
+        return emitCondMoveOp(Condition.EQ, asAllocatable(trueValue), loadNonInlinableConstant(falseValue), false, false);
+    }
+
     protected static AVXSize getRegisterSize(Value a) {
         AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
         if (kind.isXMM()) {
