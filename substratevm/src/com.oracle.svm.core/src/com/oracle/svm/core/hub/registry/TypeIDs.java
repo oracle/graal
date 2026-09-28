@@ -73,7 +73,6 @@ public class TypeIDs {
 
     /** The type id that is used for the first type that is loaded at run-time. */
     public int getFirstRuntimeTypeId() {
-        assert firstRuntimeTypeId > 0;
         return firstRuntimeTypeId;
     }
 
