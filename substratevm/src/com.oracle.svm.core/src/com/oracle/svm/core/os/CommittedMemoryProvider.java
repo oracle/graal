@@ -82,9 +82,7 @@ public interface CommittedMemoryProvider {
     UnsignedWord getCollectedHeapAddressSpaceSize();
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    default boolean isInMetaspace(Pointer ptr) {
-        return false;
-    }
+    boolean isInMetaspace(Pointer ptr);
 
     Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment);
 
