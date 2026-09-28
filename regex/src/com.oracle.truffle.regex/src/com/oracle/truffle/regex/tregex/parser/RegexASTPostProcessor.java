@@ -127,8 +127,7 @@ public class RegexASTPostProcessor {
 
     private boolean isLiteralChar(Term t) {
         return t.isCharacterClass() &&
-                        (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
-                        ast.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet()) &&
+                        ast.getEncoding().canBeMatchedWithMask(t.asCharacterClass().getCharSet()) &&
                         !(ast.getEncoding().isUTF16() && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES));
     }
 
