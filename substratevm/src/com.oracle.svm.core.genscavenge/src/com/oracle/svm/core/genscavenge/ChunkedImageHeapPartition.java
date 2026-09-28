@@ -26,12 +26,19 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Queue;
 import java.util.TreeMap;
+import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterControl;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -108,9 +115,25 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     }
 
     private void allocateObjectsInAlignedChunks(ChunkedImageHeapAllocator allocator, ImageHeapLayouterControl control) {
-        NavigableMap<Long, Queue<ImageHeapObject>> sortedObjects = createSortedObjectsMap();
-        while (!sortedObjects.isEmpty()) {
-            ImageHeapObject info = dequeueBestFit(sortedObjects, allocator.getRemainingBytesInAlignedChunk());
+        SortedObjects sorted = computeSortedObjects();
+
+        var groups = sorted.grouped().values().iterator();
+        var group = groups.hasNext() ? groups.next() : null;
+        while (true) {
+            while (group != null && group.isEmpty()) {
+                group = groups.hasNext() ? groups.next() : null;
+            }
+            if (group == null && sorted.others().isEmpty()) {
+                break;
+            }
+
+            ImageHeapObject info = null;
+            if (group != null) {
+                info = dequeueBestFit(group, allocator.getRemainingBytesInAlignedChunk());
+            }
+            if (info == null) {
+                info = dequeueBestFit(sorted.others(), allocator.getRemainingBytesInAlignedChunk());
+            }
             if (info == null) {
                 allocator.startNewAlignedChunk();
                 control.poll();
@@ -142,15 +165,51 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return obj;
     }
 
-    private NavigableMap<Long, Queue<ImageHeapObject>> createSortedObjectsMap() {
-        NavigableMap<Long, Queue<ImageHeapObject>> map = new TreeMap<>();
+    private record SortedObjects(Map<Class<?>, NavigableMap<Long, Queue<ImageHeapObject>>> grouped,
+                    NavigableMap<Long, Queue<ImageHeapObject>> others) {
+    }
+
+    private SortedObjects computeSortedObjects() {
+        Map<Class<?>, NavigableMap<Long, Queue<ImageHeapObject>>> grouped;
+        if (SubstrateUtil.HOSTED) {
+            grouped = new LinkedHashMap<>();
+            grouped.put(DynamicHubCompanion.class, new TreeMap<>());
+            grouped.put(ClassInitializationInfo.class, new TreeMap<>());
+        } else { // no need for grouping with auxiliary images
+            grouped = Collections.emptyMap();
+        }
+        SortedObjects sorted = new SortedObjects(grouped, new TreeMap<>());
+
         for (ImageHeapObject obj : objects) {
             long objSize = obj.getSize();
             assert objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize() : Assertions.errorMessage(obj, objSize);
+            NavigableMap<Long, Queue<ImageHeapObject>> map = selectObjectGroupMap(obj, sorted);
             Queue<ImageHeapObject> q = map.computeIfAbsent(objSize, k -> new ArrayDeque<>());
             q.add(obj);
         }
-        return map;
+        return sorted;
+    }
+
+    private static NavigableMap<Long, Queue<ImageHeapObject>> selectObjectGroupMap(ImageHeapObject obj, SortedObjects sorted) {
+        if (!SubstrateUtil.HOSTED) {
+            return sorted.others;
+        }
+        Class<?> objectClass = obj.getObjectClass();
+        if (objectClass == null) {
+            return sorted.others;
+        }
+        boolean group = false;
+        if (objectClass == DynamicHubCompanion.class) {
+            group = true;
+        } else if (objectClass == ClassInitializationInfo.class) {
+            group = true;
+        } else if (AbstractOwnableSynchronizer.class.isAssignableFrom(objectClass)) {
+            group = true;
+        }
+        if (group) {
+            return sorted.grouped.computeIfAbsent(objectClass, c -> new TreeMap<>());
+        }
+        return sorted.others;
     }
 
     private void appendAllocatedObject(ImageHeapObject info, long allocationOffset) {
