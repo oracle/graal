@@ -105,6 +105,7 @@ import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
+import jdk.internal.module.ModuleLoaderMap;
 import jdk.internal.module.ModuleReferenceImpl;
 import jdk.internal.module.ServicesCatalog;
 import jdk.internal.module.SystemModuleFinders;
@@ -1522,7 +1523,16 @@ public class ModuleLayerFeature implements InternalFeature {
 
         ClassLoader getClassLoaderForModuleInModuleLayer(ModuleLayer hostedModuleLayer, String name) {
             Optional<Module> module = hostedModuleLayer.findModule(name);
-            return module.isPresent() ? module.get().getClassLoader() : imageClassLoader.getClassLoader();
+            if (module.isPresent()) {
+                return module.get().getClassLoader();
+            }
+            if (ModuleLoaderMap.bootModules().contains(name)) {
+                return null;
+            }
+            if (ModuleLoaderMap.platformModules().contains(name)) {
+                return ClassLoaders.platformClassLoader();
+            }
+            return imageClassLoader.getClassLoader();
         }
 
         Object invokeSystemModuleFinderAllSystemModules() {
