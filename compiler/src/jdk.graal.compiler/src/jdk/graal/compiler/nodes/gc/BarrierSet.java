@@ -91,6 +91,14 @@ public abstract class BarrierSet {
     }
 
     /**
+     * Returns whether this barrier set can handle reads and writes of object array ranges. Such
+     * accesses are produced when high-level object vectors are materialized.
+     */
+    public boolean supportsObjectArrayRangeBarriers() {
+        return true;
+    }
+
+    /**
      * Returns the barrier type to use when writing to {@link LocationIdentity#INIT_LOCATION} after
      * an intervening allocation.
      */

@@ -65,6 +65,8 @@ import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
+import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -348,6 +350,11 @@ public abstract class CopyOfNode extends MacroWithExceptionNode implements Simpl
         if (!isObjectArray()) {
             // We always lower copyOf on primitive arrays.
             replaceWithUncheckedCopyOfNode(tool);
+            return;
+        }
+        VectorArchitecture vectorArch = ((VectorLoweringProvider) tool.getLowerer()).getVectorArchitecture();
+        if (vectorArch == null || !vectorArch.supportsObjectVectorization()) {
+            super.lower(tool);
             return;
         }
         verifyNoWordArray(StampTool.typeOrNull(getSource(), tool.getMetaAccess()), tool.getWordTypes());
