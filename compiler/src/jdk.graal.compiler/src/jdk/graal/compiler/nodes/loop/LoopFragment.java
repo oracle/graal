@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,7 @@ import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.TriState;
@@ -431,6 +432,14 @@ public abstract class LoopFragment {
             return TriState.TRUE;
         }
         if (nonLoopNodes.isMarked(n)) {
+            return TriState.FALSE;
+        }
+        if (n instanceof AllocatedObjectNode allocated && !loopNodes.isMarked(allocated.getCommit())) {
+            /*
+             * A projection of an outside allocation must keep its original identity, even if used
+             * in the loop. Its virtual descriptor may be shared with an inside commit and duplicated
+             * with the loop, but the outside commit will not be duplicated with it.
+             */
             return TriState.FALSE;
         }
         if (n instanceof FixedNode || n instanceof PhiNode) {
