@@ -40,6 +40,10 @@ Gate output artifacts (including any JFR dumps) are placed under `mxbuild/svmbui
 
 Consulting the CI configurations in ci/ci.jsonnet may help understand how `mx gate` is invoked by GraalVM's CI system.
 
+## Custom Runtimes
+
+- [Building a Custom Runtime With Embedded Java Libraries](custom-runtimes.md): embed picocli in a JVM library and load an application at run time.
+
 ## Project Terminus
 
 - [Project Terminus](project-terminus.md): overview and design direction for self-hosting Native Image.
