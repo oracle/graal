@@ -325,26 +325,6 @@ final class LogAsyncWriter {
         }
     }
 
-    /// Waits until every record published before this call has been written while preventing a
-    /// producer from overtaking the drain.
-    static void flush() {
-        PRODUCER_LOCK.lock();
-        try {
-            QueueState state = LoggingSupport.singleton().asyncLogWriterQueueState();
-            CONSUMER_LOCK.lock();
-            try {
-                while (state.getQueuedRecords() != 0 || state.getInFlight()) {
-                    CONSUMER_CONDITION.block();
-                }
-            } finally {
-                CONSUMER_LOCK.unlock();
-            }
-            LogConfiguration.asyncWriterInstance().flushDroppedMessages();
-        } finally {
-            PRODUCER_LOCK.unlock();
-        }
-    }
-
     /// Prevents further publication, drains old records, and releases output references.
     void deactivateAndFlush() {
         PRODUCER_LOCK.lock();
