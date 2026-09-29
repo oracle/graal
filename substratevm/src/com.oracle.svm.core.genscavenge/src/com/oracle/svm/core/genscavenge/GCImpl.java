@@ -539,19 +539,13 @@ public final class GCImpl implements GC {
         HeapSizes beforeGc = heapAccounting.getHeapSizesBeforeGc();
 
         if (LogTagSet.gc.isDebug()) {
-            LogMessage message = LogTagSet.gc.message();
-            try {
-                NativeMemoryLog log = message.debug();
-                printHeapSizeChange(log, "Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
-                printHeapSizeChange(log, "Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
-                printHeapSizeChange(log, "Old", beforeGc.old, heapAccounting.getOldUsedBytes());
-                printHeapSizeChange(log, "Free", beforeGc.free, heapAccounting.getBytesInUnusedChunks());
-            } finally {
-                message.close();
-            }
+            logHeapSizeChange("Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
+            logHeapSizeChange("Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
+            logHeapSizeChange("Old", beforeGc.old, heapAccounting.getOldUsedBytes());
+            logHeapSizeChange("Free", beforeGc.free, heapAccounting.getBytesInUnusedChunks());
 
             if (SerialGCOptions.PrintGCTimes.getValue()) {
-                message = LogTagSet.gc.message();
+                LogMessage message = LogTagSet.gc.message();
                 try {
                     timers.logAfterCollection(message.debug());
                 } finally {
@@ -560,7 +554,7 @@ public final class GCImpl implements GC {
             }
 
             if (SerialGCOptions.TraceHeapChunks.getValue()) {
-                message = LogTagSet.gc.message();
+                LogMessage message = LogTagSet.gc.message();
                 try {
                     HeapImpl.getHeapImpl().logChunks(message.debug(), false);
                 } finally {
@@ -582,8 +576,14 @@ public final class GCImpl implements GC {
         }
     }
 
-    private static void printHeapSizeChange(Log log, String text, UnsignedWord before, UnsignedWord after) {
-        log.string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M").newline();
+    private static void logHeapSizeChange(String text, UnsignedWord before, UnsignedWord after) {
+        LogMessage message = LogTagSet.gc.message();
+        try {
+            NativeMemoryLog log = message.debug();
+            log.string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M");
+        } finally {
+            message.close();
+        }
     }
 
     private static void checkSanityBeforeCollection() {
