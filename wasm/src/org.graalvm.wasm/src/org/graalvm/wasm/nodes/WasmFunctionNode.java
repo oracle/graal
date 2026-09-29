@@ -8378,9 +8378,15 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             int fieldType = module.structTypeFieldTypeAt(structTypeIndex, fieldIndex);
             CompilerAsserts.partialEvaluationConstant(fieldType);
             boolean fieldIsReferenceType = WasmType.isReferenceType(fieldType);
+            boolean fieldIsVectorType = WasmType.isVectorType(fieldType);
             CompilerAsserts.partialEvaluationConstant(fieldIsReferenceType);
+            CompilerAsserts.partialEvaluationConstant(fieldIsVectorType);
             if (fieldIsReferenceType) {
                 structAccess.properties()[fieldIndex].setObject(struct, WasmConstant.NULL);
+            } else if (fieldIsVectorType) {
+                structAccess.properties()[fieldIndex].setObject(struct, Vector128.ZERO);
+            } else {
+                assert WasmType.isNumberType(fieldType) || WasmType.isPackedType(fieldType);
             }
         }
     }
