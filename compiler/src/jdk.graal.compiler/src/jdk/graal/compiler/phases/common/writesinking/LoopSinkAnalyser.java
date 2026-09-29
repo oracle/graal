@@ -301,11 +301,11 @@ public class LoopSinkAnalyser {
                             ValueNode[] values = phiValue.values().toArray(ValueNode.EMPTY_ARRAY);
                             values[0] = thisData.value;
                             ValuePhiNode newPhi = new ValuePhiNode(phiValue.stamp(NodeView.DEFAULT), phiValue.merge(), values);
-                            preProcessingData = new CacheData(newPhi, preProcessingData.barrier);
+                            preProcessingData = new CacheData(preProcessingData.address, newPhi, preProcessingData.barrier);
                         }
                     }
                     if (graph != null && !preProcessingData.value.isAlive()) {
-                        preProcessingData = new CacheData(graph.addOrUnique(preProcessingData.value), preProcessingData.barrier, preProcessingData.conditionalMerge);
+                        preProcessingData = new CacheData(preProcessingData.address, graph.addOrUnique(preProcessingData.value), preProcessingData.barrier, preProcessingData.conditionalMerge);
                     }
                     result.getMovableWrites().addEntry(graph, key, preProcessingData);
                 }

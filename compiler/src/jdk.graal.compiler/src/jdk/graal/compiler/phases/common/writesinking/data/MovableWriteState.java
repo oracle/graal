@@ -32,6 +32,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -39,6 +40,7 @@ import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.phases.common.writesinking.WriteSinkingUtil;
@@ -76,7 +78,8 @@ public final class MovableWriteState {
     }
 
     /**
-     * Movable write data keyed by exact base, offset, and location identity.
+     * Movable write data keyed by logical memory location. Equal keys in this map and
+     * {@link #orderings} need not be the same object.
      */
     private final EconomicMap<CacheEntry, CacheData> movableWrites;
 
@@ -115,7 +118,8 @@ public final class MovableWriteState {
     }
 
     /**
-     * Returns the movable write data for {@code key}, or {@code null}.
+     * Returns the movable write data for {@code key}, or {@code null}. The key may be the exact
+     * object owned by this state or a logically equivalent key from another state.
      */
     public CacheData getCacheData(CacheEntry key) {
         return movableWrites.get(key);
@@ -259,7 +263,7 @@ public final class MovableWriteState {
         WritesOrdering ordering = orderings.get(identity);
         int index = 0;
         if (ordering != null) {
-            DebugContext debug = ordering.iterator().next().address.graph().getDebug();
+            DebugContext debug = getCacheData(ordering.get(0)).address.graph().getDebug();
             try (DebugContext.Scope s = debug.scope("WriteSinking")) {
                 debug.log(DebugContext.DETAILED_LEVEL, "Killed location identity \"%s\" has associated writes, removing cache entries for (and committing) %s write(s)", identity, ordering.size());
 
@@ -288,6 +292,13 @@ public final class MovableWriteState {
 
     public static class CacheData {
         /**
+         * Representative address node used to recreate the write. It travels with the value so
+         * replacing the data for an equal key also replaces the address, regardless of which key
+         * object the map retains.
+         */
+        public final AddressNode address;
+
+        /**
          * Value that should be written when this movable write is committed.
          */
         public final ValueNode value;
@@ -306,24 +317,25 @@ public final class MovableWriteState {
         public final LoopBeginNode conditionalMerge;
 
         /**
-         * Records the value and barrier from an original write.
+         * Records the address, value, and barrier from an original write.
          */
         public CacheData(ValueNode value, WriteNode writeNode) {
-            this(value, writeNode.getBarrierType(), null);
+            this((AddressNode) GraphUtil.unproxify(writeNode.getAddress()), value, writeNode.getBarrierType(), null);
         }
 
         /**
          * Records an unconditional movable write.
          */
-        public CacheData(ValueNode value, BarrierType barrierType) {
-            this(value, barrierType, null);
+        public CacheData(AddressNode address, ValueNode value, BarrierType barrierType) {
+            this(address, value, barrierType, null);
         }
 
         /**
          * Records a movable write, optionally conditional on reaching {@code conditionalMerge}
          * through a predecessor that observed the original write.
          */
-        public CacheData(ValueNode value, BarrierType barrierType, LoopBeginNode conditionalMerge) {
+        public CacheData(AddressNode address, ValueNode value, BarrierType barrierType, LoopBeginNode conditionalMerge) {
+            this.address = address;
             this.value = value;
             this.barrier = barrierType;
             this.conditionalMerge = conditionalMerge;
@@ -338,7 +350,9 @@ public final class MovableWriteState {
         }
 
         /**
-         * Compares movable write data by value, barrier, and conditional merge.
+         * Compares movable write data by value, barrier, and conditional merge. Callers compare
+         * data for the same logical key, so distinct representative address nodes do not affect
+         * this comparison.
          */
         @Override
         public boolean equals(Object obj) {
@@ -360,6 +374,14 @@ public final class MovableWriteState {
         }
     }
 
+    /**
+     * Identifies the logical memory location of a movable write in the compiler graph: the base
+     * object node, offset or index node, and location identity. This is a key for write-sinking
+     * state, not a graph node or a particular {@link WriteNode}. Distinct {@link AddressNode}s
+     * with the same base and offset nodes and location identity produce equal keys. The concrete
+     * address used to recreate the write belongs to {@link CacheData}, so equal keys are
+     * interchangeable even if the map and ordering retain different key objects.
+     */
     public static class CacheEntry {
 
         /**
@@ -379,15 +401,9 @@ public final class MovableWriteState {
         public final ValueNode offset;
 
         /**
-         * Original address node used when recreating or committing the movable write.
-         */
-        public final AddressNode address;
-
-        /**
          * Creates a stable key for an address and location identity.
          */
         public CacheEntry(AddressNode address, LocationIdentity identity) {
-            this.address = address;
             this.base = address.getBase();
             this.offset = extractOffset(address);
             this.identity = identity;
@@ -570,12 +586,18 @@ public final class MovableWriteState {
         MapCursor<CacheEntry, CacheData> cursor = movableWrites.getEntries();
         while (cursor.advance()) {
             CacheEntry key = cursor.getKey();
+            AddressNode address = cursor.getValue().address;
+            GraalError.guarantee(key.base == address.getBase(),
+                            "Write key base %s does not match address %s base %s", key.base, address, address.getBase());
+            ValueNode offset = CacheEntry.extractOffset(address);
+            GraalError.guarantee(key.offset == offset,
+                            "Write key offset %s does not match address %s offset %s", key.offset, address, offset);
             assert containsInfoInOrderings(key) : "Must have proper ordering info in " + key;
         }
         for (WritesOrdering order : orderings.getValues()) {
             assert !order.isEmpty() : order;
             for (CacheEntry entry : order) {
-                assert containsEntry(entry) : movableWrites + " must contain " + entry;
+                assert movableWrites.containsKey(entry) : movableWrites + " must contain " + entry;
             }
         }
         return true;
@@ -585,7 +607,7 @@ public final class MovableWriteState {
         assert orderings.containsKey(key.identity) : "Orderings " + orderings + " must contain key " + key.identity;
         WritesOrdering orders = orderings.get(key.identity);
         for (CacheEntry orderInfo : orders) {
-            if (orderInfo.address.equals(key.address)) {
+            if (orderInfo.equals(key)) {
                 return true;
             }
         }
