@@ -2792,6 +2792,7 @@ lib_jvm_preserved_modules = [
     'java.xml',
     'java.xml.crypto',
     'jdk.charsets',
+    'jdk.net',
 ]
 
 lib_jvm_experimental_build_args = (['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
@@ -2801,7 +2802,7 @@ if mx.is_linux():
         '-H:ExportedSymbolsVersion=SUNWprivate_1.1',
     ]
 
-lib_jvm_build_args = svm_experimental_options(lib_jvm_experimental_build_args)
+lib_jvm_build_args = ['--add-modules=jdk.net'] + svm_experimental_options(lib_jvm_experimental_build_args)
 if mx.is_linux():
     lib_jvm_build_args += [
         '-H:NativeLinkerOption=-Wl,-soname=libjvm.so'
