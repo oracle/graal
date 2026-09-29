@@ -79,7 +79,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class WasmMemory implements TruffleObject, EmbedderDataHolder {
+public abstract sealed class WasmMemory implements TruffleObject, EmbedderDataHolder permits ByteArrayWasmMemory, NativeWasmMemory, UnsafeWasmMemory {
 
     /**
      * @see #declaredMinSize()
