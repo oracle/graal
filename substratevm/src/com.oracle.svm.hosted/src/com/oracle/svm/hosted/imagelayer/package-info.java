@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,13 @@
  */
 
 @Platforms(Platform.HOSTED_ONLY.class)
+@GenerateAnnotationWrapper({
+                GuestFold.class,
+})
 package com.oracle.svm.hosted.imagelayer;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.common.annotation.GenerateAnnotationWrapper;
+import com.oracle.svm.shared.meta.GuestFold;

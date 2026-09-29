@@ -44,6 +44,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.imagelayer.LayeredGuestFoldResolver;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;
@@ -195,7 +196,7 @@ public final class RuntimeOptionParser {
      * Returns the singleton instance that is created during native image generation and stored in
      * the {@link ImageSingletons}.
      */
-    @GuestFold
+    @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
     public static RuntimeOptionParser singleton() {
         return ImageSingletons.lookup(RuntimeOptionParser.class);
     }

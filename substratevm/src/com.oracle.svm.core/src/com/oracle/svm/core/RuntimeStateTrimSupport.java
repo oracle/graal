@@ -28,22 +28,24 @@ import static com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access.N
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.RuntimeStateTrimCallbackException;
+import org.graalvm.nativeimage.RuntimeStateTrimCallbackException.Phase;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig;
+import org.graalvm.nativeimage.RuntimeStateTrimConfig.Mode;
+
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.RuntimeStateTrimConfig;
-import org.graalvm.nativeimage.RuntimeStateTrimCallbackException;
-import org.graalvm.nativeimage.RuntimeStateTrimCallbackException.Phase;
-import org.graalvm.nativeimage.RuntimeStateTrimConfig.Mode;
 
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.VMOperationInfos;
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Support for executing runtime-state trim at a safepoint.
@@ -58,7 +60,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 public final class RuntimeStateTrimSupport {
     private static final String MUST_NOT_MODIFY_JAVA_HEAP_STRUCTURE = "Must not modify the structure of the Java heap.";
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static RuntimeStateTrimSupport singleton() {
         return ImageSingletons.lookup(RuntimeStateTrimSupport.class);
     }

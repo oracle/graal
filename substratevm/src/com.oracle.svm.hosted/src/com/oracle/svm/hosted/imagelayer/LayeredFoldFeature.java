@@ -43,13 +43,16 @@ import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.imagelayer.LayeredFoldSupport;
+import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -79,10 +82,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Adds layer-aware resolution to {@link Fold}. An explicit resolver can compute a {@link Fold} in
- * the initial or application layer. Values computed before the application layer are persisted in
- * the cross-layer constant registry. Application-layer values are represented in earlier layers
- * by future heap constants and finalized when the application layer is built.
+ * Adds layer-aware resolution to {@link Fold} and {@link GuestFold}. An explicit resolver can
+ * compute a fold in the initial or application layer. Values computed before the application layer
+ * are persisted in the cross-layer constant registry. Application-layer values are represented in
+ * earlier layers by future heap constants and finalized when the application layer is built.
  *
  * A {@link FoldInvocation} identifies one Fold call across layers. Its method and object-argument
  * IDs are stable across layers; primitive arguments are encoded by kind and raw bits.
@@ -126,9 +129,12 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
     public void preparePendingApplicationFolds() {
         CrossLayerConstantRegistryFeature registry = CrossLayerConstantRegistryFeature.singleton();
         for (FoldInvocation invocation : pendingApplicationFolds.stream().sorted(Comparator.comparing(FoldInvocation::key)).toList()) {
-            JavaConstant constant = registry.getConstant(invocation.key());
-            if (constant instanceof ImageHeapRelocatableConstant relocatable) {
-                ImageHeapRelocatableConstantSupport.singleton().registerLoadableConstant(relocatable);
+            if (LayeredImageOptions.UseSharedLayerGraphs.getValue()) {
+                /* Only saved graphs need to materialize and register the placeholder constant. */
+                JavaConstant constant = registry.getConstant(invocation.key());
+                if (constant instanceof ImageHeapRelocatableConstant relocatable) {
+                    ImageHeapRelocatableConstantSupport.singleton().registerLoadableConstant(relocatable);
+                }
             }
             if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
                 /* All beforeAnalysis callbacks have initialized Fold-visible hosted state. */
@@ -143,10 +149,9 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
     @Override
     public ValueNode resolve(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] arguments, Supplier<JavaConstant> computation) {
         AnalysisMethod analysisMethod = asAnalysisMethod(targetMethod);
-        Fold fold = GuestAnnotationAccess.getAnnotation(targetMethod, Fold.class);
         JavaConstant[] constantArguments = Arrays.stream(arguments).map(ValueNode::asJavaConstant).toArray(JavaConstant[]::new);
         LayeredFoldResolver.LayeredResolutionContext context = new LayeredResolutionContextImpl(b, analysisMethod, constantArguments, null);
-        JavaConstant result = invokeResolver(analysisMethod, fold, context, computation);
+        JavaConstant result = invokeResolver(analysisMethod, context, computation);
         JavaKind returnKind = analysisMethod.getSignature().getReturnType().getStorageKind();
         if (result instanceof ImageHeapRelocatableConstant relocatable) {
             /*
@@ -204,8 +209,17 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
     }
 
     @SuppressWarnings("unchecked")
-    private static JavaConstant invokeResolver(AnalysisMethod method, Fold fold, LayeredFoldResolver.LayeredResolutionContext context, Supplier<JavaConstant> computation) {
-        var resolver = (Fold.Resolver<? super LayeredFoldResolver.LayeredResolutionContext>) ReflectionUtil.newInstance(fold.resolver());
+    private static JavaConstant invokeResolver(AnalysisMethod method, LayeredFoldResolver.LayeredResolutionContext context, Supplier<JavaConstant> computation) {
+        Fold fold = GuestAnnotationAccess.getAnnotation(method, Fold.class);
+        GuestFoldGuestValue guestFold = GuestFoldGuestValue.get(method);
+        assert fold != null || guestFold != null : method;
+        /*
+         * GuestFold is guest-facing and cannot refer to the builder-side Fold resolver API. The
+         * generated annotation wrapper transfers the resolver name from the guest so the
+         * corresponding builder class can be looked up here.
+         */
+        Class<?> resolverClass = getResolverClass(fold, guestFold);
+        var resolver = (Fold.Resolver<? super LayeredFoldResolver.LayeredResolutionContext>) ReflectionUtil.newInstance(resolverClass);
         JavaConstant result = resolver.resolve(context, computation);
         if (result == null) {
             throw UserError.abort("Resolver for layered Fold %s returned null instead of a JavaConstant", method.format("%H.%n(%p)"));
@@ -215,8 +229,14 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
         JavaKind returnKind = returnType.getStorageKind();
         boolean valid;
         if (returnKind == JavaKind.Object) {
-            AnalysisType resultType = method.getUniverse().getBigbang().getMetaAccess().lookupJavaType(result);
-            valid = result.isNull() || resultType != null && returnType.isAssignableFrom(resultType);
+            if (result instanceof PrimitiveConstant) {
+                /* Snippet reflection converts WordBase objects to the native word kind, even when
+                 * a generic Fold method declares an Object return type. */
+                valid = result.getJavaKind() == SubstrateTarget.getWordKind() && returnType.isJavaLangObject();
+            } else {
+                AnalysisType resultType = method.getUniverse().getBigbang().getMetaAccess().lookupJavaType(result);
+                valid = result.isNull() || resultType != null && returnType.isAssignableFrom(resultType);
+            }
         } else {
             /* A persisted or future primitive is transported in its one-element array. */
             valid = result.getJavaKind().getStackKind() == returnKind.getStackKind() ||
@@ -227,6 +247,18 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
             throw UserError.abort("Resolver for layered Fold %s returned %s, which is incompatible with %s", method.format("%H.%n(%p)"), actualType, returnType.toJavaName());
         }
         return result;
+    }
+
+    private static Class<?> getResolverClass(Fold fold, GuestFoldGuestValue guestFold) {
+        if (fold != null) {
+            return fold.resolver();
+        } else {
+            String resolverName = guestFold.resolver();
+            if (resolverName.isEmpty()) {
+                return Fold.DefaultResolver.class;
+            }
+            return ReflectionUtil.lookupClass(resolverName);
+        }
     }
 
     private final class LayeredResolutionContextImpl implements LayeredFoldResolver.LayeredResolutionContext {
@@ -386,7 +418,7 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
         JavaConstant result;
         try {
             LayeredFoldResolver.LayeredResolutionContext context = new LayeredResolutionContextImpl(null, method, constants, invocation);
-            result = invokeResolver(method, GuestAnnotationAccess.getAnnotation(method, Fold.class), context, () -> invoke(method, constants));
+            result = invokeResolver(method, context, () -> invoke(method, constants));
         } catch (Throwable t) {
             throw UserError.abort(t, "Failed to resolve layered Fold %s in the application layer", method.format("%H.%n(%p)"));
         }
@@ -397,7 +429,14 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
              * This resolution runs through GuestAccess outside graph parsing, so there is no
              * GraphBuilderContext whose snippet reflection could perform the conversion.
              */
-            object = result.isNull() ? null : GuestAccess.get().asHostObject(Object.class, result);
+            JavaConstant guestResult = result;
+            if (result instanceof ImageHeapConstant heapResult) {
+                if (!heapResult.isBackedByHostedObject()) {
+                    throw UserError.abort("Application-layer Fold %s returned an object that is not available in the hosted VM", method.format("%H.%n(%p)"));
+                }
+                guestResult = heapResult.getHostedObject();
+            }
+            object = result.isNull() ? null : GuestAccess.get().asHostObject(Object.class, guestResult);
         } else {
             object = createPrimitiveArray(returnKind, result);
         }
@@ -409,7 +448,8 @@ public final class LayeredFoldFeature implements InternalFeature, LayeredFoldSup
     private static JavaConstant invoke(AnalysisMethod method, JavaConstant[] arguments) {
         JavaConstant receiver = method.hasReceiver() ? arguments[0] : null;
         JavaConstant[] methodArguments = method.hasReceiver() ? Arrays.copyOfRange(arguments, 1, arguments.length) : arguments;
-        return GuestAccess.get().invoke(OriginalMethodProvider.getOriginalMethod(method), receiver, methodArguments);
+        JavaConstant result = GuestAccess.get().invoke(OriginalMethodProvider.getOriginalMethod(method), receiver, methodArguments);
+        return method.getUniverse().lookup(result);
     }
 
     private static Object getInjectedArgument(Class<?> type) {

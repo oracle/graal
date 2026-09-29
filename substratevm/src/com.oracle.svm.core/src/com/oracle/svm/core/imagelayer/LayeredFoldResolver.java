@@ -26,10 +26,12 @@ package com.oracle.svm.core.imagelayer;
 
 import java.util.function.Supplier;
 
+import com.oracle.svm.shared.meta.GuestFold;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.meta.JavaConstant;
 
-/** Layer-specific resolution policies for {@link Fold}. */
+/** Layer-specific resolution policies for {@link Fold} and {@link GuestFold}. */
 public final class LayeredFoldResolver {
     /** Operations available to layer-specific resolvers. */
     public interface LayeredResolutionContext {
