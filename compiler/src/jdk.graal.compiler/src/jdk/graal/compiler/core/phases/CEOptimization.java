@@ -42,6 +42,7 @@ import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.loop.phases.OptimizeLoopAccessesPhase;
+import jdk.graal.compiler.loop.phases.RangeCheckEliminationPhase;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
@@ -374,6 +375,16 @@ public enum CEOptimization {
      * {@link MidTier.Options#StripMineCountedLoops}.
      */
     CountedStripMining(MidTier.Options.StripMineCountedLoops, CountedStripMiningPhase.class),
+
+    /**
+     * {@link RangeCheckEliminationPhase} is an optimization that tries to rewrite 64bit integer
+     * range checks (in general guards) to semantically equivalent 32bit range guards in order to
+     * make them amenable to other optimizations like {@link SpeculativeGuardMovementPhase}. This
+     * optimization is enabled when {@link CountedStripMiningPhase} is enabled. It can be disabled
+     * selectively with
+     * {@link jdk.graal.compiler.loop.phases.RangeCheckEliminationPhase.Options#RangeCheckElimination}.
+     */
+    RangeCheckElimination(RangeCheckEliminationPhase.Options.RangeCheckElimination, RangeCheckEliminationPhase.class),
 
     /**
      * {@link NonCountedStripMiningPhase} is an optimization that tiles the iteration space of

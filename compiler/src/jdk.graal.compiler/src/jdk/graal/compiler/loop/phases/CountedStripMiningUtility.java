@@ -66,7 +66,7 @@ import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 /**
  * Collection of utility methods for {@link CountedStripMiningPhase} and
- * {@code EnterpriseRangeCheckEliminationPhase}.
+ * {@code RangeCheckEliminationPhase}.
  */
 public class CountedStripMiningUtility {
 
