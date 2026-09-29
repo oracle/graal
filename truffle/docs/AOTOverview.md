@@ -44,7 +44,7 @@ For example, code is context-independent if it can be executed with one context 
 A good test to verify a language implementation's context independence is to create a context with an explicit engine, run a test application, and then verify that the second context does not cause deoptimizations when running the same deterministic application.
 
 The Truffle framework announces the potential use of a language instance in multiple contexts by calling [TruffleLanguage.initializeMultipleContexts](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#initializeMultipleContexts--), typically even before the first context is created.
-The framework is able to initialize multiple contexts before the first context is created when an explicit engine is used or `--engine.CacheStore` is set to `true`.
+The framework is able to initialize multiple contexts before the first context is created when an explicit engine is used, `--engine.CacheStore=<path>` is configured, or `--engine.CacheStoreEnabled=true` is set.
 
 The following criteria should be satisfied when supporting context independent code:
 
@@ -63,9 +63,9 @@ It may be costly to create context independent code, therefore, speculation on r
 [SimpleLanguage](https://github.com/graalvm/simplelanguage/blob/master/language/src/main/java/com/oracle/truffle/sl/SLLanguage.java#L196) and [JavaScript](https://github.com/oracle/graaljs/blob/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/lang/JavaScriptLanguage.java) are two languages that already support context independent code and might be useful as a guidance on concrete problems.
 
 
-### Persistent Context Independent Code with Auxiliary Engine Caching (Oracle GraalVM)
+### Persistent Context Independent Code with Auxiliary Engine Caching
 
-Oracle GraalVM supports persisting code data structures to disk.
+GraalVM supports persisting code data structures to disk.
 This enables to almost eliminate warmup time for the first run of an application in an isolate/process.
 The SVM auxiliary image feature is used to persist and load the necessary data structures to the disk.
 Persisting the image can take a significant amount of time as compilation needs to be performed.
@@ -73,7 +73,7 @@ However, loading is designed to be as fast as possible, typically almost instant
 
 Engine caching is enabled using options and functional even if the context was created without an explicit engine.
 
-More information on engine caching can be found in the engine caching [tutorial](AuxiliaryEngineCachingEnterprise.md).
+More information on engine caching can be found in the engine caching [tutorial](AuxiliaryEngineCaching.md).
 
 
 ### Compilation without Profiling

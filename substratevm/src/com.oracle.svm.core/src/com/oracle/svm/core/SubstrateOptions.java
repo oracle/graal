@@ -1775,6 +1775,9 @@ public class SubstrateOptions {
 
     public static class TruffleStableOptions {
 
+        @Option(help = "Enable the auxiliary engine cache features at runtime.", stability = OptionStability.STABLE) //
+        public static final HostedOptionKey<Boolean> AuxiliaryEngineCache = new HostedOptionKey<>(false);
+
         @Option(help = "Automatically copy the necessary language resources to the resources directory next to the produced image.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(false);
 

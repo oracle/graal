@@ -2,13 +2,12 @@
 layout: docs
 toc_group: truffle
 link_title: Auxiliary Engine Caching
-permalink: /graalvm-as-a-platform/language-implementation-framework/AuxiliaryEngineCachingEnterprise/
+permalink: /graalvm-as-a-platform/language-implementation-framework/AuxiliaryEngineCaching/
+redirect_from: /graalvm-as-a-platform/language-implementation-framework/AuxiliaryEngineCachingEnterprise/
 ---
 # Auxiliary Engine Caching
 
 The following document describes how the auxiliary engine cache of GraalVM works.
-
-This feature is only available in Oracle GraalVM. In GraalVM Community Edition, these options are not available.
 
 ## Introduction
 
@@ -31,17 +30,16 @@ This reduces the warmup time of an application significantly.
 
 ## Getting Started
 
-Starting from Oracle GraalVM installation, you first need to (re)build an image with auxiliary engine caching capabilities.
+Starting from a GraalVM installation, you first need to (re)build an image with auxiliary engine caching capabilities.
 For example, one can rebuild the JavaScript image by adding the auxiliary engine cache feature:
 
 ```
 graalvm/bin/native-image --macro:js-launcher -H:+AuxiliaryEngineCache -H:ReservedAuxiliaryImageBytes=1073741824
 ```
 
-The `--macro` argument value depends on the guest language
-By default, auxiliary images of up to 1GB are possible.
-The maximum size can be increased or decreased as needed.
-The amount of reserved bytes does not actually impact the memory consumed by the application.
+The `--macro` argument value depends on the guest language.
+This command reserves 1 GB of virtual address space for auxiliary images.
+The reservation does not commit physical memory and can be increased or decreased as needed.
 In future versions, the auxiliary engine cache will be enabled by default when the `--macro:js-launcher` macro is used.
 
 After rebuilding the JavaScript launcher, the feature is used as follows:
@@ -108,7 +106,10 @@ The cache store and load operations can be controlled using the following option
 * `--engine.Cache=<path>` Loads and stores the cached engine from/to  `path`.
 * `--engine.CacheStore=<path>` Stores the cached engine to  `path`.
 * `--engine.CacheLoad=<path>` Loads the cached engine from `path`.
+* `--engine.CacheStoreEnabled=<boolean>` Prepares the engine for storing with `Engine.storeCache(Path)` (default `false`).
+* `--engine.CacheStoreMaxImageSize=<size>` Sets the maximum stored image size. A negative value means unlimited (default `-1`).
 * `--engine.CachePreinitializeContext=<boolean>` Preinitialize a new context in the image (default `true`).
+* `--engine.CacheCompileUseLastTier=<boolean>` Use the last-tier instead of the first-tier compiler when forcing compilation (default `true`).
 * `--engine.TraceCache=<boolean>` Enables debug output.
 * `--engine.TraceCompilation=<boolean>` Prints forced compilations.
 
@@ -159,22 +160,25 @@ There are several options useful for debugging auxiliary engines caching when ru
 
 * `-XX:+TraceAuxiliaryImageClassHistogram` Prints a class histogram of all the objects contained in an image when persisting.
 * `-XX:+TraceAuxiliaryImageReferenceTree` Prints a class reference tree of all the objects contained in an image when persisting.
+* `-XX:+TraceAuxiliaryImageOperations` Enables detailed tracing of auxiliary image operations.
 
 ## Development and Debugging on HotSpot
 
 It can be useful to debug language implementation issues related to auxiliary image on HotSpot.
-On Oracle GraalVM in JVM mode, we have additional options that can be used to help debug issues with this feature:
+On GraalVM in JVM mode, additional options can be used to help debug issues with this feature:
 Since storing partial heaps on HotSpot is not supported, these debug features do not work on HotSpot.
 
 * `--engine.DebugCacheStore=<boolean>` Prepares the engine for caching and stores it to a static field instead of writing it to disk.
 * `--engine.DebugCacheLoad=<boolean>` Prepares the engine to use the engine stored in the static field instead of reading it from disk.
-* `--engine.DebugCacheCompile=<boolean>` Policy to use to force compilation for executed call targets before persisting the engine. This supports the same values as `--engine.CacheCompile`.
-* `--engine.DebugCacheTrace=<boolean>` Enables tracing for the engine cache debug feature.
+* `--engine.DebugCacheCompile=<policy>` Policy to use to force compilation for executed call targets before persisting the engine. This supports the same values as `--engine.CacheCompile`.
+* `--engine.DebugCachePreinitializeContext=<boolean>` Preinitialize a new context with all used languages that support it (default `true`).
+* `--engine.DebugCacheCompileUseLastTier=<boolean>` Use the last-tier instead of the first-tier compiler when forcing compilation (default `true`).
+* `--engine.DebugTraceCache=<boolean>` Enables tracing for the engine cache debug feature.
 
 For example:
 
 ```
-js --experimental-options --engine.TraceCompilation --engine.DebugCacheTrace --engine.DebugCacheStore --engine.DebugCacheCompile=executed fib.js
+js --experimental-options --engine.TraceCompilation --engine.DebugTraceCache --engine.DebugCacheStore --engine.DebugCacheCompile=executed fib.js
 ```
 
 Prints the following output:
@@ -196,4 +200,3 @@ A Java debugger can be attached using `--vm.Xdebug --vm.Xrunjdwp:transport=dt_so
 
 Debugging the loading of persisted engines is more difficult as writing an engine to disk is not supported on HotSpot.
 However, it is possible to use the polyglot embedding API to simulate this use-case in a unit test.
-See the `com.oracle.truffle.enterprise.test.DebugEngineCacheTest` class as an example.
