@@ -236,6 +236,21 @@ public interface GuestStagingDependencyBridge {
     boolean isRuntimeClassLoadingSupported();
 
     /**
+     * Delegates to {@code com.oracle.svm.core.hub.DynamicHub.fromClass(clazz).isReached()}.
+     * <p>
+     * Remove this method when the type-reached query is available directly to guest/staging.
+     */
+    boolean isTypeReached(Class<?> clazz);
+
+    /**
+     * Delegates to
+     * {@code com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions.getValue()}.
+     * <p>
+     * Remove this method when tracking unsatisfied type-reached conditions becomes guest-owned.
+     */
+    boolean trackUnsatisfiedTypeReachedConditions();
+
+    /**
      * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useRistretto()}.
      * <p>
      * Remove this method when Ristretto options move to guest/staging.

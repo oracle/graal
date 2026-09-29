@@ -35,6 +35,7 @@ import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -194,6 +195,16 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public boolean isRuntimeClassLoadingSupported() {
         return RuntimeClassLoading.isSupported();
+    }
+
+    @Override
+    public boolean isTypeReached(Class<?> clazz) {
+        return DynamicHub.fromClass(clazz).isReached();
+    }
+
+    @Override
+    public boolean trackUnsatisfiedTypeReachedConditions() {
+        return ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions.getValue();
     }
 
     @Override

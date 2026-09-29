@@ -23,9 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.configure;
-
-import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions;
+package com.oracle.svm.guest.staging.configure;
 
 import java.util.Arrays;
 import java.util.Set;
@@ -37,7 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
-import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
 
@@ -196,7 +194,7 @@ public class RuntimeDynamicAccessMetadata {
             }
         }
 
-        if (TrackUnsatisfiedTypeReachedConditions.getValue() && !result) {
+        if (GuestStagingDependencyBridge.singleton().trackUnsatisfiedTypeReachedConditions() && !result) {
             LogUtils.info("Unsatisfied runtime conditions reachable at build-time: " + Arrays.toString(conditions));
             new Exception().printStackTrace(System.out);
             return true;
@@ -240,7 +238,7 @@ public class RuntimeDynamicAccessMetadata {
     private static RuntimeDynamicAccessMetadata intern(Object[] conditions, boolean preserved) {
         Object[] canonicalConditions = canonicalConditions(conditions);
         MetadataKey key = new MetadataKey(canonicalConditions, preserved);
-        return INTERNED.computeIfAbsent(key, _ -> new RuntimeDynamicAccessMetadata(canonicalConditions, preserved));
+        return INTERNED.computeIfAbsent(key, unused -> new RuntimeDynamicAccessMetadata(canonicalConditions, preserved));
     }
 
     private static Object[] canonicalConditions(Object[] conditions) {
@@ -272,7 +270,7 @@ public class RuntimeDynamicAccessMetadata {
 
     private static boolean isSatisfied(Object condition) {
         if (condition instanceof Class<?> typeReachedCondition) {
-            return DynamicHub.fromClass(typeReachedCondition).isReached();
+            return GuestStagingDependencyBridge.singleton().isTypeReached(typeReachedCondition);
         } else {
             throw VMError.shouldNotReachHere("Only typeReached condition is supported.");
         }
