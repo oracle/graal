@@ -195,7 +195,9 @@ public final class InterpreterFrame {
         this.methodProfile = newMethodProfile;
         this.flags = (byte) ((flags & ~(FORCE_STAY_IN_INTERPRETER | USE_OSR)) |
                         (newForceStayInInterpreter ? FORCE_STAY_IN_INTERPRETER : 0) | (newUseOSR ? USE_OSR : 0));
-        this.debugState = new DebugState(debuggerEventFlags, indent);
+        if (Interpreter.Root.debuggerEventsSupported() || InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            this.debugState = new DebugState(debuggerEventFlags, indent);
+        }
     }
 
     // endregion Frame lifecycle and arguments

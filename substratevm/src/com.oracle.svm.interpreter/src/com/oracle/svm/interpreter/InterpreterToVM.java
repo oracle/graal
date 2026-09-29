@@ -335,8 +335,17 @@ public final class InterpreterToVM {
      * whatever monitor remains in lock slot 0, matching HotSpot's treatment of bytecode-level
      * monitorenter/monitorexit on the method monitor slot.
      */
-    @SuppressFBWarnings(value = "IMSE_DONT_CATCH_IMSE", justification = "Intentional.")
+    @AlwaysInline("Avoid calling monitor cleanup for frames without lock storage")
     public static void releaseInterpreterFrameLocks(InterpreterFrame frame, boolean synchronizedMethod) {
+        if (!synchronizedMethod && frame.getLocks().length == 0) {
+            return;
+        }
+        releaseInterpreterFrameLocksSlow(frame, synchronizedMethod);
+    }
+
+    @NeverInline("Keep monitor cleanup off the ordinary method return path")
+    @SuppressFBWarnings(value = "IMSE_DONT_CATCH_IMSE", justification = "Intentional.")
+    private static void releaseInterpreterFrameLocksSlow(InterpreterFrame frame, boolean synchronizedMethod) {
         Object[] locks = frame.getLocks();
         boolean illegalMonitorState = false;
         if (synchronizedMethod) {
@@ -969,7 +978,10 @@ public final class InterpreterToVM {
         boolean callRuntimeLoadedJNI = target.isNative() && target instanceof CremaResolvedJavaMethodImpl;
 
         // Next, determine whether the call should stay in interpreter or call the compiled target.
-        boolean callAOTEntryPoint = !callRuntimeLoadedJNI && shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
+        /* Runtime-loaded bytecode methods have only an interpreter stub as their AOT entry. */
+        boolean callAOTEntryPoint = !callRuntimeLoadedJNI &&
+                        (InterpreterTraceSupport.getValue() || !(target instanceof CremaResolvedJavaMethodImpl && target.hasBytecodes())) &&
+                        shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
 
         InterpreterUtil.guarantee(target.getSymbolicName() == seedMethod.getSymbolicName() && target.getSymbolicSignature() == seedMethod.getSymbolicSignature(),
                         "Erroneous dispatching for seed: %s%n  With dispatch index: %s%n  Resulted in : %s", seedMethod, seedMethod.getVTableIndex(), target);
