@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,30 +28,21 @@ import static jdk.graal.compiler.api.directives.GraalDirectives.injectBranchProb
 
 import org.junit.Test;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
+import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.loop.phases.LoopInversionPhase;
-import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
-import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
-import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
-import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
-import jdk.graal.compiler.phases.common.GuardLoweringPhase;
-import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
-import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
-import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
-import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.graal.compiler.phases.util.GraphOrder;
-import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 
-public class LoopFragmentTest extends GraalCompilerTest {
-
+@SuppressWarnings("cast")
+public class AggressiveLoopFragmentTest extends GraalCompilerTest {
     boolean check = true;
 
     @Override
@@ -76,27 +67,7 @@ public class LoopFragmentTest extends GraalCompilerTest {
         }
     }
 
-    static volatile int volatileInt = 3;
-
-    public static int testUnswitchPattern1(int iterations) {
-        Integer sum = 0;
-        for (int i = 0; injectBranchProbability(0.99, i < iterations); i++) {
-            if (sum == null) {
-                sum = null;
-            } else {
-                sum += i;
-            }
-            int t1 = volatileInt;
-            if (iterations == 1) {
-                GraalDirectives.sideEffect(t1);
-            } else {
-                GraalDirectives.sideEffect(i);
-            }
-        }
-        return sum.intValue();
-    }
-
-    public static int testUnswitchPattern2(int iterations) {
+    public static int testUnswitchPattern(int iterations) {
         Integer sum = 0;
         for (int i = 0; injectBranchProbability(0.99, i < iterations); i++) {
             if (sum == null) {
@@ -110,38 +81,18 @@ public class LoopFragmentTest extends GraalCompilerTest {
 
     @Test
     public void testUnswitch() {
-        StructuredGraph g = parseEager(getResolvedJavaMethod("testUnswitchPattern1"), AllowAssumptions.NO);
+        StructuredGraph g = parseEager(getResolvedJavaMethod("testUnswitchPattern"), AllowAssumptions.NO);
         new DisableOverflownCountedLoopsPhase().apply(g);
 
         CanonicalizerPhase c = CanonicalizerPhase.create();
         c.apply(g, getDefaultHighTierContext());
         new PartialEscapePhase(true, c, getInitialOptions()).apply(g, getDefaultHighTierContext());
-        new LoopUnswitchingPhase(new DefaultLoopPolicies(), c).apply(g, getDefaultHighTierContext());
-        assert g.getNodes(LoopBeginNode.TYPE).count() == 2;
-        assert g.verify();
-
-        resetCache();
-
-        g = parseEager(getResolvedJavaMethod("testUnswitchPattern2"), AllowAssumptions.NO);
-        new DisableOverflownCountedLoopsPhase().apply(g);
-        c = CanonicalizerPhase.create();
         c.apply(g, getDefaultHighTierContext());
-        new PartialEscapePhase(true, c, getInitialOptions()).apply(g, getDefaultHighTierContext());
-        c.apply(g, getDefaultHighTierContext());
-        new HighTierLoweringPhase(c, true).apply(g, getDefaultHighTierContext());
-        new RemoveValueProxyPhase(c).apply(g, getDefaultMidTierContext());
-        new LoopSafepointInsertionPhase().apply(g, getDefaultMidTierContext());
-        new GuardLoweringPhase().apply(g, getDefaultMidTierContext());
-        new MidTierLoweringPhase(c).apply(g, getDefaultMidTierContext());
-        new FrameStateAssignmentPhase().apply(g);
-        new SimpleLoopPartialUnrollPhase(new DefaultLoopPolicies(), c).apply(g, getDefaultHighTierContext());
+        new AggressivePartialUnrollPhase(new DefaultLoopPolicies(), c).apply(g, getDefaultHighTierContext());
         assert g.verify();
         assert GraphOrder.assertSchedulableGraph(g);
-
         resetCache();
-        OptionValues options = new OptionValues(getInitialOptions(), LoopInversionPhase.Options.LoopInversion, false);
-        test(options, "testUnswitchPattern1", 100);
-        test(options, "testUnswitchPattern2", 100);
+        test("testUnswitchPattern", 100);
     }
 
 }

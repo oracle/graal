@@ -29,12 +29,12 @@ import jdk.graal.compiler.core.common.SpectrePHTMitigations;
 import jdk.graal.compiler.duplication.phases.DeDuplicationPhase;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.guards.GuardRangeGroupingPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningReassociationPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
-import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
@@ -42,6 +42,9 @@ import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.OptimizeLoopAccessesPhase;
 import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPeeling;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPolicies;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticGuardsPhase;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
@@ -108,6 +111,7 @@ public class MidTier extends BaseTier<MidTierContext> {
 
     @SuppressWarnings("this-escape")
     public MidTier(OptionValues options) {
+        AggressivePartialUnrollPhase.Options.checkPartialUnroll(options);
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
 
         appendPhase(new LockEliminationPhase());
@@ -134,7 +138,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         if (LoopRotationPhase.Options.LoopRotation.getValue(options) && LoopRotationPhase.Options.EarlyMidTierLoopRotation.getValue(options)) {
-            // before inversion, strip mining and EPU
+            // before inversion, strip mining and aggressive partial unrolling
             appendPhase(new LoopRotationPhase<>(canonicalizer));
         }
 
@@ -217,6 +221,13 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         if (GraalOptions.SpeculativeGuardMovement.getValue(options)) {
             appendPhase(new SpeculativeGuardMovementPhase(canonicalizer));
+        }
+
+        if (AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.getValue(options) && GraalOptions.PartialUnroll.getValue(options) &&
+                        AggressivePartialUnrollPhase.Options.MidTierPartialUnrolling.getValue(options)) {
+            // Clean up repetitive conditions in the loop body before unrolling.
+            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
+            appendPhase(new AggressivePartialUnrollPhase(createLoopPolicies(options), canonicalizer, false));
         }
 
         appendPhase(new GuardLoweringPhase());
@@ -303,8 +314,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         }
 
         if (GraalOptions.PartialUnroll.getValue(options)) {
-            LoopPolicies loopPolicies = createLoopPolicies(options);
-            appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
+            appendPhase(new SimpleLoopPartialUnrollPhase(createLoopPolicies(options), canonicalizer));
         }
 
         if (GraalOptions.PartialUnroll.getValue(options) && Options.StripMineCountedLoops.getValue(options) &&
@@ -338,11 +348,20 @@ public class MidTier extends BaseTier<MidTierContext> {
         if (LoopInversionPhase.Options.LoopInversion.getValue(options) && LoopInversionPhase.Options.MidTierInversion.getValue(options)) {
             cleanup.appendPhase(new LoopInversionPhase(createLoopPolicies(options), canonicalizer));
         }
+        if (AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.getValue(options) && GraalOptions.PartialUnroll.getValue(options) &&
+                        AggressivePartialUnrollPhase.Options.MidTierPartialUnrolling.getValue(options)) {
+            // Try again after loop rotation exposes another counted loop shape.
+            cleanup.appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
+            cleanup.appendPhase(new AggressivePartialUnrollPhase(createLoopPolicies(options), canonicalizer, false));
+        }
         return cleanup;
     }
 
     @Override
     public LoopPolicies createLoopPolicies(OptionValues options) {
+        if (SimulationBasedLoopPeeling.Options.SimulationBasedLoopPeeling.getValue(options)) {
+            return new SimulationBasedLoopPolicies(SimulationBasedLoopPeeling.getMidTierPeelingFactors(options));
+        }
         return new DefaultLoopPolicies();
     }
 }

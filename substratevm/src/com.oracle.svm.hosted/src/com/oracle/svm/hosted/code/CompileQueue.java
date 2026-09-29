@@ -124,7 +124,8 @@ import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.core.phases.MidTier;
-import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -566,8 +567,15 @@ public class CompileQueue {
 
         Suites tunedSuites = suites.copy();
         PhaseSuite<MidTierContext> midTier = tunedSuites.getMidTier();
-        if (!GraalOptions.PartialUnroll.hasBeenSet(hostedOptions)) {
-            midTier.removeSubTypePhases(LoopPartialUnrollPhase.class);
+        boolean partialUnrollSet = GraalOptions.PartialUnroll.hasBeenSet(hostedOptions);
+        boolean aggressivePartialUnrollSet = AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.hasBeenSet(hostedOptions);
+        if (!partialUnrollSet && !aggressivePartialUnrollSet) {
+            tunedSuites.getHighTier().removeSubTypePhases(AggressivePartialUnrollPhase.class);
+            midTier.removeSubTypePhases(AggressivePartialUnrollPhase.class);
+        }
+        boolean aggressivePartialUnrollEnabledExplicitly = aggressivePartialUnrollSet && AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.getValue(hostedOptions);
+        if (!partialUnrollSet && !aggressivePartialUnrollEnabledExplicitly) {
+            midTier.removeSubTypePhases(SimpleLoopPartialUnrollPhase.class);
         }
         if (!LoopVectorizationPhase.Options.VectorizeLoops.hasBeenSet(hostedOptions)) {
             midTier.removeSubTypePhases(LoopVectorizationPhase.class);

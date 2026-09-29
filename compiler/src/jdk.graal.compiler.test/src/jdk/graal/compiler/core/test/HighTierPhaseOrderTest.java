@@ -31,13 +31,19 @@ import org.junit.Test;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.core.phases.MidTier;
+import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.guards.optimistic.SpeculativeStoreChecksPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPeeling;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPolicies;
+import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
@@ -46,6 +52,18 @@ import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 
 /// Tests ordering constraints among phases in the community high tier.
 public class HighTierPhaseOrderTest extends GraalCompilerTest {
+
+    /// Verifies that the simulation option selects the peeling policy in both tiers.
+    @Test
+    public void simulationBasedPeelingSelectsLoopPolicies() {
+        OptionValues enabled = getInitialOptions();
+        Assert.assertTrue(new HighTier(enabled).createLoopPolicies(enabled) instanceof SimulationBasedLoopPolicies);
+        Assert.assertTrue(new MidTier(enabled).createLoopPolicies(enabled) instanceof SimulationBasedLoopPolicies);
+
+        OptionValues disabled = new OptionValues(enabled, SimulationBasedLoopPeeling.Options.SimulationBasedLoopPeeling, false);
+        Assert.assertEquals(DefaultLoopPolicies.class, new HighTier(disabled).createLoopPolicies(disabled).getClass());
+        Assert.assertEquals(DefaultLoopPolicies.class, new MidTier(disabled).createLoopPolicies(disabled).getClass());
+    }
 
     /// Verifies the rotation and counter-stamp order around full unrolling and peeling.
     @Test
@@ -101,6 +119,22 @@ public class HighTierPhaseOrderTest extends GraalCompilerTest {
         int unswitching = indexOf(phases, LoopUnswitchingPhase.class, 0);
         int inversion = indexOf(phases, LoopInversionPhase.class, unswitching + 1);
         Assert.assertTrue("inversion must follow unswitching", unswitching < inversion);
+    }
+
+    /// Verifies that aggressive partial unrolling retains its position before control flow
+    /// duplication.
+    @Test
+    public void aggressivePartialUnrollingPrecedesDuplication() {
+        OptionValues options = new OptionValues(getInitialOptions(),
+                        GraalOptions.OptDuplication, true,
+                        GraalOptions.PartialUnroll, true,
+                        AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, true,
+                        AggressivePartialUnrollPhase.Options.HighTierPartialUnrolling, true);
+        List<BasePhase<? super HighTierContext>> phases = new HighTier(options).getPhases();
+
+        int unrolling = indexOf(phases, AggressivePartialUnrollPhase.class, 0);
+        int duplication = indexOf(phases, DuplicationPhase.class, unrolling + 1);
+        Assert.assertTrue("aggressive partial unrolling must precede duplication", unrolling < duplication);
     }
 
     /// Verifies that high-tier rotation needs a full-unrolling or peeling anchor.
