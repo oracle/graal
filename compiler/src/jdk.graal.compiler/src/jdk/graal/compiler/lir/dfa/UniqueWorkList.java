@@ -34,11 +34,11 @@ import jdk.graal.compiler.core.common.cfg.BasicBlock;
  * Ensures that an element is only in the worklist once.
  *
  */
-class UniqueWorkList extends ArrayDeque<BasicBlock<?>> {
+public class UniqueWorkList extends ArrayDeque<BasicBlock<?>> {
     private static final long serialVersionUID = 8009554570990975712L;
     BitSet valid;
 
-    UniqueWorkList(int size) {
+    public UniqueWorkList(int size) {
         this.valid = new BitSet(size);
     }
 
@@ -71,5 +71,20 @@ class UniqueWorkList extends ArrayDeque<BasicBlock<?>> {
             }
         }
         return changed;
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        return valid.get(((BasicBlock<?>) o).getId());
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        if (!contains(o)) {
+            return false;
+        }
+
+        valid.set(((BasicBlock<?>) o).getId(), false);
+        return super.remove(o);
     }
 }
