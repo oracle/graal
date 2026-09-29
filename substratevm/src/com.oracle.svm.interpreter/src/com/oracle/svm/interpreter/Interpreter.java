@@ -760,7 +760,7 @@ public final class Interpreter {
     public static final class Root {
 
         @NeverInline("needed for stack walking")
-        @BytecodeInterpreterHandlerConfig(maximumOperationCode = QUICK_ZASTORE, arguments = {
+        @BytecodeInterpreterHandlerConfig(maximumOperationCode = QUICK_ZASTORE, enableTailDuplication = true, arguments = {
                         @BytecodeInterpreterHandlerConfig.Argument(returnValue = true),
                         @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.MATERIALIZED, fields = {
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "code"),

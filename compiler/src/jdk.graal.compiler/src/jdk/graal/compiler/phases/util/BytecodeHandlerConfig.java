@@ -46,6 +46,7 @@ import jdk.vm.ci.meta.Signature;
 public final class BytecodeHandlerConfig {
 
     private final int maximumOperationCode;
+    private final boolean enableTailDuplication;
     private final ResolvedJavaType returnType;
     private final List<ArgumentInfo> argumentInfos;
     /**
@@ -55,8 +56,9 @@ public final class BytecodeHandlerConfig {
      */
     private final List<ResolvedJavaType> argumentTypes;
 
-    private BytecodeHandlerConfig(int maximumOperationCode, ResolvedJavaType returnType, List<ArgumentInfo> arguments) {
+    private BytecodeHandlerConfig(int maximumOperationCode, boolean enableTailDuplication, ResolvedJavaType returnType, List<ArgumentInfo> arguments) {
         this.maximumOperationCode = maximumOperationCode;
+        this.enableTailDuplication = enableTailDuplication;
         this.returnType = Objects.requireNonNull(returnType, "returnType");
         this.argumentInfos = Collections.unmodifiableList(new ArrayList<>(arguments));
         List<ResolvedJavaType> types = new ArrayList<>(arguments.size());
@@ -100,7 +102,7 @@ public final class BytecodeHandlerConfig {
         }
         GraalError.guarantee(originalIndex == argumentAnnotations.size(), "Unused argument config for %s", targetMethod);
 
-        return new BytecodeHandlerConfig(maximumOperationCode, returnType, arguments);
+        return new BytecodeHandlerConfig(maximumOperationCode, handlerConfig.getBoolean("enableTailDuplication"), returnType, arguments);
     }
 
     /**
@@ -212,6 +214,10 @@ public final class BytecodeHandlerConfig {
         return returnType;
     }
 
+    public boolean isTailDuplicationEnabled() {
+        return enableTailDuplication;
+    }
+
     public List<ArgumentInfo> getArgumentInfos() {
         return argumentInfos;
     }
@@ -228,12 +234,13 @@ public final class BytecodeHandlerConfig {
         if (!(obj instanceof BytecodeHandlerConfig other)) {
             return false;
         }
-        return maximumOperationCode == other.maximumOperationCode && returnType.equals(other.returnType) && argumentInfos.equals(other.argumentInfos);
+        return maximumOperationCode == other.maximumOperationCode && enableTailDuplication == other.enableTailDuplication &&
+                        returnType.equals(other.returnType) && argumentInfos.equals(other.argumentInfos);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(maximumOperationCode, returnType, argumentInfos);
+        return Objects.hash(maximumOperationCode, enableTailDuplication, returnType, argumentInfos);
     }
 
     public boolean isArgumentImmutable(int index) {

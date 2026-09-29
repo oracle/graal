@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.5
+
+* GR-79534: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.enableTailDuplication()` to opt threaded bytecode handlers into dispatch-tail duplication; disabled by default.
+
 ## Version 25.4
 * GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.
 * GR-77721: Removed Truffle Strings methods deprecated in 23.0 or earlier.

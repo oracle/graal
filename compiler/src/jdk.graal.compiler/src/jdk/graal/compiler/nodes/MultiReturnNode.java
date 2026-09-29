@@ -52,11 +52,23 @@ public final class MultiReturnNode extends FloatingNode implements LIRLowerable 
     @OptionalInput ValueNode returnResult;
     @OptionalInput ValueNode tailCallTarget;
     @Input NodeInputList<ValueNode> additionalReturnResults = new NodeInputList<>(this);
+    private final boolean encourageTailDuplication;
 
     public MultiReturnNode(ValueNode returnResult, ValueNode tailCallTarget) {
+        this(returnResult, tailCallTarget, false);
+    }
+
+    public MultiReturnNode(ValueNode returnResult, ValueNode tailCallTarget, boolean encourageTailDuplication) {
         super(TYPE, returnResult == null ? StampFactory.forVoid() : returnResult.stamp(NodeView.DEFAULT));
+        assert !encourageTailDuplication || tailCallTarget != null;
         this.returnResult = returnResult;
         this.tailCallTarget = tailCallTarget;
+        this.encourageTailDuplication = encourageTailDuplication;
+    }
+
+    /** Explicit hint from threaded-handler generation to create separate dispatch sites. */
+    public boolean shouldEncourageTailDuplication() {
+        return encourageTailDuplication;
     }
 
     public ValueNode getReturnResult() {

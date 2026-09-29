@@ -77,6 +77,21 @@ public final class BytecodeInterpreterDirectives {
     @Target(ElementType.METHOD)
     public @interface BytecodeInterpreterHandlerConfig {
         /**
+         * Enables tail duplication for this interpreter's threaded bytecode handler stubs. When
+         * enabled, the compiler removes the control-flow anchor at the handler return and encourages
+         * duplication of the dispatch tail, allowing different handler paths to have separate
+         * indirect tail-call sites. Duplication remains subject to compiler safety checks and code
+         * size budgets; enabling this option does not guarantee that a tail will be duplicated.
+         * <p>
+         * Separate dispatch sites can improve branch prediction, but the additional code can also
+         * reduce performance. This option is disabled by default and should only be enabled after
+         * measuring the effect on the interpreter's workloads. When disabled, the return anchor is
+         * retained and no tail-duplication hint is emitted. This option has no effect on non-threaded
+         * stubs, which always retain their return anchor.
+         */
+        boolean enableTailDuplication() default false;
+
+        /**
          * Configuration for one {@link BytecodeInterpreterHandlerConfig} argument.
          *
          * @since 25.1

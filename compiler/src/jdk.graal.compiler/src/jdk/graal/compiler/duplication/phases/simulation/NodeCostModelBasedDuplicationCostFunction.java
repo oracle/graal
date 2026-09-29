@@ -44,6 +44,7 @@ import jdk.graal.compiler.duplication.phases.simulation.opportunity.DuplicationO
 import jdk.graal.compiler.duplication.phases.simulation.opportunity.LockCoarseningOpportunity;
 import jdk.graal.compiler.duplication.phases.simulation.opportunity.PEAOpportunity;
 import jdk.graal.compiler.duplication.phases.simulation.opportunity.ReadEliminationOpportunity;
+import jdk.graal.compiler.duplication.phases.simulation.opportunity.TailCallOpportunity;
 import jdk.graal.compiler.duplication.util.DuplicationUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -223,8 +224,12 @@ public class NodeCostModelBasedDuplicationCostFunction implements DuplicationCos
         DuplicationOpportunity canonicalizationOpportunity = s.canonicalOpportuntiy();
         final int cyclesSavedCanonicalization = canonicalizationOpportunity.cyclesSaved();
 
+        TailCallOpportunity tailCallOpportunity = factors.benefitTailCall(s, regionEnd);
+        final int tailCallBenefit = tailCallOpportunity.cyclesSaved();
+
         ReducedRegion reducedRegion = canReduceRegionSize(killedBranches, killedGuards,
-                        new DuplicationOpportunity[]{readEliminationOpportunity, escapeAnalysisOpportunity, canonicalizationOpportunity, lockCoarseningOpportunity}, s.getOriginalMerge(), regionEnd);
+                        new DuplicationOpportunity[]{readEliminationOpportunity, escapeAnalysisOpportunity, canonicalizationOpportunity, lockCoarseningOpportunity, tailCallOpportunity},
+                        s.getOriginalMerge(), regionEnd);
 
         accumulatedResult.benefit += killedBranches;
         accumulatedResult.benefit += killedGuards;
@@ -232,6 +237,7 @@ public class NodeCostModelBasedDuplicationCostFunction implements DuplicationCos
         accumulatedResult.benefit += escapingPhis;
         accumulatedResult.benefit += cyclesSavedCanonicalization;
         accumulatedResult.benefit += cyclesSavedLockCoarsening;
+        accumulatedResult.benefit += tailCallBenefit;
 
         accumulatedResult.requiresReadEliminationCleanUp = cyclesSavedReadElimination > 0;
 
@@ -277,7 +283,7 @@ public class NodeCostModelBasedDuplicationCostFunction implements DuplicationCos
         }
 
         logDecisionValues(regionEnd.graph().method(), s.getOriginalMerge(), killedBranches, killedGuards, cyclesSavedCanonicalization, mergeRemovedSplit, mergeRemovedSink, cyclesSavedReadElimination,
-                        conditionDominated,
+                        conditionDominated, tailCallBenefit,
                         escapingPhis,
                         s.getProbabilityAfter(), accumulatedResult.benefit, accumulatedResult.cost);
 
@@ -505,13 +511,13 @@ public class NodeCostModelBasedDuplicationCostFunction implements DuplicationCos
     }
 
     private static void logDecisionValues(ResolvedJavaMethod method, MergeNode merge, int killedBranches, int killedGuards, int saved, int mergeRemovedSplit, int mergeRemovedSink, int re,
-                    int condDominated, int escapingPhis, double probability, double benefit,
+                    int condDominated, int tailCall, int escapingPhis, double probability, double benefit,
                     int cost) {
         if (merge.getDebug().isLogEnabled(DebugContext.VERBOSE_LEVEL)) {
             merge.getDebug().logv(DebugContext.VERBOSE_LEVEL, "Duplication data %s benefit at merge %s cycles saved %10d - killed branches %10d - killed guards  %10d" +
-                            " - merge removed split %10d - merge removed sink %10d - re %10d - condDominated %10d - escaping %10d " +
+                            " - merge removed split %10d - merge removed sink %10d - re %10d - condDominated %10d - tail call %10d - escaping %10d " +
                             " - prob %10f  benefit unweighted %10f benefit weighted %10f--> costs %10d", method.format("%H.%n(%p)"), merge, saved,
-                            killedBranches, killedGuards, mergeRemovedSplit, mergeRemovedSink, re, condDominated, escapingPhis,
+                            killedBranches, killedGuards, mergeRemovedSplit, mergeRemovedSink, re, condDominated, tailCall, escapingPhis,
                             probability, benefit, benefit * probability, cost);
         }
     }
