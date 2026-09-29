@@ -43,6 +43,27 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMX86_VectorMathNode {
 
+    // x86 MIN*/MAX* semantics: the hardware computes MIN(a,b) = (a < b) ? a : b and
+    // MAX(a,b) = (a > b) ? a : b, so on a NaN operand or a tie it returns the *second*
+    // operand b. This differs from Math.min/Math.max (which propagate NaN and order
+    // signed zeros). Eigen's pmin/pmax and their Propagate{Numbers,NaN} wrappers rely
+    // on this exact "return b on NaN" behavior, so we must model it faithfully.
+    private static double x86Min(double a, double b) {
+        return a < b ? a : b;
+    }
+
+    private static double x86Max(double a, double b) {
+        return a > b ? a : b;
+    }
+
+    private static float x86Min(float a, float b) {
+        return a < b ? a : b;
+    }
+
+    private static float x86Max(float a, float b) {
+        return a > b ? a : b;
+    }
+
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_SSE2MultiplyHighWordsNode extends LLVMBuiltin {
@@ -82,12 +103,22 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_VectorMaxNode extends LLVMBuiltin { // mm_max_pd
+    public abstract static class LLVMX86_VectorMaxNode extends LLVMBuiltin { // mm_max_pd, mm256_max_pd
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
         protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
             return LLVMDoubleVector.create(new double[]{
-                            Math.max(v1.getValue(0), v2.getValue(0)),
-                            Math.max(v1.getValue(1), v2.getValue(1))
+                            x86Max(v1.getValue(0), v2.getValue(0)),
+                            x86Max(v1.getValue(1), v2.getValue(1))
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMDoubleVector doM256(LLVMDoubleVector v1, LLVMDoubleVector v2) {
+            return LLVMDoubleVector.create(new double[]{
+                            x86Max(v1.getValue(0), v2.getValue(0)),
+                            x86Max(v1.getValue(1), v2.getValue(1)),
+                            x86Max(v1.getValue(2), v2.getValue(2)),
+                            x86Max(v1.getValue(3), v2.getValue(3))
             });
         }
     }
@@ -98,7 +129,7 @@ public abstract class LLVMX86_VectorMathNode {
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
         protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
             return LLVMDoubleVector.create(new double[]{
-                            Math.max(v1.getValue(0), v2.getValue(0)),
+                            x86Max(v1.getValue(0), v2.getValue(0)),
                             v1.getValue(1)
             });
         }
@@ -106,12 +137,22 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_VectorMinNode extends LLVMBuiltin { // mm_min_pd
+    public abstract static class LLVMX86_VectorMinNode extends LLVMBuiltin { // mm_min_pd, mm256_min_pd
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
         protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
             return LLVMDoubleVector.create(new double[]{
-                            Math.min(v1.getValue(0), v2.getValue(0)),
-                            Math.min(v1.getValue(1), v2.getValue(1))
+                            x86Min(v1.getValue(0), v2.getValue(0)),
+                            x86Min(v1.getValue(1), v2.getValue(1))
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMDoubleVector doM256(LLVMDoubleVector v1, LLVMDoubleVector v2) {
+            return LLVMDoubleVector.create(new double[]{
+                            x86Min(v1.getValue(0), v2.getValue(0)),
+                            x86Min(v1.getValue(1), v2.getValue(1)),
+                            x86Min(v1.getValue(2), v2.getValue(2)),
+                            x86Min(v1.getValue(3), v2.getValue(3))
             });
         }
     }
@@ -122,7 +163,7 @@ public abstract class LLVMX86_VectorMathNode {
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
         protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
             return LLVMDoubleVector.create(new double[]{
-                            Math.min(v1.getValue(0), v2.getValue(0)),
+                            x86Min(v1.getValue(0), v2.getValue(0)),
                             v1.getValue(1)
             });
         }
@@ -130,15 +171,24 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_SSE_VectorMaxNode extends LLVMBuiltin { // mm_max_ps
+    public abstract static class LLVMX86_SSE_VectorMaxNode extends LLVMBuiltin { // mm_max_ps, mm256_max_ps
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
-                            Math.max(v1.getValue(0), v2.getValue(0)),
-                            Math.max(v1.getValue(1), v2.getValue(1)),
-                            Math.max(v1.getValue(2), v2.getValue(2)),
-                            Math.max(v1.getValue(3), v2.getValue(3))
+                            x86Max(v1.getValue(0), v2.getValue(0)),
+                            x86Max(v1.getValue(1), v2.getValue(1)),
+                            x86Max(v1.getValue(2), v2.getValue(2)),
+                            x86Max(v1.getValue(3), v2.getValue(3))
             });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 8", "v2.getLength() == 8"})
+        protected LLVMFloatVector doM256(LLVMFloatVector v1, LLVMFloatVector v2) {
+            float[] result = new float[8];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = x86Max(v1.getValue(i), v2.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
         }
     }
 
@@ -148,7 +198,7 @@ public abstract class LLVMX86_VectorMathNode {
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
-                            Math.max(v1.getValue(0), v2.getValue(0)),
+                            x86Max(v1.getValue(0), v2.getValue(0)),
                             v1.getValue(1),
                             v1.getValue(2),
                             v1.getValue(3)
@@ -158,15 +208,24 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_SSE_VectorMinNode extends LLVMBuiltin { // mm_min_ps
+    public abstract static class LLVMX86_SSE_VectorMinNode extends LLVMBuiltin { // mm_min_ps, mm256_min_ps
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
-                            Math.min(v1.getValue(0), v2.getValue(0)),
-                            Math.min(v1.getValue(1), v2.getValue(1)),
-                            Math.min(v1.getValue(2), v2.getValue(2)),
-                            Math.min(v1.getValue(3), v2.getValue(3))
+                            x86Min(v1.getValue(0), v2.getValue(0)),
+                            x86Min(v1.getValue(1), v2.getValue(1)),
+                            x86Min(v1.getValue(2), v2.getValue(2)),
+                            x86Min(v1.getValue(3), v2.getValue(3))
             });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 8", "v2.getLength() == 8"})
+        protected LLVMFloatVector doM256(LLVMFloatVector v1, LLVMFloatVector v2) {
+            float[] result = new float[8];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = x86Min(v1.getValue(i), v2.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
         }
     }
 
@@ -176,7 +235,7 @@ public abstract class LLVMX86_VectorMathNode {
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
-                            Math.min(v1.getValue(0), v2.getValue(0)),
+                            x86Min(v1.getValue(0), v2.getValue(0)),
                             v1.getValue(1),
                             v1.getValue(2),
                             v1.getValue(3)
@@ -327,6 +386,278 @@ public abstract class LLVMX86_VectorMathNode {
                 compareResult = Double.isNaN(v11) || Double.isNaN(v21) || compareResult;
             }
             return LLVMDoubleVector.create(new double[]{compareResult ? mask : 0f, v1.getValue(1)});
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorRoundNode extends LLVMBuiltin { // mm_round_ps/pd, mm256_round_ps/pd
+        /*
+         * SSE4.1/AVX rounding-control immediate: bit 2 selects the MXCSR rounding mode (Sulong
+         * models MXCSR as round-to-nearest-even, the ABI default), otherwise bits 1:0 select
+         * 0=nearest-even, 1=down, 2=up, 3=truncate. Bit 3 (suppress precision exception) is
+         * irrelevant here.
+         */
+        private static double round(double value, int roundingControl) {
+            int mode = (roundingControl & 0x4) != 0 ? 0 : (roundingControl & 0x3);
+            switch (mode) {
+                case 0:
+                    return Math.rint(value);
+                case 1:
+                    return Math.floor(value);
+                case 2:
+                    return Math.ceil(value);
+                default:
+                    return value < 0 ? Math.ceil(value) : Math.floor(value);
+            }
+        }
+
+        @Specialization(guards = "vector.getLength() == 2")
+        protected LLVMDoubleVector doM128(LLVMDoubleVector vector, int roundingControl) {
+            return roundDoubles(vector, roundingControl, 2);
+        }
+
+        @Specialization(guards = "vector.getLength() == 4")
+        protected LLVMDoubleVector doM256(LLVMDoubleVector vector, int roundingControl) {
+            return roundDoubles(vector, roundingControl, 4);
+        }
+
+        @Specialization(guards = "vector.getLength() == 4")
+        protected LLVMFloatVector doM128(LLVMFloatVector vector, int roundingControl) {
+            return roundFloats(vector, roundingControl, 4);
+        }
+
+        @Specialization(guards = "vector.getLength() == 8")
+        protected LLVMFloatVector doM256(LLVMFloatVector vector, int roundingControl) {
+            return roundFloats(vector, roundingControl, 8);
+        }
+
+        private static LLVMDoubleVector roundDoubles(LLVMDoubleVector vector, int roundingControl, int length) {
+            double[] result = new double[length];
+            for (int i = 0; i < length; i++) {
+                result[i] = round(vector.getValue(i), roundingControl);
+            }
+            return LLVMDoubleVector.create(result);
+        }
+
+        private static LLVMFloatVector roundFloats(LLVMFloatVector vector, int roundingControl, int length) {
+            float[] result = new float[length];
+            for (int i = 0; i < length; i++) {
+                result[i] = (float) round(vector.getValue(i), roundingControl);
+            }
+            return LLVMFloatVector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorAddSubNode extends LLVMBuiltin { // addsub_ps/pd (sse3, avx)
+        // ADDSUBPS/PD: subtract on the even lanes, add on the odd lanes (per Intel SDM). Length-
+        // generic so the SSE3 128-bit forms (<4 x float>, <2 x double>) and the AVX 256-bit forms
+        // (<8 x float>, <4 x double>) all funnel through the same two specializations.
+        @Specialization(guards = "v1.getLength() == v2.getLength()")
+        protected LLVMFloatVector doFloat(LLVMFloatVector v1, LLVMFloatVector v2) {
+            int len = v1.getLength();
+            float[] result = new float[len];
+            for (int i = 0; i < len; i++) {
+                result[i] = (i & 1) == 0 ? v1.getValue(i) - v2.getValue(i) : v1.getValue(i) + v2.getValue(i);
+            }
+            return LLVMFloatVector.create(result);
+        }
+
+        @Specialization(guards = "v1.getLength() == v2.getLength()")
+        protected LLVMDoubleVector doDouble(LLVMDoubleVector v1, LLVMDoubleVector v2) {
+            int len = v1.getLength();
+            double[] result = new double[len];
+            for (int i = 0; i < len; i++) {
+                result[i] = (i & 1) == 0 ? v1.getValue(i) - v2.getValue(i) : v1.getValue(i) + v2.getValue(i);
+            }
+            return LLVMDoubleVector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorBlendvNode extends LLVMBuiltin { // blendvpd/blendvps (sse41, avx)
+        // Variable blend: take element i from v2 when the most-significant (sign) bit of the
+        // corresponding mask element is set, otherwise from v1. Length-generic to cover both the
+        // 128-bit (sse41) and 256-bit (avx) forms.
+        @Specialization(guards = {"v1.getLength() == v2.getLength()", "v1.getLength() == mask.getLength()"})
+        protected LLVMDoubleVector doDouble(LLVMDoubleVector v1, LLVMDoubleVector v2, LLVMDoubleVector mask) {
+            int len = v1.getLength();
+            double[] result = new double[len];
+            for (int i = 0; i < len; i++) {
+                result[i] = Double.doubleToRawLongBits(mask.getValue(i)) < 0 ? v2.getValue(i) : v1.getValue(i);
+            }
+            return LLVMDoubleVector.create(result);
+        }
+
+        @Specialization(guards = {"v1.getLength() == v2.getLength()", "v1.getLength() == mask.getLength()"})
+        protected LLVMFloatVector doFloat(LLVMFloatVector v1, LLVMFloatVector v2, LLVMFloatVector mask) {
+            int len = v1.getLength();
+            float[] result = new float[len];
+            for (int i = 0; i < len; i++) {
+                result[i] = Float.floatToRawIntBits(mask.getValue(i)) < 0 ? v2.getValue(i) : v1.getValue(i);
+            }
+            return LLVMFloatVector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorPblendvbNode extends LLVMBuiltin { // pblendvb (sse41, avx2)
+        // Per-byte variable blend: take byte i from v2 when the high bit of mask byte i is set,
+        // otherwise from v1. Length-generic (16 bytes for sse41, 32 bytes for avx2); no lane
+        // crossing so a single flat loop is correct for both.
+        @Specialization(guards = {"v1.getLength() == v2.getLength()", "v1.getLength() == mask.getLength()"})
+        protected LLVMI8Vector doI8(LLVMI8Vector v1, LLVMI8Vector v2, LLVMI8Vector mask) {
+            int len = v1.getLength();
+            byte[] result = new byte[len];
+            for (int i = 0; i < len; i++) {
+                result[i] = mask.getValue(i) < 0 ? v2.getValue(i) : v1.getValue(i);
+            }
+            return LLVMI8Vector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorPackusdwNode extends LLVMBuiltin { // packusdw (sse41, avx2)
+        // Pack two i32 vectors down to one u16 vector with unsigned saturation. The 256-bit avx2
+        // form operates independently on each 128-bit lane, so its output interleaves the two
+        // sources per lane rather than concatenating them.
+        static short unsignedSaturate(int value) {
+            if (value < 0) {
+                return 0;
+            } else if (value > 0xFFFF) {
+                return (short) 0xFFFF;
+            } else {
+                return (short) value;
+            }
+        }
+
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMI16Vector doPackusdw128(LLVMI32Vector v1, LLVMI32Vector v2) { // _mm_packus_epi32
+            return LLVMI16Vector.create(new short[]{
+                            unsignedSaturate(v1.getValue(0)), unsignedSaturate(v1.getValue(1)), unsignedSaturate(v1.getValue(2)), unsignedSaturate(v1.getValue(3)),
+                            unsignedSaturate(v2.getValue(0)), unsignedSaturate(v2.getValue(1)), unsignedSaturate(v2.getValue(2)), unsignedSaturate(v2.getValue(3))
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 8", "v2.getLength() == 8"})
+        protected LLVMI16Vector doPackusdw256(LLVMI32Vector v1, LLVMI32Vector v2) { // _mm256_packus_epi32 (per 128-bit lane)
+            return LLVMI16Vector.create(new short[]{
+                            unsignedSaturate(v1.getValue(0)), unsignedSaturate(v1.getValue(1)), unsignedSaturate(v1.getValue(2)), unsignedSaturate(v1.getValue(3)),
+                            unsignedSaturate(v2.getValue(0)), unsignedSaturate(v2.getValue(1)), unsignedSaturate(v2.getValue(2)), unsignedSaturate(v2.getValue(3)),
+                            unsignedSaturate(v1.getValue(4)), unsignedSaturate(v1.getValue(5)), unsignedSaturate(v1.getValue(6)), unsignedSaturate(v1.getValue(7)),
+                            unsignedSaturate(v2.getValue(4)), unsignedSaturate(v2.getValue(5)), unsignedSaturate(v2.getValue(6)), unsignedSaturate(v2.getValue(7))
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorHorizontalAddNode extends LLVMBuiltin { // phadd.d/.w (ssse3, avx2)
+        // Horizontal add of adjacent element pairs. The result draws its first half of each
+        // 128-bit lane from v1 and its second half from v2 (per Intel SDM); the 256-bit avx2
+        // forms repeat that pattern independently in each 128-bit lane.
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMI32Vector doPhaddD128(LLVMI32Vector v1, LLVMI32Vector v2) { // _mm_hadd_epi32
+            return LLVMI32Vector.create(new int[]{
+                            v1.getValue(0) + v1.getValue(1), v1.getValue(2) + v1.getValue(3),
+                            v2.getValue(0) + v2.getValue(1), v2.getValue(2) + v2.getValue(3)
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 8", "v2.getLength() == 8"})
+        protected LLVMI32Vector doPhaddD256(LLVMI32Vector v1, LLVMI32Vector v2) { // _mm256_hadd_epi32 (per 128-bit lane)
+            return LLVMI32Vector.create(new int[]{
+                            v1.getValue(0) + v1.getValue(1), v1.getValue(2) + v1.getValue(3),
+                            v2.getValue(0) + v2.getValue(1), v2.getValue(2) + v2.getValue(3),
+                            v1.getValue(4) + v1.getValue(5), v1.getValue(6) + v1.getValue(7),
+                            v2.getValue(4) + v2.getValue(5), v2.getValue(6) + v2.getValue(7)
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 8", "v2.getLength() == 8"})
+        protected LLVMI16Vector doPhaddW128(LLVMI16Vector v1, LLVMI16Vector v2) { // _mm_hadd_epi16
+            return LLVMI16Vector.create(new short[]{
+                            (short) (v1.getValue(0) + v1.getValue(1)), (short) (v1.getValue(2) + v1.getValue(3)),
+                            (short) (v1.getValue(4) + v1.getValue(5)), (short) (v1.getValue(6) + v1.getValue(7)),
+                            (short) (v2.getValue(0) + v2.getValue(1)), (short) (v2.getValue(2) + v2.getValue(3)),
+                            (short) (v2.getValue(4) + v2.getValue(5)), (short) (v2.getValue(6) + v2.getValue(7))
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorHorizontalAddFloatNode extends LLVMBuiltin { // hadd.ps/.pd (sse3, avx)
+        // Floating-point horizontal add (HADDPS/HADDPD): same adjacent-pair, v1-then-v2-per-lane
+        // layout as the integer PHADD, but on float/double lanes. Covers both 128-bit (sse3) and
+        // 256-bit (avx) forms; the 256-bit forms operate per 128-bit lane.
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMFloatVector doHaddPs128(LLVMFloatVector v1, LLVMFloatVector v2) { // _mm_hadd_ps
+            return LLVMFloatVector.create(new float[]{
+                            v1.getValue(0) + v1.getValue(1), v1.getValue(2) + v1.getValue(3),
+                            v2.getValue(0) + v2.getValue(1), v2.getValue(2) + v2.getValue(3)
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 8", "v2.getLength() == 8"})
+        protected LLVMFloatVector doHaddPs256(LLVMFloatVector v1, LLVMFloatVector v2) { // _mm256_hadd_ps (per 128-bit lane)
+            return LLVMFloatVector.create(new float[]{
+                            v1.getValue(0) + v1.getValue(1), v1.getValue(2) + v1.getValue(3),
+                            v2.getValue(0) + v2.getValue(1), v2.getValue(2) + v2.getValue(3),
+                            v1.getValue(4) + v1.getValue(5), v1.getValue(6) + v1.getValue(7),
+                            v2.getValue(4) + v2.getValue(5), v2.getValue(6) + v2.getValue(7)
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
+        protected LLVMDoubleVector doHaddPd128(LLVMDoubleVector v1, LLVMDoubleVector v2) { // _mm_hadd_pd
+            return LLVMDoubleVector.create(new double[]{
+                            v1.getValue(0) + v1.getValue(1),
+                            v2.getValue(0) + v2.getValue(1)
+            });
+        }
+
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMDoubleVector doHaddPd256(LLVMDoubleVector v1, LLVMDoubleVector v2) { // _mm256_hadd_pd (per 128-bit lane)
+            return LLVMDoubleVector.create(new double[]{
+                            v1.getValue(0) + v1.getValue(1),
+                            v2.getValue(0) + v2.getValue(1),
+                            v1.getValue(2) + v1.getValue(3),
+                            v2.getValue(2) + v2.getValue(3)
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_VectorRsqrtNode extends LLVMBuiltin { // mm_rsqrt_ps, mm256_rsqrt_ps
+        /*
+         * Hardware rsqrt is an approximation with |relative error| <= 1.5 * 2^-12; the exact
+         * reciprocal square root computed here is within that bound but not bit-identical to any
+         * real CPU. Tests must compare with a tolerance.
+         */
+        @Specialization(guards = "vector.getLength() == 4")
+        protected LLVMFloatVector doM128(LLVMFloatVector vector) {
+            return rsqrt(vector, 4);
+        }
+
+        @Specialization(guards = "vector.getLength() == 8")
+        protected LLVMFloatVector doM256(LLVMFloatVector vector) {
+            return rsqrt(vector, 8);
+        }
+
+        private static LLVMFloatVector rsqrt(LLVMFloatVector vector, int length) {
+            float[] result = new float[length];
+            for (int i = 0; i < length; i++) {
+                result[i] = (float) (1.0 / Math.sqrt(vector.getValue(i)));
+            }
+            return LLVMFloatVector.create(result);
         }
     }
 }

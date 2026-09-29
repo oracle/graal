@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin.TypedBuiltinFactory;
@@ -40,8 +41,13 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNod
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI64NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsI8NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsIVarNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountSetBitsNodeFactory.CountSetBitsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class CountSetBitsNode {
 
@@ -51,13 +57,13 @@ public abstract class CountSetBitsNode {
         }
         switch (type) {
             case I8:
-                return TypedBuiltinFactory.simple1(CountSetBitsI8NodeGen::create);
+                return TypedBuiltinFactory.vector1(CountSetBitsI8NodeGen::create, CountSetBitsVectorNodeGen::create);
             case I16:
-                return TypedBuiltinFactory.simple1(CountSetBitsI16NodeGen::create);
+                return TypedBuiltinFactory.vector1(CountSetBitsI16NodeGen::create, CountSetBitsVectorNodeGen::create);
             case I32:
-                return TypedBuiltinFactory.simple1(CountSetBitsI32NodeGen::create);
+                return TypedBuiltinFactory.vector1(CountSetBitsI32NodeGen::create, CountSetBitsVectorNodeGen::create);
             case I64:
-                return TypedBuiltinFactory.simple1(CountSetBitsI64NodeGen::create);
+                return TypedBuiltinFactory.vector1(CountSetBitsI64NodeGen::create, CountSetBitsVectorNodeGen::create);
             default:
                 return null;
         }
@@ -121,6 +127,60 @@ public abstract class CountSetBitsNode {
         @Specialization
         protected long doOp(long val) {
             return Long.bitCount(val);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class CountSetBitsVectorNode extends LLVMBuiltin {
+
+        private final int vectorLength;
+
+        CountSetBitsVectorNode(int vectorLength) {
+            this.vectorLength = vectorLength;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI8Vector doI8(LLVMI8Vector value) {
+            assert value.getLength() == vectorLength;
+            byte[] result = new byte[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = (byte) Integer.bitCount(Byte.toUnsignedInt(value.getValue(i)));
+            }
+            return LLVMI8Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI16Vector doI16(LLVMI16Vector value) {
+            assert value.getLength() == vectorLength;
+            short[] result = new short[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = (short) Integer.bitCount(Short.toUnsignedInt(value.getValue(i)));
+            }
+            return LLVMI16Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI32Vector doI32(LLVMI32Vector value) {
+            assert value.getLength() == vectorLength;
+            int[] result = new int[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Integer.bitCount(value.getValue(i));
+            }
+            return LLVMI32Vector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doI64(LLVMI64Vector value) {
+            assert value.getLength() == vectorLength;
+            long[] result = new long[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Long.bitCount(value.getValue(i));
+            }
+            return LLVMI64Vector.create(result);
         }
     }
 }
