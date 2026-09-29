@@ -64,7 +64,6 @@ import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaField;
@@ -77,11 +76,6 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * <p>
  * This class doesn't support runtime resolution on purpose, but supports pre-resolved entries
  * instead for AOT types.
- * <p>
- * Interpreter-only unchecked accessors rely on bytecode verification to establish constant-pool
- * index bounds and entry types. If verification is explicitly disabled, the supplied bytecode and
- * its constant-pool indices are trusted and the user is responsible for ensuring that they are
- * valid.
  */
 public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.meta.ConstantPool {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
@@ -99,76 +93,17 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     private static final AtomicReferenceFieldUpdater<InterpreterConstantPool, jdk.vm.ci.meta.ConstantPool> RISTRETTO_CONSTANT_POOL_UPDATER = AtomicReferenceFieldUpdater
                     .newUpdater(InterpreterConstantPool.class, jdk.vm.ci.meta.ConstantPool.class, "ristrettoConstantPool");
 
-    private static long byteArrayOffset(long index) {
-        return Unsafe.ARRAY_BYTE_BASE_OFFSET + (index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-    }
-
-    private static long intArrayOffset(long index) {
-        return Unsafe.ARRAY_INT_BASE_OFFSET + (index * Unsafe.ARRAY_INT_INDEX_SCALE);
-    }
-
-    private static long objectArrayOffset(long index) {
-        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + (index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
-    }
-
-    private Object uncheckedCachedEntryAt(long cpi) {
-        return UNSAFE.getReference(cachedEntries, objectArrayOffset(cpi));
-    }
-
-    public byte uncheckedTagValueAt(long cpi) {
-        return UNSAFE.getByte(tags, byteArrayOffset(cpi));
-    }
-
     /**
-     * Returns the backing cache array, not a copy. Runtime constant-pool resolution updates entries
-     * in this same array, so callers retaining it can read subsequently resolved entries.
+     * Returns the backing cache array, not a copy. Runtime resolution updates this same array.
+     * Numeric constants use {@link InterpreterConstantPoolPrimitiveEntry}; strings are stored directly.
      */
     public Object[] rawCachedEntries() {
         return cachedEntries;
     }
 
-    public int uncheckedIntAt(long cpi) {
-        Object entry = uncheckedCachedEntryAt(cpi);
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Int;
-            return primitiveConstant.asInt();
-        }
-        return UNSAFE.getInt(entries, intArrayOffset(cpi));
-    }
-
-    public float uncheckedFloatAt(long cpi) {
-        Object entry = uncheckedCachedEntryAt(cpi);
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Float;
-            return primitiveConstant.asFloat();
-        }
-        return Float.intBitsToFloat(UNSAFE.getInt(entries, intArrayOffset(cpi)));
-    }
-
-    public long uncheckedLongAt(long cpi) {
-        Object entry = uncheckedCachedEntryAt(cpi);
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Long;
-            return primitiveConstant.asLong();
-        }
-        long hiBytes = UNSAFE.getInt(entries, intArrayOffset(cpi));
-        long loBytes = UNSAFE.getInt(entries, intArrayOffset(cpi + 1));
-        return (hiBytes << 32) | (loBytes & 0xFFFFFFFFL);
-    }
-
-    public double uncheckedDoubleAt(long cpi) {
-        Object entry = uncheckedCachedEntryAt(cpi);
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Double;
-            return primitiveConstant.asDouble();
-        }
-        long hiBytes = UNSAFE.getInt(entries, intArrayOffset(cpi));
-        long loBytes = UNSAFE.getInt(entries, intArrayOffset(cpi + 1));
-        return Double.longBitsToDouble((hiBytes << 32) | (loBytes & 0xFFFFFFFFL));
+    /** Returns the backing raw constant-pool words for verified interpreter frame accesses. */
+    public int[] rawEntries() {
+        return entries;
     }
 
     Object objAt(int cpi) {
@@ -339,6 +274,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return result;
     }
 
+    /**
+     * Returns a cached entry without resolution.
+     */
     public Object peekCachedEntry(int cpi) {
         return cachedEntries[cpi];
     }
@@ -419,7 +357,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             if (!allowStickyFailure && resolved instanceof StickyConstantError) {
                 return resolved;
             }
-            Object witness = UNSAFE.compareAndExchangeReference(cachedEntries, objectArrayOffset(cpi), entry, resolved);
+            Object witness = UNSAFE.compareAndExchangeReference(cachedEntries, Unsafe.ARRAY_OBJECT_BASE_OFFSET + (long) cpi * Unsafe.ARRAY_OBJECT_INDEX_SCALE, entry, resolved);
             if (witness != entry) {
                 return witness;
             }
@@ -442,6 +380,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return null;
     }
 
+    /** Returns opcode-specific linkage from an entry already loaded by the interpreter frame. */
     public static LinkedInvoke peekLinkedInvoke(Object entry, int opcode) {
         assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
         if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, entry instanceof LinkedInvokeCacheEntry)) {
@@ -492,7 +431,8 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return linkedInvokeCacheEntry;
     }
 
-    private static boolean isUnresolved(Object entry) {
+    /** Tests whether a cached entry still requires constant-pool resolution. */
+    public static boolean isUnresolved(Object entry) {
         return entry == null || entry instanceof UnresolvedJavaType || entry instanceof UnresolvedJavaMethod || entry instanceof UnresolvedJavaField;
     }
 
@@ -746,9 +686,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public int intAt(int index) {
         checkTag(index, CONSTANT_Integer);
         Object entry = cachedEntries[index];
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Int;
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry instanceof InterpreterConstantPoolPrimitiveEntry primitiveConstant) {
+            assert primitiveConstant.tag() == CONSTANT_Integer;
             return primitiveConstant.asInt();
         }
         return super.intAt(index);
@@ -758,9 +698,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public float floatAt(int index) {
         checkTag(index, CONSTANT_Float);
         Object entry = cachedEntries[index];
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Float;
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry instanceof InterpreterConstantPoolPrimitiveEntry primitiveConstant) {
+            assert primitiveConstant.tag() == CONSTANT_Float;
             return primitiveConstant.asFloat();
         }
         return super.floatAt(index);
@@ -770,9 +710,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public double doubleAt(int index) {
         checkTag(index, CONSTANT_Double);
         Object entry = cachedEntries[index];
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Double;
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry instanceof InterpreterConstantPoolPrimitiveEntry primitiveConstant) {
+            assert primitiveConstant.tag() == CONSTANT_Double;
             return primitiveConstant.asDouble();
         }
         return super.doubleAt(index);
@@ -782,9 +722,9 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     public long longAt(int index) {
         checkTag(index, CONSTANT_Long);
         Object entry = cachedEntries[index];
-        assert entry == null || entry instanceof PrimitiveConstant;
-        if (entry instanceof PrimitiveConstant primitiveConstant) {
-            assert primitiveConstant.getJavaKind() == JavaKind.Long;
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry instanceof InterpreterConstantPoolPrimitiveEntry primitiveConstant) {
+            assert primitiveConstant.tag() == CONSTANT_Long;
             return primitiveConstant.asLong();
         }
         return super.longAt(index);

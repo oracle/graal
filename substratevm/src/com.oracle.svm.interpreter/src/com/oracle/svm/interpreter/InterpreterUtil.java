@@ -44,6 +44,13 @@ public class InterpreterUtil {
         assertionsEnabled = status;
     }
 
+    /** Alternative to {@link VMError#guarantee(boolean)} that keeps the failure path outlined. */
+    public static void guarantee(boolean condition) {
+        if (!condition) {
+            throw shouldNotReachHereAtRuntime();
+        }
+    }
+
     /**
      * Alternative to {@link VMError#guarantee(boolean, String, Object)} that avoids
      * {@link String#format(String, Object...)} .

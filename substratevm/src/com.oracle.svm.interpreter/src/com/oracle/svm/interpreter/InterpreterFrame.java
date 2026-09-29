@@ -24,19 +24,33 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.espresso.classfile.ConstantPool.CONSTANT_Double;
+import static com.oracle.svm.espresso.classfile.ConstantPool.CONSTANT_Float;
+import static com.oracle.svm.espresso.classfile.ConstantPool.CONSTANT_Integer;
+import static com.oracle.svm.espresso.classfile.ConstantPool.CONSTANT_Long;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static jdk.graal.compiler.api.directives.GraalDirectives.uncheckedCast;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.espresso.classfile.ConstantPool;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.SteppingControl;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPool.LinkedInvoke;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPoolPrimitiveEntry;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 import com.oracle.svm.shared.NeverInline;
@@ -126,10 +140,6 @@ public final class InterpreterFrame {
      */
     public static InterpreterFrame create(InterpreterResolvedJavaMethod method, Object... arguments) {
         return new InterpreterFrame(method, arguments);
-    }
-
-    Object uncheckedPeekCachedEntry(long cpi) {
-        return UNSAFE.getReference(cachedEntries, Unsafe.ARRAY_OBJECT_BASE_OFFSET + cpi * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
     }
 
     /**
@@ -368,7 +378,7 @@ public final class InterpreterFrame {
 
     @Fold
     static int intOffsetWithinLong() {
-        return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.BIG_ENDIAN ? Long.BYTES - Integer.BYTES : 0;
+        return isBigEndian() ? Long.BYTES - Integer.BYTES : 0;
     }
 
     /**
@@ -695,5 +705,157 @@ public final class InterpreterFrame {
     }
 
     // endregion Stack walking
+
+    // region Constant pool accessors
+
+    /**
+     * Reads a cached entry without resolution or bounds checks. Bytecode verification establishes
+     * valid constant-pool indices; if verification is disabled, the supplied bytecode is trusted.
+     */
+    Object uncheckedPeekCachedEntry(long cpi) {
+        return UNSAFE.getReference(cachedEntries, Unsafe.ARRAY_OBJECT_BASE_OFFSET + cpi * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+    }
+
+    /**
+     * Publishes a numeric entry in the constant-pool cache shared by frames for this method. The caller
+     * must establish that {@code cpi} is a valid numeric constant-pool index and that {@code constant}
+     * has the corresponding type and value; dynamic constants must not use this representation.
+     * Concurrent first loads may create equivalent entries, so only an empty slot is replaced.
+     */
+    void cachePrimitiveConstant(long cpi, InterpreterConstantPoolPrimitiveEntry constant) {
+        UNSAFE.compareAndSetReference(cachedEntries, Unsafe.ARRAY_OBJECT_BASE_OFFSET + cpi * Unsafe.ARRAY_OBJECT_INDEX_SCALE, null, constant);
+    }
+
+    ConstantPool.Tag constantPoolTagAt(long cpi) {
+        return method.getConstantPool().tagAt((int) cpi);
+    }
+
+    int constantPoolIntAt(long cpi) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry != null) {
+            InterpreterConstantPoolPrimitiveEntry primitiveConstant = uncheckedCast(entry, InterpreterConstantPoolPrimitiveEntry.class);
+            assert primitiveConstant.tag() == CONSTANT_Integer;
+            return primitiveConstant.asInt();
+        }
+        return UNSAFE.getInt(method.getConstantPool().rawEntries(), Unsafe.ARRAY_INT_BASE_OFFSET + cpi * Unsafe.ARRAY_INT_INDEX_SCALE);
+    }
+
+    float constantPoolFloatAt(long cpi) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry != null) {
+            InterpreterConstantPoolPrimitiveEntry primitiveConstant = uncheckedCast(entry, InterpreterConstantPoolPrimitiveEntry.class);
+            assert primitiveConstant.tag() == CONSTANT_Float;
+            return primitiveConstant.asFloat();
+        }
+        return Float.intBitsToFloat(UNSAFE.getInt(method.getConstantPool().rawEntries(), Unsafe.ARRAY_INT_BASE_OFFSET + cpi * Unsafe.ARRAY_INT_INDEX_SCALE));
+    }
+
+    long constantPoolLongAt(long cpi) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry != null) {
+            InterpreterConstantPoolPrimitiveEntry primitiveConstant = uncheckedCast(entry, InterpreterConstantPoolPrimitiveEntry.class);
+            assert primitiveConstant.tag() == CONSTANT_Long;
+            return primitiveConstant.asLong();
+        }
+        return constantPoolRawLongAt(cpi);
+    }
+
+    double constantPoolDoubleAt(long cpi) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        assert entry == null || entry instanceof InterpreterConstantPoolPrimitiveEntry;
+        if (entry != null) {
+            InterpreterConstantPoolPrimitiveEntry primitiveConstant = uncheckedCast(entry, InterpreterConstantPoolPrimitiveEntry.class);
+            assert primitiveConstant.tag() == CONSTANT_Double;
+            return primitiveConstant.asDouble();
+        }
+        return Double.longBitsToDouble(constantPoolRawLongAt(cpi));
+    }
+
+    /**
+     * Reads two verified constant-pool words with a single unaligned load. Each word is in native
+     * byte order, with the high word first, so little-endian targets need a word swap.
+     */
+    private long constantPoolRawLongAt(long cpi) {
+        long value = UNSAFE.getLongUnaligned(method.getConstantPool().rawEntries(), Unsafe.ARRAY_INT_BASE_OFFSET + cpi * Unsafe.ARRAY_INT_INDEX_SCALE);
+        return isBigEndian() ? value : Long.rotateLeft(value, Integer.SIZE);
+    }
+
+    @Fold
+    static boolean isBigEndian() {
+        return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.BIG_ENDIAN;
+    }
+
+    Object constantPoolResolvedAt(long cpi) {
+        return constantPoolResolvedAt(cpi, method.getDeclaringClass());
+    }
+
+    Object constantPoolResolvedAt(long cpi, InterpreterResolvedObjectType accessingClass) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        if (!InterpreterConstantPool.isUnresolved(entry)) {
+            return entry;
+        }
+        return method.getConstantPool().resolvedAt((int) cpi, accessingClass);
+    }
+
+    InterpreterResolvedObjectType constantPoolResolvedTypeAt(long cpi) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        if (entry instanceof InterpreterResolvedObjectType resolved) {
+            return resolved;
+        }
+        return method.getConstantPool().resolvedTypeAt(method.getDeclaringClass(), (int) cpi);
+    }
+
+    InterpreterResolvedJavaMethod constantPoolResolvedMethodAt(long cpi) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        if (entry instanceof InterpreterResolvedJavaMethod resolved) {
+            return resolved;
+        }
+        return method.getConstantPool().resolvedMethodAt(method.getDeclaringClass(), (int) cpi);
+    }
+
+    InterpreterResolvedJavaField constantPoolResolvedFieldAt(long cpi) {
+        Object entry = uncheckedPeekCachedEntry(cpi);
+        if (entry instanceof InterpreterResolvedJavaField resolved) {
+            return resolved;
+        }
+        return method.getConstantPool().resolvedFieldAt(method.getDeclaringClass(), (int) cpi);
+    }
+
+    String constantPoolStringAt(long cpi) {
+        return method.getConstantPool().resolveStringAt((int) cpi);
+    }
+
+    MethodType constantPoolMethodTypeAt(long cpi) {
+        return method.getConstantPool().resolvedMethodTypeAt((char) cpi, method.getDeclaringClass());
+    }
+
+    MethodHandle constantPoolMethodHandleAt(long cpi) {
+        return method.getConstantPool().resolvedMethodHandleAt((int) cpi, method.getDeclaringClass());
+    }
+
+    Object constantPoolDynamicConstantAt(long cpi) {
+        return method.getConstantPool().resolvedDynamicConstantAt((int) cpi, method.getDeclaringClass());
+    }
+
+    Symbol<Type> constantPoolDynamicType(long cpi) {
+        return method.getConstantPool().dynamicType((int) cpi);
+    }
+
+    long constantPoolMemberClassIndex(long cpi) {
+        return method.getConstantPool().memberClassIndex((int) cpi);
+    }
+
+    LinkedInvoke constantPoolPeekLinkedInvoke(long cpi, int opcode) {
+        return InterpreterConstantPool.peekLinkedInvoke(uncheckedPeekCachedEntry(cpi), opcode);
+    }
+
+    LinkedInvoke constantPoolCacheLinkedInvoke(long cpi, int opcode, LinkedInvoke linkedInvoke) {
+        return method.getConstantPool().cacheLinkedInvoke((int) cpi, opcode, linkedInvoke);
+    }
+
+    // endregion Constant pool accessors
 
 }
