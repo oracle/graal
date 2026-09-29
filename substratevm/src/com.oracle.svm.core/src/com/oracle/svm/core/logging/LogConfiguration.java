@@ -36,6 +36,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -104,6 +105,14 @@ public final class LogConfiguration {
 
     /// Records whether startup option parsing and logging initialization have completed.
     private static volatile boolean initializationComplete;
+
+    /// Prevents output teardown from racing synchronous writers that retained an old immutable
+    /// routing configuration.
+    private static final AtomicInteger ACTIVE_WRITES = new AtomicInteger();
+
+    /// Controls admission to synchronous and asynchronous message routing while outputs are being
+    /// disabled.
+    private static volatile boolean writesEnabled = true;
 
     /// Prevents the legacy GC option updates used for synchronization from reconfiguring logging.
     private static volatile boolean synchronizingLegacyGCOptions;
@@ -249,6 +258,7 @@ public final class LogConfiguration {
             if (legacyLevel != LogLevel.OFF) {
                 updateGCLoggingLocked(legacyLevel);
             }
+            writesEnabled = true;
         }
     }
 
@@ -362,6 +372,7 @@ public final class LogConfiguration {
         if (initializationComplete) {
             initializeAsyncWriter();
         }
+        writesEnabled = true;
     }
 
     /// Completes logging startup once. When `-Xlog` is supported, this starts requested
@@ -379,6 +390,16 @@ public final class LogConfiguration {
 
             initializeAsyncWriter();
             if (logging.isInfo()) {
+                String[] outputDescriptions = new String[2 + OUTPUTS.size()];
+                int descriptionIndex = 0;
+                outputDescriptions[descriptionIndex] = describeOutput(descriptionIndex, stdout);
+                descriptionIndex++;
+                outputDescriptions[descriptionIndex] = describeOutput(descriptionIndex, stderr);
+                descriptionIndex++;
+                for (LogFileOutput output : OUTPUTS) {
+                    outputDescriptions[descriptionIndex] = describeOutput(descriptionIndex, output);
+                    descriptionIndex++;
+                }
                 try (LogMessage message = logging.message()) {
                     message.info().string("Log configuration fully initialized.");
                     for (String desc : AVAILABLE_DESCRIPTIONS) {
@@ -390,11 +411,8 @@ public final class LogConfiguration {
                     }
 
                     message.info().string("Log output configuration:");
-                    int index = 0;
-                    message.info().string(describeOutput(index++, stdout));
-                    message.info().string(describeOutput(index++, stderr));
-                    for (LogFileOutput output : OUTPUTS) {
-                        message.info().string(describeOutput(index++, output));
+                    for (String description : outputDescriptions) {
+                        message.info().string(description);
                     }
                 }
             }
@@ -437,6 +455,7 @@ public final class LogConfiguration {
         if (initializationComplete) {
             initializeAsyncWriter();
         }
+        writesEnabled = true;
     }
 
     /// Applies a direct update of `PrintGC` or `VerboseGC` to the GC log configuration.
@@ -514,6 +533,8 @@ public final class LogConfiguration {
     private static void disableLoggingLocked(boolean resetAsyncRequest) {
         flushAsyncWriter();
         reportSynchronousEnqueuesFromVMOperations();
+        /* Stop new readers before retiring the immutable configurations already in use. */
+        writesEnabled = false;
         for (LogTagSet tagSet : LogTagSet.values()) {
             tagSet.outputList().clear();
         }
@@ -523,6 +544,9 @@ public final class LogConfiguration {
         updateJfrLogLevels();
         if (resetAsyncRequest) {
             asyncRequested = false;
+        }
+        while (ACTIVE_WRITES.get() != 0) {
+            Thread.onSpinWait();
         }
         for (LogOutput output : OUTPUTS) {
             output.close();
@@ -581,8 +605,13 @@ public final class LogConfiguration {
                 startWriter = true;
             }
             for (LogTagSet tagSet : LogTagSet.VALUES) {
-                for (LogOutputConfiguration output : tagSet.outputList().configuration().outputsFor(LogLevel.ERROR)) {
-                    asyncWriterInstance.registerOutput(output);
+                LogOutputList.Configuration configuration = tagSet.outputList().configuration();
+                for (LogOutputConfiguration output : configuration.outputsFor(LogLevel.ERROR)) {
+                    LogOutputConfiguration registeredOutput = asyncWriterInstance.registerOutput(output);
+                    if (registeredOutput != output) {
+                        /* Publish the identity that the queue uses for equivalent configurations. */
+                        tagSet.outputList().setOutputLevel(registeredOutput, configuration.levelFor(output.output()));
+                    }
                 }
             }
             if (startWriter) {
@@ -603,6 +632,24 @@ public final class LogConfiguration {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean isAsyncLoggingRequested() {
         return asyncRequested;
+    }
+
+    /// Acquires a lifetime lease for the outputs in a retained routing configuration.
+    static boolean beginWrite() {
+        if (!writesEnabled) {
+            return false;
+        }
+        ACTIVE_WRITES.incrementAndGet();
+        if (writesEnabled) {
+            return true;
+        }
+        ACTIVE_WRITES.decrementAndGet();
+        return false;
+    }
+
+    /// Releases the output lifetime lease acquired by [#beginWrite()].
+    static void endWrite() {
+        ACTIVE_WRITES.decrementAndGet();
     }
 
     /// Registers a destination before an active asynchronous route can publish its slot.

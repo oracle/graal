@@ -72,6 +72,14 @@ final class WindowsLoggingSupport extends LoggingSupport {
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isRegularFile(RawFileOperationSupport.RawFilePath path) {
+        int attributes = FileAPI.GetFileAttributesW((WCharPointer) path);
+        return attributes != FileAPI.INVALID_FILE_ATTRIBUTES() &&
+                        (attributes & (FileAPI.FILE_ATTRIBUTE_DIRECTORY() | FileAPI.FILE_ATTRIBUTE_REPARSE_POINT())) == 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int rename(RawFileOperationSupport.RawFilePath source, RawFileOperationSupport.RawFilePath target) {
         int result = WindowsFileNames.move((WCharPointer) source, (WCharPointer) target, WindowsFileNames.movefileReplaceExisting());
         return result != 0 ? 0 : WinBase.GetLastError();

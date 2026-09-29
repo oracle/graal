@@ -76,6 +76,10 @@ public abstract class LoggingSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public abstract boolean delete(RawFilePath path);
 
+    /// Returns whether `path` names an existing regular file without opening it.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public abstract boolean isRegularFile(RawFilePath path);
+
     /// Renames `source` to `target`.
     ///
     /// @param source the name of the file to be renamed

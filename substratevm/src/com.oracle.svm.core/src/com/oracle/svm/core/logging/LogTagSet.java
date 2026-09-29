@@ -237,21 +237,28 @@ public enum LogTagSet {
     /// Writes one complete native memory message to every output enabled for one of its lines.
     void write(LogMessage message) {
         guaranteeGCLoggingIsSafe();
-        LogOutputList.Configuration configuration = outputList.configuration();
-        LogOutputConfiguration[] outputs = configuration.outputsFor(message.getMostSevereLevel());
-        LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
-        LogDecorations decorations = LogDecorations.capture(configuration.decorators());
-        boolean recordedVMOperationFallback = false;
-        for (LogOutputConfiguration outputConfiguration : outputs) {
-            LogOutput output = outputConfiguration.output();
-            LogLevel outputLevel = configuration.levelFor(output);
-            if (asyncWriter == null || !asyncWriter.enqueue(outputConfiguration, decorations, message, outputLevel)) {
-                if (asyncWriter != null && com.oracle.svm.core.thread.VMOperationControl.mayExecuteVmOperations() && !recordedVMOperationFallback) {
-                    LogConfiguration.recordSynchronousEnqueueFromVMOperation();
-                    recordedVMOperationFallback = true;
+        if (!LogConfiguration.beginWrite()) {
+            return;
+        }
+        try {
+            LogOutputList.Configuration configuration = outputList.configuration();
+            LogOutputConfiguration[] outputs = configuration.outputsFor(message.getMostSevereLevel());
+            LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
+            LogDecorations decorations = LogDecorations.capture(configuration.decorators());
+            boolean recordedVMOperationFallback = false;
+            for (LogOutputConfiguration outputConfiguration : outputs) {
+                LogOutput output = outputConfiguration.output();
+                LogLevel outputLevel = configuration.levelFor(output);
+                if (asyncWriter == null || !asyncWriter.enqueue(outputConfiguration, decorations, message, outputLevel)) {
+                    if (asyncWriter != null && com.oracle.svm.core.thread.VMOperationControl.mayExecuteVmOperations() && !recordedVMOperationFallback) {
+                        LogConfiguration.recordSynchronousEnqueueFromVMOperation();
+                        recordedVMOperationFallback = true;
+                    }
+                    output.write(this, decorations, message, outputLevel, outputConfiguration.decorators());
                 }
-                output.write(this, decorations, message, outputLevel, outputConfiguration.decorators());
             }
+        } finally {
+            LogConfiguration.endWrite();
         }
     }
 
