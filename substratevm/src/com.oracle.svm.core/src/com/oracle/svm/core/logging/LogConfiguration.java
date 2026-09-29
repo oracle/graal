@@ -219,6 +219,21 @@ public final class LogConfiguration {
             return initializationComplete;
         }
 
+        /// Acquires an output lifetime lease for testing disable ordering.
+        public static boolean beginWrite() {
+            return LogConfiguration.beginWrite();
+        }
+
+        /// Releases an output lifetime lease acquired by [#beginWrite()].
+        public static void endWrite() {
+            LogConfiguration.endWrite();
+        }
+
+        /// Returns whether new log writes may acquire output lifetime leases.
+        public static boolean writesEnabled() {
+            return writesEnabled;
+        }
+
         public static void setInitializationComplete(boolean value) {
             initializationComplete = value;
         }
@@ -533,8 +548,11 @@ public final class LogConfiguration {
     private static void disableLoggingLocked(boolean resetAsyncRequest) {
         flushAsyncWriter();
         reportSynchronousEnqueuesFromVMOperations();
-        /* Stop new readers before retiring the immutable configurations already in use. */
+        /* Stop new writers and let admitted writers finish before retiring their routes. */
         writesEnabled = false;
+        while (ACTIVE_WRITES.get() != 0) {
+            Thread.onSpinWait();
+        }
         for (LogTagSet tagSet : LogTagSet.values()) {
             tagSet.outputList().clear();
         }
@@ -544,9 +562,6 @@ public final class LogConfiguration {
         updateJfrLogLevels();
         if (resetAsyncRequest) {
             asyncRequested = false;
-        }
-        while (ACTIVE_WRITES.get() != 0) {
-            Thread.onSpinWait();
         }
         for (LogOutput output : OUTPUTS) {
             output.close();
