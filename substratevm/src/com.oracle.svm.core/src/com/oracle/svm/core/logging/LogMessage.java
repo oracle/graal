@@ -164,7 +164,10 @@ public final class LogMessage implements AutoCloseable {
         int end = index + 1 < lineCount() ? lineStart(index + 1) : lineBuffer.getPosition();
         for (int position = start; position < end; position++) {
             char value = (char) lineBuffer.getBuffer().read(position);
-            if (foldMultilines && value == '\\') {
+            if (value == '\r' && position + 1 < end && lineBuffer.getBuffer().read(position + 1) == '\n') {
+                /* The following LF represents the complete platform-independent newline. */
+                continue;
+            } else if (foldMultilines && value == '\\') {
                 other.character('\\').character('\\');
             } else if (foldMultilines && value == '\n') {
                 other.character('\\').character('n');

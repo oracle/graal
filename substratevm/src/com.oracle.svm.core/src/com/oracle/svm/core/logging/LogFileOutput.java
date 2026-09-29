@@ -79,7 +79,8 @@ final class LogFileOutput extends LogOutput {
     /// Number of archived files retained, where zero disables rotation.
     private int fileCount = DEFAULT_FILE_COUNT;
 
-    /// Raw descriptor for the active file, recreated after rotation.
+    /// Raw descriptor for the active file, recreated after rotation. Zero remains the unavailable
+    /// sentinel until GR-79635 resolves handling of POSIX descriptors in the standard stream range.
     private long rawDescriptor;
 
     /// Number of bytes written to the current file.
@@ -214,27 +215,15 @@ final class LogFileOutput extends LogOutput {
     /// Shifts archived files and renames the active file to the first archive slot.
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private boolean archiveActiveFile() {
-        if (pathExists(archivePaths[fileCount - 1]) && !LoggingSupport.singleton().delete(archivePaths[fileCount - 1])) {
+        if (LoggingSupport.singleton().isRegularFile(archivePaths[fileCount - 1]) && !LoggingSupport.singleton().delete(archivePaths[fileCount - 1])) {
             return false;
         }
         for (int index = fileCount - 2; index >= 0; index--) {
-            if (pathExists(archivePaths[index]) && LoggingSupport.singleton().rename(archivePaths[index], archivePaths[index + 1]) != 0) {
+            if (LoggingSupport.singleton().isRegularFile(archivePaths[index]) && LoggingSupport.singleton().rename(archivePaths[index], archivePaths[index + 1]) != 0) {
                 return false;
             }
         }
         return LoggingSupport.singleton().rename(path, archivePaths[0]) == 0;
-    }
-
-    /// Tests whether an archive source exists before treating a failed rename as an error.
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean pathExists(RawFilePath candidate) {
-        RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
-        RawFileDescriptor descriptor = files.open(candidate, FileAccessMode.READ);
-        if (!files.isValid(descriptor)) {
-            return false;
-        }
-        files.close(descriptor);
-        return true;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

@@ -553,60 +553,65 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
-        boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
-        if (firstIsolate) { // let other isolates (if any) initialize now
-            int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
-            /* Do a volatile write to ensure that other threads see a consistent state. */
-            Unsafe.getUnsafe().putIntVolatile(null, initStateAddr, state);
-        }
-
-        if (!success) {
-            RuntimeOptionParser.abortLoggingInitialization();
-            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
-        }
-
-        /* Adjust stack overflow boundary of main thread. */
-        StackOverflowCheck.singleton().updateStackOverflowBoundary();
-
-        assert !isolateInitialized;
-        isolateInitialized = true;
-
-        /* Run isolate initialization hooks. */
+        boolean loggingInitializationComplete = false;
         try {
-            RuntimeSupport.executeInitializationHooks();
-        } catch (Throwable t) {
-            // Checkstyle: allow System.err (run time code expected to print to stderr)
-            System.err.println("Uncaught exception while running isolate initialization hooks:");
-            t.printStackTrace(System.err);
-            // Checkstyle: disallow System.err
-            RuntimeOptionParser.abortLoggingInitialization();
-            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
-        }
+            boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
+            if (firstIsolate) { // let other isolates (if any) initialize now
+                int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
+                /* Do a volatile write to ensure that other threads see a consistent state. */
+                Unsafe.getUnsafe().putIntVolatile(null, initStateAddr, state);
+            }
 
-        /* The isolate is now initialized, so we can finally finish initializing the main thread. */
-        try {
-            ThreadListenerSupport.get().beforeThreadRun();
-        } catch (Throwable t) {
-            // Checkstyle: allow System.err (run time code expected to print to stderr)
-            System.err.println("Uncaught exception in beforeThreadRun():");
-            t.printStackTrace(System.err);
-            // Checkstyle: disallow System.err
-            RuntimeOptionParser.abortLoggingInitialization();
-            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
-        }
+            if (!success) {
+                return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+            }
 
-        try {
-            RuntimeOptionParser.completeLoggingInitialization();
-        } catch (Throwable t) {
-            RuntimeOptionParser.abortLoggingInitialization();
-            // Checkstyle: allow System.err (run time code expected to print to stderr)
-            System.err.println("Uncaught exception while completing logging initialization:");
-            t.printStackTrace(System.err);
-            // Checkstyle: disallow System.err
-            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
-        }
+            /* Adjust stack overflow boundary of main thread. */
+            StackOverflowCheck.singleton().updateStackOverflowBoundary();
 
-        return CEntryPointErrors.NO_ERROR;
+            assert !isolateInitialized;
+            isolateInitialized = true;
+
+            /* Run isolate initialization hooks. */
+            try {
+                RuntimeSupport.executeInitializationHooks();
+            } catch (Throwable t) {
+                // Checkstyle: allow System.err (run time code expected to print to stderr)
+                System.err.println("Uncaught exception while running isolate initialization hooks:");
+                t.printStackTrace(System.err);
+                // Checkstyle: disallow System.err
+                return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+            }
+
+            /* The isolate is now initialized, so we can finally finish initializing the main thread. */
+            try {
+                ThreadListenerSupport.get().beforeThreadRun();
+            } catch (Throwable t) {
+                // Checkstyle: allow System.err (run time code expected to print to stderr)
+                System.err.println("Uncaught exception in beforeThreadRun():");
+                t.printStackTrace(System.err);
+                // Checkstyle: disallow System.err
+                return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+            }
+
+            try {
+                RuntimeOptionParser.completeLoggingInitialization();
+                loggingInitializationComplete = true;
+            } catch (Throwable t) {
+                // Checkstyle: allow System.err (run time code expected to print to stderr)
+                System.err.println("Uncaught exception while completing logging initialization:");
+                t.printStackTrace(System.err);
+                // Checkstyle: disallow System.err
+                return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+            }
+
+            return CEntryPointErrors.NO_ERROR;
+        } finally {
+            /* Parsed logging resources need explicit rollback until teardown is registered. */
+            if (!loggingInitializationComplete) {
+                RuntimeOptionParser.abortLoggingInitialization();
+            }
+        }
     }
 
     @Snippet(allowMissingProbabilities = true)
