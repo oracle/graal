@@ -61,6 +61,12 @@ public final class PosixStat {
     public static native int S_IFDIR();
 
     @CConstant
+    public static native int S_IFMT();
+
+    @CConstant
+    public static native int S_IFREG();
+
+    @CConstant
     public static native int S_IRUSR();
 
     @CConstant
@@ -130,6 +136,11 @@ public final class PosixStat {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean S_ISDIR(stat buf) {
         return st_mode(buf).and(S_IFDIR()).equal(S_IFDIR());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean S_ISREG(stat buf) {
+        return st_mode(buf).and(S_IFMT()).equal(S_IFREG());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

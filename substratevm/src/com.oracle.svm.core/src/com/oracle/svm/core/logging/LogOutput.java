@@ -77,6 +77,7 @@ public abstract class LogOutput {
     /// Tracks each output failure category that has already been reported.
     private final AtomicInteger reportedWriteErrors = new AtomicInteger();
 
+    @SuppressWarnings("this-escape")
     protected LogOutput(String name) {
         this.name = name;
         this.configuration = new LogOutputConfiguration(this, LogDecorators.DEFAULT);
@@ -384,7 +385,10 @@ public abstract class LogOutput {
     private void writeMessageBytes(CCharPointer message, int messageLength, int decoratorWidth) {
         for (int position = 0; position < messageLength; position++) {
             char value = (char) message.read(position);
-            if (foldMultilines && value == '\\') {
+            if (value == '\r' && position + 1 < messageLength && message.read(position + 1) == '\n') {
+                /* The following LF represents the complete platform-independent newline. */
+                continue;
+            } else if (foldMultilines && value == '\\') {
                 OUTPUT_BUFFER.character('\\').character('\\');
             } else if (foldMultilines && value == '\n') {
                 OUTPUT_BUFFER.character('\\').character('n');
