@@ -215,7 +215,7 @@ public final class BytecodeHandlerStubHelper {
      */
     private static MultiReturnNode createStubReturn(BytecodeHandlerConfig handlerConfig, GraphKit kit, ValueNode handlerResult, ValueNode tailCallTarget,
                     ValueNode[] currentStubArguments) {
-        MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(handlerResult, tailCallTarget, tailCallTarget != null));
+        MultiReturnNode multiReturnNode = kit.unique(new MultiReturnNode(handlerResult, tailCallTarget, tailCallTarget != null && handlerConfig.isTailDuplicationEnabled()));
         List<ValueNode> additionalReturnResults = multiReturnNode.getAdditionalReturnResults();
 
         for (ArgumentInfo argumentInfo : handlerConfig.getArgumentInfos()) {
@@ -283,7 +283,7 @@ public final class BytecodeHandlerStubHelper {
                         : handlerInvocation;
 
         kit.noExceptionPart();
-        if (!threading) {
+        if (!threading || !handlerConfig.isTailDuplicationEnabled()) {
             kit.append(new ControlFlowAnchorNode());
         }
 

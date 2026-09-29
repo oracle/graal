@@ -61,6 +61,11 @@ public class TailCallDuplicationOpportunityTest extends GraalCompilerTest {
         return value;
     }
 
+    @BytecodeInterpreterHandlerConfig(maximumOperationCode = 1, enableTailDuplication = true, arguments = {@Argument})
+    public static int splittingHandler(int value) {
+        return value;
+    }
+
     public static int fetchOpcode(int value) {
         return value & 1;
     }
@@ -153,17 +158,26 @@ public class TailCallDuplicationOpportunityTest extends GraalCompilerTest {
     @Test
     public void testStubConstruction() {
         BytecodeInterpreterAnnotations.registerCompilerDirectives(getMetaAccess());
-        ResolvedJavaMethod handler = getResolvedJavaMethod("handler");
+        checkStubConstruction("handler", false);
+        checkStubConstruction("splittingHandler", true);
+        BytecodeHandlerConfig defaultConfig = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("handler"), getResolvedJavaMethod("handler"));
+        BytecodeHandlerConfig splittingConfig = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("splittingHandler"), getResolvedJavaMethod("handler"));
+        Assert.assertNotEquals(defaultConfig, splittingConfig);
+    }
+
+    private void checkStubConstruction(String methodName, boolean enableTailDuplication) {
+        ResolvedJavaMethod handler = getResolvedJavaMethod(methodName);
         BytecodeHandlerConfig config = BytecodeHandlerConfig.getHandlerConfig(handler, handler);
+        Assert.assertEquals(enableTailDuplication, config.isTailDuplicationEnabled());
         for (boolean threading : new boolean[]{false, true}) {
             GraphKit kit = new GraphKit(getDebugContext(), handler, getProviders(), getDefaultGraphBuilderPlugins(), CompilationIdentifier.INVALID_COMPILATION_ID, "handler", false, false) {
             };
             StructuredGraph graph = BytecodeHandlerStubHelper.createStub(kit, handler, 0, threading, getResolvedJavaMethod("fetchOpcode"), () -> new long[2], config, handler, null);
             Assert.assertTrue(graph.verify(true));
-            Assert.assertEquals(threading ? 0 : 1, graph.getNodes().filter(ControlFlowAnchorNode.class).count());
+            Assert.assertEquals(threading && enableTailDuplication ? 0 : 1, graph.getNodes().filter(ControlFlowAnchorNode.class).count());
             Assert.assertEquals(1, graph.getNodes(ReturnNode.TYPE).count());
             MultiReturnNode result = (MultiReturnNode) graph.getNodes(ReturnNode.TYPE).first().result();
-            Assert.assertEquals(threading, result.shouldEncourageTailDuplication());
+            Assert.assertEquals(threading && enableTailDuplication, result.shouldEncourageTailDuplication());
             Assert.assertEquals(threading, result.getTailCallTarget() != null);
         }
     }
