@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,17 +67,21 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private final short loopTransitionIndex;
     private final short indexOfNodeId;
     private final byte indexOfIsFast;
-    private final Matchers matchers;
+    /**
+     * Non-negative values are absolute offsets into the executor's sequential matcher records.
+     * Negative values encode an index into the executor's tree matcher array as {@code ~index}.
+     */
+    private final int matcherRef;
     private final short anchoredFinalSuccessor;
 
-    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, short anchoredFinalSuccessor) {
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, int matcherRef, short anchoredFinalSuccessor) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
         this.loopTransitionIndex = loopTransitionIndex;
         this.indexOfNodeId = indexOfNodeId;
         this.indexOfIsFast = indexOfIsFast;
-        this.matchers = matchers;
+        this.matcherRef = matcherRef;
         this.anchoredFinalSuccessor = anchoredFinalSuccessor;
     }
 
@@ -105,12 +109,19 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return flags;
     }
 
-    public final Matchers getMatchers() {
-        return matchers;
+    public final int getSequentialMatchersRef() {
+        assert !treeTransitionMatching();
+        return matcherRef;
     }
 
-    public final SequentialMatchers getSequentialMatchers() {
-        return (SequentialMatchers) matchers;
+    public final int getTreeMatcherIndex() {
+        assert treeTransitionMatching();
+        return ~matcherRef;
+    }
+
+    public static int treeMatcherRef(int treeMatcherIndex) {
+        assert treeMatcherIndex >= 0;
+        return ~treeMatcherIndex;
     }
 
     public boolean isFinalState() {
@@ -151,11 +162,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     boolean treeTransitionMatching() {
-        return matchers instanceof AllTransitionsInOneTreeMatcher;
-    }
-
-    AllTransitionsInOneTreeMatcher getTreeMatcher() {
-        return (AllTransitionsInOneTreeMatcher) matchers;
+        return matcherRef < 0;
     }
 
     public boolean hasIndexOfNodeId() {
@@ -247,7 +254,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         StringBuilder sb = new StringBuilder();
         DebugUtil.appendNodeId(sb, getId()).append(": ");
         if (!treeTransitionMatching()) {
-            sb.append(getSequentialMatchers().size()).append(" successors");
+            sb.append(getNumberOfMatcherTransitions()).append(" successors");
         }
         if (isAnchoredFinalState()) {
             sb.append(", AFS");
@@ -257,10 +264,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
         sb.append(":\n");
         if (treeTransitionMatching()) {
-            sb.append("      ").append(getTreeMatcher()).append("\n      successors: ").append(Arrays.toString(successors)).append("\n");
+            sb.append("      treeMatcher@").append(getTreeMatcherIndex()).append("\n      successors: ").append(Arrays.toString(successors)).append("\n");
         } else {
-            for (int i = 0; i < getSequentialMatchers().size(); i++) {
-                sb.append("      ").append(i).append(": ").append(getSequentialMatchers().toString(i)).append(" -> ");
+            for (int i = 0; i < getNumberOfMatcherTransitions(); i++) {
+                sb.append("      transition ").append(i).append(" (matcherRecord@").append(getSequentialMatchersRef()).append(") -> ");
                 DebugUtil.appendNodeId(sb, getSuccessors()[i]).append("\n");
             }
         }
@@ -271,9 +278,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
     @Override
     public JsonValue toJson() {
         JsonArray transitions = Json.array();
-        if (matchers != null) {
-            for (int i = 0; i < getSequentialMatchers().size(); i++) {
-                transitions.append(Json.obj(Json.prop("matcher", getSequentialMatchers().toString(i)), Json.prop("target", successors[i])));
+        if (!treeTransitionMatching()) {
+            for (int i = 0; i < getNumberOfMatcherTransitions(); i++) {
+                transitions.append(Json.obj(Json.prop("matcher", "matcherRecord@" + getSequentialMatchersRef() + " transition " + i), Json.prop("target", successors[i])));
             }
         }
         return Json.obj(Json.prop("id", getId()),
@@ -281,5 +288,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
                         Json.prop("finalState", isFinalState() || isGuardedFinalState()),
                         Json.prop("loopToSelf", hasLoopToSelf()),
                         Json.prop("transitions", transitions));
+    }
+
+    private int getNumberOfMatcherTransitions() {
+        return successors.length - (hasBackwardPrefixState() ? 1 : 0);
     }
 }

@@ -250,16 +250,6 @@ public enum Encoding {
         }
     }
 
-    public SequentialMatchers toMatchers(Builder mb) {
-        return switch (this) {
-            case UTF_8 -> new SequentialMatchers.UTF8SequentialMatchers(mb.materialize(0), mb.materialize(1), mb.materialize(2), mb.materialize(3), mb.getNoMatchSuccessor());
-            case UTF_16, UTF_16BE, UTF_32, UTF_32BE ->
-                new SequentialMatchers.UTF16Or32SequentialMatchers(mb.materialize(0), mb.materialize(1), mb.materialize(2), mb.materialize(3), mb.getNoMatchSuccessor());
-            case UTF_16_RAW -> new SequentialMatchers.UTF16RawSequentialMatchers(mb.materialize(0), mb.materialize(1), mb.materialize(2), mb.getNoMatchSuccessor());
-            case LATIN_1, BYTES, ASCII -> new SequentialMatchers.SimpleSequentialMatchers(mb.materialize(0), mb.getNoMatchSuccessor());
-        };
-    }
-
     @Override
     public String toString() {
         return getName();
