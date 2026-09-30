@@ -30,7 +30,6 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -41,6 +40,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.Option;
@@ -105,7 +105,7 @@ public class WebImageTruffleFeature implements InternalFeature {
         // Exceptions from the default class initialization rules.
         // Similar to com.oracle.svm.hosted.jdk.JDKInitializationFeature
 
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
 
         rci.initializeAtBuildTime("com.oracle.truffle", "initialized by com.oracle.svm.truffle");
         rci.initializeAtBuildTime("org.graalvm.wasm", "initialized by com.oracle.svm.truffle");
