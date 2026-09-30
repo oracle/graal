@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,8 @@ import static com.oracle.truffle.api.object.ExtLocations.DOUBLE_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.INT_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.LONG_ARRAY_SLOT_SIZE;
 import static com.oracle.truffle.api.object.ExtLocations.OBJECT_SLOT_SIZE;
+
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.object.ExtLocations.ATypedObjectArrayLocation;
@@ -189,10 +191,12 @@ abstract class ExtAllocator extends BaseAllocator {
         return (value != NO_VALUE && oldLocation == null) || (oldLocation instanceof AbstractObjectLocation);
     }
 
+    // Suppress ECJ's dead code warning when LAZY_TYPE_ASSUMPTION is false.
+    @SuppressWarnings("unused")
     private static TypeAssumption getTypeAssumption(Location oldLocation, Object value) {
         if (ExtLayout.NewTypeSpeculation && allowTypeSpeculation(oldLocation, value)) {
             if (value != NO_VALUE && oldLocation == null) {
-                if (AbstractObjectLocation.LAZY_ASSUMPTION) {
+                if (!ImageInfo.inImageBuildtimeCode() && AbstractObjectLocation.LAZY_TYPE_ASSUMPTION) {
                     return null;
                 }
                 return AbstractObjectLocation.createTypeAssumptionFromValue(value);
@@ -217,7 +221,7 @@ abstract class ExtAllocator extends BaseAllocator {
     private static Assumption getFinalAssumption(Location oldLocation, boolean allowFinalSpeculation) {
         if (ExtLayout.NewFinalSpeculation && allowFinalSpeculation) {
             if (oldLocation == null) {
-                if (InstanceLocation.LAZY_FINAL_ASSUMPTION) {
+                if (!ImageInfo.inImageBuildtimeCode() && InstanceLocation.LAZY_FINAL_ASSUMPTION) {
                     return null;
                 }
                 return InstanceLocation.createFinalAssumption();
