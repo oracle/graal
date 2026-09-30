@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.guest.staging;
 
-import static com.oracle.svm.core.IsolateArgumentAccess.readCCharPointer;
-import static com.oracle.svm.core.IsolateArgumentAccess.writeBoolean;
-import static com.oracle.svm.core.IsolateArgumentAccess.writeCCharPointer;
-import static com.oracle.svm.core.IsolateArgumentAccess.writeLong;
+import static com.oracle.svm.guest.staging.IsolateArgumentAccess.readCCharPointer;
+import static com.oracle.svm.guest.staging.IsolateArgumentAccess.writeBoolean;
+import static com.oracle.svm.guest.staging.IsolateArgumentAccess.writeCCharPointer;
+import static com.oracle.svm.guest.staging.IsolateArgumentAccess.writeLong;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.ByteArrayOutputStream;
@@ -51,13 +51,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
-import com.oracle.svm.guest.staging.ArgsSupport;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointCreateIsolateParameters;
@@ -67,7 +60,8 @@ import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.imagelayer.LayeredGuestFoldResolver;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -83,7 +77,6 @@ import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.OptionKey;
 
 /**
@@ -98,7 +91,6 @@ import jdk.graal.compiler.options.OptionKey;
  * point directly into the static default string table. String default values are restricted to
  * ASCII to avoid issues ({@code argv} values use the runtime platform encoding).
  */
-@AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class IsolateArgumentParser {
     @SuppressWarnings("unchecked")//
@@ -133,17 +125,31 @@ public final class IsolateArgumentParser {
     public IsolateArgumentParser() {
     }
 
-    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
+    @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
     public static IsolateArgumentParser singleton() {
         return ImageSingletons.lookup(IsolateArgumentParser.class);
     }
 
-    @Fold
+    /**
+     * Installs the parser implementation and the layered option metadata in the current image
+     * singleton registry.
+     *
+     * @param parser the parser implementation to install
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void install(IsolateArgumentParser parser) {
+        if (!ImageSingletons.contains(IsolateArgumentParser.class)) {
+            ImageSingletons.add(IsolateArgumentParser.class, parser);
+        }
+        installLayeredOptionInfo();
+    }
+
+    @GuestFold
     static CGlobalData<CLongPointer> getDefaultValues() {
         return ImageSingletons.lookup(DefaultValuesProvider.class).getDefaultValues();
     }
 
-    @Fold
+    @GuestFold
     static CGlobalData<CCharPointer> getDefaultStrings() {
         return ImageSingletons.lookup(DefaultValuesProvider.class).getDefaultStrings();
     }
@@ -200,7 +206,7 @@ public final class IsolateArgumentParser {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static byte[] createDefaultValues() {
-        assert !ImageLayerBuildingSupport.buildingImageLayer();
+        assert !GuestImageLayerBuildingSupport.buildingImageLayer();
         return createDefaultValuesArray(getOptions());
     }
 
@@ -227,7 +233,7 @@ public final class IsolateArgumentParser {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static byte[] createDefaultStrings() {
-        assert !ImageLayerBuildingSupport.buildingImageLayer();
+        assert !GuestImageLayerBuildingSupport.buildingImageLayer();
         return createDefaultStringsArray(getOptions());
     }
 
@@ -270,14 +276,14 @@ public final class IsolateArgumentParser {
         result.write('\0');
     }
 
-    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
+    @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
     static List<RuntimeOptionKey<?>> getOptions() {
         return singleton().options;
     }
 
-    @Fold
+    @GuestFold
     static int getOptionCount() {
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
+        if (GuestImageLayerBuildingSupport.firstImageBuild()) {
             return getOptions().size();
         } else {
             return LayeredOptionInfo.singleton().getNumOptions();
@@ -288,7 +294,7 @@ public final class IsolateArgumentParser {
     public static void parse(CEntryPointCreateIsolateParameters parameters, IsolateArguments arguments) {
         initialize(arguments, parameters);
 
-        boolean parseArguments = LibC.isSupported() && shouldParseArguments(arguments);
+        boolean parseArguments = GuestStagingDependencyBridge.singleton().isLibCSupported() && shouldParseArguments(arguments);
         arguments.setOwnsStringArguments(parseArguments);
 
         if (parseArguments) {
@@ -319,7 +325,7 @@ public final class IsolateArgumentParser {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int isolateArgumentParseLimit(CEntryPointCreateIsolateParameters parameters, IsolateArguments arguments) {
-        if (!SubstrateOptions.StrictRuntimeJavaOptions.getValue() || parameters.isNull() || parameters.version() < 4 || !parameters.getForJavaMainCall()) {
+        if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() || parameters.isNull() || parameters.version() < 4 || !parameters.getForJavaMainCall()) {
             return arguments.getArgc();
         }
 
@@ -382,16 +388,16 @@ public final class IsolateArgumentParser {
             SubstrateGCOptions.ReservedAddressSpaceSize.update(addressSpaceSize);
         }
 
-        index = getOptionIndex(SubstrateOptions.AuxiliaryImagePathIsolateArgument);
+        index = getOptionIndex(SubstrateGuestOptions.AuxiliaryImagePathIsolateArgument);
         CCharPointer auxPath = getCCharPointerOptionValue(index);
         if (IsolateArgumentParser.getDefaultValues().get().read(index) != auxPath.rawValue()) {
-            SubstrateOptions.AuxiliaryImagePathIsolateArgument.update(CTypeConversion.toJavaString(auxPath));
+            SubstrateGuestOptions.AuxiliaryImagePathIsolateArgument.update(CTypeConversion.toJavaString(auxPath));
         }
 
-        index = getOptionIndex(SubstrateOptions.AuxiliaryImageBytesIsolateArgument);
+        index = getOptionIndex(SubstrateGuestOptions.AuxiliaryImageBytesIsolateArgument);
         long auxBytes = getLongOptionValue(index);
         if (IsolateArgumentParser.getDefaultValues().get().read(index) != auxBytes) {
-            SubstrateOptions.AuxiliaryImageBytesIsolateArgument.update(auxBytes);
+            SubstrateGuestOptions.AuxiliaryImageBytesIsolateArgument.update(auxBytes);
         }
     }
 
@@ -460,8 +466,7 @@ public final class IsolateArgumentParser {
     /// [RuntimeOptionParser#parseAndConsumeAllOptions].
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static boolean shouldParseArguments(IsolateArguments arguments) {
-        return SubstrateOptions.ParseRuntimeOptions.getValue() ||
-                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && arguments.getIsCompilationIsolate();
+        return GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions(arguments.getIsCompilationIsolate());
     }
 
     /**
@@ -576,8 +581,8 @@ public final class IsolateArgumentParser {
         UnmanagedMemoryUtil.copy((Pointer) getDefaultValues().get(), (Pointer) arguments.getParsedArgs(), Word.unsigned(getParsedArgsSize()));
 
         if (parameters.isNonNull() && parameters.version() >= 2) {
-            writeCCharPointer(arguments, getOptionIndex(SubstrateOptions.AuxiliaryImagePathIsolateArgument), parameters.auxiliaryImagePath());
-            writeLong(arguments, getOptionIndex(SubstrateOptions.AuxiliaryImageBytesIsolateArgument), parameters.auxiliaryImageReservedSpaceSize().rawValue(), false);
+            writeCCharPointer(arguments, getOptionIndex(SubstrateGuestOptions.AuxiliaryImagePathIsolateArgument), parameters.auxiliaryImagePath());
+            writeLong(arguments, getOptionIndex(SubstrateGuestOptions.AuxiliaryImageBytesIsolateArgument), parameters.auxiliaryImageReservedSpaceSize().rawValue(), false);
         }
 
         if (parameters.isNonNull() && parameters.version() >= 3) {
@@ -699,15 +704,15 @@ public final class IsolateArgumentParser {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean atojulong(CCharPointer s, CLongPointer result) {
         /* First char must be a digit. Don't allow negative numbers or leading spaces. */
-        if (LibC.isdigit(s.read()) == 0) {
+        if (GuestStagingDependencyBridge.singleton().libcIsDigit(s.read()) == 0) {
             return false;
         }
 
         CCharPointerPointer tailPtr = (CCharPointerPointer) StackValue.get(CCharPointer.class);
 
-        LibC.setErrno(0);
-        UnsignedWord n = LibC.strtoull(s, tailPtr, 10);
-        if (LibC.errno() != 0) {
+        GuestStagingDependencyBridge.singleton().libcSetErrno(0);
+        UnsignedWord n = GuestStagingDependencyBridge.singleton().libcStrtoull(s, tailPtr, 10);
+        if (GuestStagingDependencyBridge.singleton().libcErrno() != 0) {
             return false;
         }
 
@@ -716,7 +721,7 @@ public final class IsolateArgumentParser {
          * Fail if no number was read at all or if the tail contains more than a single non-digit
          * character.
          */
-        if (tail == s || LibC.strlen(tail).aboveThan(1)) {
+        if (tail == s || GuestStagingDependencyBridge.singleton().libcStrlen(tail).aboveThan(1)) {
             return false;
         }
 
@@ -764,9 +769,9 @@ public final class IsolateArgumentParser {
         return Word.nullPointer();
     }
 
-    @Fold
+    @GuestFold
     public static int getOptionIndex(RuntimeOptionKey<?> key) {
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
+        if (GuestImageLayerBuildingSupport.firstImageBuild()) {
             List<RuntimeOptionKey<?>> options = getOptions();
             for (int i = 0; i < options.size(); i++) {
                 if (options.get(i) == key) {
@@ -786,7 +791,7 @@ public final class IsolateArgumentParser {
         throw VMError.shouldNotReachHere("Could not find option " + key.getName() + " in the options array.");
     }
 
-    @Fold
+    @GuestFold
     public static int getParsedArgsSize() {
         int slotCount = 2;
         return Long.BYTES * slotCount * getOptionCount();
@@ -818,12 +823,19 @@ public final class IsolateArgumentParser {
         }
     }
 
+    /** Installs the layered option metadata singleton. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void installLayeredOptionInfo() {
+        if (GuestImageLayerBuildingSupport.buildingImageLayer() && !ImageSingletons.contains(LayeredOptionInfo.class)) {
+            ImageSingletons.add(LayeredOptionInfo.class, new LayeredOptionInfo());
+        }
+    }
+
     /**
-     * Within {@link IsolateArgumentParser} many methods need to be {@link Fold}ed. This class adds
+     * Within {@link IsolateArgumentParser} many methods need to be {@link GuestFold}ed. This class adds
      * support so that we can handle these method folds within the application layer.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    @AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LayeredOptionInfo.LayeredCallbacks.class)
     static class LayeredOptionInfo {
         private static final int UNSET = -1;
@@ -862,7 +874,7 @@ public final class IsolateArgumentParser {
                 return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<LayeredOptionInfo>() {
                     @Override
                     public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredOptionInfo singleton) {
-                        if (ImageLayerBuildingSupport.firstImageBuild()) {
+                        if (GuestImageLayerBuildingSupport.firstImageBuild()) {
                             writer.writeInt("numOptions", IsolateArgumentParser.getOptionCount());
                             writer.writeStringList("optionNames", IsolateArgumentParser.getOptions().stream().map(OptionKey::getName).toList());
                         } else {

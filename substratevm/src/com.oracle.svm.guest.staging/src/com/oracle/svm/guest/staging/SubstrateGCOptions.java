@@ -33,6 +33,7 @@ import static com.oracle.svm.shared.option.HostedOptionKey.HostedOptionKeyFlag.D
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -63,7 +64,8 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                GuestStagingDependencyBridge.singleton().minHeapSizeOptionValueChanged(newValue);
+                HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+                IsolateArgumentParser.singleton().setLongOptionValue(IsolateArgumentParser.getOptionIndex(MinHeapSize), newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -75,7 +77,8 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                GuestStagingDependencyBridge.singleton().maxHeapSizeOptionValueChanged(newValue);
+                HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+                IsolateArgumentParser.singleton().setLongOptionValue(IsolateArgumentParser.getOptionIndex(MaxHeapSize), newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
@@ -87,7 +90,8 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                GuestStagingDependencyBridge.singleton().maxNewSizeOptionValueChanged(newValue);
+                HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
+                IsolateArgumentParser.singleton().setLongOptionValue(IsolateArgumentParser.getOptionIndex(MaxNewSize), newValue);
             }
 
             super.onValueUpdate(values, oldValue, newValue);
