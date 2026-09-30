@@ -403,7 +403,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     @Override
     public void initializeAtBuildTime(ResolvedJavaType type, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        forceInitializeHosted(normalizeType(type), reason, false);
+        forceInitializeAtBuildTime(normalizeType(type), reason, false);
     }
 
     @Override
@@ -413,7 +413,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         ResolvedJavaType type = loader.guestTypes.findType(name).get();
         classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, type != null);
         if (type != null) {
-            forceInitializeHosted(type, reason, false);
+            forceInitializeAtBuildTime(type, reason, false);
         }
     }
 
@@ -476,12 +476,12 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
-    public void forceInitializeHosted(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
-        forceInitializeHosted0(normalizeType(type), reason, allowInitializationErrors);
+    public void forceInitializeAtBuildTime(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
+        forceInitializeAtBuildTime0(normalizeType(type), reason, allowInitializationErrors);
     }
 
     /** Recursively forces initialization of an already canonical guest type. */
-    private void forceInitializeHosted0(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
+    private void forceInitializeAtBuildTime0(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
         if (type == null) {
             return;
         }
@@ -503,7 +503,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         }
         classInitKinds.put(type, initKind);
 
-        forceInitializeHosted0(type.getSuperclass(), "super type of " + JVMCIReflectionUtil.getTypeName(type), allowInitializationErrors);
+        forceInitializeAtBuildTime0(type.getSuperclass(), "super type of " + JVMCIReflectionUtil.getTypeName(type), allowInitializationErrors);
         if (!type.isInterface()) {
             /*
              * Initialization of an interface does not trigger initialization of superinterfaces.
@@ -545,12 +545,12 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         }
 
         if (type.isPrimitive()) {
-            forceInitializeHosted0(type, "primitive types are initialized at build time", false);
+            forceInitializeAtBuildTime0(type, "primitive types are initialized at build time", false);
             return InitKind.BUILD_TIME;
         }
 
         if (type.isArray()) {
-            forceInitializeHosted0(type, "arrays are initialized at build time", false);
+            forceInitializeAtBuildTime0(type, "arrays are initialized at build time", false);
             return InitKind.BUILD_TIME;
         }
 
@@ -581,7 +581,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
                 }
             }
             if (allInterfacesSpecifiedAsBuildTime) {
-                forceInitializeHosted0(type, "proxy/lambda classes with all interfaces explicitly marked as --initialize-at-build-time are also initialized at build time", false);
+                forceInitializeAtBuildTime0(type, "proxy/lambda classes with all interfaces explicitly marked as --initialize-at-build-time are also initialized at build time", false);
                 return InitKind.BUILD_TIME;
             }
         }

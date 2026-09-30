@@ -2115,7 +2115,7 @@ public class NativeImageGenerator {
     protected static void initializeAtBuildTime(ResolvedJavaType type, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
         String message = "classes annotated with " + ClassUtil.getUnqualifiedName(annotationForMessage) + " are always initialized at image build time";
         classInitializationSupport.initializeAtBuildTime(type, message);
-        classInitializationSupport.forceInitializeHosted(type, message, false);
+        classInitializationSupport.forceInitializeAtBuildTime(type, message, false);
     }
 
     public AbstractImage getBuiltImage() {
