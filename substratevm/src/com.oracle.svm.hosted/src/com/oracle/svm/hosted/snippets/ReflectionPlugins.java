@@ -279,7 +279,7 @@ public final class ReflectionPlugins {
                 /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
                 Object classArg = args[0];
                 if (classArg instanceof Class<?>) {
-                    if (!classInitializationSupport.maybeInitializeAtBuildTime((Class<?>) classArg)) {
+                    if (!classInitializationSupport.maybeInitializeAtBuildTime(GuestAccess.get().lookupType((Class<?>) classArg))) {
                         /* Skip the folding and register the field for run time reflection. */
                         if (reason.duringAnalysis()) {
                             Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
@@ -303,7 +303,7 @@ public final class ReflectionPlugins {
             Object fieldArg = args[0];
             if (fieldArg instanceof Field) {
                 Field field = (Field) fieldArg;
-                if (isStatic(field) && !classInitializationSupport.maybeInitializeAtBuildTime(field.getDeclaringClass())) {
+                if (isStatic(field) && !classInitializationSupport.maybeInitializeAtBuildTime(GuestAccess.get().lookupType(field.getDeclaringClass()))) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         RuntimeReflection.register(field);

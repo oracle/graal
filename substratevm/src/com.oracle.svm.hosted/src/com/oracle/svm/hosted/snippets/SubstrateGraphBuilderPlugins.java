@@ -1266,7 +1266,8 @@ public class SubstrateGraphBuilderPlugins {
         if (clazz == null) {
             return null;
         }
-        return ClassInitializationSupport.singleton().shouldFoldAssertionStatus(clazz) ? AssertionsSupport.singleton().desiredAssertionStatus(clazz) : null;
+        ResolvedJavaType type = GuestAccess.get().lookupType(clazz);
+        return ClassInitializationSupport.singleton().shouldFoldAssertionStatus(type) ? AssertionsSupport.singleton().desiredAssertionStatus(type) : null;
     }
 
     protected static long longValue(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode node, String name) {

@@ -307,7 +307,7 @@ public class UniverseBuilder {
          * time by their subtypes.
          */
         if (hType.wrapped.isReachable() &&
-                        ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(hostedJavaClass) &&
+                        ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(aType) &&
                         hub.getClassInitializationInfo().getTypeReached() == ClassInitializationInfo.TypeReached.NOT_REACHED) {
             hType.wrapped.forAllSuperTypes(t -> {
                 var superHub = hUniverse.hostVM().dynamicHub(t);
