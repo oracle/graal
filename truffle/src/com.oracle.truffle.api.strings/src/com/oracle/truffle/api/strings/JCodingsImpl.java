@@ -41,10 +41,7 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.AbstractTruffleString.checkArrayRange;
-import static com.oracle.truffle.api.strings.TStringGuards.isBroken;
 import static com.oracle.truffle.api.strings.TStringGuards.isReturnNegative;
-import static com.oracle.truffle.api.strings.TStringGuards.isStride0;
-import static com.oracle.truffle.api.strings.TStringGuards.isStride1;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
@@ -55,6 +52,7 @@ import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider.Encoding;
@@ -190,7 +188,7 @@ final class JCodingsImpl implements JCodings {
             cpi++;
             TStringConstants.truffleSafePointPoll(location, cpi);
         }
-        return TStringInternalNodes.CodePointIndexToRawNode.atEnd(a, extraOffsetRaw, index, isLength, cpi);
+        return TStringInternalNodes.CodePointIndexToRaw.atEnd(a.length(), extraOffsetRaw, index, isLength, cpi);
     }
 
     @Override
@@ -270,13 +268,15 @@ final class JCodingsImpl implements JCodings {
     }
 
     private static Encoding getBytesEncoding(AbstractTruffleString a) {
+        final int strideA = a.stride();
+        final int encodingA = a.encoding();
         JCodingsImpl impl = (JCodingsImpl) JCodings.getInstance();
-        if (isUTF16Or32(a.encoding()) && isStride0(a)) {
+        if (isUTF16Or32(encodingA) && strideA == 0) {
             return impl.get(TruffleString.Encoding.ISO_8859_1);
-        } else if (isUTF32(a.encoding()) && isStride1(a)) {
+        } else if (isUTF32(encodingA) && strideA == 1) {
             return impl.get(TruffleString.Encoding.UTF_16);
         } else {
-            return impl.get(TruffleString.Encoding.get(a.encoding()));
+            return impl.get(TruffleString.Encoding.get(encodingA));
         }
     }
 
@@ -294,16 +294,23 @@ final class JCodingsImpl implements JCodings {
                         JCodingsImpl::asBytesMaterializeNative,
                         JCodingsImpl::getBytesEncoding);
         checkArrayRange(result.buffer(), 0, result.length());
-        return TStringInternalNodesFactory.FromBufferWithStringCompactionNodeGen.getUncached().execute(location,
+        return TStringInternalNodes.FromBufferWithStringCompaction.fromBufferWithStringCompaction(location,
                         result.buffer(), 0, result.length(), targetEncoding, result.length() != result.buffer().length || targetEncoding.isSupported(),
-                        isBroken(a.codeRange()) || result.undefinedConversion() || a.isMutable());
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached());
     }
 
     private static byte[] asBytesMaterializeNative(AbstractTruffleString replacementString) {
-        Object dataA = TStringInternalNodes.ToIndexableNode.getUncached().execute(null, replacementString, replacementString.data());
-        if (dataA instanceof AbstractTruffleString.NativePointer nativePointer) {
+        Object dataA = replacementString.data();
+        if (dataA instanceof byte[] bytes) {
+            return bytes;
+        } else if (dataA instanceof AbstractTruffleString.NativePointer nativePointer) {
             return nativePointer.materializeByteArray(replacementString);
+        } else {
+            return replacementString.materializeLazy(null, dataA);
         }
-        return (byte[]) dataA;
     }
 }

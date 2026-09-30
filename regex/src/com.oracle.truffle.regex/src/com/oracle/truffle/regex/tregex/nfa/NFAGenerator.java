@@ -52,6 +52,7 @@ import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -169,6 +170,7 @@ public final class NFAGenerator {
         }
 
         while (!expansionQueue.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             expandNFAState(expansionQueue.pop());
         }
 
@@ -202,6 +204,7 @@ public final class NFAGenerator {
         ArrayList<NFAState> deadStates = new ArrayList<>();
         findDeadStates(deadStates);
         while (!deadStates.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             for (NFAState state : deadStates) {
                 for (NFAStateTransition pre : state.getPredecessors()) {
                     pre.getSource().removeSuccessor(state);
@@ -263,6 +266,7 @@ public final class NFAGenerator {
         StateSet<RegexAST, LookBehindAssertion> finishedLookBehinds;
         for (ASTSuccessor successor : nextStep.getSuccessors()) {
             for (TransitionBuilder<RegexAST, Term, ASTTransition> mergeBuilder : successor.getMergedStates(astTransitionCanonicalizer, compilationBuffer)) {
+                RegexRootNode.checkThreadInterrupted();
                 stateSetCC = null;
                 finishedLookBehinds = null;
                 boolean containsPositionAssertion = false;

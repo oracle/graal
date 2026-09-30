@@ -114,10 +114,19 @@ public class TStringOpsIndexOfAnyRangeTest extends TStringOpsTest<ArrayIndexOfNo
 
     @Test
     public void testIndexOfAnyRange() {
+        test(getIndexOfAnyIntRangeIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, clampedValues());
+    }
+
+    @Test
+    public void testIndexOfAnyRangeForeignEndian() {
+        test(getIndexOfAnyIntRangeForeignEndianIntl(), null, DUMMY_LOCATION, byteSwapArray(arrayA, strideA), offsetA, lengthA, strideA, fromIndexA, clampedValues());
+    }
+
+    private int[] clampedValues() {
         int[] valuesI = new int[values.length];
         for (int i = 0; i < values.length; i++) {
             valuesI[i] = strideA == 0 ? values[i] & 0xff : strideA == 1 ? values[i] & 0xffff : values[i];
         }
-        test(getIndexOfAnyIntRangeIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
+        return valuesI;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,20 +42,19 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 
 /**
- * Container for character matchers of DFA transitions, potentially specialized for a given string
- * encoding.
+ * Container for encoded character matchers of DFA transitions, potentially specialized for a given
+ * string encoding.
  */
 public abstract class SequentialMatchers extends Matchers {
+
+    public static final int NO_MATCHER = -1;
 
     private final short noMatchSuccessor;
 
@@ -72,10 +71,10 @@ public abstract class SequentialMatchers extends Matchers {
      */
     public abstract int size();
 
-    static int size(CharMatcher[]... matchersArr) {
-        for (CharMatcher[] matchers : matchersArr) {
-            if (matchers != null) {
-                return matchers.length;
+    static int size(int[]... matcherRefsArr) {
+        for (int[] matcherRefs : matcherRefsArr) {
+            if (matcherRefs != null) {
+                return matcherRefs.length;
             }
         }
         return 0;
@@ -84,15 +83,15 @@ public abstract class SequentialMatchers extends Matchers {
     /**
      * Returns {@code true} iff transition {@code i} matches {@code c}.
      */
-    public abstract boolean match(int i, int c);
+    public abstract boolean match(int[] matchers, int i, int c);
 
     /**
      * Returns the index of the transition that matches the given character {@code c}, or
      * {@code noMatchSuccessor}. For debugging purposes.
      */
-    public int match(int c) {
+    public int match(int[] matchers, int c) {
         for (int i = 0; i < size(); i++) {
-            if (match(i, c)) {
+            if (match(matchers, i, c)) {
                 return i;
             }
         }
@@ -102,168 +101,197 @@ public abstract class SequentialMatchers extends Matchers {
     /**
      * Returns a String representation of transition {@code i}.
      */
+    public abstract String toString(int[] matchers, int i);
+
+    /**
+     * Returns a compact String representation of transition {@code i} without access to the shared
+     * encoded matcher table.
+     */
     public abstract String toString(int i);
 
-    static boolean match(CharMatcher[] matchers, int i, int c) {
-        return matchers != null && matchers[i] != null && matchers[i].match(c);
+    static boolean match(int[] matchers, int[] matcherRefs, int i, int c) {
+        return matcherRefs != null && matcherRefs[i] != NO_MATCHER && CharMatchers.match(matchers, matcherRefs[i], c);
     }
 
     @TruffleBoundary
-    static String toString(CharMatcher[] matchers, int i) {
-        return matchers == null || matchers[i] == null ? "" : Objects.toString(matchers[i]);
+    static String toString(int[] matchers, int[] matcherRefs, int i) {
+        return matcherRefs == null || matcherRefs[i] == NO_MATCHER ? "" : CharMatchers.toString(matchers, matcherRefs[i]);
+    }
+
+    @TruffleBoundary
+    static String refsToString(int[] matcherRefs, int i) {
+        return matcherRefs == null || matcherRefs[i] == NO_MATCHER ? "" : "matcher@" + matcherRefs[i];
     }
 
     public static final class SimpleSequentialMatchers extends SequentialMatchers {
 
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] matchers;
+        @CompilationFinal(dimensions = 1) private final int[] matcherRefs;
 
-        public SimpleSequentialMatchers(CharMatcher[] matchers, short noMatchSuccessor) {
+        public SimpleSequentialMatchers(int[] matcherRefs, short noMatchSuccessor) {
             super(noMatchSuccessor);
-            this.matchers = matchers;
+            this.matcherRefs = matcherRefs;
         }
 
-        public CharMatcher[] getMatchers() {
-            return matchers;
+        public int[] getMatcherRefs() {
+            return matcherRefs;
         }
 
         @Override
         public int size() {
-            return matchers.length;
+            return matcherRefs == null ? 0 : matcherRefs.length;
         }
 
         @Override
-        public boolean match(int i, int c) {
-            return match(matchers, i, c);
+        public boolean match(int[] matchers, int i, int c) {
+            return match(matchers, matcherRefs, i, c);
+        }
+
+        @TruffleBoundary
+        @Override
+        public String toString(int[] matchers, int i) {
+            return toString(matchers, matcherRefs, i);
         }
 
         @TruffleBoundary
         @Override
         public String toString(int i) {
-            return matchers[i].toString();
+            return refsToString(matcherRefs, i);
         }
     }
 
     public static final class UTF16RawSequentialMatchers extends SequentialMatchers {
 
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] ascii;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] latin1;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] bmp;
+        @CompilationFinal(dimensions = 1) private final int[] asciiRefs;
+        @CompilationFinal(dimensions = 1) private final int[] latin1Refs;
+        @CompilationFinal(dimensions = 1) private final int[] bmpRefs;
 
-        public UTF16RawSequentialMatchers(CharMatcher[] ascii, CharMatcher[] latin1, CharMatcher[] bmp, short noMatchSuccessor) {
+        public UTF16RawSequentialMatchers(int[] asciiRefs, int[] latin1Refs, int[] bmpRefs, short noMatchSuccessor) {
             super(noMatchSuccessor);
-            this.ascii = ascii;
-            this.latin1 = latin1;
-            this.bmp = bmp;
+            this.asciiRefs = asciiRefs;
+            this.latin1Refs = latin1Refs;
+            this.bmpRefs = bmpRefs;
         }
 
-        public CharMatcher[] getAscii() {
-            return ascii;
+        public int[] getAsciiRefs() {
+            return asciiRefs;
         }
 
-        public CharMatcher[] getLatin1() {
-            return latin1;
+        public int[] getLatin1Refs() {
+            return latin1Refs;
         }
 
-        public CharMatcher[] getBmp() {
-            return bmp;
+        public int[] getBmpRefs() {
+            return bmpRefs;
         }
 
         @Override
         public int size() {
-            return size(latin1, bmp);
+            return size(latin1Refs, bmpRefs);
         }
 
         @Override
-        public boolean match(int i, int c) {
-            return match(latin1, i, c) || match(bmp, i, c);
+        public boolean match(int[] matchers, int i, int c) {
+            return match(matchers, latin1Refs, i, c) || match(matchers, bmpRefs, i, c);
+        }
+
+        @TruffleBoundary
+        @Override
+        public String toString(int[] matchers, int i) {
+            return toString(matchers, latin1Refs, i) + toString(matchers, bmpRefs, i);
         }
 
         @TruffleBoundary
         @Override
         public String toString(int i) {
-            return toString(latin1, i) + toString(bmp, i);
+            return refsToString(latin1Refs, i) + refsToString(bmpRefs, i);
         }
     }
 
     public static final class UTF16Or32SequentialMatchers extends SequentialMatchers {
 
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] ascii;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] latin1;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] bmp;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] astral;
+        @CompilationFinal(dimensions = 1) private final int[] asciiRefs;
+        @CompilationFinal(dimensions = 1) private final int[] latin1Refs;
+        @CompilationFinal(dimensions = 1) private final int[] bmpRefs;
+        @CompilationFinal(dimensions = 1) private final int[] astralRefs;
 
-        public UTF16Or32SequentialMatchers(CharMatcher[] ascii, CharMatcher[] latin1, CharMatcher[] bmp, CharMatcher[] astral, short noMatchSuccessor) {
+        public UTF16Or32SequentialMatchers(int[] asciiRefs, int[] latin1Refs, int[] bmpRefs, int[] astralRefs, short noMatchSuccessor) {
             super(noMatchSuccessor);
-            this.ascii = ascii;
-            this.latin1 = latin1;
-            this.bmp = bmp;
-            this.astral = astral;
+            this.asciiRefs = asciiRefs;
+            this.latin1Refs = latin1Refs;
+            this.bmpRefs = bmpRefs;
+            this.astralRefs = astralRefs;
         }
 
-        public CharMatcher[] getAscii() {
-            return ascii;
+        public int[] getAsciiRefs() {
+            return asciiRefs;
         }
 
-        public CharMatcher[] getLatin1() {
-            return latin1;
+        public int[] getLatin1Refs() {
+            return latin1Refs;
         }
 
-        public CharMatcher[] getBmp() {
-            return bmp;
+        public int[] getBmpRefs() {
+            return bmpRefs;
         }
 
-        public CharMatcher[] getAstral() {
-            return astral;
+        public int[] getAstralRefs() {
+            return astralRefs;
         }
 
         @Override
         public int size() {
-            return size(latin1, bmp, astral);
+            return size(latin1Refs, bmpRefs, astralRefs);
         }
 
         @Override
-        public boolean match(int i, int c) {
-            return match(latin1, i, c) || match(bmp, i, c) || match(astral, i, c);
+        public boolean match(int[] matchers, int i, int c) {
+            return match(matchers, latin1Refs, i, c) || match(matchers, bmpRefs, i, c) || match(matchers, astralRefs, i, c);
+        }
+
+        @TruffleBoundary
+        @Override
+        public String toString(int[] matchers, int i) {
+            return toString(matchers, latin1Refs, i) + toString(matchers, bmpRefs, i) + toString(matchers, astralRefs, i);
         }
 
         @TruffleBoundary
         @Override
         public String toString(int i) {
-            return toString(latin1, i) + toString(bmp, i) + toString(astral, i);
+            return refsToString(latin1Refs, i) + refsToString(bmpRefs, i) + refsToString(astralRefs, i);
         }
     }
 
     public static final class UTF8SequentialMatchers extends SequentialMatchers {
 
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] ascii;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] enc2;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] enc3;
-        @CompilationFinal(dimensions = 1) private final CharMatcher[] enc4;
+        @CompilationFinal(dimensions = 1) private final int[] asciiRefs;
+        @CompilationFinal(dimensions = 1) private final int[] enc2Refs;
+        @CompilationFinal(dimensions = 1) private final int[] enc3Refs;
+        @CompilationFinal(dimensions = 1) private final int[] enc4Refs;
         private final int maxBytes;
 
-        public UTF8SequentialMatchers(CharMatcher[] ascii, CharMatcher[] enc2, CharMatcher[] enc3, CharMatcher[] enc4, short noMatchSuccessor) {
+        public UTF8SequentialMatchers(int[] asciiRefs, int[] enc2Refs, int[] enc3Refs, int[] enc4Refs, short noMatchSuccessor) {
             super(noMatchSuccessor);
-            this.ascii = ascii;
-            this.enc2 = enc2;
-            this.enc3 = enc3;
-            this.enc4 = enc4;
-            this.maxBytes = enc4 != null ? 4 : enc3 != null ? 3 : enc2 != null ? 2 : 1;
+            this.asciiRefs = asciiRefs;
+            this.enc2Refs = enc2Refs;
+            this.enc3Refs = enc3Refs;
+            this.enc4Refs = enc4Refs;
+            this.maxBytes = enc4Refs != null ? 4 : enc3Refs != null ? 3 : enc2Refs != null ? 2 : 1;
         }
 
-        public CharMatcher[] getAscii() {
-            return ascii;
+        public int[] getAsciiRefs() {
+            return asciiRefs;
         }
 
-        public CharMatcher[] getEnc2() {
-            return enc2;
+        public int[] getEnc2Refs() {
+            return enc2Refs;
         }
 
-        public CharMatcher[] getEnc3() {
-            return enc3;
+        public int[] getEnc3Refs() {
+            return enc3Refs;
         }
 
-        public CharMatcher[] getEnc4() {
-            return enc4;
+        public int[] getEnc4Refs() {
+            return enc4Refs;
         }
 
         public int getMaxBytes() {
@@ -272,47 +300,61 @@ public abstract class SequentialMatchers extends Matchers {
 
         @Override
         public int size() {
-            return size(ascii, enc2, enc3, enc4);
+            return size(asciiRefs, enc2Refs, enc3Refs, enc4Refs);
         }
 
         @Override
-        public boolean match(int i, int c) {
-            return match(ascii, i, c) || match(enc2, i, c) || match(enc3, i, c) || match(enc4, i, c);
+        public boolean match(int[] matchers, int i, int c) {
+            return match(matchers, asciiRefs, i, c) || match(matchers, enc2Refs, i, c) || match(matchers, enc3Refs, i, c) || match(matchers, enc4Refs, i, c);
+        }
+
+        @TruffleBoundary
+        @Override
+        public String toString(int[] matchers, int i) {
+            return toString(matchers, asciiRefs, i) + toString(matchers, enc2Refs, i) + toString(matchers, enc3Refs, i) + toString(matchers, enc4Refs, i);
         }
 
         @TruffleBoundary
         @Override
         public String toString(int i) {
-            return toString(ascii, i) + toString(enc2, i) + toString(enc3, i) + toString(enc4, i);
+            return refsToString(asciiRefs, i) + refsToString(enc2Refs, i) + refsToString(enc3Refs, i) + refsToString(enc4Refs, i);
         }
     }
 
     public static final class Builder {
 
-        private final ObjectArrayBuffer<CharMatcher>[] buffers;
+        private final IntArrayBuffer[] buffers;
+        private final CharMatchers.Builder matcherBuilder = new CharMatchers.Builder();
         private short noMatchSuccessor = -1;
 
-        @SuppressWarnings("unchecked")
         public Builder(int nBuffers) {
-            buffers = new ObjectArrayBuffer[nBuffers];
+            buffers = new IntArrayBuffer[nBuffers];
             for (int i = 0; i < buffers.length; i++) {
-                buffers[i] = new ObjectArrayBuffer<>();
+                buffers[i] = new IntArrayBuffer();
             }
         }
 
         public void reset(int nTransitions) {
-            for (ObjectArrayBuffer<CharMatcher> buf : buffers) {
-                buf.asFixedSizeArray(nTransitions);
+            for (IntArrayBuffer buf : buffers) {
+                buf.asFixedSizeArray(nTransitions, NO_MATCHER);
             }
             noMatchSuccessor = -1;
         }
 
-        public ObjectArrayBuffer<CharMatcher> getBuffer(int i) {
+        public IntArrayBuffer getBuffer(int i) {
             return buffers[i];
         }
 
         public short getNoMatchSuccessor() {
             return noMatchSuccessor;
+        }
+
+        public CharMatchers.Builder getMatcherBuilder() {
+            return matcherBuilder;
+        }
+
+        public int[] finish() {
+            return matcherBuilder.toArray();
         }
 
         public void setNoMatchSuccessor(short noMatchSuccessor) {
@@ -321,9 +363,9 @@ public abstract class SequentialMatchers extends Matchers {
 
         public int estimatedCost(int i) {
             int ret = 0;
-            for (ObjectArrayBuffer<CharMatcher> buf : buffers) {
-                if (buf != null && buf.get(i) != null) {
-                    ret = Math.max(ret, buf.get(i).estimatedCost());
+            for (IntArrayBuffer buf : buffers) {
+                if (buf != null && buf.get(i) != NO_MATCHER) {
+                    ret = Math.max(ret, matcherBuilder.estimatedCost(buf.get(i)));
                 }
             }
             return ret;
@@ -334,20 +376,20 @@ public abstract class SequentialMatchers extends Matchers {
                 CodePointSet intersection = splitRanges[j].createIntersection(cps, compilationBuffer);
                 assert i < buffers[j].length();
                 if (intersection.matchesSomething()) {
-                    buffers[j].set(i, CharMatchers.createMatcher(intersection, compilationBuffer));
+                    buffers[j].set(i, matcherBuilder.getOrCreateMatcher(intersection, compilationBuffer));
                 } else {
-                    buffers[j].set(i, null);
+                    buffers[j].set(i, NO_MATCHER);
                 }
             }
         }
 
-        public CharMatcher[] materialize(int buf) {
-            return isEmpty(buffers[buf]) ? null : buffers[buf].toArray(new CharMatcher[buffers[buf].length()]);
+        public int[] materialize(int buf) {
+            return isEmpty(buffers[buf]) ? null : buffers[buf].toArray();
         }
 
-        private static boolean isEmpty(ObjectArrayBuffer<CharMatcher> buf) {
-            for (CharMatcher m : buf) {
-                if (m != null) {
+        private static boolean isEmpty(IntArrayBuffer buf) {
+            for (int i : buf) {
+                if (i != NO_MATCHER) {
                     return false;
                 }
             }

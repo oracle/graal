@@ -34,7 +34,10 @@ public final class CalcStringAttributesForeignCalls {
     private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF8_UNKNOWN = foreignCallDescriptor("calcStringAttributesUTF8Unknown", long.class);
     private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16_VALID = foreignCallDescriptor("calcStringAttributesUTF16Valid", long.class);
     private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16_UNKNOWN = foreignCallDescriptor("calcStringAttributesUTF16Unknown", long.class);
+    private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16FE_VALID = foreignCallDescriptor("calcStringAttributesUTF16FEValid", long.class);
+    private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF16FE_UNKNOWN = foreignCallDescriptor("calcStringAttributesUTF16FEUnknown", long.class);
     private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF32 = foreignCallDescriptor("calcStringAttributesUTF32", int.class);
+    private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF32FE = foreignCallDescriptor("calcStringAttributesUTF32FE", int.class);
     public static final ForeignCallDescriptor[] STUBS = {
                     STUB_CALC_STRING_ATTRIBUTES_LATIN1,
                     STUB_CALC_STRING_ATTRIBUTES_BMP,
@@ -42,7 +45,10 @@ public final class CalcStringAttributesForeignCalls {
                     STUB_CALC_STRING_ATTRIBUTES_UTF8_UNKNOWN,
                     STUB_CALC_STRING_ATTRIBUTES_UTF16_VALID,
                     STUB_CALC_STRING_ATTRIBUTES_UTF16_UNKNOWN,
-                    STUB_CALC_STRING_ATTRIBUTES_UTF32};
+                    STUB_CALC_STRING_ATTRIBUTES_UTF16FE_VALID,
+                    STUB_CALC_STRING_ATTRIBUTES_UTF16FE_UNKNOWN,
+                    STUB_CALC_STRING_ATTRIBUTES_UTF32,
+                    STUB_CALC_STRING_ATTRIBUTES_UTF32FE};
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name, Class<?> resultType) {
         return ForeignCalls.pureFunctionForeignCallDescriptor(name, resultType, Object.class, long.class, int.class);
@@ -66,8 +72,16 @@ public final class CalcStringAttributesForeignCalls {
                 } else {
                     return STUB_CALC_STRING_ATTRIBUTES_UTF16_UNKNOWN;
                 }
+            case UTF_16_FOREIGN_ENDIAN:
+                if (node.isAssumeValid()) {
+                    return STUB_CALC_STRING_ATTRIBUTES_UTF16FE_VALID;
+                } else {
+                    return STUB_CALC_STRING_ATTRIBUTES_UTF16FE_UNKNOWN;
+                }
             case UTF_32:
                 return STUB_CALC_STRING_ATTRIBUTES_UTF32;
+            case UTF_32_FOREIGN_ENDIAN:
+                return STUB_CALC_STRING_ATTRIBUTES_UTF32FE;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(node.getOp()); // ExcludeFromJacocoGeneratedReport
         }

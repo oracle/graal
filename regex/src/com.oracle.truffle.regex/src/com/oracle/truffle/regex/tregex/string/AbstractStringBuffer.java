@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public interface AbstractStringBuffer {
 
     Encoding getEncoding();
+
+    int length();
 
     void append(int codepoint);
 
@@ -54,5 +56,7 @@ public interface AbstractStringBuffer {
 
     void clear();
 
-    AbstractString materialize();
+    TruffleString asTString();
+
+    TruffleString.WithMask asTStringMask(TruffleString pattern);
 }

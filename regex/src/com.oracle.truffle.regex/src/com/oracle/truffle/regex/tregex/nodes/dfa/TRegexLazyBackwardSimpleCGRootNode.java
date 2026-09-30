@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
@@ -51,8 +50,8 @@ public class TRegexLazyBackwardSimpleCGRootNode extends RegexBodyNode {
 
     @Child private TRegexExecutorEntryNode entryNode;
 
-    public TRegexLazyBackwardSimpleCGRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode backwardNode) {
-        super(language, source);
+    public TRegexLazyBackwardSimpleCGRootNode(RegexLanguage language, TRegexExecutorEntryNode backwardNode) {
+        super(language);
         this.entryNode = insert(backwardNode);
     }
 
@@ -66,8 +65,4 @@ public class TRegexLazyBackwardSimpleCGRootNode extends RegexBodyNode {
         return null;
     }
 
-    @Override
-    public String getEngineLabel() {
-        return "TRegex bck";
-    }
 }

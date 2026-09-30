@@ -41,8 +41,10 @@
 
 package com.oracle.truffle.api.strings;
 
+import static com.oracle.truffle.api.strings.Encodings.isUTF16FELowSurrogate;
 import static com.oracle.truffle.api.strings.Encodings.isUTF16LowSurrogate;
 import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
+import static com.oracle.truffle.api.strings.Encodings.reverseBytes;
 import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
@@ -87,25 +89,6 @@ final class TStringOps {
             case 1 -> writeToByteArrayS1(array, i, value);
             default -> writeToByteArrayS2(array, i, value);
         }
-    }
-
-    static int readValue(AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int i) {
-        return readValue(arrayA, offsetA, a.length(), stride, i);
-    }
-
-    static int readS0(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        assert validateRegionIndexWithBaseOffset(arrayA, offsetA, a.length(), 0, i);
-        return uInt(TStringUnsafe.getByte(arrayA, offsetA + i));
-    }
-
-    static char readS1(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        assert validateRegionIndexWithBaseOffset(arrayA, offsetA, a.length(), 1, i);
-        return TStringUnsafe.getChar(arrayA, offsetA + ((long) i << 1));
-    }
-
-    static int readS2(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        assert validateRegionIndexWithBaseOffset(arrayA, offsetA, a.length(), 2, i);
-        return TStringUnsafe.getInt(arrayA, offsetA + ((long) i << 2));
     }
 
     static int readS0(byte[] array, long offset, int length, int i) {
@@ -189,12 +172,11 @@ final class TStringOps {
         }
     }
 
-    static int indexOfAnyByte(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int fromIndex, int toIndex, byte[] values) {
-        assert a.stride() == 0;
+    static int indexOfAnyByte(Node location, byte[] arrayA, long offsetA, int fromIndex, int toIndex, byte[] values) {
         return indexOfAnyByteIntl(location, arrayA, offsetA, toIndex, fromIndex, values);
     }
 
-    private static int indexOfAnyByteIntl(Node location, byte[] array, long offset, int length, int fromIndex, byte[] values) {
+    static int indexOfAnyByteIntl(Node location, byte[] array, long offset, int length, int fromIndex, byte[] values) {
         final boolean isNative = array == null;
         assert validateRegionIndexWithBaseOffset(array, offset, length, 0, fromIndex);
         switch (values.length) {
@@ -327,6 +309,36 @@ final class TStringOps {
         return runIndexOfAnyIntRange(location, array, offset, length, stride, fromIndex, ranges);
     }
 
+    static int indexOfAnyIntRangeForeignEndian(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, int[] ranges) {
+        return indexOfAnyIntRangeForeignEndianIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, ranges);
+    }
+
+    private static int indexOfAnyIntRangeForeignEndianIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, int[] ranges) {
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        if (stride == 0) {
+            if (ranges.length == 2) {
+                return runIndexOfRange1(location, array, offset, length, 0, isNative, fromIndex, ranges[0], ranges[1]);
+            } else if (ranges.length == 4) {
+                return runIndexOfRange2(location, array, offset, length, 0, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
+            }
+        } else if (stride == 1) {
+            if (ranges.length == 2) {
+                return runIndexOfRangeForeignEndian1(location, array, offset, length, 1, isNative, fromIndex, ranges[0], ranges[1]);
+            } else if (ranges.length == 4) {
+                return runIndexOfRangeForeignEndian2(location, array, offset, length, 1, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
+            }
+        } else {
+            assert stride == 2;
+            if (ranges.length == 2) {
+                return runIndexOfRangeForeignEndian1(location, array, offset, length, 2, isNative, fromIndex, ranges[0], ranges[1]);
+            } else if (ranges.length == 4) {
+                return runIndexOfRangeForeignEndian2(location, array, offset, length, 2, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
+            }
+        }
+        return runIndexOfAnyIntRangeForeignEndian(location, array, offset, length, stride, fromIndex, ranges);
+    }
+
     static int indexOfTable(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
         return indexOfTableIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
     }
@@ -342,6 +354,24 @@ final class TStringOps {
         } else {
             assert stride == 2;
             return runIndexOfTable(location, array, offset, length, 2, isNative, fromIndex, tables);
+        }
+    }
+
+    static int indexOfTableForeignEndian(Node location, byte[] arrayA, long offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
+        return indexOfTableForeignEndianIntl(location, arrayA, offsetA, toIndex, stride, fromIndex, tables);
+    }
+
+    private static int indexOfTableForeignEndianIntl(Node location, byte[] array, long offset, int length, int stride, int fromIndex, byte[] tables) {
+        assert tables.length == 32;
+        final boolean isNative = array == null;
+        assert validateRegionIndexWithBaseOffset(array, offset, length, stride, fromIndex);
+        if (stride == 0) {
+            return runIndexOfTable(location, array, offset, length, 0, isNative, fromIndex, tables);
+        } else if (stride == 1) {
+            return runIndexOfTableForeignEndian(location, array, offset, length, 1, isNative, fromIndex, tables);
+        } else {
+            assert stride == 2;
+            return runIndexOfTableForeignEndian(location, array, offset, length, 2, isNative, fromIndex, tables);
         }
     }
 
@@ -417,14 +447,6 @@ final class TStringOps {
     }
 
     static int indexOfStringWithOrMaskWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
-        return indexOfStringWithOrMaskWithStride(location,
-                        arrayA, offsetA, a.length(), strideA,
-                        arrayB, offsetB, b.length(), strideB, fromIndex, toIndex, maskB);
-    }
-
-    static int indexOfStringWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
         int offsetMask = byteArrayBaseOffset();
@@ -445,7 +467,7 @@ final class TStringOps {
             if (index < 0) {
                 return -1;
             }
-            if (lengthB == 2 || regionEqualsWithOrMaskWithStrideIntl(location,
+            if (lengthB == 2 || regionEqualsWithOrMaskWithStride(location,
                             arrayA, offsetA, lengthA, strideA, index,
                             arrayB, offsetB, lengthB, strideB, 0, maskB, lengthB)) {
                 return index;
@@ -508,7 +530,7 @@ final class TStringOps {
                 return -1;
             }
             index += 2;
-            if (lengthB == 2 || regionEqualsWithOrMaskWithStrideIntl(location,
+            if (lengthB == 2 || regionEqualsWithOrMaskWithStride(location,
                             arrayA, offsetA, lengthA, strideA, index - lengthB,
                             arrayB, offsetB, lengthB, strideB, 0, maskB, lengthB)) {
                 return index - lengthB;
@@ -520,15 +542,6 @@ final class TStringOps {
     }
 
     static boolean regionEqualsWithOrMaskWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA, int fromIndexA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int fromIndexB,
-                    byte[] maskB, int lengthCMP) {
-        return regionEqualsWithOrMaskWithStrideIntl(location,
-                        arrayA, offsetA, a.length(), strideA, fromIndexA,
-                        arrayB, offsetB, b.length(), strideB, fromIndexB, maskB, lengthCMP);
-    }
-
-    private static boolean regionEqualsWithOrMaskWithStrideIntl(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA, int fromIndexA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndexB, byte[] maskB, int lengthCMP) {
         if (!rangeInBounds(fromIndexA, lengthCMP, lengthA) || !rangeInBounds(fromIndexB, lengthCMP, lengthB)) {
@@ -555,14 +568,6 @@ final class TStringOps {
     }
 
     static int memcmpWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
-        assert lengthCMP <= a.length();
-        assert lengthCMP <= b.length();
-        return memcmpWithStrideIntl(location, arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-    }
-
-    private static int memcmpWithStrideIntl(Node location,
                     byte[] arrayA, long offsetA, int strideA,
                     byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
         if (lengthCMP == 0) {
@@ -578,14 +583,6 @@ final class TStringOps {
     }
 
     static int memcmpBytesWithStride(Node location,
-                    AbstractTruffleString a, byte[] arrayA, long offsetA, int strideA,
-                    AbstractTruffleString b, byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
-        assert lengthCMP <= a.length();
-        assert lengthCMP <= b.length();
-        return memcmpBytesWithStrideIntl(location, arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-    }
-
-    private static int memcmpBytesWithStrideIntl(Node location,
                     byte[] arrayA, long offsetA, int strideA,
                     byte[] arrayB, long offsetB, int strideB, int lengthCMP) {
         if (lengthCMP == 0) {
@@ -662,9 +659,8 @@ final class TStringOps {
         }
     }
 
-    static int hashCodeWithStride(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride) {
-        int length = a.length();
-        return hashCodeWithStrideIntl(location, arrayA, offsetA, length, stride);
+    static int hashCodeWithStride(Node location, byte[] arrayA, long offsetA, int lengthA, int stride) {
+        return hashCodeWithStrideIntl(location, arrayA, offsetA, lengthA, stride);
     }
 
     private static int hashCodeWithStrideIntl(Node location, byte[] array, long offset, int length, int stride) {
@@ -820,7 +816,25 @@ final class TStringOps {
     static long calcStringAttributesUTF16FE(Node location, byte[] array, long offset, int length) {
         final boolean isNative = array == null;
         assert validateRegionWithBaseOffset(array, offset, length, 1);
-        return runCalcStringAttributesUTF16FE(location, array, offset, length, isNative);
+        long attrs = runCalcStringAttributesUTF16FE(location, array, offset, length, isNative, false);
+        return StringAttributes.create(StringAttributes.getCodePointLength(attrs), TSCodeRange.markForeignEndian(StringAttributes.getCodeRange(attrs)));
+    }
+
+    @InliningCutoff
+    static long calcStringAttributesUTF16FEAssumeValid(Node location, byte[] array, long offset, int length) {
+        final boolean isNative = array == null;
+        assert validateRegionWithBaseOffset(array, offset, length, 1);
+        long attrs;
+        attrs = runCalcStringAttributesUTF16FE(location, array, offset, length, isNative, true);
+        if (length > 0) {
+            if (isUTF16FELowSurrogate(readS1(array, offset, length, 0))) {
+                attrs = StringAttributes.create(StringAttributes.getCodePointLength(attrs), TSCodeRange.getBrokenMultiByte());
+            }
+            if (Encodings.isUTF16FEHighSurrogate(readS1(array, offset, length, length - 1))) {
+                attrs = StringAttributes.create(StringAttributes.getCodePointLength(attrs) + 1, TSCodeRange.getBrokenMultiByte());
+            }
+        }
+        return StringAttributes.create(StringAttributes.getCodePointLength(attrs), TSCodeRange.markForeignEndian(StringAttributes.getCodeRange(attrs)));
     }
 
     static int calcStringAttributesUTF32I(Node location, int[] array, long offset, int length) {
@@ -838,7 +852,8 @@ final class TStringOps {
     static int calcStringAttributesUTF32FE(Node location, byte[] array, long offset, int length) {
         final boolean isNative = array == null;
         assert validateRegionWithBaseOffset(array, offset, length, 2);
-        return runCalcStringAttributesUTF32FE(location, array, offset, length, isNative);
+        int codeRange = runCalcStringAttributesUTF32FE(location, array, offset, length, isNative);
+        return TSCodeRange.markForeignEndian(codeRange);
     }
 
     static int codePointIndexToByteIndexUTF8Valid(Node location, byte[] array, long offset, int length, int index) {
@@ -851,6 +866,12 @@ final class TStringOps {
         final boolean isNative = array == null;
         assert validateRegionWithBaseOffset(array, offset, length, 1);
         return runCodePointIndexToByteIndexUTF16Valid(location, array, offset, length, index, isNative);
+    }
+
+    static int codePointIndexToByteIndexUTF16FEValid(Node location, byte[] array, long offset, int length, int index) {
+        final boolean isNative = array == null;
+        assert validateRegionWithBaseOffset(array, offset, length, 1);
+        return runCodePointIndexToByteIndexUTF16FEValid(location, array, offset, length, index, isNative);
     }
 
     private static int runIndexOfAnyByte(Node location, byte[] array, long offset, int length, int fromIndex, byte... needle) {
@@ -908,6 +929,19 @@ final class TStringOps {
         return -1;
     }
 
+    private static int runIndexOfAnyIntRangeForeignEndian(Node location, byte[] array, long offset, int length, int stride, int fromIndex, int... ranges) {
+        for (int i = fromIndex; i < length; i++) {
+            for (int j = 0; j < ranges.length; j += 2) {
+                if (inRange(ranges[j], ranges[j + 1], reverseBytes(readValue(array, offset, stride, i), stride))) {
+                    return i;
+                }
+                TStringConstants.truffleSafePointPoll(location, j + 1);
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
+    }
+
     private static boolean inRange(int lo, int hi, int v) {
         return Integer.compareUnsigned(lo, v) <= 0 && Integer.compareUnsigned(v, hi) <= 0;
     }
@@ -915,6 +949,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny1(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0) {
         for (int i = fromIndex; i < length; i++) {
             if (readValue(array, offset, stride, i) == v0) {
@@ -928,6 +963,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny2(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -942,6 +978,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny3(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1, int v2) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -956,6 +993,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfAny4(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -970,6 +1008,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfRange1(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1) {
         for (int i = fromIndex; i < length; i++) {
             if (inRange(v0, v1, readValue(array, offset, stride, i))) {
@@ -983,6 +1022,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfRange2(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
@@ -997,9 +1037,56 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
+    private static int runIndexOfRangeForeignEndian1(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1) {
+        for (int i = fromIndex; i < length; i++) {
+            int value = Encodings.reverseBytes(readValue(array, offset, stride, i), stride);
+            if (inRange(v0, v1, value)) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static int runIndexOfRangeForeignEndian2(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int v0, int v1,
+                    int v2, int v3) {
+        for (int i = fromIndex; i < length; i++) {
+            int value = Encodings.reverseBytes(readValue(array, offset, stride, i), stride);
+            if (inRange(v0, v1, value) || inRange(v2, v3, value)) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
     private static int runIndexOfTable(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
         for (int i = fromIndex; i < length; i++) {
             int value = readValue(array, offset, stride, i);
+            if (value <= 0xff && performTableLookup(tables, value)) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static int runIndexOfTableForeignEndian(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, byte[] tables) {
+        for (int i = fromIndex; i < length; i++) {
+            int value = Encodings.reverseBytes(readValue(array, offset, stride, i), stride);
             if (value <= 0xff && performTableLookup(tables, value)) {
                 return i;
             }
@@ -1017,6 +1104,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOfWithOrMaskWithStride(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int needle,
                     int mask) {
         for (int i = fromIndex; i < length; i++) {
@@ -1041,6 +1129,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOf2ConsecutiveWithStride(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex, int c1, int c2) {
         for (int i = fromIndex + 1; i < length; i++) {
             if (readValue(array, offset, stride, i - 1) == c1 && readValue(array, offset, stride, i) == c2) {
@@ -1054,6 +1143,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runIndexOf2ConsecutiveWithOrMaskWithStride(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative, int fromIndex,
                     int c1, int c2, int mask1, int mask2) {
         for (int i = fromIndex + 1; i < length; i++) {
@@ -1079,6 +1169,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static boolean runRegionEqualsWithStride(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length, int stubStride) {
@@ -1096,6 +1187,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static boolean runRegionEqualsWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, byte[] arrayMask, int lengthCMP, int stubStride) {
@@ -1113,6 +1205,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runMemCmp(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int lengthCMP, int stubStride) {
@@ -1158,6 +1251,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runHashCode(Node location, byte[] array, long offset, int length, int stride, @SuppressWarnings("unused") boolean isNative) {
         int hash = 0;
         for (int i = 0; i < length; i++) {
@@ -1170,6 +1264,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runArrayCopy(Node location,
                     char[] arrayA, long offsetA,
                     byte[] arrayB, long offsetB, int lengthCPY, int stubStride) {
@@ -1184,6 +1279,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runArrayCopy(Node location,
                     int[] arrayA, long offsetA,
                     byte[] arrayB, long offsetB, int lengthCPY, int stubStride) {
@@ -1198,6 +1294,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runArrayCopy(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int lengthCPY, int stubStride) {
@@ -1212,6 +1309,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runByteSwapS1(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
@@ -1224,6 +1322,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static void runByteSwapS2(Node location,
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
@@ -1236,6 +1335,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCalcStringAttributesLatin1(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
         for (int i = 0; i < length; i++) {
             if (readValueS0(array, offset, i) > 0x7f) {
@@ -1249,6 +1349,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCalcStringAttributesBMP(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1278,6 +1379,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCalcStringAttributesUTF32(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
         return runCalcStringAttributesUTF32AnyArray(location, array, offset, length);
     }
@@ -1337,20 +1439,56 @@ final class TStringOps {
     }
 
     private static int runCalcStringAttributesUTF32FE(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
+        int codeRange = TSCodeRange.get7Bit();
         int i = 0;
         for (; i < length; i++) {
-            int value = Integer.reverseBytes(readValueS2(array, offset, i));
-            if (!Encodings.isValidUnicodeCodepoint(value)) {
-                return TSCodeRange.getBrokenMultiByte();
+            if ((readValueS2(array, offset, i) & 0x80ffffff) != 0) {
+                codeRange = TSCodeRange.get8Bit();
+                break;
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }
-        return TSCodeRange.getValidMultiByte();
+        if (!TSCodeRange.is8Bit(codeRange)) {
+            return TSCodeRange.get7Bit();
+        }
+        for (; i < length; i++) {
+            if ((readValueS2(array, offset, i) & 0x00ffffff) != 0) {
+                codeRange = TSCodeRange.get16Bit();
+                break;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (!TSCodeRange.is16Bit(codeRange)) {
+            return TSCodeRange.get8Bit();
+        }
+        for (; i < length; i++) {
+            int value = readValueS2(array, offset, i);
+            if ((value & 0x0000ffff) != 0) {
+                codeRange = TSCodeRange.getValidFixedWidth();
+                break;
+            }
+            if (Encodings.isUTF16SurrogateUTF32FE(value)) {
+                return TSCodeRange.getBrokenFixedWidth();
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (!TSCodeRange.isValid(codeRange)) {
+            return TSCodeRange.get16Bit();
+        }
+        for (; i < length; i++) {
+            int value = readValueS2(array, offset, i);
+            if (!Encodings.isValidUnicodeCodepoint(Integer.reverseBytes(value))) {
+                return TSCodeRange.getBrokenFixedWidth();
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return TSCodeRange.getValidFixedWidth();
     }
 
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static long runCalcStringAttributesUTF8(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative, boolean assumeValid) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1403,6 +1541,7 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static long runCalcStringAttributesUTF16(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative, boolean assumeValid) {
         return runCalcStringAttributesUTF16AnyArray(location, array, offset, length, assumeValid);
     }
@@ -1477,28 +1616,71 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
-    private static long runCalcStringAttributesUTF16FE(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
-        int codeRange = TSCodeRange.getValidMultiByte();
+    @InliningCutoff
+    private static long runCalcStringAttributesUTF16FE(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative, boolean assumeValid) {
+        int codeRange = TSCodeRange.get7Bit();
         int i = 0;
-        int nCodePoints = length;
         for (; i < length; i++) {
-            char c = Character.reverseBytes(readValueS1(array, offset, i));
-            if (Encodings.isUTF16Surrogate(c)) {
-                if (Encodings.isUTF16LowSurrogate(c) || !(i + 1 < length && Encodings.isUTF16LowSurrogate(Character.reverseBytes(readValueS1(array, offset, i + 1))))) {
-                    codeRange = TSCodeRange.getBrokenMultiByte();
-                } else {
-                    i++;
-                    nCodePoints--;
-                }
+            if ((readValueS1(array, offset, i) & 0x80ff) != 0) {
+                codeRange = TSCodeRange.get8Bit();
+                break;
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }
-        return StringAttributes.create(nCodePoints, codeRange);
+        if (!TSCodeRange.is8Bit(codeRange)) {
+            return StringAttributes.create(length, TSCodeRange.get7Bit());
+        }
+        for (; i < length; i++) {
+            if ((readValueS1(array, offset, i) & 0x00ff) != 0) {
+                codeRange = TSCodeRange.get16Bit();
+                break;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (!TSCodeRange.is16Bit(codeRange)) {
+            return StringAttributes.create(length, TSCodeRange.get8Bit());
+        }
+        for (; i < length; i++) {
+            char c = readValueS1(array, offset, i);
+            if (assumeValid ? Encodings.isUTF16FEHighSurrogate(c) : Encodings.isUTF16FESurrogate(c)) {
+                codeRange = TSCodeRange.getValidMultiByte();
+                break;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        if (!TSCodeRange.isValidMultiByte(codeRange)) {
+            return StringAttributes.create(length, TSCodeRange.get16Bit());
+        }
+        int nCodePoints = length;
+        if (assumeValid) {
+            for (; i < length; i++) {
+                if (Encodings.isUTF16FEHighSurrogate(readValueS1(array, offset, i))) {
+                    nCodePoints--;
+                }
+                TStringConstants.truffleSafePointPoll(location, i + 1);
+            }
+            return StringAttributes.create(nCodePoints, TSCodeRange.getValidMultiByte());
+        } else {
+            for (; i < length; i++) {
+                char c = readValueS1(array, offset, i);
+                if (Encodings.isUTF16FESurrogate(c)) {
+                    if (isUTF16FELowSurrogate(c) || !(i + 1 < length && isUTF16FELowSurrogate(readValueS1(array, offset, i + 1)))) {
+                        codeRange = TSCodeRange.getBrokenMultiByte();
+                    } else {
+                        i++;
+                        nCodePoints--;
+                    }
+                }
+                TStringConstants.truffleSafePointPoll(location, i + 1);
+            }
+            return StringAttributes.create(nCodePoints, codeRange);
+        }
     }
 
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCodePointIndexToByteIndexUTF8Valid(Node location, byte[] array, long offset, int length, int index, @SuppressWarnings("unused") boolean isNative) {
         int cpi = index;
         for (int i = 0; i < length; i++) {
@@ -1515,10 +1697,28 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    @InliningCutoff
     private static int runCodePointIndexToByteIndexUTF16Valid(Node location, byte[] array, long offset, int length, int index, @SuppressWarnings("unused") boolean isNative) {
         int cpi = index;
         for (int i = 0; i < length; i++) {
             if (!isUTF16LowSurrogate(readValueS1(array, offset, i))) {
+                if (--cpi < 0) {
+                    return i;
+                }
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return cpi == 0 ? length : -1;
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    @InliningCutoff
+    private static int runCodePointIndexToByteIndexUTF16FEValid(Node location, byte[] array, long offset, int length, int index, @SuppressWarnings("unused") boolean isNative) {
+        int cpi = index;
+        for (int i = 0; i < length; i++) {
+            if (!isUTF16FELowSurrogate(readValueS1(array, offset, i))) {
                 if (--cpi < 0) {
                     return i;
                 }

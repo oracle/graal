@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,14 +52,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateNodeBuilder;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateTransitionBuilder;
-import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
-import com.oracle.truffle.regex.tregex.matchers.BitSetMatcher;
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.matchers.EmptyMatcher;
-import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
-import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.SimpleSequentialMatchers;
 
 public class DFAExport {
 
@@ -118,51 +110,5 @@ public class DFAExport {
 
     private static String dotState(DFAStateNodeBuilder state, boolean shortLabels) {
         return "S" + (shortLabels ? state.getId() : state.stateSetToString());
-    }
-
-    @TruffleBoundary
-    public static void exportUnitTest(DFAStateNode entry, DFAStateNode[] states) {
-        System.out.printf("int initialState = %d;\n", entry.getId());
-        System.out.printf("DFAStateNode[] states = createStates(%d);\n", states.length);
-        for (DFAStateNode state : states) {
-            System.out.printf("states[%d].setSuccessors(new int[] { %d", state.getId(), state.getSuccessors()[0]);
-            for (int i = 1; i < state.getSuccessors().length; i++) {
-                System.out.printf(", %d", state.getSuccessors()[i]);
-            }
-            System.out.println(" });");
-            System.out.printf("states[%d].setMatchers(new ByteMatcher[] {\n    ", state.getId());
-            printMatcher(((SimpleSequentialMatchers) state.getSequentialMatchers()).getMatchers()[0]);
-            for (int i = 1; i < state.getSequentialMatchers().size(); i++) {
-                System.out.print(",\n    ");
-                printMatcher(((SimpleSequentialMatchers) state.getSequentialMatchers()).getMatchers()[i]);
-            }
-            System.out.println("\n});");
-            if (state.isFinalState()) {
-                System.out.printf("states[%d].setFinalState();\n", state.getId());
-            }
-        }
-    }
-
-    private static void printMatcher(CharMatcher matcher) {
-        if (matcher instanceof EmptyMatcher) {
-            System.out.print("EmptyByteMatcher.create()");
-        }
-        if (matcher instanceof SingleCharMatcher) {
-            System.out.printf("SingleByteMatcher.create(0x%02x)", ((SingleCharMatcher) matcher).getChar());
-        }
-        if (matcher instanceof SingleRangeMatcher) {
-            System.out.printf("RangeByteMatcher.create(0x%02x, 0x%02x)", ((SingleRangeMatcher) matcher).getLo(), ((SingleRangeMatcher) matcher).getHi());
-        }
-        if (matcher instanceof BitSetMatcher) {
-            long[] words = ((BitSetMatcher) matcher).getBitSet();
-            System.out.printf("MultiByteMatcher.create(new CompilationFinalBitSet(new long[] {\n        0x%016xL", words[0]);
-            for (int i = 1; i < words.length; i++) {
-                System.out.printf(", 0x%016xL", words[i]);
-            }
-            System.out.print("}))");
-        }
-        if (matcher instanceof AnyMatcher) {
-            System.out.print("AnyByteMatcher.create()");
-        }
     }
 }

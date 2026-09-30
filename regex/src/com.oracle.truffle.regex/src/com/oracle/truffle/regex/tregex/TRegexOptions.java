@@ -89,10 +89,8 @@ public class TRegexOptions {
     public static final int TRegexTraceFinderMaxNumberOfResults = 254;
 
     /**
-     * Minimum number of ranges that have the same high byte to convert into a bit set in a
-     * {@link com.oracle.truffle.regex.tregex.matchers.RangeListMatcher} or
-     * {@link com.oracle.truffle.regex.tregex.matchers.RangeTreeMatcher}. The threshold value must
-     * be greater than 1. Example:
+     * Minimum number of ranges that have the same high byte to convert into a bit set in an encoded
+     * character matcher. The threshold value must be greater than 1. Example:
      *
      * <pre>
      *     [\u1000-\u1020], [\u1030-\u1040], [\u1050-\u1060]

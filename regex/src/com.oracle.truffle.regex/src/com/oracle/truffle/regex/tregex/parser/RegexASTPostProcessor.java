@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PropagateDeadFlagVisitor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RegexASTPostProcessor {
 
@@ -130,7 +129,7 @@ public class RegexASTPostProcessor {
         return t.isCharacterClass() &&
                         (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
                         ast.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet()) &&
-                        !(ast.getEncoding() == Encodings.UTF_16 && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES));
+                        !(ast.getEncoding().isUTF16() && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES));
     }
 
     private static final class UnrollQuantifiersVisitor extends DepthFirstTraversalRegexASTVisitor {

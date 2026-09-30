@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -385,7 +385,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             if (indexClears.length > 0) {
                 writeDirect(d.results, 0, indexClears[0].indices, -1);
             }
-            if (lastGroupUpdates.length > 0 && executor.getProperties().tracksLastGroup()) {
+            if (lastGroupUpdates.length > 0 && executor.tracksLastGroup()) {
                 assert lastGroupUpdates[0].getTargetArray() == 0;
                 d.results[d.results.length - 1] = lastGroupUpdates[0].getLastGroup();
             }
@@ -394,7 +394,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             applyArrayCopy(d.results, d.currentResultOrder, d.currentResult.length);
             applyIndexOps(indexUpdates, d.results, d.currentResultOrder, currentIndex);
             applyIndexOps(indexClears, d.results, d.currentResultOrder, -1);
-            if (executor.getProperties().tracksLastGroup()) {
+            if (executor.tracksLastGroup()) {
                 applyLastGroupUpdate(d.results, d.currentResultOrder, d.currentResult.length);
             }
         }
@@ -438,7 +438,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             assert indexClears[0].targetArray == 0;
             writeDirect(d.currentResult, 0, indexClears[0].indices, -1);
         }
-        if (executor.getProperties().tracksLastGroup()) {
+        if (executor.tracksLastGroup()) {
             if (lastGroupUpdates.length == 1) {
                 assert lastGroupUpdates[0].targetArray == 0;
                 d.currentResult[d.currentResult.length - 1] = lastGroupUpdates[0].getLastGroup();

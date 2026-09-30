@@ -78,7 +78,7 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
     @Override
     @Test
     public void testRegionEquals() {
-        test(getRegionEqualsWithOrMaskWithStrideIntl(), null, DUMMY_LOCATION,
+        test(getRegionEqualsWithOrMaskWithStride(), null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }

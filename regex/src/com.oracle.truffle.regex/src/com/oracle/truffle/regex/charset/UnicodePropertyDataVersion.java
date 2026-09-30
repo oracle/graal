@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ public final class UnicodePropertyDataVersion {
     public static final UnicodePropertyData UNICODE_15_0_0 = UnicodePropertyData.INSTANCE;
     public static final UnicodePropertyData UNICODE_15_1_0 = UnicodePropertyData.populateUNICODE_15_1_0(UNICODE_15_0_0);
     public static final UnicodePropertyData UNICODE_16_0_0 = UnicodePropertyData.populateUNICODE_16_0_0(UNICODE_15_0_0);
+    public static final UnicodePropertyData UNICODE_17_0_0 = UnicodePropertyData.populateUNICODE_17_0_0(UNICODE_15_0_0);
 
     /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 }

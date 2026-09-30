@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,8 +63,7 @@ import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.JavaStringUtil;
 import com.oracle.truffle.regex.util.TBitSet;
 
@@ -100,6 +99,10 @@ public abstract class RegexLexer {
         this.pattern = source.getPattern();
         this.encoding = source.getEncoding();
         this.compilationBuffer = compilationBuffer;
+    }
+
+    public Encoding getEncoding() {
+        return encoding;
     }
 
     public CompilationBuffer getCompilationBuffer() {
@@ -319,7 +322,7 @@ public abstract class RegexLexer {
     /**
      * Handle out of order character class range elements, e.g. {@code [b-a]}.
      */
-    protected abstract RegexSyntaxException handleCCRangeOutOfOrder(int startPos);
+    protected abstract ClassSetContents handleCCRangeOutOfOrder(int startPos, int lo, int hi);
 
     /**
      * Handle non-codepoint character class range elements, e.g. {@code [\w-a]}.
@@ -1201,17 +1204,14 @@ public abstract class RegexLexer {
                 charClassCurAtomStartIndex = position - 1;
                 ClassSetContents secondAtom = parseCharClassAtomInner(nextC);
                 // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
-                boolean invalidAtom = !firstAtom.isAllowedInRange() || !secondAtom.isAllowedInRange();
-                if (invalidAtom || secondAtom.getCodePoint() < firstAtom.getCodePoint()) {
-                    if (invalidAtom) {
-                        handleCCRangeWithPredefCharClass(startPos, firstAtom, secondAtom);
-                    } else {
-                        throw handleCCRangeOutOfOrder(startPos);
-                    }
+                if (!firstAtom.isAllowedInRange() || !secondAtom.isAllowedInRange()) {
+                    handleCCRangeWithPredefCharClass(startPos, firstAtom, secondAtom);
                     // no syntax error thrown, so we have to emit the range as three separate atoms
                     position = charClassCurAtomStartIndex - 1;
                     charClassEmitInvalidRangeAtoms = 2;
                     return firstAtom;
+                } else if (secondAtom.getCodePoint() < firstAtom.getCodePoint()) {
+                    return handleCCRangeOutOfOrder(startPos, firstAtom.getCodePoint(), secondAtom.getCodePoint());
                 } else {
                     return ClassSetContents.createRange(firstAtom.getCodePoint(), secondAtom.getCodePoint());
                 }
@@ -1360,9 +1360,17 @@ public abstract class RegexLexer {
                 if (curChar() == ']') {
                     throw handleUnfinishedRangeInClassSet();
                 }
-                int secondCodePoint = parseCharClassAtomCodePoint(consumeChar());
+                char c2 = consumeChar();
+                if (c2 == '\\') {
+                    if (atEnd()) {
+                        handleUnfinishedEscape();
+                    } else if (isEscapeCharClass(curChar())) {
+                        throw syntaxError(JsErrorMessages.INVALID_CHARACTER_CLASS, ErrorCode.InvalidCharacterClass);
+                    }
+                }
+                int secondCodePoint = parseCharClassAtomCodePoint(c2);
                 if (secondCodePoint < firstCodePoint) {
-                    throw handleCCRangeOutOfOrder(startPos);
+                    return handleCCRangeOutOfOrder(startPos, firstCodePoint, secondCodePoint);
                 }
                 return caseFoldClassSetAtom(ClassSetContents.createRange(firstCodePoint, secondCodePoint));
             } else {
@@ -1480,7 +1488,7 @@ public abstract class RegexLexer {
     }
 
     private int toCodePoint(char c) {
-        if (encoding != Encodings.UTF_16_RAW && Character.isHighSurrogate(c)) {
+        if (encoding != Encoding.UTF_16_RAW && Character.isHighSurrogate(c)) {
             return finishSurrogatePair(c);
         }
         return c;
@@ -1535,7 +1543,7 @@ public abstract class RegexLexer {
         return ret;
     }
 
-    private boolean isEscapeCharClass(char c) {
+    protected boolean isEscapeCharClass(char c) {
         return isPredefCharClass(c) || (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P'));
     }
 

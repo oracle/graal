@@ -56,6 +56,7 @@ import org.graalvm.collections.MapCursor;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexOptions;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -117,8 +118,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.AddToSetVisitor;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -322,6 +322,7 @@ public final class DFAGenerator implements JsonConvertible {
             createInitialStatesBackward();
         }
         while (!expansionQueue.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             expandState(expansionQueue.pop());
         }
         optimizeDFA();
@@ -377,8 +378,8 @@ public final class DFAGenerator implements JsonConvertible {
         checkIfAllQuantifierOperationsAreSupported(nodes, counterTrackers);
 
         return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates,
-                        indexOfParams.toArray(TruffleString.CodePointSet[]::new), nodes.toArray(DFAAbstractNode[]::new),
-                        debugRecorder, innerLiteralPrefixMatcher, counterDataBuilder, counterTrackers, nfa.getNumberOfStates(), getOptions().isRegressionTestMode());
+                        indexOfParams.toArray(TruffleString.CodePointSet[]::new), nodes.toArray(DFAAbstractNode[]::new), matchersBuilder.finish(),
+                        debugRecorder, innerLiteralPrefixMatcher, counterDataBuilder, counterTrackers);
     }
 
     /**
@@ -1225,6 +1226,7 @@ public final class DFAGenerator implements JsonConvertible {
                 bfsTraversalCur.add(successorState.getSuccessors());
             }
             while (!bfsTraversalCur.isEmpty()) {
+                RegexRootNode.checkThreadInterrupted();
                 bfsTraversalNext.clear();
                 for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                     for (DFAStateTransitionBuilder t : cur) {
@@ -1364,6 +1366,7 @@ public final class DFAGenerator implements JsonConvertible {
                 bfsCur.add(anchoredInitialState);
             }
             while (!bfsCur.isEmpty()) {
+                RegexRootNode.checkThreadInterrupted();
                 for (NFAState s : bfsCur) {
                     for (NFAStateTransition t : s.getSuccessors()) {
                         NFAState target = t.getTarget();
@@ -1391,7 +1394,8 @@ public final class DFAGenerator implements JsonConvertible {
         visited.set(unanchoredInitialState.getId());
         bfsTraversalCur.clear();
         bfsTraversalCur.add(unanchoredInitialState.getSuccessors());
-        outer: while (!bfsTraversalCur.isEmpty()) {
+        while (!bfsTraversalCur.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             bfsTraversalNext.clear();
             for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                 for (DFAStateTransitionBuilder t : cur) {
@@ -1405,15 +1409,27 @@ public final class DFAGenerator implements JsonConvertible {
                         literalFirstDFAState = target;
                     }
                     if (targetStateSet.contains(literalLastState)) {
-                        literalLastDFAState = target;
-                        bfsTraversalNext.clear();
-                        break outer;
+                        if (literalLastDFAState == null) {
+                            literalLastDFAState = target;
+                        } else if (literalLastDFAState != target) {
+                            // found a state containing the literal's end that is NOT dominated by
+                            // the first occurrence
+                            // of such a state, implying that there are at least two parallel paths
+                            // through the DFA that
+                            // could be taken on the literal's first occurrence, which is not
+                            // supported by
+                            // DFAFindInnerLiteralStateNode - bail out.
+                            bfsTraversalNext.clear();
+                            return;
+                        }
+                    } else {
+                        bfsExpand(target);
                     }
-                    bfsExpand(target);
                 }
             }
             bfsSwapLists();
         }
+        bfsTraversalNext.clear();
 
         if (literalFirstDFAState == null || literalLastDFAState == null) {
             // may happen when transitions to the literal have been pruned during DFA generation
@@ -1499,7 +1515,7 @@ public final class DFAGenerator implements JsonConvertible {
             assert innerLiteralPrefixMatcher == null;
             int minResultLength = rootSeq.getTerms().get(literalStart).getMinPath() - 1;
             innerLiteralPrefixMatcher = compilationRequest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG, false, minResultLength), "innerLiteralPrefix");
-            innerLiteralPrefixMatcher.getProperties().setSimpleCGMustCopy(false);
+            innerLiteralPrefixMatcher.setSimpleCGMustCopy(false);
             doSimpleCG = doSimpleCG && innerLiteralPrefixMatcher.isSimpleCG();
             nfa.setInitialLoopBack(true);
             nfa.getReverseAnchoredEntry().setSource(reverseAnchoredInitialState);
@@ -1525,6 +1541,7 @@ public final class DFAGenerator implements JsonConvertible {
         bfsTraversalCur.clear();
         bfsTraversalCur.add(literalLastDFAState.getSuccessors());
         while (!bfsTraversalCur.isEmpty()) {
+            RegexRootNode.checkThreadInterrupted();
             bfsTraversalNext.clear();
             for (DFAStateTransitionBuilder[] cur : bfsTraversalCur) {
                 for (DFAStateTransitionBuilder t : cur) {
@@ -1629,6 +1646,7 @@ public final class DFAGenerator implements JsonConvertible {
         boolean utf16MustDecode = false;
         ObjectArrayBuffer<ObjectArrayBuffer<long[]>> constraints = new ObjectArrayBuffer<>();
         for (DFAStateNodeBuilder s : stateMap.values()) {
+            RegexRootNode.checkThreadInterrupted();
             matchersBuilder.reset(s.getSuccessors().length);
             constraints.clear();
 
@@ -1687,7 +1705,7 @@ public final class DFAGenerator implements JsonConvertible {
                     loopToSelf = (short) i;
                     CodePointSet loopMB = t.getCodePointSet();
                     CodePointSet inverse = loopMB.createInverse(getEncoding());
-                    if (coversCharSpace && !loopMB.matchesEverything(getEncoding()) && !(getEncoding() == Encodings.UTF_16 && inverse.intersects(Constants.SURROGATES))) {
+                    if (coversCharSpace && !loopMB.matchesEverything(getEncoding()) && !(getEncoding().isUTF16() && inverse.intersects(Constants.SURROGATES))) {
                         TruffleString.CodePointSet indexOfParam = TruffleString.CodePointSet.fromRanges(inverse.getRanges(), getEncoding().getTStringEncoding());
                         indexOfIsFast = checkIndexOfIsFast(indexOfParam);
                         if (indexOfIsFast != 0) {
@@ -1698,8 +1716,8 @@ public final class DFAGenerator implements JsonConvertible {
                     }
                 }
                 if (i == nSuccessors - 1 && (coversCharSpace || (pruneUnambiguousPaths && !s.isFinalStateSuccessor()))) {
-                    // replace the last matcher with an AnyMatcher, since it must always cover the
-                    // remaining input space
+                    // replace the last matcher with a no-match successor, since it must always
+                    // cover the remaining input space
                     matchersBuilder.setNoMatchSuccessor((short) i);
                 } else {
                     nRanges += cps.size();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexProfile;
-import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
@@ -58,9 +57,9 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
     private final RegexProfile profile;
     private final CallTarget findStartCallTarget;
 
-    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode captureGroupNode, RegexProfile profile,
+    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, TRegexExecutorEntryNode captureGroupNode, RegexProfile profile,
                     CallTarget findStartCallTarget) {
-        super(language, source);
+        super(language);
         this.entryNode = insert(captureGroupNode);
         this.profile = profile;
         this.findStartCallTarget = findStartCallTarget;
@@ -88,8 +87,4 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
         return null;
     }
 
-    @Override
-    protected String getEngineLabel() {
-        return "TRegex cg";
-    }
 }

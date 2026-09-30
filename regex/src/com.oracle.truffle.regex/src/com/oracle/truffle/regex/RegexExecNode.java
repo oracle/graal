@@ -49,7 +49,6 @@ import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
 import com.oracle.truffle.regex.runtime.nodes.ToLongNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexExecNode extends RegexBodyNode {
 
@@ -59,8 +58,8 @@ public abstract class RegexExecNode extends RegexBodyNode {
     private @Child InputReadNode charAtNode;
 
     public RegexExecNode(RegexLanguage language, RegexSource source, boolean mustCheckUTF16Surrogates) {
-        super(language, source);
-        this.mustCheckUTF16Surrogates = getEncoding() == Encodings.UTF_16 && mustCheckUTF16Surrogates;
+        super(language);
+        this.mustCheckUTF16Surrogates = source.getOptions().getEncoding().isUTF16() && mustCheckUTF16Surrogates;
     }
 
     @Override
@@ -120,7 +119,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
 
     private int adjustFromIndex(TruffleString input, int fromIndex, int regionFrom, int regionTo) {
         if (mustCheckUTF16Surrogates && fromIndex > regionFrom && fromIndex < regionTo) {
-            assert getEncoding() == Encodings.UTF_16;
+            assert getEncoding().isUTF16();
             if (Character.isLowSurrogate((char) inputRead(input, fromIndex)) && Character.isHighSurrogate((char) inputRead(input, fromIndex - 1))) {
                 return fromIndex - 1;
             }

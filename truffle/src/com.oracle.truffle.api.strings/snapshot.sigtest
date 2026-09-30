@@ -164,7 +164,7 @@ meth public final void copyToNativeMemoryNodeUncached(int,java.lang.Object,int,i
 meth public final void copyToNativeMemoryUncached(int,java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public void materializeUncached(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
 supr java.lang.Object
-hfds DEBUG_ALWAYS_CREATE_JAVA_STRING,DEBUG_NON_ZERO_OFFSET,DEBUG_STRICT_ENCODING_CHECKS,codePointLength,codeRange,data,encoding,flags,hashCode,length,offset,stride
+hfds DEBUG_ALWAYS_CREATE_JAVA_STRING,DEBUG_NON_ZERO_OFFSET,DEBUG_STRICT_ENCODING_CHECKS,MASKED_ZERO_HASH_CODE,codePointLength,codeRange,data,encoding,flags,hashCode,length,offset,stride
 hcls LazyConcat,LazyLong,NativePointer
 
 CLSS public final com.oracle.truffle.api.strings.InternalByteArray
@@ -381,7 +381,7 @@ meth public static com.oracle.truffle.api.strings.TruffleString fromLongUncached
 meth public static com.oracle.truffle.api.strings.TruffleString fromNativePointerUncached(java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 supr com.oracle.truffle.api.strings.AbstractTruffleString
 hfds ETERNAL_POINTER,FLAG_CACHE_HEAD,NEXT_UPDATER,next
-hcls InternalAsTruffleStringNode,InternalCopyToByteArrayNode,InternalSwitchEncodingNode
+hcls CodePointAtIndexUTF32Node,InternalAsTruffleStringNode,InternalCopyToByteArrayNode,InternalSwitchEncodingNode
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$AsManagedNode
  outer com.oracle.truffle.api.strings.TruffleString
@@ -493,7 +493,7 @@ CLSS public final static com.oracle.truffle.api.strings.TruffleString$CodePointS
 meth public boolean isIntrinsicCandidate(com.oracle.truffle.api.strings.TruffleString$CodeRange)
 meth public static com.oracle.truffle.api.strings.TruffleString$CodePointSet fromRanges(int[],com.oracle.truffle.api.strings.TruffleString$Encoding)
 supr java.lang.Object
-hfds encoding,indexOfNodes,ranges
+hfds UNCACHED_BRANCH_PROFILES,encoding,indexOfOps,isUTF16Or32
 
 CLSS public final static !enum com.oracle.truffle.api.strings.TruffleString$CodeRange
  outer com.oracle.truffle.api.strings.TruffleString
@@ -933,7 +933,9 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ReadCharUTF16Node
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract char execute(com.oracle.truffle.api.strings.AbstractTruffleString,int)
+meth public final char execute(com.oracle.truffle.api.strings.AbstractTruffleString,int)
+meth public final char executeBE(com.oracle.truffle.api.strings.AbstractTruffleString,int)
+meth public final char executeLE(com.oracle.truffle.api.strings.AbstractTruffleString,int)
 meth public static com.oracle.truffle.api.strings.TruffleString$ReadCharUTF16Node create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ReadCharUTF16Node getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -1150,7 +1152,7 @@ CLSS public final com.oracle.truffle.api.strings.TruffleStringFactory
 cons public init()
 innr public final static WithMaskFactory
 supr java.lang.Object
-hcls AsManagedNodeGen,AsNativeNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfCodePointSetNodeGen,ByteIndexOfStringNodeGen,ByteIndexToCodePointIndexNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareBytesNodeGen,CompareCharsUTF16NodeGen,CompareIntsUTF32NodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeImpreciseNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,GetStringCompactionLevelNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,InternalAsTruffleStringNodeGen,InternalCopyToByteArrayNodeGen,InternalSwitchEncodingNodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToJavaStringNodeGen,ToValidStringNodeGen
+hcls AsManagedNodeGen,AsNativeNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfCodePointSetNodeGen,ByteIndexOfStringNodeGen,ByteIndexToCodePointIndexNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointAtIndexUTF32NodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareBytesNodeGen,CompareCharsUTF16NodeGen,CompareIntsUTF32NodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeImpreciseNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,GetStringCompactionLevelNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,InternalAsTruffleStringNodeGen,InternalCopyToByteArrayNodeGen,InternalSwitchEncodingNodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToJavaStringNodeGen,ToValidStringNodeGen
 
 CLSS public final static com.oracle.truffle.api.strings.TruffleStringFactory$WithMaskFactory
  outer com.oracle.truffle.api.strings.TruffleStringFactory
@@ -1171,7 +1173,7 @@ meth public int previousUncached()
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.0")
 meth public int previousUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 supr java.lang.Object
-hfds a,arrayA,codeRangeA,encoding,errorHandling,offsetA,rawIndex,strideA
+hfds a,arrayA,codeRangeA,encoding,errorHandling,lengthA,offsetA,rawIndex,strideA
 hcls InternalNextNode,InternalPreviousNode
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleStringIterator$NextNode
@@ -1300,7 +1302,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation

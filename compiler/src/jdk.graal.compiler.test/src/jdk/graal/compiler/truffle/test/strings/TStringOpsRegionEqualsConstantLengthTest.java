@@ -75,7 +75,7 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
 
     @Override
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
-        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, getRegionEqualsWithOrMaskWithStrideIntl(), cache.get(), strideA, strideB, indexOf(lengthFilter, lengthCMP));
+        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, getRegionEqualsWithOrMaskWithStride(), cache.get(), strideA, strideB, indexOf(lengthFilter, lengthCMP));
     }
 
     @Override
@@ -86,7 +86,7 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
         constantArgs[4] = strideA;
         constantArgs[9] = strideB;
         constantArgs[12] = lengthCMP;
-        testWithNativeExcept(getRegionEqualsWithOrMaskWithStrideIntl(), null, 1L << 11, DUMMY_LOCATION,
+        testWithNativeExcept(getRegionEqualsWithOrMaskWithStride(), null, 1L << 11, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,7 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class JavaRegexLexer extends RegexLexer {
@@ -409,7 +409,7 @@ public final class JavaRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleCCRangeOutOfOrder(int startPos) {
+    protected ClassSetContents handleCCRangeOutOfOrder(int startPos, int lo, int hi) {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -601,7 +601,7 @@ public final class JavaRegexLexer extends RegexLexer {
         if (invert) {
             // TODO reference implementation has something with hasSupplementary, do we care about
             // this?;
-            p = p.createInverse(Encodings.UTF_16);
+            p = p.createInverse(Encoding.UTF_16);
         }
         return ClassSetContents.createCharacterClass(p);
     }
@@ -707,7 +707,7 @@ public final class JavaRegexLexer extends RegexLexer {
                     }
                     prev = curCharClass.toCodePointSet();
                     if (invert) {
-                        return prev.createInverse(Encodings.UTF_16);
+                        return prev.createInverse(Encoding.UTF_16);
                     }
                     return prev;
                 }
@@ -755,7 +755,11 @@ public final class JavaRegexLexer extends RegexLexer {
                 retreat();
                 return CodePointSet.create(ch);
             }
-            int upper = parseCharClassAtomCodePoint(consumeChar());
+            char c2 = consumeChar();
+            if (c2 == '\\' && (atEnd() || isEscapeCharClass(curChar()))) {
+                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE, ErrorCode.InvalidCharacterClass);
+            }
+            int upper = parseCharClassAtomCodePoint(c2);
             if (upper < ch) {
                 throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE, ErrorCode.InvalidCharacterClass);
             }

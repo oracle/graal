@@ -124,7 +124,7 @@ public class TStringWriteByteTest extends TStringTestBase {
             Assert.assertTrue(codeRangeAfterNotify.isSupersetOf(TruffleString.CodeRange.LATIN_1));
         }
         if (codeRangeBeforeMutate == TruffleString.CodeRange.BROKEN && encoding == UTF_16BE) {
-            Assert.assertSame(TruffleString.CodeRange.VALID, codeRangeAfterNotify);
+            Assert.assertSame(TruffleString.CodeRange.BMP, codeRangeAfterNotify);
         } else {
             Assert.assertTrue(codeRangeAfterNotify.isSupersetOf(codeRangeBeforeMutate));
         }

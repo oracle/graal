@@ -52,6 +52,13 @@ public class TStringOpsCalcStringAttributesUTF32ConstantTest extends TStringOpsC
     }
 
     @Test
+    public void testUTF32ForeignEndian() {
+        byte[] swappedArray = byteSwapArray(arrayA, 2);
+        setConstantArgs(DUMMY_LOCATION, swappedArray, offsetA, lengthA);
+        test(getTStringOpsMethod("calcStringAttributesUTF32FE", byte[].class, long.class, int.class), null, DUMMY_LOCATION, swappedArray, offsetA, lengthA);
+    }
+
+    @Test
     public void testUTF32I() {
         int[] intArray = toIntArray(arrayA);
         long offsetIntArray = offsetA - byteArrayBaseOffset() + intArrayBaseOffset();

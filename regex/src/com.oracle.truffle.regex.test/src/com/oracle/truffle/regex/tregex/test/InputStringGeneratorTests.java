@@ -51,7 +51,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 public class InputStringGeneratorTests extends RegexTestBase {
 
@@ -63,8 +63,8 @@ public class InputStringGeneratorTests extends RegexTestBase {
     }
 
     @Override
-    Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_16_RAW;
+    Encoding getTRegexEncoding() {
+        return Encoding.UTF_16_RAW;
     }
 
     @Test
@@ -84,10 +84,11 @@ public class InputStringGeneratorTests extends RegexTestBase {
     }
 
     void testInputStringGenerator(String pattern) {
-        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong(), compileRegex(pattern, ""));
+        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong());
     }
 
-    private void testInputStringGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding, long rngSeed, Value compiledRegex) {
+    private void testInputStringGenerator(String pattern, String flags, Map<String, String> options, Encoding encoding, long rngSeed) {
+        Value compiledRegex = compileRegex(pattern, flags);
         Value generator = getGenerator(pattern, flags, options, encoding);
         for (int i = 0; i < 20; i++) {
             Value input = generator.execute(rngSeed + i);
@@ -101,8 +102,8 @@ public class InputStringGeneratorTests extends RegexTestBase {
         }
     }
 
-    private Value getGenerator(String pattern, String flags, Map<String, String> options, Encodings.Encoding encoding) {
-        Source.Builder builder = sourceBuilder(pattern, flags, options, encoding).option("regexDummyLang.GenerateInput", "true");
+    private Value getGenerator(String pattern, String flags, Map<String, String> options, Encoding encoding) {
+        Source.Builder builder = sourceBuilder(pattern, flags, options(options), encoding).option("regexDummyLang.GenerateInput", "true");
         try {
             return context.parse(builder.build());
         } catch (IOException e) {

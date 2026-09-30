@@ -104,12 +104,7 @@ public class DebugUtil {
 
     @TruffleBoundary
     public static StringBuilder appendNodeId(StringBuilder sb, int id) {
-        return sb.append(nodeID(id));
-    }
-
-    @TruffleBoundary
-    public static String nodeID(int id) {
-        return String.format("%04x", id);
+        return sb.append(id);
     }
 
     private static final Pattern specialChars = Pattern.compile("[\"\\\\\u0000-\u001F\u007F-\u009F]");

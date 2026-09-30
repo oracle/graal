@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,7 @@ public abstract class Term extends RegexASTNode implements AbstractState<Term, A
 
     public void setSeqIndex(int seqIndex) {
         this.seqIndex = seqIndex;
-        if (seqIndex > TRegexOptions.TRegexParserTreeMaxNumberOfTermsInSequence) {
+        if (seqIndex >= TRegexOptions.TRegexParserTreeMaxNumberOfTermsInSequence) {
             throw new UnsupportedRegexException("too many terms in a single sequence");
         }
     }

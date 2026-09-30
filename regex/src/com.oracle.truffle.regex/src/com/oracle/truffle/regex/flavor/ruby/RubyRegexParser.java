@@ -61,6 +61,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
@@ -78,7 +79,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
@@ -124,7 +125,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         for (char ctypeChar : new Character[]{'d', 'h', 's', 'w'}) {
             CodePointSet charSet = UNICODE_CHAR_CLASSES.get(ctypeChar);
             char complementCTypeChar = Character.toUpperCase(ctypeChar);
-            CodePointSet complementCharSet = charSet.createInverse(Encodings.UTF_32);
+            CodePointSet complementCharSet = charSet.createInverse(Encoding.UTF_32);
             UNICODE_CHAR_CLASSES.put(complementCTypeChar, complementCharSet);
             ASCII_CHAR_CLASSES.put(ctypeChar, asciiRange.createIntersectionSingleRange(charSet));
             ASCII_CHAR_CLASSES.put(complementCTypeChar, complementCharSet.union(nonAsciiRange));
@@ -132,12 +133,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
         UNICODE_POSIX_CHAR_CLASSES = new HashMap<>(14);
         ASCII_POSIX_CHAR_CLASSES = new HashMap<>(14);
-        CompilationBuffer buffer = new CompilationBuffer(Encodings.UTF_32);
+        CompilationBuffer buffer = new CompilationBuffer(Encoding.UTF_32);
 
         CodePointSet blank = UNICODE.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
         CodePointSet cntrl = UNICODE.getProperty("General_Category=Control");
         CodePointSet graph = space.union(UNICODE.getProperty("General_Category=Control")).union(UNICODE.getProperty("General_Category=Surrogate")).union(
-                        UNICODE.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
+                        UNICODE.getProperty("General_Category=Unassigned")).createInverse(Encoding.UTF_32);
         UNICODE_POSIX_CHAR_CLASSES.put("alpha", alpha);
         UNICODE_POSIX_CHAR_CLASSES.put("alnum", alpha.union(digit));
         UNICODE_POSIX_CHAR_CLASSES.put("blank", blank);
@@ -735,6 +736,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     // The parser
 
     private void run() {
+        RegexRootNode.checkThreadInterrupted();
         scanForCaptureGroups();
 
         flagsStack.push(globalFlags);
@@ -763,6 +765,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
 
             while (true) {
+                RegexRootNode.checkThreadInterrupted();
                 alternative();
 
                 if (match("|")) {
@@ -819,6 +822,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         // vertical bar (|) or right parenthesis.
         flagsStack.push(getLocalFlags());
         while (!atEnd() && curChar() != '|' && curChar() != ')') {
+            RegexRootNode.checkThreadInterrupted();
             term();
         }
         flagsStack.pop();
@@ -1122,7 +1126,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     private CodePointSet getUnicodeCharClass(char className) {
-        if (inSource.getEncoding() == Encodings.ASCII) {
+        if (inSource.getEncoding() == Encoding.ASCII) {
             return ASCII_CHAR_CLASSES.get(className);
         }
 
@@ -1130,7 +1134,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     private CodePointSet getUnicodePosixCharClass(String className) {
-        if (inSource.getEncoding() == Encodings.ASCII) {
+        if (inSource.getEncoding() == Encoding.ASCII) {
             return ASCII_POSIX_CHAR_CLASSES.get(className);
         }
 
@@ -1295,7 +1299,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                         property = CodePointSet.getEmpty();
                     }
                     if (negative) {
-                        property = property.createInverse(Encodings.UTF_32);
+                        property = property.createInverse(Encoding.UTF_32);
                     }
                     if (inCharClass) {
                         curCharClass.addSet(property);
@@ -1476,7 +1480,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses a line-break matcher. We do not support this because it entails support for atomic
      * expressions, i.e. cuts in the backtracking.
-     *
+     * 
      * @return true if parsed correctly
      */
     private boolean lineBreak() {
@@ -1506,7 +1510,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses an extended grapheme cluster. We do not support this because it entails support for
      * atomic expressions, i.e. cuts in the backtracking.
-     *
+     * 
      * @return true if parsed correctly
      */
     private boolean extendedGraphemeCluster() {
@@ -1523,7 +1527,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * Parses a keep command. This instructs the regex engine to trim the current match to the
      * current position. ECMAScript regular expressions don't have support for anything of this
      * sort.
-     *
+     * 
      * @return true if parsed correctly
      */
     private boolean keepCommand() {
@@ -1539,7 +1543,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     /**
      * Parses a subexpression call. We do not support this as ECMAScript has no similar notion and
      * operates with finite memory (no stack).
-     *
+     * 
      * @return true if parsed correctly
      */
     private boolean subexpressionCall() {
@@ -1562,7 +1566,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * Parses a string escape, which is an escape sequence that matches a series of characters. In
      * Ruby, this can be seen when using the \\u{... ... ...} syntax to escape a sequence of
      * characters using their Unicode codepoint values.
-     *
+     * 
      * @return true if parsed correctly
      */
     private boolean stringEscape() {
@@ -1602,7 +1606,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * <li>syntax character escapes like \., \* or \\</li>
      * <li>any superfluous uses of backslash, e.g. \: or \"</li>
      * </ul>
-     *
+     * 
      * @return the escaped codepoint
      */
     private int fetchEscapedChar() {
@@ -1797,6 +1801,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
         int firstPosInside = position;
         classBody: while (true) {
+            RegexRootNode.checkThreadInterrupted();
             if (atEnd()) {
                 throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos, ErrorCode.InvalidCharacterClass);
             }

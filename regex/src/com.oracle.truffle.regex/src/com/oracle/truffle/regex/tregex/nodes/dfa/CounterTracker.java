@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,8 @@ import com.oracle.truffle.regex.util.TBitSet;
  */
 public abstract class CounterTracker {
 
+    private static final CounterTracker[] EMPTY = {};
+
     /**
      * Constructs an array for all CounterTracker used to track all non-unrolled bounded quantifiers
      * of a regex.
@@ -81,6 +83,9 @@ public abstract class CounterTracker {
      */
     public static CounterTracker[] build(int[] quantifierBounds, int[] trackerSizes, CounterTrackerData.Builder dataBuilder, TBitSet trivialAlwaysReEnter, TBitSet trivialNeverReEnter,
                     boolean regressionTestMode) {
+        if (trackerSizes.length == 0) {
+            return EMPTY;
+        }
         CounterTracker[] result = new CounterTracker[trackerSizes.length];
         for (int i = 0; i < quantifierBounds.length / 2; i++) {
             int min = quantifierBounds[i * 2];

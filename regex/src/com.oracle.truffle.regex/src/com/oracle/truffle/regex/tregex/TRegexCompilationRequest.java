@@ -53,6 +53,7 @@ import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 import com.oracle.truffle.regex.RegexProfile;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.analysis.RegexUnifier;
@@ -71,9 +72,10 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackerSubExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexLiteralLookAroundExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexLiteralLookAroundExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.RegexASTPostProcessor;
 import com.oracle.truffle.regex.tregex.parser.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
@@ -208,7 +210,7 @@ public final class TRegexCompilationRequest {
         }
     }
 
-    public TRegexBacktrackingNFAExecutorNode compileBacktrackingExecutor() {
+    public TRegexBacktrackerSubExecutorNode compileBacktrackingExecutor() {
         pureNFA = PureNFAGenerator.mapToNFA(ast);
         debugPureNFA();
         ArrayDeque<StackEntry> stack = new ArrayDeque<>();
@@ -216,6 +218,7 @@ public final class TRegexCompilationRequest {
         int totalNumberOfStates = 0;
         int totalNumberOfTransitions = 0;
         while (true) {
+            RegexRootNode.checkThreadInterrupted();
             assert !stack.isEmpty();
             StackEntry cur = stack.peek();
             for (; cur.i < cur.subExecutors.length; cur.i++) {
@@ -225,7 +228,7 @@ public final class TRegexCompilationRequest {
                     if (astSubtree.isLookAroundAssertion() && astSubtree.asLookAroundAssertion().isLiteral()) {
                         cur.subExecutors[cur.i] = TRegexLiteralLookAroundExecutorNode.create(ast, astSubtree.asLookAroundAssertion(), compilationBuffer);
                     } else {
-                        cur.subExecutors[cur.i] = new TRegexBacktrackingNFAExecutorNode(ast, subNFA, subNFA.getNumberOfStates(), subNFA.getNumberOfTransitions(), NO_SUB_EXECUTORS, false,
+                        cur.subExecutors[cur.i] = TRegexBacktrackingNFAExecutorNode.create(ast, subNFA, subNFA.getNumberOfStates(), subNFA.getNumberOfTransitions(), NO_SUB_EXECUTORS, false,
                                         compilationBuffer);
                     }
                     totalNumberOfStates += cur.subExecutors[cur.i].getNumberOfStates();
@@ -242,15 +245,24 @@ public final class TRegexCompilationRequest {
                 totalNumberOfTransitions += cur.nfa.getNumberOfTransitions();
                 if (cur.nfa.isRoot()) {
                     assert stack.isEmpty();
-                    return new TRegexBacktrackingNFAExecutorNode(ast, cur.nfa, totalNumberOfStates, totalNumberOfTransitions, cur.subExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
+                    return TRegexBacktrackingNFAExecutorNode.create(ast, cur.nfa, totalNumberOfStates, totalNumberOfTransitions, cur.subExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
                 } else {
                     assert !stack.isEmpty();
                     StackEntry parent = stack.peek();
-                    parent.subExecutors[parent.i++] = new TRegexBacktrackingNFAExecutorNode(ast, cur.nfa, cur.nfa.getNumberOfStates(), cur.nfa.getNumberOfTransitions(), cur.subExecutors, false,
+                    parent.subExecutors[parent.i++] = TRegexBacktrackingNFAExecutorNode.create(ast, cur.nfa, cur.nfa.getNumberOfStates(), cur.nfa.getNumberOfTransitions(), cur.subExecutors, false,
                                     compilationBuffer);
                 }
             }
         }
+    }
+
+    @TruffleBoundary
+    TRegexExecNode.LazyCaptureGroupRegexSearchNode compileLazyDFAExecutorFromSource(RegexProfile profile, boolean allowSimpleCG) {
+        createAST();
+        assert ast.canTransformToDFA();
+        createNFA();
+        assert !nfa.isDead();
+        return compileLazyDFAExecutor(profile, allowSimpleCG);
     }
 
     @TruffleBoundary

@@ -43,7 +43,7 @@ package com.oracle.truffle.regex.charset;
 import java.util.Iterator;
 
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
  * Extensions of {@link SortedListOfRanges} specific to immutable implementations. Any methods of
