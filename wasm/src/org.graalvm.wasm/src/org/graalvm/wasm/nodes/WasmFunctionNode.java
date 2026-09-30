@@ -381,6 +381,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         CompilerDirectives.ensureVirtualized(virtualState);
 
         int opcode = Bytecode.UNREACHABLE;
+        offset = CompilerDirectives.mergeExplodeKey(offset);
         loop: while (true) {
             try {
                 opcode = nextOpcode(offset, state, virtualState, frame);
