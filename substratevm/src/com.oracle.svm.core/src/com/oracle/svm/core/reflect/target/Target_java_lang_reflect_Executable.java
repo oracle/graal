@@ -46,7 +46,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.espresso.classfile.ConstantPool.Tag;
 import com.oracle.svm.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -124,9 +124,10 @@ public final class Target_java_lang_reflect_Executable {
             return null;
         }
         Executable executable = SubstrateUtil.cast(this, Executable.class);
-        DynamicHub declaringClass = DynamicHub.fromClass(executable.getDeclaringClass());
-        if (declaringClass.isRuntimeLoaded()) {
-            return RuntimeLoadedExecutableParameterHelper.asReflectParameters(executable, (MethodParametersAttribute) parameterMetadata, declaringClass);
+        Class<?> declaringClass = executable.getDeclaringClass();
+        DynamicHub declaringHub = DynamicHub.fromClass(declaringClass);
+        if (declaringHub.isRuntimeLoaded()) {
+            return RuntimeLoadedExecutableParameterHelper.asReflectParameters(executable, (MethodParametersAttribute) parameterMetadata, declaringHub);
         }
         /*
          * Note that the image-time parameter metadata encoding can also encode a possible

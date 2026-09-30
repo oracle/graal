@@ -30,7 +30,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 
-import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
@@ -105,7 +105,7 @@ public final class Target_java_lang_reflect_Constructor {
 
     @Substitute
     public int getModifiers() {
-        return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
+        return RuntimeMetadataDecoder.clearInternalModifiers(modifiers);
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {

@@ -37,11 +37,11 @@ import com.oracle.svm.espresso.classfile.ConstantPool;
 
 /**
  * All usages of ConstantPool are substituted to go through
- * {@link com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MetadataAccessor}.
+ * {@link com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.MetadataAccessor}.
  * <p>
  * In Native Image, the constant pool is not used. However, in the context of Layered Image, the
  * constant pool needs to be able to provide the layer number it is associated with. This is because
- * the {@link com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MetadataAccessor} needs a layer
+ * the {@link com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.MetadataAccessor} needs a layer
  * number for retrieving the information in the correct layer and in some cases, only the constant
  * pool can provide this information. The constant pool is only used with Layered Image, and only to
  * provide a layer number.
