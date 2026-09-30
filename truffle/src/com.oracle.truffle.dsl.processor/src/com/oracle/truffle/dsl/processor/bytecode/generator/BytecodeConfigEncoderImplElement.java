@@ -49,6 +49,7 @@ import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.SuppressFBWarnings;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeConfigEncoding;
@@ -81,8 +82,10 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
         this.add(createEncodeInstrumentation());
         this.add(createDecode1());
         this.add(createDecode2());
-        this.add(createEncodeTags());
+        this.addOptional(createGetTagMask());
+        this.addOptional(createEncodeTags());
         this.add(createEncodeTag());
+
     }
 
     private CodeExecutableElement createDecode1() {
@@ -145,19 +148,38 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
         return encodeInstrumentation;
     }
 
-    private CodeExecutableElement createEncodeTag() {
-        CodeExecutableElement encodeTag = GeneratorUtils.override(types.BytecodeConfigEncoder, "encodeTag", new String[]{"c"});
-        CodeTreeBuilder b = encodeTag.createBuilder();
+    private CodeExecutableElement createGetTagMask() {
+        if (!model().enableTagInstrumentation) {
+            return null;
+        }
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "getTagMask");
+        ex.addParameter(new CodeVariableElement(type(Class.class), "c"));
 
+        CodeTreeBuilder b = ex.createBuilder();
         if (parent.model.getProvidedTags().isEmpty()) {
             parent.createFailInvalidTag(b, "c");
         } else {
-            b.startReturn().string("((long) CLASS_TO_TAG_MASK.get(c)) << " + encoding.tagShift()).end().build();
+            boolean elseIf = false;
+            int index = 0;
+            for (TypeMirror tag : parent.model.getProvidedTags()) {
+                elseIf = b.startIf(elseIf);
+                b.string("c == ").typeLiteral(tag);
+                b.end().startBlock();
+                b.startReturn().string("1 << ").string(Integer.toString(index)).end();
+                b.end();
+                index++;
+            }
+            b.startElseBlock();
+            parent.createFailInvalidTag(b, "c");
+            b.end();
         }
-        return encodeTag;
+        return ex;
     }
 
     private CodeExecutableElement createEncodeTags() {
+        if (!model().enableTagInstrumentation) {
+            return null;
+        }
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "encodeTags");
         ex.addParameter(new CodeVariableElement(arrayOf(type(Class.class)), "tags"));
         ex.setVarArgs(true);
@@ -174,11 +196,28 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
         } else {
             b.statement("int tagMask = 0");
             b.startFor().string("Class<?> tag : tags").end().startBlock();
-            b.statement("tagMask |= CLASS_TO_TAG_MASK.get(tag)");
+            b.statement("tagMask |= getTagMask(tag)");
             b.end();
             b.startReturn().string("tagMask").end();
         }
 
+        return ex;
+    }
+
+    private CodeExecutableElement createEncodeTag() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeConfigEncoder, "encodeTag", new String[]{"c"});
+        CodeTreeBuilder b = ex.createBuilder();
+
+        if (!model().enableTagInstrumentation) {
+            b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote(
+                            "Tag instrumentation is not enabled.").end().end();
+            return ex;
+        }
+
+        b.startReturn();
+        b.startParentheses().startCall("getTagMask").string("c").end().string(" & 0xffffffffL").end();
+        b.string(" << ").string(Integer.toString(encoding.tagShift()));
+        b.end();
         return ex;
     }
 
