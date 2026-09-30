@@ -46,9 +46,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -136,7 +134,7 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
 
-        this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        this.classInitializationSupport = ClassInitializationSupport.singleton();
 
         this.inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
 

@@ -35,10 +35,10 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -212,7 +212,7 @@ final class AtomicFieldUpdaterAccessCheck {
 class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtRunTime(GuestAccess.get().lookupType("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
                         "innocuousThreadGroup must be initialized at run time");
     }
 }

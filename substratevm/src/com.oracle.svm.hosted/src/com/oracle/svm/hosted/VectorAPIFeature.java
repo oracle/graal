@@ -38,7 +38,7 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -116,7 +116,7 @@ public class VectorAPIFeature implements InternalFeature {
          * this size. We must therefore register FieldValueTransformers for a large number of fields
          * in various vector classes.
          */
-        RuntimeClassInitialization.initializeAtBuildTime(VECTOR_API_PACKAGE_NAME);
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime(VECTOR_API_PACKAGE_NAME);
 
         Class<?> vectorShapeClass = ReflectionUtil.lookupClass(VECTOR_API_PACKAGE_NAME + ".VectorShape");
         UNSAFE.ensureClassInitialized(vectorShapeClass);

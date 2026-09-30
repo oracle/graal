@@ -26,10 +26,9 @@ package com.oracle.svm.hosted.jdk;
 
 import java.security.CodeSource;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -73,7 +72,7 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
         rci.initializeAtBuildTime("com.sun.java.util.jar.pack", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.management", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.naming.internal", JDK_CLASS_REASON);

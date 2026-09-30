@@ -62,7 +62,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -942,7 +943,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
                                         "USE_SPEC"),
                         (_, _) -> false);
 
-        RuntimeClassInitialization.initializeAtRunTime(RuntimeSystemLookup.class);
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtRunTime(GuestAccess.get().lookupType(RuntimeSystemLookup.class));
 
         if (ForeignFunctionsRuntime.isLibcSupported()) {
             access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
