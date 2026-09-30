@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -634,7 +634,7 @@ public class NativeImage {
                  * Truffle to the builder module path. This is legacy support and should in the
                  * future no longer be needed.
                  */
-                jars.addAll(getJars(libTruffleDir, "truffle-compiler"));
+                jars.addAll(getJars(libTruffleDir, "truffle-compiler", "jniutils", "nativebridge"));
                 Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
                 if (Files.exists(builderPath)) {
                     List<Path> truffleRuntimeSVMJars = getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm");
@@ -644,10 +644,6 @@ public class NativeImage {
                         // JDKs
                         jars.addAll(getJars(libJvmciDir, "polyglot"));
                     }
-                }
-                if (libJvmciDir != null) {
-                    // truffle-runtime depends on polyglot, which is not part of non-jlinked JDKs
-                    jars.addAll(getJars(libTruffleDir, "jniutils"));
                 }
             }
             /*
