@@ -25,9 +25,12 @@
 package com.oracle.svm.util;
 
 import java.io.InputStream;
+import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -36,7 +39,9 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Formattable;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -78,6 +83,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl {
 
     // Checkstyle: stop field name check
+    public final ResolvedJavaType java_lang_AutoCloseable = lookupType(AutoCloseable.class);
+
     public final ResolvedJavaType java_lang_Boolean = lookupType(Boolean.class);
     public final ResolvedJavaMethod java_lang_Boolean_valueOf = lookupMethod(java_lang_Boolean, "valueOf", boolean.class);
     public final ResolvedJavaMethod java_lang_Boolean_booleanValue = lookupMethod(java_lang_Boolean, "booleanValue");
@@ -140,6 +147,12 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_ClassNotFoundException = lookupType(ClassNotFoundException.class);
 
+    public final ResolvedJavaType java_lang_Cloneable = lookupType(Cloneable.class);
+
+    public final ResolvedJavaType java_lang_ExceptionInInitializerError = lookupType(ExceptionInInitializerError.class);
+
+    public final ResolvedJavaType java_lang_Iterable = lookupType(Iterable.class);
+
     public final ResolvedJavaType java_lang_invoke_DirectMethodHandle = lookupType("java.lang.invoke.DirectMethodHandle");
     public final ResolvedJavaMethod java_lang_invoke_DirectMethodHandle_allocateInstance = lookupMethod(java_lang_invoke_DirectMethodHandle, "allocateInstance", Object.class);
 
@@ -158,6 +171,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_invoke_VarHandle = lookupType(VarHandle.class);
 
+    public final ResolvedJavaType java_lang_NoClassDefFoundError = lookupType(NoClassDefFoundError.class);
+
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaMethod java_lang_Object_clone = lookupMethod(java_lang_Object, "clone");
     public final ResolvedJavaMethod java_lang_Object_equals = lookupMethod(java_lang_Object, "equals", Object.class);
@@ -168,6 +183,12 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_Package = lookupType(Package.class);
 
+    public final ResolvedJavaType java_lang_Runnable = lookupType(Runnable.class);
+
+    public final ResolvedJavaType java_lang_StackWalker = lookupType(StackWalker.class);
+
+    public final ResolvedJavaType java_lang_Thread = lookupType(Thread.class);
+
     public final ResolvedJavaType java_lang_Throwable = lookupType(Throwable.class);
     public final ResolvedJavaMethod java_lang_Throwable_getCause = lookupMethod(java_lang_Throwable, "getCause");
     public final ResolvedJavaMethod java_lang_Throwable_getMessage = lookupMethod(java_lang_Throwable, "getMessage");
@@ -176,6 +197,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_ref_Reference = lookupType(Reference.class);
     public final ResolvedJavaMethod java_lang_ref_Reference_refersTo = lookupMethod(java_lang_ref_Reference, "refersTo", Object.class);
+
+    public final ResolvedJavaType java_lang_ref_ReferenceQueue = lookupType(ReferenceQueue.class);
+
+    public final ResolvedJavaType java_lang_ref_SoftReference = lookupType(SoftReference.class);
 
     public final ResolvedJavaType java_lang_reflect_Array = lookupType(Array.class);
     public final ResolvedJavaMethod java_lang_reflect_Array_newInstance = lookupMethod(java_lang_reflect_Array, "newInstance", Class.class, int.class);
@@ -197,6 +222,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_io_InputStream = lookupType(InputStream.class);
     public final ResolvedJavaMethod java_io_Input_Stream_readAllBytesMethod = lookupMethod(java_io_InputStream, "readAllBytes");
 
+    public final ResolvedJavaType java_io_Serializable = lookupType(Serializable.class);
+
     public final ResolvedJavaType java_util_Arrays = lookupType(Arrays.class);
     public final ResolvedJavaMethod java_util_Arrays_copyOf = lookupMethod(java_util_Arrays, "copyOf", Object[].class, int.class);
     public final ResolvedJavaMethod java_util_Arrays_copyOfRange = lookupMethod(java_util_Arrays, "copyOfRange", Object[].class, int.class, int.class);
@@ -204,6 +231,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_util_Collection = lookupType(Collection.class);
     public final ResolvedJavaMethod java_util_Collection_toArray = lookupMethod(java_util_Collection, "toArray");
     public final ResolvedJavaMethod java_util_Collection_toArray_withArray = lookupMethod(java_util_Collection, "toArray", Object[].class);
+
+    public final ResolvedJavaType java_util_Formattable = lookupType(Formattable.class);
+
+    public final ResolvedJavaType java_util_List = lookupType(List.class);
 
     public final ResolvedJavaType java_util_Map = lookupType(Map.class);
     public final ResolvedJavaMethod java_util_Map_entrySet = lookupMethod(java_util_Map, "entrySet");
