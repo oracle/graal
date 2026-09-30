@@ -385,10 +385,6 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
                         " to explicitly request initialization of this class at run time.";
     }
 
-    public void initializeAtRunTime(Class<?> clazz, String reason) {
-        initializeAtRunTime(GuestAccess.get().lookupType(clazz), reason);
-    }
-
     @Override
     public void initializeAtRunTime(ResolvedJavaType type, String reason) {
         initializeAtRunTime(JVMCIReflectionUtil.getTypeName(normalizeType(type)), reason, true);
@@ -408,10 +404,6 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     public void initializeAtBuildTime(ResolvedJavaType type, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         forceInitializeHosted(normalizeType(type), reason, false);
-    }
-
-    public void initializeAtBuildTime(Class<?> clazz, String reason) {
-        initializeAtBuildTime(GuestAccess.get().lookupType(clazz), reason);
     }
 
     @Override
@@ -670,10 +662,6 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
                 addAllInterfaces(interf, result);
             }
         }
-    }
-
-    public synchronized void addForTypeReachedTracking(Class<?> clazz) {
-        addForTypeReachedTracking(GuestAccess.get().lookupType(clazz));
     }
 
     public synchronized void addForTypeReachedTracking(ResolvedJavaType type) {
