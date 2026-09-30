@@ -50,6 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 public class StandaloneAnalysisFeatureImpl {
     public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
@@ -128,7 +129,7 @@ public class StandaloneAnalysisFeatureImpl {
         @Deprecated
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
             return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).stream()
-                            .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(LinkedHashSet::new));
+                            .map(OriginalClassProvider::getJavaClass).collect(Collectors.toCollection(LinkedHashSet::new));
         }
 
         Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {

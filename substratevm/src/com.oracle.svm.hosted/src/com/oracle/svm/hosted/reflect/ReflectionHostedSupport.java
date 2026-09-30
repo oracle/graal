@@ -36,8 +36,10 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 public interface ReflectionHostedSupport {
-    Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
+    Map<ResolvedJavaType, Set<ResolvedJavaType>> getReflectionInnerClasses();
 
     /**
      * Returns reflection field metadata. This is the only reflection metadata query that may still

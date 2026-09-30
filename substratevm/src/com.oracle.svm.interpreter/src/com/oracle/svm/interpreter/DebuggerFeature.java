@@ -115,6 +115,7 @@ import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -386,7 +387,7 @@ public class DebuggerFeature implements InternalFeature {
                                         InterpreterUtil.log("[process invokes] cannot execute %s due to call-site (%s) @ bci=%s is not callable by interpreter%n", method.getName(), bci, calleeMethod);
                                         if (method.getAnalyzedGraph() == null) {
                                             accessImpl.registerAsRoot(method, isInvokeSpecial(method), "method handle for interpreter");
-                                            accessImpl.registerAsUsed(method.getDeclaringClass().getJavaClass());
+                                            accessImpl.registerAsUsed(method.getDeclaringClass());
                                             access.requireAnalysisIteration();
                                         }
                                         if (method.reachableInCurrentLayer()) {
@@ -458,7 +459,7 @@ public class DebuggerFeature implements InternalFeature {
                          * initializer; it can't always be made read-only.
                          */
                         if (staticField.isStatic() && staticField.isSynthetic() && staticField.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
-                            Class<?> declaringClass = aType.getJavaClass();
+                            Class<?> declaringClass = OriginalClassProvider.getJavaClass(aType);
                             boolean value = !AssertionsSupport.singleton().desiredAssertionStatus(declaringClass);
                             InterpreterResolvedJavaField field = iUniverse.getOrCreateField(analysisStaticField);
                             JavaConstant javaConstant = iUniverse.constant(JavaConstant.forBoolean(value));

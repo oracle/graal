@@ -307,6 +307,10 @@ public final class GuestAccess implements VMAccess {
         return get().elements;
     }
 
+    public boolean isBoxingType(ResolvedJavaType type) {
+        return elements.primitiveBoxTypes.contains(type);
+    }
+
     /**
      * Gets the {@link Annotated} equivalent value for element.
      *
@@ -415,6 +419,14 @@ public final class GuestAccess implements VMAccess {
         JavaConstant annotatedClass = constantReflection.asJavaClass(annotatedType);
         JavaConstant annotationClass = constantReflection.asJavaClass(annotationType);
         return invoke(elements.java_lang_Class_getAnnotation, annotatedClass, annotationClass);
+    }
+
+    /**
+     * Gets the nest members of a type by invoking {@link Class#getNestMembers()} in the guest.
+     */
+    public ResolvedJavaType[] getNestMembers(ResolvedJavaType type) {
+        JavaConstant classConstant = constantReflection.asJavaClass(OriginalClassProvider.getOriginalType(type));
+        return asResolvedJavaTypes(invoke(elements.java_lang_Class_getNestMembers, classConstant));
     }
 
     /**

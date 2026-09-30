@@ -31,7 +31,6 @@ import java.io.PrintWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
@@ -102,6 +101,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
@@ -454,7 +454,7 @@ public class PermissionsFeature implements Feature {
         if (LambdaUtils.isLambdaType(type)) {
             return true;
         }
-        Class<?> javaClass = type.getJavaClass();
+        Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
         return javaClass != null && javaClass.isAnonymousClass();
     }
 
@@ -605,7 +605,7 @@ public class PermissionsFeature implements Feature {
             return;
         }
 
-        if (Proxy.isProxyClass(mNode.getOwner().getJavaClass())) {
+        if (JVMCIReflectionUtil.isProxyClass(mNode.getOwner())) {
             /*
              * Starting JDK-23+26 Proxy generated code does unsafe compare and set. The generated
              * proxy method calls the used invocation handler which is checked for possible unsafe
@@ -912,7 +912,7 @@ public class PermissionsFeature implements Feature {
      * @param methodNode the {@link BaseMethodNode} to check
      */
     private static boolean isSystemClass(BaseMethodNode methodNode) {
-        return isSystemClass(methodNode.getOwner().getJavaClass());
+        return isSystemClass(OriginalClassProvider.getJavaClass(methodNode.getOwner()));
     }
 
     private static boolean isSystemClass(Class<?> clz) {

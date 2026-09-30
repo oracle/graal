@@ -394,6 +394,17 @@ public final class JVMCIReflectionUtil {
     }
 
     /**
+     * Tests whether {@code type} represents a proxy class, equivalent to
+     * {@link java.lang.reflect.Proxy#isProxyClass(Class)}.
+     */
+    public static boolean isProxyClass(ResolvedJavaType type) {
+        GuestAccess access = GuestAccess.get();
+        ConstantReflectionProvider constantReflection = access.getProviders().getConstantReflection();
+        JavaConstant classConstant = constantReflection.asJavaClass(OriginalClassProvider.getOriginalType(type));
+        return access.invokeStatic(access.elements.java_lang_reflect_Proxy_isProxyClass, classConstant).asBoolean();
+    }
+
+    /**
      * Gets the return type for a {@link ResolvedJavaMethod}. This is the same as calling
      * {@link Method#getReturnType()} on the underlying method.
      *

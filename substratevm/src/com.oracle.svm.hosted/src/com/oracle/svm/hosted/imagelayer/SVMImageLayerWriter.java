@@ -323,7 +323,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         VMError.guarantee(!(successfulSimulation && failedSimulation), "Class init simulation cannot be both successful and failed.");
         builder.setIsSuccessfulSimulation(successfulSimulation);
         builder.setIsFailedSimulation(failedSimulation);
-        builder.setIsFailedInitialization(classInitializationSupport.isFailedInitialization(type.getJavaClass()));
+        builder.setIsFailedInitialization(classInitializationSupport.isFailedInitialization(type));
         builder.setIsLinked(type.isLinked());
         if (type.getSourceFileName() != null) {
             builder.setSourceFileName(type.getSourceFileName());
@@ -369,7 +369,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private static void persistWrappedType(AnalysisType type, PersistedAnalysisTypeData.Writer builder) {
         if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             WrappedType.SerializationGenerated.Writer b = builder.getWrappedType().initSerializationGenerated();
-            var key = SerializationSupport.currentLayer().getKeyFromConstructorAccessorClass(type.getJavaClass());
+            var key = SerializationSupport.currentLayer().getKeyFromConstructorAccessorClass(OriginalClassProvider.getJavaClass(type));
             b.setRawDeclaringClassId(key.declaringClassId());
             b.setRawTargetConstructorId(key.targetConstructorClassId());
         } else if (LambdaUtils.isLambdaType(type)) {

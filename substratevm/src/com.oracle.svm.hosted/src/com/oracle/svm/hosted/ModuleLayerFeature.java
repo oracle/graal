@@ -99,6 +99,7 @@ import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostedModuleSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.ClassLoaderValue;
@@ -337,7 +338,7 @@ public class ModuleLayerFeature implements InternalFeature {
         Set<Module> runtimeImageModules = accessImpl.getUniverse().getTypes()
                         .stream()
                         .filter(t1 -> !t1.isInSharedLayer() && typeIsReachable(t1))
-                        .map(t -> t.getJavaClass().getModule())
+                        .map(t -> OriginalClassProvider.getJavaClass(t).getModule())
                         .collect(Collectors.toSet());
 
         Set<Module> runtimeImageNamedModules = runtimeImageModules.stream().filter(Module::isNamed).collect(Collectors.toSet()); // noEconomicSet(streaming)

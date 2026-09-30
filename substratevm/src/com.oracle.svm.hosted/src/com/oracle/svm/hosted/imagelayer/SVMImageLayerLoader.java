@@ -359,8 +359,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             int rawTargetConstructorClassId = sg.getRawTargetConstructorId();
             AnalysisType rawDeclaringType = getAnalysisTypeForBaseLayerId(rawDeclaringClassId);
             AnalysisType rawTargetConstructorType = getAnalysisTypeForBaseLayerId(rawTargetConstructorClassId);
-            Class<?> rawDeclaringClass = rawDeclaringType.getJavaClass();
-            Class<?> rawTargetConstructorClass = rawTargetConstructorType.getJavaClass();
+            Class<?> rawDeclaringClass = OriginalClassProvider.getJavaClass(rawDeclaringType);
+            Class<?> rawTargetConstructorClass = OriginalClassProvider.getJavaClass(rawTargetConstructorType);
             Constructor<?> rawTargetConstructor = ReflectionUtil.lookupConstructor(rawTargetConstructorClass);
             Constructor<?> constructor = ReflectionFactory.getReflectionFactory().newConstructorForSerialization(rawDeclaringClass, rawTargetConstructor);
             DynamicHub rawDeclaringHub = typeToHub(rawDeclaringType);
@@ -385,7 +385,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             metaAccess.lookupJavaType(lambdaClass);
             return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
-            Class<?>[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), tid -> getAnalysisTypeForBaseLayerId(tid).getJavaClass(), Class[]::new);
+            Class<?>[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), tid -> OriginalClassProvider.getJavaClass(getAnalysisTypeForBaseLayerId(tid)), Class[]::new);
             Class<?> proxy = DynamicProxySupport.singleton().getProxyClassHosted(interfaces);
             metaAccess.lookupJavaType(proxy);
             return true;

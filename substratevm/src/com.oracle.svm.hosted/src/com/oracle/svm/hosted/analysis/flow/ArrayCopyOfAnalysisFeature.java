@@ -46,6 +46,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -89,10 +90,13 @@ final class ArrayCopyOfAnalysisFeature implements InternalFeature {
         TypeState typeState = analysisField.getSinkFlow().getState();
         Iterable<AnalysisType> types = typeState.types(bb);
         Iterator<AnalysisType> typesIterator = types.iterator();
-        if (typeState.typesCount() != 1 || !typesIterator.hasNext() || typesIterator.next().getJavaClass() != expectedClass) {
+        AnalysisType expectedType = bb.getMetaAccess().lookupJavaType(expectedClass);
+        if (typeState.typesCount() != 1 || !typesIterator.hasNext() || !typesIterator.next().equals(expectedType)) {
             StringJoiner joiner = new StringJoiner(", ");
             types.forEach(type -> joiner.add(type.toJavaName(true)));
-            throw VMError.shouldNotReachHere("Failed checking types for %s%nExpected types: %s%nActual types: %s%n".formatted(analysisField.format("%H.%n"), expectedClass.getTypeName(), joiner));
+            throw VMError.shouldNotReachHere("Failed checking types for %s%nExpected types: %s%nActual types: %s%n".formatted(
+                            analysisField.format("%H.%n"),
+                            JVMCIReflectionUtil.getTypeName(expectedType), joiner));
         }
     }
 }

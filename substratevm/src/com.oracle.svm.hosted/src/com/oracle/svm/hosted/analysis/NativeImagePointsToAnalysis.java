@@ -49,6 +49,7 @@ import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -234,7 +235,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     private static Class<? extends IncompatibleClassChangeError> findResolutionError(AnalysisType resolvingType, Executable searchMethod) {
         if (searchMethod != null) {
             Class<?>[] searchSignature = searchMethod.getParameterTypes();
-            for (Class<?> cur = resolvingType.getJavaClass(); cur != null; cur = cur.getSuperclass()) {
+            for (Class<?> cur = OriginalClassProvider.getJavaClass(resolvingType); cur != null; cur = cur.getSuperclass()) {
                 Method found;
                 try {
                     found = cur.getDeclaredMethod(searchMethod.getName(), searchSignature);

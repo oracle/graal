@@ -936,10 +936,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return wrapped;
     }
 
-    public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(this);
-    }
-
     @Override
     public final String getName() {
         return wrapped.getName();

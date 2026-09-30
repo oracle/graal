@@ -457,7 +457,7 @@ public abstract class NativeImage extends AbstractImage {
     private Method getMethod(HostedMethod hostedMethod) {
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub(((CEntryPointCallStubMethod) hostedMethod.wrapped.wrapped));
         try {
-            return entryPoint.getDeclaringClass().getJavaClass().getDeclaredMethod(entryPoint.getName(),
+            return OriginalClassProvider.getJavaClass(entryPoint.getDeclaringClass()).getDeclaredMethod(entryPoint.getName(),
                             MethodType.fromMethodDescriptorString(entryPoint.getSignature().toMethodDescriptor(), imageClassLoader).parameterArray());
         } catch (NoSuchMethodException e) {
             throw shouldNotReachHere(e);

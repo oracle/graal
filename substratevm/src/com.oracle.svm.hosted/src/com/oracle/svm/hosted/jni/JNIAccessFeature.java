@@ -575,7 +575,7 @@ public class JNIAccessFeature implements Feature {
                 // For convenience, make the array type reachable if its elemental type becomes
                 // such, allowing the array creation via JNI without an explicit reflection config.
                 access.registerReachabilityHandler(_ -> fieldType.registerAsInstantiated("Is accessed via JNI."),
-                                (fieldType.getElementalType()).getJavaClass());
+                                fieldType.getElementalType());
             }
         } else if (field.isStatic() && field.isFinal()) {
             MaterializedConstantFields.singleton().register(field);

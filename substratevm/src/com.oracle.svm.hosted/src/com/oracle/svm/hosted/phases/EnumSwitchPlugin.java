@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import java.lang.reflect.Method;
-
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -35,17 +33,19 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalMethodProvider;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The Eclipse Java compiler generates methods that lazily initializes tables for Enum switches,
@@ -98,17 +98,14 @@ final class EnumSwitchPlugin implements NodePlugin {
             return false;
         }
 
-        Object switchTable;
-        try {
-            Method switchTableMethod = ReflectionUtil.lookupMethod(method.getDeclaringClass().getJavaClass(), method.getName());
-            switchTable = switchTableMethod.invoke(null);
-        } catch (ReflectiveOperationException ex) {
-            throw GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
-        }
-
-        if (switchTable instanceof int[]) {
-            b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(switchTable), 1, true, b.getMetaAccess()));
-            return true;
+        JavaConstant switchTable = GuestAccess.get().invoke(OriginalMethodProvider.getOriginalMethod(method), null);
+        if (switchTable != null && !switchTable.isNull()) {
+            ResolvedJavaType switchTableType = GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(switchTable);
+            if (switchTableType != null && switchTableType.isArray() && switchTableType.getComponentType().getJavaKind() == JavaKind.Int) {
+                switchTable = metaAccess.getUniverse().lookup(switchTable);
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(switchTable, 1, true, b.getMetaAccess()));
+                return true;
+            }
         }
         return false;
     }

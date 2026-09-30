@@ -36,6 +36,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ClassValueSupport;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 import org.graalvm.collections.EconomicSet;
 
 /**
@@ -86,7 +87,7 @@ public final class ClassValueFeature implements InternalFeature {
                  * classValueMap will contain a map of all user ClassValue objects which have a
                  * value for the class.
                  */
-                var clazz = t.getJavaClass();
+                var clazz = OriginalClassProvider.getJavaClass(t);
                 var classValueMap = (Map<?, ?>) CLASS_VALUE_MAP.get(clazz);
                 if (classValueMap == null) {
                     continue;
