@@ -89,6 +89,11 @@ public final class GuestFeatureHandler extends FeatureHandlerBase {
             try {
                 consumer.accept(feature);
             } catch (Throwable t) {
+                /*
+                 * Host-proxy exceptions are wrapped here without introducing a VMAccess dependency
+                 * into the guest module. GuestFeatureDispatchFeature unwraps their original builder
+                 * exceptions before reporting other guest-feature failures.
+                 */
                 throw handleFeatureError(feature, t);
             }
         }
