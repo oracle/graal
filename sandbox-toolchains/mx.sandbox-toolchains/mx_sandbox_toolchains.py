@@ -56,7 +56,7 @@ import shutil
 from mx_cmake import CMakeNinjaProject #pylint: disable=unused-import
 from mx_rust import RustBuilderProject #pylint: disable=unused-import
 from mx_sdk_vm_ng import NativeImageExecutableProject, ToolchainToolDistribution  # pylint: disable=unused-import
-from mx_substratevm import StaticLibrarySymbolsBuilder  # pylint: disable=unused-import
+from mx_substratevm import BaseJDKStaticLibrarySymbolsBuilder  # pylint: disable=unused-import
 _suite = mx.suite('sandbox-toolchains')
 
 def suite_version(arg):
@@ -729,12 +729,15 @@ exec {java_launcher} {" ".join(jvm_args)} "$@"
 """
 
 
-class SandboxedJDKStaticLibrarySymbols(StaticLibrarySymbolsBuilder):
+class SandboxedJDKStaticLibrarySymbols(BaseJDKStaticLibrarySymbolsBuilder):
     def _static_lib_root(self):
         return os.path.join(mx.dependency('SANDBOXED_JDK').output, 'images', 'static-libs', 'lib')
 
     def _manifest_path(self, static_lib):
         return os.path.join(self.get_output_root(), 'static', mx.get_os() + '-' + mx.get_arch(), 'musl-swcfi', os.path.basename(static_lib) + '.symbols')
+
+    def _dynamic_lib_root(self):
+        return os.path.join(mx.dependency('SANDBOXED_JDK').output, 'jdk')
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
