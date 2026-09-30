@@ -193,8 +193,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     public static Boolean foldedAssertionStatus(ResolvedJavaField field) {
         if (field.isFinal() && field.isStatic() && field.isSynthetic() && field.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
             if (singleton().shouldFoldAssertionStatus(field.getDeclaringClass())) {
-                Class<?> javaClass = OriginalClassProvider.getJavaClass(field.getDeclaringClass());
-                return AssertionsSupport.singleton().desiredAssertionStatus(javaClass);
+                return AssertionsSupport.singleton().desiredAssertionStatus(field.getDeclaringClass());
             }
         }
         return null;
