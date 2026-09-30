@@ -234,6 +234,7 @@ public class PermissionsFeature implements Feature {
         safePackages.add("jdk.graal.compiler.");
         safePackages.add("com.oracle.graalvm.");
         safePackages.add("com.oracle.svm.core.");
+        safePackages.add("com.oracle.svm.guest.staging.jdk.");
         safePackages.add("com.oracle.truffle.api.");
         safePackages.add("com.oracle.truffle.polyglot.");
         safePackages.add("com.oracle.truffle.polyglot.isolate.");
