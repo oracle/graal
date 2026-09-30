@@ -40,10 +40,15 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
+import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
+import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
+import jdk.graal.compiler.loop.phases.LoopRotationPhase;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPeeling;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
@@ -71,6 +76,15 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
         overrides.put(SpeculativeGuardMovement, false);
         overrides.put(LoopPredication, true);
+        // Keep graph-shape assertions on the legacy mid-tier phase plan.
+        overrides.put(MidTier.Options.StripMineNonCountedLoops, false);
+        overrides.put(MidTier.Options.StripMineCountedLoops, false);
+        overrides.put(MidTier.Options.StripMiningPreparationPhases, false);
+        overrides.put(MidTier.Options.OptExactArithmetic, false);
+        overrides.put(LoopInversionPhase.Options.LoopInversion, false);
+        overrides.put(LoopRotationPhase.Options.LoopRotation, false);
+        overrides.put(AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, false);
+        overrides.put(SimulationBasedLoopPeeling.Options.SimulationBasedLoopPeeling, false);
         // Keep loop-counter stamp injection out of tests that verify LoopPredication graph shapes.
         overrides.put(InjectLoopCounterStampsPhase.Options.OptLoopPhiStamps, false);
         return overrides;
