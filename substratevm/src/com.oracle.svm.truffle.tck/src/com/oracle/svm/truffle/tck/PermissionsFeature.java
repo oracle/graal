@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -249,8 +249,7 @@ public class PermissionsFeature implements Feature {
         safePackages.add("com.oracle.truffle.runtime.hotspot.libgraal.");
         safePackages.add("com.oracle.truffle.runtime.enterprise.");
         safePackages.add("com.oracle.truffle.object.enterprise.");
-        safePackages.add("com.oracle.svm.truffle.api.");
-        safePackages.add("com.oracle.svm.truffle.isolated.");
+        safePackages.add("com.oracle.svm.truffle.");
         safePackages.add("com.oracle.svm.enterprise.truffle.");
     }
 
