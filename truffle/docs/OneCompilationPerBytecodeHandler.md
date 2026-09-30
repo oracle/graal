@@ -254,3 +254,186 @@ This tail call threading implementation imposes the following **restrictions**:
 - All `BytecodeInterpreterHandler` methods participating in the same interpreter must share the same method descriptor and modifiers
 - A method annotated with `BytecodeInterpreterFetchOpcode` must be declared in the same enclosing class, have the same signature as `BytecodeInterpreterHandler` methods, and be free of side effects
 - Exception handling in the `BytecodeInterpreterSwitch` method should account for exceptions thrown from handler stubs being unwound to any threading entry point.
+
+### Bytecode Handler Templates
+
+Bytecode handler templates work with tail call threading to generate multiple variants of a bytecode handler.
+
+#### Configure Template Variables
+
+To enable templates, designate an `int` field of a `VIRTUAL` argument as a _template variable_ by setting `@Field(templateVariable = N)`.
+`N` is the number of variants for that field and must be at least 2.
+The following example uses `level` to represent three states of an int-only top-of-stack cache:
+
+```java
+@BytecodeInterpreterHandlerConfig(maximumOperationCode = RET, arguments = {
+    @Argument, // receiver
+    @Argument(returnValue = true),
+    @Argument(expand = VIRTUAL, fields = {
+        @Field(name = "level", templateVariable = 3)
+    }),
+    @Argument,
+    @Argument(expand = MATERIALIZED)
+})
+public int execute(short[] bytecode) {
+    ...
+}
+
+public final class TopOfStackCache {
+    final int[] stack;
+    int sp;
+    int tos0;
+    int tos1;
+    int level; // template variable
+}
+```
+
+Only fields with a property need to be listed in `fields`, so the example lists only `level`.
+All other `TopOfStackCache` fields participate in `VIRTUAL` expansion as ordinary handler arguments.
+These arguments form part of the handler's application binary interface (ABI): the convention for passing values between compiled handlers.
+The interpreter loads them from the Java object when entering the threaded handler chain, carries them between handlers, and writes mutable fields back when control returns to Java.
+Final fields are treated as immutable values.
+
+The template field selects the handler variant and is initialized as a constant on entry to that variant.
+When a handler chain returns to Java, its current template values are transferred through per-thread state and written back to the Java object without occupying stub ABI argument slots.
+
+The three states are:
+
+- `level == 0`: no cached operand; operands are in the backing stack array
+- `level == 1`: `tos0` holds the top int operand
+- `level == 2`: `tos0` and `tos1` hold the top two int operands, with `tos1` at the top
+
+In your handler implementation, assign a new constant value to the _template variable_ to select which variant of the next bytecode handler executes.
+The assignment runs as part of the handler before it transfers control to the next handler.
+If the handler does not update the field, the current value is retained.
+
+Multiple template variables are also supported. The total number of handler variants is the product of all configured variant counts. Template variables are encoded in expanded-field order using mixed-radix indexing; for example, `@Field(name = "level", templateVariable = 3)` followed by `@Field(name = "mode", templateVariable = 2)` creates six variants with flat index `level + mode * 3`. Each template variable value must be in the range `[0, N)`, where `N` is that field's `templateVariable` value.
+
+With escape analysis, the compiler expects to determine a constant value for each template variable on each possible execution path before a handler transfers control to the next threaded handler.
+Different branches can select different constants, and branch conditions can depend on runtime values.
+If several template variables depend on which branch executes, update them together in the same `if` or `switch` statement so their execution paths rejoin at the same point.
+Selecting their values in separate, independent branch statements is unsupported.
+An assertion checks that template values resolve to constants after final escape analysis.
+When final escape analysis has not run, for example with `-Ob`, unresolved values select the handler table at runtime.
+The compiler still reports an error if constant branch assignments do not meet the shared-merge requirement.
+
+Template variables do not occupy stub ABI argument slots. The selected stub variant initializes them as constants on entry, and their value on exit selects the variant of the next threaded handler.
+
+#### Example: Top-of-Stack Cache
+
+The following state machine illustrates this top-of-stack cache:
+
+```
+                  +-----+
+                  | pop |
+    +---------------+   |
+    |    level 0    |<--+    // memory stack only
+    +---------------+
+      |           ^
+      | push      | pop
+      v           |
+    +---------------+
+    |    level 1    |        // tos0 is valid
+    +---------------+
+      |           ^
+      | push      | pop
+      v           |
+    +---------------+
++-->|    level 2    |        // tos0 and tos1 are valid
+|   +---------------+
+|     | push
++-----+
+```
+
+In practice, it is common to encapsulate these state transitions within individual helper methods and force their inlining.
+For instance, updates to the _template variable_ `level` can go through `push` and `pop`:
+
+```java
+public final class TopOfStackCache {
+    final int[] stack;
+    int sp;
+    int tos0;
+    int tos1;
+    int level; // template variable
+
+    public void push(int value) {
+        switch (level) {
+            case 0:
+                tos0 = value;
+                level = 1;
+                break;
+            case 1:
+                tos1 = value;
+                level = 2;
+                break;
+            case 2:
+                stack[sp++] = tos0;
+                tos0 = tos1;
+                tos1 = value;
+                level = 2;
+                break;
+            default:
+                throw new AssertionError(level);
+        }
+    }
+
+    public int pop() {
+        switch (level) {
+            case 0:
+                return stack[--sp];
+            case 1:
+                level = 0;
+                return tos0;
+            case 2:
+                level = 1;
+                return tos1;
+            default:
+                throw new AssertionError(level);
+        }
+    }
+
+    public int peek() {
+        switch (level) {
+            case 0:
+                return stack[sp - 1];
+            case 1:
+                return tos0;
+            case 2:
+                return tos1;
+            default:
+                throw new AssertionError(level);
+        }
+    }
+}
+```
+
+The bytecode handlers can then be written against the logical operand stack. For example:
+
+```java
+@BytecodeInterpreterHandler(ICONST_0)
+public long iconst0Handler(long pc, TopOfStackCache stack, short[] bytecode, Frame frame) {
+    stack.push(0);
+    return pc + 1;
+}
+
+@BytecodeInterpreterHandler(IADD)
+public long iaddHandler(long pc, TopOfStackCache stack, short[] bytecode, Frame frame) {
+    int b = stack.pop();
+    int a = stack.pop();
+    stack.push(a + b);
+    return pc + 1;
+}
+```
+
+When the compiler generates the variants, the _template variable_ is initialized with a constant value. As the bytecode handler executes, each call to the push and pop operations updates `level` to a next constant, enabling the compiler to eliminate dead code through constant folding and propagation. For example, the `IADD` handler in `level == 2` can fold the two pops and one push into direct operations on the expanded fields, with no backing stack access on that path.
+
+#### Dispatch and Exception Handling
+
+With escape analysis, the compiler specializes each execution path that reaches a threaded dispatch using the value of `level`.
+For example, one branch can set `level = 1` and another can set `level = 2`, even when the condition is evaluated at runtime.
+If `level` remains dynamic after final escape analysis, a compiler assertion reports the missed specialization.
+Without final escape analysis, a runtime selection chooses among the existing handler tables.
+
+When control returns to the Java switch loop, main dispatch selects the handler variant from the current template-variable values and passes the ordinary expanded fields to that variant.
+
+A handler exception can still exit tail call threading before normal return. This follows the same state model as ordinary Java execution: there is no hidden cleanup callback. Mutable ordinary fields and template variables are preserved through pending exception state.

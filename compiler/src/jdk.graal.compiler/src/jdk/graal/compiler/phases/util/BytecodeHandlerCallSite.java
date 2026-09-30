@@ -58,7 +58,17 @@ public final class BytecodeHandlerCallSite {
     private final ResolvedJavaMethod targetMethod;
     private final BytecodeHandlerConfig handlerConfig;
 
-    public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
+    /**
+     * Creates metadata for a handler call site.
+     *
+     * @param enclosingMethod the interpreter method containing the handler invocation
+     * @param bci bytecode index of the invocation in {@code enclosingMethod}
+     * @param targetMethod the invoked bytecode handler method
+     * @param templateModeEnabled whether {@code templateVariable} fields are modeled as template
+     *            state instead of ordinary stub ABI arguments
+     */
+    public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod,
+                    boolean templateModeEnabled) {
         this.enclosingMethod = enclosingMethod;
         this.bci = bci;
 
@@ -66,11 +76,11 @@ public final class BytecodeHandlerCallSite {
                         "Target method %s is not annotated by @BytecodeInterpreterHandler", targetMethod.format("%H.%n(%p)"));
         this.targetMethod = targetMethod;
 
-        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod);
+        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod, templateModeEnabled);
     }
 
-    public List<ResolvedJavaType> getArgumentTypes() {
-        return handlerConfig.getArgumentTypes();
+    public List<ResolvedJavaType> getCalleeParameterTypes() {
+        return handlerConfig.getCalleeParameterTypes();
     }
 
     public ResolvedJavaType getReturnType() {
@@ -93,8 +103,8 @@ public final class BytecodeHandlerCallSite {
         return handlerConfig;
     }
 
-    public List<ArgumentInfo> getArgumentInfos() {
-        return handlerConfig.getArgumentInfos();
+    public List<ArgumentInfo> getCalleeParameterInfos() {
+        return handlerConfig.getCalleeParameterInfos();
     }
 
     public String getStubName() {
@@ -106,10 +116,10 @@ public final class BytecodeHandlerCallSite {
      * loads from their Java owner objects; non-expanded arguments are forwarded unchanged.
      */
     public ValueNode[] createCallerArguments(ValueNode[] oldArguments, FixedNode insertBefore, Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
-        List<ArgumentInfo> argumentInfos = handlerConfig.getArgumentInfos();
+        List<ArgumentInfo> calleeParameterInfos = handlerConfig.getCalleeParameterInfos();
         List<ValueNode> newArguments = new ArrayList<>();
         StructuredGraph graph = insertBefore.graph();
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : calleeParameterInfos) {
             if (argumentInfo.isExpanded()) {
                 ValueNode owner = oldArguments[argumentInfo.originalIndex()];
                 LoadFieldNode load = LoadFieldNode.create(graph.getAssumptions(), owner, fieldMap.apply(argumentInfo.field()));
@@ -132,9 +142,9 @@ public final class BytecodeHandlerCallSite {
      */
     public void updateCallerReturns(FixedNode newInvoke, ValueNode[] oldArguments, FixedNode insertBefore, Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
         StructuredGraph graph = insertBefore.graph();
-        List<ArgumentInfo> argumentInfos = handlerConfig.getArgumentInfos();
+        List<ArgumentInfo> callerReturnInfos = handlerConfig.getCallerReturnInfos();
 
-        for (ArgumentInfo argumentInfo : argumentInfos) {
+        for (ArgumentInfo argumentInfo : callerReturnInfos) {
             if (argumentInfo.isExpanded() && !argumentInfo.isImmutable()) {
                 ReadArgumentNode fetchReturn = graph.unique(new ReadArgumentNode(newInvoke, argumentInfo.type().getJavaKind(), argumentInfo.index()));
                 ValueNode owner = oldArguments[argumentInfo.originalIndex()];

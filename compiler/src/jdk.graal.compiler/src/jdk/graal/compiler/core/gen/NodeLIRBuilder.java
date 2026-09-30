@@ -662,7 +662,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         // Additional return values must be fetched immediately after the Invoke.
         for (ReadArgumentNode readArgumentNode : x.asNode().usages().filter(ReadArgumentNode.class)) {
-            AllocatableValue allocatableValue = invokeCc.getArgument(readArgumentNode.getIndex());
+            AllocatableValue allocatableValue = gen.getAdditionalReturnLocation(invokeCc, readArgumentNode.getIndex());
             setResult(readArgumentNode, gen.emitMove(allocatableValue));
         }
 
@@ -701,7 +701,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         // Additional return values must be fetched immediately after the foreign call.
         for (ReadArgumentNode readArgumentNode : x.asNode().usages().filter(ReadArgumentNode.class)) {
-            AllocatableValue allocatableValue = linkage.getOutgoingCallingConvention().getArgument(readArgumentNode.getIndex());
+            CallingConvention outgoingCallingConvention = linkage.getOutgoingCallingConvention();
+            AllocatableValue allocatableValue = gen.getAdditionalReturnLocation(outgoingCallingConvention, readArgumentNode.getIndex());
             setResult(readArgumentNode, gen.emitMove(allocatableValue));
         }
 

@@ -94,21 +94,21 @@ public class BytecodeHandlerReloadTest extends GraalCompilerTest {
     private void checkExits(String handlerName, boolean refreshImmutableFields) {
         BytecodeInterpreterAnnotations.registerCompilerDirectives(getMetaAccess());
         ResolvedJavaMethod handler = getResolvedJavaMethod(handlerName);
-        BytecodeHandlerConfig config = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("interpreter"), handler);
+        BytecodeHandlerConfig config = BytecodeHandlerConfig.getHandlerConfig(getResolvedJavaMethod("interpreter"), handler, false);
         GraphKit kit = new GraphKit(getDebugContext(), handler, getProviders(), getDefaultGraphBuilderPlugins(), CompilationIdentifier.INVALID_COMPILATION_ID, handlerName, false, false) {
         };
         ValueNode[][] exceptionArguments = new ValueNode[1][];
         StructuredGraph graph;
         if (refreshImmutableFields) {
-            graph = BytecodeHandlerStubHelper.createStub(kit, handler, 0, false, null, null, config, handler,
-                            (ignoredConfig, ignoredKit, arguments) -> exceptionArguments[0] = arguments, true);
+            graph = BytecodeHandlerStubHelper.createStub(kit, handler, 0, false, null, null, config, handler, 0,
+                            (ignoredConfig, ignoredKit, arguments, templateValues) -> exceptionArguments[0] = arguments, true);
         } else {
-            graph = BytecodeHandlerStubHelper.createStub(kit, handler, 0, false, null, null, config, handler,
-                            (ignoredConfig, ignoredKit, arguments) -> exceptionArguments[0] = arguments);
+            graph = BytecodeHandlerStubHelper.createStub(kit, handler, 0, false, null, null, config, handler, 0,
+                            (ignoredConfig, ignoredKit, arguments, templateValues) -> exceptionArguments[0] = arguments);
         }
         MultiReturnNode result = (MultiReturnNode) graph.getNodes(ReturnNode.TYPE).first().result();
         Assert.assertNotNull(exceptionArguments[0]);
-        for (ArgumentInfo argument : config.getArgumentInfos()) {
+        for (ArgumentInfo argument : config.getCalleeParameterInfos()) {
             ValueNode normalValue = result.getAdditionalReturnResults().get(argument.index());
             ValueNode exceptionalValue = exceptionArguments[0][argument.index()];
             if (argument.isExpanded() && (!argument.isImmutable() || refreshImmutableFields)) {
