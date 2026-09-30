@@ -385,7 +385,6 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
                         " to explicitly request initialization of this class at run time.";
     }
 
-    @Override
     public void initializeAtRunTime(Class<?> clazz, String reason) {
         initializeAtRunTime(GuestAccess.get().lookupType(clazz), reason);
     }
@@ -411,7 +410,6 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         forceInitializeHosted(normalizeType(type), reason, false);
     }
 
-    @Override
     public void initializeAtBuildTime(Class<?> clazz, String reason) {
         initializeAtBuildTime(GuestAccess.get().lookupType(clazz), reason);
     }
