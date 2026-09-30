@@ -70,6 +70,7 @@ import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -939,6 +940,19 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public final String getName() {
         return wrapped.getName();
+    }
+
+    /**
+     * Array names must incorporate substituted component names rather than the original VM name
+     * retained by the wrapped array type. This keeps runtime class names consistent with their
+     * component types, including when names are constant-folded.
+     */
+    @Override
+    public String toClassName() {
+        if (isArray()) {
+            return MetaUtil.internalNameToJava("[".repeat(getArrayDimension()) + getElementalType().getName(), true, true);
+        }
+        return wrapped.toClassName();
     }
 
     @Override
