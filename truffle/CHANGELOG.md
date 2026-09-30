@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 25.5
 
 * GR-79534: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.enableTailDuplication()` to opt threaded bytecode handlers into dispatch-tail duplication; disabled by default.
+* GR-71613: Added `CompilerDirectives.mergeExplodeKey` method for explicitly marking a local variable as a key for `@ExplodeLoop(MERGE_EXPLODE)` methods. It is recommended to migrate all merge exploded loops to use this method to catch unintended graph size explosions.
 
 ## Version 25.4
 * GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.

@@ -70,6 +70,7 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.LoopExplosionKeyNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiArrayNode;
@@ -546,6 +547,16 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+
+        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
+            r.register(new RequiredInvocationPlugin("mergeExplodeKey", kind.toJavaClass()) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    b.push(kind, b.add(new LoopExplosionKeyNode(value)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static Class<?> getJavaClass(JavaKind kind) {

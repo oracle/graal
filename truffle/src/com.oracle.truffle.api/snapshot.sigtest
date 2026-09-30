@@ -86,6 +86,8 @@ meth public static void materialize(java.lang.Object)
 meth public static void preserveFrameStateHere()
 meth public static void transferToInterpreter()
 meth public static void transferToInterpreterAndInvalidate()
+meth public static int mergeExplodeKey(int)
+meth public static long mergeExplodeKey(long)
 supr java.lang.Object
 hcls ShouldNotReachHere
 
