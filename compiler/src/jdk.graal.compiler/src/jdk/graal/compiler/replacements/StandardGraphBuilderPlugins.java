@@ -1899,6 +1899,36 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    static class SpeculativeDeoptimizePlugin extends DeoptimizePlugin {
+
+        SpeculativeDeoptimizePlugin(SnippetReflectionProvider snippetReflection) {
+            super(snippetReflection, InvalidateReprofile, TransferToInterpreter, true, "speculativeDeoptimizeAndInvalidate");
+        }
+
+        @Override
+        void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
+            assert withSpeculation;
+            /*
+             * Omit the inlining chain so the reason stays stable across recompilations: parsing-time
+             * inlining can change even with fixed options, for example when failed speculations
+             * retain more code and affect the parsing node budget. Inline copies of this bytecode
+             * location intentionally share failures within the compilation root's speculation log.
+             */
+            BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
+            add(b, action, reason, DIRECTIVE_SPECULATIONS.createSpeculationReason(pos));
+        }
+
+        @Override
+        DeoptimizeNode add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
+            SpeculationLog speculationLog = b.getGraph().getSpeculationLog();
+            GraalError.guarantee(speculationLog != null, "A speculation log is needed to use `speculativeDeoptimizeAndInvalidate`");
+            if (!speculationLog.maySpeculate(speculationReason)) {
+                return null;
+            }
+            return b.add(new DeoptimizeNode(action, reason, speculationLog.speculate(speculationReason)));
+        }
+    }
+
     static class PreciseDeoptimizePlugin extends DeoptimizePlugin {
 
         PreciseDeoptimizePlugin(SnippetReflectionProvider snippetReflection, DeoptimizationAction action, DeoptimizationReason reason, Boolean withSpeculation,
@@ -1952,6 +1982,7 @@ public class StandardGraphBuilderPlugins {
 
         r.register(new DeoptimizePlugin(snippetReflection, None, TransferToInterpreter, false, "deoptimize"));
         r.register(new DeoptimizePlugin(snippetReflection, InvalidateReprofile, TransferToInterpreter, false, "deoptimizeAndInvalidate"));
+        r.register(new SpeculativeDeoptimizePlugin(snippetReflection));
         r.register(new DeoptimizePlugin(snippetReflection, InvalidateRecompile, TransferToInterpreter, false, "deoptimizeAndRecompile"));
         r.register(new DeoptimizePlugin(snippetReflection, null, null, null,
                         "deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, boolean.class));
