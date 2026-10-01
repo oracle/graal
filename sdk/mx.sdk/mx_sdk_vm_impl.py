@@ -2308,11 +2308,13 @@ def default_jvm_components():
     return [mx_sdk.graal_sdk_compiler_component]
 
 
-def _get_jvm_cfg():
+def _get_jvm_cfg(java_home=None):
+    if java_home is None:
+        java_home = mx_sdk_vm.base_jdk().home
     candidates = (['lib', 'jvm.cfg'], ['jre', 'lib', 'jvm.cfg'], ['jre', 'lib', mx.get_arch(), 'jvm.cfg'])
     probed = []
     for candidate in candidates:
-        jvm_cfg = join(mx_sdk_vm.base_jdk().home, *candidate)
+        jvm_cfg = join(java_home, *candidate)
         if exists(jvm_cfg):
             return jvm_cfg
         probed.append(jvm_cfg)
@@ -3065,6 +3067,54 @@ def graalvm_home_from_env(extra_mx_args, env, stage1=False, suite=None):
         mx.warn(f"'mx {mx.list_to_cmd_line(args)}' returned {exit_status}. Stdout:\n{out.data.strip()}\nStderr: {err.data.strip()}")
         mx.abort(exit_status)
     return out.data.strip()
+
+
+def resolve_graalvm_home(args=None):
+    """Resolves the location of a GraalVM JAVA_HOME. The order of resolution is:
+       1. The value of -g/--graalvm-home in `args` if `args` is not None. In any
+       case, `args` is not modified.
+       2. The current GraalVM distribution, if it has been built.
+       3. The value of the GRAALVM_HOME environment variable.
+
+    If the GraalVM home cannot be resolved, an exception is raised via `mx.abort`.
+    """
+
+    # Parse only the GraalVM option while leaving integration test arguments untouched.
+    class NonExitingArgumentParser(ArgumentParser):
+        def error(self, message):
+            """Raises an assertion instead of exiting when parsing the partial argument list."""
+            raise AssertionError(message)
+
+    if args is not None:
+        try:
+            parser = NonExitingArgumentParser(add_help=False)
+            parser.add_argument("-g", "--graalvm-home", metavar="GRAALVM")
+            namespace, _ = parser.parse_known_args(args)
+            if namespace.graalvm_home:
+                return namespace.graalvm_home
+        except AssertionError as e:
+            mx.warn(f"{e}")
+
+    detected = graalvm_home(fatalIfMissing=False)
+    if detected and exists(detected):
+        return detected
+
+    graalvm_home_env = os.environ.get('GRAALVM_HOME')
+    if graalvm_home_env and exists(graalvm_home_env):
+        return graalvm_home_env
+
+    mx.abort("""\
+No GraalVM home could be resolved.
+
+Either specify -g/--graalvm-home, or build a GraalVM for the desired environment and try again. For example:
+  1) Build GraalVM EE with Native Image:
+       mx --env ee build --dependencies=GRAALVM
+  2) Inspect the built home for the selected --env:
+       mx --env ee graalvm-home
+  3) Re-run the tests, passing the same --env (preferred) or by setting GRAALVM_HOME explicitly:
+       mx --env ee graalTest <test-file>
+       # or
+       GRAALVM_HOME=/path/to/graalvm mx graalTest <test-file>""")
 
 
 def print_graalvm_components(args):

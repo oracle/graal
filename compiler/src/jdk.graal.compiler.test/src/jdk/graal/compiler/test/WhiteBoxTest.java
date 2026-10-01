@@ -48,7 +48,7 @@ import jdk.test.whitebox.parser.DiagnosticCommand;
 ///
 /// This is a JDK test that can be run as follows in the compiler suite:
 /// ```
-/// mx -p ../vm --env crema-ce run-jdk-test /path/to/labsjdk-ce-repo \
+/// mx -p ../vm --env crema-ce run-jdk-test --labs-openjdk-dir /path/to/labsjdk-ce-repo \
 ///     src/jdk.graal.compiler.test/src/jdk/graal/compiler/test/WhiteBoxTest.java \
 ///     --java-option=-DWhiteBoxTest.verbose=true
 /// ```
