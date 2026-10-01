@@ -202,6 +202,26 @@ public enum Encoding {
         }
     }
 
+    /**
+     * Returns {@code true} if the given code point set can be represented as a literal and a bit
+     * mask without matching any additional code points.
+     */
+    public boolean canBeMatchedWithMask(CodePointSet set) {
+        if (set.matchesSingleChar()) {
+            return true;
+        }
+        if (!set.matches2CharsWith1BitDifference() || !isFixedCodePointWidth(set)) {
+            return false;
+        }
+        if (isUTF16() && set.getMin() > Character.MAX_VALUE) {
+            int c1 = set.getMin();
+            int c2 = set.getMax();
+            return Integer.bitCount(Character.highSurrogate(c1) ^ Character.highSurrogate(c2)) +
+                            Integer.bitCount(Character.lowSurrogate(c1) ^ Character.lowSurrogate(c2)) == 1;
+        }
+        return true;
+    }
+
     public boolean isUnicode() {
         return switch (this) {
             case LATIN_1, ASCII, BYTES -> false;

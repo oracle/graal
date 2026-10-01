@@ -1727,6 +1727,9 @@ public class OracleDBGeneratedTests {
         testCase("w[v-w]\\W", "", UTF_8, match("w\ud839\udfefwww\ud839\udfefw\ud839\udfefw", 5, 6, 12)),
         testCase("(a{1100,1100})\\1", "i", UTF_8, match("a".repeat(2400), 0, 0, 2200, 0, 1100)),
         testCase("[a]\\S{213,213}bcdz", "", UTF_8, noMatch("a".repeat(215) + ("bcxd" + "a".repeat(213)).repeat(3), 0)),
+        testCase("z()|(d)[[=\ud97a\udcb9=]\ud9ba\udcb9]", "m", UTF_16BE, match("zz", 0, 0, 1, 1, 1, -1, -1)),
+        testCase("(|\udbda\udcf5)[[.\uda83\udd45.][.\uda43\udd45.]]", "", UTF_16BE, match("\udbda\udcf5\uda83\udd45", 0, 0, 4, 0, 2)),
+        testCase("[[=\u01c4=]]", "", UTF_8, match("\u01c6", 0, 0, 2)),
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
         // Checkstyle: resume
