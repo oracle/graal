@@ -153,8 +153,7 @@ import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
  * </pre>
  */
 public class DuplicationPhase extends BasePhase<CoreProviders> {
-    private static final int TAIL_CALL_DUPLICATION_BENEFIT = 1_000_000;
-    public static final DuplicationConfig FACTORS_INCLUDING_PEA = new DuplicationConfig(32, 16, 1, 1, true, true, 0, TAIL_CALL_DUPLICATION_BENEFIT);
+    public static final DuplicationConfig FACTORS_INCLUDING_PEA = new DuplicationConfig(32, 16, 1, 1, true, true, 0);
 
     /**
      * Maximum number of code size increase in terms of {@linkplain NodeSize} for one execution of

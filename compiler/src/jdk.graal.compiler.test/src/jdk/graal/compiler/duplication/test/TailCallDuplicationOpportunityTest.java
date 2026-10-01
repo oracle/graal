@@ -35,7 +35,9 @@ import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationOptions;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.duplication.phases.simulation.FixedDuplicationSimulationConfig;
+import jdk.graal.compiler.duplication.phases.simulation.TailCallDuplicationPhase;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.MultiReturnNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -204,6 +206,30 @@ public class TailCallDuplicationOpportunityTest extends GraalCompilerTest {
     }
 
     @Test
+    public void testDedicatedTailCallDuplication() {
+        for (boolean marked : new boolean[]{false, true}) {
+            StructuredGraph graph = buildGraph("profiledSnippet", true, marked, false, 0.75D);
+            new DisableOverflownCountedLoopsPhase().apply(graph);
+            graph.getGraphState().setAfterStage(StageFlag.FINAL_PARTIAL_ESCAPE);
+            new TailCallDuplicationPhase(createCanonicalizerPhase()).apply(graph, getProviders());
+            Assert.assertTrue(graph.verify(true));
+            Assert.assertEquals(marked ? 0 : 1, graph.getNodes(MergeNode.TYPE).count());
+            Assert.assertEquals(marked ? 2 : 1, graph.getNodes(ReturnNode.TYPE).count());
+        }
+    }
+
+    @Test
+    public void testTailCallDuplicationRespectsAnchor() {
+        StructuredGraph graph = buildGraph("profiledSnippet", true);
+        ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
+        graph.addBeforeFixed(ret, graph.add(new ControlFlowAnchorNode()));
+        applyDuplication(graph);
+        Assert.assertTrue(graph.verify(true));
+        Assert.assertEquals(1, graph.getNodes(MergeNode.TYPE).count());
+        Assert.assertEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+    }
+
+    @Test
     public void testIntegerSwitchTailCallEncouragesDuplication() {
         StructuredGraph graph = buildGraph("integerSwitchSnippet", true);
         Assert.assertEquals(1, graph.getNodes().filter(IntegerSwitchNode.class).count());
@@ -250,5 +276,19 @@ public class TailCallDuplicationOpportunityTest extends GraalCompilerTest {
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         new DuplicationPhase(FixedDuplicationSimulationConfig.defaultForDepth(DuplicationOptions.EarlySimulationDepth), true, true,
                         DuplicationPhase.FACTORS_INCLUDING_PEA, canonicalizer, graph.getOptions()).apply(graph, getProviders());
+        // The synthetic test graphs already use scalar values, as after escape analysis.
+        graph.getGraphState().setAfterStage(StageFlag.FINAL_PARTIAL_ESCAPE);
+        new TailCallDuplicationPhase(createCanonicalizerPhase()).apply(graph, getProviders());
+    }
+
+    @Test
+    public void testOrdinaryDuplicationIgnoresTailCallMarker() {
+        StructuredGraph graph = buildGraph("profiledSnippet", true, true, false, 0.75D);
+        new DisableOverflownCountedLoopsPhase().apply(graph);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new DuplicationPhase(FixedDuplicationSimulationConfig.defaultForDepth(DuplicationOptions.EarlySimulationDepth), true, true,
+                        DuplicationPhase.FACTORS_INCLUDING_PEA, canonicalizer, graph.getOptions()).apply(graph, getProviders());
+        Assert.assertEquals(1, graph.getNodes(MergeNode.TYPE).count());
+        Assert.assertEquals(1, graph.getNodes(ReturnNode.TYPE).count());
     }
 }
