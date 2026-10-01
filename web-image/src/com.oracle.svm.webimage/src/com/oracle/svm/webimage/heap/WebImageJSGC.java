@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.guest.staging.log.Log;
 
 public class WebImageJSGC implements GC {
     @Override
@@ -44,6 +46,11 @@ public class WebImageJSGC implements GC {
     @Override
     public String getName() {
         return "JS-runtime-provided GC";
+    }
+
+    @Override
+    public void writeLogPrefix(LogTagSet logTagSet, Log log) {
+        /* Web Image does not emit a collector-specific prefix. */
     }
 
     @Override
