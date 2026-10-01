@@ -40,7 +40,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.guest.staging.jdk.ProtectionDomainSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;

@@ -61,7 +61,7 @@ import com.oracle.svm.core.heap.Pod.Builder;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodInfo;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodSpec;
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.UserError;

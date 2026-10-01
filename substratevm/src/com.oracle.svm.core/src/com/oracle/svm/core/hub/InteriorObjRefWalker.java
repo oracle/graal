@@ -44,6 +44,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.thread.ContinuationSupport;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;

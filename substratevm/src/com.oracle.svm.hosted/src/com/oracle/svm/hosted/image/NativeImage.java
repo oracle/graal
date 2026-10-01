@@ -73,7 +73,7 @@ import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuilderUtil;
-import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.OS;

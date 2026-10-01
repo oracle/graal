@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.webimage.wasm.WasmImports;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;

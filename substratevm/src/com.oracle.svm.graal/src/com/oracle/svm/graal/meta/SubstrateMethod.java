@@ -53,7 +53,7 @@ import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;

@@ -41,7 +41,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.ArrayUtil;
 
 import jdk.graal.compiler.graph.Node;

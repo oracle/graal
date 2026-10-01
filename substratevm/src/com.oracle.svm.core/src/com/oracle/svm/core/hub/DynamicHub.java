@@ -48,6 +48,7 @@ import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNIN
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.shared.util.NumUtil.safeToByte;
 
 import java.io.InputStream;
 import java.io.Serializable;
@@ -124,7 +125,7 @@ import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.guest.staging.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
@@ -133,15 +134,17 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.reflect.CremaSerializationConstructorAccessor;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
-import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
+import com.oracle.svm.guest.staging.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
-import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.guest.staging.hub.HubType;
+import com.oracle.svm.guest.staging.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.ReferenceType;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
@@ -152,6 +155,7 @@ import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.guest.staging.util.LazyFinalReference;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -491,7 +495,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.componentType = componentHub;
 
         assert layerId < DynamicImageLayerInfo.CREMA_LAYER_ID;
-        this.layerId = NumUtil.safeToByte(layerId);
+        this.layerId = safeToByte(layerId);
 
         this.flags = flags;
 
@@ -663,7 +667,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         writeObject(hub, dynamicHubOffsets.getComponentTypeOffset(), componentHub);
 
         writeInt(hub, dynamicHubOffsets.getReferenceMapCompressedOffsetOffset(), referenceMapCompressedOffset);
-        writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
+        writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
 
         if ((modifiers & ACC_ENUM) != 0 && DynamicHub.toClass(superHub) == Enum.class) {
             companion.enumConstantsReference = new LazyFinalReference<>(hub.new EnumConstantsSupplier());

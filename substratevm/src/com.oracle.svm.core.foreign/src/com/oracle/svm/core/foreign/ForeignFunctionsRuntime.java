@@ -62,12 +62,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.ForeignSupport;
-import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.guest.staging.c.function.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.foreign.AbiUtils.TrampolineTemplate;
 import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
 import com.oracle.svm.core.graal.code.PreparedSignature;
@@ -83,7 +83,7 @@ import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.Foreig
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_BoundMethodHandle;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider;

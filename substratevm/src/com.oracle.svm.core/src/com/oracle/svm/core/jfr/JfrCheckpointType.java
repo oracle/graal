@@ -25,7 +25,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.core.common.NumUtil;
+import com.oracle.svm.shared.util.NumUtil;
 
 import com.oracle.svm.shared.Uninterruptible;
 
