@@ -156,7 +156,7 @@ public final class Target_java_lang_reflect_Method {
         Target_jdk_internal_reflect_ConstantPool constPool;
         DynamicHub declaringHub = DynamicHub.fromClass(getDeclaringClass());
         if (declaringHub.isRuntimeLoaded()) {
-            constPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringHub);
+            constPool = new Target_jdk_internal_reflect_ConstantPool(layerId, getDeclaringClass());
         } else if (ImageLayerBuildingSupport.buildingImageLayer()) {
             /*
              * The layer id of the method is not necessarily the same as the declaring class, so the

@@ -2405,7 +2405,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (hubIsArray()) {
                 return null;
             }
-            return new Target_jdk_internal_reflect_ConstantPool(layerId, this);
+            return new Target_jdk_internal_reflect_ConstantPool(layerId, DynamicHub.toClass(this));
         }
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             return ConstantPoolProvider.singletons()[layerId].getConstantPool();

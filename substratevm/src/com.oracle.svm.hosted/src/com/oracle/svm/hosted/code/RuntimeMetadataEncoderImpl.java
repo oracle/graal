@@ -1235,7 +1235,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      *
      * We use a modified version of the ConstantPool and AnnotationParser classes to decode the
      * data, since those are not used in their original functions at runtime. (see
-     * {@link Target_jdk_internal_reflect_ConstantPool} and
+     * {@link com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool} and
      * {@code Target_sun_reflect_annotation_AnnotationParser})
      */
     private byte[] encodeAnnotations(AnnotationValue[] annotations) {

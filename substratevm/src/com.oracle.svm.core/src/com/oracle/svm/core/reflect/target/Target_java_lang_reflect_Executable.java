@@ -100,10 +100,9 @@ public final class Target_java_lang_reflect_Executable {
                     } else {
                         Executable executable = SubstrateUtil.cast(this, Executable.class);
                         Class<?> declaringClass = executable.getDeclaringClass();
-                        DynamicHub declaringHub = DynamicHub.fromClass(declaringClass);
                         Target_jdk_internal_reflect_ConstantPool constantPool;
-                        if (declaringHub.isRuntimeLoaded()) {
-                            constantPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringHub);
+                        if (DynamicHub.fromClass(declaringClass).isRuntimeLoaded()) {
+                            constantPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringClass);
                         } else if (ImageLayerBuildingSupport.buildingImageLayer()) {
                             constantPool = ConstantPoolProvider.singletons()[layerId].getConstantPool();
                         } else {

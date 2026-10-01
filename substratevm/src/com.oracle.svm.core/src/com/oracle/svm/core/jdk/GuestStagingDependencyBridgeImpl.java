@@ -42,13 +42,16 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.reflect.RuntimeConstantPoolImpl;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.Uninterruptible;
@@ -195,6 +198,18 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public boolean isRuntimeClassLoadingSupported() {
         return RuntimeClassLoading.isSupported();
+    }
+
+    @Override
+    public RuntimeConstantPool getRuntimeConstantPool(Class<?> clazz) {
+        if (!RuntimeClassLoading.isSupported()) {
+            return null;
+        }
+        DynamicHub hub = DynamicHub.fromClass(clazz);
+        if (!hub.isRuntimeLoaded()) {
+            return null;
+        }
+        return new RuntimeConstantPoolImpl(CremaSupport.singleton().getConstantPool(hub));
     }
 
     @Override

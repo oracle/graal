@@ -34,6 +34,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
@@ -234,6 +235,14 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when runtime class loading (aka Crema) options move to guest/staging.
      */
     boolean isRuntimeClassLoadingSupported();
+
+    /**
+     * Returns checked constant-pool access for a run-time-loaded class, or {@code null} when runtime
+     * class loading is disabled or {@code clazz} is not runtime-loaded.
+     * <p>
+     * Remove this method when the constant-pool adapter and its Crema access move to guest/staging.
+     */
+    RuntimeConstantPool getRuntimeConstantPool(Class<?> clazz);
 
     /**
      * Delegates to {@code com.oracle.svm.core.hub.DynamicHub.fromClass(clazz).isReached()}.
