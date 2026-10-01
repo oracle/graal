@@ -3292,6 +3292,8 @@ public final class Interpreter {
         private static void invoke(long curBCI, InterpreterFrame callerFrame, CachedInterpreterOperandStack virtualStack,
                         int opcode, boolean preferStayInInterpreter) {
             LinkedInvoke linkedInvoke = getOrLinkInvoke(callerFrame, callerFrame.code, curBCI, opcode);
+            virtualStack.materialize(callerFrame);
+            int invocationState = virtualStack.getState();
             Object[] calleeArgs;
             if (opcode == INVOKESTATIC && linkedInvoke.argumentCount == 0) {
                 calleeArgs = InterpreterFrame.EMPTY;
@@ -3306,6 +3308,8 @@ public final class Interpreter {
                  */
                 virtualStack.popArguments(callerFrame, linkedInvoke.argumentKinds, calleeArgs, linkedInvoke.getAppendix(opcode));
             }
+            // Restore the known mode rather than carrying a template-state phi out of the loop.
+            virtualStack.setState(invocationState);
             if (linkedInvoke.hasReceiver(opcode)) {
                 Object receiver = profileAndCheckReceiver(callerFrame, curBCI, calleeArgs, virtualStack.getState());
                 if (linkedInvoke.requiresSymbolicTypeCheck(opcode)) {
@@ -3433,9 +3437,13 @@ public final class Interpreter {
 
             InterpreterUnresolvedSignature seedSignature = seedMethod.getSignature();
             boolean hasReceiver = !seedMethod.isStatic();
+            virtualStack.materialize(frame);
+            int invocationState = virtualStack.getState();
             Object[] calleeArgs = new Object[seedSignature.getParameterCount(hasReceiver)];
             // As for ordinary invokes, the guest during-call state has consumed the arguments.
             virtualStack.popArgumentsWithAppendix(frame, hasReceiver, seedSignature, calleeArgs, appendix);
+            // Restore the known mode rather than carrying a template-state phi out of the loop.
+            virtualStack.setState(invocationState);
             if (hasReceiver) {
                 profileAndCheckReceiver(frame, curBCI, calleeArgs, virtualStack.getState());
             }

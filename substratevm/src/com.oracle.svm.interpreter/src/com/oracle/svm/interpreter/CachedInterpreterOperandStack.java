@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter;
 
-import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.shared.AlwaysInline;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -70,16 +69,18 @@ final class CachedInterpreterOperandStack extends InterpreterOperandStack {
 
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     void materialize(InterpreterFrame frame) {
+        if (getState() >= STATE_PROFILING) {
+            return;
+        }
         if (getTosLevel() == 1) {
             frame.setPrimitive(top, 0, tosPrimitive0);
             top++;
-            setState(STATE_NORMAL);
         } else if (getTosLevel() == 2) {
             frame.setPrimitive(top, 0, tosPrimitive0);
             frame.setPrimitive(top, 1, tosPrimitive1);
             top += 2;
-            setState(STATE_NORMAL);
         }
+        setState(STATE_NORMAL);
         killUnusedFields();
     }
 
@@ -226,20 +227,6 @@ final class CachedInterpreterOperandStack extends InterpreterOperandStack {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
         return super.popObject(frame);
-    }
-
-    @Override
-    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
-    void popArguments(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, Object appendix) {
-        super.popArguments(frame, argumentKinds, arguments, appendix);
-        materialize(frame);
-    }
-
-    @Override
-    @AlwaysInline("Keep materialized invocation argument stack transitions together")
-    void popArgumentsWithAppendix(InterpreterFrame frame, boolean hasReceiver, InterpreterUnresolvedSignature signature, Object[] arguments, Object appendix) {
-        super.popArgumentsWithAppendix(frame, hasReceiver, signature, arguments, appendix);
-        materialize(frame);
     }
 
     @Override
