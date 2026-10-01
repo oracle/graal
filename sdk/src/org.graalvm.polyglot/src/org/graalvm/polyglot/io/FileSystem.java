@@ -145,6 +145,9 @@ public interface FileSystem {
 
     /**
      * Opens or creates a file returning a {@link SeekableByteChannel} to access the file content.
+     * <p>
+     * To support file locking and, on JDK 22 and later, memory mapping, an implementation should
+     * return either a {@link java.nio.channels.FileChannel} or a {@link FileChannel}.
      *
      * @param path the path to the file to open
      * @param options the options specifying how the file should be opened
