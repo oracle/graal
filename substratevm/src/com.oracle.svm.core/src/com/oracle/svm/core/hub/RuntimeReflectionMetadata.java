@@ -40,7 +40,7 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
+import com.oracle.svm.guest.staging.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaType;
