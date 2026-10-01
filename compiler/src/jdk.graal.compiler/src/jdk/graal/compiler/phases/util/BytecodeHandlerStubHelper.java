@@ -50,6 +50,7 @@ import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ArbitraryValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -134,7 +135,8 @@ public final class BytecodeHandlerStubHelper {
                         remainingTemplateIndex /= argumentInfo.templateVariants();
                         virtualFields.get(allocatedObj).add(kit.unique(ConstantNode.forInt(templateValue)));
                     } else {
-                        virtualFields.get(allocatedObj).add(stubParameters[argumentInfo.index()]);
+                        virtualFields.get(allocatedObj).add(handlerConfig.isFieldValid(argumentInfo, templateIndex) ? stubParameters[argumentInfo.index()]
+                                        : kit.unique(new ArbitraryValueNode()));
                     }
                 } else {
                     ValueNode owner = handlerArguments.getLast();
@@ -199,7 +201,7 @@ public final class BytecodeHandlerStubHelper {
         for (ArgumentInfo argumentInfo : handlerConfig.getCalleeParameterInfos()) {
             if (argumentInfo.isExpanded()) {
                 ValueNode owner = handlerArguments[argumentInfo.originalIndex()];
-                if (argumentInfo.isImmutable()) {
+                if (argumentInfo.isImmutable() && !handlerConfig.hasConditionalValidity(argumentInfo)) {
                     // Preserve known properties such as non-nullness on both normal and exceptional exits.
                     values[argumentInfo.index()] = refreshImmutableFields
                                     ? kit.append(LoadFieldNode.createOverrideStamp(StampPair.createSingle(stubParameters[argumentInfo.index()].stamp(NodeView.DEFAULT)), owner, argumentInfo.field()))

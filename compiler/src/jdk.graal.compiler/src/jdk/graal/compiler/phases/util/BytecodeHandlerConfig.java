@@ -26,7 +26,9 @@ package jdk.graal.compiler.phases.util;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -73,7 +75,11 @@ public final class BytecodeHandlerConfig {
      */
     private final List<ResolvedJavaType> calleeParameterTypes;
 
-    private BytecodeHandlerConfig(int maximumOperationCode, int templatesLength, boolean enableTailDuplication, ResolvedJavaType returnType, List<ArgumentInfo> arguments) {
+    private final Map<ArgumentInfo, FieldValidity> fieldValidity;
+
+    private BytecodeHandlerConfig(int maximumOperationCode, int templatesLength, boolean enableTailDuplication, ResolvedJavaType returnType, List<ArgumentInfo> arguments,
+                    Map<ArgumentInfo, FieldValidity> fieldValidity) {
+        this.fieldValidity = fieldValidity;
         this.maximumOperationCode = maximumOperationCode;
         this.templatesLength = templatesLength;
         this.enableTailDuplication = enableTailDuplication;
@@ -141,7 +147,62 @@ public final class BytecodeHandlerConfig {
         assignTemplateArgumentIndexes(arguments, currentIndex);
         int templatesLength = computeTemplatesLength(arguments);
 
-        return new BytecodeHandlerConfig(maximumOperationCode, templatesLength, handlerConfig.getBoolean("enableTailDuplication"), returnType, arguments);
+        return new BytecodeHandlerConfig(maximumOperationCode, templatesLength, handlerConfig.getBoolean("enableTailDuplication"), returnType, arguments,
+                        templateModeEnabled ? parseFieldValidity(argumentAnnotations, arguments) : Collections.emptyMap());
+    }
+
+    private static Map<ArgumentInfo, FieldValidity> parseFieldValidity(List<AnnotationValue> annotations, List<ArgumentInfo> arguments) {
+        Map<ArgumentInfo, FieldValidity> result = new LinkedHashMap<>();
+        for (int originalIndex = 0; originalIndex < annotations.size(); originalIndex++) {
+            for (AnnotationValue field : annotations.get(originalIndex).getList("fields", AnnotationValue.class)) {
+                String validWhen = field.getString("validWhen");
+                List<Integer> valid = field.getList("valid", Integer.class);
+                if (validWhen.isEmpty()) {
+                    GraalError.guarantee(valid.isEmpty(), "Field %s specifies valid values without validWhen", field.getString("name"));
+                    continue;
+                }
+                ArgumentInfo value = null;
+                ArgumentInfo template = null;
+                int divisor = 1;
+                int templateDivisor = 0;
+                for (ArgumentInfo argument : arguments) {
+                    if (argument.originalIndex() == originalIndex && argument.isExpanded()) {
+                        if (argument.field().getName().equals(field.getString("name"))) {
+                            value = argument;
+                        }
+                        if (argument.field().getName().equals(validWhen) && argument.isTemplateVariable()) {
+                            template = argument;
+                            templateDivisor = divisor;
+                        }
+                    }
+                    if (argument.isTemplateVariable()) {
+                        divisor *= argument.templateVariants();
+                    }
+                }
+                GraalError.guarantee(value != null && value.isOwnerVirtual() && !value.isTemplateVariable() && value.type().getJavaKind() == JavaKind.Long,
+                                "Conditional validity requires a non-template virtual-expanded long field: %s", field.getString("name"));
+                GraalError.guarantee(template != null, "Field %s validWhen must name a template field on the same argument: %s", field.getString("name"), validWhen);
+                for (int variant : valid) {
+                    GraalError.guarantee(variant >= 0 && variant < template.templateVariants(), "Invalid valid value %d for template field %s", variant, validWhen);
+                }
+                GraalError.guarantee(!result.containsKey(value), "Duplicate validity configuration for field %s", field.getString("name"));
+                result.put(value, new FieldValidity(templateDivisor, template.templateVariants(), List.copyOf(valid)));
+            }
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    private record FieldValidity(int divisor, int variants, List<Integer> valid) {
+    }
+
+    /** Whether the incoming field value may be observed in the selected handler variant. */
+    public boolean isFieldValid(ArgumentInfo argument, int templateIndex) {
+        FieldValidity validity = fieldValidity.get(argument);
+        return validity == null || validity.valid().contains(templateIndex / validity.divisor() % validity.variants());
+    }
+
+    public boolean hasConditionalValidity(ArgumentInfo argument) {
+        return fieldValidity.containsKey(argument);
     }
 
     private static int computeTemplatesLength(List<ArgumentInfo> arguments) {
@@ -367,12 +428,12 @@ public final class BytecodeHandlerConfig {
         }
         return maximumOperationCode == other.maximumOperationCode && templatesLength == other.templatesLength && enableTailDuplication == other.enableTailDuplication &&
                         returnType.equals(other.returnType) &&
-                        allArgumentInfos.equals(other.allArgumentInfos);
+                        allArgumentInfos.equals(other.allArgumentInfos) && fieldValidity.equals(other.fieldValidity);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(maximumOperationCode, templatesLength, enableTailDuplication, returnType, allArgumentInfos);
+        return Objects.hash(maximumOperationCode, templatesLength, enableTailDuplication, returnType, allArgumentInfos, fieldValidity);
     }
 
     public boolean hasPendingExceptionState() {

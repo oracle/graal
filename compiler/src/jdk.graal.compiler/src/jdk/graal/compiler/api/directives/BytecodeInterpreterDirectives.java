@@ -146,6 +146,26 @@ public final class BytecodeInterpreterDirectives {
                  * template handler documentation</a> for examples and additional restrictions.
                  */
                 int templateVariable() default 0;
+
+                /**
+                 * Names the template-variable field on the same virtual-expanded argument that
+                 * controls whether this field's incoming value is valid. An empty name disables
+                 * conditional validity and requires {@link #valid()} to be empty.
+                 * <p>
+                 * Only non-template {@code long} fields of {@link ExpansionKind#VIRTUAL} arguments
+                 * support conditional validity. When template mode is disabled, this metadata is
+                 * ignored.
+                 */
+                String validWhen() default "";
+
+                /**
+                 * Values of {@link #validWhen()} for which the incoming field value is valid.
+                 * Otherwise, the generated handler starts with an arbitrary field value that must
+                 * not be observed, including through exception-state materialization. The handler
+                 * may overwrite the field before reading it. This contract applies at handler
+                 * entry, not to subsequent changes of the template-variable field.
+                 */
+                int[] valid() default {};
             }
 
             /**

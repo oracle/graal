@@ -68,10 +68,8 @@ class InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static final int STATE_NORMAL = 0;
-    static final int STATE_TOS_1 = 1;
-    static final int STATE_TOS_2 = 2;
-    static final int STATE_PROFILING = 3;
-    static final int STATE_DEBUGGING = 4;
+    static final int STATE_PROFILING = 1;
+    static final int STATE_DEBUGGING = 2;
 
     /** First stack slot above the operand stack. */
     long top;
@@ -90,8 +88,12 @@ class InterpreterOperandStack {
 
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     void setState(int state) {
-        assert state >= STATE_NORMAL && state <= STATE_DEBUGGING;
+        assert isValidState(state);
         this.state = state;
+    }
+
+    boolean isValidState(int state) {
+        return state >= STATE_NORMAL && state <= STATE_DEBUGGING;
     }
 
     /**

@@ -37,6 +37,12 @@ import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Int;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Long;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Object;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Short;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT1;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT1_CAT1;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT1_CAT2;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2_CAT1;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2_CAT2;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_DEBUGGING;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_PROFILING;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
@@ -770,7 +776,13 @@ public final class Interpreter {
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "references")
                         }),
                         @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.VIRTUAL, fields = {
-                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "state", templateVariable = 5)
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "state", templateVariable = STATE_TOS_CAT2_CAT2 + 1),
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "tosPrimitive0", validWhen = "state", valid = {
+                                                        STATE_TOS_CAT1, STATE_TOS_CAT2, STATE_TOS_CAT1_CAT1, STATE_TOS_CAT1_CAT2, STATE_TOS_CAT2_CAT1, STATE_TOS_CAT2_CAT2
+                                        }),
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "tosPrimitive1", validWhen = "state", valid = {
+                                                        STATE_TOS_CAT1_CAT1, STATE_TOS_CAT1_CAT2, STATE_TOS_CAT2_CAT1, STATE_TOS_CAT2_CAT2
+                                        })
                         })
         })
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
@@ -3652,6 +3664,8 @@ public final class Interpreter {
             long cpi = BytecodeStream.uncheckedReadCPI2(frame.code, curBCI);
             InterpreterResolvedJavaType multiArrayType = resolveType(frame, MULTIANEWARRAY, cpi);
             int allocatedDimensions = BytecodeStream.uncheckedReadUByte(frame.code, curBCI + 3);
+            // The variable-length dimension loop and its slot delta operate on the frame stack.
+            virtualStack.materialize(frame);
             int[] dimensions = new int[allocatedDimensions];
             // Keep the guest stack intact until allocation succeeds.
             for (int i = allocatedDimensions - 1; i >= 0; --i) {
