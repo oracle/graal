@@ -450,6 +450,23 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
+    "com.oracle.truffle.api.test.jdk22" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.test",
+      ],
+      "overlayTarget" : "com.oracle.truffle.api.test",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "22",
+      "testProject" : True,
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "22+",
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
     "com.oracle.truffle.api.library" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],

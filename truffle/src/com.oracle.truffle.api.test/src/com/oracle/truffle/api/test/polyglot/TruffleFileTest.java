@@ -45,7 +45,9 @@ import static java.nio.charset.StandardCharsets.UTF_16;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.Closeable;
@@ -62,6 +64,9 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.NonWritableChannelException;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.AccessMode;
@@ -108,12 +113,15 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.io.FileLock;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
+import org.graalvm.polyglot.io.FileChannel;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -1218,6 +1226,217 @@ public class TruffleFileTest {
     }
 
     @Test
+    public void testMemoryMap() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        Assume.assumeTrue("Memory mapping is not supported on JDK < JDK-22", Runtime.version().feature() >= 22);
+
+        Path testFile = createTestFile();
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestMapToMemorySegment.class, "", testFile.toAbsolutePath().toString());
+        } finally {
+            try {
+                Files.delete(testFile);
+            } catch (IOException e) {
+                // Test uses automatic arena, the mapping is not guaranteed to be unmapped and delete may fail on Windows.
+                testFile.toFile().deleteOnExit();
+            }
+        }
+
+        testFile = createTestFile();
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestUnmap.class, "", testFile.toAbsolutePath().toString());
+        } finally {
+            Files.delete(testFile);
+        }
+
+        FileSystem memFileSystem = new MemoryFileSystem();
+        testFile = createTestFile(memFileSystem, memFileSystem.parsePath("/test.bin"));
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.newBuilder().fileSystem(memFileSystem).build()).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestMapToMemorySegment.class, "", testFile.toAbsolutePath().toString());
+        }
+
+        FileSystem readOnlyHostFs = FileSystem.newReadOnlyFileSystem(FileSystem.newDefaultFileSystem());
+        testFile = createTestFile();
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.newBuilder().fileSystem(readOnlyHostFs).build()).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestMapToMemorySegmentReadOnlyFileSystem.class, "", testFile.toAbsolutePath().toString());
+        } finally {
+            try {
+                Files.delete(testFile);
+            } catch (IOException e) {
+                // Test uses automatic arena, the mapping is not guaranteed to be unmapped and delete may fail on Windows.
+                testFile.toFile().deleteOnExit();
+            }
+        }
+    }
+
+    private static Path createTestFile() throws IOException {
+        return createTestFile(FileSystem.newDefaultFileSystem(), Files.createTempFile("test", ".bin"));
+    }
+
+    private static Path createTestFile(FileSystem fs, Path testFile) throws IOException {
+        byte[] fill = new byte[40 * 1024];
+        Arrays.fill(fill, (byte) 0x1);
+        try (SeekableByteChannel channel = fs.newByteChannel(testFile, Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE))) {
+            Channels.newOutputStream(channel).write(fill);
+        }
+        return testFile;
+    }
+
+    @Registration
+    static final class TestMapToMemorySegment extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile testFile = env.getPublicTruffleFile((String) contextArguments[0]);
+            int bufferSize = 4 * 1024;
+            Object autoArena = MemorySegmentUtil.createArena(true);
+            Object segment;
+            try (FileChannel c = testFile.newByteChannel(Set.of(StandardOpenOption.READ, StandardOpenOption.WRITE))) {
+                segment = MemorySegmentUtil.map(c, java.nio.channels.FileChannel.MapMode.READ_WRITE, bufferSize, bufferSize, autoArena);
+            }
+            assertEquals(bufferSize, MemorySegmentUtil.getByteSize(segment));
+            for (int i = 0; i < MemorySegmentUtil.getByteSize(segment); i++) {
+                assertEquals(0x01, MemorySegmentUtil.getByte(segment, i));
+                MemorySegmentUtil.setByte(segment, i, (byte) 0x02);
+            }
+            MemorySegmentUtil.force(segment);
+            try (FileChannel c = testFile.newByteChannel(Set.of(StandardOpenOption.READ))) {
+                segment = MemorySegmentUtil.map(c, java.nio.channels.FileChannel.MapMode.READ_ONLY, 0, bufferSize * 3, autoArena);
+            }
+            assertEquals(bufferSize * 3, MemorySegmentUtil.getByteSize(segment));
+            for (int i = 0; i < bufferSize; i++) {
+                assertEquals(0x01, MemorySegmentUtil.getByte(segment, i));
+            }
+            for (int i = 0; i < bufferSize; i++) {
+                assertEquals(0x02, MemorySegmentUtil.getByte(segment, bufferSize + i));
+            }
+            for (int i = 0; i < bufferSize; i++) {
+                assertEquals(0x01, MemorySegmentUtil.getByte(segment, 2 * bufferSize + i));
+            }
+            return null;
+        }
+    }
+
+    @Registration
+    static final class TestUnmap extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile testFile = env.getPublicTruffleFile((String) contextArguments[0]);
+            int bufferSize = 4 * 1024;
+            Object segment;
+            try (AutoCloseable confinedArena = MemorySegmentUtil.createArena(false)) {
+                try (FileChannel c = testFile.newByteChannel(Set.of(StandardOpenOption.READ, StandardOpenOption.WRITE))) {
+                    segment = MemorySegmentUtil.map(c, java.nio.channels.FileChannel.MapMode.READ_WRITE, bufferSize, bufferSize, confinedArena);
+                }
+                assertEquals(bufferSize, MemorySegmentUtil.getByteSize(segment));
+                for (int i = 0; i < MemorySegmentUtil.getByteSize(segment); i++) {
+                    assertEquals(0x01, MemorySegmentUtil.getByte(segment, i));
+                    MemorySegmentUtil.setByte(segment, i, (byte) 0x02);
+                }
+            }
+
+            // Mapped region is unmapped by arena close. Accessing it throws IllegalStateException.
+            Object segmentCapture = segment;
+            AbstractPolyglotTest.assertFails(() -> MemorySegmentUtil.getByte(segmentCapture, 0), IllegalStateException.class);
+
+            try (AutoCloseable confinedArena = MemorySegmentUtil.createArena(false)) {
+                try (FileChannel c = testFile.newByteChannel(Set.of(StandardOpenOption.READ))) {
+                    segment = MemorySegmentUtil.map(c, java.nio.channels.FileChannel.MapMode.READ_ONLY, 0, bufferSize * 3, confinedArena);
+                }
+                assertEquals(bufferSize * 3, MemorySegmentUtil.getByteSize(segment));
+                for (int i = 0; i < bufferSize; i++) {
+                    assertEquals(0x01, MemorySegmentUtil.getByte(segment, i));
+                }
+                for (int i = 0; i < bufferSize; i++) {
+                    assertEquals(0x02, MemorySegmentUtil.getByte(segment, bufferSize + i));
+                }
+                for (int i = 0; i < bufferSize; i++) {
+                    assertEquals(0x01, MemorySegmentUtil.getByte(segment, 2 * bufferSize + i));
+                }
+            }
+            return null;
+        }
+    }
+
+    @Registration
+    static final class TestMapToMemorySegmentReadOnlyFileSystem extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile testFile = env.getPublicTruffleFile((String) contextArguments[0]);
+            int bufferSize = 4 * 1024;
+            Object autoArena = MemorySegmentUtil.createArena(true);
+            try (FileChannel c = testFile.newByteChannel(Set.of(StandardOpenOption.READ))) {
+                AbstractPolyglotTest.assertFails(() -> MemorySegmentUtil.map(c, java.nio.channels.FileChannel.MapMode.READ_WRITE, 0, bufferSize, autoArena),
+                                NonWritableChannelException.class);
+                AbstractPolyglotTest.assertFails(() -> MemorySegmentUtil.map(c, java.nio.channels.FileChannel.MapMode.PRIVATE, 0, bufferSize, autoArena), NonWritableChannelException.class);
+            }
+            Object segment;
+            try (FileChannel c = testFile.newByteChannel(Set.of(StandardOpenOption.READ))) {
+                segment = MemorySegmentUtil.map(c, java.nio.channels.FileChannel.MapMode.READ_ONLY, 0, bufferSize * 3, autoArena);
+            }
+            assertEquals(bufferSize * 3, MemorySegmentUtil.getByteSize(segment));
+            for (int i = 0; i < MemorySegmentUtil.getByteSize(segment); i++) {
+                assertEquals(0x01, MemorySegmentUtil.getByte(segment, i));
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testFileLock() throws Exception {
+        Path testFile = createTestFile();
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestFileLock.class, "", testFile.toAbsolutePath().toString());
+        } finally {
+            Files.delete(testFile);
+        }
+    }
+
+    @Registration
+    static final class TestFileLock extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile testFile = env.getPublicTruffleFile((String) contextArguments[0]);
+            try (FileChannel c = testFile.newByteChannel(Set.of(StandardOpenOption.READ, StandardOpenOption.WRITE))) {
+                FileLock l1 = c.lock();
+                try {
+                    assertTrue(l1.isValid());
+                    assertFalse(l1.isShared());
+                    assertSame(c, l1.acquiredBy());
+                    AbstractPolyglotTest.assertFails(() -> c.tryLock(), OverlappingFileLockException.class);
+                } finally {
+                    l1.close();
+                }
+                assertFalse(l1.isValid());
+
+                FileLock l2 = c.tryLock();
+                assertNotNull(l2);
+                try {
+                    assertTrue(l2.isValid());
+                    assertFalse(l2.isShared());
+                    assertSame(c, l2.acquiredBy());
+                } finally {
+                    l2.close();
+                }
+                assertFalse(l2.isValid());
+                FileLock l3 = c.tryLock(0, Long.MAX_VALUE, true);
+                assertNotNull(l3);
+                try {
+                    assertTrue(l3.isValid());
+                    assertSame(c, l3.acquiredBy());
+                } finally {
+                    l3.close();
+                }
+                assertFalse(l3.isValid());
+            }
+            return null;
+        }
+    }
+
+    @Test
     public void testCorrectExceptions() {
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(FileSystem.newDefaultFileSystem()).build();
         try (Context context = Context.newBuilder().allowIO(ioAccess).build()) {
@@ -1782,5 +2001,38 @@ public class TruffleFileTest {
         public String versionHash(Env env) throws IOException {
             return "42";
         }
+    }
+}
+
+final class MemorySegmentUtil {
+
+    @SuppressWarnings("unused")
+    static AutoCloseable createArena(boolean auto) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    static Object map(FileChannel channel, java.nio.channels.FileChannel.MapMode mode, long offset, long length, Object arena) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    static long getByteSize(Object segment) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    static byte getByte(Object segment, long offset) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    static void setByte(Object segment, long offset, byte b) {
+        throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    static void force(Object segment) {
+        throw new UnsupportedOperationException();
     }
 }
