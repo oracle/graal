@@ -9,6 +9,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-79855: Extended `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.Field.templateVariable()` to support per-field template variant counts for bytecode handler threading and added template-aware main dispatch from the switch loop.
 * GR-13989: `TruffleFile.newByteChannel` now returns `FileChannel`, enabling file regions to be mapped to `MemorySegment` instances on JDK 22 and later.
 * GR-79068: `FileChannel` instances returned by `TruffleFile.newByteChannel` now expose file locking through the `lock` and `tryLock` methods when supported by the underlying file system.
+* GR-80089: Bytecode DSL: Made the ClearLocal builtin non-optional. Custom operations that conflict with this builtin should be renamed.
 
 ## Version 25.4
 * GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.

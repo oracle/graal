@@ -261,6 +261,13 @@ public class BytecodeDSLBuiltins {
                         .setInstruction(m.storeLocalInstruction);
         m.clearLocalInstruction = m.instruction(InstructionKind.CLEAR_LOCAL, "clear.local", m.signature(void.class))//
                         .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
+        m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
+                        ClearLocal clears {@code local} in the current frame.
+                        Until a value is written to the local, a subsequent LoadLocal %s.
+                        """, loadIllegalLocalBehaviour(m))) //
+                        .setVoid(true)//
+                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to clear"))//
+                        .setInstruction(m.clearLocalInstruction);
         if (m.enableMaterializedLocalAccesses) {
             m.loadLocalMaterializedOperation = m.operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized",
                             String.format("""
@@ -495,15 +502,6 @@ public class BytecodeDSLBuiltins {
                             .setInstruction(m.storeStackValueInstruction);
         }
 
-        OperationModel clearLocalOperation = m.operation(OperationKind.CLEAR_LOCAL, "ClearLocal", String.format("""
-                        ClearLocal clears {@code local} in the current frame.
-                        Until a value is written to the local, a subsequent LoadLocal %s.
-                        """, loadIllegalLocalBehaviour(m)), "ClearLocal", BytecodeDSLModel.RegistrationMode.OPTIONAL_BUILTIN);
-        if (clearLocalOperation != null) {
-            clearLocalOperation.setVoid(true)//
-                            .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to clear"))//
-                            .setInstruction(m.clearLocalInstruction);
-        }
     }
 
     /**
