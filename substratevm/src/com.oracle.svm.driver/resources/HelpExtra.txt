@@ -1,5 +1,8 @@
 Non-standard options help:
 
+    @=argument files      one or more argument files with option-value continuations
+||@=argument| files|one or more argument files with option-value continuations|String||false|
+
     --exclude-config      exclude configuration for a space-separated pair of classpath/modulepath
                           pattern and resource pattern. For example:
                           '--exclude-config foo.jar META-INF\/native-image\/.*.properties'

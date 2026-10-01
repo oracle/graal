@@ -114,8 +114,39 @@ These deprecated URL protocol options are omitted from the generated table; see 
 | `-cp` | Path | class search path of directories and zip/jar files |  | `-cp <class search path of directories and zip/jar files>` |
 | `-p` | Path | module path |  | `-p <module path>` |
 | `@argument` | String | one or more argument files containing options |  | `@argument files` |
+| `@=argument` | String | one or more argument files with option-value continuations |  | `@=argument files` |
 
 <!-- END: build-options-table -->
+
+## Argument Files
+
+Native Image argument files use UTF-8 and follow the [Java launcher argument-file specification](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#java-command-line-argument-files).
+All of its syntax rules apply, with the following extension when you use `@=file` instead of `@file`.
+
+An option ending in `=...` starts an option-value continuation.
+Subsequent arguments within the file are joined with commas until an empty or whitespace-only line, another option ending in `=...`, or the end of the file.
+Comment-only lines do not end the continuation.
+A continuation with no entries produces an empty option value.
+
+For example, _preserve.args_ can contain:
+
+```text
+# Library scope
+-H:Preserve=...
+    package=my.library.*
+    module=java.logging
+
+-H:IncludeResources=...
+    my/library/.*
+    my/application/.*
+```
+
+Running `native-image @=preserve.args -cp classes Main` expands the file into:
+
+```text
+-H:Preserve=package=my.library.*,module=java.logging
+-H:IncludeResources=my/library/.*,my/application/.*
+```
 
 ## List of Useful Options
 

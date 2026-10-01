@@ -19,9 +19,25 @@ Run-time class loading cannot reload a class that was already partially included
 This will result in errors if run-time-loaded classes try to use such removed methods or static fields.
 A typical way to address this is to use `-H:Preserve=package=...` at build time to ensure all methods and fields of a package are included in the native image.
 
-To enable just-in-time (JIT) compilation of run-time-loaded bytecode, use `-H:+GraalJITCompileAtRuntime`.
+### Preservation Option Argument Files
+
+You can keep preservation selections in an [argument file with option-value continuations](../../docs/reference-manual/native-image/BuildOptions.md#argument-files):
+
+```text
+# Library scope
+-H:Preserve=...
+    package=my.library.*
+    module=java.logging
+```
+
+Pass this file as `native-image @=preserve.args ...`.
+The driver expands the section into `-H:Preserve=package=my.library.*,module=java.logging`.
+`Preserve` remains an application build choice and cannot be embedded in a library's _native-image.properties_.
 
 ### Runtime Compilation Mode Options
+
+Use `-H:+GraalJITCompileAtRuntime` at build time to include Ristretto in the image for just-in-time (JIT) compilation of run-time-loaded bytecode.
+This also makes the additional run-time options described below available in the resulting image.
 
 Ristretto-enabled images recognize the HotSpot-style run-time options `-Xint`, `-Xmixed`, and
 `-Xcomp`. `-Xint` disables run-time compilation and uses the interpreter; `-Xmixed` enables

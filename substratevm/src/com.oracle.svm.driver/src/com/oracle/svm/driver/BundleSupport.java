@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -45,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -617,24 +619,17 @@ final class BundleSupport {
 
         // TODO: Report error if overlapping dir-trees are passed in
 
-        String origFileName = origPath.getFileName().toString();
-        int extensionPos = origFileName.lastIndexOf('.');
-        String baseName;
-        String extension;
-        if (extensionPos > 0) {
-            baseName = origFileName.substring(0, extensionPos);
-            extension = origFileName.substring(extensionPos);
-        } else {
-            baseName = origFileName;
-            extension = "";
+        int index = 0;
+        Path entryDir = destinationDir.resolve(Integer.toString(index));
+        while (Files.exists(entryDir) || isBundlePathReserved(entryDir)) {
+            entryDir = destinationDir.resolve(Integer.toString(++index));
         }
-
-        Path substitutedPath = destinationDir.resolve(baseName + extension);
-        int collisionIndex = 0;
-        while (Files.exists(substitutedPath)) {
-            collisionIndex += 1;
-            substitutedPath = destinationDir.resolve(baseName + "_" + collisionIndex + extension);
+        try {
+            Files.createDirectory(entryDir);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to create bundle path " + entryDir, e);
         }
+        Path substitutedPath = entryDir.resolve(origPath.getFileName());
 
         if (!isOutputPath) {
             copyFiles(origPath, substitutedPath, false);
@@ -644,6 +639,26 @@ final class BundleSupport {
         NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
         recordPathSubstitution(portableOrigPath, BundlePathMap.bundlePath(relativeSubstitutedPath));
         return substitutedPath;
+    }
+
+    /// Includes destinations whose files or directories are absent from the extracted bundle.
+    private boolean isBundlePathReserved(Path path) {
+        return pathSubstitutions.values().stream()
+                        .filter(substitution -> substitution.kind() != RootKind.Unavailable)
+                        .anyMatch(substitution -> BundlePathMap.resolveBundlePath(rootDir, substitution).startsWith(path));
+    }
+
+    /// Exports only aliases of paths actually passed to the builder, including recorded symlink
+    /// and relative spellings. Bundle-specific path representations stay in the driver.
+    Map<String, String> imagePathAliases(Collection<Path> imagePaths) {
+        Map<String, String> aliases = new TreeMap<>();
+        Stream.concat(pathSubstitutions.keySet().stream(), pathCanonicalizations.keySet().stream()).forEach(original -> {
+            Path substituted = resolveSubstitutedPath(original);
+            if (substituted != null && imagePaths.contains(substituted)) {
+                aliases.put(original.sourcePathText(), substituted.toString());
+            }
+        });
+        return aliases;
     }
 
     PortablePath originalPortablePath(Path substitutedPath) {

@@ -42,10 +42,13 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.jar.Attributes;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
@@ -62,6 +65,7 @@ import com.oracle.svm.driver.BundlePathMap.RootKind;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser.ArgumentGroup;
 import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
+import com.oracle.svm.shared.option.BundleMember.Role;
 import com.oracle.svm.shared.option.OptionOrigin;
 
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -1057,6 +1061,116 @@ public class BundlePathMapTest {
         manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, classPath);
         try (JarOutputStream jar = new JarOutputStream(Files.newOutputStream(path), manifest)) {
             jar.finish();
+        }
+    }
+
+    @Test
+    public void exportsImagePathAliasesAcrossBundleReplay() throws Exception {
+        Path fixture = newBundleSupport().rootDir;
+        Path first = Files.createDirectories(fixture.resolve("first")).resolve("same.jar");
+        Path second = Files.createDirectories(fixture.resolve("second")).resolve("same.jar");
+        Path module = Files.createDirectories(fixture.resolve("module")).resolve("same.jar");
+        Path auxiliary = fixture.resolve("config.json");
+        for (Path file : List.of(first, second, module, auxiliary)) {
+            Files.writeString(file, "input");
+        }
+        BundleSupport support = newBundleSupport();
+        Path firstAlias = Path.of("libA", "same.jar");
+        Path secondAlias = Path.of("libB", "same.jar");
+        support.recordCanonicalization(firstAlias, first);
+        support.recordCanonicalization(secondAlias, second);
+        Path bundledFirst = support.substituteClassPath(first);
+        Path bundledSecond = support.substituteClassPath(second);
+        Path bundledModule = support.substituteModulePath(module);
+        support.substituteAuxiliaryPath(auxiliary, com.oracle.svm.shared.option.BundleMember.Role.Input);
+        assertEquals(support.classPathDir.resolve("0/same.jar"), bundledFirst);
+        assertEquals(support.classPathDir.resolve("1/same.jar"), bundledSecond);
+        assertEquals(support.modulePathDir.resolve("0/same.jar"), bundledModule);
+        assertEquals(bundledFirst, support.substituteClassPath(first));
+        for (Path file : List.of(first, second, module, auxiliary)) {
+            Files.delete(file);
+        }
+        for (int generation = 0; generation < 3; generation++) {
+            List<Path> imagePaths = List.of(bundledFirst, bundledSecond, bundledModule);
+            assertEquals(Map.of(
+                            firstAlias.toString(), bundledFirst.toString(),
+                            secondAlias.toString(), bundledSecond.toString(),
+                            first.toString(), bundledFirst.toString(),
+                            second.toString(), bundledSecond.toString(),
+                            module.toString(), bundledModule.toString()), support.imagePathAliases(imagePaths));
+            assertEquals(Map.of(firstAlias.toString(), bundledFirst.toString(), first.toString(), bundledFirst.toString()), support.imagePathAliases(List.of(bundledFirst)));
+            support = writeAndReloadBundle(support, fixture.resolve("aliases-" + generation + ".nib"));
+            bundledFirst = support.restoreBundlePath(firstAlias);
+            bundledSecond = support.restoreBundlePath(secondAlias);
+            bundledModule = support.restoreBundlePath(module);
+        }
+    }
+
+    @Test
+    public void preservesNumberedPathsAcrossBundleDerivation() throws Exception {
+        List<BiFunction<BundleSupport, Path, Path>> substitutions = List.of(
+                        BundleSupport::substituteClassPath, BundleSupport::substituteModulePath,
+                        (support, path) -> support.substituteAuxiliaryPath(path, Role.Input),
+                        (support, path) -> support.substituteAuxiliaryPath(path, Role.Output));
+        for (var substitute : substitutions) {
+            Path fixture = newBundleSupport().rootDir;
+            BundleSupport support = newBundleSupport();
+            Map<Path, Path> destinations = new LinkedHashMap<>();
+            for (int generation = 0; generation < 4; generation++) {
+                support.writeBundle = true;
+                for (int entry = 0; entry < 2; entry++) {
+                    Path original = Files.createDirectories(fixture.resolve(generation + "-" + entry)).resolve("same");
+                    if (entry == 0) {
+                        Files.createDirectory(original);
+                    } else {
+                        Files.writeString(original, "input");
+                    }
+                    Path destination = support.rootDir.relativize(substitute.apply(support, original));
+                    for (Path previous : destinations.values()) {
+                        assertFalse("Reused slot " + destination.getParent(), previous.getParent().equals(destination.getParent()));
+                    }
+                    destinations.put(original, destination);
+                    Files.delete(original);
+                }
+                support = writeAndReloadBundle(support, fixture.resolve(generation + ".nib"));
+                for (var entry : new ArrayList<>(destinations.entrySet()).reversed()) {
+                    assertEquals(entry.getValue(), support.rootDir.relativize(substitute.apply(support, entry.getKey())));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void reservesAbsentLegacyOutputBeforeAllocatingNumberedPaths() throws Exception {
+        Path fixture = newBundleSupport().rootDir;
+        Path original = fixture.resolve("0");
+        Path legacyBundle = fixture.resolve("legacy.nib");
+        Map<String, String> entries = Map.of(
+                        "META-INF/nibundle.properties", """
+                                        BundleFileVersionMajor=0
+                                        BundleFileVersionMinor=9
+                                        NativeImagePlatform=%s
+                                        """.formatted(NativeImage.platform),
+                        "input/stage/path_canonicalizations.json", "[]",
+                        "input/stage/path_substitutions.json", json(List.of(Map.of("src", original.toString(), "dst", "output/other/0"))),
+                        "input/stage/build.json", "[]");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(legacyBundle))) {
+            for (var entry : entries.entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
+        nativeImage.bundleSupport = BundleSupport.create(nativeImage, "--bundle-apply=" + legacyBundle, new NativeImage.ArgumentQueue(OptionOrigin.originUser));
+        BundleSupport support = nativeImage.bundleSupport;
+        for (int generation = 0; generation < 3; generation++) {
+            Path oldOutput = support.substituteAuxiliaryPath(original, Role.Output);
+            Path newOutput = support.substituteAuxiliaryPath(fixture.resolve("new-" + generation), Role.Output);
+            assertEquals(support.rootDir.resolve("output/other/0"), oldOutput);
+            assertEquals(support.rootDir.resolve("output/other/" + (generation + 1) + "/new-" + generation), newOutput);
+            assertTrue(Files.notExists(oldOutput));
+            support = writeAndReloadBundle(support, fixture.resolve("derived-" + generation + ".nib"));
         }
     }
 

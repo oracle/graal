@@ -116,6 +116,7 @@ import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
 
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.internal.jimage.ImageReader;
 
 public class NativeImage {
@@ -1796,6 +1797,26 @@ public class NativeImage {
             }
         }
 
+        boolean useContainer = useBundle() && bundleSupport.useContainer;
+        Path imagePathAliasesFile = null;
+        if (useBundle()) {
+            Map<String, String> aliases = bundleSupport.imagePathAliases(Stream.concat(finalImageClassPath.stream(), finalImageModulePath.stream()).toList());
+            if (useContainer) {
+                aliases.replaceAll((_, target) -> {
+                    List<String> paths = new ArrayList<>(List.of(target));
+                    ContainerSupport.replacePaths(paths, config.getJavaHome(), bundleSupport.rootDir);
+                    return paths.getFirst();
+                });
+            }
+            imagePathAliasesFile = createFileInTempDir("image-path-aliases.json");
+            try (JsonWriter writer = new JsonWriter(imagePathAliasesFile)) {
+                writer.print(aliases);
+            } catch (IOException e) {
+                throw showError("Unable to write image path aliases", e);
+            }
+            arguments.add("-D" + SharedConstants.IMAGE_PATH_ALIASES_PROPERTY + "=" + imagePathAliasesFile);
+        }
+
         arguments.addAll(config.getGeneratorMainClass());
 
         Path keepAliveFile;
@@ -1810,7 +1831,6 @@ public class NativeImage {
             keepAliveFile = createFileInTempDir(".native_image.alive");
         }
 
-        boolean useContainer = useBundle() && bundleSupport.useContainer;
         Path keepAliveFileInContainer = Path.of("/keep_alive");
         arguments.addAll(Arrays.asList(SubstrateOptions.KEEP_ALIVE_PREFIX, (useContainer ? keepAliveFileInContainer : keepAliveFile).toString()));
 
@@ -1859,6 +1879,7 @@ public class NativeImage {
             Map<Path, ContainerSupport.TargetPath> mountMapping = ContainerSupport.mountMappingFor(config.getJavaHome(), bundleSupport.inputDir, bundleSupport.outputDir);
             mountMapping.put(argFile, ContainerSupport.TargetPath.readonly(argFile));
             mountMapping.put(builderArgFile, ContainerSupport.TargetPath.readonly(builderArgFile));
+            mountMapping.put(imagePathAliasesFile, ContainerSupport.TargetPath.readonly(imagePathAliasesFile));
             mountMapping.put(keepAliveFile, ContainerSupport.TargetPath.readonly(keepAliveFileInContainer));
             if (layerClassIdentityHashCodesFile != null) {
                 mountMapping.put(layerClassIdentityHashCodesFile, ContainerSupport.TargetPath.readonly(layerClassIdentityHashCodesFile));

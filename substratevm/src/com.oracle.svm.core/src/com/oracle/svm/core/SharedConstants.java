@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,9 @@ public final class SharedConstants {
      * available during the process lifetime of the Native Image driver.
      */
     public static final String DRIVER_TEMP_DIR_ENV_VARIABLE = "DRIVER_TEMP_DIR_ENV_VARIABLE";
+
+    /// System property naming the driver-generated JSON map from original image paths to builder paths.
+    public static final String IMAGE_PATH_ALIASES_PROPERTY = "com.oracle.svm.imagePathAliases";
 
     /**
      * The name of the Java environment variable used to indicate that it is a build initiated due

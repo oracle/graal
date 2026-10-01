@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 
@@ -54,8 +55,15 @@ public class ArgFilesOptionPreprocessor {
                 // escaped @argument
                 return List.of(argWithoutAt);
             }
-            Path argFile = Paths.get(argWithoutAt);
-            return readArgFile(argFile);
+            boolean expandOptionValues = argWithoutAt.startsWith("=");
+            Path argFile = Paths.get(expandOptionValues ? argWithoutAt.substring(1) : argWithoutAt);
+            List<String> arguments = readArgFile(argFile, expandOptionValues);
+            if (expandOptionValues) {
+                arguments = expandOptionValueContinuations(arguments);
+            }
+            List<String> result = new ArrayList<>();
+            arguments.forEach(arg -> addArg(result, arg));
+            return result;
         }
 
         return List.of(currentArg);
@@ -78,10 +86,12 @@ public class ArgFilesOptionPreprocessor {
         char quoteChar;
         List<String> parts;
         String options;
+        boolean markBlankLines;
+        boolean blankLineBeforeToken;
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
-    private List<String> readArgFile(Path file) {
+    private static List<String> readArgFile(Path file, boolean markBlankLines) {
         List<String> arguments = new ArrayList<>();
 
         String options = null;
@@ -98,21 +108,50 @@ public class ArgFilesOptionPreprocessor {
         ctx.cptr = 0;
         ctx.eob = options.length();
         ctx.options = options;
+        ctx.markBlankLines = markBlankLines;
 
-        String token = nextToken(ctx);
-        while (token != null) {
-            addArg(arguments, token);
-            token = nextToken(ctx);
+        while (true) {
+            String token = nextToken(ctx);
+            if (ctx.blankLineBeforeToken) {
+                // Null marks a section boundary, removed during continuation expansion.
+                arguments.add(null);
+            }
+            if (token == null) {
+                break;
+            }
+            arguments.add(token);
         }
 
         // remaining partial token
         if (ctx.state == PARSER_STATE.IN_TOKEN || ctx.state == PARSER_STATE.IN_QUOTE) {
             if (ctx.parts.size() != 0) {
-                token = String.join("", ctx.parts);
-                addArg(arguments, token);
+                arguments.add(String.join("", ctx.parts));
             }
         }
         return arguments;
+    }
+
+    /// Expands the option-value sections enabled by `@=file` after Java-style tokenization.
+    /// An option ending in `=...` collects comma-separated values until a blank line, another such option, or EOF.
+    private static List<String> expandOptionValueContinuations(List<String> arguments) {
+        List<String> expanded = new ArrayList<>();
+        StringJoiner continuation = null;
+        for (String arg : arguments) {
+            if (arg == null || (arg.startsWith("-") && arg.endsWith("=..."))) {
+                if (continuation != null) {
+                    expanded.add(continuation.toString());
+                }
+                continuation = arg == null ? null : new StringJoiner(",", arg.substring(0, arg.length() - 3), "");
+            } else if (continuation != null) {
+                continuation.add(arg);
+            } else {
+                expanded.add(arg);
+            }
+        }
+        if (continuation != null) {
+            expanded.add(continuation.toString());
+        }
+        return expanded;
     }
 
     private void addArg(List<String> args, String arg) {
@@ -124,9 +163,27 @@ public class ArgFilesOptionPreprocessor {
         }
     }
 
+    private static boolean isBlankLineEnd(String options, int index) {
+        char ch = options.charAt(index);
+        if ((ch != '\n' && ch != '\r') || (ch == '\n' && index > 0 && options.charAt(index - 1) == '\r')) {
+            return false;
+        }
+        for (int i = index - 1; i >= 0; i--) {
+            char previous = options.charAt(i);
+            if (previous == '\n' || previous == '\r') {
+                break;
+            }
+            if (!JDKArgsUtils.isspace(previous)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Ported from JDK11's java.base/share/native/libjli/args.c
     @SuppressWarnings("fallthrough")
     private static String nextToken(CTX_ARGS ctx) {
+        ctx.blankLineBeforeToken = false;
         int nextc = ctx.cptr;
         int eob = ctx.eob;
         int anchor = nextc;
@@ -138,6 +195,9 @@ public class ArgFilesOptionPreprocessor {
             // Skip white space characters
             if (ctx.state == PARSER_STATE.FIND_NEXT || ctx.state == PARSER_STATE.SKIP_LEAD_WS) {
                 while (JDKArgsUtils.isspace(ch)) {
+                    if (ctx.markBlankLines && ctx.state == PARSER_STATE.FIND_NEXT && isBlankLineEnd(ctx.options, nextc)) {
+                        ctx.blankLineBeforeToken = true;
+                    }
                     nextc++;
                     if (nextc >= eob) {
                         return null;
