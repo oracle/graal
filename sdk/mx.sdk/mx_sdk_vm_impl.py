@@ -2503,6 +2503,11 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
 
         # launcher classpath for launching via jvm
         _mp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
+        # JVM launchers need the Truffle runtime when it is not linked into the JDK.
+        _truffle_component = get_component('Truffle API')
+        if _truffle_component:
+            _truffle_cp = graalvm_home_relative_classpath(_truffle_component.jvmci_parent_jars, _graalvm_home, graal_vm=_dist)
+            _mp.extend(path for path in _truffle_cp.split(os.pathsep) if path and path not in _mp)
         _mp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _mp]
         # path from language launcher to jars
         _mp = [escaped_relpath(x) for x in _mp]
