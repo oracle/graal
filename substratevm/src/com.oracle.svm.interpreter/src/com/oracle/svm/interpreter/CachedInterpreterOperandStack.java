@@ -135,7 +135,8 @@ final class CachedInterpreterOperandStack extends InterpreterOperandStack {
             top += first + second;
         }
         setState(STATE_NORMAL);
-        killUnusedFields();
+        tosPrimitive0 = GraalDirectives.arbitraryValue(tosPrimitive0);
+        tosPrimitive1 = GraalDirectives.arbitraryValue(tosPrimitive1);
     }
 
     @AlwaysInline("Kill dependencies on unused cached primitive values")
@@ -225,6 +226,152 @@ final class CachedInterpreterOperandStack extends InterpreterOperandStack {
         setState(singleState(firstCategory()));
         return tosPrimitive1;
     }
+
+    @Override
+    @AlwaysInline("Materialize cached arguments before the argument loop")
+    void popArguments(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex) {
+        if (state == STATE_PROFILING || state == STATE_DEBUGGING) {
+            super.popArguments(frame, argumentKinds, arguments, argumentIndex);
+            return;
+        }
+        /*
+        // Disabled experiment: keep the second peel inside each first-kind arm.
+        if (state == STATE_TOS_CAT1_CAT1) {
+            if (argumentIndex >= 0) {
+                switch (UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE)) {
+                    case JVM_ArrayType_Boolean -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popInt(frame) != 0);
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    case JVM_ArrayType_Byte -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (byte) popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    case JVM_ArrayType_Short -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (short) popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    case JVM_ArrayType_Char -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (char) popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    case JVM_ArrayType_Int -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    case JVM_ArrayType_Float -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popFloat(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    default -> UnreachablePathNode.unreachable();
+                }
+            } else {
+                materialize(frame);
+            }
+        } else if (state == STATE_TOS_CAT1_CAT2) {
+            if (argumentIndex >= 0) {
+                switch (UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE)) {
+                    case JVM_ArrayType_Long -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popLong(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    case JVM_ArrayType_Double -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popDouble(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 1);
+                    }
+                    default -> UnreachablePathNode.unreachable();
+                }
+            } else {
+                materialize(frame);
+            }
+        } else if (state == STATE_TOS_CAT2_CAT1) {
+            if (argumentIndex >= 0) {
+                switch (UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE)) {
+                    case JVM_ArrayType_Boolean -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popInt(frame) != 0);
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    case JVM_ArrayType_Byte -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (byte) popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    case JVM_ArrayType_Short -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (short) popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    case JVM_ArrayType_Char -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (char) popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    case JVM_ArrayType_Int -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popInt(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    case JVM_ArrayType_Float -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popFloat(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    default -> UnreachablePathNode.unreachable();
+                }
+            } else {
+                materialize(frame);
+            }
+        } else if (state == STATE_TOS_CAT2_CAT2) {
+            if (argumentIndex >= 0) {
+                switch (UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE)) {
+                    case JVM_ArrayType_Long -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popLong(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    case JVM_ArrayType_Double -> {
+                        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popDouble(frame));
+                        argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex - 1, 2);
+                    }
+                    default -> UnreachablePathNode.unreachable();
+                }
+            } else {
+                materialize(frame);
+            }
+        } else if (state == STATE_TOS_CAT1) {
+            argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex, 1);
+        } else if (state == STATE_TOS_CAT2) {
+            argumentIndex = popLastCachedArgument(frame, argumentKinds, arguments, argumentIndex, 2);
+        }
+        */
+        materialize(frame);
+        assert state == STATE_NORMAL;
+        super.popArguments(frame, argumentKinds, arguments, argumentIndex);
+        setState(STATE_NORMAL);
+    }
+
+    /*
+    @AlwaysInline("Keep the second cached argument peel inside each first-kind arm")
+    private long popLastCachedArgument(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex, int category) {
+        if (argumentIndex < 0) {
+            materialize(frame);
+            return argumentIndex;
+        }
+        int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        if (category == 1) {
+            switch (basicType) {
+                case JVM_ArrayType_Boolean -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popInt(frame) != 0);
+                case JVM_ArrayType_Byte -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (byte) popInt(frame));
+                case JVM_ArrayType_Short -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (short) popInt(frame));
+                case JVM_ArrayType_Char -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, (char) popInt(frame));
+                case JVM_ArrayType_Int -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popInt(frame));
+                case JVM_ArrayType_Float -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popFloat(frame));
+                default -> UnreachablePathNode.unreachable();
+            }
+        } else {
+            switch (basicType) {
+                case JVM_ArrayType_Long -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popLong(frame));
+                case JVM_ArrayType_Double -> UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, popDouble(frame));
+                default -> UnreachablePathNode.unreachable();
+            }
+        }
+        return argumentIndex - 1;
+    }
+    */
 
     @Override
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")

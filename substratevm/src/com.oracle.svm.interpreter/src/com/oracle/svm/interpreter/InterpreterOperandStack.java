@@ -74,7 +74,7 @@ class InterpreterOperandStack {
     /** First stack slot above the operand stack. */
     long top;
     /** Execution mode and cached TOS occupancy used to select the bytecode handler variant. */
-    private int state = STATE_NORMAL;
+    int state = STATE_NORMAL;
 
     @AlwaysInline("Keep the operand-stack overlay virtual in interpreter entry")
     InterpreterOperandStack(long top) {
@@ -240,11 +240,21 @@ class InterpreterOperandStack {
             UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, appendix);
             argumentIndex--;
         }
+        popArguments(frame, argumentKinds, arguments, argumentIndex);
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    void popArguments(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex) {
         for (; GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY, argumentIndex >= 0); argumentIndex--) {
-            int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-            Object value = popBasicType(frame, basicType);
-            UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
+            popArgument(frame, argumentKinds, arguments, argumentIndex);
         }
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    final void popArgument(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex) {
+        int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        Object value = popBasicType(frame, basicType);
+        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")

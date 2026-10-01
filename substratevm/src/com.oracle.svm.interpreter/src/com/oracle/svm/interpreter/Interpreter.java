@@ -44,6 +44,7 @@ import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS
 import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2_CAT1;
 import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2_CAT2;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_DEBUGGING;
+import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_NORMAL;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_PROFILING;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterToVM.nullCheck;
@@ -3304,10 +3305,13 @@ public final class Interpreter {
         private static void invoke(long curBCI, InterpreterFrame callerFrame, CachedInterpreterOperandStack virtualStack,
                         int opcode, boolean preferStayInInterpreter) {
             LinkedInvoke linkedInvoke = getOrLinkInvoke(callerFrame, callerFrame.code, curBCI, opcode);
-            virtualStack.materialize(callerFrame);
             int invocationState = virtualStack.getState();
+            if (invocationState != STATE_PROFILING && invocationState != STATE_DEBUGGING) {
+                invocationState = STATE_NORMAL;
+            }
             Object[] calleeArgs;
             if (opcode == INVOKESTATIC && linkedInvoke.argumentCount == 0) {
+                virtualStack.materialize(callerFrame);
                 calleeArgs = InterpreterFrame.EMPTY;
             } else {
                 calleeArgs = new Object[linkedInvoke.argumentCount];
