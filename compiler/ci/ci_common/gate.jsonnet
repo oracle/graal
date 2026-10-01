@@ -227,9 +227,13 @@
     "compiler-style-labsjdk-latest-linux-amd64": t("30:00"),
   },
 
+  # Tier2 jobs run in CE and EE
+  local tier2_jobs_ce_and_ee = {
+    "compiler-unittest_compiler-labsjdk-latest-linux-amd64": t("30:00"),
+  },
+
   # Candidates for Tier2 jobs. In CE, these will be dailies.
   local tier2_jobs = {
-    "compiler-unittest_compiler-labsjdk-latest-linux-amd64": t("30:00"),
     "compiler-unittest_truffle-labsjdk-latest-linux-amd64": t("30:00"),
     "compiler-ctw-labsjdk-latest-linux-amd64": t("30:00"),
     "compiler-ctw_economy-labsjdk-latest-linux-amd64": t("30:00"),
@@ -267,7 +271,7 @@
   # must correspond to the name of a build created by `make_build`.
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
-  local tier2s = $.as_gates(tier2_jobs),
+  local tier2s = $.as_gates(tier2_jobs) + tier2_jobs_ce_and_ee,
 
   # This map defines the builders that run as tier3. Each key in this map
   # must correspond to the name of a build created by `make_build`.

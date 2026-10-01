@@ -39,6 +39,7 @@ import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.RangeCheckEliminationPhase;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
@@ -55,6 +56,21 @@ import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 
 /// Tests ordering constraints among phases in the community mid tier.
 public class MidTierPhaseOrderTest extends GraalCompilerTest {
+
+    /// Verifies that range check elimination runs immediately after counted strip mining.
+    @Test
+    public void rangeCheckEliminationFollowsCountedStripMining() {
+        OptionValues options = new OptionValues(getInitialOptions(),
+                        MidTier.Options.StripMineCountedLoops, true,
+                        GraalOptions.SpeculativeGuardMovement, true,
+                        RangeCheckEliminationPhase.Options.RangeCheckElimination, true);
+        List<BasePhase<? super MidTierContext>> phases = new MidTier(options).getPhases();
+
+        int stripMining = indexOf(phases, CountedStripMiningPhase.class, 0);
+        int rangeCheckElimination = indexOf(phases, RangeCheckEliminationPhase.class, stripMining + 1);
+
+        Assert.assertEquals("range check elimination must immediately follow counted strip mining", stripMining + 1, rangeCheckElimination);
+    }
 
     /// Verifies that early rotation precedes all counted strip-mining preparation when non-counted
     /// strip mining is disabled.

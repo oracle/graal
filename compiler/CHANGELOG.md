@@ -7,6 +7,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
   compiler. Aggressive partial unrolling is enabled by default and can be disabled with
   `-Djdk.graal.AggressivePartialUnroll=false`. The original simple partial unrolling remains
   available, and all partial unrolling is controlled by the master `-Djdk.graal.PartialUnroll=false` option.
+* (GR-79595): Added `RangeCheckEliminationPhase`, which rewrites eligible 64-bit range checks to
+  equivalent 32-bit forms after counted strip mining. The optimization is enabled by default and
+  can be disabled with `-Djdk.graal.RangeCheckElimination=false`.
 * (GR-79593): Added `BreakChainedPhisPhase`, which splits chained loop phi values in the low tier to
   improve register allocation. The optimization is enabled by default and can be disabled with
   `-Djdk.graal.BreakChainedPhis=false`.

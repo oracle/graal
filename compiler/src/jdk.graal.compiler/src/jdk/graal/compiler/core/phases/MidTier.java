@@ -41,6 +41,7 @@ import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.OptimizeLoopAccessesPhase;
+import jdk.graal.compiler.loop.phases.RangeCheckEliminationPhase;
 import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.SimulationBasedLoopPeeling;
@@ -197,6 +198,10 @@ public class MidTier extends BaseTier<MidTierContext> {
                 appendPhase(new LoopPeelingPhase(createLoopPolicies(options), canonicalizer));
             }
             appendPhase(new CountedStripMiningPhase(canonicalizer));
+            if ((GraalOptions.SpeculativeGuardMovement.getValue(options) && RangeCheckEliminationPhase.Options.RangeCheckElimination.getValue(options)) ||
+                            RangeCheckEliminationPhase.Options.ForceRCE.getValue(options)) {
+                appendPhase(new RangeCheckEliminationPhase(canonicalizer));
+            }
         } else if (Options.StripMiningPreparationPhases.getValue(options) && Options.OptExactArithmetic.getValue(options)) {
             // Keep exact arithmetic available when counted strip mining is disabled.
             appendPhase(new OptimizeExactArithmeticPhase(canonicalizer));
