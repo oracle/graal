@@ -40,14 +40,9 @@
  */
 package org.graalvm.nativeimage.impl;
 
-import org.graalvm.nativeimage.RuntimeStateTrimConfig;
-
 public interface VMRuntimeSupport {
 
     void initialize();
 
     void shutdown();
-
-    void trimRuntimeState(RuntimeStateTrimConfig config);
-
 }

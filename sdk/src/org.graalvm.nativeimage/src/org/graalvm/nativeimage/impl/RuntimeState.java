@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.nativeimage.impl;
 
-import java.io.IOException;
-
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
-import org.graalvm.nativeimage.impl.VMRuntimeSupport;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
- * Used for doing VM runtime operations.
+ * Experimental operations on Native Image runtime state.
  *
- * @since 19.0
+ * @since 25.5
  */
-public final class VMRuntime {
+public final class RuntimeState {
+
     /**
-     * Initializes the VM: Runs all startup hooks that were registered during image building.
-     * Startup hooks usually depend on option values, so it is recommended (but not required) that
-     * all option values are set before calling this method.
+     * Trims runtime state.
      * <p>
-     * Invoking this method more than once has no effect, i.e., startup hooks are only executed at
-     * the first invocation.
-     *
-     * @since 19.0
-     */
-    public static void initialize() {
-        ImageSingletons.lookup(VMRuntimeSupport.class).initialize();
-    }
-
-    /**
-     * Shuts down the VM: Runs all shutdown hooks and waits for all finalization to complete.
+     * Depending on the selected mode, runtime-state trimming may run garbage collection, free
+     * unused heap memory, and zero retained heap memory. It may also invoke configured callbacks
+     * before and after the trim phase.
      * <p>
-     * This method should only be called once. Invoking this method multiple times can have
-     * continued effects. Also, although recommended, it is not strictly required for
-     * {@link #initialize} to be called before this method.
-     * 
-     * @since 19.0
+     * Recursive calls, including calls from either callback, are not supported.
+     *
+     * @throws RuntimeStateTrimCallbackException if a configured callback returns a nonzero status
+     *             code
+     * @throws IllegalStateException if invoked recursively while a runtime-state trim is in progress
+     * @throws UnsupportedOperationException if runtime-state trim or the selected mode is not
+     *             supported by the runtime
+     *
+     * @since 25.5
+     *
+     * @see RuntimeStateTrimConfig
      */
-    public static void shutdown() {
-        ImageSingletons.lookup(VMRuntimeSupport.class).shutdown();
+    public static void trim(RuntimeStateTrimConfig config) {
+        ImageSingletons.lookup(RuntimeStateSupport.class).trim(config);
     }
 
-    /**
-     * Dumps the heap to the {@code outputFile} file in the same format as the hprof heap dump.
-     *
-     * @throws UnsupportedOperationException if this operation is not supported.
-     *
-     * @since 20.1
-     */
-    public static void dumpHeap(String outputFile, boolean live) throws IOException {
-        ImageSingletons.lookup(HeapDumpSupport.class).dumpHeap(outputFile, live);
-    }
-
-    private VMRuntime() {
+    private RuntimeState() {
     }
 }

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.nativeimage.impl;
 
 import java.util.Objects;
 
@@ -47,7 +47,7 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.WordFactory;
 
 /**
- * Configuration for {@link VMRuntime#trimRuntimeState}.
+ * Configuration for {@link RuntimeState#trim}.
  *
  * <p>
  * This configuration selects a high-level trim mode and optional callbacks that run before

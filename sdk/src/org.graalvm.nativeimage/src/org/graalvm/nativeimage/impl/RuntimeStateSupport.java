@@ -38,57 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.nativeimage.impl;
 
-import java.util.Objects;
+public interface RuntimeStateSupport {
 
-/**
- * Thrown when a runtime-state trim callback reports a nonzero status code.
- *
- * @since 25.5
- */
-public final class RuntimeStateTrimCallbackException extends RuntimeException {
-    private static final long serialVersionUID = 1L;
-
-    /** Identifies the callback that reported the failure. */
-    public enum Phase {
-        /** The callback invoked before runtime-state trimming. */
-        BEFORE,
-        /** The callback invoked after runtime-state trimming. */
-        AFTER
-    }
-
-    private final Phase phase;
-    private final int statusCode;
-
-    /**
-     * Creates an exception for a callback failure.
-     *
-     * @param phase the callback that reported the failure
-     * @param statusCode the nonzero status code returned by the callback
-     * @throws IllegalArgumentException if {@code statusCode} is zero
-     */
-    public RuntimeStateTrimCallbackException(Phase phase, int statusCode) {
-        super(createMessage(phase, statusCode));
-        this.phase = phase;
-        this.statusCode = statusCode;
-    }
-
-    /** Returns the callback that reported the failure. */
-    public Phase phase() {
-        return phase;
-    }
-
-    /** Returns the nonzero status code returned by the callback. */
-    public int statusCode() {
-        return statusCode;
-    }
-
-    private static String createMessage(Phase phase, int statusCode) {
-        Objects.requireNonNull(phase, "Phase must be non null");
-        if (statusCode == 0) {
-            throw new IllegalArgumentException("Status code must be nonzero");
-        }
-        return "The " + phase + " runtime-state trim callback failed with status code " + statusCode + ".";
-    }
+    void trim(RuntimeStateTrimConfig config);
 }
