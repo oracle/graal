@@ -37,12 +37,8 @@ import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Int;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Long;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Object;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Short;
-import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT1;
-import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT1_CAT1;
-import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT1_CAT2;
-import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2;
-import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2_CAT1;
-import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_CAT2_CAT2;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_1;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_2;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_DEBUGGING;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_NORMAL;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_PROFILING;
@@ -777,12 +773,12 @@ public final class Interpreter {
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "references")
                         }),
                         @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.VIRTUAL, fields = {
-                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "state", templateVariable = STATE_TOS_CAT2_CAT2 + 1),
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "state", templateVariable = STATE_TOS_2 + 1),
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "tosPrimitive0", validWhen = "state", valid = {
-                                                        STATE_TOS_CAT1, STATE_TOS_CAT2, STATE_TOS_CAT1_CAT1, STATE_TOS_CAT1_CAT2, STATE_TOS_CAT2_CAT1, STATE_TOS_CAT2_CAT2
+                                                        STATE_TOS_1, STATE_TOS_2
                                         }),
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "tosPrimitive1", validWhen = "state", valid = {
-                                                        STATE_TOS_CAT1_CAT1, STATE_TOS_CAT1_CAT2, STATE_TOS_CAT2_CAT1, STATE_TOS_CAT2_CAT2
+                                                        STATE_TOS_2
                                         })
                         })
         })
