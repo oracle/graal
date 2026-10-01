@@ -38,6 +38,7 @@ import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.core.test.TestBasePhase;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.RangeCheckEliminationPhase;
 import jdk.graal.compiler.nodes.GuardNode;
@@ -141,6 +142,35 @@ public class RangeCheckEliminationRegressionTest extends GraalCompilerTest {
             result++;
         }
         return result;
+    }
+
+    /**
+     * The range check uses an independent IV with stride 34 while the loop limit uses stride 32.
+     * After counted strip mining, RCE must reject the independent IV without failing compilation.
+     */
+    private static long differentStrideIndependentIVSnippet(int stop, long start, long range) {
+        long result = 0;
+        long index = start;
+        for (int i = 0; GraalDirectives.injectIterationCount(10_000, i < stop); i += 32, index += 34) {
+            if (Long.compareUnsigned(index, range) >= 0) {
+                GraalDirectives.deoptimizeAndInvalidate();
+            }
+            result += index;
+        }
+        return result;
+    }
+
+    @Test
+    public void testDifferentStrideIndependentIV() {
+        OptionValues options = new OptionValues(getInitialOptions(),
+                        GraalOptions.LoopPeeling, false,
+                        AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, false,
+                        CountedStripMiningPhase.Options.StripMineALot, true,
+                        CountedStripMiningPhase.Options.CountedStripMiningInnerLoopTrips, 4096,
+                        RangeCheckEliminationPhase.Options.ForceRCE, true,
+                        GraalOptions.SpeculativeGuardMovement, false,
+                        VectorIntrinsics.Options.Vectorization, false);
+        test(options, "differentStrideIndependentIVSnippet", 96, 0L, 100L);
     }
 
     private boolean builderOmitBytecodeExceptions;

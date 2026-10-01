@@ -1107,7 +1107,8 @@ public class RangeCheckEliminationPhase extends BasePhase<MidTierContext> implem
             }
         } // iv loop
 
-        if (baseIV == null || !baseIV.isConstantStride()) {
+        /* Reject candidates without the original limit-checked outer phi before checking its stride invariant. */
+        if (baseIV == null || !baseIV.isConstantStride() || outerLoopPhi == null) {
             return null;
         }
         long baseStride = baseIV.constantStride();
@@ -1127,7 +1128,7 @@ public class RangeCheckEliminationPhase extends BasePhase<MidTierContext> implem
         }
         ValueNode scale = scaleOffset.scale();
         ValueNode offset = scaleOffset.offset();
-        if (scale == null || offset == null || outerLoopPhi == null || conversionIV == null) {
+        if (scale == null || offset == null || conversionIV == null) {
             return null;
         }
         return new StripMinedRC(scale, scaledIv, offset, range, baseIV, outerLoopPhi, graph, originalStride, scaleInInt, scaleOffset.scaleWasNegated(),
