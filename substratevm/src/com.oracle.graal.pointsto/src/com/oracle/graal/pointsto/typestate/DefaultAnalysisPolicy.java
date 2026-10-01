@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -168,14 +167,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public TypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
-        if (constant instanceof ImageHeapRelocatableConstant relocatableConstant) {
-            /*
-             * ImageHeapRelocatableConstants are placeholder values which will be later replaced
-             * with an unknown non-null object.
-             */
-            return TypeState.forType(bb, relocatableConstant.getType(), false);
-        }
+    protected TypeState concreteConstantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
         return PointsToStats.registerTypeState(bb, new ConstantTypeState(bb, exactType, constant));
     }
 
