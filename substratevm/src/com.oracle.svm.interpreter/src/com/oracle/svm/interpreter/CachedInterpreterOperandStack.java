@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter;
 
+import com.oracle.svm.core.graal.nodes.UnreachablePathNode;
 import com.oracle.svm.shared.AlwaysInline;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -224,7 +225,8 @@ final class CachedInterpreterOperandStack extends InterpreterOperandStack {
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     Object popObject(InterpreterFrame frame) {
         if (getTosLevel() != 0) {
-            throw InterpreterUtil.shouldNotReachHereAtRuntime();
+            // Objects are never cached, so verified bytecode cannot enter this variant.
+            UnreachablePathNode.unreachable();
         }
         return super.popObject(frame);
     }
