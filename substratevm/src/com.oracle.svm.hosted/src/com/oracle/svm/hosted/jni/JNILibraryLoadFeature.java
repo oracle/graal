@@ -91,13 +91,7 @@ public class JNILibraryLoadFeature implements Feature {
              */
             return ClassRegistries.respectClassLoader();
         }
-        /*
-         * Native Image links the JNI entry points it needs from management_ext directly, without
-         * executing the JDK's System.loadLibrary path. Its OnLoad function initializes HotSpot's
-         * JMM interface through JVM_GetManagement, which Native Image does not implement (GR-80030).
-         * Avoid referencing that function as it won't be called anyway.
-         */
-        return !libName.equals("management_ext");
+        return true;
     }
 
     @Override

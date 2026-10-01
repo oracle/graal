@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -275,11 +275,20 @@ public final class ManagementSupport implements ThreadListener {
         }
     }
 
+    @SuppressWarnings("restricted")
     private synchronized OperatingSystemMXBean getOsMXBean() {
         if (osMXBean == null) {
-            Object osMXBeanImpl = Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)
-                            ? new Target_com_sun_management_internal_OperatingSystemImpl(null)
-                            : new Target_sun_management_BaseOperatingSystemImpl(null);
+            Object osMXBeanImpl;
+            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+                /*
+                 * The substituted management path bypasses
+                 * PlatformMBeanProviderImpl.<clinit>, which normally loads this library.
+                 */
+                System.loadLibrary("management_ext");
+                osMXBeanImpl = new Target_com_sun_management_internal_OperatingSystemImpl(null);
+            } else {
+                osMXBeanImpl = new Target_sun_management_BaseOperatingSystemImpl(null);
+            }
             osMXBean = SubstrateUtil.cast(osMXBeanImpl, OperatingSystemMXBean.class);
         }
         return osMXBean;

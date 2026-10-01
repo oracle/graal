@@ -30,7 +30,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
-                "-H:JNILibraryLinkage=java:static,attach:dynamic,nio:dynamic,net:dynamic,extnet:dynamic,zip:dynamic,management_ext:dynamic,management_ext:static",
+                "-H:JNILibraryLinkage=java:static,attach:dynamic,nio:dynamic,net:dynamic,extnet:dynamic,zip:dynamic,management_ext:dynamic",
                 "-H:-UnlockExperimentalVMOptions"
 })
 public class DynamicJDKLibraryLinkageTest {
@@ -42,5 +42,6 @@ public class DynamicJDKLibraryLinkageTest {
         System.loadLibrary("net");
         System.loadLibrary("extnet");
         System.loadLibrary("zip");
+        System.loadLibrary("management_ext");
     }
 }

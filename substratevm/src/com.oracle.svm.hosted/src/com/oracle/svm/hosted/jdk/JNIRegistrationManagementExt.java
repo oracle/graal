@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.jdk;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
@@ -36,23 +35,14 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
-        access.registerReachabilityHandler(JNIRegistrationManagementExt::linkManagementExt,
-                        type(access, "com.sun.management.internal.OperatingSystemImpl"));
+        if (isWindows()) {
+            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(JNIRegistrationManagementExt::registerWindowsLibrarySupport);
+        }
     }
 
-    /**
-     * Marks {@code management_ext} as reachable so that its required JNI entry points are linked.
-     * {@code JNILibraryLoadFeature} deliberately excludes this library's {@code JNI_OnLoad} entry
-     * point in {@code JNILibraryLoadFeature.shouldReferenceBuiltinOnLoad(String)} because it relies
-     * on HotSpot's unsupported {@code JVM_GetManagement} interface. The substituted management
-     * path therefore bypasses the corresponding {@code System.loadLibrary} call, which would invoke
-     * this unsupported {@code JNI_OnLoad} entry point.
-     */
-    private static void linkManagementExt(DuringAnalysisAccess access) {
-        JNIRegistrationSupport.singleton().registerJNILibrary("management_ext");
-        if (isWindows()) {
-            NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) access).getNativeLibraries();
-            nativeLibraries.addDynamicNonJniLibrary("psapi");
+    private static void registerWindowsLibrarySupport(String library) {
+        if (library.equals("management_ext")) {
+            NativeLibraries.singleton().addDynamicNonJniLibrary("psapi");
         }
     }
 }

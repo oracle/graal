@@ -112,10 +112,6 @@ public final class JNILibraryLinkagePlan {
                 throw UserError.abort("Invalid option %s provided by %s. JNI libraries cannot use dynamic linkage when building a static executable.",
                                 SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin());
             }
-            if (linkage == JNILibraryLinkage.DYNAMIC && mustRemainStatic(library)) {
-                throw UserError.abort("Invalid option %s provided by %s. JNI library `%s` must remain statically linked.",
-                                SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin(), library);
-            }
             if (linkage == JNILibraryLinkage.STATIC && mustRemainDynamic(library)) {
                 throw UserError.abort("Invalid option %s provided by %s. JNI library `%s` must remain dynamically linked.",
                                 SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin(), library);
@@ -142,10 +138,6 @@ public final class JNILibraryLinkagePlan {
         }
         result.registerNativeSymbols();
         return result;
-    }
-
-    private static boolean mustRemainStatic(String library) {
-        return library.equals("management_ext");
     }
 
     private static boolean mustRemainDynamic(String library) {

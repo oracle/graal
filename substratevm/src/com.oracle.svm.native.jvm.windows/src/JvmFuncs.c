@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,34 @@
 #include <jni.h>
 
 #define BitsPerByte 8
+
+#define SVM_JMM_VERSION_4 0x20040000
+
+/*
+ * Prefix of HotSpot's JmmInterface used by management_ext's JNI_OnLoad. Native Image does not
+ * implement the remaining JMM operations.
+ */
+typedef struct {
+    void* reserved1;
+    void* reserved2;
+    jint (JNICALL *GetVersion)(JNIEnv* env);
+} SVMJmmInterface;
+
+static jint JNICALL svm_jmm_get_version(JNIEnv* env) {
+    (void) env;
+    return SVM_JMM_VERSION_4;
+}
+
+static const SVMJmmInterface svm_jmm_interface = {
+    NULL,
+    NULL,
+    svm_jmm_get_version
+};
+
+JNIEXPORT void* JNICALL JVM_GetManagement(jint version) {
+    /* GR-80030: Implement the complete JMM interface. */
+    return version == SVM_JMM_VERSION_4 ? (void*) &svm_jmm_interface : NULL;
+}
 
 void* __svm_find_builtin_symbol(const char* name);
 
