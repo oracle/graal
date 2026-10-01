@@ -64,16 +64,18 @@ import jdk.vm.ci.meta.JavaKind;
  * of the call's frame state. Keeping the canonical top across the call avoids that intermediate
  * frame-state value.
  */
-final class InterpreterOperandStack {
+class InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static final int STATE_NORMAL = 0;
-    static final int STATE_PROFILING = 1;
-    static final int STATE_DEBUGGING = 2;
+    static final int STATE_TOS_1 = 1;
+    static final int STATE_TOS_2 = 2;
+    static final int STATE_PROFILING = 3;
+    static final int STATE_DEBUGGING = 4;
 
     /** First stack slot above the operand stack. */
-    private long top;
-    /** Execution mode used to select the bytecode handler template variant. */
+    long top;
+    /** Execution mode and cached TOS occupancy used to select the bytecode handler variant. */
     private int state = STATE_NORMAL;
 
     @AlwaysInline("Keep the operand-stack overlay virtual in interpreter entry")

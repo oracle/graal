@@ -254,6 +254,34 @@ public final class GraalDirectives {
     }
 
     /**
+     * Returns {@code value} as an {@code int} while allowing the compiler to assume that it was
+     * sign-extended to a {@code long}. The caller must guarantee that this is true.
+     */
+    public static int assumeInt(long value) {
+        return (int) value;
+    }
+
+    /**
+     * Returns the {@code float} represented by the raw bits in {@code value} while allowing the
+     * compiler to assume that those bits were sign-extended to a {@code long}. The caller must
+     * guarantee that this is true.
+     */
+    public static float assumeFloat(long value) {
+        return Float.intBitsToFloat((int) value);
+    }
+
+    /**
+     * Returns a {@code long} whose value must not be observed. When used as an additional return
+     * value, the compiler may leave the corresponding fixed return register unchanged. The
+     * argument identifies the value whose dependency is being killed but does not constrain the
+     * result. In interpreted execution this method returns zero.
+     */
+    @SuppressWarnings("unused")
+    public static long arbitraryValue(long value) {
+        return 0;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
