@@ -3,7 +3,7 @@
 You can build a GraalVM JDK with Java libraries embedded in a JVM library built with Native Image.
 It can load application classes that depend on libraries precompiled into the JVM library (`libjvm.so`).
 This guide uses [picocli](https://picocli.info/), a command-line parsing library with no transitive dependencies, to demonstrate the boundary between embedded library code and a run-time-loaded application.
-The application does not need to exist when you build the runtime.
+The application is not relevant for building the runtime, it is dynamically loaded and executed at run-time.
 
 The example builds _libjvm.so_ with picocli, then compiles a Java application that uses picocli annotations.
 At run time, the embedded library reads the application's annotations, sets an option field reflectively, and invokes the application's `run()` method.
@@ -11,7 +11,7 @@ The application's run-time class path contains no picocli JAR.
 
 > Note: This is an experimental developer workflow using [run-time class loading (Crema)](runtime-class-loading.md), not a complete production runtime configuration.
 > The example was verified on Linux AMD64 with picocli 4.7.7.
-> It builds one JVM shared library; it does not create or consume Native Image layers.
+> It builds one JVM shared library.
 
 ## Prerequisites
 
@@ -72,7 +72,8 @@ The options serve the following purposes:
   It does not force picocli to initialize at build time.
   Review initialization policies before adapting this proof of concept for production.
 
-Do not add the application to this build's class path or preservation selectors.
+Note that we do not add the application to this build's class path or preservation selectors.
+It is not part of this build and will only be consumed at run-time of this image (this JDK).
 
 After the build finishes, use the same vm suite and component selection to locate the generated GraalVM JDK:
 
