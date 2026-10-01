@@ -1548,6 +1548,8 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                     "jdk.internal.reflect",
+                    "sun.reflect.annotation",
+                    "sun.reflect.generics.repository",
                     "sun.security.util",
                 ],
             },

@@ -22,12 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
+
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
-public abstract class ReflectionMetadataComputer implements FieldValueTransformerWithAvailability {
+public abstract class ReflectionMetadataComputer implements FieldValueTransformer {
     // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
 
     @Override

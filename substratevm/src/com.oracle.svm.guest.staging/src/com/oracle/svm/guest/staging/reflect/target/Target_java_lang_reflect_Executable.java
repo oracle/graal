@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -40,16 +40,10 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
-import com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.crema.CremaSupport;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
-import com.oracle.svm.espresso.classfile.ConstantPool.Tag;
-import com.oracle.svm.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
@@ -70,7 +64,7 @@ public final class Target_java_lang_reflect_Executable {
      * <p>
      * For executables created at image-build-time this contains the encoded {@code byte[]} produced
      * at image build time. For run-time-loaded Crema executables this contains the
-     * {@link MethodParametersAttribute}. A {@code null} value means there is no
+     * {@code MethodParametersAttribute}. A {@code null} value means there is no
      * {@code MethodParameters} attribute and reflection must synthesize parameter objects.
      */
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = RawParametersComputer.class)//
@@ -88,7 +82,7 @@ public final class Target_java_lang_reflect_Executable {
      * must instead be decoded using the executable's layer.
      */
     @Substitute
-    @TargetElement(onlyWith = BuildingImageLayerPredicate.class)
+    @TargetElement(onlyWith = ReflectionSupportPredicates.BuildingImageLayer.class)
     private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
         Map<Class<? extends Annotation>, Annotation> result = declaredAnnotations;
         if (result == null) {
@@ -102,9 +96,9 @@ public final class Target_java_lang_reflect_Executable {
                         Executable executable = SubstrateUtil.cast(this, Executable.class);
                         Class<?> declaringClass = executable.getDeclaringClass();
                         Target_jdk_internal_reflect_ConstantPool constantPool;
-                        if (DynamicHub.fromClass(declaringClass).isRuntimeLoaded()) {
+                        if (GuestStagingDependencyBridge.singleton().isRuntimeLoadedClass(declaringClass)) {
                             constantPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringClass);
-                        } else if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                        } else if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
                             constantPool = ConstantPoolProvider.singletons()[layerId].getConstantPool();
                         } else {
                             constantPool = null;
@@ -125,9 +119,8 @@ public final class Target_java_lang_reflect_Executable {
         }
         Executable executable = SubstrateUtil.cast(this, Executable.class);
         Class<?> declaringClass = executable.getDeclaringClass();
-        DynamicHub declaringHub = DynamicHub.fromClass(declaringClass);
-        if (declaringHub.isRuntimeLoaded()) {
-            return RuntimeLoadedExecutableParameterHelper.asReflectParameters(executable, (MethodParametersAttribute) parameterMetadata, declaringHub);
+        if (GuestStagingDependencyBridge.singleton().isRuntimeLoadedClass(declaringClass)) {
+            return GuestStagingDependencyBridge.singleton().getRuntimeReflectParameters(executable, parameterMetadata);
         }
         /*
          * Note that the image-time parameter metadata encoding can also encode a possible
@@ -152,8 +145,8 @@ public final class Target_java_lang_reflect_Executable {
     static class LayerIdComputer implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                return DynamicImageLayerInfo.getCurrentLayerNumber();
+            if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
+                return GuestStagingDependencyBridge.singleton().currentImageLayerNumber();
             }
             return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
@@ -162,32 +155,4 @@ public final class Target_java_lang_reflect_Executable {
 
 @TargetClass(value = Executable.class, innerClass = "ParameterData")
 final class Target_java_lang_reflect_Executable_ParameterData {
-}
-
-final class RuntimeLoadedExecutableParameterHelper {
-    private RuntimeLoadedExecutableParameterHelper() {
-    }
-
-    static Parameter[] asReflectParameters(Executable executable, MethodParametersAttribute methodParameters, DynamicHub declaringClass) {
-        var constantPool = CremaSupport.singleton().getConstantPool(declaringClass);
-        int entryCount = methodParameters.entryCount();
-        Parameter[] parameters = new Parameter[entryCount];
-        int constantPoolLength = constantPool.length();
-        for (int i = 0; i < entryCount; i++) {
-            MethodParametersAttribute.Entry entry = methodParameters.entryAt(i);
-            int nameIndex = entry.getNameIndex();
-            if (nameIndex >= constantPoolLength) {
-                throw new IllegalArgumentException("Constant pool index out of bounds");
-            }
-            String name = null;
-            if (nameIndex != 0) {
-                if (constantPool.tagAt(nameIndex) != Tag.UTF8) {
-                    throw new IllegalArgumentException("Wrong type at constant pool index");
-                }
-                name = constantPool.utf8At(nameIndex, "parameter name").toString();
-            }
-            parameters[i] = ReflectionObjectFactory.newParameter(executable, i, name, entry.getAccessFlags());
-        }
-        return parameters;
-    }
 }

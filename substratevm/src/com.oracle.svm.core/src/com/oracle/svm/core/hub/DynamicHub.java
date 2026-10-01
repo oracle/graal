@@ -134,6 +134,7 @@ import com.oracle.svm.core.reflect.CremaSerializationConstructorAccessor;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
+import com.oracle.svm.guest.staging.reflect.ReflectionModifiers;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
@@ -1708,7 +1709,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             throw new NoSuchFieldException(fieldName);
         } else {
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
-            int fieldModifiers = RuntimeMetadataDecoderImpl.getRawModifiers(field);
+            int fieldModifiers = ReflectionModifiers.getRawModifiers(field);
             boolean negative = decoder.isNegative(fieldModifiers);
             boolean hiding = decoder.isHiding(fieldModifiers);
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(field);
@@ -1800,7 +1801,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             return true;
         } else {
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
-            int methodModifiers = RuntimeMetadataDecoderImpl.getRawModifiers(method);
+            int methodModifiers = ReflectionModifiers.getRawModifiers(method);
             boolean negative = decoder.isNegative(methodModifiers);
             boolean hiding = decoder.isHiding(methodModifiers);
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(method);
@@ -2582,7 +2583,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         List<Field> filtered = new ArrayList<>();
         RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Field field : fields) {
-            int modifiers = RuntimeMetadataDecoderImpl.getRawModifiers(field);
+            int modifiers = ReflectionModifiers.getRawModifiers(field);
             if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
                 filtered.add(field);
             }
@@ -2594,7 +2595,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         List<Method> filtered = new ArrayList<>();
         RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Method method : methods) {
-            int modifiers = RuntimeMetadataDecoderImpl.getRawModifiers(method);
+            int modifiers = ReflectionModifiers.getRawModifiers(method);
             if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
                 filtered.add(method);
             }
@@ -2606,7 +2607,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         List<Constructor<?>> filtered = new ArrayList<>();
         RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Constructor<?> constructor : constructors) {
-            if (!decoder.isNegative(RuntimeMetadataDecoderImpl.getRawModifiers(constructor))) {
+            if (!decoder.isNegative(ReflectionModifiers.getRawModifiers(constructor))) {
                 filtered.add(constructor);
             }
         }

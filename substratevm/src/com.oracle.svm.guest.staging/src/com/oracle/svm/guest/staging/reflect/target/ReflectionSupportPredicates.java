@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
-import com.oracle.svm.core.annotate.TargetClass;
+import java.util.function.BooleanSupplier;
 
-@TargetClass(className = "jdk.internal.reflect.FieldAccessor")
-final class Target_jdk_internal_reflect_FieldAccessor {
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
+
+public final class ReflectionSupportPredicates {
+    private ReflectionSupportPredicates() {
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class BuildingImageLayer implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return GuestImageLayerBuildingSupport.buildingImageLayer();
+        }
+    }
 }

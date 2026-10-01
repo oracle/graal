@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "jdk.internal.reflect.ConstructorAccessor")
-public final class Target_jdk_internal_reflect_ConstructorAccessor {
+@TargetClass(className = "jdk.internal.reflect.MethodAccessor")
+public final class Target_jdk_internal_reflect_MethodAccessor {
 }

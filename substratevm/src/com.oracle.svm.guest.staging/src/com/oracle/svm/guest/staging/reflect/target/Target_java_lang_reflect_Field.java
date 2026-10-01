@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 
@@ -33,8 +33,6 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -42,15 +40,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAccess;
-
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 import sun.reflect.generics.repository.FieldRepository;
 
@@ -73,17 +65,17 @@ public final class Target_java_lang_reflect_Field {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = AnnotationsComputer.class) //
     byte[] annotations;
 
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClassName = "com.oracle.svm.core.reflect.target.ReflectionFieldValueComputers$FieldOffsetComputer") //
     public int offset;
 
     /**
      * If a static field and building a layered image, stores the layer the field was installed in.
      */
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerNumberComputer.class)//
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClassName = "com.oracle.svm.core.reflect.target.ReflectionFieldValueComputers$LayerNumberComputer") //
     public int installedLayerNumber;
 
     /** If non-null, the field was deleted via substitution and this string provides the reason. */
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldDeletionReasonComputer.class) //
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClassName = "com.oracle.svm.core.reflect.target.ReflectionFieldValueComputers$FieldDeletionReasonComputer") //
     String deletedReason;
 
     @Alias //
@@ -147,20 +139,6 @@ public final class Target_java_lang_reflect_Field {
         return RuntimeMetadataDecoder.clearInternalModifiers(modifiers);
     }
 
-    public static final class FieldDeletionReasonComputer implements JVMCIFieldValueTransformerWithAvailability {
-        @Override
-        public boolean isAvailable() {
-            return BuildPhaseProvider.isHostedUniverseBuilt();
-        }
-
-        @Override
-        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
-            ResolvedJavaField field = GuestAccess.get().asResolvedJavaField(receiver);
-            String deletionReason = ReflectionSubstitutionSupport.singleton().getDeletionReason(field);
-            return deletionReason == null ? JavaConstant.NULL_POINTER : GuestAccess.get().asGuestString(deletionReason);
-        }
-    }
-
     static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
@@ -168,32 +146,4 @@ public final class Target_java_lang_reflect_Field {
         }
     }
 
-    static class FieldOffsetComputer implements JVMCIFieldValueTransformerWithAvailability {
-        @Override
-        public boolean isAvailable() {
-            return BuildPhaseProvider.isHostedUniverseBuilt();
-        }
-
-        @Override
-        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
-            ResolvedJavaField field = GuestAccess.get().asResolvedJavaField(receiver);
-            return JavaConstant.forInt(ReflectionSubstitutionSupport.singleton().getFieldOffset(field, true));
-        }
-    }
-
-    static class LayerNumberComputer implements JVMCIFieldValueTransformerWithAvailability {
-        @Override
-        public boolean isAvailable() {
-            return BuildPhaseProvider.isHostedUniverseBuilt();
-        }
-
-        @Override
-        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
-            ResolvedJavaField field = GuestAccess.get().asResolvedJavaField(receiver);
-            if (ImageLayerBuildingSupport.buildingImageLayer() && field.isStatic()) {
-                return JavaConstant.forInt(ReflectionSubstitutionSupport.singleton().getInstalledLayerNumber(field));
-            }
-            return JavaConstant.forInt(MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER);
-        }
-    }
 }

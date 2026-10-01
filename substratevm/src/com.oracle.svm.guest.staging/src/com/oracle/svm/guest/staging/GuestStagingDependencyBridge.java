@@ -25,8 +25,13 @@
 package com.oracle.svm.guest.staging;
 
 import java.io.PrintStream;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Parameter;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -306,4 +311,24 @@ public interface GuestStagingDependencyBridge {
      * to guest/staging.
      */
     void trimRuntimeState(RuntimeStateTrimConfig config);
+
+    /** Remove when {@code DynamicHub} moves to guest/staging. */
+    boolean isRuntimeLoadedClass(Class<?> clazz);
+
+    /** Remove when parameter metadata conversion moves to guest/staging. */
+    Parameter[] getRuntimeReflectParameters(Executable executable, Object parameterMetadata);
+
+    /** Remove when metadata tracing moves to guest/staging. */
+    boolean isMetadataTracingEnabled();
+
+    /** Remove when metadata tracing moves to guest/staging. */
+    void traceReflectionExecutableAccess(Executable executable);
+
+    /** Remove when missing-reflection-registration reporting moves to guest/staging. */
+    MissingReflectionRegistrationError reportInvokedExecutable(Executable executable);
+
+    /** Remove when layered-image reflection support moves to guest/staging. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    int currentImageLayerNumber();
+
 }

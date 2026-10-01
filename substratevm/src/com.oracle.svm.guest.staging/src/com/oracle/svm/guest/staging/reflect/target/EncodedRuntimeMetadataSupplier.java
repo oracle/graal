@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
-import com.oracle.svm.core.annotate.TargetClass;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
 
-@TargetClass(className = "jdk.internal.reflect.MethodAccessor")
-public final class Target_jdk_internal_reflect_MethodAccessor {
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+@Platforms(Platform.HOSTED_ONLY.class)
+public interface EncodedRuntimeMetadataSupplier {
+    byte[] getAnnotationsEncoding(AccessibleObject object);
+
+    byte[] getParameterAnnotationsEncoding(Executable object);
+
+    byte[] getAnnotationDefaultEncoding(Method object);
+
+    byte[] getTypeAnnotationsEncoding(AccessibleObject object);
+
+    byte[] getReflectParametersEncoding(Executable object);
 }

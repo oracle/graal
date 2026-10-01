@@ -88,32 +88,6 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         return Arrays.stream(MultiLayeredImageSingleton.getAllLayers(RuntimeMetadataEncoding.class)).map(RuntimeMetadataEncoding::getEncoding).toList();
     }
 
-    public static int getRawModifiers(Method m) {
-        assert m != null;
-        return SubstrateUtil.cast(m, Target_java_lang_reflect_Method.class).modifiers;
-    }
-
-    public static int getRawModifiers(Constructor<?> c) {
-        assert c != null;
-        return SubstrateUtil.cast(c, Target_java_lang_reflect_Constructor.class).modifiers;
-    }
-
-    public static int getRawModifiers(Executable ex) {
-        assert ex != null;
-        if (ex instanceof Method m) {
-            return getRawModifiers(m);
-        } else if (ex instanceof Constructor<?> c) {
-            return getRawModifiers(c);
-        } else {
-            throw VMError.shouldNotReachHere("Unexpected executable type");
-        }
-    }
-
-    public static int getRawModifiers(Field f) {
-        assert f != null;
-        return SubstrateUtil.cast(f, Target_java_lang_reflect_Field.class).modifiers;
-    }
-
     /**
      * Fields encoding.
      *

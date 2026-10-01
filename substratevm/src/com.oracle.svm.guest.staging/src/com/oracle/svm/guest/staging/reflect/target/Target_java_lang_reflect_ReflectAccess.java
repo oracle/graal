@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
-import static com.oracle.svm.core.reflect.target.Util_java_lang_reflect_ReflectAccess.copyAccessibleObject;
-import static com.oracle.svm.core.reflect.target.Util_java_lang_reflect_ReflectAccess.copyExecutable;
+import static com.oracle.svm.guest.staging.reflect.target.Util_java_lang_reflect_ReflectAccess.copyAccessibleObject;
+import static com.oracle.svm.guest.staging.reflect.target.Util_java_lang_reflect_ReflectAccess.copyExecutable;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
