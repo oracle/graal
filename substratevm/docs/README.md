@@ -42,7 +42,7 @@ Consulting the CI configurations in ci/ci.jsonnet may help understand how `mx ga
 
 ## Custom Runtimes
 
-- [Building a Custom Runtime With Embedded Java Libraries](custom-runtimes.md): embed picocli in a JVM library and load an application at run time.
+- [Building a Custom Runtime with Embedded Java Libraries](custom-runtimes.md): embed picocli in a JVM library and load an application at run time.
 
 ## Project Terminus
 

@@ -1,6 +1,7 @@
-# Building a Custom Runtime With Embedded Java Libraries
+# Building a Custom Runtime with Embedded Java Libraries
 
-You can build a GraalVM JDK that embeds Java libraries in a Native Image-built JVM library and loads application classes at run time.
+You can build a GraalVM JDK with Java libraries embedded in a JVM library built with Native Image.
+It can load application classes that depend on libraries precompiled into the JVM library (`libjvm.so`).
 This guide uses [picocli](https://picocli.info/), a command-line parsing library with no transitive dependencies, to demonstrate the boundary between embedded library code and a run-time-loaded application.
 The application does not need to exist when you build the runtime.
 
@@ -58,9 +59,9 @@ mx --dy /substratevm \
 
 The options serve the following purposes:
 
-- `--components=svmjava,svmjavad` selects the Native Image-built JVM library and the component that makes it the default VM.
-  `LIBJVM_IMAGE_AS_DEFAULT=true` enables the latter component.
-  The resulting `java` launcher uses this library without requiring `-svm`; HotSpot remains installed alongside it.
+- `--components=svmjava,svmjavad` selects the Native Image-built JVM library and the `svmjavad` component.
+    When `LIBJVM_IMAGE_AS_DEFAULT=true`, `svmjavad` makes the Native Image-built JVM the default VM.
+  The resulting `java` launcher uses this library without the `-svm` option; HotSpot remains installed in the same GraalVM JDK.
 - `--native-images=lib:jvm` selects the JVM library image build.
 - `--extra-image-builder-argument=jvm:...` passes an argument to that image build.
   The prefix here is `jvm:`, not `lib:jvm:`.
@@ -73,7 +74,7 @@ The options serve the following purposes:
 
 Do not add the application to this build's class path or preservation selectors.
 
-After the build finishes, retrieve the runtime location from the same suite and with the same component selection:
+After the build finishes, use the same vm suite and component selection to locate the generated GraalVM JDK:
 
 ```shell
 export GRAALVM_HOME="$(mx --dy /substratevm \
@@ -127,12 +128,13 @@ Compile with your build JDK, using picocli on the compile-time class path:
 ```
 
 `-proc:none` explicitly disables annotation processing.
-This example needs no picocli annotation processor or application-specific Native Image reflection configuration: the embedded library inspects the run-time-loaded class's annotations at run time.
+This example does not require a picocli annotation processor or application-specific Native Image reflection configuration. 
+The embedded library inspects annotations on the run-time-loaded class at run time.
 The option is optional when only the standard picocli JAR is on the compiler class path.
 
 ## Run and Verify
 
-Run the application with the custom runtime and only the application directory on the class path:
+Run the application with the custom runtime, using only the application directory on the class path:
 
 ```shell
 "$GRAALVM_HOME/bin/java" -cp . Hello --name World
@@ -144,7 +146,7 @@ Expected output:
 Hello World
 ```
 
-There is no picocli JAR on this class path and no `-svm` argument.
+The class path contains no picocli JAR, and the command does not use `-svm`.
 You do not need to rebuild the runtime after compiling or changing the application.
 
 Check help and invalid-option handling:
@@ -164,7 +166,7 @@ As a control, run the application on HotSpot without the picocli JAR:
 ```
 
 This command fails with `NoClassDefFoundError: picocli/CommandLine`.
-Adding the picocli JAR makes the HotSpot control work:
+Adding the picocli JAR allows the same application to run on HotSpot:
 
 ```shell
 "$GRAALVM_HOME/bin/java" -server -cp ".:$PICOCLI_JAR" Hello --name World
@@ -178,7 +180,7 @@ Test an application that is absent from the image build, with the embedded libra
 
 Preservation can make optional code paths reachable and expose dependencies that a smaller application does not otherwise need.
 Other libraries can also require resources, service metadata, or explicit class-initialization policies.
-Do not assume that the picocli result establishes compatibility with an arbitrary framework.
+Do not assume that this successful picocli example establishes compatibility with every framework.
 
 Classes already included in the image cannot be reloaded to recover methods or fields removed during image building.
 Review the [run-time class loading limitations](runtime-class-loading.md#current-limitations) when choosing preservation selectors.
