@@ -313,12 +313,17 @@ Local reads/writes should always use these abstractions; **you should not direct
 
 Loading a local before a value is stored into it throws a [`FrameSlotTypeException`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/frame/FrameSlotTypeException.java).
 You can specify a `defaultLocalValue` in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) to instead give uninitialized locals a default value.
+`ClearLocal` and block-scope exit use the same rule.
+With [boxing elimination](Optimization.md#boxing-elimination), that clear marks the slot illegal, so an object load throws `FrameSlotTypeException`.
+`defaultLocalValue` stores an object default and keeps the cleared slot object-typed.
 
 
 ### Scoping
 
 By default, interpreters use _block scoping_, in which locals are scoped to the enclosing `Block`/`Root` operation.
 When exiting the enclosing `Block` operation, locals are cleared and their frame slots are automatically reused (locals are not cleared when exiting the `Root`).
+With boxing elimination, set `defaultLocalValue` so that clear stores an object default and the slot stays object-typed.
+See [Boxing elimination](Optimization.md#boxing-elimination).
 Since the set of live locals depends on the location in the code, most of the local accessor methods on `BytecodeNode` are parameterized by the current `bytecodeIndex`.
 
 Interpreters can alternatively opt to use _root scoping_, in which all locals get a unique position in the frame and live for the entire extent of the root.

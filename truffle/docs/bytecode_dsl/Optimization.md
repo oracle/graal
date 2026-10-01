@@ -24,6 +24,11 @@ To enable boxing elimination, specify a set of `boxingEliminationTypes` on the [
 
 will instruct the interpreter to automatically avoid boxing for `int` and `long` values. (Note that `boolean` boxing elimination is supported, but is generally not worth the overhead of the additional instructions it produces.)
 
+`ClearLocal`, and the automatic clear when a block-scoped local falls out of scope, mark the frame slot illegal by default.
+A later object load then throws `FrameSlotTypeException` because the slot is not object-typed.
+Set `defaultLocalValue` to store an object default instead and keep the cleared slot object-typed.
+For example, `defaultLocalValue = "null"` makes a cleared local load as `null`.
+
 Boxing elimination is implemented using quickening, which is described below.
 
 ## Quickening

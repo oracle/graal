@@ -359,6 +359,11 @@ public @interface GenerateBytecode {
      * are not cleared on exit. Block scoping allows the interpreter to reuse a frame index for
      * multiple locals that have disjoint lifetimes, which can reduce the frame size.
      * <p>
+     * With {@link #boxingEliminationTypes() boxing elimination}, that default clear marks the slot
+     * illegal, so a later object load throws {@link FrameSlotTypeException}. Specify
+     * {@link #defaultLocalValue()} to store an object default instead and keep the cleared slot
+     * object-typed.
+     * <p>
      * With block scoping, a different set of locals can be live at different bytecode indices. The
      * interpreter retains extra metadata to track the lifetimes of each local. The local accessor
      * methods of {@link BytecodeNode} (e.g., {@link BytecodeNode#getLocalValues(int, Frame)}) take
@@ -485,6 +490,12 @@ public @interface GenerateBytecode {
      * If boxing elimination types are provided, the cached interpreter will generate instruction
      * variants that load/store primitive values when possible. It will automatically use these
      * instructions in a best-effort manner (falling back on boxed representations when necessary).
+     * <p>
+     * {@code ClearLocal}, and the automatic clear when a block-scoped local falls out of scope,
+     * mark the frame slot illegal unless {@link #defaultLocalValue()} is set. A later object load
+     * of that slot throws {@link FrameSlotTypeException} because the slot is not object-typed.
+     * Specify {@link #defaultLocalValue()} to store an object default instead and keep the cleared
+     * slot object-typed. See also {@link #enableBlockScoping()}.
      *
      * @since 24.2
      */
@@ -516,6 +527,11 @@ public @interface GenerateBytecode {
      * can either produce a default value or throw a user-provided exception when loading a cleared
      * local. If neither is explicitly specified, the interpreter defaults to throwing a
      * {@link FrameSlotTypeException}.
+     * <p>
+     * The default is stored with an object write, so the cleared slot stays object-typed. With
+     * {@link #boxingEliminationTypes() boxing elimination}, that is how {@code ClearLocal} and
+     * block-scope exit keep a later object load from throwing {@link FrameSlotTypeException}. For
+     * example, {@code defaultLocalValue = "null"} makes a cleared local load as {@code null}.
      * <p>
      * It is recommended for the default local value expression to refer to a static and final
      * constant in the bytecode root node. For example:
