@@ -46,27 +46,6 @@
       ]
     },
     {
-      "type": "jdk.javadoc.internal.tool.Main",
-      "jniAccessible": true,
-      "methods": [
-        {
-          "name": "main",
-          "parameterTypes": [
-            "java.lang.String[]"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "jdk.javadoc.doclet.StandardDoclet",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "com.sun.tools.javap.Main",
       "jniAccessible": true,
       "methods": [
