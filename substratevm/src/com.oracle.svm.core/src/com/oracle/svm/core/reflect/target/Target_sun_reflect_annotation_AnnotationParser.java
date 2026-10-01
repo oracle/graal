@@ -41,6 +41,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.RuntimeClassLoading.WithRuntimeClassLoading;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoderSupport;
+import com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.VMError;
 

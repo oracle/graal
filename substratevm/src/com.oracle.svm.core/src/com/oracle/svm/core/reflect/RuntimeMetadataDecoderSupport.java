@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 
 import jdk.graal.compiler.api.replacements.Fold;
