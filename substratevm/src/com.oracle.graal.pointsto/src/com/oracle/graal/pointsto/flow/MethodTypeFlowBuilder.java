@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -573,7 +573,18 @@ public class MethodTypeFlowBuilder {
         flowsGraph.setReturnFlow(returnFlow);
 
         assert returnType.equals(returnFlow.getDeclaredType()) : returnType + " != " + returnFlow.getDeclaredType();
-        returnType.getTypeFlow(bb, true).addUse(bb, returnFlow);
+        TypeFlow<?> returnTypeFlow = returnType.getTypeFlow(bb, true);
+        if (returnTypeFlow instanceof AllInstantiatedTypeFlow) {
+            /*
+             * Keep the link from the global type flow in the method graph so that context-sensitive
+             * analysis also connects it to each cloned return flow.
+             */
+            returnTypeFlow = bb.analysisPolicy().proxy(position, returnTypeFlow);
+            bb.analysisPolicy().addOriginalUse(bb, returnTypeFlow, returnFlow);
+            flowsGraph.addMiscEntryFlow(returnTypeFlow);
+        } else {
+            returnTypeFlow.addUse(bb, returnFlow);
+        }
     }
 
     /**
