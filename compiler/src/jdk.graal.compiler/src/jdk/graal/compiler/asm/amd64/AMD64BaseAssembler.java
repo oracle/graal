@@ -43,6 +43,7 @@ import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.W0
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.W1;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static jdk.graal.compiler.core.common.NumUtil.isByte;
+import static jdk.vm.ci.amd64.AMD64.CPU;
 import static jdk.vm.ci.amd64.AMD64.MASK;
 import static jdk.vm.ci.amd64.AMD64.XMM;
 import static jdk.vm.ci.amd64.AMD64.r12;
@@ -567,8 +568,8 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      */
     protected static int getRXB(Register reg, AMD64Address rm) {
         GraalError.guarantee(!isInvalidEncoding(reg), "invalid encoding %s", reg);
-        GraalError.guarantee(rm.getBase() == null || rm.getBase().encoding < 16, "APX register used in %s not yet supported", rm);
-        GraalError.guarantee(rm.getIndex() == null || rm.getIndex().encoding < 16, "APX register used in %s not yet supported", rm);
+        GraalError.guarantee(rm.getBase() == null || !inRC(CPU, rm.getBase()) || rm.getBase().encoding < 16, "APX register used in %s not yet supported", rm);
+        GraalError.guarantee(rm.getIndex() == null || !inRC(CPU, rm.getIndex()) || rm.getIndex().encoding < 16, "APX register used in %s not yet supported", rm);
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
         if (!isInvalidEncoding(rm.getIndex())) {
             rxb |= (rm.getIndex().encoding & 0x08) >> 2;
