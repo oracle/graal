@@ -271,6 +271,23 @@ public final class GraalDirectives {
     }
 
     /**
+     * Returns the float represented by the low 32 raw bits of {@code value}, without a numeric
+     * conversion. The upper 32 bits are ignored.
+     */
+    public static float assumeFloat(double value) {
+        return Float.intBitsToFloat((int) Double.doubleToRawLongBits(value));
+    }
+
+    /**
+     * Packs the raw bits of {@code value} into the low 32 bits of a {@code double}, without a
+     * numeric conversion. The upper 32 bits are unspecified and must not be observed. Use
+     * {@link #assumeFloat(double)} to read the packed value.
+     */
+    public static double packFloat(float value) {
+        return Double.longBitsToDouble(Float.floatToRawIntBits(value));
+    }
+
+    /**
      * Returns a {@code long} whose value must not be observed. When used as an additional return
      * value, the compiler may leave the corresponding fixed return register unchanged. The
      * argument identifies the value whose dependency is being killed but does not constrain the
@@ -278,6 +295,14 @@ public final class GraalDirectives {
      */
     @SuppressWarnings("unused")
     public static long arbitraryValue(long value) {
+        return 0;
+    }
+
+    /**
+     * Double-valued counterpart of {@link #arbitraryValue(long)}. The result must not be observed.
+     */
+    @SuppressWarnings("unused")
+    public static double arbitraryValue(double value) {
         return 0;
     }
 

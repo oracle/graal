@@ -179,8 +179,9 @@ public final class BytecodeHandlerConfig {
                         divisor *= argument.templateVariants();
                     }
                 }
-                GraalError.guarantee(value != null && value.isOwnerVirtual() && !value.isTemplateVariable() && value.type().getJavaKind() == JavaKind.Long,
-                                "Conditional validity requires a non-template virtual-expanded long field: %s", field.getString("name"));
+                GraalError.guarantee(value != null && value.isOwnerVirtual() && !value.isTemplateVariable() &&
+                                (value.type().getJavaKind() == JavaKind.Long || value.type().getJavaKind() == JavaKind.Double),
+                                "Conditional validity requires a non-template virtual-expanded long or double field: %s", field.getString("name"));
                 GraalError.guarantee(template != null, "Field %s validWhen must name a template field on the same argument: %s", field.getString("name"), validWhen);
                 for (int variant : valid) {
                     GraalError.guarantee(variant >= 0 && variant < template.templateVariants(), "Invalid valid value %d for template field %s", variant, validWhen);

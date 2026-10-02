@@ -112,6 +112,8 @@ import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.ArbitraryValueNode;
+import jdk.graal.compiler.nodes.calc.AssumeFloatNode;
+import jdk.graal.compiler.nodes.calc.PackFloatNode;
 import jdk.graal.compiler.nodes.calc.AssumeIntNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
@@ -2058,6 +2060,27 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
                 ValueNode rawBits = new AssumeIntNode(value);
                 b.addPush(JavaKind.Float, ReinterpretNode.create(JavaKind.Float, rawBits, NodeView.DEFAULT));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("assumeFloat", double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Float, new AssumeFloatNode(value));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("packFloat", float.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Double, new PackFloatNode(value));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("arbitraryValue", double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Double, new ArbitraryValueNode(JavaKind.Double));
                 return true;
             }
         });

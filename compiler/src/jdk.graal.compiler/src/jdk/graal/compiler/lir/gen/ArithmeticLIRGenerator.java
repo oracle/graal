@@ -27,6 +27,7 @@ package jdk.graal.compiler.lir.gen;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.lir.Variable;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
@@ -48,6 +49,12 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
 
     protected final AllocatableValue asAllocatable(Value value) {
         return lirGen.asAllocatable(value);
+    }
+
+    @Override
+    public Value emitPackFloat(Value inputVal) {
+        Value bits = emitReinterpret(lirGen.getValueKind(JavaKind.Int), inputVal);
+        return emitReinterpret(lirGen.getValueKind(JavaKind.Double), emitSignExtend(bits, 32, 64));
     }
 
     // automatic derived reference handling

@@ -27,37 +27,43 @@ package jdk.graal.compiler.nodes.calc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.CastValue;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Produces a value with unrestricted bits and no data dependency on another value.
+ * Reads the low 32 raw bits of a {@code double} as a {@code float}. The result shares the input's
+ * allocated floating-point location; no numeric conversion or general-purpose register is needed.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class ArbitraryValueNode extends FloatingNode implements LIRLowerable {
+public final class AssumeFloatNode extends UnaryNode implements LIRLowerable {
 
-    public static final NodeClass<ArbitraryValueNode> TYPE = NodeClass.create(ArbitraryValueNode.class);
+    public static final NodeClass<AssumeFloatNode> TYPE = NodeClass.create(AssumeFloatNode.class);
 
-    public ArbitraryValueNode() {
-        this(JavaKind.Long);
+    public AssumeFloatNode(ValueNode value) {
+        super(TYPE, StampFactory.forKind(JavaKind.Float), value);
+        assert value.getStackKind() == JavaKind.Double : value;
     }
 
-    public ArbitraryValueNode(JavaKind kind) {
-        super(TYPE, StampFactory.forKind(kind));
-        assert kind == JavaKind.Long || kind == JavaKind.Double : kind;
+    @Override
+    public Node canonical(CanonicalizerTool tool, ValueNode forValue) {
+        return this;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool builder) {
-        var lirTool = builder.getLIRGeneratorTool();
-        // Defer materialization: arbitrary additional returns do not need a register write.
-        builder.setResult(this, new ConstantValue(lirTool.toRegisterKind(lirTool.getLIRKind(stamp(NodeView.DEFAULT))), JavaConstant.defaultForKind(getStackKind())));
+        LIRGeneratorTool lirTool = builder.getLIRGeneratorTool();
+        LIRKind castKind = lirTool.getLIRKind(stamp(NodeView.DEFAULT));
+        builder.setResult(this, new CastValue(castKind, lirTool.asAllocatable(builder.operand(getValue()))));
     }
 }

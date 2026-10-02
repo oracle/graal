@@ -136,7 +136,7 @@ public final class BytecodeHandlerStubHelper {
                         virtualFields.get(allocatedObj).add(kit.unique(ConstantNode.forInt(templateValue)));
                     } else {
                         virtualFields.get(allocatedObj).add(handlerConfig.isFieldValid(argumentInfo, templateIndex) ? stubParameters[argumentInfo.index()]
-                                        : kit.unique(new ArbitraryValueNode()));
+                                        : kit.unique(new ArbitraryValueNode(argumentInfo.type().getJavaKind())));
                     }
                 } else {
                     ValueNode owner = handlerArguments.getLast();

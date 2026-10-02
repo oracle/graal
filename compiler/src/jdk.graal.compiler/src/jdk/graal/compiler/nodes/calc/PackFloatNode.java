@@ -28,36 +28,35 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Produces a value with unrestricted bits and no data dependency on another value.
+ * Packs a float into the low bits of a double-width floating-point location. The upper bits are
+ * unspecified.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class ArbitraryValueNode extends FloatingNode implements LIRLowerable {
+public final class PackFloatNode extends UnaryNode implements LIRLowerable {
+    public static final NodeClass<PackFloatNode> TYPE = NodeClass.create(PackFloatNode.class);
 
-    public static final NodeClass<ArbitraryValueNode> TYPE = NodeClass.create(ArbitraryValueNode.class);
-
-    public ArbitraryValueNode() {
-        this(JavaKind.Long);
+    public PackFloatNode(ValueNode value) {
+        super(TYPE, StampFactory.forKind(JavaKind.Double), value);
+        assert value.getStackKind() == JavaKind.Float : value;
     }
 
-    public ArbitraryValueNode(JavaKind kind) {
-        super(TYPE, StampFactory.forKind(kind));
-        assert kind == JavaKind.Long || kind == JavaKind.Double : kind;
+    @Override
+    public Node canonical(CanonicalizerTool tool, ValueNode forValue) {
+        return this;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool builder) {
-        var lirTool = builder.getLIRGeneratorTool();
-        // Defer materialization: arbitrary additional returns do not need a register write.
-        builder.setResult(this, new ConstantValue(lirTool.toRegisterKind(lirTool.getLIRKind(stamp(NodeView.DEFAULT))), JavaConstant.defaultForKind(getStackKind())));
+        builder.setResult(this, builder.getLIRGeneratorTool().getArithmetic().emitPackFloat(builder.operand(getValue())));
     }
 }

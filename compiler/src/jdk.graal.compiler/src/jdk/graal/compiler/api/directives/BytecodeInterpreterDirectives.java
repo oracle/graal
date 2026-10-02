@@ -152,7 +152,7 @@ public final class BytecodeInterpreterDirectives {
                  * controls whether this field's incoming value is valid. An empty name disables
                  * conditional validity and requires {@link #valid()} to be empty.
                  * <p>
-                 * Only non-template {@code long} fields of {@link ExpansionKind#VIRTUAL} arguments
+                 * Only non-template {@code long} or {@code double} fields of {@link ExpansionKind#VIRTUAL} arguments
                  * support conditional validity. When template mode is disabled, this metadata is
                  * ignored.
                  */

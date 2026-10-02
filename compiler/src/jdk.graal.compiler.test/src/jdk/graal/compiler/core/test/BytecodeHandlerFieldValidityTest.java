@@ -51,6 +51,7 @@ public class BytecodeHandlerFieldValidityTest extends GraalCompilerTest {
         int first;
         int second;
         long cached;
+        double floating;
         long unused;
         long ordinary;
         final long immutable = 42;
@@ -59,7 +60,7 @@ public class BytecodeHandlerFieldValidityTest extends GraalCompilerTest {
     @BytecodeInterpreterHandlerConfig(maximumOperationCode = 0, arguments = @Argument(expand = VIRTUAL, fields = {
                     @Field(name = "first", templateVariable = 2), @Field(name = "second", templateVariable = 3),
                     @Field(name = "cached", validWhen = "second", valid = {1, 2}), @Field(name = "unused", validWhen = "first"),
-                    @Field(name = "immutable", validWhen = "first", valid = {1})
+                    @Field(name = "immutable", validWhen = "first", valid = {1}), @Field(name = "floating", validWhen = "second", valid = {2})
     }))
     public static void valid(State state) {
     }
@@ -132,6 +133,7 @@ public class BytecodeHandlerFieldValidityTest extends GraalCompilerTest {
             for (ArgumentInfo argument : config.getAllArgumentInfos()) {
                 boolean expected = switch (argument.field().getName()) {
                     case "cached" -> second != 0;
+                    case "floating" -> second == 2;
                     case "unused" -> false;
                     case "immutable" -> first == 1;
                     default -> true;
@@ -171,6 +173,7 @@ public class BytecodeHandlerFieldValidityTest extends GraalCompilerTest {
                 ValueNode value = commit.getValues().get(fieldIndex++);
                 if (!config.isFieldValid(argument, index)) {
                     Assert.assertTrue(value instanceof ArbitraryValueNode);
+                    Assert.assertEquals(argument.type().getJavaKind(), value.getStackKind());
                     Assert.assertTrue(graph.getParameter(argument.index()).hasNoUsages());
                 } else if (!argument.isTemplateVariable()) {
                     Assert.assertSame(graph.getParameter(argument.index()), value);

@@ -38,6 +38,16 @@ public class ArbitraryValueDirectiveTest extends GraalCompilerTest {
         return GraalDirectives.arbitraryValue(value);
     }
 
+    public static double doubleSnippet(double value) {
+        return GraalDirectives.arbitraryValue(value);
+    }
+
+    @Test
+    public void testArbitraryDoubleValue() {
+        test("doubleSnippet", -0.0d);
+        test("doubleSnippet", Double.NaN);
+    }
+
     @Test
     public void testArbitraryValue() {
         test("snippet", 42L);

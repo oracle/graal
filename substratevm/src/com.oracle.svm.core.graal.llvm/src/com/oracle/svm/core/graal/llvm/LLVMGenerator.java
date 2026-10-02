@@ -1996,6 +1996,12 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         }
 
         @Override
+        public Value emitPackFloat(Value inputVal) {
+            LLVMValueRef bits = builder.buildBitcast(getVal(inputVal), builder.intType());
+            return new LLVMVariable(builder.buildBitcast(builder.buildZExt(bits, Long.SIZE), builder.doubleType()));
+        }
+
+        @Override
         public Value emitNarrow(Value inputVal, int bits) {
             LLVMValueRef narrow = builder.buildTrunc(getVal(inputVal), bits);
             return new LLVMVariable(narrow);
