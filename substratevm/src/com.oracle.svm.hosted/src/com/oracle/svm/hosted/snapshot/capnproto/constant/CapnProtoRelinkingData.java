@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.hosted.snapshot.capnproto.constant;
 
+import static com.oracle.svm.hosted.snapshot.capnproto.CapnProtoAdapters.wrapIntListLoader;
+import static com.oracle.svm.hosted.snapshot.capnproto.CapnProtoAdapters.wrapIntListWriter;
+
 import com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData;
+import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
 
 public final class CapnProtoRelinkingData {
     public static RelinkingData.Writer writer(Relinking.Builder delegate) {
@@ -56,6 +60,11 @@ record RelinkingWriterAdapter(Relinking.Builder delegate) implements RelinkingDa
     @Override
     public RelinkingData.FieldConstant.Writer initFieldConstant() {
         return new FieldConstantWriterAdapter(delegate.initFieldConstant());
+    }
+
+    @Override
+    public RelinkingData.MethodTypeConstant.Writer initMethodTypeConstant() {
+        return new MethodTypeConstantWriterAdapter(delegate.initMethodTypeConstant());
     }
 }
 
@@ -103,6 +112,16 @@ record RelinkingLoaderAdapter(Relinking.Reader delegate) implements RelinkingDat
     @Override
     public RelinkingData.FieldConstant.Loader getFieldConstant() {
         return new FieldConstantLoaderAdapter(delegate.getFieldConstant());
+    }
+
+    @Override
+    public boolean isMethodTypeConstant() {
+        return delegate.isMethodTypeConstant();
+    }
+
+    @Override
+    public RelinkingData.MethodTypeConstant.Loader getMethodTypeConstant() {
+        return new MethodTypeConstantLoaderAdapter(delegate.getMethodTypeConstant());
     }
 }
 
@@ -184,5 +203,29 @@ record FieldConstantLoaderAdapter(Relinking.FieldConstant.Reader delegate) imple
     @Override
     public boolean getRequiresLateLoading() {
         return delegate.getRequiresLateLoading();
+    }
+}
+
+record MethodTypeConstantWriterAdapter(Relinking.MethodTypeConstant.Builder delegate) implements RelinkingData.MethodTypeConstant.Writer {
+    @Override
+    public void setReturnTypeId(int value) {
+        delegate.setReturnTypeId(value);
+    }
+
+    @Override
+    public SnapshotPrimitiveList.Int.Writer initParameterTypeIds(int size) {
+        return wrapIntListWriter(delegate.initParameterTypeIds(size));
+    }
+}
+
+record MethodTypeConstantLoaderAdapter(Relinking.MethodTypeConstant.Reader delegate) implements RelinkingData.MethodTypeConstant.Loader {
+    @Override
+    public int getReturnTypeId() {
+        return delegate.getReturnTypeId();
+    }
+
+    @Override
+    public SnapshotPrimitiveList.Int.Loader getParameterTypeIds() {
+        return wrapIntListLoader(delegate.getParameterTypeIds());
     }
 }
