@@ -1091,6 +1091,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
      */
     private static void replaceComponentFrameStateUsages(StructuredGraph graph, HighTierContext context, ConnectedComponent component, NodeMap<ValueNode> expanded,
                     VectorArchitecture vectorArch) {
+        EconomicMap<ValueNode, ValueNode> maskPayloads = EconomicMap.create();
         for (ValueNode node : component.simdStamps.getKeys()) {
             if (!node.isAlive()) {
                 continue;
@@ -1109,7 +1110,7 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                 VirtualInstanceNode virtualInstance = graph.add(new VirtualInstanceNode(type, true));
                 ValueNode replacementValue = replacement;
                 if (vectorType.isMask) {
-                    replacementValue = graph.addOrUniqueWithInputs(VectorAPIBoxingUtils.logicAsBooleans(replacementValue, vectorArch));
+                    replacementValue = maskPayloadForState(graph, replacementValue, vectorArch, maskPayloads);
                 }
                 VirtualObjectState virtualState = graph.unique(new VirtualObjectState(virtualInstance, List.of(replacementValue)));
                 EconomicSet<FrameState> statesToAdd = EconomicSet.create();
@@ -1129,6 +1130,34 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                 node.replaceAtUsages(virtualInstance, usage -> usage != virtualState && (usage instanceof FrameState || usage instanceof VirtualObjectState));
             }
         }
+    }
+
+    /**
+     * Converts a SIMD mask to its boolean payload for deoptimization. Convert inputs of phis and
+     * proxies rather than their results, so a loop state references the corresponding payload phi
+     * directly and a loop exit state references a payload proxy.
+     */
+    private static ValueNode maskPayloadForState(StructuredGraph graph, ValueNode mask, VectorArchitecture vectorArch, EconomicMap<ValueNode, ValueNode> payloads) {
+        ValueNode cached = payloads.get(mask);
+        if (cached != null) {
+            return cached;
+        }
+        ValueNode payload;
+        if (mask instanceof ValuePhiNode phi) {
+            Stamp payloadStamp = VectorAPIBoxingUtils.logicAsBooleans(mask, vectorArch).stamp(NodeView.DEFAULT);
+            ValuePhiNode payloadPhi = graph.addWithoutUnique(new ValuePhiNode(payloadStamp, phi.merge()));
+            for (ValueNode input : phi.values()) {
+                payloadPhi.addInput(graph.addOrUniqueWithInputs(VectorAPIBoxingUtils.logicAsBooleans(input, vectorArch)));
+            }
+            payload = payloadPhi;
+        } else if (mask instanceof ValueProxyNode proxy) {
+            ValueNode inputPayload = graph.addOrUniqueWithInputs(VectorAPIBoxingUtils.logicAsBooleans(proxy.value(), vectorArch));
+            payload = graph.addOrUnique(new ValueProxyNode(inputPayload, proxy.proxyPoint()));
+        } else {
+            payload = graph.addOrUniqueWithInputs(VectorAPIBoxingUtils.logicAsBooleans(mask, vectorArch));
+        }
+        payloads.put(mask, payload);
+        return payload;
     }
 
     /*
