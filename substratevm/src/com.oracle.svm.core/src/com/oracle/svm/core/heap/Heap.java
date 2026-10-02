@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig.Mode;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
@@ -171,6 +172,15 @@ public abstract class Heap {
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
+
+    /**
+     * Returns the maximum supported size of a pure instance object. This limit must cover any
+     * growth after allocation, such as adding an optional identity hash code field.
+     */
+    @Fold
+    public int getMaxInstanceSize() {
+        return Integer.MAX_VALUE & -ObjectLayout.singleton().getAlignment();
+    }
 
     /**
      * Returns true if the given object is located in the image heap.

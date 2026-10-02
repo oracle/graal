@@ -116,6 +116,7 @@ import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
@@ -621,7 +622,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 } else {
                     throw VMError.shouldNotReachHere("Unexpected identity hash mode");
                 }
-                layoutEncoding = LayoutEncoding.forPureInstance(ol.alignUp(instanceSize));
+                int alignedInstanceSize = ol.alignUp(instanceSize);
+                layoutEncoding = LayoutEncoding.forPureInstance(alignedInstanceSize);
+                long sizeWithIdentityHash = LayoutEncoding.getPureInstanceSize(layoutEncoding, identityHashOffset, true);
+                if (sizeWithIdentityHash > Heap.getHeap().getMaxInstanceSize()) {
+                    throw new LinkageError("Size of " + name + " exceeds the maximum supported by the garbage collector.");
+                }
             }
         }
 

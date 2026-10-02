@@ -526,6 +526,12 @@ public final class HeapImpl extends Heap {
 
     @Fold
     @Override
+    public int getMaxInstanceSize() {
+        return NumUtil.safeToInt(AlignedHeapChunk.getUsableSizeForObjects().rawValue());
+    }
+
+    @Fold
+    @Override
     public int getImageHeapAlignment() {
         return UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
     }
