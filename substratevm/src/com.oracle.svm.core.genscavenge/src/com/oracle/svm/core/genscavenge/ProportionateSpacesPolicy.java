@@ -84,10 +84,6 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection, long beginNanoTime) {
-    }
-
-    @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) {
         UnsignedWord oldLive = GCImpl.getAccounting().getOldGenerationAfterChunkBytes();
         oldSizeExceededInPreviousCollection = oldLive.aboveThan(sizes.getOldSize());
