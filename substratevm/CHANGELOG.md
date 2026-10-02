@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
+* (PR-14513) The JNI function `DestroyJavaVM` no longer tears down the isolate. It just waits for non-daemon threads, runs the shutdown and tear-down hooks, and detaches the calling thread.
 * (GR-79366) Add auxiliary images: a mechanism for persisting runtime-allocated objects and runtime-compiled code, and loading them in later executions of the same native image.
 
 ## GraalVM 25.4 (Internal Version 25.4.4)

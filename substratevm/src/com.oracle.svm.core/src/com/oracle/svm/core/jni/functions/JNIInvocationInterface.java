@@ -82,7 +82,6 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
-import com.oracle.svm.guest.staging.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
@@ -312,7 +311,7 @@ public final class JNIInvocationInterface {
      * jint DestroyJavaVM(JavaVM *vm);
      */
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
     @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
         if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
@@ -326,8 +325,16 @@ public final class JNIInvocationInterface {
         ShutdownEvent.emit("No remaining non-daemon Java threads", false);
 
         try {
+            /*
+             * Run the shutdown and tear-down hooks, and then only detach the current thread (see the
+             * epilogue). The isolate is not torn down: that interrupts all remaining threads,
+             * daemon threads included, and waits until they have exited, so a daemon thread that
+             * ignores Thread.interrupt() (such as the thread of java.util.Timer) would keep
+             * DestroyJavaVM from ever returning. HotSpot leaves daemon threads running, and so does
+             * the launcher of a standalone image.
+             */
             VMRuntime.shutdown();
-            /* Teardown hooks are executed by the epilogue. */
+            RuntimeSupport.executeTearDownHooks();
         } catch (Throwable ignored) {
         }
         return JNIErrors.JNI_OK();

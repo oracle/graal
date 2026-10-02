@@ -1422,6 +1422,15 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.test.jni.invocation" : {
+            "subDir": "src",
+            "sourceDirs" : ["src"],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance" : "21+",
+            "workingSets" : "SVM",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
