@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,9 +37,10 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.StringUtil;
 
 /**
@@ -84,7 +85,7 @@ public abstract class NativeLibraries {
      * Leaves name resolution to the underlying library loading mechanism (e.g. dlopen)
      */
     public void loadLibraryPlatformSpecific(String name) {
-        if (addLibrary(name, false)) {
+        if (addLibrary(name, false) != null) {
             return;
         }
         throw new UnsatisfiedLinkError("Can't load library: " + name);
@@ -106,8 +107,12 @@ public abstract class NativeLibraries {
     }
 
     public void loadLibraryRelative(String name) {
+        loadLibraryRelative(name, true);
+    }
+
+    protected void loadLibraryRelative(String name, boolean initialize) {
         // Test if this is a built-in library
-        if (loadLibrary0(new File(name), true)) {
+        if (loadLibrary0(new File(name), true, initialize)) {
             return;
         }
         if (usrPaths == null) {
@@ -126,32 +131,65 @@ public abstract class NativeLibraries {
             usrPaths = tokens;
         }
         String libname = System.mapLibraryName(name);
-        if (sysPath != null && loadLibrary0(new File(sysPath, libname), false)) {
+        if (sysPath != null && loadLibrary0(new File(sysPath, libname), false, initialize)) {
             return;
         }
         for (String path : usrPaths) {
             File libpath = new File(path, libname);
-            if (loadLibrary0(libpath, false)) {
+            if (loadLibrary0(libpath, false, initialize)) {
                 return;
             }
             File altpath = Target_jdk_internal_loader_ClassLoaderHelper.mapAlternativeName(libpath);
-            if (altpath != null && loadLibrary0(altpath, false)) {
+            if (altpath != null && loadLibrary0(altpath, false, initialize)) {
                 return;
             }
         }
         throw new UnsatisfiedLinkError("Can't load library: " + name + " | java.library.path = " + Arrays.toString(usrPaths));
     }
 
+    /**
+     * Loads the Java library before Java filesystem classes are initialized. Unlike
+     * {@link #loadLibraryRelative(String)}, this method must not use {@link File}, {@link Path},
+     * or filesystem canonicalization.
+     */
+    public NativeLibrary loadDynamicJavaLibrary() {
+        String libName = System.mapLibraryName("java");
+        String runtimeLibraryPath = SystemPropertiesSupport.singleton().getBootLibraryPath();
+        if (runtimeLibraryPath != null) {
+            NativeLibrary lib = addLibrary(SystemPropertiesSupport.joinPath(runtimeLibraryPath, libName), false);
+            if (lib != null) {
+                return lib;
+            }
+        }
+        throw new UnsatisfiedLinkError("Can't load dynamically linked java library | runtime library path: " + runtimeLibraryPath);
+    }
+
+    public void loadBuiltinJavaLibrary() {
+        NativeLibrary lib = addLibrary("java", true);
+        if (lib == null) {
+            throw new UnsatisfiedLinkError("Can't load statically linked java library.");
+        }
+    }
+
     private boolean loadLibrary0(File file, boolean builtin) {
+        return loadLibrary0(file, builtin, true);
+    }
+
+    private boolean loadLibrary0(File file, boolean builtin, boolean initialize) {
         try {
             String canonical = builtin ? file.getName() : file.getCanonicalPath();
-            return addLibrary(canonical, builtin);
+            return addLibrary(canonical, builtin, initialize) != null;
         } catch (IOException e) {
             return false;
         }
     }
 
-    protected abstract boolean addLibrary(String canonical, boolean builtin);
+    @SuppressWarnings("unused")
+    protected NativeLibrary addLibrary(String canonical, boolean builtin, boolean initialize) {
+        return addLibrary(canonical, builtin);
+    }
+
+    protected abstract NativeLibrary addLibrary(String canonical, boolean builtin);
 
     public abstract PointerBase findSymbol(String name);
 }

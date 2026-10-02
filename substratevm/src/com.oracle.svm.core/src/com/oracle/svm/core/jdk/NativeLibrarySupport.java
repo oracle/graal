@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,8 +87,13 @@ public final class NativeLibrarySupport extends NativeLibraries {
     }
 
     @Override
-    protected boolean addLibrary(String canonical, boolean builtin) {
+    protected NativeLibrary addLibrary(String canonical, boolean builtin) {
         return addLibrary(builtin, canonical, true);
+    }
+
+    @Override
+    protected NativeLibrary addLibrary(String canonical, boolean builtin, boolean initialize) {
+        return addLibrary(builtin, canonical, initialize);
     }
 
     /**
@@ -103,14 +108,14 @@ public final class NativeLibrarySupport extends NativeLibraries {
         throw VMError.shouldNotReachHere(String.format("Built-in library %s was not found.", name));
     }
 
-    private boolean addLibrary(boolean asBuiltin, String canonical, boolean initialize) {
+    private NativeLibrary addLibrary(boolean asBuiltin, String canonical, boolean initialize) {
         lock.lock();
         try {
             NativeLibrary lib = null;
             for (NativeLibrary known : knownLibraries) {
                 if (canonical.equals(known.getCanonicalIdentifier())) {
                     if (known.isLoaded()) {
-                        return true;
+                        return known;
                     } else {
                         assert known.isBuiltin() : "non-built-in libraries must always have been loaded";
                         assert asBuiltin : "must have tried loading as built-in first";
@@ -120,12 +125,12 @@ public final class NativeLibrarySupport extends NativeLibraries {
                 }
             }
             if (asBuiltin && lib == null && (libraryInitializer == null || !libraryInitializer.isBuiltinLibrary(canonical))) {
-                return false;
+                return null;
             }
             // Libraries can load libraries during initialization, avoid recursion with a stack
             for (NativeLibrary loading : currentLoadContext) {
                 if (canonical.equals(loading.getCanonicalIdentifier())) {
-                    return true;
+                    return loading;
                 }
             }
             boolean created = false;
@@ -136,7 +141,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
             currentLoadContext.push(lib);
             try {
                 if (!lib.load()) {
-                    return false;
+                    return null;
                 }
                 /*
                  * Initialization of a library must be skipped if it can be initialized at most once
@@ -153,7 +158,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
             if (created) {
                 knownLibraries.add(lib);
             }
-            return true;
+            return lib;
         } finally {
             lock.unlock();
         }
