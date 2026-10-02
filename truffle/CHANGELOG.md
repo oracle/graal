@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-79534: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.enableTailDuplication()` to opt threaded bytecode handlers into dispatch-tail duplication; disabled by default.
 * GR-71613: Added `CompilerDirectives.mergeExplodeKey` method for explicitly marking a local variable as a key for `@ExplodeLoop(MERGE_EXPLODE)` methods. It is recommended to migrate all merge exploded loops to use this method to catch unintended graph size explosions.
 * GR-79855: Extended `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.Field.templateVariable()` to support per-field template variant counts for bytecode handler threading and added template-aware main dispatch from the switch loop.
+* GR-79950: Added `DynamicObject.SetAllPropertyFlagsNode` for updating flags of multiple existing properties without assigning their values. It supports uniform flags, per-key flags, and remove/add masks.
 
 ## Version 25.4
 * GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.
