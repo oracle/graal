@@ -1995,7 +1995,13 @@ public class NativeImage {
                         .collect(Collectors.toMap(m -> m.descriptor().name(), m -> m));
 
         Set<String> modulePathRequiredModules = new HashSet<>(); // noEconomicSet(api)
-        Queue<ModuleReference> discoveryQueue = new ArrayDeque<>(modules.values());
+        /*
+         * Only the modules on the module path are discovery roots. Other modules (including system
+         * ones) are brought in only as transitive dependencies.
+         */
+        Queue<ModuleReference> discoveryQueue = modulePathFinder.findAll().stream()
+                        .map(m -> modules.get(m.descriptor().name()))
+                        .collect(Collectors.toCollection(ArrayDeque::new));
 
         while (!discoveryQueue.isEmpty()) {
             ModuleReference module = discoveryQueue.poll();

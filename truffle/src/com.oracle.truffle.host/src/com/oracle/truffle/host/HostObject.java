@@ -46,7 +46,6 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
-import java.sql.Time;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -2669,7 +2668,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isDate() {
-        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof OffsetDateTime || obj instanceof java.sql.Date ||
+        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof OffsetDateTime || HostSqlTypes.isDate(obj) ||
                         isInstantDate(obj);
     }
 
@@ -2686,8 +2685,8 @@ final class HostObject implements TruffleObject {
             return ((ZonedDateTime) obj).toLocalDate();
         } else if (obj instanceof OffsetDateTime) {
             return ((OffsetDateTime) obj).toLocalDate();
-        } else if (obj instanceof java.sql.Date) {
-            return ((java.sql.Date) obj).toLocalDate();
+        } else if (HostSqlTypes.isDate(obj)) {
+            return HostSqlTypes.toLocalDate(obj);
         } else if (isInstantDate(obj)) {
             return ((Date) obj).toInstant().atZone(UTC).toLocalDate();
         }
@@ -2697,7 +2696,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     boolean isTime() {
         return obj instanceof LocalTime || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof OffsetDateTime || obj instanceof OffsetTime ||
-                        obj instanceof java.sql.Time || isInstantDate(obj);
+                        HostSqlTypes.isTime(obj) || isInstantDate(obj);
     }
 
     @ExportMessage
@@ -2715,8 +2714,8 @@ final class HostObject implements TruffleObject {
             return ((OffsetTime) obj).toLocalTime();
         } else if (obj instanceof Instant) {
             return ((Instant) obj).atZone(UTC).toLocalTime();
-        } else if (obj instanceof java.sql.Time) {
-            return ((java.sql.Time) obj).toLocalTime();
+        } else if (HostSqlTypes.isTime(obj)) {
+            return HostSqlTypes.toLocalTime(obj);
         } else if (isInstantDate(obj)) {
             return ((Date) obj).toInstant().atZone(UTC).toLocalTime();
         }
@@ -2725,11 +2724,11 @@ final class HostObject implements TruffleObject {
 
     /**
      * Returns <code>true</code> if this date object can be reliably converted to an instant.
-     * Weirdly, despite the contract of the base class the two subclasses {@link Time} and
+     * Weirdly, despite the contract of the base class the two subclasses {@link java.sql.Time} and
      * {@link java.sql.Date} are not supported to be convertable to an instant.
      */
     private static boolean isInstantDate(Object v) {
-        return v instanceof Date && !(v instanceof Time) && !(v instanceof java.sql.Date);
+        return v instanceof Date && !HostSqlTypes.isTime(v) && !HostSqlTypes.isDate(v);
     }
 
     @ExportMessage
