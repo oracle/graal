@@ -213,12 +213,18 @@ public class NFITest {
         return lookupAndBind(testLibrary, name, signature);
     }
 
+    /**
+     * Look a symbol up in the "default" library, the NFI equivalent of
+     * {@code dlsym(RTLD_DEFAULT, ...)}.
+     * <p>
+     * This used to redirect to a {@code reexport_}-prefixed copy in the test library on Windows,
+     * because {@code GetProcAddress(GetModuleHandle(NULL), ...)} searches only the launcher
+     * executable's export table and so resolved essentially nothing. The Windows lookup now walks
+     * every module loaded into the process, matching the POSIX semantics, so every platform goes
+     * through the default library here and the tests that use it actually cover it.
+     */
     protected static Object lookupAndBindDefault(String name, String signature) {
-        if (IS_WINDOWS) {
-            return lookupAndBind(testLibrary, "reexport_" + name, signature);
-        } else {
-            return lookupAndBind(defaultLibrary, name, signature);
-        }
+        return lookupAndBind(defaultLibrary, name, signature);
     }
 
     protected static Object parseSignature(String signature) {

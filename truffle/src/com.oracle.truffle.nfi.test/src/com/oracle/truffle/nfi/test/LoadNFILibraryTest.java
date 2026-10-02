@@ -42,12 +42,27 @@ package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class LoadNFILibraryTest extends NFITest {
 
     private static Object eval(String format, Object... args) {
         return loadLibrary(String.format(format, args));
+    }
+
+    /**
+     * The {@code RTLD_*} flags are POSIX. On Windows the flag parser ignores names it does not
+     * know, so passing them there does not exercise anything -- the request silently collapses to
+     * a plain {@code load} and the assertion below passes without testing the flag. Skipping keeps
+     * that honest; {@link #loadSearchDllLoadDir()} and friends are the Windows counterparts.
+     */
+    private static void assumePosixFlags() {
+        Assume.assumeFalse("RTLD_* flags are POSIX-only", IS_WINDOWS);
+    }
+
+    private static void assumeWindowsFlags() {
+        Assume.assumeTrue("LOAD_LIBRARY_SEARCH_* flags are Windows-only", IS_WINDOWS);
     }
 
     @Test
@@ -58,31 +73,72 @@ public class LoadNFILibraryTest extends NFITest {
 
     @Test
     public void loadLazy() {
+        assumePosixFlags();
         Object library = eval("load(RTLD_LAZY) '%s'", getLibPath("nativetest"));
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadNow() {
+        assumePosixFlags();
         Object library = eval("load(RTLD_NOW) '%s'", getLibPath("nativetest"));
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadLocal() {
+        assumePosixFlags();
         Object library = eval("load(RTLD_LOCAL) '%s'", getLibPath("nativetest"));
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadGlobal() {
+        assumePosixFlags();
         Object library = eval("load(RTLD_GLOBAL) '%s'", getLibPath("nativetest"));
         Assert.assertNotNull(library);
     }
 
     @Test
     public void loadGlobalLazy() {
+        assumePosixFlags();
         Object library = eval("load(RTLD_GLOBAL|RTLD_LAZY) '%s'", getLibPath("nativetest"));
+        Assert.assertNotNull(library);
+    }
+
+    /*
+     * Windows counterparts of the RTLD_* cases above. These are the flags a caller needs so that a
+     * DLL's own dependencies are found next to it, which is what the POSIX loader does for free via
+     * RPATH/$ORIGIN. LOAD_LIBRARY_SEARCH_* requires a fully qualified path, which getLibPath
+     * provides.
+     */
+
+    @Test
+    public void loadSearchDllLoadDir() {
+        assumeWindowsFlags();
+        Object library = eval("load(LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR) '%s'", getLibPath("nativetest"));
+        Assert.assertNotNull(library);
+    }
+
+    @Test
+    public void loadSearchDefaultDirs() {
+        assumeWindowsFlags();
+        Object library = eval("load(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS) '%s'", getLibPath("nativetest"));
+        Assert.assertNotNull(library);
+    }
+
+    @Test
+    public void loadSearchDllLoadDirAndDefaultDirs() {
+        assumeWindowsFlags();
+        // the combination Sulong uses by default when loading a native library by absolute path
+        Object library = eval("load(LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS) '%s'", getLibPath("nativetest"));
+        Assert.assertNotNull(library);
+    }
+
+    @Test
+    public void loadAlteredSearchPath() {
+        assumeWindowsFlags();
+        Object library = eval("load(LOAD_WITH_ALTERED_SEARCH_PATH) '%s'", getLibPath("nativetest"));
         Assert.assertNotNull(library);
     }
 
@@ -94,6 +150,7 @@ public class LoadNFILibraryTest extends NFITest {
 
     @Test(expected = AbstractTruffleException.class)
     public void fileNotFound() {
-        eval("load '/this/file/does/not/exist.so'");
+        // a path shaped for the host, so the failure is "not found" rather than "malformed path"
+        eval("load '%s'", IS_WINDOWS ? "C:/this/file/does/not/exist.dll" : "/this/file/does/not/exist.so");
     }
 }
