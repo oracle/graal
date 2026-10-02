@@ -79,8 +79,10 @@ public final class AlignedHeapChunk {
     @RawStructure
     public interface AlignedHeader extends HeapChunk.Header<AlignedHeader> {
         /**
-         * The number of pinnings of objects in this chunk. This is at least the number of pinned
-         * objects, but higher when an object is pinned more than once.
+         * The number of explicit pinnings of objects in this chunk. This is at least the number of
+         * pinned objects, but higher when an object is pinned more than once.
+         *
+         * This value is not maintained for {@linkplain #getAllPinned() all-pinned} chunks.
          */
         @RawField
         int getObjectPinCount();
@@ -90,6 +92,19 @@ public final class AlignedHeapChunk {
 
         @RawFieldAddress
         Pointer addressOfObjectPinCount();
+
+        /**
+         * Whether all objects in this chunk are pinned. This does not automatically make them
+         * reachable, but a collection must never move them, and instead sweep this chunk.
+         *
+         * This value never changes for a chunk once it is used for allocation, until it is freed or
+         * recycled.
+         */
+        @RawField
+        boolean getAllPinned();
+
+        @RawField
+        void setAllPinned(boolean value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -98,6 +113,7 @@ public final class AlignedHeapChunk {
         assert chunkSize.equal(HeapParameters.getAlignedHeapChunkSize()) : "expecting all aligned chunks to be the same size";
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
         chunk.setObjectPinCount(0);
+        chunk.setAllPinned(false);
     }
 
     public static void reset(AlignedHeader chunk) {
@@ -127,7 +143,7 @@ public final class AlignedHeapChunk {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean mustSweep(AlignedHeader that) {
-        return that.getObjectPinCount() != 0;
+        return that.getObjectPinCount() != 0 || that.getAllPinned();
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */

@@ -168,26 +168,35 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private Pointer allocate(UnsignedWord size, AlignedHeapChunk.AlignedHeader currentChunk) {
         assert size.belowOrEqual(AlignedHeapChunk.getUsableSizeForObjects());
-        Pointer p = allocPointer;
-        allocPointer = p.add(size);
-        while (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
-            assert !allocChunk.equal(currentChunk) : "must not advance past currently processed chunk";
-            allocChunk = HeapChunk.getNext(allocChunk);
-            assert allocChunk.isNonNull();
+        Pointer p;
+        if (!allocChunk.getAllPinned()) { // using this chunk would pin arbitrary objects
+            p = allocPointer;
+            allocPointer = p.add(size);
+            if (allocPointer.belowOrEqual(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
+                return p;
+            }
+        }
+        do {
+            do {
+                assert !allocChunk.equal(currentChunk) : "must not advance past currently processed chunk";
+                allocChunk = HeapChunk.getNext(allocChunk);
+                assert allocChunk.isNonNull();
+            } while (allocChunk.getAllPinned());
+
             if (AlignedHeapChunk.mustSweep(allocChunk)) {
                 p = getSweptChunkAllocationPointer(allocChunk);
             } else {
                 p = AlignedHeapChunk.getObjectsStart(allocChunk);
             }
             allocPointer = p.add(size);
-        }
+        } while (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk)));
         return p;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Pointer getSweptChunkAllocationPointer(AlignedHeapChunk.AlignedHeader chunk) {
         assert AlignedHeapChunk.mustSweep(chunk);
-        if (GCImpl.getGCImpl().isOutOfMemoryCollection()) {
+        if (GCImpl.getGCImpl().isOutOfMemoryCollection() && !chunk.getAllPinned()) {
             return HeapChunk.getTopPointer(chunk);
         }
         /*

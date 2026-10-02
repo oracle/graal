@@ -129,11 +129,12 @@ public final class GCImpl implements GC {
     private static final long K = 1024;
     static final long M = K * K;
 
+    private final ChunkReleaser chunkReleaser = new ChunkReleaser();
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
-    private final SweepAndPromotePinnedChunkVisitor pinnedChunkPromotionVisitor = new SweepAndPromotePinnedChunkVisitor();
+    private final SweepAndPromotePinnedChunkVisitor pinnedChunkPromotionVisitor = new SweepAndPromotePinnedChunkVisitor(chunkReleaser);
     private final MarkStack markStack = new MarkStack();
     private final MarkStack arrayMarkStack = new MarkStack();
 
@@ -142,7 +143,6 @@ public final class GCImpl implements GC {
     private final CollectionPolicies policies = new CollectionPolicies();
 
     private final CollectionVMOperation collectOperation = new CollectionVMOperation();
-    private final ChunkReleaser chunkReleaser = new ChunkReleaser();
 
     private CollectionPolicy policy;
     private boolean completeCollection = false;
@@ -612,6 +612,7 @@ public final class GCImpl implements GC {
                      * reference objects that we process below, so we can (and need to) do it first.
                      */
                     var old = (CompactingOldGeneration) HeapImpl.getHeapImpl().getOldGeneration();
+                    assert chunkReleaser.isEmpty();
                     old.sweepAndCompact(timers, chunkReleaser);
                 } finally {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Sweep and Compact", startTicks);
@@ -639,6 +640,7 @@ public final class GCImpl implements GC {
                      * to them in reference objects elsewhere, so we must process those first above so
                      * that we can observe moved and dead objects before they are swept here.
                      */
+                    assert chunkReleaser.isEmpty();
                     sweepAndPromotePinnedChunks();
                 } finally {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Sweep and Promote Pinned Chunks", startTicks);
@@ -666,7 +668,6 @@ public final class GCImpl implements GC {
 
             Timer releaseSpacesTimer = timers.releaseSpaces.start();
             try {
-                assert SerialGCOptions.useCompactingOldGen() || chunkReleaser.isEmpty();
                 startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     releaseSpaces();

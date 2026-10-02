@@ -112,6 +112,9 @@ import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
  * that is outside the TLAB and therefore not necessarily accessible. At the moment, this is not an
  * issue as we only support architectures where prefetch instructions never cause segfaults, even if
  * they access memory that is not accessible.
+ * <p>
+ * {@link PinnedAllocation} shares much of the allocation protocol of this class and may need
+ * corresponding updates when it changes.
  */
 public final class ThreadLocalAllocation {
     @RawStructure
@@ -462,5 +465,14 @@ public final class ThreadLocalAllocation {
 
         assert UnsignedUtils.isAMultiple(tlabSize, Word.unsigned(ObjectLayout.singleton().getAlignment()));
         return tlabSize;
+    }
+
+    /**
+     * While pinned allocation is not thread-local, its allocations should still be counted towards
+     * the allocating thread for reporting and profiling.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void trackPinnedAlignedAllocationOutsideTlab(UnsignedWord size) {
+        allocatedAlignedBytes.set(allocatedAlignedBytes.get().add(size));
     }
 }

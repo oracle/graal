@@ -226,7 +226,7 @@ abstract class HeapAllocation {
     }
 
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
-    private static AlignedHeader requestNewAlignedChunk() {
+    protected AlignedHeader requestNewAlignedChunk() {
         AlignedHeader newChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
         HeapImpl.getAccounting().increaseEdenUsedBytes(HeapParameters.getAlignedHeapChunkSize());
         return newChunk;

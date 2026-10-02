@@ -89,7 +89,9 @@ class HeapChunkLogging {
         log.string("|");
         if (isAligned) {
             AlignedHeapChunk.AlignedHeader aChunk = (AlignedHeapChunk.AlignedHeader) chunk;
-            if (aChunk.getObjectPinCount() != 0) {
+            if (aChunk.getAllPinned()) {
+                log.character('*');
+            } else if (aChunk.getObjectPinCount() != 0) {
                 log.signed(aChunk.getObjectPinCount());
             }
         }

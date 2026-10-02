@@ -26,6 +26,8 @@ package com.oracle.svm.core.heap;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.lang.ref.Reference;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
@@ -57,6 +59,37 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
     @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static AbstractPinnedObjectSupport singleton() {
         return (AbstractPinnedObjectSupport) ImageSingletons.lookup(PinnedObjectSupport.class);
+    }
+
+    @Override
+    public boolean supportsPinnedAllocation() {
+        return false;
+    }
+
+    /**
+     * Allocates and returns an instance of the given class without calling any constructor. The
+     * class is initialized if it is uninitialized. The allocated instance remains at its initial
+     * memory address throughout its lifetime. The instance will be collected after it is no longer
+     * referenced, and it is the caller's responsibility to keep it strongly reachable until it is
+     * not needed any more.
+     *
+     * @see #addressOfPinnedObject
+     */
+    @Override
+    public <T> T allocateInstance(Class<T> clazz) throws InstantiationException {
+        assert !supportsPinnedAllocation();
+        throw new UnsupportedOperationException("Pinned allocation is not supported in the current configuration.");
+    }
+
+    /**
+      * Returns the memory address of an object allocated with {@link #allocateInstance}. The caller
+      * must ensure that the object remains strongly reachable so that it cannot be collected while
+      * it might still be accessed by address, possibly using {@link Reference#reachabilityFence}.
+      */
+    @Override
+    public Pointer addressOfPinnedObject(Object object) {
+        assert !supportsPinnedAllocation();
+        throw new UnsupportedOperationException("Pinned allocation is not supported in the current configuration.");
     }
 
     @Override
@@ -121,6 +154,15 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         pinnedObjects.set(newHead);
     }
 
+    /**
+     * Returns whether the given object is currently tracked as pinned, indicating an intent that it
+     * must not move. Objects that are implicitly non-moving are not tracked and therefore return
+     * {@code false}. These include image heap objects (including auxiliary images), metaspace
+     * objects, and, with Epsilon GC, all objects.
+     *
+     * Consequently, {@code false} does not imply that the object can move or that no code relies on
+     * its address remaining stable.
+     */
     public boolean isPinnedSlow(Object object) {
         PinnedObjectImpl pin = pinnedObjects.get();
         while (pin != null) {

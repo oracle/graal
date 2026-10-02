@@ -29,14 +29,18 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.FillerObjectUtil;
 import com.oracle.svm.core.genscavenge.HeapChunk;
+import com.oracle.svm.core.genscavenge.SweepAndPromotePinnedChunkVisitor;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * Overwrites dead objects with filler objects so that heap walks or scans that use card tables
  * cannot encounter them (and their broken references).
+ *
+ * This visitor is used only for compacting full collections. In young collections or copying full
+ * collections, {@link SweepAndPromotePinnedChunkVisitor} is used instead.
  */
 public final class SweepingVisitor implements ObjectMoveInfo.Visitor {
 

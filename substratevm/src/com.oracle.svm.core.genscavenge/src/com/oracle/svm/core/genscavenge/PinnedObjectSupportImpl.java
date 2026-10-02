@@ -28,8 +28,11 @@ import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -38,6 +41,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.internal.misc.Unsafe;
 
 /** Support for pinning objects to a memory address with {@link PinnedObject}. */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
@@ -58,6 +62,14 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
         modifyObjectPinCount(object, -1);
     }
 
+    @Override
+    public boolean isPinnedSlow(Object object) {
+        if (ObjectHeaderImpl.isAlignedObject(object) && AlignedHeapChunk.getEnclosingChunk(object).getAllPinned()) {
+            return true;
+        }
+        return super.isPinnedSlow(object);
+    }
+
     @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     private static void modifyObjectPinCount(Object object, int delta) {
         assert !VMOperation.isGCInProgress() : "pinning must not change during collections";
@@ -66,13 +78,41 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
         if (!ObjectHeaderImpl.isAlignedObject(object)) {
             return;
         }
+        AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(object);
+        if (chunk.getAllPinned()) {
+            return;
+        }
 
-        Pointer pinCount = AlignedHeapChunk.getEnclosingChunk(object).addressOfObjectPinCount();
+        Pointer pinCount = chunk.addressOfObjectPinCount();
         int oldValue;
         do {
             oldValue = pinCount.readInt(0);
         } while (!pinCount.logicCompareAndSwapInt(0, oldValue, oldValue + delta, NamedLocationIdentity.OFF_HEAP_LOCATION));
 
         assert oldValue >= 0 && oldValue < Integer.MAX_VALUE && oldValue + delta >= 0;
+    }
+
+    @Override
+    public boolean supportsPinnedAllocation() {
+        return true;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T allocateInstance(Class<T> clazz) throws InstantiationException {
+        if (SubstrateOptions.useEpsilonGC()) {
+            return (T) Unsafe.getUnsafe().allocateInstance(clazz);
+        }
+        DynamicHub hub = DynamicHub.fromClass(clazz);
+        return (T) YoungGeneration.getPinnedAllocation().allocateInstance(hub);
+    }
+
+    @Override
+    public Pointer addressOfPinnedObject(Object object) {
+        if (!SubstrateOptions.PinnedObjectAddressing.getValue()) {
+            throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
+        }
+        assert SubstrateOptions.useEpsilonGC() || AlignedHeapChunk.getEnclosingChunk(object).getAllPinned() : "must use only on objects from pinned allocation";
+        return Word.objectToUntrackedPointer(object);
     }
 }
