@@ -34,16 +34,12 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
-import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -56,23 +52,27 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
-import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
-import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
+import com.oracle.svm.hosted.imagelayer.SnapshotWriters;
+import com.oracle.svm.hosted.jni.JNILibraryLinkagePlan;
 import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Kind;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Severity;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredPersistFlags;
@@ -107,10 +107,23 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     public static class Options {
         @Option(help = "Create a `jvm` shim for native libraries that link against that library.")//
-        public static final HostedOptionKey<Boolean> CreateJvmShim = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> CreateJvmShim = new HostedOptionKey<>(false, key -> {
+            if (key.getValue() && SubstrateOptions.StaticExecutable.getValue()) {
+                throw UserError.invalidOptionValue(key, key.getValue(),
+                                "A JVM shim is a dynamic library and cannot be created when building a static executable.");
+            }
+        });
+
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
+        @Option(help = "Configure JNI library linkage as a comma-separated list of `<library>:{static|dynamic}` entries. Later entries override earlier entries.")//
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> JNILibraryLinkage = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(defaultJNILibraryLinkage()));
+
+        private static String[] defaultJNILibraryLinkage() {
+            return PlatformNativeLibrarySupport.defaultBuiltinLibraries.stream().map(library -> library + ":static").toArray(String[]::new);
+        }
     }
 
-    private NativeLibraries nativeLibraries = null;
     private JNIRegistrationSupportSingleton jniRegistrationSupportSingleton = null;
     private boolean isSunMSCAPIProviderReachable = false;
     private final List<Consumer<String>> libraryRegistrationHandlers = new CopyOnWriteArrayList<>();
@@ -133,8 +146,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
-        registerLibrary("java");
+        registerJNILibrary("java");
     }
 
     @Override
@@ -144,9 +156,12 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             var optSunMSCAPIClass = optionalType(access, "sun.security.mscapi.SunMSCAPI").map(AnalysisType.class::cast);
             isSunMSCAPIProviderReachable = optSunMSCAPIClass.isPresent() && afterAnalysisAccessImpl.isReachable(optSunMSCAPIClass.get());
         }
+    }
+
+    public void markPreviousLayerLibrariesReachable() {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             for (String library : jniRegistrationSupportSingleton.prevLayerRegisteredLibraries) {
-                addLibrary(library);
+                JNILibraryLinkagePlan.singleton().markReachable(library);
             }
         }
     }
@@ -168,7 +183,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                  * String arguments.
                  */
                 if (libnameNode.isConstant()) {
-                    registerLibrary(providers.getSnippetReflection().asObject(String.class, libnameNode.asJavaConstant()));
+                    registerJNILibrary(providers.getSnippetReflection().asObject(String.class, libnameNode.asJavaConstant()));
                 }
                 /* We never want to do any actual intrinsification, process the original invoke. */
                 return false;
@@ -176,13 +191,13 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         });
     }
 
-    void registerLibrary(String libname) {
+    public void registerJNILibrary(String libname) {
         if (libname != null && !jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.contains(libname)) {
             jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.add(libname);
             for (Consumer<String> handler : libraryRegistrationHandlers) {
                 handler.accept(libname);
             }
-            addLibrary(libname);
+            JNILibraryLinkagePlan.singleton().markReachable(libname);
         }
     }
 
@@ -190,16 +205,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         libraryRegistrationHandlers.add(handler);
         for (String libname : jniRegistrationSupportSingleton.currentLayerRegisteredLibraries) {
             handler.accept(libname);
-        }
-    }
-
-    private void addLibrary(String libname) {
-        /*
-         * If a library is in our list of static standard libraries, add the library to the linker
-         * command.
-         */
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
-            nativeLibraries.addStaticJniLibrary(libname);
         }
     }
 
@@ -219,31 +224,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         return isAnyLayerRegisteredLibrary(libname);
     }
 
-    /** Adds exports that `jvm` shim should re-export. */
-    void addJvmShimExports(String... exports) {
-        addShimExports("jvm", exports);
-    }
-
-    /** Adds exports that `java` shim should re-export. */
-    void addJavaShimExports(String... exports) {
-        addShimExports("java", exports);
-    }
-
-    private final SortedMap<String, SortedSet<String>> shimExports = new TreeMap<>();
-
-    private void addShimExports(String shimName, String... exports) {
-        assert exports != null && exports.length > 0;
-        shimExports.computeIfAbsent(shimName, _ -> new TreeSet<>()).addAll(List.of(exports));
-    }
-
-    /** Returns symbols that are re-exported by shim libraries. */
-    public static Stream<String> getShimLibrarySymbols() {
-        if (ImageSingletons.contains(JNIRegistrationSupport.class)) {
-            return singleton().getShimExports();
-        }
-        return Stream.empty();
-    }
-
     private String imageName;
 
     @Override
@@ -252,17 +232,21 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             return; /* Not supported. */
         }
 
-        if (shimExports.containsKey("jvm") || Options.CreateJvmShim.getValue()) {
-            /* When making a `jvm` shim, also re-export the JNI functions that VM exports. */
-            addJvmShimExports("JNI_CreateJavaVM", "JNI_GetCreatedJavaVMs", "JNI_GetDefaultJavaVMInitArgs");
-        }
-
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             if (isDarwin()) {
                 linkerInvocation.addRPath("@loader_path");
             }
+            if (isWindows() && JNILibraryLinkagePlan.singleton().hasRequiredShim("java")) {
+                /*
+                 * Add Windows libraries that are pulled in as a side effect of exporting the
+                 * `getEncodingFromLangID` and `getJavaIDFromLangID` symbols.
+                 */
+                linkerInvocation.addNativeLinkerOption("shell32.lib");
+                linkerInvocation.addNativeLinkerOption("ole32.lib");
+            }
+            SortedSet<String> imageSymbols = new TreeSet<>(linkerInvocation.getImageSymbols(true));
             /* Make sure the native image contains all symbols necessary for shim libraries. */
-            getShimExports().map(this::preserveShimExport)
+            JNILibraryLinkagePlan.getShimLibrarySymbols().map(symbol -> preserveShimExport(symbol, imageSymbols.contains(symbol)))
                             .forEach(linkerInvocation::addNativeLinkerOption);
             return linkerInvocation;
         });
@@ -270,20 +254,21 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
     }
 
-    private String preserveShimExport(String symbol) {
+    private static String preserveShimExport(String symbol, boolean imageDefinesSymbol) {
         if (isWindows()) {
+            if (!imageDefinesSymbol && symbol.equals("JVM_FindClassFromBootLoader")) {
+                /*
+                 * MSVC's /alternatename fallback does not define an exportable symbol. Export the
+                 * fallback under the public name when Native Image omits its optional entry point.
+                 */
+                return "/export:" + symbol + "=" + symbol + "_default";
+            }
             return "/export:" + symbol;
         } else if (isDarwin()) {
             return "-Wl,-u,_" + symbol;
         } else {
             return "-Wl,-u," + symbol;
         }
-    }
-
-    private Stream<String> getShimExports() {
-        return shimExports.values().stream()
-                        .flatMap(Collection::stream)
-                        .distinct();
     }
 
     private AfterImageWriteAccessImpl accessImpl;
@@ -303,7 +288,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
              * JDK libraries can depend on `libjvm` and `libjava`, so to satisfy their dependencies
              * we use shim libraries to re-export the actual functions from the native image itself.
              */
-            makeShimLibraries();
+            createPlannedShimLibraries();
         } finally {
             accessImpl = null;
         }
@@ -375,10 +360,13 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         if (jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname)) {
             return false;
         }
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary(libname)) {
+        if (JNILibraryLinkagePlan.singleton().isReachableDynamicLibrary(libname)) {
+            return true;
+        }
+        if (NativeLibraries.singleton().getJniStaticLibraries().contains(libname)) {
             return false;
         }
-        if (shimExports.containsKey(libname)) {
+        if (JNILibraryLinkagePlan.singleton().hasRequiredShim(libname)) {
             return false;
         }
         return !libname.equals("sunmscapi") || isSunMSCAPIProviderReachable;
@@ -386,6 +374,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     private void copyJDKLibrary(Path jdkLibDir, String library) throws IOException {
         Path libraryPath = accessImpl.getImagePath().resolveSibling(library);
+        if (libraryPath.equals(accessImpl.getImagePath())) {
+            throw UserError.abort("Cannot copy dynamically linked JDK library '%s' because its destination is the native image itself. " +
+                            "Choose a different image name or link the JDK library statically.", library);
+        }
         Files.copy(jdkLibDir.resolve(library), libraryPath, REPLACE_EXISTING);
         BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY, libraryPath);
     }
@@ -446,12 +438,12 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     /** Makes shim libraries that are necessary to satisfy dependencies of JDK libraries. */
-    private void makeShimLibraries() {
-        for (String shimName : shimExports.keySet()) {
+    private void createPlannedShimLibraries() {
+        for (String shimName : JNILibraryLinkagePlan.singleton().getRequiredShimNames()) {
             DebugContext debug = accessImpl.getDebugContext();
             try (Scope _ = debug.scope(shimName + "Shim")) {
                 if (debug.isLogEnabled(DebugContext.INFO_LEVEL)) {
-                    debug.log("exports: %s", String.join(", ", shimExports.get(shimName)));
+                    debug.log("exports: %s", String.join(", ", JNILibraryLinkagePlan.singleton().getShimExports(shimName)));
                 }
                 makeShimLibrary(shimName);
             }
@@ -481,7 +473,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             /* First add linker options ... */
             linkerCommand.addAll(List.of("/link", "/dll", "/implib:" + shimName + ".lib"));
             /* ... and then the exports that were added for re-export. */
-            for (String export : shimExports.get(shimName)) {
+            for (String export : JNILibraryLinkagePlan.singleton().getShimExports(shimName)) {
                 linkerCommand.add("/export:" + export);
             }
         } else if (isDarwin()) {
@@ -525,7 +517,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         source.append("#include <stdio.h>\n");
         source.append("#include <stdlib.h>\n\n");
         source.append("static void *image_handle;\n");
-        for (String export : shimExports.get(shimName)) {
+        for (String export : JNILibraryLinkagePlan.singleton().getShimExports(shimName)) {
             source.append("static void *").append(targetPointerName(export)).append(";\n");
         }
         source.append("\n");
@@ -553,11 +545,11 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         source.append("    return result;\n");
         source.append("}\n\n");
         source.append("__attribute__((constructor)) static void initialize_shim(void) {\n");
-        for (String export : shimExports.get(shimName)) {
+        for (String export : JNILibraryLinkagePlan.singleton().getShimExports(shimName)) {
             source.append("    ").append(targetPointerName(export)).append(" = resolve_symbol(").append(cStringLiteral(export)).append(");\n");
         }
         source.append("}\n\n");
-        for (String export : shimExports.get(shimName)) {
+        for (String export : JNILibraryLinkagePlan.singleton().getShimExports(shimName)) {
             String targetPointer = targetPointerName(export);
             source.append("__attribute__((naked)) void ").append(export).append("(void) {\n");
             source.append("#if defined(__aarch64__)\n");

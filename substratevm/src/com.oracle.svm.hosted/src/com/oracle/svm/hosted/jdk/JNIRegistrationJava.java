@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
@@ -124,10 +123,6 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
         JVMCIRuntimeJNIAccess.register(fields(a, "java.lang.String", "coder", "value"));
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
-        if (isWindows()) {
-            /* Resolve calls to sun_security_provider_NativeSeedGenerator* as built-in. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_provider_NativeSeedGenerator");
-        }
         if (isDarwin()) {
             List<ResolvedJavaMethod> darwinMethods = Arrays.asList(
                             method(a, "apple.security.KeychainStore", "_scanKeychain", String.class), // JDK-8320362

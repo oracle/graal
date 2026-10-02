@@ -134,7 +134,6 @@ public final class NativeLibraries {
     private final List<String> libraries;
     private final DependencyGraph dependencyGraph;
     private final List<String> jniStaticLibraries;
-    private final Set<String> jniStaticLibrariesAndDependencies;
     private final LinkedHashSet<String> libraryPaths;
     private final Map<Path, StaticLibraryManifest> staticLibraryManifests;
 
@@ -283,7 +282,6 @@ public final class NativeLibraries {
         libraries = Collections.synchronizedList(new ArrayList<>());
         dependencyGraph = new DependencyGraph();
         jniStaticLibraries = Collections.synchronizedList(new ArrayList<>());
-        jniStaticLibrariesAndDependencies = ConcurrentHashMap.newKeySet();
 
         libraryPaths = initCLibraryPath();
         staticLibraryManifests = new ConcurrentHashMap<>();
@@ -352,7 +350,7 @@ public final class NativeLibraries {
         try {
             Path jdkLibDir = getPlatformDependentJDKStaticLibraryPath();
 
-            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltinLibraries);
+            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.requiredStaticJDKLibraries);
             Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(getStaticLibraryName(s)));
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;
@@ -366,7 +364,8 @@ public final class NativeLibraries {
                 for (Path clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
                     Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(clibPathComponent.resolve(getStaticLibraryName(s)));
                     if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
-                        return libraryPaths;
+                        staticLibsDir = clibPathComponent;
+                        break;
                     }
                 }
             }
@@ -485,18 +484,17 @@ public final class NativeLibraries {
         }
     }
 
-    public void addStaticJniLibrary(String library, String... dependencies) {
+    public void registerStaticJniLibrary(String library, List<String> dependencies) {
         jniStaticLibraries.add(library);
-        List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
-        /* "jvm" is a basic dependence for static JNI libs */
-        allDeps.add("jvm");
-        if (library.equals("nio")) {
-            /* "nio" implicitly depends on "net" */
-            allDeps.add("net");
+        dependencyGraph.add(library, dependencies);
+    }
+
+    public List<String> getStaticLibraryDependencies(String library) {
+        Path libraryPath = getStaticLibraryPath(allStaticLibs, library);
+        if (libraryPath != null) {
+            return getStaticLibraryManifest(libraryPath).dependencies();
         }
-        jniStaticLibrariesAndDependencies.add(library);
-        jniStaticLibrariesAndDependencies.addAll(allDeps);
-        dependencyGraph.add(library, allDeps);
+        return List.of();
     }
 
     public void addDynamicNonJniLibrary(String library) {
@@ -512,7 +510,6 @@ public final class NativeLibraries {
     }
 
     public Collection<Path> getStaticLibraries() {
-        Map<Path, Path> allStaticLibs = getAllStaticLibs();
         List<Path> staticLibs = new ArrayList<>();
         List<String> sortedList = dependencyGraph.sort();
 
@@ -531,7 +528,7 @@ public final class NativeLibraries {
     }
 
     public List<String> getStaticLibrarySymbols(String staticLibraryName) {
-        Path libraryPath = getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
+        Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
         if (libraryPath == null) {
             return List.of();
         }
@@ -790,9 +787,5 @@ public final class NativeLibraries {
 
     public List<String> getJniStaticLibraries() {
         return jniStaticLibraries;
-    }
-
-    public Collection<String> getJniStaticLibrariesAndDependencies() {
-        return jniStaticLibrariesAndDependencies;
     }
 }

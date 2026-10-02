@@ -77,7 +77,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void preregisterUninitializedBuiltinLibrary(String name) {
+    public void registerUninitializedBuiltinLibrary(String name) {
         knownLibraries.add(PlatformNativeLibrarySupport.singleton().createLibrary(name, true));
     }
 
@@ -174,8 +174,11 @@ public final class NativeLibrarySupport extends NativeLibraries {
         }
     }
 
-    public void registerInitializedBuiltinLibrary(String name) {
-        boolean success = addLibrary(true, name, false);
-        assert success;
+    /**
+     * Records a process-wide initialized library in this isolate without invoking its initialization
+     * function again. The library may be built into the image or dynamically linked.
+     */
+    public void registerInitializedLibrary(String name) {
+        loadLibraryRelative(name, false);
     }
 }

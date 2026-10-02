@@ -38,17 +38,17 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSyslimits;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -60,11 +60,6 @@ class PosixNativeLibraryFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         PosixNativeLibrarySupport.initialize();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 
@@ -81,7 +76,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     }
 
     @Override
-    public boolean initializeBuiltinLibraries() {
+    public boolean initializeJNILibraries() {
         if (Isolates.isCurrentFirst()) { // raise process fd limit to hard max if possible
             Resource.rlimit rlp = UnsafeStackValue.get(Resource.rlimit.class);
             if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) == 0) {
@@ -154,7 +149,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
              */
             System.loadLibrary("net");
         } else {
-            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
+            NativeLibrarySupport.singleton().registerInitializedLibrary("net");
         }
     }
 

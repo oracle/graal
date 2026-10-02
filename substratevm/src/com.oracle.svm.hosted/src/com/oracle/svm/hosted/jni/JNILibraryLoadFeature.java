@@ -49,6 +49,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
@@ -80,15 +81,39 @@ public class JNILibraryLoadFeature implements Feature {
         return ImageSingletons.lookup(JNILibraryLoadFeature.class);
     }
 
+    private static boolean shouldReferenceBuiltinOnLoad(String libName) {
+        if (Platform.includedIn(Platform.WINDOWS.class) && libName.equals("extnet")) {
+            /*
+             * The Windows extnet archive has no OnLoad function. Class-loader-aware images
+             * generate a no-op implementation so that the JDK can recognize extnet as a
+             * built-in library. Without that generated symbol table, no definition exists and
+             * creating a C-global reference would cause an unresolved symbol at link time.
+             */
+            return ClassRegistries.respectClassLoader();
+        }
+        /*
+         * Native Image links the JNI entry points it needs from management_ext directly, without
+         * executing the JDK's System.loadLibrary path. Its OnLoad function initializes HotSpot's
+         * JMM interface through JVM_GetManagement, which Native Image does not implement (GR-80030).
+         * Avoid referencing that function as it won't be called anyway.
+         */
+        return !libName.equals("management_ext");
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
+        NativeLibraries nativeLibraries = NativeLibraries.singleton();
+        JNILibraryLinkagePlan linkagePlan = JNILibraryLinkagePlan.create(nativeLibraries);
+        ImageSingletons.add(JNILibraryLinkagePlan.class, linkagePlan);
+        JNIPlatformNativeLibrarySupport.singleton().setJavaLibrarySymbols(nativeLibraries.getStaticLibrarySymbols("java"));
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries());
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(
+                        JNILibraryLinkagePlan.singleton().getReachableStaticLibraryNames(),
+                        JNILibraryLoadFeature::shouldReferenceBuiltinOnLoad);
         if (isChanged) {
             access.requireAnalysisIteration();
         }
@@ -96,6 +121,9 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        JNIRegistrationSupport.singleton().markPreviousLayerLibrariesReachable();
+        JNILibraryLinkagePlan.singleton().prepareAfterAnalysis();
+
         if (!ClassRegistries.respectClassLoader()) {
             return;
         }
@@ -132,7 +160,11 @@ public class JNILibraryLoadFeature implements Feature {
         }
 
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
+        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibraries());
+
+        if (staticBuiltinSymbols.isEmpty() && !emitNopExtnetOnLoad) {
+            return;
+        }
 
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             Path sourceFile = writeStaticBuiltinSymbolTable(linkerInvocation.getTempDirectory(), staticBuiltinSymbols);
@@ -179,7 +211,10 @@ public class JNILibraryLoadFeature implements Feature {
         String shortName = JNINativeLinkage.getShortSymbol(declaringClass, name);
         if (PlatformNativeLibrarySupport.singleton().isBuiltinNative(shortName)) {
             aotOwnedNativeSymbols.add(shortName);
-            aotOwnedNativeSymbols.add(JNINativeLinkage.getLongSymbol(declaringClass, name, descriptor));
+        }
+        String longName = JNINativeLinkage.getLongSymbol(declaringClass, name, descriptor);
+        if (PlatformNativeLibrarySupport.singleton().isBuiltinNative(longName)) {
+            aotOwnedNativeSymbols.add(longName);
         }
     }
 
@@ -187,6 +222,9 @@ public class JNILibraryLoadFeature implements Feature {
         Set<String> staticBuiltinSymbols = new LinkedHashSet<>();
         for (String libName : staticLibNames) {
             staticBuiltinSymbols.addAll(nativeLibraries.getStaticLibrarySymbols(libName));
+            if (!shouldReferenceBuiltinOnLoad(libName)) {
+                staticBuiltinSymbols.remove(JNILibraryInitializer.getOnLoadName(libName, true));
+            }
             if (Platform.includedIn(Platform.WINDOWS.class) && libName.equals("extnet")) {
                 emitNopExtnetOnLoad = true;
             }

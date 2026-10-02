@@ -539,7 +539,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
-        boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
+        boolean success = PlatformNativeLibrarySupport.singleton().initializeJNILibraries();
         if (firstIsolate) { // let other isolates (if any) initialize now
             int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
             /* Do a volatile write to ensure that other threads see a consistent state. */

@@ -56,7 +56,7 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
         return (JNIPlatformNativeLibrarySupport) PlatformNativeLibrarySupport.singleton();
     }
 
-    private Set<String> javaLibrarySymbols = Set.of();
+    private Set<String> javaLibrarySymbols;
 
     private boolean javaLibraryDynamic;
 
