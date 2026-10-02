@@ -412,7 +412,7 @@ final class UnalignedChunkRememberedSet {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Pointer getCardTableEnd(UnalignedHeader chunk) {
-        return getCardTableStart(chunk).add(getCardTableSize(getObjectStartOffset(chunk).subtract(sizeOfObjectStartOffsetField())));
+        return getCardTableStart(chunk).add(getCardTableSize(chunk));
     }
 
     @Fold
