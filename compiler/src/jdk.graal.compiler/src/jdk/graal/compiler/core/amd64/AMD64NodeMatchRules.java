@@ -788,6 +788,23 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
     }
 
+    @MatchRule("(Reinterpret (Narrow=narrow (Reinterpret value)))")
+    public ComplexMatchResult floatFromDoubleBits(ReinterpretNode root, NarrowNode narrow, ValueNode value) {
+        if (root.getStackKind() != JavaKind.Float || value.getStackKind() != JavaKind.Double ||
+                        narrow.getInputBits() != Long.SIZE || narrow.getResultBits() != Integer.SIZE) {
+            return null;
+        }
+        return builder -> {
+            LIRKind kind = getLIRGeneratorTool().getLIRKind(root.stamp(NodeView.DEFAULT));
+            AllocatableValue input = getLIRGeneratorTool().asAllocatable(operand(value));
+            // Give phi resolution a float interval, not a view of a double interval.
+            // Register allocation can coalesce this move when no transfer is needed.
+            var result = getLIRGeneratorTool().newVariable(kind);
+            getLIRGeneratorTool().emitMove(result, new CastValue(kind, input));
+            return result;
+        };
+    }
+
     @MatchRule("(Write object Reinterpret=reinterpret)")
     public ComplexMatchResult writeReinterpret(WriteNode root, ReinterpretNode reinterpret) {
         return builder -> {

@@ -902,6 +902,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
+    public Value emitPackFloat(Value inputVal) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DOUBLE));
+        getLIRGen().append(new AMD64Move.PackFloatOp(result, asAllocatable(inputVal)));
+        return result;
+    }
+
+    @Override
     public Value emitReinterpret(LIRKind to, Value inputVal) {
         ValueKind<?> from = inputVal.getValueKind();
         if (to.equals(from)) {

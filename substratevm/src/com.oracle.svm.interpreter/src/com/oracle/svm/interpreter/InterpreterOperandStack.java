@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.JavaKind;
  * of the call's frame state. Keeping the canonical top across the call avoids that intermediate
  * frame-state value.
  */
-final class InterpreterOperandStack {
+class InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static final int STATE_NORMAL = 0;
@@ -72,9 +72,9 @@ final class InterpreterOperandStack {
     static final int STATE_DEBUGGING = 2;
 
     /** First stack slot above the operand stack. */
-    private long top;
-    /** Execution mode used to select the bytecode handler template variant. */
-    private int state = STATE_NORMAL;
+    long top;
+    /** Execution mode and cached TOS occupancy used to select the bytecode handler variant. */
+    int state = STATE_NORMAL;
 
     @AlwaysInline("Keep the operand-stack overlay virtual in interpreter entry")
     InterpreterOperandStack(long top) {
@@ -88,8 +88,12 @@ final class InterpreterOperandStack {
 
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     void setState(int state) {
-        assert state >= STATE_NORMAL && state <= STATE_DEBUGGING;
+        assert isValidState(state);
         this.state = state;
+    }
+
+    boolean isValidState(int state) {
+        return state >= STATE_NORMAL && state <= STATE_DEBUGGING;
     }
 
     /**
@@ -236,11 +240,21 @@ final class InterpreterOperandStack {
             UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, appendix);
             argumentIndex--;
         }
+        popArguments(frame, argumentKinds, arguments, argumentIndex);
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    void popArguments(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex) {
         for (; GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY, argumentIndex >= 0); argumentIndex--) {
-            int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-            Object value = popBasicType(frame, basicType);
-            UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
+            popArgument(frame, argumentKinds, arguments, argumentIndex);
         }
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    final void popArgument(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex) {
+        int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        Object value = popBasicType(frame, basicType);
+        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")

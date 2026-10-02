@@ -254,6 +254,59 @@ public final class GraalDirectives {
     }
 
     /**
+     * Returns {@code value} as an {@code int} while allowing the compiler to assume that it was
+     * sign-extended to a {@code long}. The caller must guarantee that this is true.
+     */
+    public static int assumeInt(long value) {
+        return (int) value;
+    }
+
+    /**
+     * Returns the {@code float} represented by the raw bits in {@code value} while allowing the
+     * compiler to assume that those bits were sign-extended to a {@code long}. The caller must
+     * guarantee that this is true.
+     */
+    public static float assumeFloat(long value) {
+        return Float.intBitsToFloat((int) value);
+    }
+
+    /**
+     * Returns the float represented by the low 32 raw bits of {@code value}, without a numeric
+     * conversion. The upper 32 bits are ignored.
+     */
+    public static float assumeFloat(double value) {
+        return Float.intBitsToFloat((int) Double.doubleToRawLongBits(value));
+    }
+
+    /**
+     * Packs the raw bits of {@code value} into the low 32 bits of a {@code double}, without a
+     * numeric conversion. The upper 32 bits are unspecified and must not be observed. Use
+     * {@link #assumeFloat(double)} to read the packed value.
+     */
+    public static double packFloat(float value) {
+        return Double.longBitsToDouble(Float.floatToRawIntBits(value));
+    }
+
+    /**
+     * Returns a {@code long} whose value must not be observed. When used as an additional return
+     * value, the compiler may leave the corresponding fixed return register unchanged. The
+     * argument identifies the value whose dependency is being killed but does not constrain the
+     * result. In interpreted execution this method returns zero.
+     */
+    @SuppressWarnings("unused")
+    public static long arbitraryValue(long value) {
+        return 0;
+    }
+
+    /**
+     * Double-valued counterpart of {@link #arbitraryValue(long)}. The result must not be observed.
+     */
+    @SuppressWarnings("unused")
+    public static double arbitraryValue(double value) {
+        return 0;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
