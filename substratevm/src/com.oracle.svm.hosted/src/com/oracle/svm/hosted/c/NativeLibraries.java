@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.hosted.c;
 
-import com.oracle.svm.hosted.CLibraryGuestValue;
-import com.oracle.svm.hosted.CContextGuestValue;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -77,6 +76,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.CContextGuestValue;
+import com.oracle.svm.hosted.CLibraryGuestValue;
 import com.oracle.svm.hosted.GuestTypes;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -97,6 +98,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import jdk.graal.compiler.word.WordTypes;
+import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -106,6 +108,8 @@ import jdk.vm.ci.meta.annotation.Annotated;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public final class NativeLibraries {
+
+    private static final String STATIC_LIBRARY_DEPENDENCY_PREFIX = "dependency:";
 
     private final MetaAccessProvider metaAccess;
     private final WordTypes wordTypes;
@@ -132,6 +136,7 @@ public final class NativeLibraries {
     private final List<String> jniStaticLibraries;
     private final Set<String> jniStaticLibrariesAndDependencies;
     private final LinkedHashSet<String> libraryPaths;
+    private final Map<Path, StaticLibraryManifest> staticLibraryManifests;
 
     private final List<CInterfaceError> errors;
     private final ConstantReflectionProvider constantReflection;
@@ -140,6 +145,9 @@ public final class NativeLibraries {
 
     public final Path tempDirectory;
     public final DebugContext debug;
+
+    @Stable //
+    private Map<Path, Path> allStaticLibs;
 
     public static final class DependencyGraph {
 
@@ -278,6 +286,7 @@ public final class NativeLibraries {
         jniStaticLibrariesAndDependencies = ConcurrentHashMap.newKeySet();
 
         libraryPaths = initCLibraryPath();
+        staticLibraryManifests = new ConcurrentHashMap<>();
 
         this.cache = new CAnnotationProcessorCache();
     }
@@ -397,6 +406,15 @@ public final class NativeLibraries {
                 }
             }
         }
+        /*
+         * GR-79473 tracks removing libjvm.a from the base JDK's static library directory. Until
+         * then, the base JDK provides libjvm.a there. Native Image builds a
+         * replacement libjvm.a and the native-image driver puts its directory on CLibraryPath.
+         * Add those paths now, before Feature.duringSetup, so getStaticLibraryPath() finds the SVM
+         * replacement first when built-in symbols are registered instead of finding the
+         * same-named base JDK library.
+         */
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         return libraryPaths;
     }
 
@@ -517,30 +535,75 @@ public final class NativeLibraries {
         if (libraryPath == null) {
             return List.of();
         }
-        Path symbolsPath = Paths.get(libraryPath + ".symbols");
-        if (!Files.isRegularFile(symbolsPath)) {
+        return getStaticLibraryManifest(libraryPath).symbols();
+    }
+
+    public List<String> getStaticLibraryShimSymbols(String staticLibraryName) {
+        Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
+        if (libraryPath == null) {
             return List.of();
         }
-        try {
-            return Files.readAllLines(symbolsPath).stream()
-                            .map(String::trim)
-                            .filter(line -> !line.isEmpty())
-                            .toList();
+        return getStaticLibraryManifest(libraryPath).shimSymbols();
+    }
+
+    private static boolean isShimSymbol(String symbol) {
+        return !symbol.startsWith("JNI_OnLoad") && !symbol.startsWith("JNI_OnUnload") && !symbol.startsWith("Java_");
+    }
+
+    private static boolean isAdditionalWindowsShimSymbol(String symbol) {
+        /* Windows nio.dll imports this JNI entry point from java.dll. */
+        return Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && symbol.equals("Java_sun_security_provider_NativeSeedGenerator_nativeGenerateSeed");
+    }
+
+    private record StaticLibraryManifest(List<String> symbols, List<String> shimSymbols, List<String> dependencies) {
+    }
+
+    private StaticLibraryManifest getStaticLibraryManifest(Path libraryPath) {
+        return staticLibraryManifests.computeIfAbsent(libraryPath, NativeLibraries::readStaticLibraryManifest);
+    }
+
+    private static StaticLibraryManifest readStaticLibraryManifest(Path libraryPath) {
+        Path symbolsPath = Paths.get(libraryPath + ".symbols");
+        if (!Files.isRegularFile(symbolsPath)) {
+            throw UserError.abort("Missing static library symbol manifest %s for static library %s.", symbolsPath, libraryPath);
+        }
+        try (BufferedReader reader = Files.newBufferedReader(symbolsPath)) {
+            List<String> symbols = new ArrayList<>();
+            List<String> dependencies = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                VMError.guarantee(!line.isBlank(), "Malformed static library manifest: empty line in %s", symbolsPath);
+                if (!line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX)) {
+                    symbols.add(line);
+                    break;
+                }
+                String dependency = line.substring(STATIC_LIBRARY_DEPENDENCY_PREFIX.length());
+                VMError.guarantee(!dependency.isEmpty(), "Malformed static library manifest: %s", symbolsPath);
+                dependencies.add(dependency);
+            }
+            while ((line = reader.readLine()) != null) {
+                VMError.guarantee(!line.isBlank(), "Malformed static library manifest: empty line in %s", symbolsPath);
+                VMError.guarantee(!line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX), "Malformed static library manifest: dependency after symbol in %s", symbolsPath);
+                symbols.add(line);
+            }
+            List<String> shimSymbols = symbols.stream().filter(symbol -> isShimSymbol(symbol) || isAdditionalWindowsShimSymbol(symbol)).toList();
+            List<String> lookupSymbols = symbols.stream().filter(symbol -> !isShimSymbol(symbol)).toList();
+            return new StaticLibraryManifest(lookupSymbols, shimSymbols, List.copyOf(dependencies));
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
 
     public Collection<Path> getAllStaticLibNames() {
-        return getAllStaticLibs().keySet();
+        return allStaticLibs.keySet();
     }
 
     public boolean hasStaticLibrary(String library) {
-        return getStaticLibraryPath(getAllStaticLibs(), library) != null;
+        return getStaticLibraryPath(allStaticLibs, library) != null;
     }
 
-    private Map<Path, Path> getAllStaticLibs() {
-        Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
+    private void collectAllStaticLibs() {
+        allStaticLibs = new LinkedHashMap<>();
         String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
@@ -551,7 +614,6 @@ public final class NativeLibraries {
                 UserError.abort(e, "Invalid library path %s", libraryPath);
             }
         }
-        return allStaticLibs;
     }
 
     public Collection<String> getLibraryPaths() {
@@ -646,7 +708,6 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
@@ -654,6 +715,7 @@ public final class NativeLibraries {
                 new CAnnotationProcessor(this, context).process(cache);
             }
         }
+        collectAllStaticLibs();
     }
 
     public boolean isWordBase(ResolvedJavaType type) {
