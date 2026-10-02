@@ -2379,8 +2379,8 @@ public abstract class DynamicObject implements TruffleObject {
         @SuppressWarnings("unused")
         @Specialization(guards = {
                         "shape == oldShape",
-                        "keysMatch(keys, cachedKeys)",
-                        "flagsMatch(flags, cachedFlags)", "andFlags == cachedAnd", "orFlags == cachedOr",
+                        "keysAndFlagsMatch(keys, cachedKeys, flags, cachedFlags)",
+                        "andFlags == cachedAnd", "orFlags == cachedOr",
                         "newShape != null"
         }, assumptions = "oldShapeValid", limit = "SHAPE_CACHE_LIMIT")
         static void doCached(DynamicObject receiver, Object[] keys, int[] flags, int andFlags, int orFlags,
@@ -2465,28 +2465,22 @@ public abstract class DynamicObject implements TruffleObject {
         }
 
         @ExplodeLoop
-        static boolean keysMatch(Object[] keys, Object[] cachedKeys) {
+        static boolean keysAndFlagsMatch(Object[] keys, Object[] cachedKeys, int[] flags, int[] cachedFlags) {
             if (keys.length != cachedKeys.length) {
                 return false;
             }
+            if (flags == null || cachedFlags == null) {
+                if (flags != cachedFlags) {
+                    return false;
+                }
+            } else if (flags.length != cachedFlags.length) {
+                return false;
+            }
+            CompilerAsserts.partialEvaluationConstant(cachedKeys.length);
             for (int i = 0; i < cachedKeys.length; i++) {
                 if (keys[i] != cachedKeys[i]) {
                     return false;
-                }
-            }
-            return true;
-        }
-
-        @ExplodeLoop
-        static boolean flagsMatch(int[] flags, int[] cachedFlags) {
-            if (flags == null || cachedFlags == null) {
-                return flags == cachedFlags;
-            }
-            if (flags.length != cachedFlags.length) {
-                return false;
-            }
-            for (int i = 0; i < cachedFlags.length; i++) {
-                if (flags[i] != cachedFlags[i]) {
+                } else if (cachedFlags != null && flags[i] != cachedFlags[i]) {
                     return false;
                 }
             }
