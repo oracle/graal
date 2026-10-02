@@ -144,10 +144,86 @@ public class ConstantsBufferTest {
     }
 
     @Test
-    public void addRejectsNull() {
+    public void addNullConstantSharesOneSlot() {
         ConstantsBuffer b = new ConstantsBuffer();
-        assertThrows(NullPointerException.class, () -> b.add(null));
-        assertEquals(0, b.materialize().length);
+        int i1 = b.add(null);
+        int i2 = b.add(null);
+        assertEquals(i1, i2);
+        assertArrayEquals(new Object[]{null}, b.materialize());
+        b.clear();
+    }
+
+    @Test
+    public void addNullConstantDoesNotAliasReservedSlots() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        int reserved = b.addNull();
+        int shared = b.add(null);
+        int reserved2 = b.addNull();
+        assertEquals(shared, b.add(null));
+        assertNotEquals(reserved, shared);
+        assertNotEquals(reserved2, shared);
+        assertNotEquals(reserved, reserved2);
+        assertArrayEquals(new Object[]{null, null, null}, b.materialize());
+        b.clear();
+    }
+
+    @Test
+    public void addNullConstantSurvivesHashMigration() {
+        for (int prefill : new int[]{0, 7, 16}) {
+            ConstantsBuffer b = new ConstantsBuffer();
+            for (int i = 0; i < prefill; i++) {
+                b.add(i);
+            }
+            int shared = b.add(null);
+            for (int i = 0; i < prefill; i++) {
+                assertEquals(i, b.add(i));
+            }
+            assertEquals(shared, b.add(null));
+            int reserved = b.addNull();
+            assertNotEquals(shared, reserved);
+            assertEquals(shared, b.add(null));
+            assertEquals(prefill + 2, b.materialize().length);
+            b.clear();
+        }
+    }
+
+    @Test
+    public void sharedNullAtThresholdStillDeduplicates() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        IntStream.range(0, 7).forEach(i -> b.add(i));
+        int shared = b.add(null);
+        assertEquals(7, shared);
+        assertEquals(3, b.add(3));
+        assertEquals(shared, b.add(null));
+        assertEquals(8, b.materialize().length);
+        b.clear();
+    }
+
+    @Test
+    public void addNullConstantResetsAfterMaterialize() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        assertEquals(0, b.add(null));
+        assertArrayEquals(new Object[]{null}, b.materialize());
+
+        assertEquals(0, b.add("Y"));
+        int shared = b.add(null);
+        assertNotEquals(0, shared);
+        assertEquals(shared, b.add(null));
+        assertArrayEquals(new Object[]{"Y", null}, b.materialize());
+        b.clear();
+    }
+
+    @Test
+    public void sharedNullAfterClear() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        IntStream.range(0, 600).forEach(b::add);
+        assertEquals(600, b.add(null));
+        assertEquals(600, b.add(null));
+        b.materialize();
+        b.clear();
+        assertEquals(0, b.add(null));
+        assertEquals(0, b.add(null));
+        assertArrayEquals(new Object[]{null}, b.materialize());
         b.clear();
     }
 
