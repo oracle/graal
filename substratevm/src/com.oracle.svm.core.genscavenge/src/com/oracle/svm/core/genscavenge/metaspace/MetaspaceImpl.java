@@ -152,11 +152,6 @@ public class MetaspaceImpl extends AbstractMetaspace {
         return HeapVerifier.verifyRememberedSet(space);
     }
 
-    @Uninterruptible(reason = "Tear-down in progress.")
-    public void tearDown() {
-        space.tearDown();
-    }
-
     @Override
     protected void printMetaspaceInfo(Log log) {
         logUsage(log);
