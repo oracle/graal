@@ -158,6 +158,7 @@ innr public abstract static PutConstantNode
 innr public abstract static PutNode
 innr public abstract static RemoveKeyNode
 innr public abstract static ResetShapeNode
+innr public abstract static SetAllPropertyFlagsNode
 innr public abstract static SetDynamicTypeNode
 innr public abstract static SetPropertyFlagsNode
 innr public abstract static SetShapeFlagsNode
@@ -306,6 +307,17 @@ meth public static com.oracle.truffle.api.object.DynamicObject$ResetShapeNode cr
 meth public static com.oracle.truffle.api.object.DynamicObject$ResetShapeNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
+CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$SetAllPropertyFlagsNode
+ outer com.oracle.truffle.api.object.DynamicObject
+meth public final void execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],int)
+meth public final void execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],int[])
+meth public final void executeAdd(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],int)
+meth public final void executeRemove(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],int)
+meth public final void executeRemoveAndAdd(com.oracle.truffle.api.object.DynamicObject,java.lang.Object[],int,int)
+meth public static com.oracle.truffle.api.object.DynamicObject$SetAllPropertyFlagsNode create()
+meth public static com.oracle.truffle.api.object.DynamicObject$SetAllPropertyFlagsNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
 CLSS public abstract static com.oracle.truffle.api.object.DynamicObject$SetDynamicTypeNode
  outer com.oracle.truffle.api.object.DynamicObject
 meth public abstract boolean execute(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
@@ -343,7 +355,7 @@ supr com.oracle.truffle.api.nodes.Node
 CLSS public final com.oracle.truffle.api.object.DynamicObjectFactory
 cons public init()
 supr java.lang.Object
-hcls ContainsKeyNodeGen,CopyPropertiesNodeGen,GetDynamicTypeNodeGen,GetKeyArrayNodeGen,GetNodeGen,GetPropertyArrayNodeGen,GetPropertyFlagsNodeGen,GetPropertyNodeGen,GetShapeFlagsNodeGen,IsSharedNodeGen,MarkSharedNodeGen,PutAllNodeGen,PutConstantNodeGen,PutNodeGen,RemoveKeyNodeGen,ResetShapeNodeGen,SetDynamicTypeNodeGen,SetPropertyFlagsNodeGen,SetShapeFlagsNodeGen,UpdateShapeNodeGen
+hcls ContainsKeyNodeGen,CopyPropertiesNodeGen,GetDynamicTypeNodeGen,GetKeyArrayNodeGen,GetNodeGen,GetPropertyArrayNodeGen,GetPropertyFlagsNodeGen,GetPropertyNodeGen,GetShapeFlagsNodeGen,IsSharedNodeGen,MarkSharedNodeGen,PutAllNodeGen,PutConstantNodeGen,PutNodeGen,RemoveKeyNodeGen,ResetShapeNodeGen,SetAllPropertyFlagsNodeGen,SetDynamicTypeNodeGen,SetPropertyFlagsNodeGen,SetShapeFlagsNodeGen,UpdateShapeNodeGen
 
 CLSS public abstract com.oracle.truffle.api.object.DynamicObjectLibrary
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.1")

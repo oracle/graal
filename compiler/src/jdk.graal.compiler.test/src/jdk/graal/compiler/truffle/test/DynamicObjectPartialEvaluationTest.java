@@ -30,6 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -129,6 +130,116 @@ public class DynamicObjectPartialEvaluationTest extends PartialEvaluationTest {
 
         Assert.assertTrue("CallTarget is valid", callTarget.isValid());
         Assert.assertEquals(42, callTarget.call(args));
+    }
+
+    @Test
+    public void testBulkReplacementInvalidatesCompiledAccess() {
+        for (boolean fields : new boolean[]{false, true}) {
+            TestDynamicObject object = fields ? newInstanceWithFields() : newInstanceWithoutFields();
+            DynamicObject.PutNode.getUncached().execute(object, "first", 1);
+            DynamicObject.PutNode.getUncached().execute(object, "second", 2);
+            DynamicObject.PutNode.getUncached().execute(object, "tail", 42);
+            Object[] values = {3, 4};
+            Object[] args = {object, values};
+            OptimizedCallTarget writer = makeCallTarget(new TestBulkPutNode(), "bulkPut");
+            writer.call();
+            writer.call(args);
+            compile(writer, partialEval(writer, args));
+            Assert.assertTrue(writer.isValid());
+            Assert.assertEquals(42, writer.call(args));
+
+            OptimizedCallTarget reader = (OptimizedCallTarget) new TestDynamicObjectGetFinalRootNode(object).getCallTarget();
+            Object[] readArgs = {"first"};
+            Assert.assertEquals(3, reader.call(readArgs));
+            compile(reader, partialEval(reader, readArgs));
+            Assert.assertTrue(reader.isValid());
+            Shape oldShape = object.getShape();
+
+            Assert.assertEquals(42, writer.call(object, new Object[]{"first", "second"}));
+            Assert.assertFalse(oldShape.isValid());
+            Assert.assertEquals("first", reader.call(readArgs));
+            Assert.assertFalse(reader.isValid());
+            Assert.assertEquals("first", DynamicObject.GetNode.getUncached().execute(object, "first", null));
+            Assert.assertEquals("second", DynamicObject.GetNode.getUncached().execute(object, "second", null));
+
+            Object[] newArgs = {object, new Object[]{"again", "again"}};
+            compile(writer, partialEval(writer, newArgs));
+            Assert.assertTrue(writer.isValid());
+            Assert.assertEquals(42, writer.call(newArgs));
+        }
+    }
+
+    @Test
+    public void testPropertyAssumptionsInvalidateCompiledCode() {
+        Shape root = Shape.newBuilder().layout(TestDynamicObject.class, MethodHandles.lookup()).propertyAssumptions(true).build();
+        TestDynamicObject object = new TestDynamicObject(root);
+        DynamicObject.PutNode.getUncached().execute(object, "key", 42);
+        Assumption property = object.getShape().getPropertyAssumption("key");
+        OptimizedCallTarget reader = compilePropertyAssumption(property);
+
+        DynamicObject.SetPropertyFlagsNode.getUncached().execute(object, "key", 1);
+        Assert.assertFalse(property.isValid());
+        Assert.assertFalse(reader.isValid());
+        Assert.assertEquals(43, reader.call());
+        Assert.assertSame(Assumption.NEVER_VALID, root.getPropertyAssumption("key"));
+
+        Assumption absent = root.getPropertyAssumption("absent");
+        OptimizedCallTarget absentReader = compilePropertyAssumption(absent);
+        DynamicObject.ResetShapeNode.getUncached().execute(object, root);
+        Assert.assertFalse(absent.isValid());
+        Assert.assertFalse(absentReader.isValid());
+        Assert.assertEquals(43, absentReader.call());
+
+        Assumption fresh = root.getPropertyAssumption("key");
+        Assert.assertNotSame(property, fresh);
+        OptimizedCallTarget freshReader = compilePropertyAssumption(fresh);
+        DynamicObject.PutNode.getUncached().execute(object, "key", 43);
+        Assert.assertFalse(fresh.isValid());
+        Assert.assertFalse(freshReader.isValid());
+        Assert.assertEquals(43, freshReader.call());
+    }
+
+    private OptimizedCallTarget compilePropertyAssumption(Assumption assumption) {
+        Assert.assertTrue(assumption.isValid());
+        OptimizedCallTarget target = makeCallTarget(new TestPropertyAssumptionNode(assumption), "propertyAssumption");
+        Assert.assertEquals(42, target.call());
+        compile(target, partialEval(target, new Object[0]));
+        Assert.assertTrue(target.isValid());
+        Assert.assertEquals(42, target.call());
+        return target;
+    }
+
+    static class TestPropertyAssumptionNode extends AbstractTestNode {
+        private final Assumption assumption;
+
+        TestPropertyAssumptionNode(Assumption assumption) {
+            this.assumption = assumption;
+        }
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            return assumption.isValid() ? 42 : 43;
+        }
+    }
+
+    static class TestBulkPutNode extends AbstractTestNode {
+        @Child DynamicObject.PutAllNode putAll = DynamicObject.PutAllNode.create();
+        @Child DynamicObject.GetNode get = DynamicObject.GetNode.create();
+        @CompilerDirectives.CompilationFinal(dimensions = 1) private final Object[] keys = {"first", "second"};
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            if (frame.getArguments().length == 0) {
+                return -1;
+            }
+            DynamicObject object = (DynamicObject) frame.getArguments()[0];
+            putAll.execute(object, keys, (Object[]) frame.getArguments()[1]);
+            try {
+                return get.executeInt(object, "tail", null);
+            } catch (UnexpectedResultException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
     }
 
     private static OptimizedCallTarget makeCallTarget(AbstractTestNode testNode, String testName) {
