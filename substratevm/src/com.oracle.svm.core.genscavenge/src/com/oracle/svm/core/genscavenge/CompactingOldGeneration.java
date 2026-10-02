@@ -71,9 +71,6 @@ import com.oracle.svm.shared.util.VMError;
  * <ul>
  * <li>{@linkplain #beginPromotion Absorb all chunks of the young generation.}
  *
- * <li>{@linkplain #markPinnedObject Mark pinned objects as reachable}. These objects must remain at
- * their current address, so the chunks that contain them will be swept instead of compacted.
- *
  * <li>Scan reachable objects, starting from roots, in {@link GCImpl#scanGreyObjects} and
  * {@link #promoteAlignedObject}, which {@linkplain ObjectHeaderImpl#setMarked marks them with a
  * combination of bits} in the object header. Marked objects are {@linkplain GCImpl#mark pushed onto
@@ -166,6 +163,7 @@ final class CompactingOldGeneration extends OldGeneration {
     @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
+        assert !AlignedHeapChunk.mustSweep(originalChunk);
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
             assert originalSpace.isFromSpace();
             return ObjectPromoter.copyAlignedObject(original, originalSpace, space);
@@ -177,9 +175,7 @@ final class CompactingOldGeneration extends OldGeneration {
             return original;
         }
         Object result = original;
-        if (ObjectHeaderImpl.isIdentityHashFieldOptional() &&
-                        ObjectHeaderImpl.hasIdentityHashFromAddressInline(header) &&
-                        !originalChunk.getSweep()) {
+        if (ObjectHeaderImpl.isIdentityHashFieldOptional() && ObjectHeaderImpl.hasIdentityHashFromAddressInline(header)) {
             /*
              * This object's identity hash code is based on its current address, which we expect to
              * change during compaction, so we must add a field to store it, which increases the
@@ -204,18 +200,6 @@ final class CompactingOldGeneration extends OldGeneration {
         assert originalSpace == space;
         GCImpl.getGCImpl().mark(original);
         return original;
-    }
-
-    @Uninterruptible(reason = CORE_GC_CODE)
-    void markPinnedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
-        assert GCImpl.getGCImpl().isCompleteCollection() : "for incremental collections, must promote entire (swept) chunks";
-        assert originalSpace == space;
-        if (ObjectHeaderImpl.isMarked(obj)) {
-            assert chunk.getSweep();
-            return;
-        }
-        chunk.setSweep(true);
-        GCImpl.getGCImpl().mark(obj);
     }
 
     @Override
@@ -401,9 +385,8 @@ final class CompactingOldGeneration extends OldGeneration {
     private void compact(Timers timers) {
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            if (chunk.getSweep()) {
+            if (AlignedHeapChunk.mustSweep(chunk)) {
                 ObjectMoveInfo.visit(chunk, sweepingVisitor);
-                chunk.setSweep(false);
             } else {
                 compactingVisitor.init(chunk);
                 ObjectMoveInfo.visit(chunk, compactingVisitor);

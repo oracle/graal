@@ -251,7 +251,7 @@ final class ReferenceObjectProcessing {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean willSurviveThisCollection(Object obj) {
         if (ObjectHeaderImpl.isMarked(obj)) {
-            // Note that marking is also used in copying collections for pinned objects.
+            // Note that marking is also used in copying collections in chunks with pinned objects.
             return true;
         }
         if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {

@@ -37,7 +37,7 @@ final class Timers {
     final Timer collection = new Timer("collection");
     final Timer cleanCodeCache = new Timer("cleanCodeCache");
     final Timer referenceObjects = new Timer("referenceObjects");
-    final Timer promotePinnedObjects = new Timer("promotePinnedObjects");
+    final Timer preparePinnedObjects = new Timer("preparePinnedObjects");
     final Timer rootScan = new Timer("rootScan");
     final Timer scanGreyObjects = new Timer("scanGreyObjects");
     final Timer oldPlanning = new Timer("oldPlanning");
@@ -65,7 +65,7 @@ final class Timers {
         rootScan.reset();
         scanFromRoots.reset();
         scanFromDirtyRoots.reset();
-        promotePinnedObjects.reset();
+        preparePinnedObjects.reset();
         blackenStackRoots.reset();
         walkThreadLocals.reset();
         walkRuntimeCodeCache.reset();
@@ -100,7 +100,7 @@ final class Timers {
             logOneTimer(log, "      ", rootScan);
             logOneTimer(log, "        ", scanFromRoots);
             logOneTimer(log, "        ", scanFromDirtyRoots);
-            logOneTimer(log, "          ", promotePinnedObjects);
+            logOneTimer(log, "          ", preparePinnedObjects);
             logOneTimer(log, "          ", blackenStackRoots);
             logOneTimer(log, "          ", walkThreadLocals);
             logOneTimer(log, "          ", walkRuntimeCodeCache);

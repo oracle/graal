@@ -90,12 +90,6 @@ public final class AlignedHeapChunk {
 
         @RawFieldAddress
         Pointer addressOfObjectPinCount();
-
-        @RawField
-        boolean getSweep();
-
-        @RawField
-        void setSweep(boolean value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -104,7 +98,6 @@ public final class AlignedHeapChunk {
         assert chunkSize.equal(HeapParameters.getAlignedHeapChunkSize()) : "expecting all aligned chunks to be the same size";
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
         chunk.setObjectPinCount(0);
-        chunk.setSweep(false);
     }
 
     public static void reset(AlignedHeader chunk) {
@@ -126,6 +119,15 @@ public final class AlignedHeapChunk {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isEmpty(AlignedHeader that) {
         return HeapChunk.getTopOffset(that).equal(getObjectsStartOffset());
+    }
+
+    /**
+     * Determines whether the chunk, if collected, must be swept rather than have its live objects
+     * compacted or copied. This does not change during a garbage collection.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean mustSweep(AlignedHeader that) {
+        return that.getObjectPinCount() != 0;
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */

@@ -37,10 +37,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.shared.Uninterruptible;
 
-/**
- * In chunks that contain pinned objects, overwrites objects which have died or which have survived
- * and been copied elsewhere, and promotes the chunk.
- */
+/** In chunks with pinned objects, overwrites objects which have died and promotes the chunk. */
 public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk.Visitor {
     @Override
     @Uninterruptible(reason = CORE_GC_CODE)
@@ -48,12 +45,9 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
         Space originalSpace = HeapChunk.getSpace(chunk);
         assert originalSpace.isFromSpace();
 
-        assert !chunk.getSweep() : "must be set only here";
-        int pinCount = chunk.getObjectPinCount();
-        if (pinCount == 0) {
+        if (!AlignedHeapChunk.mustSweep(chunk)) {
             return;
         }
-        chunk.setSweep(true);
 
         /*
          * For building the chunk's remembered set, we must know whether it gets promoted from the
@@ -74,8 +68,6 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
             FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(chunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
         }
 
-        int foundPinnedObjs = 0;
-
         /* Sweep, clear mark bits, and build remembered set and first object table. */
         Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer initialTop = HeapChunk.getTopPointer(chunk);
@@ -83,12 +75,8 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
         while (p.belowThan(initialTop)) {
             Word header = Heap.getHeap().getObjectHeader().readHeaderFromPointer(p);
 
-            UnsignedWord objSize;
-            if (ObjectHeaderImpl.isForwardedHeader(header)) {
-                objSize = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObjectOriginalSizeInlineInGC(p, header);
-            } else {
-                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObjectNonNull());
-            }
+            assert !ObjectHeaderImpl.isForwardedHeader(header) : "must not move objects out of a chunk with pinned objects";
+            UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObjectNonNull());
             Pointer next = p.add(objSize);
             assert next.belowOrEqual(initialTop);
 
@@ -115,20 +103,13 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
                         RememberedSet.get().dirtyCardForAlignedObject(obj, false);
                     }
                 }
-
-                foundPinnedObjs++;
-                if (foundPinnedObjs == pinCount) {
-                    break;
-                }
             }
 
             p = next;
         }
 
-        assert foundPinnedObjs > 0;
         assert sweepStart.belowOrEqual(HeapChunk.getEndPointer(chunk));
         HeapChunk.setTopPointer(chunk, sweepStart);
-        chunk.setSweep(false);
 
         if (HeapParameters.getZapConsumedHeapChunks()) {
             HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());

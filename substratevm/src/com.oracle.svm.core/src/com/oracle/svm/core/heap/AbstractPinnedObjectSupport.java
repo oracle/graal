@@ -89,12 +89,9 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
     @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     protected abstract void unpinObject(Object object);
 
-    /**
-     * Removes all closed pinned objects. Returns the first open {@link PinnedObject} or null if
-     * there are no more open pinned objects. Note that this method may only be called by the GC.
-     */
+    /** Removes all closed pinned objects. This method may only be called by GC. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public PinnedObjectImpl removeClosedObjectsAndGetFirstOpenObject() {
+    public void removeClosedObjects() {
         VMOperation.guaranteeGCInProgress("would cause various race conditions otherwise");
         PinnedObjectImpl cur = pinnedObjects.get();
         PinnedObjectImpl lastOpen = null;
@@ -122,7 +119,6 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         }
 
         pinnedObjects.set(newHead);
-        return newHead;
     }
 
     public boolean isPinnedSlow(Object object) {
@@ -162,11 +158,6 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         public Object getObject() {
             assert open : "Should not call getObject() on a closed PinnedObject.";
             return referent;
-        }
-
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public PinnedObjectImpl getNext() {
-            return next;
         }
 
         @Override

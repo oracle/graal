@@ -68,7 +68,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        boolean sweeping = chunk.getSweep();
+        boolean sweeping = AlignedHeapChunk.mustSweep(chunk);
         Pointer initialTop = HeapChunk.getTopPointer(chunk); // top doesn't move until we are done
 
         Pointer objSeq = AlignedHeapChunk.getObjectsStart(chunk);
@@ -174,7 +174,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
             assert !allocChunk.equal(currentChunk) : "must not advance past currently processed chunk";
             allocChunk = HeapChunk.getNext(allocChunk);
             assert allocChunk.isNonNull();
-            if (allocChunk.getSweep()) {
+            if (AlignedHeapChunk.mustSweep(allocChunk)) {
                 p = getSweptChunkAllocationPointer(allocChunk);
             } else {
                 p = AlignedHeapChunk.getObjectsStart(allocChunk);
@@ -186,7 +186,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static Pointer getSweptChunkAllocationPointer(AlignedHeapChunk.AlignedHeader chunk) {
-        assert chunk.getSweep();
+        assert AlignedHeapChunk.mustSweep(chunk);
         if (GCImpl.getGCImpl().isOutOfMemoryCollection()) {
             return HeapChunk.getTopPointer(chunk);
         }

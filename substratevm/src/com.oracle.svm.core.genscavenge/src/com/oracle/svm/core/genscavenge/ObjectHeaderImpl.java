@@ -381,8 +381,8 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     /**
-     * Mark an object, either for {@link CompactingOldGeneration}, or also in copying collections to
-     * track pinned objects in aligned chunks.
+     * Mark an object, either for {@link CompactingOldGeneration}, or also in copying collections
+     * for objects in aligned chunks with pinned objects.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setMarked(Object o) {

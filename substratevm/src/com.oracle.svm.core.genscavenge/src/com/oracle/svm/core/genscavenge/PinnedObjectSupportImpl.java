@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -59,8 +60,11 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
 
     @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     private static void modifyObjectPinCount(Object object, int delta) {
-        if (!GCImpl.canMove(object)) {
-            return; // only put on the PinnedObject list to keep it alive
+        assert !VMOperation.isGCInProgress() : "pinning must not change during collections";
+
+        // If an object cannot actually move, only put it on the list to keep it alive.
+        if (!ObjectHeaderImpl.isAlignedObject(object)) {
+            return;
         }
 
         Pointer pinCount = AlignedHeapChunk.getEnclosingChunk(object).addressOfObjectPinCount();

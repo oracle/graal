@@ -96,7 +96,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
             return true;
         }
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
-            // Note that marking is also used in copying collections for pinned objects.
+            // Note that marking is also used in copying collections in chunks with pinned objects.
             return true;
         }
         Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));

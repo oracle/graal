@@ -95,7 +95,7 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
         Word header = ohi.readHeaderFromPointer(p);
 
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
-            // Note that marking is also used in copying collections for pinned objects.
+            // Note that marking is also used in copying collections in chunks with pinned objects.
             RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, p.toObjectNonNull(), objRef);
             return;
         }
