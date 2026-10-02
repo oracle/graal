@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.nativeimage.impl;
 
-import java.io.IOException;
-
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
-import org.graalvm.nativeimage.impl.VMRuntimeSupport;
+import java.util.Objects;
 
 /**
- * Used for doing VM runtime operations.
+ * Thrown when a runtime-state trim callback reports a nonzero status code.
  *
- * @since 19.0
+ * @since 25.5
  */
-public final class VMRuntime {
-    /**
-     * Initializes the VM: Runs all startup hooks that were registered during image building.
-     * Startup hooks usually depend on option values, so it is recommended (but not required) that
-     * all option values are set before calling this method.
-     * <p>
-     * Invoking this method more than once has no effect, i.e., startup hooks are only executed at
-     * the first invocation.
-     *
-     * @since 19.0
-     */
-    public static void initialize() {
-        ImageSingletons.lookup(VMRuntimeSupport.class).initialize();
+public final class RuntimeStateTrimCallbackException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    /** Identifies the callback that reported the failure. */
+    public enum Phase {
+        /** The callback invoked before runtime-state trimming. */
+        BEFORE,
+        /** The callback invoked after runtime-state trimming. */
+        AFTER
     }
 
-    /**
-     * Shuts down the VM: Runs all shutdown hooks and waits for all finalization to complete.
-     * <p>
-     * This method should only be called once. Invoking this method multiple times can have
-     * continued effects. Also, although recommended, it is not strictly required for
-     * {@link #initialize} to be called before this method.
-     * 
-     * @since 19.0
-     */
-    public static void shutdown() {
-        ImageSingletons.lookup(VMRuntimeSupport.class).shutdown();
-    }
+    private final Phase phase;
+    private final int statusCode;
 
     /**
-     * Dumps the heap to the {@code outputFile} file in the same format as the hprof heap dump.
+     * Creates an exception for a callback failure.
      *
-     * @throws UnsupportedOperationException if this operation is not supported.
-     *
-     * @since 20.1
+     * @param phase the callback that reported the failure
+     * @param statusCode the nonzero status code returned by the callback
+     * @throws IllegalArgumentException if {@code statusCode} is zero
      */
-    public static void dumpHeap(String outputFile, boolean live) throws IOException {
-        ImageSingletons.lookup(HeapDumpSupport.class).dumpHeap(outputFile, live);
+    public RuntimeStateTrimCallbackException(Phase phase, int statusCode) {
+        super(createMessage(phase, statusCode));
+        this.phase = phase;
+        this.statusCode = statusCode;
     }
 
-    private VMRuntime() {
+    /** Returns the callback that reported the failure. */
+    public Phase phase() {
+        return phase;
+    }
+
+    /** Returns the nonzero status code returned by the callback. */
+    public int statusCode() {
+        return statusCode;
+    }
+
+    private static String createMessage(Phase phase, int statusCode) {
+        Objects.requireNonNull(phase, "Phase must be non null");
+        if (statusCode == 0) {
+            throw new IllegalArgumentException("Status code must be nonzero");
+        }
+        return "The " + phase + " runtime-state trim callback failed with status code " + statusCode + ".";
     }
 }

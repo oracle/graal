@@ -74,6 +74,7 @@ import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeStateSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
@@ -601,6 +602,7 @@ public class NativeImageGenerator {
                  * Use @AutomaticallyRegisteredImageSingleton here if that support becomes available.
                  */
                 ImageSingletons.add(VMRuntimeSupport.class, runtimeSupport);
+                ImageSingletons.add(RuntimeStateSupport.class, runtimeSupport);
                 ImageSingletons.add(RuntimeSupport.class, runtimeSupport);
             }
             if (ImageLayerBuildingSupport.lastImageBuild()) {

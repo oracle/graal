@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
 
-import org.graalvm.nativeimage.RuntimeStateTrimConfig;
+import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.UnsignedWord;

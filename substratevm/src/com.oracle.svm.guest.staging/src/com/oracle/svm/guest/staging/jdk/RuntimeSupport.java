@@ -31,7 +31,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.RuntimeStateTrimConfig;
+import org.graalvm.nativeimage.impl.RuntimeStateSupport;
+import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
@@ -59,7 +60,7 @@ import com.oracle.svm.shared.util.VMError;
  * </ol>
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public final class RuntimeSupport implements VMRuntimeSupport {
+public final class RuntimeSupport implements VMRuntimeSupport, RuntimeStateSupport {
 
     @FunctionalInterface
     public interface Hook {
@@ -185,7 +186,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
      * Optimizes runtime state according to {@link RuntimeStateTrimConfig config}.
      */
     @Override
-    public void trimRuntimeState(RuntimeStateTrimConfig config) {
+    public void trim(RuntimeStateTrimConfig config) {
         GuestStagingDependencyBridge.singleton().trimRuntimeState(config);
     }
 
