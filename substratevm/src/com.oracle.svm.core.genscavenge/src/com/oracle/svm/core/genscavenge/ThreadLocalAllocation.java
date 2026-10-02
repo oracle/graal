@@ -370,7 +370,7 @@ public final class ThreadLocalAllocation {
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Pointer allocateRawMemoryOutsideTlab(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
         allocatedOutsideTlab.write(true);
-        Pointer memory = YoungGeneration.getHeapAllocation().allocateOutsideTlab(size);
+        Pointer memory = YoungGeneration.getEdenAllocation().allocateOutsideTlab(size);
         allocatedAlignedBytes.set(allocatedAlignedBytes.get().add(size));
         return memory;
     }

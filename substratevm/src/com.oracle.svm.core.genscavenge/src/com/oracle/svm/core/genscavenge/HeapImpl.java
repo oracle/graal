@@ -891,7 +891,7 @@ public final class HeapImpl extends Heap {
 
         if (allowJavaHeapAccess) {
             // Accessing chunks is safe if we prevent a GC.
-            if (YoungGeneration.getHeapAllocation().printLocationInfo(log, ptr)) {
+            if (YoungGeneration.getEdenAllocation().printLocationInfo(log, ptr)) {
                 return true;
             }
         }

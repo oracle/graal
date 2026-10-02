@@ -50,7 +50,7 @@ public final class YoungGeneration extends Generation {
     private final GreyObjectsWalker[] survivorGreyObjectsWalkers;
     private final ChunksAccounting survivorsToSpacesAccounting;
     private final int maxSurvivorSpaces;
-    private final HeapAllocation heapAllocation = new HeapAllocation();
+    private final EdenAllocation edenAllocation = new EdenAllocation();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     YoungGeneration(String name) {
@@ -70,8 +70,8 @@ public final class YoungGeneration extends Generation {
     }
 
     @Fold
-    public static HeapAllocation getHeapAllocation() {
-        return HeapImpl.getHeapImpl().getYoungGeneration().heapAllocation;
+    static EdenAllocation getEdenAllocation() {
+        return HeapImpl.getHeapImpl().getYoungGeneration().edenAllocation;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -81,7 +81,7 @@ public final class YoungGeneration extends Generation {
 
     @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
-        heapAllocation.tearDown();
+        edenAllocation.tearDown();
         TlabSupport.tearDown();
         eden.tearDown();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
@@ -110,7 +110,7 @@ public final class YoungGeneration extends Generation {
 
     public void logChunks(Log log, boolean allowUnsafe) {
         if (allowUnsafe) {
-            heapAllocation.logChunks(log, eden.getShortName());
+            edenAllocation.logChunks(log, eden.getShortName());
 
             for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 TlabSupport.logTlabChunks(log, thread, eden.getShortName());
@@ -369,7 +369,7 @@ public final class YoungGeneration extends Generation {
 
     void makeParseable() {
         TlabSupport.disableAndFlushForAllThreads();
-        heapAllocation.retireChunksToEden();
+        edenAllocation.retireChunksToEden();
     }
 
 }

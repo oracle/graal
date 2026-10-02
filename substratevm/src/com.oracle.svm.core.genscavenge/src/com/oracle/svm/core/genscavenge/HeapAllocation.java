@@ -56,7 +56,7 @@ import jdk.internal.misc.Unsafe;
  * Both chunk fields may only be written if {@link HeapAllocation#lock} is locked with
  * {@link JavaSpinLockUtils} or during a safepoint.
  */
-public final class HeapAllocation {
+abstract class HeapAllocation {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final long LOCK_OFFSET = UNSAFE.objectFieldOffset(HeapAllocation.class, "lock");
@@ -71,25 +71,18 @@ public final class HeapAllocation {
 
     /**
      * Retained allocation chunk. Used to lower the waste generated during mutation by having two
-     * active chunks if the free space in a chunk about to be retired still could fit a TLAB.
+     * active chunks if the free space in a chunk about to be retired is still sufficient (e.g., for
+     * a TLAB).
      */
     private AlignedHeader retainedChunk;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public HeapAllocation() {
-    }
-
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3+2/src/hotspot/share/gc/g1/g1CollectedHeap.cpp#L385-L397")
-    @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
-    public Pointer allocateNewTlab(UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
-        assert fitsInAlignedChunk(requestedSize) : "We do not allow TLABs larger than an aligned chunk.";
-        return attemptAllocation(minSize, requestedSize, actualSize);
+    HeapAllocation() {
     }
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.3+2/src/hotspot/share/gc/g1/g1CollectedHeap.cpp#L399-L408")
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
-    public Pointer allocateOutsideTlab(UnsignedWord size) {
-        assert fitsInAlignedChunk(size) : "Must not be called for allocation requests that require an unaligned chunk.";
+    protected Pointer attemptAllocationExact(UnsignedWord size) {
         WordPointer actualSize = StackValue.get(WordPointer.class);
         Pointer result = attemptAllocation(size, size, actualSize);
         assert actualSize.read() == size;
@@ -99,7 +92,7 @@ public final class HeapAllocation {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+15/src/hotspot/share/gc/g1/g1Allocator.inline.hpp#L52-L62")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1AllocRegion.inline.hpp#L89-L95")
     @Uninterruptible(reason = "Returns uninitialized memory and acquires a lock without a thread state transition.", callerMustBe = true)
-    private Pointer attemptAllocation(UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
+    protected Pointer attemptAllocation(UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
         Pointer result = attemptAllocationParallel(retainedChunk, minSize, requestedSize, actualSize);
         if (result.isNonNull()) {
             return result;
@@ -156,8 +149,8 @@ public final class HeapAllocation {
 
         if (currentChunk.isNonNull()) {
             /*
-             * Retain the current chunk if it fits a TLAB and has more free space than the currently
-             * retained chunk.
+             * Retain the current chunk if it still has sufficient space (e.g., for a TLAB) and has
+             * more free space than the currently retained chunk.
              */
             if (shouldRetain()) {
                 retainedChunk = currentChunk;
@@ -171,12 +164,22 @@ public final class HeapAllocation {
         assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
 
         UnsignedWord freeBytes = HeapChunk.availableObjectMemory(currentChunk);
-        UnsignedWord minTlabSize = Word.unsigned(TlabOptionCache.getMinTlabSize());
-        if (freeBytes.belowThan(minTlabSize)) {
+        if (!shouldRetain(freeBytes)) {
             return false;
         }
 
         return retainedChunk.isNull() || freeBytes.aboveOrEqual(HeapChunk.availableObjectMemory(retainedChunk));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected abstract boolean shouldRetain(UnsignedWord freeBytes);
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected UnsignedWord getCurrentChunkFreeBytes() {
+        if (currentChunk.isNull()) {
+            return Word.zero();
+        }
+        return HeapChunk.availableObjectMemory(currentChunk);
     }
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+4/src/hotspot/share/gc/g1/g1AllocRegion.cpp#L130-L154")
@@ -245,26 +248,8 @@ public final class HeapAllocation {
         }
     }
 
-    /**
-     * Return the remaining space in the current allocation chunk. Multiple threads may execute the
-     * TLAB logic concurrently, so there is no guarantee that the returned size is really available
-     * in the current allocation chunk once a thread requests the new TLAB.
-     */
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-23-ga/src/hotspot/share/gc/g1/g1Allocator.cpp#L184-L203")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public UnsignedWord availableSizeForNewTlab() {
-        UnsignedWord maxTlabSize = AlignedHeapChunk.getUsableSizeForObjects();
-        UnsignedWord minTlabSize = Word.unsigned(TlabOptionCache.getMinTlabSize());
-        if (currentChunk.isNull() || HeapChunk.availableObjectMemory(currentChunk).belowThan(minTlabSize)) {
-            /* The next TLAB allocation will most likely happen in a new chunk. */
-            return maxTlabSize;
-        }
-
-        return UnsignedUtils.min(HeapChunk.availableObjectMemory(currentChunk), maxTlabSize);
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean fitsInAlignedChunk(UnsignedWord size) {
+    protected static boolean fitsInAlignedChunk(UnsignedWord size) {
         return size.belowOrEqual(AlignedHeapChunk.getUsableSizeForObjects());
     }
 
@@ -290,10 +275,7 @@ public final class HeapAllocation {
         return false;
     }
 
-    private static void printChunkInfo(Log log, AlignedHeader chunk, boolean unusablePart) {
-        String unusable = unusablePart ? "unusable part of " : "";
-        log.string("points into ").string(unusable).string("heap allocation aligned chunk").spaces(1).zhex(chunk).spaces(1);
-    }
+    protected abstract void printChunkInfo(Log log, AlignedHeader chunk, boolean unusablePart);
 
     void logChunks(Log log, String spaceName) {
         HeapChunkLogging.logChunks(log, currentChunk, spaceName, false);
