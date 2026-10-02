@@ -112,7 +112,6 @@ import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.ArbitraryValueNode;
-import jdk.graal.compiler.nodes.calc.AssumeFloatNode;
 import jdk.graal.compiler.nodes.calc.PackFloatNode;
 import jdk.graal.compiler.nodes.calc.AssumeIntNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
@@ -2066,7 +2065,9 @@ public class StandardGraphBuilderPlugins {
         r.register(new RequiredInlineOnlyInvocationPlugin("assumeFloat", double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode value) {
-                b.addPush(JavaKind.Float, new AssumeFloatNode(value));
+                ValueNode rawBits = b.add(ReinterpretNode.create(JavaKind.Long, value, NodeView.DEFAULT));
+                ValueNode lowBits = b.add(NarrowNode.create(rawBits, Integer.SIZE, NodeView.DEFAULT));
+                b.addPush(JavaKind.Float, ReinterpretNode.create(JavaKind.Float, lowBits, NodeView.DEFAULT));
                 return true;
             }
         });

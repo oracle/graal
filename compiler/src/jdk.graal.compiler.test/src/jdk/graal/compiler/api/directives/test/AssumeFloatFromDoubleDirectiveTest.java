@@ -29,10 +29,11 @@ import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.duplication.phases.simulation.DuplicationOptions;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.calc.AssumeFloatNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.PackFloatNode;
+import jdk.graal.compiler.options.OptionValues;
 
 public class AssumeFloatFromDoubleDirectiveTest extends GraalCompilerTest {
     public static int snippet(double value) {
@@ -41,6 +42,28 @@ public class AssumeFloatFromDoubleDirectiveTest extends GraalCompilerTest {
 
     public static int pack(float value) {
         return Float.floatToRawIntBits(GraalDirectives.assumeFloat(GraalDirectives.packFloat(value)));
+    }
+
+    public static float merge(float fallback, double packed, boolean condition) {
+        float value;
+        if (condition) {
+            GraalDirectives.blackhole(1);
+            value = GraalDirectives.assumeFloat(packed);
+        } else {
+            GraalDirectives.blackhole(2);
+            value = fallback;
+        }
+        GraalDirectives.blackhole(packed);
+        return value;
+    }
+
+    @Test
+    public void testMerge() {
+        double packed = Double.longBitsToDouble(0x12345678ffc00456L);
+        // Keep the phi: duplicating the return into each branch hides cast-kind mismatches.
+        OptionValues options = new OptionValues(getInitialOptions(), DuplicationOptions.ExcludeFunctionFromDuplication, "AssumeFloatFromDoubleDirectiveTest.merge");
+        test(options, "merge", -0.0f, packed, true);
+        test(options, "merge", -0.0f, packed, false);
     }
 
     public static int spillBeforePack(float value) {
@@ -75,8 +98,7 @@ public class AssumeFloatFromDoubleDirectiveTest extends GraalCompilerTest {
 
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
-        Assert.assertEquals(1, graph.getNodes().filter(AssumeFloatNode.class).count());
-        Assert.assertEquals(graph.method().getName().equals("snippet") ? 0 : 1, graph.getNodes().filter(PackFloatNode.class).count());
+        Assert.assertEquals(graph.method().getName().equals("snippet") || graph.method().getName().equals("merge") ? 0 : 1, graph.getNodes().filter(PackFloatNode.class).count());
         Assert.assertTrue(graph.getNodes().filter(FloatConvertNode.class).isEmpty());
     }
 }
