@@ -26,14 +26,17 @@ package jdk.graal.compiler.nodes.extended;
 
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_4;
 
+import java.util.List;
 import java.util.function.IntFunction;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -154,13 +157,15 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
                     return createDynamicTableBase(tool, graph);
                 }
             }
-            tableBase = createTableBase(tool, graph, templateValues.toArray(ValueNode.EMPTY_ARRAY), activePhis, this);
+            tableBase = createTableBase(tool, graph, templateValues.toArray(ValueNode.EMPTY_ARRAY), activePhis, this, EconomicMap.create());
         }
         /* Allow the backend to fold a single table constant into the indexed address. */
         if (tableBase instanceof BytecodeHandlerTableLoadNode load) {
             JavaConstant tableConstant = load.tableConstant();
-            GraphUtil.unlinkFixedNode(load);
-            load.safeDelete();
+            if (load.hasNoUsages()) {
+                GraphUtil.unlinkFixedNode(load);
+                load.safeDelete();
+            }
             return ConstantNode.forConstant(tableConstant, tool.getMetaAccess(), graph);
         }
         /*
@@ -211,16 +216,33 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
         return table;
     }
 
+    private record TableBaseKey(List<ValueNode> values, FixedNode insertionPoint) {
+    }
+
     /**
      * Resolves template values directly to a table constant or a phi of table constants. All
      * non-constant template values at one recursion level must be phis from the same merge or
      * proxies from the same loop exit. Resolve proxies inside the loop and phi inputs path-by-path.
      */
     private ValueNode createTableBase(LoweringTool tool, StructuredGraph graph, ValueNode[] values,
-                    EconomicSet<ValueNode> activePhis, FixedNode insertionPoint) {
+                    EconomicSet<ValueNode> activePhis, FixedNode insertionPoint, EconomicMap<TableBaseKey, ValueNode> tableBases) {
         for (int i = 0; i < values.length; i++) {
             values[i] = GraphUtil.unproxifyExceptLoopProxies(values[i]);
         }
+        // State phis form a DAG, not a tree. Reuse selections at the same control-flow position;
+        // a table load from another predecessor need not dominate this use.
+        TableBaseKey key = new TableBaseKey(List.of(values), insertionPoint);
+        ValueNode existing = tableBases.get(key);
+        if (existing != null && existing.isAlive()) {
+            return existing;
+        }
+        ValueNode result = createUncachedTableBase(tool, graph, values, activePhis, insertionPoint, tableBases);
+        tableBases.put(key, result);
+        return result;
+    }
+
+    private ValueNode createUncachedTableBase(LoweringTool tool, StructuredGraph graph, ValueNode[] values,
+                    EconomicSet<ValueNode> activePhis, FixedNode insertionPoint, EconomicMap<TableBaseKey, ValueNode> tableBases) {
         // A negative result means path selection is still needed; it is not an invalid index.
         // Resolve loop-exit proxies and phis below until every path has constant template values.
         int constantTemplateIndex = computeConstantTemplateIndexOrUnresolved(values);
@@ -228,7 +250,7 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
             return createTableBaseConstant(tool, graph, constantTemplateIndex, insertionPoint);
         }
 
-        ValueNode proxiedTable = createProxiedTableBase(tool, graph, values, activePhis);
+        ValueNode proxiedTable = createProxiedTableBase(tool, graph, values, activePhis, tableBases);
         if (proxiedTable != null) {
             return proxiedTable;
         }
@@ -269,15 +291,17 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
                         pathValues[i] = phi.valueAt(path);
                     }
                 }
-                tables[path] = createTableBase(tool, graph, pathValues, activePhis, merge.phiPredecessorAt(path));
+                tables[path] = createTableBase(tool, graph, pathValues, activePhis, merge.phiPredecessorAt(path), tableBases);
                 allSame &= path == 0 || sameTable(tables[path], tables[0]);
             }
             if (allSame) {
                 JavaConstant tableConstant = ((BytecodeHandlerTableLoadNode) tables[0]).tableConstant();
                 for (ValueNode table : tables) {
                     BytecodeHandlerTableLoadNode load = (BytecodeHandlerTableLoadNode) table;
-                    GraphUtil.unlinkFixedNode(load);
-                    load.safeDelete();
+                    if (load.isAlive() && load.hasNoUsages()) {
+                        GraphUtil.unlinkFixedNode(load);
+                        load.safeDelete();
+                    }
                 }
                 return createTableBaseLoad(tool, graph, tableConstant, insertionPoint);
             }
@@ -307,7 +331,7 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
      * All non-constant values must cross the same exit; constants remain available on both sides.
      */
     private ValueNode createProxiedTableBase(LoweringTool tool, StructuredGraph graph, ValueNode[] values,
-                    EconomicSet<ValueNode> activePhis) {
+                    EconomicSet<ValueNode> activePhis, EconomicMap<TableBaseKey, ValueNode> tableBases) {
         ValueProxyNode loopProxy = null;
         for (ValueNode value : values) {
             if (value.isConstant()) {
@@ -333,7 +357,7 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
                     GraalError.guarantee(proxiedValues[i].isConstant(), "Template values must cross a loop exit together: %s", proxiedValues[i]);
                 }
             }
-            ValueNode table = createTableBase(tool, graph, proxiedValues, activePhis, loopProxy.proxyPoint());
+            ValueNode table = createTableBase(tool, graph, proxiedValues, activePhis, loopProxy.proxyPoint(), tableBases);
             return ProxyNode.forValue(table, loopProxy.proxyPoint());
         }
         return null;
@@ -346,6 +370,12 @@ public final class BytecodeHandlerDispatchAddressNode extends FixedWithNextNode 
     }
 
     private static ValueNode createTableBaseLoad(LoweringTool tool, StructuredGraph graph, JavaConstant tableConstant, FixedNode insertionPoint) {
+        // Separate dispatch nodes can select the same table at this predecessor as well.
+        for (Node previous = insertionPoint.predecessor(); previous instanceof BytecodeHandlerTableLoadNode load; previous = previous.predecessor()) {
+            if (load.tableConstant().equals(tableConstant)) {
+                return load;
+            }
+        }
         BytecodeHandlerTableLoadNode load = graph.add(new BytecodeHandlerTableLoadNode(tableConstant, StampFactory.forConstant(tableConstant, tool.getMetaAccess())));
         if (insertionPoint instanceof LoopExitNode && insertionPoint.predecessor() instanceof ControlSplitNode) {
             // A split requires a begin successor. Keep the load on this edge, inside the loop,
