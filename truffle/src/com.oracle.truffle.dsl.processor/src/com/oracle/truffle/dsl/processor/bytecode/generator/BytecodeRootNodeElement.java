@@ -844,6 +844,16 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         BytecodeRootNodeElement.startGetFrame(b, frame, getBytecodeIndexType(), false).string(BytecodeRootNodeElement.BCI_INDEX).end();
     }
 
+    void emitReturnBytecodeIndexFromFrame(CodeTreeBuilder b, String frame) {
+        b.startIf().string(frame, ".getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
+        b.lineComment("The bci index might be illegal if it was never set due to optimizations.");
+        b.statement("return -1");
+        b.end();
+        b.startReturn();
+        emitReadBytecodeIndexFromFrame(b, frame, true);
+        b.end();
+    }
+
     private CodeExecutableElement createContinueAt() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(Object.class), "continueAt");
         ex.addParameter(new CodeVariableElement(abstractBytecodeNode.asType(), "bc"));
@@ -962,13 +972,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
             b.end();
              */
-            b.startIf().string("frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
-            b.lineComment("The bci index might be illegal if it was never set due to optimizations.");
-            b.statement("return -1");
-            b.end();
-            b.startReturn();
-            emitReadBytecodeIndexFromFrame(b, "frame", true);
-            b.end();
+            emitReturnBytecodeIndexFromFrame(b, "frame");
         } else {
             b.declaration(abstractBytecodeNode.asType(), "bytecode", "null");
             b.declaration(types.Node, "prev", "node");
