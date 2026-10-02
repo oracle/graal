@@ -3165,7 +3165,6 @@ _small_jdk_modules = [
     'java.instrument',
     'java.logging',
     'java.management',
-    'java.xml',
     'jdk.graal.compiler',
     'jdk.graal.compiler.management',
     'jdk.graal.compiler.options',
@@ -3220,8 +3219,9 @@ def _smalljdktest(args):
     listed = mx.OutputCapture()
     mx.run([join(small_jdk, 'bin', mx.exe_suffix('java')), '--list-modules'], out=listed)
     modules = [line.split('@')[0] for line in listed.data.splitlines()]
-    if 'java.sql' in modules:
-        mx.abort('The small JDK contains java.sql, so it does not test that the builder can do without it.')
+    for excluded in ('java.sql', 'java.xml'):
+        if excluded in modules:
+            mx.abort('The small JDK contains ' + excluded + ', so it does not test that the builder can do without it.')
 
     build_dir = join(svmbuild_dir(), 'small-jdk-hello')
     if exists(build_dir):

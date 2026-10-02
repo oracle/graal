@@ -2872,10 +2872,10 @@ suite = {
                 "name" : "org.graalvm.nativeimage.base",
                 "requires" : [
                     # workaround for GR-47773 on the module-path which requires java.sql (like truffle) or java.xml.
-                    # java.sql is only needed if something else needs it: a small JDK without it must be able to
+                    # They are only needed if something else needs them: a small JDK without them must be able to
                     # run the image builder (see `mx smalljdktest`).
                     "static java.sql",
-                    "java.xml",
+                    "static java.xml",
                     "org.graalvm.collections",
                 ],
                 "exports" : [
