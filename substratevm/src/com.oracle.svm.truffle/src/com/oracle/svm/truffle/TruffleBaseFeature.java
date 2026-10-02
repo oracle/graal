@@ -64,6 +64,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -159,7 +160,6 @@ import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -971,13 +971,10 @@ public final class TruffleBaseFeature implements InternalFeature {
                      * explicit receiver types. Resolve only instantiated concrete receiver types.
                      */
                     initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
-                    for (var annotationValue : GuestAnnotationAccess.getAnnotationValuesByType(type, ExportLibrary.class, ExportLibrary.Repeat.class)) {
-                        ResolvedJavaType receiverType = ExportLibraryGuestValue.from(annotationValue).receiverType();
-                        if (!receiverType.equals(GuestAccess.elements().java_lang_Void)) {
-                            Class<?> explicitReceiverClass = OriginalClassProvider.getJavaClass(receiverType);
-                            if (registeredExportLibraryReceiverClasses.add(explicitReceiverClass)) {
-                                access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, explicitReceiverClass);
-                            }
+                    for (ExportLibrary export : getExportLibraryAnnotations(type)) {
+                        Class<?> receiverType = export.receiverType();
+                        if (receiverType != Void.class && registeredExportLibraryReceiverClasses.add(receiverType)) {
+                            access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverType);
                         }
                     }
                 }
@@ -986,12 +983,25 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static boolean hasExplicitReceiverExport(AnalysisType type) {
-        for (ExportLibrary export : AnnotationUtil.getAnnotationsByType(type, ExportLibrary.class, ExportLibrary.Repeat.class, ExportLibrary.Repeat::value)) {
+        for (ExportLibrary export : getExportLibraryAnnotations(type)) {
             if (export.receiverType() != Void.class) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static List<ExportLibrary> getExportLibraryAnnotations(AnalysisType type) {
+        List<ExportLibrary> result = new ArrayList<>();
+        ExportLibrary direct = type.getAnnotation(ExportLibrary.class);
+        if (direct != null) {
+            result.add(direct);
+        }
+        ExportLibrary.Repeat container = type.getAnnotation(ExportLibrary.Repeat.class);
+        if (container != null) {
+            result.addAll(List.of(container.value()));
+        }
+        return result;
     }
 
     private void registerConcreteTruffleLibraryReceiver(@SuppressWarnings("unused") DuringAnalysisAccess access, Class<?> receiverClass) {
