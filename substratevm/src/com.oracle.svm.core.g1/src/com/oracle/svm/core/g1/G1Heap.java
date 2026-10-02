@@ -51,7 +51,6 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
@@ -84,6 +83,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadsLock;
@@ -118,6 +118,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.vm.ci.meta.JavaKind;
@@ -160,10 +161,6 @@ public final class G1Heap extends Heap {
     public G1Heap(G1PerfData perfData) {
         this.objectHeader = new G1ObjectHeader();
         this.perfData = perfData;
-
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndGCInternalState());
-        DiagnosticThunkRegistry.singleton().add(new DumpRegionInformation());
-        DiagnosticThunkRegistry.singleton().add(new DumpCurrentGCThreadName());
     }
 
     @Fold
@@ -339,6 +336,31 @@ public final class G1Heap extends Heap {
     }
 
     @Fold
+    public static int getNullRegionSize() {
+        int buildTimePageSize = SubstrateOptions.getPageSize();
+        int result = Math.max(buildTimePageSize * G1Constants.cardSize(), G1HeapRegionSize.getValue());
+        assert result % G1HeapRegionSize.getValue() == 0 : "null region size must be region-aligned";
+        return result;
+    }
+
+    @Fold
+    static int getMetaspaceOffsetInAddressSpace() {
+        int result = getNullRegionSize();
+        assert result % G1HeapRegionSize.getValue() == 0 : "start of metaspace must be region-aligned";
+        return result;
+    }
+
+    @Fold
+    static int getReservedMetaspaceSize() {
+        if (!Metaspace.isSupported()) {
+            return 0;
+        }
+
+        int unalignedValue = SubstrateGCOptions.ConcealedOptions.getMaxMetaspaceSize();
+        return NumUtil.roundUp(unalignedValue, G1Options.G1HeapRegionSize.getValue());
+    }
+
+    @Fold
     @Override
     public int getHeapBaseAlignment() {
         int buildTimePageSize = SubstrateOptions.getPageSize();
@@ -354,8 +376,7 @@ public final class G1Heap extends Heap {
     @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
-        int buildTimePageSize = SubstrateOptions.getPageSize();
-        int result = Math.max(buildTimePageSize * G1Constants.cardSize(), G1HeapRegionSize.getValue());
+        int result = getNullRegionSize() + getReservedMetaspaceSize();
         assert result % getImageHeapAlignment() == 0 : "start of image heap must be aligned";
         return result;
     }
@@ -582,8 +603,8 @@ public final class G1Heap extends Heap {
         if (value.equal(heapBase)) {
             log.string("is the heap base");
             return true;
-        } else if (value.aboveThan(heapBase) && value.belowThan(imageHeapInfo.getImageHeapStart())) {
-            log.string("points into the protected memory between the heap base and the image heap");
+        } else if (value.aboveThan(heapBase) && value.belowThan(heapBase.add(getNullRegionSize()))) {
+            log.string("points into the protected null region after the heap base");
             return true;
         }
 
@@ -726,7 +747,7 @@ public final class G1Heap extends Heap {
         return true;
     }
 
-    private static final class DumpHeapSettingsAndGCInternalState extends DiagnosticThunk {
+    public static final class DumpHeapSettingsAndGCInternalState extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -751,7 +772,7 @@ public final class G1Heap extends Heap {
         }
     }
 
-    private static final class DumpRegionInformation extends DiagnosticThunk {
+    public static final class DumpRegionInformation extends DiagnosticThunk {
         private static final int MAX_REGIONS_TO_PRINT = 128 * 1024;
 
         @Override
@@ -801,7 +822,7 @@ public final class G1Heap extends Heap {
         }
     }
 
-    private static final class DumpCurrentGCThreadName extends DiagnosticThunk {
+    public static final class DumpCurrentGCThreadName extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;

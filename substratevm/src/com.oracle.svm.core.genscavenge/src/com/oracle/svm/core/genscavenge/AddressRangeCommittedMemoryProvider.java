@@ -73,7 +73,6 @@ import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -119,11 +118,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     protected static final String UNCOMMIT_FAILED_ERROR_MSG = "Failed while uncommitting memory. " +
                     "This error may occur if the operating system's memory mapping limit is too low (see vm.max_map_count on Linux). Please increase this limit and try again.";
-    private static final String OUT_OF_METASPACE_MSG = "Could not allocate a metaspace chunk because the metaspace is exhausted.\n" +
-                    "Maximum metaspace size can be adjusted at build-time with `" +
-                    SubstrateOptionsParser.commandArgument(SerialAndEpsilonGCOptions.ConcealedOptions.MaxMetaspaceSize, "<size in MB>m") + "`.";
     private static final OutOfMemoryError NODE_ALLOCATION_FAILED = new OutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
-    private static final OutOfMemoryError OUT_OF_METASPACE = new OutOfMemoryError(OUT_OF_METASPACE_MSG);
     private static final OutOfMemoryError ALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
                     "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
@@ -243,7 +238,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected void initializeMetaspaceFields() {
-        int metaspaceSize = SerialAndEpsilonGCOptions.getReservedMetaspaceSize();
+        int metaspaceSize = HeapImpl.getReservedMetaspaceSize();
         this.metaspaceBegin = KnownIntrinsics.heapBase().add(HeapImpl.getMetaspaceOffsetInAddressSpace());
         this.metaspaceTop = metaspaceBegin;
         this.metaspaceEnd = metaspaceTop.add(metaspaceSize);
@@ -280,9 +275,9 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         return collectedHeapSize;
     }
 
+    @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isInMetaspace(Pointer ptr) {
-        /* Checking against begin and end does not need any locking. */
         return ptr.aboveOrEqual(metaspaceBegin) && ptr.belowThan(metaspaceEnd);
     }
 
@@ -394,10 +389,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         }
     }
 
-    /**
-     * This method intentionally does not use {@link OutOfMemoryUtil} when reporting
-     * {@link OutOfMemoryError}s as the metaspace is not part of the Java heap.
-     */
+    /** Returns {@link Word#nullPointer()} if the allocation fails. */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private Pointer allocateMetaspaceChunk0(UnsignedWord nbytes, UnsignedWord alignment) {
         assert lock.isOwner();
@@ -410,10 +402,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
         /* Check if the allocation fits into the reserved address space. */
         if (newTop.aboveThan(metaspaceEnd)) {
-            if (SerialAndEpsilonGCOptions.MetaspaceExhaustionIsFatal.getValue()) {
-                throw VMError.shouldNotReachHere(OUT_OF_METASPACE_MSG);
-            }
-            throw OUT_OF_METASPACE;
+            return Word.nullPointer();
         }
 
         /* Try to commit the memory. */

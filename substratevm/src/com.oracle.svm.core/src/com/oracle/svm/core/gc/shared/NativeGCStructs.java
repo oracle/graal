@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,40 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.code.CodeInfoPointer;
 
 /** Data structures imported from GC-related header files. */
 @CContext(NativeGCHeaderFiles.class)
 public class NativeGCStructs {
+    @CStruct(addStructKeyword = true)
+    public interface MetaspaceStatistics extends PointerBase {
+        @CField("dynamic_hub_count")
+        UnsignedWord dynamicHubCount();
+
+        @CField("dynamic_hub_size")
+        UnsignedWord dynamicHubSize();
+
+        @CField("byte_array_count")
+        UnsignedWord byteArrayCount();
+
+        @CField("byte_array_size")
+        UnsignedWord byteArraySize();
+
+        @CField("int_array_count")
+        UnsignedWord intArrayCount();
+
+        @CField("int_array_size")
+        UnsignedWord intArraySize();
+
+        @CField("object_count")
+        UnsignedWord objectCount();
+
+        @CField("object_size")
+        UnsignedWord objectSize();
+    }
+
     /* Data structures for frames that are currently on the stack. */
 
     @CStruct(addStructKeyword = true)

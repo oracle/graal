@@ -40,12 +40,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -62,29 +60,29 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -92,10 +90,12 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 
@@ -132,13 +132,6 @@ public final class HeapImpl extends Heap {
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.oldGeneration = SerialGCOptions.useCompactingOldGen() ? new CompactingOldGeneration("OldGeneration")
                         : new CopyingOldGeneration("OldGeneration");
-        if (ImageLayerBuildingSupport.firstImageBuild()) {
-            DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndStatistics());
-            DiagnosticThunkRegistry.singleton().add(new DumpHeapUsage());
-            DiagnosticThunkRegistry.singleton().add(new DumpGCPolicy());
-            DiagnosticThunkRegistry.singleton().add(new DumpImageHeapInfo());
-            DiagnosticThunkRegistry.singleton().add(new DumpChunkInfo());
-        }
     }
 
     @Fold
@@ -495,6 +488,37 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
+    public static int getNullRegionSize() {
+        if (SubstrateOptions.UseNullRegion.getValue()) {
+            /*
+             * The image heap will be mapped in a way that there is a memory protected gap between
+             * the heap base and the start of the image heap. The gap won't need any memory in the
+             * native image file.
+             */
+            return NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
+        }
+        return 0;
+    }
+
+    @Fold
+    static int getMetaspaceOffsetInAddressSpace() {
+        int result = getNullRegionSize();
+        assert result % HeapParameters.getAlignedHeapChunkAlignment().rawValue() == 0 : "start of metaspace must be aligned";
+        return result;
+    }
+
+    @Fold
+    static int getReservedMetaspaceSize() {
+        if (!Metaspace.isSupported()) {
+            return 0;
+        }
+
+        int unalignedValue = SubstrateGCOptions.ConcealedOptions.getMaxMetaspaceSize();
+        long result = NumUtil.roundUp(unalignedValue, SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
+        return NumUtil.safeToInt(result);
+    }
+
+    @Fold
     @Override
     public int getHeapBaseAlignment() {
         return getImageHeapAlignment();
@@ -507,16 +531,9 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
-    static int getMetaspaceOffsetInAddressSpace() {
-        int result = SerialAndEpsilonGCOptions.getNullRegionSize();
-        assert result % HeapParameters.getAlignedHeapChunkAlignment().rawValue() == 0 : "start of metaspace must be aligned";
-        return result;
-    }
-
-    @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
-        int result = SerialAndEpsilonGCOptions.getNullRegionSize() + SerialAndEpsilonGCOptions.getReservedMetaspaceSize();
+        int result = getNullRegionSize() + getReservedMetaspaceSize();
         assert result % getImageHeapAlignment() == 0 : "start of image heap must be aligned";
         return result;
     }
@@ -714,8 +731,8 @@ public final class HeapImpl extends Heap {
         if (value.equal(heapBase)) {
             log.string("is the heap base");
             return true;
-        } else if (value.aboveThan(heapBase) && value.belowThan(heapBase.add(SerialAndEpsilonGCOptions.getNullRegionSize()))) {
-            log.string("points into the protected memory between the heap base and the image heap");
+        } else if (value.aboveThan(heapBase) && value.belowThan(heapBase.add(getNullRegionSize()))) {
+            log.string("points into the protected null region after the heap base");
             return true;
         }
 
@@ -913,7 +930,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static final class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
+    public static final class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -938,7 +955,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static final class DumpHeapUsage extends DiagnosticThunk {
+    public static final class DumpHeapUsage extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -953,7 +970,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static final class DumpGCPolicy extends DiagnosticThunk {
+    public static final class DumpGCPolicy extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -975,7 +992,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static final class DumpImageHeapInfo extends DiagnosticThunk {
+    public static final class DumpImageHeapInfo extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -1001,7 +1018,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static final class DumpChunkInfo extends DiagnosticThunk {
+    public static final class DumpChunkInfo extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 2;

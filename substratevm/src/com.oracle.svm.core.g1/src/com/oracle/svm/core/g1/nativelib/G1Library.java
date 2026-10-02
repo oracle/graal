@@ -37,6 +37,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport.NativeGCVMOperationData;
+import com.oracle.svm.core.gc.shared.NativeGCStructs.MetaspaceStatistics;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1HeapOptions;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1InitState;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1InternalState;
@@ -58,11 +59,11 @@ import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 @CContext(value = G1LibraryDependencies.class)
 public class G1Library {
     // GraalVM major, GraalVM minor, interface revision
-    public static final int VERSION = 250500;
+    public static final int VERSION = 250501;
 
     @CFunction(value = "svm_g1gc_parse_options", transition = Transition.NO_TRANSITION)
     public static native void parseOptions(int nativeImageVersion, int argc, CCharPointerPointer argv, CCharPointer imageBuildHostedArguments, CCharPointer imageBuildRuntimeArguments,
-                    UnsignedWord maxHeapAddressSpaceSize, UnsignedWord heapBaseAlignment, UnsignedWord nullRegionSize, UnsignedWord imageHeapSize,
+                    UnsignedWord maxHeapAddressSpaceSize, UnsignedWord heapBaseAlignment, UnsignedWord nullRegionSize, UnsignedWord metaspaceSize, UnsignedWord imageHeapSize,
                     int compressedReferenceShift, boolean isContainerized, long containerMemoryLimitInBytes, int containerActiveProcessorCount, G1HeapOptions result);
 
     @CFunction(value = "svm_g1gc_create", transition = Transition.NO_TRANSITION)
@@ -124,6 +125,17 @@ public class G1Library {
     @CFunctionOptions(transition = CFunctionOptions.Transition.TO_VM)
     @CFunction(value = "svm_g1gc_allocate_array")
     public static native Word allocateArray(Word hub, int length);
+
+    @CFunctionOptions(transition = CFunctionOptions.Transition.TO_VM)
+    @CFunction(value = "svm_g1gc_allocate_metaspace_instance")
+    public static native Word allocateMetaspaceInstance(Word hub);
+
+    @CFunctionOptions(transition = CFunctionOptions.Transition.TO_VM)
+    @CFunction(value = "svm_g1gc_allocate_metaspace_array")
+    public static native Word allocateMetaspaceArray(Word hub, int length, int allocationKind);
+
+    @CFunction(value = "svm_g1gc_is_in_allocated_metaspace", transition = Transition.NO_TRANSITION)
+    public static native boolean isInAllocatedMetaspace(Pointer address);
 
     @CFunctionOptions(transition = CFunctionOptions.Transition.TO_VM)
     @CFunction(value = "svm_g1gc_allocate_stack_chunk")
@@ -199,6 +211,9 @@ public class G1Library {
 
     @CFunction(value = "svm_g1gc_get_internal_state", transition = Transition.NO_TRANSITION)
     public static native void getGCInternalState(G1InternalState result);
+
+    @CFunction(value = "svm_g1gc_get_metaspace_statistics", transition = Transition.NO_TRANSITION)
+    public static native void getMetaspaceStatistics(MetaspaceStatistics result);
 
     @CFunction(value = "svm_g1gc_get_current_thread_name", transition = Transition.NO_TRANSITION)
     public static native CCharPointer getCurrentThreadName();

@@ -189,6 +189,14 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
     @Uninterruptible(reason = "The newly allocated object must be young or all its covered cards must be dirty.", callerMustBe = true, calleeMustBe = false)
     protected abstract Object allocatePod0(int length, DynamicHub hub);
 
+    public abstract DynamicHub allocateMetaspaceDynamicHub(int numVTableEntries);
+
+    public abstract byte[] allocateMetaspaceByteArray(int length);
+
+    public abstract int[] allocateMetaspaceIntArray(int length);
+
+    public abstract Object allocateMetaspaceInstance(DynamicHub hub);
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void checkArrayLength(int length) {
         if (probability(VERY_SLOW_PATH_PROBABILITY, length < 0)) {
