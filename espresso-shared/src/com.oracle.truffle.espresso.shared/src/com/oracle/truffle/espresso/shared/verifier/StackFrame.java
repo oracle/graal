@@ -183,8 +183,8 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
 
     void procSize(int modif) {
         size += modif;
-        verifyGuarantee(size <= stack.length, "insufficient stack size: " + stack.length);
-        verifyGuarantee(size >= 0, "invalid stack access: " + size);
+        verifyGuarantee(size <= stack.length, "insufficient stack size: %s", stack.length);
+        verifyGuarantee(size >= 0, "invalid stack access: %s", size);
     }
 
     void pushInt() {
@@ -221,13 +221,13 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
 
     Operand<R, C, M, F> popRef() {
         Operand<R, C, M, F> op = popAny();
-        verifyGuarantee(op.isReference(), "Invalid operand. Expected a reference, found: " + op);
+        verifyGuarantee(op.isReference(), "Invalid operand. Expected a reference, found: %s", op);
         return op;
     }
 
     Operand<R, C, M, F> popRef(Operand<R, C, M, F> kind) {
         Operand<R, C, M, F> op = popRef();
-        verifyGuarantee(op.compliesWith(kind, mv), "Type check error: " + op + " cannot be merged into " + kind);
+        verifyGuarantee(op.compliesWith(kind, mv), "Type check error: %s cannot be merged into %s", op, kind);
         return op;
     }
 
@@ -239,7 +239,7 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
 
     Operand<R, C, M, F> popArray() {
         Operand<R, C, M, F> op = popRef();
-        verifyGuarantee(op == mv.nullOp || op.isArrayType(), "Invalid operand. Expected array, found: " + op);
+        verifyGuarantee(op == mv.nullOp || op.isArrayType(), "Invalid operand. Expected array, found: %s", op);
         return op;
     }
 
@@ -261,14 +261,14 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
 
     Operand<R, C, M, F> popObjOrRA() {
         Operand<R, C, M, F> op = popAny();
-        verifyGuarantee(op.isReference() || op.isReturnAddress(), op + " on stack, required: Reference or ReturnAddress");
+        verifyGuarantee(op.isReference() || op.isReturnAddress(), "%s on stack, required: Reference or ReturnAddress", op);
         return op;
     }
 
     Operand<R, C, M, F> pop(Operand<R, C, M, F> k) {
         if (!k.getKind().isStackInt() || k == mv.intOp) {
             Operand<R, C, M, F> op = popAny();
-            verifyGuarantee(op.compliesWith(k, mv), op + " on stack, required: " + k);
+            verifyGuarantee(op.compliesWith(k, mv), "%s on stack, required: %s", op, k);
             return op;
         } else {
             return pop(mv.intOp);
@@ -428,7 +428,7 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
     }
 
     int mergeInto(StackFrame<R, C, M, F> stackFrame) {
-        verifyGuarantee(size == stackFrame.stackSize, "Inconsistent stack height: " + size + " != " + stackFrame.stackSize);
+        verifyGuarantee(size == stackFrame.stackSize, "Inconsistent stack height: %s != %s", size, stackFrame.stackSize);
         int secondIndex = 0;
         for (int index = 0; index < top; index++) {
             Operand<R, C, M, F> op1 = stack[index];
@@ -437,7 +437,7 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
                 return index;
             }
             if (op1.isType2() && op2.isTopOperand()) {
-                verifyGuarantee(stackFrame.stack[secondIndex++].isTopOperand(), "Inconsistent stack Map: " + op1 + " vs. " + op2 + " and " + stackFrame.stack[secondIndex - 1]);
+                verifyGuarantee(stackFrame.stack[secondIndex++].isTopOperand(), "Inconsistent stack Map: %s vs. %s and %s", op1, op2, stackFrame.stack[secondIndex - 1]);
             }
 
         }
@@ -509,7 +509,7 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
 
     Operand<R, C, M, F> load(int index, Operand<R, C, M, F> expected) {
         Operand<R, C, M, F> op = registers[index];
-        verifyGuarantee(op.compliesWith(expected, mv), "Incompatible register type. Expected: " + expected + ", found: " + op);
+        verifyGuarantee(op.compliesWith(expected, mv), "Incompatible register type. Expected: %s, found: %s", expected, op);
         if (expected.isType2()) {
             verifyGuarantee(registers[index + 1].isTopOperand(), "Loading corrupted long primitive from locals!");
         }
@@ -518,13 +518,13 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
 
     Operand<R, C, M, F> loadRef(int index) {
         Operand<R, C, M, F> op = registers[index];
-        verifyGuarantee(op.isReference(), "Incompatible register type. Expected a reference, found: " + op);
+        verifyGuarantee(op.isReference(), "Incompatible register type. Expected a reference, found: %s", op);
         return op;
     }
 
     ReturnAddressOperand<R, C, M, F> loadReturnAddress(int index) {
         Operand<R, C, M, F> op = registers[index];
-        verifyGuarantee(op.isReturnAddress(), "Incompatible register type. Expected a ReturnAddress, found: " + op);
+        verifyGuarantee(op.isReturnAddress(), "Incompatible register type. Expected a ReturnAddress, found: %s", op);
         return (ReturnAddressOperand<R, C, M, F>) op;
     }
 
