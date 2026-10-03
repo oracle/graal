@@ -122,6 +122,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     private KnownMethods hostedCallMethods;
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
+    private volatile boolean compilerInitialized;
     private volatile Boolean profilingEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -157,7 +158,11 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
-        truffleCompiler.initialize(callTarget, true);
+        /*
+         * The compiler itself (option parsing, partial evaluator, Truffle tier) is initialized
+         * lazily on the first compilation, see getTruffleCompiler. Short runs never compile, and
+         * this runs when the first call target is created, on the startup path.
+         */
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
@@ -211,10 +216,22 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         return knownMethods.anyFrameMethod;
     }
 
+    /**
+     * Returns the compiler, initializing it first if needed. Every compilation gets the compiler
+     * through this method ({@code OptimizedTruffleRuntime.compileImpl}).
+     */
     @Override
     public SubstrateTruffleCompiler getTruffleCompiler(TruffleCompilable compilable) {
         Objects.requireNonNull(compilable, "Compilable must be non null.");
         ensureInitializedAtRuntime((OptimizedCallTarget) compilable);
+        if (!SubstrateUtil.HOSTED && !compilerInitialized) {
+            synchronized (this) {
+                if (!compilerInitialized) {
+                    truffleCompiler.initialize(compilable, true);
+                    compilerInitialized = true;
+                }
+            }
+        }
         return (SubstrateTruffleCompiler) truffleCompiler;
     }
 
