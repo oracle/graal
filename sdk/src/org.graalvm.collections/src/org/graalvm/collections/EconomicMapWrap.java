@@ -43,6 +43,7 @@ package org.graalvm.collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Wraps an existing {@link Map} as an {@link EconomicMap}.
@@ -167,6 +168,12 @@ public class EconomicMapWrap<K, V> implements EconomicMap<K, V> {
     @Override
     public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
         map.replaceAll(function);
+    }
+
+    /** @since 25.1  */
+    @Override
+    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        return map.computeIfAbsent(key, mappingFunction);
     }
 
     /** @since 23.1 */

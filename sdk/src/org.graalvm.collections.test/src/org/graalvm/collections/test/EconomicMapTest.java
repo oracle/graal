@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -219,6 +220,41 @@ public class EconomicMapTest {
                 Assert.assertEquals(present ? 1 : 0, map.size());
             }
         }
+    }
+
+    /**
+     * Checks that every wrapped-map computation delegates to the backing map with the original
+     * function, including cache hits and null results. The backing map controls function invocation
+     * and whether a computed value is stored.
+     */
+    @Test
+    public void testWrapComputeIfAbsentDelegates() {
+        int[] computations = {0};
+        int[] delegations = {0};
+        Function<Integer, Integer> mappingFunction = k -> {
+            computations[0]++;
+            return k == 0 ? 42 : null;
+        };
+        Map<Integer, Integer> javaMap = new HashMap<>() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Integer computeIfAbsent(Integer key, Function<? super Integer, ? extends Integer> function) {
+                Assert.assertSame(mappingFunction, function);
+                delegations[0]++;
+                return super.computeIfAbsent(key, function);
+            }
+        };
+        EconomicMap<Integer, Integer> map = EconomicMap.wrapMap(javaMap);
+        Assert.assertEquals(Integer.valueOf(42), map.computeIfAbsent(0, mappingFunction));
+        Assert.assertEquals(Integer.valueOf(42), map.computeIfAbsent(0, mappingFunction));
+        Assert.assertNull(map.computeIfAbsent(1, mappingFunction));
+        Assert.assertNull(map.computeIfAbsent(1, mappingFunction));
+        Assert.assertEquals(4, delegations[0]);
+        Assert.assertEquals(3, computations[0]);
+        Assert.assertEquals(Integer.valueOf(42), javaMap.get(0));
+        Assert.assertFalse(javaMap.containsKey(1));
+        Assert.assertEquals(1, javaMap.size());
     }
 
     private static List<EconomicMap<Integer, Integer>> computeIfAbsentMaps() {
