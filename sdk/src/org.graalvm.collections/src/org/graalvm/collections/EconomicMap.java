@@ -41,6 +41,7 @@
 package org.graalvm.collections;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -298,15 +299,22 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     /**
      * If the specified key is not already associated with a value (or is mapped to {@code null}),
      * attempts to compute its value using the given mapping function and enters it into this map
-     * unless {@code null}.
+     * unless {@code null}. A {@code null} result does not add or replace a mapping.
      *
+     * @param key non-null key with which the specified value is to be associated
+     * @param mappingFunction the mapping function to compute a value
+     * @return the current (existing or computed) value associated with
+     *         the specified key, or null if the computed value is null
      * @since 25.1
      */
     default V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
         V value = get(key);
         if (value == null) {
             value = mappingFunction.apply(key);
-            put(key, value);
+            if (value != null) {
+                put(key, value);
+            }
         }
         return value;
     }

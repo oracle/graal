@@ -42,6 +42,7 @@ package org.graalvm.collections.test;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
@@ -140,9 +141,88 @@ public class EconomicMapTest {
 
     @Test
     public void testComputeIfAbsent() {
-        EconomicMap<Integer, Integer> map = EconomicMap.create();
-        Assert.assertEquals(Integer.valueOf(0), map.computeIfAbsent(0, k -> 0));
-        Assert.assertEquals(Integer.valueOf(0), map.get(0));
+        for (EconomicMap<Integer, Integer> map : computeIfAbsentMaps()) {
+            Assert.assertEquals(Integer.valueOf(0), map.computeIfAbsent(0, k -> 0));
+            Assert.assertEquals(Integer.valueOf(0), map.get(0));
+            Assert.assertEquals(Integer.valueOf(0), map.computeIfAbsent(0, k -> {
+                throw new AssertionError("Existing non-null value must bypass the mapping function");
+            }));
+        }
+    }
+
+    /**
+     * Verifies that a null computation leaves the key absent and preserves unrelated mappings.
+     * Repeated calls retry the computation, and a later non-null result creates the mapping.
+     */
+    @Test
+    public void testComputeIfAbsentNullResult() {
+        for (EconomicMap<Integer, Integer> map : computeIfAbsentMaps()) {
+            map.put(1, 1);
+            int[] calls = {0};
+            for (int i = 0; i < 2; i++) {
+                Assert.assertNull(map.computeIfAbsent(0, k -> {
+                    Assert.assertEquals(Integer.valueOf(0), k);
+                    calls[0]++;
+                    return null;
+                }));
+                Assert.assertFalse(map.containsKey(0));
+                Assert.assertEquals(1, map.size());
+                Assert.assertEquals(Integer.valueOf(1), map.get(1));
+            }
+            Assert.assertEquals(2, calls[0]);
+            Assert.assertEquals(Integer.valueOf(0), map.computeIfAbsent(0, k -> 0));
+            Assert.assertEquals(Integer.valueOf(0), map.get(0));
+            Assert.assertEquals(2, map.size());
+        }
+    }
+
+    /**
+     * Checks that an existing null-valued mapping invokes the function, remains present after a null
+     * result, and is replaced by a later non-null result without changing the map size.
+     */
+    @Test
+    public void testComputeIfAbsentNullMapping() {
+        for (EconomicMap<Integer, Integer> map : computeIfAbsentMaps()) {
+            map.put(0, null);
+            int[] calls = {0};
+            Assert.assertNull(map.computeIfAbsent(0, k -> {
+                calls[0]++;
+                return null;
+            }));
+            Assert.assertEquals(1, calls[0]);
+            Assert.assertTrue(map.containsKey(0));
+            Assert.assertNull(map.get(0));
+            Assert.assertEquals(1, map.size());
+            Assert.assertEquals(Integer.valueOf(2), map.computeIfAbsent(0, k -> 2));
+            Assert.assertEquals(Integer.valueOf(2), map.get(0));
+            Assert.assertEquals(1, map.size());
+        }
+    }
+
+    /**
+     * Verifies that a mapping-function exception is propagated unchanged and does not create an
+     * absent mapping or alter an existing null-valued mapping.
+     */
+    @Test
+    public void testComputeIfAbsentException() {
+        for (EconomicMap<Integer, Integer> map : computeIfAbsentMaps()) {
+            for (boolean present : new boolean[]{false, true}) {
+                if (present) {
+                    map.put(0, null);
+                }
+                IllegalStateException failure = new IllegalStateException("Mapping failed");
+                Assert.assertSame(failure, Assert.assertThrows(IllegalStateException.class, () -> map.computeIfAbsent(0, k -> {
+                    throw failure;
+                })));
+                Assert.assertEquals(present, map.containsKey(0));
+                Assert.assertNull(map.get(0));
+                Assert.assertEquals(present ? 1 : 0, map.size());
+            }
+        }
+    }
+
+    private static List<EconomicMap<Integer, Integer>> computeIfAbsentMaps() {
+        return List.of(EconomicMap.create(), EconomicMap.wrapMap(new HashMap<>()));
     }
 
     @Test
