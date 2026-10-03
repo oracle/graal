@@ -1001,7 +1001,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @SuppressWarnings("unchecked")
     @Override
     public boolean add(K element) {
-        return put(element, (V) SET_PRESENT) == null;
+        return putIfAbsent(element, (V) SET_PRESENT) == null;
     }
 
     @Override

@@ -472,6 +472,38 @@ public class EconomicMapImplTest {
         assertTrue(map.isEmpty());
     }
 
+    /**
+     * Checks that duplicate colliding additions preserve set size, original key objects, and iteration
+     * order. Also verifies removal and reinsertion after those duplicate additions.
+     */
+    @Test
+    public void testDuplicateSetAddWithCollisions() {
+        EconomicSet<CollidingKey> set = EconomicSet.create();
+        CollidingKey[] keys = new CollidingKey[32];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = new CollidingKey(i);
+            assertTrue(set.add(keys[i]));
+        }
+        for (int i = 0; i < keys.length; i++) {
+            assertFalse(set.add(keys[i]));
+            assertFalse(set.add(new CollidingKey(i)));
+        }
+        assertEquals(keys.length, set.size());
+        Iterator<CollidingKey> iterator = set.iterator();
+        for (CollidingKey key : keys) {
+            assertSame(key, iterator.next());
+        }
+        assertFalse(iterator.hasNext());
+        set.remove(new CollidingKey(17));
+        assertFalse(set.contains(keys[17]));
+        assertEquals(keys.length - 1, set.size());
+        assertTrue(set.add(new CollidingKey(17)));
+        assertEquals(keys.length, set.size());
+        for (CollidingKey key : keys) {
+            assertTrue(set.contains(key));
+        }
+    }
+
     private static final class CollidingKey {
         private final int id;
 
