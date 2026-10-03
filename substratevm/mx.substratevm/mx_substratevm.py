@@ -1129,6 +1129,35 @@ def runtime_assertionstest(args):
     runtime_assertions_test_task(args)
 
 
+@mx.command(suite.name, 'crema-class-loading-benchmark', '[--no-verification] [benchmark-args]')
+def crema_class_loading_benchmark(args):
+    """
+    Builds and runs a native image that measures how long Crema needs to parse and verify classes
+    that are loaded at run time (com.oracle.svm.test.CremaClassLoadingBenchmark).
+
+    --no-verification builds the image without bytecode verification, to show what verification
+    costs. Remaining arguments are passed to the image, for example -Dcrema.bench.rounds=20.
+    """
+    parser = ArgumentParser(prog='mx crema-class-loading-benchmark')
+    parser.add_argument('--no-verification', action='store_true', help='Build the image with -R:ClassVerification=NONE')
+    parser.add_argument('benchmark_args', nargs='*', default=[], help='Arguments passed to the image when it runs')
+    parsed = parser.parse_args(args)
+    svm_tests_jar = mx.distribution('substratevm:SVM_TESTS').path
+    output_path = join(svmbuild_dir(suite), 'crema-class-loading-benchmark')
+    mx_util.ensure_dir_exists(output_path)
+    image_path = join(output_path, 'cremaclassloadingbenchmark')
+    build_args = ['-cp', svm_tests_jar] + svm_experimental_options(['-H:+RuntimeClassLoading'])
+    if parsed.no_verification:
+        build_args.append('-R:ClassVerification=NONE')
+    build_args += ['-o', image_path, 'com.oracle.svm.test.CremaClassLoadingBenchmark']
+
+    def build_and_run(native_image, _):
+        native_image(build_args)
+        mx.run([image_path] + parsed.benchmark_args)
+
+    native_image_context_run(build_and_run)
+
+
 def runtime_classpath_resource_test_task(extra_build_args=None):
     svm_tests_jar = mx.distribution('substratevm:SVM_TESTS').path
     build_args = svm_experimental_options(['-H:+ClassForNameRespectsClassLoader']) + [
