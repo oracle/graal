@@ -278,7 +278,11 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     }
 
     private int findHash(K key) {
-        int index = getHashArray(getHashIndex(key)) - 1;
+        return findHash(key, getHash(key));
+    }
+
+    private int findHash(K key, int hash) {
+        int index = getHashArray(getHashIndex(hash)) - 1;
         if (index != -1) {
             Object entryKey = getKey(index);
             if (compareKeys(key, entryKey)) {
@@ -352,7 +356,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     }
 
     private int findAndRemoveHash(Object key) {
-        int hashIndex = getHashIndex(key);
+        int hashIndex = getHashIndex(getHash(key));
         int index = getHashArray(hashIndex) - 1;
         if (index != -1) {
             Object entryKey = getKey(index);
@@ -402,7 +406,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         }
     }
 
-    private int getHashIndex(Object key) {
+    private int getHash(Object key) {
         int hash;
         if (strategy != null && strategy != Equivalence.DEFAULT) {
             if (strategy == Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) {
@@ -413,7 +417,10 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         } else {
             hash = key.hashCode();
         }
-        hash = hash ^ (hash >>> 16);
+        return hash ^ (hash >>> 16);
+    }
+
+    private int getHashIndex(int hash) {
         return hash & (getHashTableSize() - 1);
     }
 
@@ -421,7 +428,14 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @Override
     public V put(K key, V value) {
         checkNonNull(key);
-        int index = find(key);
+        int hash = 0;
+        int index;
+        if (hasHashArray()) {
+            hash = getHash(key);
+            index = findHash(key, hash);
+        } else {
+            index = findLinear(key);
+        }
         if (index != -1) {
             Object oldValue = getValue(index);
             setValue(index, value);
@@ -446,7 +460,8 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         if (hasHashArray()) {
             // Rehash on collision if hash table is more than two thirds full.
             boolean rehashOnCollision = (getHashTableSize() < (size() + (size() >> 1)));
-            putHashEntry(key, nextEntryIndex, rehashOnCollision);
+            // The table was already present during lookup, so the hash has been computed.
+            putHashEntry(hash, nextEntryIndex, rehashOnCollision);
         } else if (totalEntries > getHashThreshold()) {
             createHash();
         }
@@ -605,13 +620,13 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         for (int i = 0; i < totalEntries; i++) {
             Object entryKey = getKey(i);
             if (entryKey != null) {
-                putHashEntry(entryKey, i, false);
+                putHashEntry(getHash(entryKey), i, false);
             }
         }
     }
 
-    private void putHashEntry(Object key, int entryIndex, boolean rehashOnCollision) {
-        int hashIndex = getHashIndex(key);
+    private void putHashEntry(int hash, int entryIndex, boolean rehashOnCollision) {
+        int hashIndex = getHashIndex(hash);
         int oldIndex = getHashArray(hashIndex) - 1;
         if (oldIndex != -1 && rehashOnCollision) {
             this.createHash();
