@@ -64,6 +64,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -244,6 +245,9 @@ public final class TruffleBaseFeature implements InternalFeature {
     private AnalysisMetaAccess metaAccess;
     private GraalGraphObjectReplacer graalGraphObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
+    private final EconomicSet<Class<?>> registeredExportLibraryClasses = EconomicSet.create();
+    private final EconomicSet<Class<?>> registeredExportLibraryReceiverClasses = EconomicSet.create();
+    private final Set<Class<?>> pendingExportLibraryReceiverClasses = ConcurrentHashMap.newKeySet();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
     private Field uncachedDispatchField;
@@ -776,6 +780,13 @@ public final class TruffleBaseFeature implements InternalFeature {
             initializeTruffleLibrariesAtBuildTime(access, type);
             initializeDynamicObjectLayouts(type);
         }
+        /* Resolve reachable export subclasses once they are known to be instantiated. */
+        for (Class<?> receiverClass : pendingExportLibraryReceiverClasses) {
+            AnalysisType type = access.getMetaAccess().lookupJavaType(receiverClass);
+            if (type.isInstantiated() && pendingExportLibraryReceiverClasses.remove(receiverClass)) {
+                initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+            }
+        }
         access.rescanRoot(layoutInfoMapField);
         access.rescanRoot(layoutMapField);
         access.rescanRoot(libraryFactoryCacheField);
@@ -949,10 +960,59 @@ public final class TruffleBaseFeature implements InternalFeature {
             access.rescanField(factory, uncachedDispatchField);
         }
         if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
-            /* Eagerly resolve receiver type. */
-            invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
-                            Collections.singleton(Class.class), type.getJavaClass());
+            Class<?> receiverClass = type.getJavaClass();
+            if (registeredExportLibraryClasses.add(receiverClass)) {
+                if (registeredExportLibraryReceiverClasses.add(receiverClass)) {
+                    access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverClass);
+                }
+                if (hasExplicitReceiverExport(type)) {
+                    /*
+                     * Initialize the export class first so its generated code registers the
+                     * explicit receiver types. Resolve only instantiated concrete receiver types.
+                     */
+                    initializeTruffleLibraryReceiverAtBuildTime(receiverClass);
+                    for (ExportLibrary export : getExportLibraryAnnotations(type)) {
+                        Class<?> receiverType = export.receiverType();
+                        if (receiverType != Void.class && registeredExportLibraryReceiverClasses.add(receiverType)) {
+                            access.registerSubtypeReachabilityHandler(this::registerConcreteTruffleLibraryReceiver, receiverType);
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    private static boolean hasExplicitReceiverExport(AnalysisType type) {
+        for (ExportLibrary export : getExportLibraryAnnotations(type)) {
+            if (export.receiverType() != Void.class) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<ExportLibrary> getExportLibraryAnnotations(AnalysisType type) {
+        List<ExportLibrary> result = new ArrayList<>();
+        ExportLibrary direct = type.getAnnotation(ExportLibrary.class);
+        if (direct != null) {
+            result.add(direct);
+        }
+        ExportLibrary.Repeat container = type.getAnnotation(ExportLibrary.Repeat.class);
+        if (container != null) {
+            result.addAll(List.of(container.value()));
+        }
+        return result;
+    }
+
+    private void registerConcreteTruffleLibraryReceiver(@SuppressWarnings("unused") DuringAnalysisAccess access, Class<?> receiverClass) {
+        if (!Modifier.isAbstract(receiverClass.getModifiers()) || receiverClass.isArray()) {
+            pendingExportLibraryReceiverClasses.add(receiverClass);
+        }
+    }
+
+    private static void initializeTruffleLibraryReceiverAtBuildTime(Class<?> receiverClass) {
+        invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
+                        Collections.singleton(Class.class), receiverClass);
     }
 
     private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
