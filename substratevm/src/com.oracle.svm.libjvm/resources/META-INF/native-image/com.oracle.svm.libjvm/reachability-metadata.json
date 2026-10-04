@@ -30,6 +30,13 @@
           "parameterTypes": [
             "java.lang.String[]"
           ]
+        },
+        {
+          "name": "compile",
+          "parameterTypes": [
+            "java.lang.String[]",
+            "java.io.PrintWriter"
+          ]
         }
       ]
     },
