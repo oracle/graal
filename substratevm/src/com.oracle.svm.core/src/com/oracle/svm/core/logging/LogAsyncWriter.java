@@ -150,8 +150,12 @@ final class LogAsyncWriter {
          * Create the managed worker first so allocation failure cannot strand an installed native
          * queue before the writer becomes reachable by initialization rollback.
          */
-        /* The VM-lifetime consumer must not retain the enabling thread's inheritable locals or loader. */
-        worker = new Thread(null, this::run, "SVM AsyncLogWriter", 0, false);
+        /* The VM-lifetime consumer must not retain the enabling thread's group, inheritable locals, or loader. */
+        ThreadGroup systemGroup = Thread.currentThread().getThreadGroup();
+        while (systemGroup.getParent() != null) {
+            systemGroup = systemGroup.getParent();
+        }
+        worker = new Thread(systemGroup, this::run, "SVM AsyncLogWriter", 0, false);
         worker.setDaemon(true);
 
         long requestedSize = Options.AsyncLogBufferSize.getValue();
@@ -200,6 +204,22 @@ final class LogAsyncWriter {
             }
             outputSlots[outputSlotCount++] = output;
             return output;
+        } finally {
+            PRODUCER_LOCK.unlock();
+        }
+    }
+
+    /// Checks whether an output slot remains registered while a test holds a write lease.
+    boolean hasOutputSlot(LogOutput output, LogDecorators decorators) {
+        PRODUCER_LOCK.lock();
+        try {
+            for (int index = 0; index < outputSlotCount; index++) {
+                LogOutputConfiguration slot = outputSlots[index];
+                if (slot.output() == output && slot.decorators().mask() == decorators.mask()) {
+                    return true;
+                }
+            }
+            return false;
         } finally {
             PRODUCER_LOCK.unlock();
         }

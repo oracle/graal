@@ -234,6 +234,11 @@ public final class LogConfiguration {
             return writesEnabled;
         }
 
+        /// Checks that a retained asynchronous output slot has not been recycled.
+        public static boolean hasAsyncOutputSlot(LogOutput output, LogDecorators decorators) {
+            return asyncWriterInstance != null && asyncWriterInstance.hasOutputSlot(output, decorators);
+        }
+
         public static void setInitializationComplete(boolean value) {
             initializationComplete = value;
         }

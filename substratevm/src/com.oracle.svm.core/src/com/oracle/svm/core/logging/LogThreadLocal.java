@@ -28,8 +28,6 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -49,7 +47,7 @@ import com.oracle.svm.shared.util.VMError;
 public final class LogThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<Data> state = FastThreadLocalFactory.createWord("LogThreadLocal.state");
 
-    @Platforms(Platform.HOSTED_ONLY.class)
+    /// Creates a listener for logging state owned by each platform thread.
     public LogThreadLocal() {
     }
 
