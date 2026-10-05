@@ -97,9 +97,14 @@ public class JNILibraryLoadFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
-        NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        JNILibraryLinkagePlan linkagePlan = JNILibraryLinkagePlan.create(nativeLibraries);
+        JNILibraryLinkagePlan linkagePlan = JNILibraryLinkagePlan.create(NativeLibraries.singleton());
         ImageSingletons.add(JNILibraryLinkagePlan.class, linkagePlan);
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        NativeLibraries nativeLibraries = NativeLibraries.singleton();
+        JNILibraryLinkagePlan.singleton().prepareBeforeAnalysis();
         JNIPlatformNativeLibrarySupport.singleton().setJavaLibrarySymbols(nativeLibraries.getStaticLibrarySymbols("java"));
     }
 

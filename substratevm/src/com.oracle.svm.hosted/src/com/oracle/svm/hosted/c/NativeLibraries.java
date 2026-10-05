@@ -595,6 +595,28 @@ public final class NativeLibraries {
         return allStaticLibs.keySet();
     }
 
+    /**
+     * Adds a static library that became available after the initial library-path scan, for example
+     * a library registered by a feature during {@code duringSetup}.
+     */
+    public void addStaticLibraryPath(Path libraryPath) {
+        VMError.guarantee(allStaticLibs != null, "Static libraries have not been collected yet");
+        Path absolutePath = libraryPath.toAbsolutePath();
+        UserError.guarantee(Files.isRegularFile(absolutePath), "Static library does not exist or is not a regular file: %s", libraryPath);
+        String expectedSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
+        UserError.guarantee(absolutePath.getFileName().toString().endsWith(expectedSuffix), "Static library must have the '%s' suffix: %s", expectedSuffix, libraryPath);
+
+        Path fileName = absolutePath.getFileName();
+        Path previous = allStaticLibs.get(fileName);
+        UserError.guarantee(previous == null || previous.equals(absolutePath),
+                        "Static library '%s' is already registered from %s and cannot also be registered from %s.",
+                        fileName, previous, absolutePath);
+        allStaticLibs.put(fileName, absolutePath);
+        Path parent = absolutePath.getParent();
+        assert parent != null;
+        libraryPaths.add(parent.toString());
+    }
+
     public boolean hasStaticLibrary(String library) {
         return getStaticLibraryPath(allStaticLibs, library) != null;
     }

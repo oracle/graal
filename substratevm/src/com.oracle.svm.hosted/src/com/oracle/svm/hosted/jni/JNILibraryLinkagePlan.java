@@ -65,15 +65,11 @@ public final class JNILibraryLinkagePlan {
     private final NativeLibraries nativeLibraries;
     private final Map<String, JNILibrary> libraries = new ConcurrentHashMap<>();
     private final SortedMap<String, SortedSet<String>> shimExports = new TreeMap<>();
+    private boolean manifestsProcessed;
 
     private JNILibraryLinkagePlan(NativeLibraries nativeLibraries) {
         this.nativeLibraries = nativeLibraries;
 
-        /*
-         * Java code can reference entry points implemented by Native Image's libjvm
-         * replacement, which is linked but never loaded explicitly as a JNI library.
-         */
-        PlatformNativeLibrarySupport.singleton().addBuiltinNatives(nativeLibraries.getStaticLibrarySymbols("jvm"));
         getJNILibraryLinkage().forEach((library, linkage) -> libraries.put(library, createLibrary(library, linkage)));
     }
 
@@ -128,16 +124,27 @@ public final class JNILibraryLinkagePlan {
     }
 
     private JNILibrary createLibrary(String library, JNILibraryLinkage linkage) {
-        List<String> dependencies = nativeLibraries.getStaticLibraryDependencies(library);
         JNILibrary result = switch (linkage) {
-            case STATIC -> new StaticJNILibrary(library, dependencies);
-            case DYNAMIC -> new DynamicJNILibrary(library, dependencies);
+            case STATIC -> new StaticJNILibrary(library);
+            case DYNAMIC -> new DynamicJNILibrary(library);
         };
         if (library.equals("java")) {
             JNIPlatformNativeLibrarySupport.singleton().setJavaLibraryDynamic(linkage == JNILibraryLinkage.DYNAMIC);
         }
-        result.registerNativeSymbols();
+        if (manifestsProcessed) {
+            result.processManifests();
+        }
         return result;
+    }
+
+    public void prepareBeforeAnalysis() {
+        /*
+         * Java code can reference entry points implemented by Native Image's libjvm
+         * replacement, which is linked but never loaded explicitly as a JNI library.
+         */
+        PlatformNativeLibrarySupport.singleton().addBuiltinNatives(nativeLibraries.getStaticLibrarySymbols("jvm"));
+        libraries.values().forEach(JNILibrary::processManifests);
+        manifestsProcessed = true;
     }
 
     private static boolean mustRemainDynamic(String library) {
@@ -213,12 +220,12 @@ public final class JNILibraryLinkagePlan {
 
     private abstract class JNILibrary {
         private final String library;
-        private final List<String> dependencies;
+        private List<String> dependencies = List.of();
+        private boolean manifestsProcessed;
         private boolean reachable;
 
-        JNILibrary(String library, List<String> dependencies) {
+        JNILibrary(String library) {
             this.library = library;
-            this.dependencies = dependencies;
         }
 
         String getLibrary() {
@@ -227,6 +234,13 @@ public final class JNILibraryLinkagePlan {
 
         List<String> getDependencies() {
             return dependencies;
+        }
+
+        void processManifests() {
+            assert !manifestsProcessed;
+            dependencies = nativeLibraries.getStaticLibraryDependencies(library);
+            registerNativeSymbols();
+            manifestsProcessed = true;
         }
 
         abstract void registerNativeSymbols();
@@ -247,8 +261,8 @@ public final class JNILibraryLinkagePlan {
     /** A JNI library that is linked statically into the image. */
     private final class StaticJNILibrary extends JNILibrary {
 
-        StaticJNILibrary(String library, List<String> dependencies) {
-            super(library, dependencies);
+        StaticJNILibrary(String library) {
+            super(library);
         }
 
         @Override
@@ -280,8 +294,8 @@ public final class JNILibraryLinkagePlan {
     /** A JNI library that is copied next to the image and loaded dynamically at run time. */
     private final class DynamicJNILibrary extends JNILibrary {
 
-        DynamicJNILibrary(String library, List<String> dependencies) {
-            super(library, dependencies);
+        DynamicJNILibrary(String library) {
+            super(library);
         }
 
         @Override
