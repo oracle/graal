@@ -30,6 +30,7 @@ import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProce
 import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
 import java.io.IOException;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.net.URI;
@@ -136,6 +137,7 @@ public class SVMImageLayerSnapshotUtil {
 
     static final ResolvedJavaType STRING = GuestAccess.get().elements.java_lang_String;
     static final ResolvedJavaType ENUM = GuestAccess.get().lookupType(Enum.class);
+    static final ResolvedJavaType METHOD_TYPE = GuestAccess.get().lookupType(MethodType.class);
 
     protected static final Set<ResolvedJavaField> DYNAMIC_HUB_RELINKED_FIELDS = Set.of(COMPANION, NAME, COMPONENT_TYPE);
     protected static final Set<ResolvedJavaField> DYNAMIC_HUB_COMPANION_RELINKED_FIELDS = Set.of(CLASS_INITIALIZATION_INFO, SUPER_HUB, ARRAY_HUB);
