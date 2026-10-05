@@ -199,7 +199,6 @@ class SubstrateInspectedFrame implements InspectedFrame {
     private Deoptimizer deoptimizer;
     private final int deoptMethodOffset;
     private final long encodedBci;
-    private final int sourceMethodId;
 
     SubstrateInspectedFrame(Pointer sp, CodePointer ip, VirtualFrame virtualFrame, CodeInfoQueryResult codeInfo, FrameInfoQueryResult frameInfo, int virtualFrameIndex) {
         this.sp = sp;
@@ -215,7 +214,6 @@ class SubstrateInspectedFrame implements InspectedFrame {
         this.numLocals = this.frameInfo.getNumLocals();
         this.deoptMethodOffset = this.frameInfo.getDeoptMethodOffset();
         this.encodedBci = this.frameInfo.getEncodedBci();
-        this.sourceMethodId = this.frameInfo.getSourceMethodId();
     }
 
     private Deoptimizer getDeoptimizer() {
@@ -367,8 +365,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
 
     private boolean matchesCapturedFrameInfo(FrameInfoQueryResult currentFrameInfo) {
         return currentFrameInfo.getDeoptMethodOffset() == deoptMethodOffset &&
-                        currentFrameInfo.getEncodedBci() == encodedBci &&
-                        currentFrameInfo.getSourceMethodId() == sourceMethodId;
+                        currentFrameInfo.getEncodedBci() == encodedBci;
     }
 
     private final class LiveFrameLookupVisitor extends StackFrameVisitor {
