@@ -327,6 +327,101 @@ public class EconomicMapImplTest {
         assertEquals((Object) 100, map.get(new CollidingKey(100)));
     }
 
+    /**
+     * Verifies that equivalent-key updates preserve the original key object and insertion order across
+     * map sizes. Covers null-valued entries, non-null {@code putIfAbsent} hits, and ordinary {@code
+     * put} replacement.
+     */
+    @Test
+    public void testPutIfAbsentRetainsKeyAndOrder() {
+        for (int size : new int[]{0, 3, 4, 8, 32}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+            for (int i = 0; i < size; i++) {
+                map.put(new CollidingKey(i), i);
+            }
+            CollidingKey original = new CollidingKey(-1);
+            CollidingKey equivalent = new CollidingKey(-1);
+            assertNull(map.putIfAbsent(original, null));
+            assertNull(map.putIfAbsent(equivalent, null));
+            Assert.assertTrue(map.containsKey(original));
+            assertNull(map.putIfAbsent(equivalent, 1));
+            assertEquals((Object) 1, map.putIfAbsent(equivalent, 2));
+            assertEquals((Object) 1, map.putIfAbsent(equivalent, null));
+            assertEquals((Object) 1, map.get(original));
+            assertEquals((Object) 1, map.put(equivalent, 3));
+            assertEquals((Object) 3, map.get(original));
+            assertEquals(size + 1, map.size());
+            Iterator<CollidingKey> keys = map.getKeys().iterator();
+            for (int i = 0; i < size; i++) {
+                assertEquals(new CollidingKey(i), keys.next());
+            }
+            Assert.assertSame(original, keys.next());
+            Assert.assertFalse(keys.hasNext());
+        }
+    }
+
+    /**
+     * Checks that both identity strategies keep equal but distinct key objects separate, while
+     * repeated insertion of the same object preserves its value.
+     */
+    @Test
+    public void testPutIfAbsentIdentityEquivalence() {
+        for (Equivalence equivalence : new Equivalence[]{Equivalence.IDENTITY, Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create(equivalence);
+            for (int i = 0; i < 32; i++) {
+                CollidingKey first = new CollidingKey(i);
+                CollidingKey equal = new CollidingKey(i);
+                assertNull(map.putIfAbsent(first, i));
+                assertNull(map.putIfAbsent(equal, -i));
+                assertEquals((Object) i, map.putIfAbsent(first, 100));
+                assertEquals((Object) (-i), map.get(equal));
+            }
+            assertEquals(64, map.size());
+        }
+    }
+
+    /**
+     * Verifies that {@code putIfAbsent} uses the configured equivalence rather than the keys' own
+     * equality when deciding whether to preserve an existing value.
+     */
+    @Test
+    public void testPutIfAbsentCustomEquivalence() {
+        Equivalence equivalence = new Equivalence() {
+            @Override
+            public boolean equals(Object a, Object b) {
+                return ((CollidingKey) a).id / 2 == ((CollidingKey) b).id / 2;
+            }
+
+            @Override
+            public int hashCode(Object key) {
+                return ((CollidingKey) key).id / 2;
+            }
+        };
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create(equivalence);
+        for (int i = 0; i < 64; i += 2) {
+            CollidingKey key = new CollidingKey(i);
+            CollidingKey equivalent = new CollidingKey(i + 1);
+            assertNull(map.putIfAbsent(key, i));
+            assertEquals((Object) i, map.putIfAbsent(equivalent, i + 1));
+            assertEquals((Object) i, map.get(equivalent));
+        }
+        assertEquals(32, map.size());
+    }
+
+    /**
+     * Checks that {@code putIfAbsent} rejects null keys in both empty and populated maps without
+     * changing existing mappings.
+     */
+    @Test
+    public void testPutIfAbsentRejectsNullKeys() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        assertThrows(UnsupportedOperationException.class, () -> map.putIfAbsent(null, null));
+        map.put(1, 2);
+        assertThrows(UnsupportedOperationException.class, () -> map.putIfAbsent(null, 3));
+        assertEquals(1, map.size());
+        assertEquals((Object) 2, map.get(1));
+    }
+
     private static final class CollidingKey {
         private final int id;
 

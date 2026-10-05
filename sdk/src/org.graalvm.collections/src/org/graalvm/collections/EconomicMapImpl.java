@@ -442,6 +442,35 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
             return (V) oldValue;
         }
 
+        putNewEntry(key, value, hash);
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public V putIfAbsent(K key, V value) {
+        checkNonNull(key);
+        int hash = 0;
+        int index;
+        if (hasHashArray()) {
+            hash = getHash(key);
+            index = findHash(key, hash);
+        } else {
+            index = findLinear(key);
+        }
+        if (index != -1) {
+            Object oldValue = getValue(index);
+            if (oldValue == null) {
+                setValue(index, value);
+            }
+            return (V) oldValue;
+        }
+
+        putNewEntry(key, value, hash);
+        return null;
+    }
+
+    private void putNewEntry(K key, V value, int hash) {
         int nextEntryIndex = totalEntries;
         if (entries == null) {
             entries = new Object[INITIAL_CAPACITY << 1];
@@ -465,8 +494,6 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         } else if (totalEntries > getHashThreshold()) {
             createHash();
         }
-
-        return null;
     }
 
     /**
