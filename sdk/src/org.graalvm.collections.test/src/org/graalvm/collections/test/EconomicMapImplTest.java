@@ -41,9 +41,12 @@
 package org.graalvm.collections.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -420,6 +423,53 @@ public class EconomicMapImplTest {
         assertThrows(UnsupportedOperationException.class, () -> map.putIfAbsent(null, 3));
         assertEquals(1, map.size());
         assertEquals((Object) 2, map.get(1));
+    }
+
+    /**
+     * Checks that computing a value for an equivalent key fills a null-valued mapping without
+     * replacing the stored key or changing iteration order. The function receives the caller's key,
+     * not the stored key.
+     */
+    @Test
+    public void testComputeIfAbsentRetainsKeyAndOrder() {
+        for (int size : new int[]{2, 32}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+            CollidingKey first = new CollidingKey(-2);
+            CollidingKey original = new CollidingKey(-1);
+            CollidingKey equivalent = new CollidingKey(-1);
+            map.put(first, 77);
+            map.put(original, null);
+            for (int i = 0; i < size; i++) {
+                map.put(new CollidingKey(i), i);
+            }
+            assertEquals((Object) 42, map.computeIfAbsent(equivalent, k -> {
+                assertSame(equivalent, k);
+                return 42;
+            }));
+            Iterator<CollidingKey> keys = map.getKeys().iterator();
+            assertSame(first, keys.next());
+            assertSame(original, keys.next());
+            for (int i = 0; i < size; i++) {
+                assertEquals(i, keys.next().id);
+                assertEquals((Object) i, map.get(new CollidingKey(i)));
+            }
+            assertFalse(keys.hasNext());
+            assertEquals((Object) 77, map.get(first));
+            assertEquals((Object) 42, map.get(original));
+        }
+    }
+
+    /**
+     * Verifies that {@code computeIfAbsent} rejects a null key before invoking the mapping function
+     * and leaves the map empty.
+     */
+    @Test
+    public void testComputeIfAbsentRejectsNullKey() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        Assert.assertThrows(UnsupportedOperationException.class, () -> map.computeIfAbsent(null, k -> {
+            throw new AssertionError("Null key must be rejected before invoking the mapping function");
+        }));
+        assertTrue(map.isEmpty());
     }
 
     private static final class CollidingKey {

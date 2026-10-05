@@ -300,6 +300,9 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      * If the specified key is not already associated with a value (or is mapped to {@code null}),
      * attempts to compute its value using the given mapping function and enters it into this map
      * unless {@code null}. A {@code null} result does not add or replace a mapping.
+     * <p>
+     * The mapping function must not modify this map, or affect key hash code or equivalence during
+     * computation. Implementations are not required to detect such changes.
      *
      * @param key non-null key with which the specified value is to be associated
      * @param mappingFunction the mapping function to compute a value

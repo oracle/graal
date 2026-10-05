@@ -42,7 +42,9 @@ package org.graalvm.collections;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Implementation of a map with a memory-efficient structure that always preserves insertion order
@@ -468,6 +470,40 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
         putNewEntry(key, value, hash);
         return null;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
+        Objects.requireNonNull(mappingFunction);
+        checkNonNull(key);
+        int hash = 0;
+        int index;
+        if (hasHashArray()) {
+            hash = getHash(key);
+            index = findHash(key, hash);
+        } else {
+            index = findLinear(key);
+        }
+        if (index != -1) {
+            V oldValue = (V) getValue(index);
+            if (oldValue != null) {
+                return oldValue;
+            }
+        }
+
+        V value = mappingFunction.apply(key);
+        assert find(key) == index && (index < 0 || getValue(index) == null) : "Mapping function invalidated the lookup";
+        assert !hasHashArray() || hash == getHash(key) : "Mapping function invalidated the cached hash";
+
+        if (value != null) {
+            if (index != -1) {
+                setValue(index, value);
+            } else {
+                putNewEntry(key, value, hash);
+            }
+        }
+        return value;
     }
 
     private void putNewEntry(K key, V value, int hash) {

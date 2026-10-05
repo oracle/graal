@@ -129,6 +129,10 @@ public class EconomicMapLargeTest {
                     (map, randomInt) -> map.putIfAbsent(randomInt, "absent"),
                     (map, randomInt) -> map.putIfAbsent(randomInt, null),
                     (map, randomInt) -> map.putIfAbsent(new BadHashClass(randomInt), "absent"),
+                    (map, randomInt) -> map.computeIfAbsent(randomInt, k -> "computed"),
+                    (map, randomInt) -> map.computeIfAbsent(randomInt, k -> null),
+                    (map, randomInt) -> map.computeIfAbsent(new BadHashClass(randomInt), k -> "computed"),
+                    (map, randomInt) -> map.computeIfAbsent(new BadHashClass(randomInt), k -> null),
                     (map, randomInt) -> map.put(EXISTING_VALUE, randomInt),
                     (map, randomInt) -> {
                         if (randomInt == 0) {
