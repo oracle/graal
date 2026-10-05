@@ -216,8 +216,20 @@ public final class LogThreadLocal implements ThreadListener {
     }
 
     @Override
-    @Uninterruptible(reason = "Release native logging buffers after the thread exits.")
+    @Uninterruptible(reason = "Release native logging buffers after Java execution ends, including launcher handoff.")
+    public void afterThreadRun() {
+        release(CurrentIsolate.getCurrentThread());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Release buffers allocated after the thread-run callback during thread exit.")
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
+        release(isolateThread);
+    }
+
+    /// Frees the current isolate thread's native logging state if it was allocated.
+    @Uninterruptible(reason = "Called from uninterruptible thread lifecycle callbacks.")
+    private static void release(IsolateThread isolateThread) {
         Data data = state.get(isolateThread);
         if (data.isNull()) {
             return;
