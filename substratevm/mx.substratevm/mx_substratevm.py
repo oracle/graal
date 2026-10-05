@@ -3875,14 +3875,15 @@ def _debug_args():
     return []
 
 @mx.command(suite.name, 'native-unittest')
-def native_unittest(args):
+def native_unittest(args, include_svm_test_features=None):
     """Builds a native image of JUnit tests and runs them."""
     arg_list = list(args)
     # Decide whether to include the SVM test feature injections based on the selectors provided.
     # If no selectors were provided, native-unittest will default to SVM tests, so include features.
     def _is_svm_selector(a: str) -> bool:
         return a.startswith('com.oracle.svm.test')
-    include_svm_test_features = True if not arg_list else any(_is_svm_selector(a) for a in arg_list)
+    if include_svm_test_features is None:
+        include_svm_test_features = True if not arg_list else any(_is_svm_selector(a) for a in arg_list)
     computed = _compute_native_unittest_args(include_svm_test_features=include_svm_test_features)
     # Merge computed build args into an existing --build-args block if present, otherwise append.
     if '--build-args' in arg_list:
