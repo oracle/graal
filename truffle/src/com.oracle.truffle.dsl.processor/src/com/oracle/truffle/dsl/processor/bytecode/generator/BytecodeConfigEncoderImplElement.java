@@ -289,6 +289,14 @@ final class BytecodeConfigEncoderImplElement extends AbstractElement {
         return String.format("(%s & 0x%s) != 0", instrumentations, Integer.toHexString(encoding.traceInstructionMask()));
     }
 
+    public String checkInstructionTracingBit(String encoded) {
+        if (!parent.model.enableInstructionTracing) {
+            throw new AssertionError("Tried to generate code to check instruction tracing bit, but instruction tracing is not enabled.");
+        }
+        long mask = (long) encoding.traceInstructionMask() << encoding.instrumentationShift();
+        return String.format("(%s & 0x%sL) != 0", encoded, Long.toHexString(mask));
+    }
+
     public String checkInstrumentationEnabled(String instrumentations, OperationModel instrumentation) {
         return checkInstrumentation(instrumentations, instrumentation, true);
     }

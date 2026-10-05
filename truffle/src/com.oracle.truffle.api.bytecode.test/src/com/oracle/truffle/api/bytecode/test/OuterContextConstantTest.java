@@ -152,9 +152,9 @@ public class OuterContextConstantTest {
     private OuterContextConstantRootNode roundTrip(BytecodeParser<OuterContextConstantRootNodeGen.Builder> parser) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
-            OuterContextConstantRootNodeGen.BYTECODE.serialize(new DataOutputStream(output), serializer, parser);
+            OuterContextConstantRootNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), serializer, parser);
             Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
-            return OuterContextConstantRootNodeGen.BYTECODE.deserialize(null, BytecodeConfig.DEFAULT, input, deserializer).getNode(0);
+            return OuterContextConstantRootNodeGen.BYTECODE.deserializeBuilderBytecode(null, BytecodeConfig.DEFAULT, input, deserializer).getNode(0);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }

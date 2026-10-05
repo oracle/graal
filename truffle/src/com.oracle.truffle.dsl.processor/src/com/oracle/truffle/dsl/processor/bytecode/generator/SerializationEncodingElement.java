@@ -60,10 +60,12 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -124,7 +126,7 @@ final class SerializationEncodingElement extends AbstractElement {
         this.add(createReadBuilderPayload());
         this.add(createWriteBuilderPayload());
         this.add(createWriteExecutionBytecodePayload());
-        this.add(createTryReadExecutionBytecodePayload());
+        this.add(createReadExecutionBytecode());
         this.add(createReadExecutionBytecodePayload());
         this.add(createWriteRootConstruction());
         this.add(createReadRootConstruction());
@@ -332,7 +334,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addParameter(new CodeVariableElement(parent.model.languageClass, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "builderBytecodeInput"));
-        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "executionBytecodeInput"));
+        method.addParameter(new CodeVariableElement(generic(type(Function.class), types.BytecodeConfig, type(DataInput.class)), "executionBytecodeInput"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addThrownType(type(IOException.class));
 
@@ -350,10 +352,15 @@ final class SerializationEncodingElement extends AbstractElement {
         b.string("parser").string("encoding");
         b.end(2);
 
-        b.startIf().string("executionBytecodeInput != null && ").startCall("tryReadExecutionBytecodePayload");
-        b.string("executionBytecodeInput.get()").string("callback").string("encoding").string("language").string("nodes");
-        b.end(2).startBlock();
+        b.startIf().string("executionBytecodeInput != null").end().startBlock();
+        b.startDeclaration(types.BytecodeConfig, "executionBytecodeConfig");
+        b.startStaticCall(parent.configEncoder.asType(), "decode").string("encoding").end();
+        b.end();
+        b.declaration(type(DataInput.class), "executionBytecodes", "executionBytecodeInput.apply(executionBytecodeConfig)");
+        b.startIf().string("executionBytecodes != null").end().startBlock();
+        b.statement("readExecutionBytecode(executionBytecodes, callback, encoding, language, nodes)");
         b.statement("return nodes");
+        b.end();
         b.end();
 
         b.startDeclaration(parent.builder.asType(), "builder").startNew(parent.builder.asType());
@@ -425,7 +432,7 @@ final class SerializationEncodingElement extends AbstractElement {
         b.end(2);
         b.end();
         b.startDeclaration(executionBytecodeSerializationContext.asType(), "context").startNew(executionBytecodeSerializationContext.asType());
-        b.string("callback").string("nodes");
+        b.string("callback").string("nodes").string("existingNodes");
         b.end(2);
         b.statement("writeConstantPool(buffer, builder, existingNodes, context)");
         b.startIf().string(parent.configEncoder.checkSourceBit("executionBytecodeEncoding")).end().startBlock();
@@ -444,8 +451,8 @@ final class SerializationEncodingElement extends AbstractElement {
         return method;
     }
 
-    private CodeExecutableElement createTryReadExecutionBytecodePayload() {
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(boolean.class), "tryReadExecutionBytecodePayload");
+    private CodeExecutableElement createReadExecutionBytecode() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(void.class), "readExecutionBytecode");
         method.addParameter(new CodeVariableElement(type(DataInput.class), "buffer"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addParameter(new CodeVariableElement(type(long.class), "requestedEncoding"));
@@ -464,10 +471,9 @@ final class SerializationEncodingElement extends AbstractElement {
         b.end();
         b.declaration(type(long.class), "executionBytecodeEncoding", "buffer.readLong()");
         b.startIf().string("executionBytecodeEncoding != requestedEncoding").end().startBlock();
-        b.returnFalse();
+        b.startThrow().startNew(type(IOException.class)).doubleQuote("Execution bytecode configuration does not match the requested configuration.").end(2);
         b.end();
         b.statement("readExecutionBytecodePayload(buffer, callback, executionBytecodeEncoding, language, nodes)");
-        b.returnTrue();
         return method;
     }
 
@@ -481,7 +487,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "rootCount", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "rootCount", "checkReadInt(buffer, 0)");
         b.startDeclaration(arrayOf(parent.asType()), "roots");
         b.startNewArray(arrayOf(parent.asType()), CodeTreeBuilder.singleString("rootCount")).end();
         b.end();
@@ -535,10 +541,10 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "stackBase", "checkReadInt(buffer, false)");
-        b.declaration(type(int.class), "frameSlotCount", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "stackBase", "checkReadInt(buffer, 0)");
+        b.declaration(type(int.class), "frameSlotCount", "checkReadInt(buffer, 0)");
         if (parent.model.usesBoxingElimination()) {
-            b.declaration(type(int.class), "numLocals", "checkReadInt(buffer, false)");
+            b.declaration(type(int.class), "numLocals", "checkReadInt(buffer, 0)");
         }
         b.startIf().string("stackBase > frameSlotCount").end().startBlock();
         b.startThrow().startNew(type(IOException.class)).doubleQuote("Stack base exceeds frame slot count.").end(2);
@@ -599,7 +605,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "numNodes", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "numNodes", "checkReadInt(buffer, 0)");
         b.declaration(type(long.class), "configEncoding", "executionBytecodeEncoding");
         b.declaration(arrayOf(type(Object.class)), "constants", "readRootConstants(buffer, executionBytecodeEncoding, context)");
         if (parent.model.hasYieldOperation()) {
@@ -694,8 +700,9 @@ final class SerializationEncodingElement extends AbstractElement {
         CodeTreeBuilder b = method.createBuilder();
         for (VariableElement field : parent.model.serializedFields) {
             b.startAssign("node", field);
-            if (ElementUtils.needsCastTo(type(Object.class), field.asType())) {
-                b.cast(field.asType());
+            TypeMirror fieldType = field.asType();
+            if (ElementUtils.needsCastTo(type(Object.class), fieldType)) {
+                BuilderElement.emitCastWithSuppression(method, b, fieldType);
             }
             b.startCall("readObjectReference").string("buffer").string("context").end();
             b.end();
@@ -792,7 +799,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addParameter(new CodeVariableElement(executionBytecodeDeserializationContext.asType(), "context"));
         method.addThrownType(type(IOException.class));
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "constantCount", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "constantCount", "checkReadInt(buffer, 0)");
         if (parent.model.enableInstructionTracing) {
             b.declaration(arrayOf(type(Object.class)), "constants");
             b.declaration(type(int.class), "i", "0");
@@ -865,7 +872,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "constantCount", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "constantCount", "checkReadInt(buffer, 0)");
         b.startAssign("context.objects");
         b.startNewArray(arrayOf(type(Object.class)), CodeTreeBuilder.singleString("constantCount")).end();
         b.end();
@@ -887,12 +894,12 @@ final class SerializationEncodingElement extends AbstractElement {
         b.startCase().staticReference(constantTagLocalRangeAccessor).end().startBlock();
         emitReadLocalAccessorIndices(b);
         b.startAssign("context.objects[i]").startCall("ACCESS", "getLocalRangeAccessorConstant");
-        b.string("offset").string("index").string("checkReadInt(buffer, false)");
+        b.string("offset").string("index").string("checkReadInt(buffer, 0)");
         b.end(2);
         b.statement("break");
         b.end();
         b.startCase().staticReference(constantTagMaterializedLocalAccessor).end().startBlock();
-        b.declaration(type(int.class), "rootIndex", "checkReadIndex(buffer, context.roots.length, false)");
+        b.declaration(type(int.class), "rootIndex", "checkReadIndex(buffer, context.roots.length, 0)");
         emitReadLocalAccessorIndices(b);
         b.startAssign("context.objects[i]").startCall("ACCESS", "getMaterializedLocalAccessorConstant");
         b.string("rootIndex").string("offset").string("index");
@@ -914,8 +921,8 @@ final class SerializationEncodingElement extends AbstractElement {
     }
 
     private void emitReadLocalAccessorIndices(CodeTreeBuilder b) {
-        b.declaration(type(int.class), "offset", "checkReadInt(buffer, false)");
-        b.declaration(type(int.class), "index", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "offset", "checkReadInt(buffer, 0)");
+        b.declaration(type(int.class), "index", "checkReadInt(buffer, 0)");
         b.startIf().string("offset > index").end().startBlock();
         b.startThrow().startNew(type(IOException.class)).string("\"Invalid local accessor indices: \" + offset + \", \" + index").end(2);
         b.end();
@@ -929,7 +936,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.startDeclaration(type(Object.class), "key").startStaticCall(types.BytecodeSupport, "getSerializationKey").string("object").end(2);
+        b.startDeclaration(type(Object.class), "key").startCall("ACCESS", "getSerializationKey").string("object").end(2);
         b.declaration(type(Integer.class), "index", "context.objects.get(key)");
         b.startAssert().string("index != null : ").doubleQuote("Object was not collected for serialization.").end();
         b.statement("buffer.writeInt(index)");
@@ -943,7 +950,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.startReturn().string("context.objects[checkReadIndex(buffer, context.objects.length, false)]").end();
+        b.startReturn().string("context.objects[checkReadIndex(buffer, context.objects.length, 0)]").end();
         return method;
     }
 
@@ -969,7 +976,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "sourceCount", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "sourceCount", "checkReadInt(buffer, 0)");
         b.startDeclaration(generic(type(List.class), types.Source), "sources").startNew("ArrayList<>").string("sourceCount").end(2);
         b.startFor().string("int i = 0; i < sourceCount; i++").end().startBlock();
         b.startStatement().startCall("sources", "add");
@@ -1014,7 +1021,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "nodeCount", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "nodeCount", "checkReadInt(buffer, 0)");
         b.startIf().string("nodeCount == 0").end().startBlock();
         b.startReturn().string("null").end();
         b.end();
@@ -1025,7 +1032,7 @@ final class SerializationEncodingElement extends AbstractElement {
         b.startFor().string("int i = nodeCount - 1; i >= 0; i--").end().startBlock();
         b.statement("tagNodes[i] = readTagRecord(buffer, tagNodes)");
         b.end();
-        b.declaration(type(int.class), "rootIndex", "checkReadIndex(buffer, tagNodes.length, true)");
+        b.declaration(type(int.class), "rootIndex", "checkReadIndex(buffer, tagNodes.length, -1)");
         b.declaration(parent.tagNode.asType(), "tree");
         b.startIf().string("rootIndex == -1").end().startBlock();
         b.startAssign("tree").startNew(parent.tagNode.asType()).string("0").string("-1").end(2);
@@ -1094,7 +1101,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "childCount", "checkReadInt(buffer, false)");
+        b.declaration(type(int.class), "childCount", "checkReadInt(buffer, 0)");
         b.startIf().string("childCount == 0").end().startBlock();
         b.startReturn().staticReference(parent.tagNode.asType(), "EMPTY_ARRAY").end();
         b.end();
@@ -1102,7 +1109,7 @@ final class SerializationEncodingElement extends AbstractElement {
         b.startNewArray(arrayOf(parent.tagNode.asType()), CodeTreeBuilder.singleString("childCount")).end();
         b.end();
         b.startFor().string("int i = 0; i < childCount; i++").end().startBlock();
-        b.statement("children[i] = tagNodes[checkReadIndex(buffer, tagNodes.length, false)]");
+        b.statement("children[i] = tagNodes[checkReadIndex(buffer, tagNodes.length, 0)]");
         b.startIf().string("children[i] == null").end().startBlock();
         b.startThrow().startNew(type(IOException.class)).doubleQuote("Child was not read before its parent.").end(2);
         b.end();
@@ -1131,7 +1138,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "length", "checkReadInt(buffer, true)");
+        b.declaration(type(int.class), "length", "checkReadInt(buffer, -1)");
         b.startIf().string("length == -1").end().startBlock();
         b.startReturn().string("null").end();
         b.end();
@@ -1170,7 +1177,7 @@ final class SerializationEncodingElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
-        b.declaration(type(int.class), "length", "checkReadInt(buffer, true)");
+        b.declaration(type(int.class), "length", "checkReadInt(buffer, -1)");
         b.startIf().string("length == -1").end().startBlock();
         b.startReturn().string("null").end();
         b.end();
@@ -1190,12 +1197,12 @@ final class SerializationEncodingElement extends AbstractElement {
     private CodeExecutableElement createCheckReadInt() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "checkReadInt");
         method.addParameter(new CodeVariableElement(type(DataInput.class), "buffer"));
-        method.addParameter(new CodeVariableElement(type(boolean.class), "allowMinusOne"));
+        method.addParameter(new CodeVariableElement(type(int.class), "minimumValue"));
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
         b.declaration(type(int.class), "value", "buffer.readInt()");
-        b.startIf().string("value < (allowMinusOne ? -1 : 0)").end().startBlock();
+        b.startIf().string("value < minimumValue").end().startBlock();
         b.startThrow().startNew(type(IOException.class)).string("\"Invalid integer value: \" + value").end(2);
         b.end();
         b.startReturn().string("value").end();
@@ -1206,12 +1213,12 @@ final class SerializationEncodingElement extends AbstractElement {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "checkReadIndex");
         method.addParameter(new CodeVariableElement(type(DataInput.class), "buffer"));
         method.addParameter(new CodeVariableElement(type(int.class), "size"));
-        method.addParameter(new CodeVariableElement(type(boolean.class), "allowMinusOne"));
+        method.addParameter(new CodeVariableElement(type(int.class), "minimumValue"));
         method.addThrownType(type(IOException.class));
 
         CodeTreeBuilder b = method.createBuilder();
         b.declaration(type(int.class), "index", "buffer.readInt()");
-        b.startIf().string("index < (allowMinusOne ? -1 : 0) || index >= size").end().startBlock();
+        b.startIf().string("index < minimumValue || index >= size").end().startBlock();
         b.startThrow().startNew(type(IOException.class)).string("\"Invalid reference index: \" + index").end(2);
         b.end();
         b.startReturn().string("index").end();
@@ -1223,21 +1230,24 @@ final class SerializationEncodingElement extends AbstractElement {
         element.getImplements().add(types.BytecodeSerializer_SerializerContext);
         addField(element, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
         addField(element, Set.of(PRIVATE, FINAL), parent.bytecodeRootNodesImpl.asType(), "nodes");
+        addField(element, Set.of(PRIVATE, FINAL), parent.bytecodeRootNodesImpl.asType(), "existingNodes");
         addField(element, Set.of(PRIVATE, FINAL), generic(HashMap.class, Object.class, Integer.class), "objects").createInitBuilder().startNew("HashMap<>").end();
         addField(element, Set.of(PRIVATE, FINAL), generic(ArrayList.class, Object.class), "constants").createInitBuilder().startNew("ArrayList<>").end();
 
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, element.getSimpleName().toString());
         ctor.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
         ctor.addParameter(new CodeVariableElement(parent.bytecodeRootNodesImpl.asType(), "nodes"));
+        ctor.addParameter(new CodeVariableElement(parent.bytecodeRootNodesImpl.asType(), "existingNodes"));
         CodeTreeBuilder b = ctor.createBuilder();
         b.statement("this.callback = callback");
         b.statement("this.nodes = nodes");
+        b.statement("this.existingNodes = existingNodes");
         element.add(ctor);
 
         CodeExecutableElement addObject = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "addObject");
         addObject.addParameter(new CodeVariableElement(type(Object.class), "object"));
         b = addObject.createBuilder();
-        b.startDeclaration(type(Object.class), "key").startStaticCall(types.BytecodeSupport, "getSerializationKey").string("object").end(2);
+        b.startDeclaration(type(Object.class), "key").startCall("ACCESS", "getSerializationKey").string("object").end(2);
         b.startIf().string("!objects.containsKey(key)").end().startBlock();
         b.statement("objects.put(key, constants.size())");
         b.statement("constants.add(object)");
@@ -1247,7 +1257,10 @@ final class SerializationEncodingElement extends AbstractElement {
         CodeExecutableElement writeRoot = GeneratorUtils.override(types.BytecodeSerializer_SerializerContext, "writeBytecodeNode", new String[]{"buffer", "node"});
         b = writeRoot.createBuilder();
         b.startDeclaration(parent.asType(), "root").cast(parent.asType()).string("node").end();
-        b.startAssert().string("root.nodes == nodes : ").doubleQuote("Root was not created by this parse.").end();
+        b.startAssert();
+        b.string("root.nodes == nodes || (existingNodes != null && root.nodes == existingNodes) : ");
+        b.doubleQuote("Root does not belong to the serialized parse.");
+        b.end();
         b.statement("buffer.writeInt(root.buildIndex)");
         element.add(writeRoot);
         return element;
@@ -1273,7 +1286,7 @@ final class SerializationEncodingElement extends AbstractElement {
 
         CodeExecutableElement readRoot = GeneratorUtils.override(types.BytecodeDeserializer_DeserializerContext, "readBytecodeNode", new String[]{"buffer"});
         b = readRoot.createBuilder();
-        b.statement("return roots[checkReadIndex(buffer, roots.length, false)]");
+        b.statement("return roots[checkReadIndex(buffer, roots.length, 0)]");
         element.add(readRoot);
         return element;
     }

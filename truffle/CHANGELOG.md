@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 25.7
 
 * GR-80168: Bytecode DSL: Added `BytecodeConfig.matches` to compare configurations for a particular interpreter.
+* GR-80168: Bytecode DSL: Added `serializeBuilderBytecode`, `deserializeBuilderBytecode`, `serializeExecutionBytecode`, and `deserializeExecutionBytecode` methods. Execution bytecode can be loaded without reading or replaying builder calls. Deprecated the builder-only `serialize` and `deserialize` methods.
 
 ## Version 25.6
 

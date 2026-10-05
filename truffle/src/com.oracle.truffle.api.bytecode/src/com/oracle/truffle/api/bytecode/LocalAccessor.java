@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,8 +87,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  */
 public final class LocalAccessor {
 
-    private final int localOffset;
-    private final int localIndex;
+    final int localOffset;
+    final int localIndex;
 
     private LocalAccessor(int localOffset, int localIndex) {
         this.localOffset = localOffset;
@@ -333,8 +333,10 @@ public final class LocalAccessor {
      * @since 24.2
      */
     public static LocalAccessor constantOf(BytecodeLocal local) {
-        int offset = local.getLocalOffset();
-        int index = local.getLocalIndex();
+        return constantOf(local.getLocalOffset(), local.getLocalIndex());
+    }
+
+    static LocalAccessor constantOf(int offset, int index) {
         assert offset <= index;
         if (index == offset && offset < CACHE_SIZE) {
             return CACHE[offset];

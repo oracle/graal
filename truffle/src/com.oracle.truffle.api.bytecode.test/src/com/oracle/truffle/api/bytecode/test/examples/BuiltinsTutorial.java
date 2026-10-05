@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -552,7 +552,7 @@ public class BuiltinsTutorial {
      */
     private static BuiltinLanguageRootNode deserialize(byte[] deserialized) {
         try {
-            BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.deserialize(LanguageWithBuiltins.get(), BytecodeConfig.DEFAULT,
+            BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.deserializeBuilderBytecode(LanguageWithBuiltins.get(), BytecodeConfig.DEFAULT,
                             () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(deserialized)),
                             (context, input) -> {
                                 return input.readInt();
@@ -569,7 +569,7 @@ public class BuiltinsTutorial {
 
         // Invoke serialize.
         try {
-            BuiltinLanguageRootNodeGen.serialize(new DataOutputStream(output), (context, buffer, value) -> buffer.writeInt((int) value), parser);
+            BuiltinLanguageRootNodeGen.serializeBuilderBytecode(new DataOutputStream(output), (context, buffer, value) -> buffer.writeInt((int) value), parser);
         } catch (IOException e) {
             // no IO exceptions expected
             throw CompilerDirectives.shouldNotReachHere(e);

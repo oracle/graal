@@ -232,6 +232,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     protected String name;
+    protected BasicInterpreter referencedRoot;
 
     public void setName(String name) {
         this.name = name;

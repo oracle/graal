@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,7 @@ public final class SLBytecodeSerialization {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-        SLBytecodeRootNodeGen.serialize(outputStream, (context, buffer, object) -> {
+        SLBytecodeRootNodeGen.serializeBuilderBytecode(outputStream, (context, buffer, object) -> {
             if (object instanceof SLNull) {
                 buffer.writeByte(CODE_SL_NULL);
             } else if (object instanceof TruffleString) {
@@ -125,7 +125,7 @@ public final class SLBytecodeSerialization {
 
     public static BytecodeRootNodes<SLBytecodeRootNode> deserializeNodes(SLLanguage language, byte[] inputData) throws IOException {
         Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(inputData));
-        return BYTECODE.deserialize(language, BytecodeConfig.DEFAULT, input, (context, buffer) -> {
+        return BYTECODE.deserializeBuilderBytecode(language, BytecodeConfig.DEFAULT, input, (context, buffer) -> {
             byte tag;
             switch (tag = buffer.readByte()) {
                 case CODE_SL_NULL:

@@ -45,6 +45,16 @@ meth public abstract com.oracle.truffle.api.memory.ByteArraySupport getByteArray
 meth public abstract int readInt(int[],int)
 meth public abstract void writeInt(int[],int,int)
 meth public final java.lang.Object getSerializationKey(java.lang.Object)
+meth public final com.oracle.truffle.api.bytecode.LocalAccessor getLocalAccessorConstant(int,int)
+meth public final com.oracle.truffle.api.bytecode.LocalRangeAccessor getLocalRangeAccessorConstant(int,int,int)
+meth public final com.oracle.truffle.api.bytecode.MaterializedLocalAccessor getMaterializedLocalAccessorConstant(int,int,int)
+meth public final int getLocalIndex(com.oracle.truffle.api.bytecode.LocalAccessor)
+meth public final int getLocalIndex(com.oracle.truffle.api.bytecode.MaterializedLocalAccessor)
+meth public final int getLocalOffset(com.oracle.truffle.api.bytecode.LocalAccessor)
+meth public final int getLocalOffset(com.oracle.truffle.api.bytecode.MaterializedLocalAccessor)
+meth public final int getRootIndex(com.oracle.truffle.api.bytecode.MaterializedLocalAccessor)
+meth public final int getStartIndex(com.oracle.truffle.api.bytecode.LocalRangeAccessor)
+meth public final int getStartOffset(com.oracle.truffle.api.bytecode.LocalRangeAccessor)
 meth public final static com.oracle.truffle.api.bytecode.BytecodeDSLAccess lookup(java.lang.Object,boolean)
 supr java.lang.Object
 hfds safeSingleton,unsafeSingleton
@@ -64,12 +74,18 @@ meth public abstract java.lang.Class<{com.oracle.truffle.api.bytecode.BytecodeDe
 meth public abstract java.util.List<com.oracle.truffle.api.bytecode.InstructionDescriptor> getInstructionDescriptors()
 meth public abstract {com.oracle.truffle.api.bytecode.BytecodeDescriptor%0} cast(com.oracle.truffle.api.nodes.RootNode)
 meth public com.oracle.truffle.api.bytecode.BytecodeRootNodes<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%0}> deserialize({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},com.oracle.truffle.api.bytecode.BytecodeConfig,java.util.function.Supplier<java.io.DataInput>,com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer) throws java.io.IOException
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.7")
+meth public com.oracle.truffle.api.bytecode.BytecodeRootNodes<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%0}> deserializeBuilderBytecode({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},com.oracle.truffle.api.bytecode.BytecodeConfig,java.util.function.Supplier<java.io.DataInput>,com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer) throws java.io.IOException
+meth public com.oracle.truffle.api.bytecode.BytecodeRootNodes<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%0}> deserializeExecutionBytecode({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},com.oracle.truffle.api.bytecode.BytecodeConfig,java.util.function.Supplier<java.io.DataInput>,java.util.function.Function<com.oracle.truffle.api.bytecode.BytecodeConfig,java.io.DataInput>,com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer) throws java.io.IOException
 meth public final {com.oracle.truffle.api.bytecode.BytecodeDescriptor%0} cast(com.oracle.truffle.api.CallTarget)
 meth public java.lang.String dump()
 meth public java.lang.String toString()
 meth public void addInstructionTracer({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},com.oracle.truffle.api.bytecode.InstructionTracer)
 meth public void removeInstructionTracer({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},com.oracle.truffle.api.bytecode.InstructionTracer)
 meth public void serialize(java.io.DataOutput,com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer,com.oracle.truffle.api.bytecode.BytecodeParser<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%2}>) throws java.io.IOException
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.7")
+meth public void serializeBuilderBytecode(java.io.DataOutput,com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer,com.oracle.truffle.api.bytecode.BytecodeParser<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%2}>) throws java.io.IOException
+meth public void serializeExecutionBytecode({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},java.io.DataOutput,com.oracle.truffle.api.bytecode.BytecodeConfig,com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer,com.oracle.truffle.api.bytecode.BytecodeParser<{com.oracle.truffle.api.bytecode.BytecodeDescriptor%2}>) throws java.io.IOException
 meth public void update({com.oracle.truffle.api.bytecode.BytecodeDescriptor%1},com.oracle.truffle.api.bytecode.BytecodeConfig)
 supr java.lang.Object
 hfds descriptorLookupEnabled,engineDescriptorLookupEnabled
@@ -262,6 +278,9 @@ meth public java.lang.String toString()
 meth public void addInstructionTracer(com.oracle.truffle.api.bytecode.InstructionTracer)
 meth public void removeInstructionTracer(com.oracle.truffle.api.bytecode.InstructionTracer)
 meth public void serialize(java.io.DataOutput,com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer) throws java.io.IOException
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="25.7")
+meth public void serializeBuilderBytecode(java.io.DataOutput,com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer) throws java.io.IOException
+meth public void serializeExecutionBytecode(java.io.DataOutput,com.oracle.truffle.api.bytecode.BytecodeConfig,com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer) throws java.io.IOException
 supr java.lang.Object
 hfds parser
 

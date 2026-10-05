@@ -131,13 +131,13 @@ public class LazySourceContentTest {
     private static BytecodeRootNodes<LazySourcesBytecodeRootNode> doRoundTrip(BytecodeConfig config, BytecodeParser<LazySourcesBytecodeRootNodeGen.Builder> parser) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
-            LazySourcesBytecodeRootNodeGen.BYTECODE.serialize(new DataOutputStream(output), SERIALIZER, parser);
+            LazySourcesBytecodeRootNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER, parser);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
-        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
+        Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         try {
-            return LazySourcesBytecodeRootNodeGen.BYTECODE.deserialize(null, config, input, DESERIALIZER);
+            return LazySourcesBytecodeRootNodeGen.BYTECODE.deserializeBuilderBytecode(null, config, builderBytecodeInput, DESERIALIZER);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
@@ -558,6 +558,109 @@ public class LazySourceContentTest {
 
             assertTrue(root.getBytecodeNode().hasSourceInformationWithContent());
             assertSectionWithCharacters(root.getSourceSection(), 0, 5, "hello");
+        }
+    }
+
+    @Test
+    public void testExecutionBytecodeWithSourceContent() throws IOException {
+        BytecodeDSLTestLanguage language = BytecodeDSLTestLanguage.REF.get(null);
+        try (SourceSupplierContext ctx = new SourceSupplierContext(s -> createSourceWithCharacters("a", "hello"))) {
+            ByteArrayOutputStream builderBytecodeOutput = new ByteArrayOutputStream();
+            LazySourcesBytecodeRootNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(builderBytecodeOutput), SERIALIZER, LazySourceContentTest::emitExecutionBytecodeProgram);
+            assertEquals(0, ctx.loadCount);
+
+            // Materialize the content while constructing the execution bytecode image.
+            ByteArrayOutputStream executionBytecodeOutput = new ByteArrayOutputStream();
+            LazySourcesBytecodeRootNodeGen.BYTECODE.serializeExecutionBytecode(language, new DataOutputStream(executionBytecodeOutput), BytecodeConfig.WITH_SOURCE_CONTENT, SERIALIZER,
+                            LazySourceContentTest::emitExecutionBytecodeProgram);
+            assertEquals(1, ctx.loadCount);
+            // Count loading separately from serialization.
+            ctx.loadCount = 0;
+
+            TestInput builderBytecodeInput = new TestInput(builderBytecodeOutput.toByteArray());
+            TestInput executionBytecodeInput = new TestInput(executionBytecodeOutput.toByteArray());
+            BytecodeRootNodes<LazySourcesBytecodeRootNode> nodes = LazySourcesBytecodeRootNodeGen.BYTECODE.deserializeExecutionBytecode(
+                            language, BytecodeConfig.WITH_SOURCE_CONTENT, builderBytecodeInput,
+                            config -> config.matches(BytecodeConfig.WITH_SOURCE_CONTENT) ? executionBytecodeInput.get() : null,
+                            DESERIALIZER);
+            assertEquals(0, builderBytecodeInput.invocations);
+            assertEquals(1, executionBytecodeInput.invocations);
+            assertEquals(0, ctx.loadCount);
+
+            LazySourcesBytecodeRootNode root = nodes.getNode(0);
+            assertTrue(root.getBytecodeNode().hasSourceInformationWithContent());
+            assertSectionWithCharacters(root.getSourceSection(), 0, 5, "hello");
+            assertSectionWithCharacters(root.getBytecodeNode().getInstruction(0).getSourceSection(), 1, 3, "ell");
+            assertNull(root.getCallTarget().call());
+            assertFalse(nodes.ensureSourceInformationWithContent());
+            assertEquals(0, builderBytecodeInput.invocations);
+            assertEquals(1, executionBytecodeInput.invocations);
+            assertEquals(0, ctx.loadCount);
+        }
+    }
+
+    @Test
+    public void testExecutionBytecodeWithoutSourceContent() throws IOException {
+        BytecodeDSLTestLanguage language = BytecodeDSLTestLanguage.REF.get(null);
+        try (SourceSupplierContext ctx = new SourceSupplierContext(s -> createSourceWithCharacters("a", "hello"))) {
+            ByteArrayOutputStream builderBytecodeOutput = new ByteArrayOutputStream();
+            LazySourcesBytecodeRootNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(builderBytecodeOutput), SERIALIZER, LazySourceContentTest::emitExecutionBytecodeProgram);
+            assertEquals(0, ctx.loadCount);
+
+            // A source-only image does not load content during serialization.
+            ByteArrayOutputStream executionBytecodeOutput = new ByteArrayOutputStream();
+            LazySourcesBytecodeRootNodeGen.BYTECODE.serializeExecutionBytecode(language, new DataOutputStream(executionBytecodeOutput), BytecodeConfig.WITH_SOURCE, SERIALIZER,
+                            LazySourceContentTest::emitExecutionBytecodeProgram);
+            assertEquals(0, ctx.loadCount);
+
+            // No image includes content, so requesting it loads the characters during builder replay.
+            TestInput builderBytecodeInput = new TestInput(builderBytecodeOutput.toByteArray());
+            TestInput executionBytecodeInput = new TestInput(executionBytecodeOutput.toByteArray());
+            BytecodeRootNodes<LazySourcesBytecodeRootNode> nodes = LazySourcesBytecodeRootNodeGen.BYTECODE.deserializeExecutionBytecode(
+                            language, BytecodeConfig.WITH_SOURCE_CONTENT, builderBytecodeInput,
+                            config -> config.matches(BytecodeConfig.WITH_SOURCE) ? executionBytecodeInput.get() : null, DESERIALIZER);
+            assertEquals(1, builderBytecodeInput.invocations);
+            assertEquals(0, executionBytecodeInput.invocations);
+            assertEquals(1, ctx.loadCount);
+
+            LazySourcesBytecodeRootNode root = nodes.getNode(0);
+            assertTrue(root.getBytecodeNode().hasSourceInformationWithContent());
+            assertSectionWithCharacters(root.getSourceSection(), 0, 5, "hello");
+            assertSectionWithCharacters(root.getBytecodeNode().getInstruction(0).getSourceSection(), 1, 3, "ell");
+            assertNull(root.getCallTarget().call());
+            assertFalse(nodes.ensureSourceInformationWithContent());
+            assertEquals(1, ctx.loadCount);
+            assertEquals(1, builderBytecodeInput.invocations);
+            assertEquals(0, executionBytecodeInput.invocations);
+        }
+    }
+
+    private static void emitExecutionBytecodeProgram(LazySourcesBytecodeRootNodeGen.Builder b) {
+        b.beginSource(createSourceWithoutCharacters("a"));
+        b.beginSourceSection(0, 5);
+        b.beginRoot();
+        b.beginReturn();
+        b.beginSourceSection(1, 3);
+        b.emitLoadNull();
+        b.endSourceSection();
+        b.endReturn();
+        b.endRoot();
+        b.endSourceSection();
+        b.endSource();
+    }
+
+    private static final class TestInput implements Supplier<DataInput> {
+        private final byte[] bytes;
+        private int invocations;
+
+        TestInput(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        @Override
+        public DataInput get() {
+            invocations++;
+            return SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(bytes));
         }
     }
 
