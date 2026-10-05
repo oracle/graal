@@ -605,9 +605,17 @@ public final class LogConfiguration {
         asyncStall = mode.equals("stall");
         asyncRequested = true;
         if (initializationComplete) {
-            /* Reactivation applies a changed drop or stall policy to the existing consumer. */
-            flushAsyncWriter();
-            initializeAsyncWriter();
+            /* Retained routes may still refer to old output slots, so drain admitted writers before reactivation clears them. */
+            writesEnabled = false;
+            try {
+                while (ACTIVE_WRITES.get() != 0) {
+                    Thread.onSpinWait();
+                }
+                flushAsyncWriter();
+                initializeAsyncWriter();
+            } finally {
+                writesEnabled = true;
+            }
         }
     }
 

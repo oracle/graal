@@ -628,7 +628,9 @@ int SVM_localUTCOffsetSeconds(int64_t milliseconds_since_19700101) {
 #endif
 
 #if !defined(_ALLBSD_SOURCE) && !defined(_GNU_SOURCE)
-    /* The standard timezone value excludes the daylight-saving adjustment. */
+    /* Match HotSpot's os::iso8601_time: when tm_gmtoff is unavailable, daylight saving time
+     * contributes one hour to the standard timezone offset. At the time of writing, Lord Howe
+     * Island is the only known time zone with a different daylight-saving adjustment (30 minutes). */
     const time_t seconds_per_hour = 60 * 60;
     if (time_struct.tm_isdst > 0) {
         UTC_to_local -= seconds_per_hour;

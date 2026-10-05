@@ -150,7 +150,8 @@ final class LogAsyncWriter {
          * Create the managed worker first so allocation failure cannot strand an installed native
          * queue before the writer becomes reachable by initialization rollback.
          */
-        worker = new Thread(this::run, "SVM AsyncLogWriter");
+        /* The VM-lifetime consumer must not retain the enabling thread's inheritable locals or loader. */
+        worker = new Thread(null, this::run, "SVM AsyncLogWriter", 0, false);
         worker.setDaemon(true);
 
         long requestedSize = Options.AsyncLogBufferSize.getValue();
