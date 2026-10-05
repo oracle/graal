@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,8 +44,12 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.GraalGraphError;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -69,11 +73,11 @@ import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -86,18 +90,48 @@ import jdk.vm.ci.meta.TriState;
  * This class applies static analysis results directly to the {@link StructuredGraph Graal IR} used
  * to build the type flow graph.
  *
- * It uses a {@link CustomSimplification} for the {@link CanonicalizerPhase}, because that provides
- * all the framework for iterative stamp propagation and adding/removing control flow nodes while
- * processing the graph.
+ * Graph strengthening first uses {@link FlowSensitiveSimplifier} to materialize position-dependent
+ * points-to facts over a snapshot of the analyzed graph. It then runs canonicalization with
+ * {@link FlowInsensitiveSimplifier} as a custom simplification that
+ * applies globally valid reachability and type facts iteratively to original, replacement, and
+ * newly created nodes. Reachability analysis skips the flow-sensitive phase because it has no
+ * node-specific flow mappings. The structurally read-only {@link #preStrengthenGraphs} hook runs
+ * before this subpipeline and {@link #postStrengthenGraphs} runs after it.
+ *
+ * <h2>Collaborators</h2>
+ *
+ * This class is the long-lived orchestrator and the boundary for host-VM-specific queries,
+ * callbacks, and replacement-node factories. For each analyzed method it creates these
+ * helper objects:
+ * <ul>
+ * <li>{@link GraphStrengtheningSupport} holds state for one method and graph and provides generic
+ * graph rewrites and globally valid stamp strengthening.</li>
+ * <li>{@link FlowSensitiveSimplifier} performs a single pass over the original graph nodes to apply
+ * position-dependent points-to facts.</li>
+ * <li>{@link FlowInsensitiveSimplifier} runs as a custom canonicalizer simplification and may
+ * process original nodes as well as replacement and newly created nodes.</li>
+ * <li>{@link TypeFlowStampStrengthener} converts points-to type states to Graal stamps or constants;
+ * it owns neither graph traversal nor node dispatch.</li>
+ * </ul>
+ * The simplifiers delegate common graph mutations to {@link GraphStrengtheningSupport}, which in
+ * turn delegates host-VM-specific decisions and node creation to this class.
+ *
+ * <h2>Flow-information boundary</h2>
+ *
+ * Node-specific type-flow facts belong exclusively to the one-shot {@link FlowSensitiveSimplifier
+ * flow-sensitive pass}. Once canonicalization changes graph identity or structure, the original
+ * node-to-flow mapping must not be consulted. Facts that are valid for the entire method, such as
+ * closed-world type reachability, may instead be applied by the iterative
+ * {@link FlowInsensitiveSimplifier flow-insensitive pass}.
  *
  * From the single-method view that the compiler has when later compiling the graph, static analysis
  * results appear "out of thin air": At some random point in the graph, we suddenly have a more
  * precise type (= stamp) for a value. Since many nodes are floating, and even currently fixed nodes
  * might float later, we need to be careful that all information coming from the type flow graph
  * remains properly anchored to the point where the static analysis actually proved the information.
- * So we cannot just change the stamp of, e.g., the parameter of a method invocation, to a more
- * precise stamp. We need to do that indirectly by adding a {@link PiNode} that is anchored using a
- * {@link ValueAnchorNode}.
+ * Position-specific facts therefore cannot simply change a value's stamp; they must be materialized
+ * through a {@link PiNode} anchored by a {@link ValueAnchorNode}. Globally valid facts may update a
+ * node stamp directly.
  */
 public abstract class StrengthenGraphs {
 
@@ -210,14 +244,21 @@ public abstract class StrengthenGraphs {
         var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
         var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
 
-        preStrengthenGraphs(graph, method);
+        applyPreStrengthenGraphs(graph, method);
 
         graph.resetDebug(debug);
         if (beforeCounters != null) {
             beforeCounters.collect(graph);
         }
         try (var s = debug.scope("StrengthenGraphs", graph); var a = debug.activate()) {
-            new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders(method));
+            CoreProviders providers = bb.getProviders(method);
+            GraphStrengtheningSupport strengtheningSupport = new GraphStrengtheningSupport(this, method, graph);
+            if (bb.isPointsToAnalysis()) {
+                FlowSensitiveSimplifier flowSensitiveSimplifier = new FlowSensitiveSimplifier(this, method, graph, strengtheningSupport);
+                new FlowSensitiveGraphStrengtheningPhase(flowSensitiveSimplifier).apply(graph, providers);
+            }
+            FlowInsensitiveSimplifier flowInsensitiveSimplifier = new FlowInsensitiveSimplifier(this, method, graph, strengtheningSupport);
+            CanonicalizerPhase.create().copyWithCustomSimplification(flowInsensitiveSimplifier).apply(graph, providers);
         } catch (Throwable ex) {
             debug.handle(ex);
         }
@@ -240,6 +281,38 @@ public abstract class StrengthenGraphs {
         }
     }
 
+    /** Runs the inspection hook and assertion-checks its structurally read-only contract. */
+    @SuppressWarnings("try")
+    private void applyPreStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
+        if (!Assertions.assertionsEnabled()) {
+            preStrengthenGraphs(graph, method);
+            return;
+        }
+
+        Graph.Mark graphMark = graph.getMark();
+        int edgeModificationCount = graph.getEdgeModificationCount();
+        Graph.NodeEventListener listener = new Graph.NodeEventListener() {
+            @Override
+            public void changed(Graph.NodeEvent event, Node node) {
+                switch (event) {
+                    case NODE_ADDED, NODE_REMOVED, INPUT_CHANGED, CONTROL_FLOW_CHANGED -> throw new AssertionError(
+                                    "preStrengthenGraphs must not structurally modify the graph: " + event + " for " + node);
+                    default -> {
+                    }
+                }
+            }
+        };
+        try (Graph.NodeEventScope scope = graph.trackNodeEvents(listener)) {
+            preStrengthenGraphs(graph, method);
+        }
+        assert graphMark.isCurrent() : "preStrengthenGraphs added nodes";
+        assert edgeModificationCount == graph.getEdgeModificationCount() : "preStrengthenGraphs modified graph edges";
+    }
+
+    /**
+     * Inspects {@code graph} before analysis results are materialized. Implementations must not add,
+     * remove, replace, or rewire nodes.
+     */
     protected abstract void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 
     protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
@@ -269,43 +342,63 @@ public abstract class StrengthenGraphs {
      */
     protected abstract AnalysisType getStrengthenStampType(AnalysisType originalType);
 
+    /**
+     * Creates the first node of the host-VM-specific control-flow replacement used when analysis
+     * proves code unreachable.
+     */
     protected abstract FixedNode createUnreachable(StructuredGraph graph, CoreProviders providers, Supplier<String> message);
 
+    /** Creates the host-VM-specific node that replaces an invoke whose receiver is proven null. */
     protected abstract FixedNode createInvokeWithNullReceiverReplacement(StructuredGraph graph);
 
     protected abstract void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile);
 
     protected abstract String getTypeName(AnalysisType type);
 
-    protected abstract boolean simplifyDelegate(Node n, SimplifierTool tool, Predicate<Node> isUnreachable);
+    /** Performs product-specific processing that may consume node-specific flow reachability. */
+    protected abstract boolean simplifyFlowSensitiveDelegate(Node node, SimplifierTool tool, Predicate<Node> isUnreachable);
 
-    /* Wrapper to clearly identify phase in IGV graph dumps. */
-    public class AnalysisStrengthenGraphsPhase extends BasePhase<CoreProviders> {
-        final CanonicalizerPhase phase;
+    /** Performs repeatable product-specific processing without node-specific flow information. */
+    protected abstract boolean simplifyFlowInsensitiveDelegate(Node node, SimplifierTool tool);
 
-        AnalysisStrengthenGraphsPhase(AnalysisMethod method, StructuredGraph graph) {
-            ReachabilitySimplifier simplifier;
-            if (bb.isPointsToAnalysis()) {
-                simplifier = new TypeFlowSimplifier(StrengthenGraphs.this, method, graph);
-            } else {
-                simplifier = new ReachabilitySimplifier(StrengthenGraphs.this, method, graph);
-            }
-            phase = CanonicalizerPhase.create().copyWithCustomSimplification(simplifier);
+    /**
+     * Materializes flow-sensitive points-to results before ordinary canonicalization begins. The
+     * phase wrapper also identifies this step explicitly in IGV graph dumps.
+     */
+    public static final class FlowSensitiveGraphStrengtheningPhase extends BasePhase<CoreProviders> {
+        private final FlowSensitiveSimplifier simplifier;
+
+        /** Creates a phase that invokes {@code simplifier} once for every original live node. */
+        FlowSensitiveGraphStrengtheningPhase(FlowSensitiveSimplifier simplifier) {
+            this.simplifier = simplifier;
         }
 
         @Override
         public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-            return phase.notApplicableTo(graphState);
+            return ALWAYS_APPLICABLE;
         }
 
         @Override
+        @SuppressWarnings("try")
         protected void run(StructuredGraph graph, CoreProviders context) {
-            phase.apply(graph, context);
+            CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+            SimplifierTool tool = GraphUtil.getDefaultSimplifier(context, canonicalizer.getCanonicalizeReads(), graph.getAssumptions(), graph.getOptions());
+            for (Node node : graph.getNodes().snapshot()) {
+                if (node.isAlive()) {
+                    try (DebugCloseable position = node.withNodeSourcePosition(); DebugContext.Scope nodeScope = graph.getDebug().withContext(node)) {
+                        try {
+                            simplifier.simplify(node, tool);
+                        } catch (Throwable throwable) {
+                            throw new GraalGraphError(throwable).addContext(node);
+                        }
+                    }
+                }
+            }
         }
 
         @Override
         public CharSequence getName() {
-            return "AnalysisStrengthenGraphs";
+            return "FlowSensitiveGraphStrengthening";
         }
     }
 

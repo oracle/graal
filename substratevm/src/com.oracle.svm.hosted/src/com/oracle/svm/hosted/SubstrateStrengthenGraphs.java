@@ -415,22 +415,32 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     }
 
     @Override
-    protected boolean simplifyDelegate(Node n, SimplifierTool tool, Predicate<Node> isUnreachable) {
-        if (n instanceof InlinedInvokeArgumentsNode inlinedInvokeArgumentsNode) {
-            if (isUnreachable.test(inlinedInvokeArgumentsNode)) {
-                /* If node is unreachable, then the entire branch should be removed. */
-                StructuredGraph graph = (StructuredGraph) n.graph();
-                Supplier<String> message = () -> String.format("Method %s, Unreachable InlinedInvokeArgumentsNode: %s", StrengthenGraphs.getQualifiedName(graph), inlinedInvokeArgumentsNode);
-                FixedNode unreachableNode = createUnreachable(graph, tool, message);
-                ((FixedWithNextNode) inlinedInvokeArgumentsNode.predecessor()).setNext(unreachableNode);
-                GraphUtil.killCFG(inlinedInvokeArgumentsNode);
-            } else {
-                /*
-                 * Otherwise, InlinedInvokeArgumentsNode is only necessary for analysis and can be
-                 * removed once StrengthenGraphs is reached.
-                 */
-                inlinedInvokeArgumentsNode.graph().removeFixed(inlinedInvokeArgumentsNode);
-            }
+    protected boolean simplifyFlowSensitiveDelegate(Node node, SimplifierTool tool, Predicate<Node> isUnreachable) {
+        if (!(node instanceof InlinedInvokeArgumentsNode inlinedInvokeArgumentsNode)) {
+            return false;
+        }
+        if (isUnreachable.test(inlinedInvokeArgumentsNode)) {
+            /* If node is unreachable, then the entire branch should be removed. */
+            StructuredGraph graph = (StructuredGraph) node.graph();
+            Supplier<String> message = () -> String.format("Method %s, Unreachable InlinedInvokeArgumentsNode: %s", StrengthenGraphs.getQualifiedName(graph), inlinedInvokeArgumentsNode);
+            FixedNode unreachableNode = createUnreachable(graph, tool, message);
+            ((FixedWithNextNode) inlinedInvokeArgumentsNode.predecessor()).setNext(unreachableNode);
+            GraphUtil.killCFG(inlinedInvokeArgumentsNode);
+        } else {
+            /*
+             * The marker is needed only during analysis and can be removed once graph strengthening
+             * reaches it.
+             */
+            inlinedInvokeArgumentsNode.graph().removeFixed(inlinedInvokeArgumentsNode);
+        }
+        return true;
+    }
+
+    @Override
+    protected boolean simplifyFlowInsensitiveDelegate(Node node, SimplifierTool tool) {
+        if (node instanceof InlinedInvokeArgumentsNode inlinedInvokeArgumentsNode) {
+            /* The marker is analysis-only; this path must not query its invoke flow. */
+            inlinedInvokeArgumentsNode.graph().removeFixed(inlinedInvokeArgumentsNode);
             return true;
         }
         return false;
