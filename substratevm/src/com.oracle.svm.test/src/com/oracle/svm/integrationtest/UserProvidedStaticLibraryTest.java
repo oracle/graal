@@ -62,6 +62,11 @@ public class UserProvidedStaticLibraryTest {
         private Path libraryDirectory;
 
         @Override
+        public boolean isInConfiguration(IsInConfigurationAccess access) {
+            return isSupportedPlatform();
+        }
+
+        @Override
         public void duringSetup(DuringSetupAccess access) {
             NativeLibraries nativeLibraries = NativeLibraries.singleton();
             Path directory = nativeLibraries.tempDirectory.resolve("user-provided-static-library");
@@ -127,5 +132,9 @@ public class UserProvidedStaticLibraryTest {
     @Test
     public void staticLibraryWithoutOnLoadCanBeLinked() {
         /* The feature performs the assertions while the native image is being built. */
+    }
+
+    private static boolean isSupportedPlatform() {
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 }
