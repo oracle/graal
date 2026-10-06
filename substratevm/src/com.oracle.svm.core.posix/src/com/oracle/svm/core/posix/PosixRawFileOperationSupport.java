@@ -59,6 +59,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 
     @Override
     public RawFileOperationSupport.RawFilePath allocatePath(String path) {
+        // Once GR-64572 is resolved, this should be `path.getBytes()`.
         byte[] data = path.getBytes(StandardCharsets.UTF_8);
         CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
