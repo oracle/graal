@@ -129,7 +129,10 @@ public class ClassLoaderFeature implements InternalFeature {
                 });
             }
         } else {
-            config.registerObjectToConstantReplacer(obj -> (ImageHeapConstant) replaceClassLoadersWithLayerConstant(registry, obj));
+            var hostedValuesProvider = config.getUniverse().getHostedValuesProvider();
+            // JVMCI migration blocked by GR-72593: Migrate ClassLoaderFeature to terminus
+            config.registerJVMCIObjectToConstantReplacer(constant -> (ImageHeapConstant) replaceClassLoadersWithLayerConstant(registry,
+                            hostedValuesProvider.asObject(Object.class, constant)));
             // relink packages defined in the prior layers
             config.registerObjectToConstantReplacer(packageManager::replaceWithPriorLayerPackage);
         }
