@@ -286,6 +286,12 @@ def register_crema_java_vm():
         ('default-' + edition, ['-svm']),
         ('no-profiling-' + edition, ['-svm']),
         ('xint-' + edition, ['-svm', '-XX:-JITEnableCompilation']),
+        # Keep profiling, including backedge counting, enabled while delaying compilation.
+        # Counts accumulate across threads and iterations; runs must stay below Integer.MAX_VALUE.
+        ('xint-with-profiles-' + edition, [
+            '-svm', '-XX:+JITEnableCompilation', '-XX:+JITUseOnStackReplacement', '-XX:-JITXComp',
+            '-XX:JITCompilerInvocationThreshold=2147483647', '-XX:JITCompilerOSRBackedgeThreshold=2147483647',
+        ]),
     ]
     if edition == 'ee':
         crema_configs += [
