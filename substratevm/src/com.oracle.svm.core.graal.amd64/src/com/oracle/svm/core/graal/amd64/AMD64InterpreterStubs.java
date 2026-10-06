@@ -125,11 +125,6 @@ public class AMD64InterpreterStubs {
             emitVTableFastPath = useRistretto && stubType.value() == InterpreterEnterStub.Kind.VTABLE;
         }
 
-        private static AMD64Address createAddress(int offset) {
-            int deoptSlotSize = 8 + 8 /* padding */;
-            return new AMD64Address(rsp, deoptSlotSize + offset);
-        }
-
         private static AMD64BaseAssembler.OperandSize referenceOperandSize() {
             int refSize = ObjectLayout.singleton().getReferenceSize();
             return refSize == Integer.BYTES ? AMD64BaseAssembler.OperandSize.DWORD : AMD64BaseAssembler.OperandSize.QWORD;
@@ -285,6 +280,7 @@ public class AMD64InterpreterStubs {
         @Override
         public void enter(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
 
             /*
              * Optional fast paths are emitted before the regular prologue, so mark the start of
@@ -315,21 +311,20 @@ public class AMD64InterpreterStubs {
             super.enter(crb);
 
             /* sp points to InterpreterData struct */
-            masm.movq(createAddress(offsetAbiSpReg()), spCopy);
+            masm.movq(interpreterDataAddress(frameMap, offsetAbiSpReg()), spCopy);
 
             VMError.guarantee(gps.size() == 6);
 
             for (int i = 0; i < gps.size(); i++) {
-                masm.movq(createAddress(offsetAbiGp(i)), gps.get(i));
+                masm.movq(interpreterDataAddress(frameMap, offsetAbiGp(i)), gps.get(i));
             }
 
             for (int i = 0; i < fps.size(); i++) {
-                masm.movq(createAddress(offsetAbiFpArg(i)), fps.get(i));
+                masm.movq(interpreterDataAddress(frameMap, offsetAbiFpArg(i)), fps.get(i));
             }
 
             /* sp points to InterpreterData struct, move it as 2nd arg */
-            masm.movq(gps.get(1), rsp);
-            masm.addq(gps.get(1), 16 /* deoptSlotSize */);
+            masm.leaq(gps.get(1), interpreterDataAddress(frameMap, 0));
 
             /* Pass the interpreter method index as first arg */
             masm.movq(gps.get(0), trampArg);
@@ -359,16 +354,12 @@ public class AMD64InterpreterStubs {
             nonVirtual = annotation.nonVirtual();
         }
 
-        private static AMD64Address jniUpcallDataAddress(SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap, int offset) {
-            return new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getInterpreterJNIUpcallData()) + offset);
-        }
-
         @Override
         public void enter(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
             SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
             SubstrateAMD64RegisterConfig registerConfig = (SubstrateAMD64RegisterConfig) frameMap.getRegisterConfig();
-            StackSlot jniUpcallData = frameMap.getInterpreterJNIUpcallData();
+            StackSlot jniUpcallData = frameMap.getInterpreterData();
             assert (callVariant == CallVariant.VARARGS) == (jniUpcallData != null);
 
             List<Register> gps = registerConfig.getNativeGeneralParameterRegs();
@@ -386,12 +377,12 @@ public class AMD64InterpreterStubs {
 
             if (callVariant == CallVariant.VARARGS) {
                 /* Capture the original JNI arguments before adapting registers for the wrapper. */
-                masm.movq(jniUpcallDataAddress(frameMap, offsetAbiSpReg()), originalSp);
+                masm.movq(interpreterDataAddress(frameMap, offsetAbiSpReg()), originalSp);
                 for (int i = 0; i < gps.size(); i++) {
-                    masm.movq(jniUpcallDataAddress(frameMap, offsetAbiGp(i)), gps.get(i));
+                    masm.movq(interpreterDataAddress(frameMap, offsetAbiGp(i)), gps.get(i));
                 }
                 for (int i = 0; i < fps.size(); i++) {
-                    masm.movq(jniUpcallDataAddress(frameMap, offsetAbiFpArg(i)), fps.get(i));
+                    masm.movq(interpreterDataAddress(frameMap, offsetAbiFpArg(i)), fps.get(i));
                 }
             }
 
@@ -403,7 +394,7 @@ public class AMD64InterpreterStubs {
             Register payload = gps.get(3);
             if (callVariant == CallVariant.VARARGS) {
                 /* Pass the address of the dedicated frame slot that preserves the captured arguments. */
-                masm.leaq(payload, jniUpcallDataAddress(frameMap, 0));
+                masm.leaq(payload, interpreterDataAddress(frameMap, 0));
             } else if (nonVirtual) {
                 /* Due to the drop of the JNI clazz argument: payload becomes the fourth argument. */
                 if (gps.size() > 4) {
@@ -431,10 +422,6 @@ public class AMD64InterpreterStubs {
             super(method, callingConvention);
         }
 
-        private static AMD64Address upcallDataAddress(SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap, int offset) {
-            return new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getInterpreterFFMUpcallData()) + offset);
-        }
-
         @Override
         public void enter(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
@@ -452,18 +439,18 @@ public class AMD64InterpreterStubs {
             /* r10 and r11 contain the trampoline metadata and isolate, so use rax for the caller SP. */
             masm.movq(rax, rsp);
             super.enter(crb);
-            masm.movq(upcallDataAddress(frameMap, offsetAbiSpReg()), rax);
+            masm.movq(interpreterDataAddress(frameMap, offsetAbiSpReg()), rax);
             for (int i = 0; i < gps.size(); i++) {
-                masm.movq(upcallDataAddress(frameMap, offsetAbiGp(i)), gps.get(i));
+                masm.movq(interpreterDataAddress(frameMap, offsetAbiGp(i)), gps.get(i));
             }
             for (int i = 0; i < fps.size(); i++) {
-                masm.movq(upcallDataAddress(frameMap, offsetAbiFpArg(i)), fps.get(i));
+                masm.movq(interpreterDataAddress(frameMap, offsetAbiFpArg(i)), fps.get(i));
             }
 
             /* Adapt the trampoline registers and captured frame address to the Java signature. */
             masm.movq(gps.get(0), r10);
             masm.movq(gps.get(1), r11);
-            masm.leaq(gps.get(2), upcallDataAddress(frameMap, 0));
+            masm.leaq(gps.get(2), interpreterDataAddress(frameMap, 0));
         }
 
         @Override
@@ -479,6 +466,14 @@ public class AMD64InterpreterStubs {
         }
     }
 
+    private static AMD64Address interpreterDataAddress(SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap, int offset) {
+        return new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getInterpreterData()) + offset);
+    }
+
+    private static AMD64Address interpreterLeaveDataAddress(SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap, int offset) {
+        return new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getInterpreterLeaveData()) + offset);
+    }
+
     public static class InterpreterLeaveStubContext extends SubstrateAMD64Backend.SubstrateAMD64FrameContext {
 
         public InterpreterLeaveStubContext(SharedMethod method, CallingConvention callingConvention) {
@@ -489,14 +484,15 @@ public class AMD64InterpreterStubs {
         public void enter(CompilationResultBuilder crb) {
             super.enter(crb);
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
             List<Register> gps = getRegisterConfig().getJavaGeneralParameterRegs();
 
-            /* sp points to a reserved stack slot for this stub */
+            /* Persistent leave metadata is stored in a dedicated frame slot. */
 
             /* arg0 is untouched by this extra prolog */
 
             /* arg3: true if the result of the function is in a floating-point register */
-            masm.movq(new AMD64Address(rsp, 0), gps.get(3));
+            masm.movq(interpreterLeaveDataAddress(frameMap, 0), gps.get(3));
 
             masm.subq(rsp, gps.get(2) /* variable stack size */);
         }
@@ -504,6 +500,7 @@ public class AMD64InterpreterStubs {
         @Override
         public void leave(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
             List<Register> gps = getRegisterConfig().getJavaGeneralParameterRegs();
             List<Register> fps = getRegisterConfig().getFloatingPointParameterRegs();
 
@@ -561,7 +558,7 @@ public class AMD64InterpreterStubs {
 
             Label gpResult = new Label();
             /* The leave stub returns a long, so check whether the actual call returned in xmm0. */
-            masm.movq(r10, new AMD64Address(rsp, 0));
+            masm.movq(r10, interpreterLeaveDataAddress(frameMap, 0));
             masm.testq(r10, r10);
             masm.jccb(AMD64Assembler.ConditionFlag.Zero, gpResult);
             /* Return the raw float/double bits in rax. */
@@ -582,14 +579,15 @@ public class AMD64InterpreterStubs {
         public void enter(CompilationResultBuilder crb) {
             super.enter(crb);
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
             List<Register> gps = getRegisterConfig().getJavaGeneralParameterRegs();
 
-            /* sp points to two reserved stack slots for this stub */
+            /* Persistent leave metadata is stored in dedicated frame slots. */
 
             /* arg0 is untouched by this extra prolog */
 
             /* arg3: return flags used to preserve the required native return registers. */
-            masm.movq(new AMD64Address(rsp, 0), gps.get(3));
+            masm.movq(interpreterLeaveDataAddress(frameMap, 0), gps.get(3));
 
             /*
              * Interpreter data lives in the caller's stack. Do not preserve its absolute address
@@ -598,7 +596,7 @@ public class AMD64InterpreterStubs {
              */
             masm.movq(r10, gps.get(1));
             masm.subq(r10, rsp);
-            masm.movq(new AMD64Address(rsp, 8), r10);
+            masm.movq(interpreterLeaveDataAddress(frameMap, 8), r10);
             /*
              * arg2: Variable stack size. Compared to Java calls we have no deopt stack slot
              * available to store the stack size, so we save it in a callee-saved register.
@@ -611,6 +609,7 @@ public class AMD64InterpreterStubs {
         @Override
         public void leave(CompilationResultBuilder crb) {
             AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            SubstrateAMD64Backend.SubstrateAMD64FrameMap frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
             List<Register> jgps = getRegisterConfig().getJavaGeneralParameterRegs();
             List<Register> ngps = getRegisterConfig().getNativeGeneralParameterRegs();
             List<Register> fps = getRegisterConfig().getFloatingPointParameterRegs();
@@ -673,7 +672,7 @@ public class AMD64InterpreterStubs {
             masm.addq(rsp, rbx);
 
             Register returnFlags = r10;
-            masm.movq(returnFlags, new AMD64Address(rsp, 0));
+            masm.movq(returnFlags, interpreterLeaveDataAddress(frameMap, 0));
 
             Label noReturnBuffer = new Label();
             masm.testl(returnFlags, NATIVE_DOWNCALL_RETURNS_IN_BUFFER);
@@ -683,7 +682,7 @@ public class AMD64InterpreterStubs {
              * register needed by an FFM aggregate return before those registers are repurposed.
              */
             Register data = r11;
-            masm.movq(data, new AMD64Address(rsp, 8));
+            masm.movq(data, interpreterLeaveDataAddress(frameMap, 8));
             masm.addq(data, rsp);
             masm.movq(new AMD64Address(data, offsetAbiGp(0)), rax);
             masm.movq(new AMD64Address(data, offsetAbiGp(1)), rdx);
@@ -706,17 +705,6 @@ public class AMD64InterpreterStubs {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int sizeOfInterpreterData() {
         return NumUtil.roundUp(SizeOf.get(InterpreterDataAMD64.class), 0x10);
-    }
-
-    public static int additionalFrameSizeEnterStub() {
-        int wordSize = 8;
-        int deoptSlotSize = wordSize + wordSize /* for padding */;
-        return sizeOfInterpreterData() + deoptSlotSize;
-    }
-
-    public static int additionalFrameSizeLeaveStub() {
-        /* Reserve words for the FP-return flag and the stable interpreter data pointer. */
-        return 16;
     }
 
     @RawStructure
