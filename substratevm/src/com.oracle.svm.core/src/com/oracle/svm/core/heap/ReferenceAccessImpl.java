@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -38,6 +39,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -109,13 +111,30 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     @Override
     public UnsignedWord getMaxAddressSpaceSize() {
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
+        UnsignedWord addressSpaceSize;
         if (referenceSize == Integer.BYTES) {
             int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
-            return Word.unsigned(1L << (referenceSize * Byte.SIZE)).shiftLeft(compressionShift);
+            addressSpaceSize = Word.unsigned(1L << (referenceSize * Byte.SIZE)).shiftLeft(compressionShift);
+        } else {
+            assert referenceSize == Long.BYTES;
+            // Assume that 48 bit is the maximum address space that can be used.
+            addressSpaceSize = Word.unsigned((1L << 48) - 1);
         }
-        assert referenceSize == Long.BYTES;
-        // Assume that 48 bit is the maximum address space that can be used.
-        return Word.unsigned((1L << 48) - 1);
+
+        if (SubstrateOptions.ConcealedOptions.MaxReservedAddressSpaceSize.getValue() > 0) {
+            addressSpaceSize = UnsignedUtils.min(Word.unsigned(SubstrateOptions.ConcealedOptions.MaxReservedAddressSpaceSize.getValue()), addressSpaceSize);
+
+            if (SubstrateOptions.GraalOS.getValue()) {
+                /*
+                 * Use a smaller address space to avoid that individual mmap calls are larger than
+                 * the max. reserved address space size.
+                 */
+                assert addressSpaceSize.aboveThan(Heap.getHeap().getHeapBaseAlignment());
+                addressSpaceSize = addressSpaceSize.subtract(Heap.getHeap().getHeapBaseAlignment());
+            }
+        }
+
+        return addressSpaceSize;
     }
 
     @Fold

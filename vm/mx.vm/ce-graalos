@@ -1,0 +1,4 @@
+DYNAMIC_IMPORTS=/sdk,/truffle,/compiler,/substratevm,/sandbox-toolchains
+COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmjdwp,svmt,svmsl,tflc,tflsm,sbllvm,sbjdk,gos,gossup
+NATIVE_IMAGES=lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,native-image,graalvm-musl-swcfi-tool,graalvm-musl-hwcfi-tool
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -42,6 +44,11 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 public class HostJDKLibDirectoryProvider implements JDKLibDirectoryProvider {
     @Override
     public Path getJDKLibDirectory() {
+        if (SubstrateOptions.GraalOS.getValue()) {
+            boolean cfiEnabled = SubstrateControlFlowIntegrity.Options.CFI.getValue() == SubstrateControlFlowIntegrity.CFIOptions.SW;
+            return Path.of(System.getProperty("java.home"), "lib", cfiEnabled ? "musl-swcfi" : "musl");
+        }
+
         /* On Windows, JDK libraries are in `<java.home>\bin` directory. */
         boolean isWindows = Platform.includedIn(Platform.WINDOWS.class);
         return Path.of(System.getProperty("java.home"), isWindows ? "bin" : "lib");
