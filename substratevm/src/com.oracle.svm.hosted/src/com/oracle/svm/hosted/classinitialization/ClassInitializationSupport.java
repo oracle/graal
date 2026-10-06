@@ -78,6 +78,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The core class for deciding whether a class should be initialized during image building or class
  * initialization should be delayed to runtime.
  * <p>
+ * Policy and bookkeeping are builder-owned, but represented classes use canonical guest-owned
+ * {@link ResolvedJavaType} identity; builder {@code Class<?>} mirrors must not enter this state.
+ * Builder-context callers use {@link JVMCIRuntimeClassInitializationSupport}; guest-context requests
+ * are proxied to this policy, while class initialization itself executes in the guest context.
+ * <p>
  * The initialization kind for all classes is encoded in the two registries:
  * {@link #classInitializationConfiguration}, the user-configured initialization state, and
  * {@link #classInitKinds}, the actual computed initialization state.
