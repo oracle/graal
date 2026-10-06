@@ -455,7 +455,7 @@ public final class GCImpl implements GC {
             if (LogTagSet.gc.isDebug()) {
                 LogMessage message = LogTagSet.gc.message();
                 try {
-                    message.debug().string("Verifying ").string(occasion.name()).string(" GC ") //
+                    message.debug().string("Verifying ").string(occasion.name()).string(" GC ")
                                     .rational(TimeUtils.nanoSecondsSince(start), TimeUtils.nanosPerMilli, 3).string("ms");
                 } finally {
                     message.close();
@@ -567,8 +567,8 @@ public final class GCImpl implements GC {
             String collectionType = completeCollection ? "Full GC" : "Incremental GC";
             LogMessage message = LogTagSet.gc.message();
             try {
-                message.info().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ") //
-                                .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ") //
+                message.info().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ")
+                                .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ")
                                 .rational(timers.collection.totalNanos(), TimeUtils.nanosPerMilli, 3).string("ms");
             } finally {
                 message.close();

@@ -400,13 +400,13 @@ public final class Safepoint {
                 boolean printWarning = warningNanos > 0 && TimeUtils.nanoTimeLessThan(warningNanos, nanosSinceLastWarning);
                 boolean fatalError = failureNanos > 0 && TimeUtils.nanoTimeLessThan(failureNanos, nanosSinceStart);
                 if (printWarning || fatalError) {
-                    Log.log().string("[Safepoint: not all threads reached a safepoint (").string(reason).string(") within ").signed(warningNanos).string(" ns. ") //
+                    Log.log().string("[Safepoint: not all threads reached a safepoint (").string(reason).string(") within ").signed(warningNanos).string(" ns. ")
                                     .string("Total wait time so far: ").signed(nanosSinceStart).string(" ns.").newline();
-                    Log.log().string("  loopCount: ").signed(loopCount) //
-                                    .string("  atSafepoint: ").signed(atSafepoint) //
-                                    .string("  ignoreSafepoints: ").signed(ignoreSafepoints) //
-                                    .string("  notAtSafepoint: ").signed(notAtSafepoint) //
-                                    .string("]") //
+                    Log.log().string("  loopCount: ").signed(loopCount)
+                                    .string("  atSafepoint: ").signed(atSafepoint)
+                                    .string("  ignoreSafepoints: ").signed(ignoreSafepoints)
+                                    .string("  notAtSafepoint: ").signed(notAtSafepoint)
+                                    .string("]")
                                     .newline();
 
                     loopNanos = System.nanoTime();

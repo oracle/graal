@@ -907,10 +907,10 @@ public final class VMOperationControl {
                 if (allowJavaHeapAccess) {
                     log.string(" ").string(name);
                 }
-                log.string(" (safepoint: ").bool(causesSafepoint) //
-                                .string(", queueingThread: ").zhex(queueingThread) //
-                                .string(", executingThread: ").zhex(executingThread) //
-                                .string(", safepointId: ").unsigned(safepointId).string(")") //
+                log.string(" (safepoint: ").bool(causesSafepoint)
+                                .string(", queueingThread: ").zhex(queueingThread)
+                                .string(", executingThread: ").zhex(executingThread)
+                                .string(", safepointId: ").unsigned(safepointId).string(")")
                                 .newline();
             }
         }

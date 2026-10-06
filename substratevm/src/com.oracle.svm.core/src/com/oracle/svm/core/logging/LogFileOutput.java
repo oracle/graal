@@ -185,10 +185,10 @@ final class LogFileOutput extends LogOutput {
         if (rawDescriptor == 0) {
             RawFileDescriptor descriptor = files.create(path, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.WRITE);
             if (!files.isValid(descriptor)) {
-                Log.log().string("Could not open file ") //
-                                .string(pathName) //
-                                .string(" (code: ") //
-                                .signed(descriptor.rawValue()) //
+                Log.log().string("Could not open file ")
+                                .string(pathName)
+                                .string(" (code: ")
+                                .signed(descriptor.rawValue())
                                 .string(")").newline();
                 return;
             }

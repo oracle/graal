@@ -869,16 +869,16 @@ public final class LogConfiguration {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String initHelp() {
-        var decorators = Stream.of(LogDecorators.VALUES) //
-                        .map(d -> "%s (%s)".formatted(d.label(), d.abbreviation())) //
+        var decorators = Stream.of(LogDecorators.VALUES)
+                        .map(d -> "%s (%s)".formatted(d.label(), d.abbreviation()))
                         .collect(Collectors.joining(", ", " ", ""));
-        var tags = Stream.of(LogTag.values()) //
-                        .map(LogTag::label) //
+        var tags = Stream.of(LogTag.values())
+                        .map(LogTag::label)
                         .collect(Collectors.joining(", ", " ", ""));
 
-        var describedTags = Stream.of(LogTagSet.values()) //
-                        .filter(t -> t.description() != null) //
-                        .map(t -> t.label() + ": " + t.description()) //
+        var describedTags = Stream.of(LogTagSet.values())
+                        .filter(t -> t.description() != null)
+                        .map(t -> t.label() + ": " + t.description())
                         .collect(Collectors.joining("\n ", " ", ""));
 
         // @formatter:off
@@ -978,11 +978,11 @@ public final class LogConfiguration {
         return descriptions.toArray(new String[0]);
     }
 
-    private static final String AVAILABLE_TAG_SETS = "Available tag sets: " + //
-                    Stream.of(LogTagSet.VALUES) //
-                                    .map(LogTagSet::label) //
-                                    .filter(s -> !s.isEmpty()) //
-                                    .sorted() //
+    private static final String AVAILABLE_TAG_SETS = "Available tag sets: " +
+                    Stream.of(LogTagSet.VALUES)
+                                    .map(LogTagSet::label)
+                                    .filter(s -> !s.isEmpty())
+                                    .sorted()
                                     .collect(Collectors.joining(", "));
 
     /// Describes one output and the thresholds currently assigned to its tag sets.
