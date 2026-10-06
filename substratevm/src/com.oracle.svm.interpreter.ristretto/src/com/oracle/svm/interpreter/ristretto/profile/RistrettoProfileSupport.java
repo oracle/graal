@@ -236,8 +236,10 @@ public class RistrettoProfileSupport {
             return;
         }
         MethodProfile methodProfile = rMethod.getProfile();
-        trace(RistrettoOptions.JITTraceProfilingIncrements, String.format("[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
-                        RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount()));
+        if (RistrettoOptions.JITTraceProfilingIncrements.getValue()) {
+            trace(RistrettoOptions.JITTraceProfilingIncrements, "[Ristretto Compile Queue]Entering state %s for %s, counter=%s%n",
+                            RistrettoCompileStateMachine.toString(COMPILATION_STATE_UPDATER.get(rMethod)), iMethod, methodProfile.getProfileEntryCount());
+        }
         /*
          * We write without any synchronization to the methodProfile.counter value at the cost of
          * lost updates.
