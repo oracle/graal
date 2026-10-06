@@ -4,6 +4,7 @@ GR-76615-positive
 GR-76615-negative
 v128_array_len_is_element_count
 v128_constexpr_array_new_fixed_preserves_vector
+GR-79472-struct_new_default_v128
 v128_array_new_huge_length_traps
 v128_array_new_data_huge_length_traps
 i32_array_new_negative_length_traps

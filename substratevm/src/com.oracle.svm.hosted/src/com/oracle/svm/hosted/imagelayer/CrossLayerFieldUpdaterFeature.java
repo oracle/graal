@@ -159,7 +159,7 @@ public class CrossLayerFieldUpdaterFeature implements InternalFeature {
         int receiverId = ImageHeapConstant.getConstantID(receiver);
         int fieldId = field.getWrapped().getId();
         UpdatableField fieldInfo = new UpdatableField(receiverId, fieldId);
-        JavaKind kind = JavaKind.fromJavaClass(field.getType().getJavaClass());
+        JavaKind kind = field.getType().getJavaKind();
         UpdatableFieldStatus updateInfo = new UpdatableFieldStatus(fieldInfo, NumUtil.safeToInt(heapOffset), kind);
         var prev = updateInfoMap.put(fieldInfo, updateInfo);
         VMError.guarantee(prev == null);

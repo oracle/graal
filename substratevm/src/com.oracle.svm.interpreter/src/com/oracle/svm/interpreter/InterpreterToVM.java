@@ -335,8 +335,17 @@ public final class InterpreterToVM {
      * whatever monitor remains in lock slot 0, matching HotSpot's treatment of bytecode-level
      * monitorenter/monitorexit on the method monitor slot.
      */
-    @SuppressFBWarnings(value = "IMSE_DONT_CATCH_IMSE", justification = "Intentional.")
+    @AlwaysInline("Avoid calling monitor cleanup for frames without lock storage")
     public static void releaseInterpreterFrameLocks(InterpreterFrame frame, boolean synchronizedMethod) {
+        if (!synchronizedMethod && frame.getLocks().length == 0) {
+            return;
+        }
+        releaseInterpreterFrameLocksSlow(frame, synchronizedMethod);
+    }
+
+    @NeverInline("Keep monitor cleanup off the ordinary method return path")
+    @SuppressFBWarnings(value = "IMSE_DONT_CATCH_IMSE", justification = "Intentional.")
+    private static void releaseInterpreterFrameLocksSlow(InterpreterFrame frame, boolean synchronizedMethod) {
         Object[] locks = frame.getLocks();
         boolean illegalMonitorState = false;
         if (synchronizedMethod) {
@@ -737,6 +746,14 @@ public final class InterpreterToVM {
         InterpreterUtil.assertion(field.getOffset() >= 0, "Bad field offset");
     }
 
+    @AlwaysInline("Fold the secondary type-check outlining policy at the call site")
+    public static boolean isAssignableFrom(DynamicHub typeHub, DynamicHub instanceHub, boolean outlineSecondary) {
+        if (outlineSecondary) {
+            return ClassIsAssignableFromNode.isAssignableFrom(typeHub, instanceHub, true);
+        }
+        return ClassIsAssignableFromNode.isAssignableFrom(typeHub, instanceHub, false);
+    }
+
     /**
      * Subtyping among Array Types The following rules define the direct supertype relation among
      * array types:
@@ -758,16 +775,17 @@ public final class InterpreterToVM {
         if (instance == null) {
             return false;
         }
-        return classToCheck.isAssignableFrom(instance.getClass());
+        DynamicHub typeHub = DynamicHub.fromClass(classToCheck);
+        DynamicHub instanceHub = getObjectHub(instance);
+        return isAssignableFrom(typeHub, instanceHub);
     }
 
-    public static Object checkCast(Object instance, Class<?> classToCheck) throws SemanticJavaException {
-        assert classToCheck != null;
-        // Avoid Class#cast since it pollutes stack traces.
-        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, instance != null && !instanceOf(instance, classToCheck))) {
-            throw SemanticJavaException.raiseClassCastException(instance, classToCheck);
-        }
-        return instance;
+    public static DynamicHub getObjectHub(Object object) {
+        return DynamicHubIntrinsics.readHub(object);
+    }
+
+    public static boolean isAssignableFrom(DynamicHub typeHub, DynamicHub instanceHub) {
+        return ClassIsAssignableFromNode.isAssignableFrom(typeHub, instanceHub, true);
     }
 
     public static int arrayLength(Object array) {
@@ -960,7 +978,10 @@ public final class InterpreterToVM {
         boolean callRuntimeLoadedJNI = target.isNative() && target instanceof CremaResolvedJavaMethodImpl;
 
         // Next, determine whether the call should stay in interpreter or call the compiled target.
-        boolean callAOTEntryPoint = !callRuntimeLoadedJNI && shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
+        /* Runtime-loaded bytecode methods have only an interpreter stub as their AOT entry. */
+        boolean callAOTEntryPoint = !callRuntimeLoadedJNI &&
+                        (InterpreterTraceSupport.getValue() || !(target instanceof CremaResolvedJavaMethodImpl && target.hasBytecodes())) &&
+                        shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
 
         InterpreterUtil.guarantee(target.getSymbolicName() == seedMethod.getSymbolicName() && target.getSymbolicSignature() == seedMethod.getSymbolicSignature(),
                         "Erroneous dispatching for seed: %s%n  With dispatch index: %s%n  Resulted in : %s", seedMethod, seedMethod.getVTableIndex(), target);

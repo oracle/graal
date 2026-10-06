@@ -1475,6 +1475,9 @@ final class BuilderElement extends AbstractElement {
             b.startIf().string("newTags.length == 0").end().startBlock();
             b.startThrow().startCall("state.failArgument").doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
             b.end();
+            b.startIf().string("this.tags == 0").end().startBlock();
+            b.returnStatement();
+            b.end();
 
             b.startDeclaration(type(int.class), "encodedTags").startStaticCall(parent.configEncoder.asType(), "encodeTags").string("newTags").end().end();
             b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
@@ -2194,6 +2197,9 @@ final class BuilderElement extends AbstractElement {
         if (operation.kind == OperationKind.TAG) {
             b.startIf().string("newTags.length == 0").end().startBlock();
             b.startThrow().startCall("state.failArgument").doubleQuote("The tags parameter for endTag must not be empty. Please specify at least one tag.").end().end();
+            b.end();
+            b.startIf().string("this.tags == 0").end().startBlock();
+            b.returnStatement();
             b.end();
             b.startDeclaration(type(int.class), "encodedTags").startStaticCall(parent.configEncoder.asType(), "encodeTags").string("newTags").end().end();
             b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
@@ -5055,13 +5061,11 @@ final class BuilderElement extends AbstractElement {
         if (model.enableTagInstrumentation) {
             b.startStatement().startCall("b.append").doubleQuote(", tags=").end().end();
             b.declaration(type(String.class), "sepTag", "\"\"");
-            for (TypeMirror tag : model.getProvidedTags()) {
-                b.startIf().string("(tags & CLASS_TO_TAG_MASK.get(").typeLiteral(tag).string(")) != 0").end().startBlock();
-                b.startStatement().startCall("b.append").string("sepTag").end().end();
-                b.startStatement().startCall("b.append").startStaticCall(types.Tag, "getIdentifier").typeLiteral(tag).end().end().end();
-                b.startAssign("sepTag").doubleQuote(",").end();
-                b.end();
-            }
+            b.startFor().string("Class<? extends Tag> tag : mapTagMaskToTagsArray(tags)").end().startBlock();
+            b.startStatement().startCall("b.append").string("sepTag").end().end();
+            b.startStatement().startCall("b.append").startStaticCall(types.Tag, "getIdentifier").string("tag").end().end().end();
+            b.startAssign("sepTag").doubleQuote(",").end();
+            b.end();
         }
 
         b.startStatement().startCall("b.append").doubleQuote(",").end().end();

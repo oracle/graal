@@ -33,6 +33,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -66,7 +67,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * {@link ImageHeapLayouter}.
  */
 public interface ImageHeapProvider {
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static ImageHeapProvider get() {
         return ImageSingletons.lookup(ImageHeapProvider.class);
     }

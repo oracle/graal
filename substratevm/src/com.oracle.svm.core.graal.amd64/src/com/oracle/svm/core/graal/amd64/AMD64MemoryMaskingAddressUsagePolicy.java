@@ -87,6 +87,13 @@ public interface AMD64MemoryMaskingAddressUsagePolicy {
      * {@code mightNeedMaskedAddress(addressValue, usage)}.
      */
     default boolean mightNeedMaskedAddress(@SuppressWarnings("unused") Node addressValue, Node usage) {
+        if (usage instanceof WordCastNode) {
+            /*
+             * WordCastNode is an address pass-through. If one of its downstream users needs a
+             * masked address, the masking phase masks the input to this fixed node.
+             */
+            return true;
+        }
         if (usage instanceof FixedAccessNode) {
             return true;
         }

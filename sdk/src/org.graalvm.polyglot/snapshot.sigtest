@@ -1,6 +1,10 @@
 #Signature file v4.1
 #Version 
 
+CLSS public abstract interface java.io.Closeable
+intf java.lang.AutoCloseable
+meth public abstract void close() throws java.io.IOException
+
 CLSS public abstract interface java.io.Serializable
 
 CLSS public abstract interface java.lang.AutoCloseable
@@ -121,6 +125,32 @@ meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
+
+CLSS public abstract interface java.nio.channels.ByteChannel
+intf java.nio.channels.ReadableByteChannel
+intf java.nio.channels.WritableByteChannel
+
+CLSS public abstract interface java.nio.channels.Channel
+intf java.io.Closeable
+meth public abstract boolean isOpen()
+meth public abstract void close() throws java.io.IOException
+
+CLSS public abstract interface java.nio.channels.ReadableByteChannel
+intf java.nio.channels.Channel
+meth public abstract int read(java.nio.ByteBuffer) throws java.io.IOException
+
+CLSS public abstract interface java.nio.channels.SeekableByteChannel
+intf java.nio.channels.ByteChannel
+meth public abstract int read(java.nio.ByteBuffer) throws java.io.IOException
+meth public abstract int write(java.nio.ByteBuffer) throws java.io.IOException
+meth public abstract java.nio.channels.SeekableByteChannel position(long) throws java.io.IOException
+meth public abstract java.nio.channels.SeekableByteChannel truncate(long) throws java.io.IOException
+meth public abstract long position() throws java.io.IOException
+meth public abstract long size() throws java.io.IOException
+
+CLSS public abstract interface java.nio.channels.WritableByteChannel
+intf java.nio.channels.Channel
+meth public abstract int write(java.nio.ByteBuffer) throws java.io.IOException
 
 CLSS public abstract interface java.util.function.Predicate<%0 extends java.lang.Object>
  anno 0 java.lang.FunctionalInterface()
@@ -720,6 +750,25 @@ meth public byte[] toByteArray()
 meth public java.util.stream.IntStream bytes()
 meth public org.graalvm.polyglot.io.ByteSequence subSequence(int,int)
 meth public static org.graalvm.polyglot.io.ByteSequence create(byte[])
+
+CLSS public abstract interface org.graalvm.polyglot.io.FileChannel
+intf java.nio.channels.SeekableByteChannel
+meth public abstract org.graalvm.polyglot.io.FileChannel position(long) throws java.io.IOException
+meth public abstract org.graalvm.polyglot.io.FileChannel truncate(long) throws java.io.IOException
+meth public java.lang.Object map(java.nio.channels.FileChannel$MapMode,long,long,java.lang.Object) throws java.io.IOException
+meth public org.graalvm.polyglot.io.FileLock lock() throws java.io.IOException
+meth public org.graalvm.polyglot.io.FileLock lock(long,long,boolean) throws java.io.IOException
+meth public org.graalvm.polyglot.io.FileLock tryLock() throws java.io.IOException
+meth public org.graalvm.polyglot.io.FileLock tryLock(long,long,boolean) throws java.io.IOException
+
+CLSS public abstract interface org.graalvm.polyglot.io.FileLock
+intf java.lang.AutoCloseable
+meth public abstract boolean isShared()
+meth public abstract boolean isValid()
+meth public abstract long position()
+meth public abstract long size()
+meth public abstract org.graalvm.polyglot.io.FileChannel acquiredBy()
+meth public abstract void close() throws java.io.IOException
 
 CLSS public abstract interface org.graalvm.polyglot.io.FileSystem
 innr public abstract static Selector

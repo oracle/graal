@@ -32,8 +32,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AddressRangeCommittedMemoryProvider;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -44,11 +44,11 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.internal.misc.Unsafe;
-import org.graalvm.word.impl.Word;
 
 /** Uses {@link AlignedHeapChunk}s to manage the raw {@link Metaspace} memory. */
 class ChunkedMetaspaceMemory {
@@ -95,6 +95,10 @@ class ChunkedMetaspaceMemory {
 
             /* Request a new chunk and allocate memory there. */
             AlignedHeader newChunk = requestNewChunk();
+            if (newChunk.isNull()) {
+                return Word.nullPointer();
+            }
+
             Pointer result = AlignedHeapChunk.tryAllocateMemory(newChunk, size);
             VMError.guarantee(result.isNonNull(), "Metaspace allocation did not fit into aligned chunk");
 
@@ -130,7 +134,9 @@ class ChunkedMetaspaceMemory {
 
         UnsignedWord chunkSize = HeapParameters.getAlignedHeapChunkAlignment();
         AlignedHeader newChunk = (AlignedHeader) AddressRangeCommittedMemoryProvider.singleton().allocateMetaspaceChunk(HeapParameters.getAlignedHeapChunkSize(), chunkSize);
-        assert newChunk.isNonNull();
+        if (newChunk.isNull()) {
+            return Word.nullPointer();
+        }
 
         AlignedHeapChunk.initialize(newChunk, chunkSize);
         RememberedSet.get().enableRememberedSetForChunk(newChunk);

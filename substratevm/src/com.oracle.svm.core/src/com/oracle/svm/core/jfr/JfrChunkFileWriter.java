@@ -59,7 +59,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.shared.Uninterruptible;
 
-import jdk.graal.compiler.core.common.NumUtil;
+import com.oracle.svm.shared.util.NumUtil;
 
 /**
  * This class is used when writing the in-memory JFR data to a file. For all operations, except

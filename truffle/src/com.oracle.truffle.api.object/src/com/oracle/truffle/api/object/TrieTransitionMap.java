@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -56,9 +57,14 @@ final class TrieTransitionMap<K, V> extends TransitionMap<K, V> implements BiFun
     /** Key is either {@code K} or {@code WeakKey<K>}. */
     private volatile UnorderedTrieMap<Object, V> map;
 
-    @SuppressWarnings("rawtypes") //
-    private static final AtomicReferenceFieldUpdater<TrieTransitionMap, UnorderedTrieMap> MAP_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(TrieTransitionMap.class, UnorderedTrieMap.class, "map");
+    private static final VarHandle MAP_UPDATER;
+    static {
+        try {
+            MAP_UPDATER = MethodHandles.lookup().findVarHandle(TrieTransitionMap.class, "map", UnorderedTrieMap.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     TrieTransitionMap() {
         this.map = UnorderedTrieMap.empty();

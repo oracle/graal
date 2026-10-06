@@ -707,10 +707,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         boolean hasMask = false;
         for (int i = literalStart; i < literalEnd; i++) {
             CharacterClass cc = root.getFirstAlternative().getTerms().get(i).asCharacterClass();
-            assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
-            assert getEncoding().isFixedCodePointWidth(cc.getCharSet());
+            assert getEncoding().canBeMatchedWithMask(cc.getCharSet());
             cc.extractSingleChar(literal, mask);
-            hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
+            hasMask |= !cc.getCharSet().matchesSingleChar();
         }
         int maxPrefixSize = root.getFirstAlternative().get(literalStart).getMaxPath() - 1;
         for (int i = 0; i < literalStart; i++) {

@@ -80,7 +80,9 @@ import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
@@ -203,11 +205,12 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult emitIntegerTestBranchMemory(IfNode x, ValueNode value, LIRLowerableAccess access) {
-        LabelRef trueLabel = getLIRBlock(x.trueSuccessor());
-        LabelRef falseLabel = getLIRBlock(x.falseSuccessor());
-        double trueLabelProbability = x.probability(x.trueSuccessor());
+        OperandSize size = getMemoryKind(access) == AMD64Kind.QWORD ? QWORD : DWORD;
+        return emitIntegerTestBranchMemory(x, value, access, size);
+    }
+
+    private ComplexMatchResult emitIntegerTestBranchMemory(IfNode x, ValueNode value, LIRLowerableAccess access, OperandSize size) {
         AMD64Kind kind = getMemoryKind(access);
-        OperandSize size = kind == AMD64Kind.QWORD ? QWORD : DWORD;
         if (kind.getVectorLength() > 1) {
             return null;
         }
@@ -217,18 +220,30 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 // Only imm32 as long
                 return null;
             }
-            return builder -> {
-                AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
-                gen.append(new TestConstBranchOp(size, address, (int) constant.asLong(), getState(access), Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
-                return null;
-            };
+            return emitIntegerTestBranchMemory(x, (int) constant.asLong(), access, size);
         } else {
+            LabelRef trueLabel = getLIRBlock(x.trueSuccessor());
+            LabelRef falseLabel = getLIRBlock(x.falseSuccessor());
+            double trueLabelProbability = x.probability(x.trueSuccessor());
             return builder -> {
                 AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
                 gen.append(new TestBranchOp(size, gen.asAllocatable(operand(value)), address, getState(access), Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
                 return null;
             };
         }
+    }
+
+    private ComplexMatchResult emitIntegerTestBranchMemory(IfNode x, int mask, LIRLowerableAccess access, OperandSize size) {
+        LabelRef trueLabel = getLIRBlock(x.trueSuccessor());
+        LabelRef falseLabel = getLIRBlock(x.falseSuccessor());
+        double trueLabelProbability = x.probability(x.trueSuccessor());
+        // The assembler expects a signed short for a word-sized immediate.
+        int immediate = size == OperandSize.WORD ? (short) mask : mask;
+        return builder -> {
+            AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
+            gen.append(new TestConstBranchOp(size, address, immediate, getState(access), Condition.EQ, trueLabel, falseLabel, trueLabelProbability));
+            return null;
+        };
     }
 
     protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, AddressableMemoryAccess access, ValueKind<?> addressKind) {
@@ -392,6 +407,53 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (IntegerTest Read=access value))")
     public ComplexMatchResult integerTestBranchMemory(IfNode root, LIRLowerableAccess access, ValueNode value) {
         return emitIntegerTestBranchMemory(root, value, access);
+    }
+
+    @MatchRule("(If (IntegerTest (SignExtend=extend Read=access) Constant=mask))")
+    public ComplexMatchResult integerTestBranchSignExtendMemory(IfNode root, SignExtendNode extend, LIRLowerableAccess access, ConstantNode mask) {
+        return integerTestNarrowMemory(root, extend, access, mask);
+    }
+
+    @MatchRule("(If (IntegerTest (ZeroExtend=extend Read=access) Constant=mask))")
+    public ComplexMatchResult integerTestBranchZeroExtendMemory(IfNode root, ZeroExtendNode extend, LIRLowerableAccess access, ConstantNode mask) {
+        return integerTestNarrowMemory(root, extend, access, mask);
+    }
+
+    @MatchRule("(Conditional (IntegerTest (SignExtend=extend Read=access) Constant=mask) trueValue falseValue)")
+    public ComplexMatchResult integerTestMoveSignExtendMemory(ConditionalNode root, SignExtendNode extend, LIRLowerableAccess access, ConstantNode mask) {
+        return integerTestNarrowMemory(root, extend, access, mask);
+    }
+
+    @MatchRule("(Conditional (IntegerTest (ZeroExtend=extend Read=access) Constant=mask) trueValue falseValue)")
+    public ComplexMatchResult integerTestMoveZeroExtendMemory(ConditionalNode root, ZeroExtendNode extend, LIRLowerableAccess access, ConstantNode mask) {
+        return integerTestNarrowMemory(root, extend, access, mask);
+    }
+
+    private ComplexMatchResult integerTestNarrowMemory(ValueNode root, IntegerConvertNode<?> extend, LIRLowerableAccess access, ConstantNode mask) {
+        AMD64Kind kind = getMemoryKind(access);
+        if ((kind != AMD64Kind.BYTE && kind != AMD64Kind.WORD && kind != AMD64Kind.DWORD) || extend.getInputBits() != kind.getSizeInBytes() * Byte.SIZE || !mask.isJavaConstant()) {
+            return null;
+        }
+        int bits = extend.getInputBits();
+        long lowBits = (1L << bits) - 1;
+        long constant = mask.asJavaConstant().asLong();
+        long reducedMask = constant & lowBits;
+        /*
+         * Only the zero/nonzero result of the masked value is needed. Zero-extended bits cannot
+         * contribute; any selected sign-extended bit can instead be tested at the source sign bit.
+         */
+        if (extend instanceof SignExtendNode && (constant & ~lowBits) != 0) {
+            reducedMask |= 1L << (bits - 1);
+        }
+        OperandSize size = getMemorySize(access);
+        int immediate = size == OperandSize.WORD ? (short) reducedMask : (int) reducedMask;
+        // Preserve the original read width and exception state, even if the reduced mask is zero.
+        if (root instanceof IfNode ifNode) {
+            return emitIntegerTestBranchMemory(ifNode, immediate, access, size);
+        }
+        ConditionalNode conditional = (ConditionalNode) root;
+        return builder -> getLIRGeneratorTool().emitIntegerTestMoveMemory(size, (AMD64AddressValue) operand(access.getAddress()), immediate, getState(access),
+                        operand(conditional.trueValue()), operand(conditional.falseValue()));
     }
 
     @MatchRule("(If (IntegerEquals=compare value Read=access))")

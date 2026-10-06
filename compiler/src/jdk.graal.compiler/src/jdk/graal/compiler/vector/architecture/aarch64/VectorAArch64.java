@@ -39,11 +39,11 @@ import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.asm.aarch64.ASIMDKind;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.Op;
 import jdk.graal.compiler.core.common.type.FloatStamp;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -71,7 +71,7 @@ public final class VectorAArch64 extends VectorArchitecture {
     public static boolean enablePermuteOps = true;
     public static boolean enableBlendOps = true;
     public static boolean enableSIMDOps = true;
-    public static boolean enableObjectVectorization = false;
+    public static boolean enableAArch64ObjectVectorization = false;
 
     /* (Byte) size of NEON registers. */
     private static final int NEON_BYTE_WIDTH = 16;
@@ -104,12 +104,21 @@ public final class VectorAArch64 extends VectorArchitecture {
         this(arch, enabled, oopVectorStride, useCompressedOops, objectAlignment, NEON_BYTE_WIDTH);
     }
 
+    public VectorAArch64(AArch64 arch, boolean enabled, int oopVectorStride, boolean useCompressedOops, int objectAlignment, boolean enableObjectVectors) {
+        this(arch, enabled, oopVectorStride, useCompressedOops, objectAlignment, NEON_BYTE_WIDTH, enableObjectVectors);
+    }
+
     public VectorAArch64(AArch64 arch, int oopVectorStride, boolean useCompressedOops, int objectAlignment, int maxVectorByteSize) {
         this(arch, true, oopVectorStride, useCompressedOops, objectAlignment, maxVectorByteSize);
     }
 
     private VectorAArch64(AArch64 arch, boolean enabled, int oopVectorStride, boolean useCompressedOops, int objectAlignment, int maxVectorByteSize) {
-        super(oopVectorStride, useCompressedOops);
+        this(arch, enabled, oopVectorStride, useCompressedOops, objectAlignment, maxVectorByteSize, true);
+    }
+
+    private VectorAArch64(AArch64 arch, boolean enabled, int oopVectorStride, boolean useCompressedOops, int objectAlignment, int maxVectorByteSize, boolean enableObjectVectors) {
+        /* GR-32744: Object vectorization is currently always disabled on AArch64. */
+        super(oopVectorStride, useCompressedOops, enableObjectVectors && VectorAArch64.enableAArch64ObjectVectorization);
         this.arch = arch;
         this.enabled = enabled;
         this.objectAlignment = objectAlignment;
@@ -329,7 +338,7 @@ public final class VectorAArch64 extends VectorArchitecture {
     private int getSupportedVectorLength(Stamp stamp, int maxLength) {
         if (!isVectorizable(stamp)) {
             return 1;
-        } else if (stamp instanceof AbstractObjectStamp && !enableObjectVectorization) {
+        } else if (!supportsObjectVectorization() && stamp instanceof AbstractObjectStamp) {
             /* Only handling primitive values. */
             return 1;
         }

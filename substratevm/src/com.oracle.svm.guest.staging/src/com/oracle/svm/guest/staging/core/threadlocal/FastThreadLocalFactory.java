@@ -34,13 +34,12 @@ import org.graalvm.word.WordBase;
 
 /**
  * This class contains factory methods to create {@link FastThreadLocal} variables. A thread local
- * variable is represented as an object, with different classes for primitive {@code int} (class
- * {@link FastThreadLocalInt}), primitive {@code long} (class {@link FastThreadLocalLong}),
- * {@link Object} (class {@link FastThreadLocalObject}), and {@link WordBase word} (class
- * {@link FastThreadLocalWord}) values. Access to such thread local variables is significantly
- * faster than regular Java {@link ThreadLocal} variables. This is achieved by determining all the
- * {@link FastThreadLocal} values and their size at build time and reserving space in the
- * {@link IsolateThread} data structure. However, there are several restrictions:
+ * variable is represented as an object, with different classes for primitive {@code boolean},
+ * {@code byte}, {@code short}, {@code char}, {@code int}, and {@code long} values. There are also
+ * classes for {@link Object} and {@link WordBase word} values. Access to such thread local variables
+ * is significantly faster than regular Java {@link ThreadLocal} variables. This is achieved by
+ * determining all the {@link FastThreadLocal} values and their size at build time and reserving
+ * space in the {@link IsolateThread} data structure. However, there are several restrictions:
  * <ul>
  * <li>The thread local object must be created during native image generation. Otherwise, the size
  * of the {@link IsolateThread} data structure would not be a compile time constant.</li>
@@ -72,6 +71,34 @@ import org.graalvm.word.WordBase;
 public final class FastThreadLocalFactory {
 
     private FastThreadLocalFactory() {
+    }
+
+    /**
+     * Creates a new fast thread local variable of the primitive type {@code boolean}.
+     */
+    public static FastThreadLocalBoolean createBoolean(String name) {
+        return new FastThreadLocalBoolean(name);
+    }
+
+    /**
+     * Creates a new fast thread local variable of the primitive type {@code byte}.
+     */
+    public static FastThreadLocalByte createByte(String name) {
+        return new FastThreadLocalByte(name);
+    }
+
+    /**
+     * Creates a new fast thread local variable of the primitive type {@code short}.
+     */
+    public static FastThreadLocalShort createShort(String name) {
+        return new FastThreadLocalShort(name);
+    }
+
+    /**
+     * Creates a new fast thread local variable of the primitive type {@code char}.
+     */
+    public static FastThreadLocalChar createChar(String name) {
+        return new FastThreadLocalChar(name);
     }
 
     /**

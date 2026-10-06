@@ -35,6 +35,17 @@ namespace svm_gc {
 // forward declarations
 typedef struct CodeInfo CodeInfo;
 
+struct MetaspaceStatistics {
+  size_t dynamic_hub_count;
+  size_t dynamic_hub_size;
+  size_t byte_array_count;
+  size_t byte_array_size;
+  size_t int_array_count;
+  size_t int_array_size;
+  size_t object_count;
+  size_t object_size;
+};
+
 // data structures for frames that are currently on the stack
 struct StackFrame {
   unsigned char *stack_pointer;

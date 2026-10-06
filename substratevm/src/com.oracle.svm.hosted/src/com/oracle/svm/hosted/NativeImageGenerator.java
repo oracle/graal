@@ -74,6 +74,7 @@ import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeStateSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
@@ -238,6 +239,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.PreserveOptionsSupport;
 import com.oracle.svm.hosted.imagelayer.AccessImageSingletonFeature;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredFoldFeature;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
@@ -600,6 +602,7 @@ public class NativeImageGenerator {
                  * Use @AutomaticallyRegisteredImageSingleton here if that support becomes available.
                  */
                 ImageSingletons.add(VMRuntimeSupport.class, runtimeSupport);
+                ImageSingletons.add(RuntimeStateSupport.class, runtimeSupport);
                 ImageSingletons.add(RuntimeSupport.class, runtimeSupport);
             }
             if (ImageLayerBuildingSupport.lastImageBuild()) {
@@ -939,6 +942,10 @@ public class NativeImageGenerator {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
                 featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
+                if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                    /* Fold resolution can observe state initialized by any beforeAnalysis callback. */
+                    LayeredFoldFeature.singleton().preparePendingApplicationFolds();
+                }
                 bb.getHostVM().checkWellKnownStableFieldsBeforeAnalysis(bb);
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().sealConfiguration();
@@ -1107,6 +1114,7 @@ public class NativeImageGenerator {
                 UserErrorSupportImpl.init();
 
                 AutomaticallyRegisteredImageSingletonHandler.registerImageSingletons(loader);
+                GuestImageGeneratorSupport.installIsolateArgumentParser();
 
                 featureHandler.registerFeatures(loader, originalMetaAccess, debug);
                 BuildPhaseProviderImpl.markFeatureRegistrationFinished();
@@ -1883,8 +1891,12 @@ public class NativeImageGenerator {
         midTier.findPhase(LoopSafepointInsertionPhase.class).set(new SubstrateSafepointInsertionPhase());
 
         if (hosted) {
-            /* Native debuggers consume local values independently of runtime metadata encoding. */
-            if (!SubstrateOptions.useDebugInfoGeneration() && !SubstrateOptions.getSourceLevelDebug()) {
+            /*
+             * Native debug info supports unavailable locals. Preserve all values only for
+             * source-level debugging; the phase itself restricts pruning to eligible handler roots.
+             * Keep this guard consistent with FrameInfoRetention.canPruneFrameStateValues.
+             */
+            if (!SubstrateOptions.getSourceLevelDebug()) {
                 var retentionPosition = lowTier.findPhase(FinalCanonicalizerPhase.class);
                 if (retentionPosition == null) {
                     retentionPosition = lowTier.findPhase(SchedulePhase.FinalSchedulePhase.class);

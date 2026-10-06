@@ -52,6 +52,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.Validation;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
+import com.oracle.svm.interpreter.metadata.InterpreterConstantPoolPrimitiveEntry;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -196,18 +197,24 @@ public final class ConstantPoolBuilder {
         return appendCachedEntry(ConstantPool.Tag.METHODHANDLE, methodHandle);
     }
 
+    /**
+     * Adds an int, float, long, or double constant and prepopulates its interpreter cache entry with
+     * a {@link InterpreterConstantPoolPrimitiveEntry}, rather than the supplied JVMCI constant.
+     *
+     * @return the constant-pool index, reusing an equivalent entry if present
+     */
     public int appendPrimitiveConstant(PrimitiveConstant primitiveConstant) {
         JavaKind javaKind = primitiveConstant.getJavaKind();
         switch (javaKind) {
             case Int, Float -> {
                 ConstantPool.Tag tag = javaKind == JavaKind.Int ? ConstantPool.Tag.INTEGER : ConstantPool.Tag.FLOAT;
                 int value = javaKind == JavaKind.Int ? primitiveConstant.asInt() : Float.floatToRawIntBits(primitiveConstant.asFloat());
-                return appendSymbolicEntry(tag, value, primitiveConstant);
+                return appendSymbolicEntry(tag, value, new InterpreterConstantPoolPrimitiveEntry(tag.getValue(), value));
             }
             case Long, Double -> {
                 ConstantPool.Tag tag = javaKind == JavaKind.Long ? ConstantPool.Tag.LONG : ConstantPool.Tag.DOUBLE;
                 long rawBits = javaKind == JavaKind.Long ? primitiveConstant.asLong() : Double.doubleToRawLongBits(primitiveConstant.asDouble());
-                return appendRawEntry(tag, rawBits, primitiveConstant);
+                return appendRawEntry(tag, rawBits, new InterpreterConstantPoolPrimitiveEntry(tag.getValue(), rawBits));
             }
             default -> throw new IllegalArgumentException("Invalid primitive constant " + primitiveConstant);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,6 +68,7 @@ import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.Rewrit
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.RewriteUnexpectedNoReexecuteFactory;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.SharedCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.SimpleBoxingOverloadNodeGen;
+import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.WeakCacheBoxingOverloadNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -346,6 +347,33 @@ public class RewriteUnexpectedResultTest {
         @Specialization(guards = "arg == cachedArg", limit = "3", replaces = "doInt")
         Object doGeneric(Object arg, @Cached("arg") Object cachedArg) {
             return cachedArg;
+        }
+
+    }
+
+    @Test
+    public void testWeakCacheBoxingOverload() throws UnexpectedResultException {
+        WeakCacheBoxingOverloadNode node = WeakCacheBoxingOverloadNodeGen.create();
+
+        assertEquals("generic42", node.executeGeneric(42));
+        assertEquals(42, node.executeInt(42));
+    }
+
+    @GenerateInline(false)
+    @SuppressWarnings("unused")
+    abstract static class WeakCacheBoxingOverloadNode extends BaseNode {
+
+        @Specialization(guards = "arg == cachedArg", limit = "3", rewriteOn = UnexpectedResultException.class)
+        static int doInt(Object arg, @Cached(value = "arg", weak = true) Object cachedArg) throws UnexpectedResultException {
+            if (cachedArg instanceof Integer i) {
+                return i;
+            }
+            throw new UnexpectedResultException(arg);
+        }
+
+        @Specialization(guards = "arg == cachedArg", limit = "3", replaces = "doInt")
+        static Object doGeneric(Object arg, @Cached(value = "arg", weak = true) Object cachedArg) {
+            return "generic" + cachedArg;
         }
 
     }

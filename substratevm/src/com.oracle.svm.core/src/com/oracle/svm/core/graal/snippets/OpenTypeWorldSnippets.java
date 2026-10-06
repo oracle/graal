@@ -50,7 +50,7 @@ import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 

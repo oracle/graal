@@ -183,7 +183,7 @@ public class CharacterClass extends QuantifiableTerm {
                 mask.append(0);
             }
         } else {
-            assert charSet.matches2CharsWith1BitDifference();
+            assert mask.getEncoding().canBeMatchedWithMask(charSet);
             int c1 = charSet.getMin();
             int c2 = charSet.getMax();
             literal.appendOR(c1, c2);

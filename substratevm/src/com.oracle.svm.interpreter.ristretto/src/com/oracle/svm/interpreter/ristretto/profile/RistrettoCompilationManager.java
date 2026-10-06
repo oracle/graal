@@ -499,6 +499,16 @@ public final class RistrettoCompilationManager {
             request.markCompleted();
         }
 
+        /**
+         * Drains pending requests and resets recorded test compilations, invalidating their
+         * invocation-entry and OSR code and resetting their profiles. Callers must prevent new
+         * requests and concurrent guest execution during cleanup.
+         *
+         * Only recorded compilation requests are reset. Recording is controlled by the
+         * {@code com.oracle.svm.interpreter.ristretto.profile.backdoor.UninstallTasks} system property.
+         * Tests must separately clean up directly installed code. Profiles of methods
+         * that only ran interpreted and never submitted a recorded compilation are not reset.
+         */
         public static synchronized void reset() {
             RistrettoCompilationManager m = get();
             RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "Invalidating and resetting %s compilations%n",

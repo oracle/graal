@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;

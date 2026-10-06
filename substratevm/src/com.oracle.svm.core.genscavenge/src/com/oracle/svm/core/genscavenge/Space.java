@@ -85,6 +85,19 @@ public final class Space {
         this.accounting = new ChunksAccounting(parentAccounting);
     }
 
+    void clean(boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
+        AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
+        while (aChunk.isNonNull()) {
+            HeapChunk.clean(aChunk, AlignedHeapChunk.getObjectsStart(aChunk), cleanUnusedMemory, cleanFillerObjectMemory);
+            aChunk = HeapChunk.getNext(aChunk);
+        }
+        UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
+        while (uChunk.isNonNull()) {
+            HeapChunk.clean(uChunk, UnalignedHeapChunk.getObjectStart(uChunk), cleanUnusedMemory, cleanFillerObjectMemory);
+            uChunk = HeapChunk.getNext(uChunk);
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getName() {
         return name;

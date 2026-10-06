@@ -69,6 +69,7 @@ import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.HostedModuleSupport;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -248,6 +249,11 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getLeft();
     }
 
+    /* Class-initialization configuration is keyed by the original Class#getTypeName(). */
+    InitKind specifiedInitKindFor(ResolvedJavaType type) {
+        return classInitializationConfiguration.lookupKind(JVMCIReflectionUtil.getTypeName(OriginalClassProvider.getOriginalType(type))).getLeft();
+    }
+
     /**
      * Returns the computed init kind for {@code clazz}, which can differ from the configured init
      * kind returned by {@link #specifiedInitKindFor(Class)}.
@@ -269,6 +275,10 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
 
     Boolean isStrictlyDefined(Class<?> clazz) {
         return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getRight();
+    }
+
+    Boolean isStrictlyDefined(ResolvedJavaType type) {
+        return classInitializationConfiguration.lookupKind(JVMCIReflectionUtil.getTypeName(OriginalClassProvider.getOriginalType(type))).getRight();
     }
 
     /**

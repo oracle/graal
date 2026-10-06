@@ -384,6 +384,13 @@ public class RubyTests extends RegexTestBase {
     }
 
     @Test
+    public void github4435() {
+        // In extended mode, a newline always ends a comment, even when preceded by a backslash.
+        test("(a) # c\\\n(b)", "x", "ab", 0, true, 0, 2, 0, 1, 1, 2);
+        test("(x # c\\\n)", "x", "x", 0, true, 0, 1, 0, 1);
+    }
+
+    @Test
     public void beginningAnchor() {
         test("\\Ga", "", "a", 0, true, 0, 1);
         test("\\Ga", "", "ba", 0, false);

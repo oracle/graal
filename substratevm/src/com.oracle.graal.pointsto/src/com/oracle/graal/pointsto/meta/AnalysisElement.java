@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
@@ -191,7 +192,7 @@ public abstract class AnalysisElement extends AbstractAnnotated {
             assert reachableSubtype.isReachable() : reachableSubtype;
             return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
                 AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                    callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype.getJavaClass());
+                    callback.accept(universe.getConcurrentAnalysisAccess(), OriginalClassProvider.getJavaClass(reachableSubtype));
                     return null;
                 });
                 execute(universe, newValue);

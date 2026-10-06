@@ -250,7 +250,7 @@ public class G1ObjectHeader extends ObjectHeader {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private boolean isInHubAddressSpace(long heapBaseRelativeAddress) {
+    public boolean isInHubAddressSpace(long heapBaseRelativeAddress) {
         long hubAddressSpaceSize = getHubAddressSpaceSize();
         return Long.compareUnsigned(hubAddressSpaceSize, heapBaseRelativeAddress) > 0;
     }

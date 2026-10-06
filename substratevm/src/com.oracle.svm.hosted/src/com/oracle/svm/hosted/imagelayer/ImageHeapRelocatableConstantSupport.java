@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,24 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import jdk.graal.compiler.nodes.spi.LoweringTool;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 
 /**
  * {@link ImageHeapRelocatableConstant}s registered via this support are allowed to be directly
@@ -44,5 +55,42 @@ public abstract class ImageHeapRelocatableConstantSupport {
 
     abstract void registerLoadableConstant(ImageHeapRelocatableConstant constant);
 
-    abstract FloatingNode emitLoadConstant(StructuredGraph graph, LoweringTool tool, ImageHeapRelocatableConstant constant);
+    final FloatingNode emitLoadConstant(StructuredGraph graph, LoweringTool tool, ImageHeapRelocatableConstant constant) {
+        return emitLoadConstant(graph, tool, constant, (AbstractObjectStamp) StampFactory.forConstant(constant, tool.getMetaAccess()));
+    }
+
+    abstract FloatingNode emitLoadConstant(StructuredGraph graph, LoweringTool tool, ImageHeapRelocatableConstant constant, AbstractObjectStamp stamp);
+
+    final ValueNode createLoad(GraphBuilderContext b, ImageHeapRelocatableConstant constant) {
+        return createLoad(b, constant, StampFactory.forConstant(constant, b.getMetaAccess()));
+    }
+
+    final ValueNode createLoad(GraphBuilderContext b, ImageHeapRelocatableConstant constant, Stamp stamp) {
+        registerLoadableConstant(constant);
+        return b.add(new LoadImageHeapRelocatableConstantNode(constant, stamp));
+    }
+
+    /**
+     * Keeps a relocatable constant in the graph until low-tier lowering, when the shared array that
+     * contains all loadable relocatable constants has been finalized.
+     */
+    @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
+    private static final class LoadImageHeapRelocatableConstantNode extends FloatingNode implements Lowerable {
+        private static final NodeClass<LoadImageHeapRelocatableConstantNode> TYPE = NodeClass.create(LoadImageHeapRelocatableConstantNode.class);
+
+        private final ImageHeapRelocatableConstant constant;
+
+        protected LoadImageHeapRelocatableConstantNode(ImageHeapRelocatableConstant constant, Stamp stamp) {
+            super(TYPE, stamp);
+            this.constant = constant;
+        }
+
+        @Override
+        public void lower(LoweringTool tool) {
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+                FloatingNode replacement = singleton().emitLoadConstant(graph(), tool, constant, (AbstractObjectStamp) stamp(NodeView.DEFAULT));
+                replaceAndDelete(graph().addOrUniqueWithInputs(replacement));
+            }
+        }
+    }
 }

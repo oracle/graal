@@ -157,6 +157,21 @@ native-image --bundle-apply=application.nib -g
 
 After running this command, the executable is rebuilt from the bundle with debug info enabled.
 
+When replaying a stored `-o` argument, Native Image uses only its source-platform filename because bundle processing redirects the output directory.
+This applies to both absolute and relative output paths.
+
+Bundle path substitution preserves an input recorded as unavailable when you apply the bundle or create a derived bundle, even if a file later appears at its original location.
+This also applies to uncaptured inputs recorded as identity substitutions in bundle formats older than 1.0, and to missing manifest dependencies.
+The Native Image driver represents these inputs with guaranteed-missing paths instead of consulting their original locations.
+
+For an input without a recorded substitution, replay uses its recorded canonical location when one is available.
+On a platform with the same path syntax, the original path retains its root semantics.
+On a platform with different path syntax, an uncaptured rooted path, such as a Windows drive path replayed on Linux, is represented by a guaranteed-missing path inside the bundle.
+This lets missing class path and module path entries remain ignorable without accidentally selecting unrelated files on the replay machine.
+
+Manifest `Class-Path` entries are resolved as URI references against the original JAR location, using its source platform's file URI semantics.
+Entries that cannot be converted to filesystem paths are ignored without preventing later entries from being processed.
+
 The full option help of `--bundle-apply` shows a more advanced use case that will be discussed [later](#combining---bundle-create-and---bundle-apply) in detail:
 ```
 --bundle-apply=some-bundle.nib[,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]
@@ -428,6 +443,8 @@ These include:
 The state of environment variables that are relevant for the build are captured in _input/stage/environment.json_.
 For every `-E` argument that was seen when the bundle was created, a snapshot of its key-value pair is recorded in the file.
 The remaining files _path_canonicalizations.json_ and _path_substitutions.json_ contain a record of the file-path transformations that were performed by the `native-image` tool based on the input file paths as specified by the original command line arguments.
+An unavailable input has a destination with `style: BundleRelative`, `kind: Unavailable`, and no `text` field in _path_substitutions.json_.
+This marker preserves the input's absence across replay and derivation without storing a replay-specific placeholder path.
 
 ### Output Data
 

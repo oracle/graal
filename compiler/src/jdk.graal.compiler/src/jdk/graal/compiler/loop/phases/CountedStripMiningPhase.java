@@ -90,6 +90,7 @@ import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.ProfileData;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
 import jdk.graal.compiler.nodes.ProfileData.ProfileSource;
 import jdk.graal.compiler.nodes.ProxyNode;
@@ -1109,6 +1110,10 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before strip mining %s", loop.loopBegin());
         final CountedLoopInfo countedLoop = loop.counted();
+        ControlFlowGraph originalCFG = loop.loopsData().getCFG();
+        double originalCheckFrequency = localLoopFrequency * originalCFG.blockFor(countedLoop.getLimitTest()).getRelativeFrequency() /
+                        originalCFG.blockFor(loop.loopBegin()).getRelativeFrequency();
+        double originalExitFrequency = originalCheckFrequency * countedLoop.getLimitTest().probability(countedLoop.getCountedExit());
 
         /*
          * We are consuming the max trip count node in this optimization to calculate inner loop
@@ -1349,11 +1354,9 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
 
         insertPhiLogNodes(graph, outerCounterPhi, limit, innerCounterPhi, innerTrips, innerStridePhi, outerBodyBegin, innerBodyBegin, innerBegin, outerBegin);
 
-        /*
-         * The outer loop does Math.ceil(originalFrequency / innerLoopTrips) trips + 1 for the final
-         * loop exit check
-         */
-        adaptOuterLoopExitProbability(outerLimitTest, localLoopFrequency, stripMax, inverted);
+        // stripMax measures induction-variable distance; frequencies count iterations.
+        long stripIterations = stripMax.asJavaConstant().asLong() / stride;
+        adaptLoopExitProbabilities(innerCountedExit, outerLimitTest, localLoopFrequency, originalCheckFrequency, originalExitFrequency, stripIterations, inverted);
 
         loopBeginPropertyEpilog(innerBegin, outerBegin);
 
@@ -1383,31 +1386,68 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
         debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After strip mining %s", loop.loopBegin());
     }
 
-    private static void adaptOuterLoopExitProbability(IfNode exitCheck, double originalFrequency, ConstantNode stripMaxNode, boolean inverted) {
+    /**
+     * Updates inner- and outer-loop exit probabilities to preserve the original body and exit counts.
+     * All frequencies are expected counts per entry into the original loop from outside it. The
+     * original counts must be finite, nonnegative, and have exit count at most check count.
+     *
+     * @param innerExit the new inner loop's counted-exit successor
+     * @param exitCheck the new outer loop's counted-test node
+     * @param originalFrequency F, the original loop-header visit count
+     * @param originalCheckFrequency Q, the original counted-test visit count; early exits before the
+     *            test can make this smaller than F
+     * @param originalExitFrequency E, the original counted-exit traversal count, not its conditional
+     *            branch probability
+     * @param stripIterations the positive maximum number of original iterations per strip
+     * @param inverted whether the counted test follows the body (a tail-counted loop)
+     */
+    private static void adaptLoopExitProbabilities(LoopExitNode innerExit, IfNode exitCheck, double originalFrequency, double originalCheckFrequency,
+                    double originalExitFrequency, long stripIterations, boolean inverted) {
         final AbstractBeginNode lex = exitCheck.trueSuccessor() instanceof LoopExitNode ? exitCheck.trueSuccessor() : exitCheck.falseSuccessor();
-        final long stripMax = stripMaxNode.asJavaConstant().asLong();
         /*
-         * The frequency of the outer loop is computed by dividing the original frequency by
-         * the strip mine limit and rounding the result up to the next integer. For head counted
-         * loops, the original frequency has to be reduced by 1 to account for the additional loop
-         * exit check. This removed "iteration" has to be added again to the division result. Some
-         * examples with a strip mine limit of 4096:
+         * B (bodyFrequency) counts original body entries: Q - E for a head-counted loop, F for a
+         * tail-counted loop. S0 (strips) estimates how many inner-loop invocations divide this work.
+         * I (innerExits) counts inner counted exits that reach the outer test. Initially,
+         * I = S0 - 1 + E: S0 - 1 transitions to another strip plus E final counted exits. A fraction
+         * 1 - E of original-loop entries leave through early exits.
          *
-         * @formatter:off
-         *  1) head counted, frequency = 10_000 --> newFrequency = Math.ceil(9999 / 4096) + 1 = 4
-         *  2) head counted, frequency = 1000   --> newFrequency = Math.ceil(999 / 4096) + 1 = 2
-         *  3) tail counted, frequency = 10_000 --> newFrequency = Math.ceil(10_000 / 4096) = 3
-         *  4) tail counted, frequency = 1000   --> newFrequency = Math.ceil(1000 / 4096) = 1
-         * @formatter:on
-         *
-         * If the frequency for the head counted loop from example (2) was not incremented by 1, the
-         * exit frequency would be 1, implying that the body would never be entered. This can prevent
-         * further optimizations in the inner loop due to low relative frequencies being forwarded.
+         * Each exit probability is its exit count divided by its test's visit count:
+         * - Head-counted: inner tests have B + I visits, outer tests have S0 + E = 1 + I visits.
+         *   Subtracting I exits from B + I tests leaves B body entries.
+         * - Tail-counted: inner tests retain Q visits, outer tests have I visits. The inner backedge
+         *   is taken Q - I times, and the outer backedge starts another strip I - E times. Together
+         *   they preserve the original (Q - I) + (I - E) = Q - E backedge executions.
          */
-        final int headCountedIteration = inverted ? 0 : 1;
-        final double originalBodyFrequency = originalFrequency - headCountedIteration;
-        final double newFrequency = Math.ceil(originalBodyFrequency / stripMax) + headCountedIteration;
-        LoopTransformations.adaptCountedLoopExitProbability(lex, newFrequency);
+        double bodyFrequency = inverted ? originalFrequency : originalCheckFrequency - originalExitFrequency;
+        double strips = Math.max(1, Math.ceil(bodyFrequency / stripIterations));
+        double innerExits = strips - 1 + originalExitFrequency;
+        if (inverted) {
+            /*
+             * Every final counted exit passes through the inner counted exit. Each inner counted
+             * exit requires a tail-test visit, so E <= I <= Q. Use this same I for both probabilities
+             * to preserve the final counted-exit flow.
+             */
+            innerExits = Math.clamp(innerExits, originalExitFrequency, originalCheckFrequency);
+        }
+        double outerChecks = inverted ? innerExits : strips + originalExitFrequency;
+        double innerChecks = inverted ? originalCheckFrequency : bodyFrequency + innerExits;
+        setExitProbability(innerExit, innerChecks == 0 ? 0 : innerExits / innerChecks);
+        setExitProbability(lex, outerChecks == 0 ? 0 : originalExitFrequency / outerChecks);
+        ControlFlowGraph cfg = exitCheck.graph().getLastCFG();
+        if (cfg != null) {
+            cfg.invalidateFrequencies();
+        }
+    }
+
+    /**
+     * Updates an exit's conditional probability while retaining its profile source.
+     */
+    private static void setExitProbability(AbstractBeginNode exit, double probability) {
+        assert Double.isFinite(probability) && ProfileData.isApproximatelyInRange(probability, 0, 1) : probability;
+        IfNode split = (IfNode) exit.predecessor();
+        // Only tolerate rounding error; infeasible flow must be handled before taking the ratio.
+        double boundedProbability = Math.clamp(probability, 0, 1);
+        split.setTrueSuccessorProbability(split.getProfileData().copy(split.trueSuccessor() == exit ? boundedProbability : 1 - boundedProbability));
     }
 
     /**

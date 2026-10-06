@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -239,6 +239,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     @Override
     public CompletableFuture<Void> launch(LaunchRequestArguments args) {
         return CompletableFuture.runAsync(() -> {
+            context.configurePathMappings(args.get("pathMappings"), args.get("localRoot"), args.get("remoteRoot"));
             JSONObject info = (JSONObject) args.get("graalVMLaunchInfo");
             if (info != null) {
                 StringBuilder sb = new StringBuilder(info.getString("exec"));
@@ -256,6 +257,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     @Override
     public CompletableFuture<Void> attach(AttachRequestArguments args) {
         return CompletableFuture.runAsync(() -> {
+            context.configurePathMappings(args.get("pathMappings"), args.get("localRoot"), args.get("remoteRoot"));
             client.output(OutputEvent.EventBody.create("Debugger attached.").setCategory("stderr"));
         });
     }
@@ -488,7 +490,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         if (sourceReference != null && sourceReference > 0) {
             source = context.getLoadedSourcesHandler().getSource(sourceReference);
         } else {
-            source = context.getLoadedSourcesHandler().getSource(args.getSource().getPath());
+            source = context.getLoadedSourcesHandler().getSource(context.clientToRuntimePath(args.getSource().getPath()));
         }
         if (source == null) {
             future.completeExceptionally(Errors.sourceRequestIllegalHandle());

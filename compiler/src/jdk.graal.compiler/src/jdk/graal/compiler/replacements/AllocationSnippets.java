@@ -55,12 +55,12 @@ public abstract class AllocationSnippets implements Snippets {
                     AllocationProfilingData profilingData,
                     boolean withException) {
         Object result;
-        Word tlabInfo = getTLABInfo();
-        Word top = readTlabTop(tlabInfo);
-        Word end = readTlabEnd(tlabInfo);
+        Word threadLocalData = getThreadLocalData();
+        Word top = readTlabTop(threadLocalData);
+        Word end = readTlabEnd(threadLocalData);
         Word newTop = top.add(size);
         if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(size, false)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(tlabInfo, newTop);
+            writeTlabTop(threadLocalData, newTop);
             emitPrefetchAllocate(newTop, false);
             result = formatObject(hub, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
@@ -84,9 +84,9 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean supportsOptimizedFilling,
                     AllocationProfilingData profilingData,
                     boolean withException) {
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
+        Word threadLocalData = getThreadLocalData();
+        Word top = readTlabTop(threadLocalData);
+        Word end = readTlabEnd(threadLocalData);
         ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // A negative array length will result in an array size larger than the largest possible
@@ -96,7 +96,7 @@ public abstract class AllocationSnippets implements Snippets {
 
         Object result;
         if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
+            writeTlabTop(threadLocalData, newTop);
             emitPrefetchAllocate(newTop, true);
             boolean useOptimizedFilling = !withException && supportsOptimizedFilling;
             result = formatArray(hub, allocationSize, length, top, fillContents, emitMemoryBarrier, fillStartOffset, maybeUnroll, supportsBulkZeroing, useOptimizedFilling,
@@ -346,13 +346,13 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract boolean shouldAllocateInTLAB(UnsignedWord allocationSize, boolean isArray);
 
-    public abstract Word getTLABInfo();
+    public abstract Word getThreadLocalData();
 
-    public abstract Word readTlabTop(Word tlabInfo);
+    public abstract Word readTlabTop(Word threadLocalData);
 
-    public abstract Word readTlabEnd(Word tlabInfo);
+    public abstract Word readTlabEnd(Word threadLocalData);
 
-    public abstract void writeTlabTop(Word tlabInfo, Word newTop);
+    public abstract void writeTlabTop(Word threadLocalData, Word newTop);
 
     protected abstract int instanceHeaderSize();
 

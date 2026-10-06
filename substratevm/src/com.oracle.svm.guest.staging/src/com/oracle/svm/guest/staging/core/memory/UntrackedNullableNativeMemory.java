@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.imagelayer.LayeredGuestFoldResolver;
 import com.oracle.svm.shared.meta.GuestFold;
 
 /**
@@ -127,7 +128,7 @@ public class UntrackedNullableNativeMemory {
         memory().free(ptr);
     }
 
-    @GuestFold
+    @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
     static UnmanagedMemorySupport memory() {
         return ImageSingletons.lookup(UnmanagedMemorySupport.class);
     }

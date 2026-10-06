@@ -46,10 +46,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.NonReadableChannelException;
-import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
@@ -81,7 +77,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.BeforeClass;
@@ -276,33 +272,37 @@ public final class MemoryFileSystem implements FileSystem {
             }
         }
         final boolean deleteOnClose = options.contains(StandardOpenOption.DELETE_ON_CLOSE);
-        final byte[] origData = blocks.get(inode);
-        final byte[] data = write && options.contains(StandardOpenOption.TRUNCATE_EXISTING) ? EMPTY : Arrays.copyOf(origData, origData.length);
+        byte[] origData = blocks.get(inode);
+        byte[] data;
+        boolean truncate = write && options.contains(StandardOpenOption.TRUNCATE_EXISTING);
+        if (truncate) {
+            data = origData = EMPTY;
+        } else {
+            data = Arrays.copyOf(origData, origData.length);
+        }
         final long inodeFin = inode;
-        final BiConsumer<byte[], Long> syncAction = new BiConsumer<>() {
-            @Override
-            public void accept(byte[] t, Long u) {
-                blocks.put(inodeFin, Arrays.copyOf(t, (int) u.longValue()));
+        final Consumer<MemoryFileChannel> syncAction = (channel) -> {
+            if (truncate || channel.dirty) {
+                byte[] newData = Arrays.copyOf(channel.data, (int) channel.limit);
+                blocks.put(inodeFin, newData);
+                channel.originalData = newData;
             }
         };
         final boolean readFin = read;
         final boolean writeFin = write;
-        final BiConsumer<byte[], Long> metaSyncAction = new BiConsumer<>() {
-            @Override
-            public void accept(byte[] t, Long u) {
-                final long time = System.currentTimeMillis();
-                final FileInfo fileInfo = inodes.get(inodeFin);
-                if (readFin) {
-                    fileInfo.atime = time;
-                }
-                if (writeFin) {
-                    fileInfo.mtime = time;
-                }
+        final Consumer<MemoryFileChannel> metaSyncAction = (channel) -> {
+            final long time = System.currentTimeMillis();
+            final FileInfo fileInfo = inodes.get(inodeFin);
+            if (readFin) {
+                fileInfo.atime = time;
+            }
+            if (writeFin) {
+                fileInfo.mtime = time;
             }
         };
-        final BiConsumer<byte[], Long> closeAction = new BiConsumer<>() {
+        final Consumer<MemoryFileChannel> closeAction = new Consumer<>() {
             @Override
-            public void accept(byte[] t, Long u) {
+            public void accept(MemoryFileChannel channel) {
                 if (deleteOnClose) {
                     try {
                         delete(absolutePath);
@@ -310,8 +310,8 @@ public final class MemoryFileSystem implements FileSystem {
                         sthrow(ioe);
                     }
                 } else {
-                    syncAction.accept(t, u);
-                    metaSyncAction.accept(t, u);
+                    syncAction.accept(channel);
+                    metaSyncAction.accept(channel);
                 }
             }
 
@@ -320,7 +320,8 @@ public final class MemoryFileSystem implements FileSystem {
                 throw (E) t;
             }
         };
-        return new ChannelImpl(
+        return new MemoryFileChannelImpl(
+                        origData,
                         data,
                         closeAction,
                         read,
@@ -764,137 +765,6 @@ public final class MemoryFileSystem implements FileSystem {
                 return true;
             }
             return super.setValue(key, value);
-        }
-    }
-
-    private static final class ChannelImpl implements SeekableByteChannel {
-        private final BiConsumer<byte[], Long> closeAction;
-        private final boolean read;
-        private final boolean write;
-        private final boolean append;
-        private byte[] data;
-        private boolean closed;
-        private long limit;
-        private long pos;
-
-        ChannelImpl(
-                        final byte[] data,
-                        final BiConsumer<byte[], Long> closeAction,
-                        final boolean read,
-                        final boolean write,
-                        final boolean append) {
-            this.data = data;
-            this.closeAction = closeAction;
-            this.read = read;
-            this.write = write;
-            this.append = append;
-            this.limit = data.length;
-            this.pos = append ? limit : 0;
-        }
-
-        @Override
-        public int read(ByteBuffer dst) throws IOException {
-            checkClosed();
-            checkRead();
-            final long available = limit - pos;
-            if (available == 0) {
-                return -1;
-            }
-            final int toRead = Math.min((int) available, dst.limit());
-            dst.put(data, (int) pos, toRead);
-            pos += toRead;
-            return toRead;
-        }
-
-        @Override
-        public int write(ByteBuffer src) throws IOException {
-            checkClosed();
-            checkWrite();
-            final int len = src.limit() - src.position();
-            ensureCapacity((int) (pos + len));
-            src.get(data, (int) pos, len);
-            pos += len;
-            if (pos > limit) {
-                limit = pos;
-            }
-            return len;
-        }
-
-        @Override
-        public long position() throws IOException {
-            checkClosed();
-            return pos;
-        }
-
-        @Override
-        public SeekableByteChannel position(long newPosition) throws IOException {
-            checkClosed();
-            if (newPosition < 0) {
-                throw new IllegalArgumentException(String.valueOf(newPosition));
-            }
-            pos = newPosition;
-            return this;
-        }
-
-        @Override
-        public long size() throws IOException {
-            checkClosed();
-            return limit;
-        }
-
-        @Override
-        public SeekableByteChannel truncate(long size) throws IOException {
-            checkClosed();
-            checkWrite();
-            if (size < 0) {
-                throw new IllegalArgumentException(String.valueOf(size));
-            }
-            if (append) {
-                throw new IOException("Truncate not allowed in append mode.");
-            }
-            if (size < limit) {
-                limit = size;
-            }
-            if (pos > limit) {
-                pos = limit;
-            }
-            return this;
-        }
-
-        @Override
-        public boolean isOpen() {
-            return !closed;
-        }
-
-        @Override
-        public void close() throws IOException {
-            closed = true;
-            closeAction.accept(data, limit);
-        }
-
-        private void checkRead() {
-            if (!read) {
-                throw new NonReadableChannelException();
-            }
-        }
-
-        private void checkWrite() {
-            if (!write) {
-                throw new NonWritableChannelException();
-            }
-        }
-
-        private void checkClosed() throws ClosedChannelException {
-            if (closed) {
-                throw new ClosedChannelException();
-            }
-        }
-
-        private byte[] ensureCapacity(final int requiredLength) {
-            if (requiredLength > data.length) {
-                data = Arrays.copyOf(data, Math.max(requiredLength, data.length << 1));
-            }
-            return data;
         }
     }
 

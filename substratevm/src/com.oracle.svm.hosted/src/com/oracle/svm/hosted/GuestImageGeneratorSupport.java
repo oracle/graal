@@ -36,6 +36,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.ArgsSupport;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
@@ -91,6 +92,34 @@ final class GuestImageGeneratorSupport {
             throw VMError.shouldNotReachHere("Error creating Java argument support in the guest context", ex);
         }
         GuestImageSingletonSupport.add(argsSupportType, argsSupport);
+    }
+
+    /**
+     * Installs the isolate argument parser in the builder and guest singleton registries.
+     * <p>
+     * The parser is manually registered because guest-staging does not participate in automatic
+     * singleton registration. Layer loading retains ownership when it has already handled the
+     * parser's initial-layer singleton contract.
+     */
+    static void installIsolateArgumentParser() {
+        if (ImageSingletons.lookup(LoadedLayeredImageSingletonInfo.class).handledDuringLoading(IsolateArgumentParser.class)) {
+            return;
+        }
+
+        IsolateArgumentParser parser = new IsolateArgumentParser();
+        IsolateArgumentParser.install(parser);
+
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType parserType = access.lookupType(IsolateArgumentParser.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(parserType);
+        JavaConstant guestParser;
+        try {
+            guestParser = access.invoke(ctor, null);
+        } catch (InvocationException ex) {
+            throw VMError.shouldNotReachHere("Error creating the isolate argument parser in the guest context", ex);
+        }
+        ResolvedJavaMethod install = access.lookupMethod(parserType, "install", IsolateArgumentParser.class);
+        access.invoke(install, null, guestParser);
     }
 
     /**

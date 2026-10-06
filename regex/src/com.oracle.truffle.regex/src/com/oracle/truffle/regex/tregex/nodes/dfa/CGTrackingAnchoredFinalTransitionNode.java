@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,21 +42,22 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 public final class CGTrackingAnchoredFinalTransitionNode extends CGTrackingAbstractTransitionNode {
 
-    private final DFACaptureGroupPartialTransition anchoredFinalStateTransition;
+    /** Reference to a {@link DFACaptureGroupPartialTransition}. */
+    private final int anchoredFinalStateTransitionRef;
 
-    public CGTrackingAnchoredFinalTransitionNode(short id, DFACaptureGroupPartialTransition anchoredFinalStateTransition) {
+    public CGTrackingAnchoredFinalTransitionNode(short id, int anchoredFinalStateTransitionRef) {
         super(id, (short) -1);
-        this.anchoredFinalStateTransition = anchoredFinalStateTransition;
+        this.anchoredFinalStateTransitionRef = anchoredFinalStateTransitionRef;
     }
 
     @Override
-    public int getCGTrackingCost() {
-        return anchoredFinalStateTransition.getCost();
+    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
+        return DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), anchoredFinalStateTransitionRef);
     }
 
     @Override
     void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        anchoredFinalStateTransition.applyFinalStateTransition(executor, locals.getCGData(), locals.getIndex());
+        DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(), anchoredFinalStateTransitionRef, executor, locals.getCGData(), locals.getIndex());
         CGTrackingDFAStateNode.storeResult(locals, executor);
     }
 }

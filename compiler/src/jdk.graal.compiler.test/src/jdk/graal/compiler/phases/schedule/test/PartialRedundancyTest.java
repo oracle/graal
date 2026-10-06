@@ -24,12 +24,16 @@
  */
 package jdk.graal.compiler.phases.schedule.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.nodes.MultiReturnNode;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -37,6 +41,40 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 public class PartialRedundancyTest extends GraalCompilerTest {
 
     public static int intSideEffect;
+
+    public static int switchSplittingSnippet(int kind, int top) {
+        switch (kind) {
+            case 0:
+                intSideEffect = 1;
+                GraalDirectives.blackhole(top + 1);
+                break;
+            case 1:
+                intSideEffect = 2;
+                GraalDirectives.blackhole(top + 1);
+                break;
+            default:
+                intSideEffect = 3;
+                GraalDirectives.blackhole(top + 1);
+                break;
+        }
+        return top;
+    }
+
+    @Test
+    public void testFastPathBranchSplitting() {
+        for (boolean enabled : new boolean[]{false, true}) {
+            StructuredGraph graph = parseEager("switchSplittingSnippet", AllowAssumptions.YES);
+            createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
+            if (enabled) {
+                ReturnNode returnNode = graph.getNodes(ReturnNode.TYPE).first();
+                MultiReturnNode multiReturn = graph.addOrUnique(new MultiReturnNode(returnNode.result(), null));
+                returnNode.replaceFirstInput(returnNode.result(), multiReturn);
+            }
+            Assert.assertEquals(1, graph.getNodes().filter(AddNode.class).count());
+            new PartialRedundancySchedulePhase().apply(graph, getDefaultHighTierContext());
+            Assert.assertEquals(enabled ? 3 : 1, graph.getNodes().filter(AddNode.class).count());
+        }
+    }
 
     public static int simplestSnippet(int a, int b, int c) {
         int p = 0;

@@ -66,22 +66,33 @@ public final class MethodProfile {
 
     /** Artificial byte code index for the method entry profile. */
     private static final int JVMCI_METHOD_ENTRY_BCI = -1;
-    /**
-     * Number of interpreted backedges to wait before checking the installed OSR code slot again.
-     *
-     * {@link #shouldPollOSRBackedgeCode(int)} polls immediately when its per-target next-poll counter
-     * is zero, then advances that counter by this interval. The interpreter therefore rechecks the
-     * installed-code table after every 1024 additional executions of the same backedge until compiled
-     * OSR code is observed or the cadence is reset after profile reset or code invalidation.
-     */
-    private static final int OSR_CODE_POLL_INTERVAL = 1024;
+    /** Number of backedges between attempts to compile or enter OSR code. */
+    private static final int OSR_PROCESSING_INTERVAL = 1024;
+    /** Requests the OSR slow path at the next execution of this backedge. */
+    private static final long OSR_PROCESSING_FORCED = -1;
+    /** The backedge count has not yet crossed the initial OSR threshold. */
+    private static final long OSR_PROCESSING_BELOW_INITIAL_THRESHOLD = 0;
 
     /**
      * All profiles for the current method. Includes branch profiles, type profiles, profiles for
-     * exceptions etc.
+     * exceptions etc. Look up profiles by BCI and type with {@link #getAtBCI(int, Class)}. For OSR
+     * backedge profiles, {@link #getOSRBackedgeProfileIndex(int)} returns an index into this array.
      */
     private final InterpreterProfile[] profiles;
-    private final long[] nextOSRCodePollBackedgeCounts;
+    /**
+     * Per-profile OSR scheduling state, using the same indices as {@link #profiles}. Obtain an OSR
+     * backedge profile's index with {@link #getOSRBackedgeProfileIndex(int)}, or use
+     * {@link #findOSRBackedgeProfileIndex(int)} when the target might not have a profile. Entries for
+     * other profile types are unused.
+     *
+     * A zero value means that the initial threshold has not been crossed, an entry with the value
+     * {@link #OSR_PROCESSING_FORCED} requests the OSR slow path on the next backedge, and a positive
+     * value is the next backedge count at which the slow path is due.
+     * Like the profile counters, scheduling updates are approximate under concurrent execution.
+     * A concurrent scheduling write can overwrite a request to force the slow path; periodic checks
+     * still poll for installed code. Compilation ownership is synchronized separately by Ristretto.
+     */
+    private final long[] nextOSRProcessingBackedgeCounts;
 
     /**
      * Caches the index of the last returned profile for the next access. Initialized to 0, will be
@@ -100,7 +111,7 @@ public final class MethodProfile {
     public MethodProfile(ResolvedJavaMethod method, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
         this.method = method;
         this.profiles = buildProfiles(method, ristrettoTypeSupplier);
-        this.nextOSRCodePollBackedgeCounts = new long[profiles.length];
+        this.nextOSRProcessingBackedgeCounts = new long[profiles.length];
     }
 
     private static InterpreterProfile[] buildProfiles(ResolvedJavaMethod method, Function<InterpreterResolvedJavaType, ResolvedJavaType> ristrettoTypeSupplier) {
@@ -280,51 +291,63 @@ public final class MethodProfile {
     }
 
     /**
-     * Increments and returns the hotness counter for the OSR backedge that reaches {@code targetBCI}.
+     * Increments the hotness counter for the OSR backedge that reaches {@code targetBCI} and returns
+     * whether Ristretto should attempt OSR.
      *
-     * The returned value is the count observed after this backedge execution. Ristretto uses it to
-     * decide when to submit one OSR compilation for the target BCI.
-     */
-    public long profileOSRBackedge(int targetBCI) {
-        return getOSRBackedgeProfile(targetBCI).incrementBackedgeCounter();
-    }
-
-    /**
-     * Returns whether the interpreter should check for newly installed OSR code at this backedge.
+     * The OSR slow path is requested on the first backedge beyond {@code osrThreshold}. After the
+     * initial threshold crossing, the interpreter checks for installed OSR code at periodic
+     * backedge-count intervals. Subsequent runtime changes to the threshold do not affect these
+     * periodic checks. The slow path rechecks the current threshold before submitting compilation,
+     * but checks for installed OSR code independently of that threshold.
+     * {@link #resetOSRBackedgeProcessing(int)} requests the slow path on the next backedge, for example
+     * after compilation completes.
      *
-     * Code polling is deliberately owned by {@link MethodProfile}, not by {@link BackedgeProfile}: the
-     * backedge profile records only execution count, while this method layers the Ristretto runtime
-     * policy that avoids checking the installed-code table on every interpreted backedge.
+     * @return true if the caller should enter the OSR slow path; false if {@code targetBCI} is not a
+     *         statically identified OSR target or an OSR attempt is not yet due
      */
-    public boolean shouldPollOSRBackedgeCode(int targetBCI) {
-        int profileIndex = getOSRBackedgeProfileIndex(targetBCI);
-        long backedgeCount = ((BackedgeProfile) profiles[profileIndex]).getCounter();
-        if (backedgeCount < nextOSRCodePollBackedgeCounts[profileIndex]) {
+    public boolean profileOSRBackedgeAndShouldProcess(int targetBCI, int osrThreshold) {
+        int profileIndex = findOSRBackedgeProfileIndex(targetBCI);
+        if (profileIndex < 0) {
             return false;
         }
-        nextOSRCodePollBackedgeCounts[profileIndex] = backedgeCount + OSR_CODE_POLL_INTERVAL;
+        long backedgeCount = ((BackedgeProfile) profiles[profileIndex]).incrementBackedgeCounter();
+        long nextProcessingBackedgeCount = nextOSRProcessingBackedgeCounts[profileIndex];
+        if (nextProcessingBackedgeCount == OSR_PROCESSING_BELOW_INITIAL_THRESHOLD) {
+            if (backedgeCount <= osrThreshold) {
+                return false;
+            }
+        } else if (nextProcessingBackedgeCount != OSR_PROCESSING_FORCED && backedgeCount < nextProcessingBackedgeCount) {
+            return false;
+        }
+        nextOSRProcessingBackedgeCounts[profileIndex] = backedgeCount + OSR_PROCESSING_INTERVAL;
         return true;
     }
 
-    /**
-     * Forces the next {@link #shouldPollOSRBackedgeCode(int)} call for {@code targetBCI} to poll.
-     *
-     * Ristretto calls this after invalidating installed OSR code so the interpreter can promptly notice
-     * a later replacement compilation.
-     */
-    public void resetOSRBackedgeCodePoll(int targetBCI) {
-        nextOSRCodePollBackedgeCounts[getOSRBackedgeProfileIndex(targetBCI)] = 0;
+    /** Returns the current hotness count without incrementing it or changing OSR scheduling. */
+    public long getOSRBackedgeCount(int targetBCI) {
+        return ((BackedgeProfile) profiles[getOSRBackedgeProfileIndex(targetBCI)]).getCounter();
     }
 
     /**
-     * Resets the counter and code-poll cadence for the OSR backedge that reaches {@code targetBCI}.
+     * Requests the Ristretto OSR slow path on the next backedge for {@code targetBCI}.
+     *
+     * Ristretto calls this after compilation completes so the interpreter can promptly observe
+     * installed code or retry a failed compilation. Concurrent scheduling updates can delay this
+     * observation until a later periodic attempt.
+     */
+    public void resetOSRBackedgeProcessing(int targetBCI) {
+        nextOSRProcessingBackedgeCounts[getOSRBackedgeProfileIndex(targetBCI)] = OSR_PROCESSING_FORCED;
+    }
+
+    /**
+     * Resets the counter and OSR processing cadence for the backedge that reaches {@code targetBCI}.
      */
     public synchronized void resetOSRBackedgeProfile(int targetBCI) {
         for (int i = 0; i < profiles.length; i++) {
             InterpreterProfile profile = profiles[i];
             if (profile.getBci() == targetBCI && profile.getClass() == BackedgeProfile.class) {
                 profiles[i] = profile.reset();
-                nextOSRCodePollBackedgeCounts[i] = 0;
+                nextOSRProcessingBackedgeCounts[i] = OSR_PROCESSING_BELOW_INITIAL_THRESHOLD;
                 return;
             }
         }
@@ -332,26 +355,34 @@ public final class MethodProfile {
     }
 
     /**
-     * Resets all OSR backedge counters and code-poll cadence state for this method.
+     * Resets all OSR backedge counters and processing cadence state for this method.
      */
     public synchronized void resetOSRBackedgeProfiles() {
         for (int i = 0; i < profiles.length; i++) {
             InterpreterProfile profile = profiles[i];
             if (profile.getClass() == BackedgeProfile.class) {
                 profiles[i] = profile.reset();
-                nextOSRCodePollBackedgeCounts[i] = 0;
+                nextOSRProcessingBackedgeCounts[i] = OSR_PROCESSING_BELOW_INITIAL_THRESHOLD;
             }
         }
-    }
-
-    private BackedgeProfile getOSRBackedgeProfile(int targetBCI) {
-        return (BackedgeProfile) profiles[getOSRBackedgeProfileIndex(targetBCI)];
     }
 
     /**
      * Returns the internal profile-array index for an OSR backedge target.
      */
-    private synchronized int getOSRBackedgeProfileIndex(int targetBCI) {
+    private int getOSRBackedgeProfileIndex(int targetBCI) {
+        int profileIndex = findOSRBackedgeProfileIndex(targetBCI);
+        if (profileIndex >= 0) {
+            return profileIndex;
+        }
+        throw new IllegalArgumentException("No OSR backedge profile for " + method + "@" + targetBCI);
+    }
+
+    /**
+     * Returns the internal profile-array index for an OSR backedge target, or {@code -1} if the
+     * target has no statically identified OSR backedge.
+     */
+    private synchronized int findOSRBackedgeProfileIndex(int targetBCI) {
         int lastIndexLocal = lastIndex;
         for (int i = lastIndexLocal; i < profiles.length; i++) {
             InterpreterProfile profile = profiles[i];
@@ -367,7 +398,7 @@ public final class MethodProfile {
                 return i;
             }
         }
-        throw new IllegalArgumentException("No OSR backedge profile for " + method + "@" + targetBCI);
+        return -1;
     }
 
     @NeverInline("Keep branch profiling machinery out of bytecode-handler stubs")
@@ -416,14 +447,17 @@ public final class MethodProfile {
          * the same broad shape: deoptimization can request more profiling at the method entry without
          * discarding the existing method-data cells that describe bytecode-level behavior. Ristretto
          * therefore resets only the synthetic JVMCI method-entry profile here and deliberately keeps
-         * the bytecode-indexed profiles and deoptimization counters durable across reprofiling.
+         * the bytecode-indexed profiles and deoptimization counters durable across reprofiling. OSR
+         * targets that already crossed their initial threshold are forced to process their next
+         * backedge so that installed code remains promptly observable. Targets that have not crossed
+         * the threshold remain in their initial state.
          */
         for (int i = 0; i < profiles.length; i++) {
             if (profiles[i].getBci() == JVMCI_METHOD_ENTRY_BCI) {
                 profiles[i] = profiles[i].reset();
             }
-            if (profiles[i].getClass() == BackedgeProfile.class) {
-                nextOSRCodePollBackedgeCounts[i] = 0;
+            if (profiles[i].getClass() == BackedgeProfile.class && nextOSRProcessingBackedgeCounts[i] != OSR_PROCESSING_BELOW_INITIAL_THRESHOLD) {
+                nextOSRProcessingBackedgeCounts[i] = OSR_PROCESSING_FORCED;
             }
         }
         lastIndex = 0;
@@ -463,8 +497,8 @@ public final class MethodProfile {
     }
 
     public static class TestingBackdoor {
-        public static int osrCodePollInterval() {
-            return OSR_CODE_POLL_INTERVAL;
+        public static int osrProcessingInterval() {
+            return OSR_PROCESSING_INTERVAL;
         }
 
         public static List<InterpreterProfile> profilesAtBCI(MethodProfile methodProfile, int bci) {

@@ -37,6 +37,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -46,6 +47,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
@@ -57,11 +59,17 @@ import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.driver.BundleOptions.BundleOption;
 import com.oracle.svm.driver.BundleOptions.ExtendedOption;
+import com.oracle.svm.driver.BundlePathMap.PathStyle;
+import com.oracle.svm.driver.BundlePathMap.PortablePath;
+import com.oracle.svm.driver.BundlePathMap.RootKind;
 import com.oracle.svm.driver.launcher.BundleLauncher;
 import com.oracle.svm.driver.launcher.ContainerSupport;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
+import com.oracle.svm.driver.launcher.configuration.BundleArgsParser.ArgumentGroup;
+import com.oracle.svm.driver.launcher.configuration.BundleConfigurationParser;
 import com.oracle.svm.driver.launcher.configuration.BundleEnvironmentParser;
-import com.oracle.svm.driver.launcher.configuration.BundlePathMapParser;
+import com.oracle.svm.driver.launcher.json.BundleJSONParser;
+import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
 import com.oracle.svm.shared.option.BundleMember;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
@@ -84,20 +92,20 @@ final class BundleSupport {
     final Path imagePathOutputDir;
     final Path auxiliaryOutputDir;
 
-    Map<Path, Path> pathCanonicalizations = new HashMap<>();
-    Map<Path, Path> pathSubstitutions = new HashMap<>();
-    private final Map<Path, Path> loadedPathCanonicalizations = new HashMap<>();
-    private final Map<Path, Path> loadedPathSubstitutions = new HashMap<>();
+    private final Map<PortablePath, PortablePath> pathCanonicalizations = new HashMap<>();
+    private final Map<PortablePath, PortablePath> pathSubstitutions = new HashMap<>();
+    private final Map<Path, PortablePath> nativeToPortablePath = new HashMap<>();
+    private Path unavailablePathRoot;
 
     private final List<String> nativeImageArgs;
-    private final List<String> bundleFileNativeImageArgs;
-    private List<String> updatedNativeImageArgs;
+    private final List<ArgumentGroup> bundleFileArgumentGroups;
+    private List<ArgumentGroup> updatedArgumentGroups;
     final ArrayList<String> bundleLauncherArgs = new ArrayList<>();
 
     boolean loadBundle;
     boolean writeBundle;
 
-    private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 1;
+    private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 2;
     private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 0;
 
     static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
@@ -136,7 +144,6 @@ final class BundleSupport {
 
     private static final String pathCanonicalizationsFileName = "path_canonicalizations.json";
     private static final String pathSubstitutionsFileName = "path_substitutions.json";
-
     private static final String DEFAULT_DOCKERFILE = getDockerfile("Dockerfile");
 
     private static String getDockerfile(String name) {
@@ -181,7 +188,8 @@ final class BundleSupport {
                     /*
                      * Snapshot args after in-place expansion (includes also args after this one).
                      */
-                    bundleSupport.updatedNativeImageArgs = serializeUpdatedBundleArgs(args.snapshot(), bundleSupport.nativeImageArgs, bundleSupport.bundleFileNativeImageArgs);
+                    bundleSupport.updatedArgumentGroups = serializeUpdatedBundleArgs(args.snapshot(), bundleSupport.nativeImageArgs, bundleSupport.bundleFileArgumentGroups,
+                                    NativeImage.platform);
                     break;
                 case create:
                     if (nativeImage.useBundle()) {
@@ -319,7 +327,7 @@ final class BundleSupport {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
         nativeImageArgs = nativeImage.getNativeImageArgs();
-        bundleFileNativeImageArgs = nativeImageArgs;
+        bundleFileArgumentGroups = List.of(new ArgumentGroup(NativeImage.platform, nativeImageArgs));
     }
 
     private BundleSupport(NativeImage nativeImage, String bundleFilenameArg) {
@@ -365,10 +373,18 @@ final class BundleSupport {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
 
-        loadPathMap(pathCanonicalizations, stageDir.resolve(pathCanonicalizationsFileName));
-        loadPathMap(pathSubstitutions, stageDir.resolve(pathSubstitutionsFileName));
-        loadedPathCanonicalizations.putAll(pathCanonicalizations);
-        loadedPathSubstitutions.putAll(pathSubstitutions);
+        if (bundleProperties.usesLegacyPathMapFormat()) {
+            /*
+             * Bundle formats before 1.0 stored paths as untyped strings, so the destination type
+             * must be reconstructed from the map being loaded.
+             */
+            parseAndRegisterLegacy(pathCanonicalizations, stageDir.resolve(pathCanonicalizationsFileName), this::portableSourcePath);
+            parseAndRegisterLegacy(pathSubstitutions, stageDir.resolve(pathSubstitutionsFileName), BundlePathMap::bundlePath);
+        } else {
+            loadPathMap(pathCanonicalizations, stageDir.resolve(pathCanonicalizationsFileName));
+            loadPathMap(pathSubstitutions, stageDir.resolve(pathSubstitutionsFileName));
+        }
+        pathSubstitutions.forEach(this::indexPathSubstitution);
         Path environmentFile = stageDir.resolve("environment.json");
         if (Files.isReadable(environmentFile)) {
             try (Reader reader = Files.newBufferedReader(environmentFile)) {
@@ -380,27 +396,51 @@ final class BundleSupport {
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
-            List<String> buildArgsFromFile = new ArrayList<>();
-            new BundleArgsParser(buildArgsFromFile).parseAndRegister(reader);
-            bundleFileNativeImageArgs = Collections.unmodifiableList(new ArrayList<>(buildArgsFromFile));
-            BundleSupportArgumentRewriter argumentRewriter = new BundleSupportArgumentRewriter(nativeImage.apiOptionHandler, bundleProperties.bundlePathStyle(), pathCanonicalizations,
-                            pathSubstitutions, rootDir);
-            nativeImageArgs = Collections.unmodifiableList(argumentRewriter.rewrite(buildArgsFromFile));
+            bundleFileArgumentGroups = BundleArgsParser.parseBuildArgumentGroups(reader, bundleProperties.bundlePlatform(), bundleProperties.usesLegacyBuildArgsFormat());
+            ArrayList<String> rewrittenBuildArgs = new ArrayList<>();
+            for (ArgumentGroup group : bundleFileArgumentGroups) {
+                BundleSupportArgumentRewriter argumentRewriter = new BundleSupportArgumentRewriter(nativeImage.apiOptionHandler, PathStyle.fromBundlePlatform(group.platform()), pathCanonicalizations,
+                                pathSubstitutions, this::lowerToNativePath);
+                rewrittenBuildArgs.addAll(argumentRewriter.rewrite(group.arguments()));
+            }
+            nativeImageArgs = Collections.unmodifiableList(rewrittenBuildArgs);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + buildArgsFile, e);
         }
     }
 
-    private void loadPathMap(Map<Path, Path> target, Path pathMapFile) {
-        boolean usesLegacyPathMapFormat = bundleProperties.usesLegacyPathMapFormat();
-        try {
-            if (usesLegacyPathMapFormat) {
-                try (Reader reader = Files.newBufferedReader(pathMapFile)) {
-                    new BundlePathMapParser(target).parseAndRegister(reader);
+    private void loadPathMap(Map<PortablePath, PortablePath> target, Path pathMapFile) {
+        try (Reader reader = Files.newBufferedReader(pathMapFile)) {
+            BundlePathMap.parseAndRegister(reader, target);
+            if (target == pathCanonicalizations && target.containsValue(PortablePath.UNAVAILABLE)) {
+                throw new BundleJSONParserException("Unavailable is only valid as a path substitution destination");
+            }
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to read bundle-file " + pathMapFile, e);
+        }
+    }
+
+    private void parseAndRegisterLegacy(Map<PortablePath, PortablePath> target, Path pathMapFile, Function<Path, PortablePath> toDestination) {
+        try (Reader reader = Files.newBufferedReader(pathMapFile)) {
+            Object json = new BundleJSONParser(reader).parse();
+            for (var rawEntry : BundleConfigurationParser.asList(json, "Expected a list of path substitution objects")) {
+                var entry = BundleConfigurationParser.asMap(rawEntry, "Expected a substitution object");
+                Object srcPathString = entry.get("src");
+                if (srcPathString == null) {
+                    throw new BundleJSONParserException("Expected src-field in substitution object");
                 }
-            } else {
-                try (Reader reader = Files.newBufferedReader(pathMapFile)) {
-                    BundlePathMap.parseAndRegister(reader, target);
+                Object dstPathString = entry.get("dst");
+                if (dstPathString == null) {
+                    throw new BundleJSONParserException("Expected dst-field in substitution object");
+                }
+                Path srcPath = Path.of(srcPathString.toString());
+                Path dstPath = Path.of(dstPathString.toString());
+                PortablePath sourcePath = portableSourcePath(srcPath);
+                if (target == pathSubstitutions && srcPath.equals(dstPath)) {
+                    // Preserve the recorded absence, including when writing a derived bundle.
+                    target.put(sourcePath, PortablePath.UNAVAILABLE);
+                } else {
+                    target.put(sourcePath, toDestination.apply(dstPath));
                 }
             }
         } catch (IOException e) {
@@ -430,12 +470,17 @@ final class BundleSupport {
         return bundleProperties.properties.get(BundleProperties.PROPERTY_KEY_IMAGE_BUILD_ID);
     }
 
-    static List<String> serializeUpdatedBundleArgs(List<String> queueSnapshot, List<String> currentBuildArgs, List<String> bundleFileBuildArgs) {
-        assert startsWithCurrentBuildArgs(queueSnapshot, currentBuildArgs);
-        ArrayList<String> result = new ArrayList<>(bundleFileBuildArgs.size() + queueSnapshot.size() - currentBuildArgs.size());
-        result.addAll(bundleFileBuildArgs);
-        result.addAll(queueSnapshot.subList(currentBuildArgs.size(), queueSnapshot.size()));
-        return result;
+    static List<ArgumentGroup> serializeUpdatedBundleArgs(List<String> queueSnapshot, List<String> buildArgs, List<ArgumentGroup> bundleFileArgumentGroups, String platform) {
+        assert startsWithCurrentBuildArgs(queueSnapshot, buildArgs);
+        ArrayList<ArgumentGroup> result = new ArrayList<>(bundleFileArgumentGroups);
+        appendArgumentGroup(result, platform, queueSnapshot.subList(buildArgs.size(), queueSnapshot.size()));
+        return List.copyOf(result);
+    }
+
+    private static void appendArgumentGroup(List<ArgumentGroup> groups, String platform, List<String> arguments) {
+        if (!arguments.isEmpty()) {
+            groups.add(new ArgumentGroup(platform, arguments));
+        }
     }
 
     private static boolean startsWithCurrentBuildArgs(List<String> queueSnapshot, List<String> currentBuildArgs) {
@@ -451,13 +496,23 @@ final class BundleSupport {
             return after;
         }
         NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordCanonicalization src: " + before + ", dst: " + after);
-        pathCanonicalizations.put(before, after);
+        pathCanonicalizations.put(portableSourcePath(before), portableSourcePath(after));
         return after;
     }
 
-    Path restoreCanonicalization(Path before) {
-        Path after = pathCanonicalizations.get(before);
-        NativeImage.showVerboseMessage(after != null && nativeImage.isVVerbose(), "RestoreCanonicalization src: " + before + ", dst: " + after);
+    Path restoreBundlePath(Path before) {
+        if (before.startsWith(rootDir)) {
+            return null;
+        }
+        PortablePath originalPath = portableSourcePath(before);
+        Path after = resolveSubstitutedPath(originalPath);
+        if (after == null) {
+            PortablePath canonicalPath = pathCanonicalizations.get(originalPath);
+            if (canonicalPath != null) {
+                after = resolveUnsubstitutedPath(canonicalPath);
+            }
+        }
+        NativeImage.showVerboseMessage(after != null && nativeImage.isVVerbose(), "RestorePath src: " + before + ", dst: " + after);
         return after;
     }
 
@@ -474,7 +529,7 @@ final class BundleSupport {
     }
 
     Path substituteImagePath(Path origPath) {
-        pathSubstitutions.put(origPath, rootDir.relativize(imagePathOutputDir));
+        recordPathSubstitution(portableSourcePath(origPath), BundlePathMap.bundlePath(rootDir.relativize(imagePathOutputDir)));
         return imagePathOutputDir;
     }
 
@@ -511,16 +566,16 @@ final class BundleSupport {
             NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution/RestoreSubstitution Skip: " + origPath);
             return origPath;
         }
-
-        Path previousRelativeSubstitutedPath = pathSubstitutions.get(origPath);
+        PortablePath portableOrigPath = portableSourcePath(origPath);
+        PortablePath previousRelativeSubstitutedPath = pathSubstitutions.get(portableOrigPath);
         if (previousRelativeSubstitutedPath != null) {
             NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RestoreSubstitution src: " + origPath + ", dst: " + previousRelativeSubstitutedPath);
-            return rootDir.resolve(previousRelativeSubstitutedPath);
+            return lowerToNativePath(portableOrigPath, previousRelativeSubstitutedPath);
         }
 
         if (!this.writeBundle && destinationDir != auxiliaryOutputDir) {
-            /* If this is bundle-apply only, no new substitutions needed for input paths. */
-            return origPath;
+            /* Do not capture new inputs on apply, but retain absence if derivation is enabled later. */
+            return Files.isReadable(origPath) ? origPath : recordUnavailablePath(portableOrigPath);
         }
 
         if (origPath.startsWith(nativeImage.config.getJavaHome())) {
@@ -557,9 +612,7 @@ final class BundleSupport {
         boolean isOutputPath = destinationDir.startsWith(outputDir);
 
         if (!isOutputPath && !Files.isReadable(origPath)) {
-            /* Prevent subsequent retries to substitute invalid paths */
-            pathSubstitutions.put(origPath, origPath);
-            return origPath;
+            return recordUnavailablePath(portableOrigPath);
         }
 
         // TODO: Report error if overlapping dir-trees are passed in
@@ -589,18 +642,110 @@ final class BundleSupport {
 
         Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
         NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
-        pathSubstitutions.put(origPath, relativeSubstitutedPath);
+        recordPathSubstitution(portableOrigPath, BundlePathMap.bundlePath(relativeSubstitutedPath));
         return substitutedPath;
     }
 
-    Path originalPath(Path substitutedPath) {
-        Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
-        for (Map.Entry<Path, Path> entry : pathSubstitutions.entrySet()) {
-            if (entry.getValue().equals(relativeSubstitutedPath)) {
+    PortablePath originalPortablePath(Path substitutedPath) {
+        return nativeToPortablePath.get(substitutedPath.normalize());
+    }
+
+    Path resolveSubstitutedPath(PortablePath originalPath) {
+        PortablePath canonicalPath = pathCanonicalizations.getOrDefault(originalPath, originalPath);
+        PortablePath substitutedPath = pathSubstitutions.get(canonicalPath);
+        return substitutedPath == null ? null : lowerToNativePath(canonicalPath, substitutedPath);
+    }
+
+    /// Lowers a portable source and its caller-selected substitution to a non-null host-native path.
+    /// A bundle-relative substitution resolves under `rootDir`; `Unavailable` yields a guaranteed-missing
+    /// placeholder without consulting the source location. A null substitution falls back to the source
+    /// path when representable on this host, otherwise records it as unavailable.
+    ///
+    /// Does not copy inputs or guarantee existence. May update provenance and create a placeholder
+    /// backing file.
+    Path lowerToNativePath(PortablePath sourcePath, PortablePath substitutedPath) {
+        if (substitutedPath == null) {
+            return resolveUnsubstitutedPath(sourcePath);
+        }
+        return substitutedPath.kind() == RootKind.Unavailable ? resolveUnavailablePath(sourcePath) : BundlePathMap.resolveBundlePath(rootDir, substitutedPath);
+    }
+
+    /// Records absence as a persistent substitution, not merely a failed attempt to copy an input.
+    Path recordUnavailablePath(PortablePath originalPath) {
+        PortablePath canonicalPath = pathCanonicalizations.getOrDefault(originalPath, originalPath);
+        PortablePath substitution = pathSubstitutions.computeIfAbsent(canonicalPath, _ -> PortablePath.UNAVAILABLE);
+        return indexPathSubstitution(canonicalPath, substitution);
+    }
+
+    /// Resolves an uncaptured path without confusing a foreign root with a replay-host location.
+    /// Same-style paths retain their native roots; ordinary foreign relative paths use the replay
+    /// platform's separators. Foreign rooted paths have no equivalent local location and remain
+    /// unavailable. All returned native paths retain their original portable identity.
+    Path resolveUnsubstitutedPath(PortablePath sourcePath) {
+        if (sourcePath.style() == PathStyle.currentSourceStyle()) {
+            return materializeSourcePath(sourcePath);
+        }
+        if (sourcePath.kind() == RootKind.Relative) {
+            Path nativePath = Path.of(sourcePath.platformRelativePathText()).normalize();
+            nativeToPortablePath.put(nativePath, sourcePath);
+            return nativePath;
+        }
+        return recordUnavailablePath(sourcePath);
+    }
+
+    private Path resolveUnavailablePath(PortablePath sourcePath) {
+        if (unavailablePathRoot == null) {
+            try {
+                /*
+                 * A regular file cannot have children. Paths below this freshly created file
+                 * are therefore guaranteed to be missing, even if the bundle contains files
+                 * with names resembling the original source path.
+                 */
+                unavailablePathRoot = Files.createTempFile(rootDir, "unavailable-", ".paths");
+            } catch (IOException e) {
+                throw NativeImage.showError("Unable to reserve missing bundle paths", e);
+            }
+        }
+        for (var entry : nativeToPortablePath.entrySet()) {
+            if (entry.getKey().startsWith(unavailablePathRoot) && entry.getValue().equals(sourcePath)) {
                 return entry.getKey();
             }
         }
-        return null;
+        Path nativePath = unavailablePathRoot.resolve(Integer.toString(nativeToPortablePath.size()));
+        nativeToPortablePath.put(nativePath, sourcePath);
+        return nativePath;
+    }
+
+    /// Materializes a portable source path for filesystem access on its source platform.
+    ///
+    /// This does not copy the path into the bundle. It records the portable identity of the
+    /// returned native path so subsequent classpath processing can canonicalize and capture it
+    /// without encoding it as a new `PortablePath`. Returns null when the source path belongs to
+    /// another platform.
+    Path materializeSourcePath(PortablePath sourcePath) {
+        if (sourcePath.style() != PathStyle.currentSourceStyle()) {
+            return null;
+        }
+        PortablePath normalizedSourcePath = sourcePath.normalize();
+        Path nativePath = Path.of(normalizedSourcePath.sourcePathText()).normalize();
+        /* Preserve provenance so the native path is not encoded a second time. */
+        nativeToPortablePath.put(nativePath, normalizedSourcePath);
+        return nativePath;
+    }
+
+    private void recordPathSubstitution(PortablePath originalPath, PortablePath substitutedPath) {
+        pathSubstitutions.put(originalPath, substitutedPath);
+        indexPathSubstitution(originalPath, substitutedPath);
+    }
+
+    private Path indexPathSubstitution(PortablePath originalPath, PortablePath substitutedPath) {
+        Path nativePath = lowerToNativePath(originalPath, substitutedPath).normalize();
+        nativeToPortablePath.put(nativePath, originalPath);
+        return nativePath;
+    }
+
+    private PortablePath portableSourcePath(Path path) {
+        return nativeToPortablePath.computeIfAbsent(path, key -> BundlePathMap.sourcePath(key, PathStyle.currentSourceStyle()));
     }
 
     private void copyFiles(Path source, Path target, boolean overwrite) {
@@ -796,15 +941,13 @@ final class BundleSupport {
 
         Path pathCanonicalizationsFile = stageDir.resolve(pathCanonicalizationsFileName);
         try (JsonWriter writer = new JsonWriter(pathCanonicalizationsFile)) {
-            JsonPrinter.printCollection(writer, BundlePathMap.withoutIdentityMappings(pathCanonicalizations).toList(), Map.Entry.comparingByKey(),
-                            (entry, jsonWriter) -> printPathMapping(entry, jsonWriter, loadedPathCanonicalizations, false));
+            JsonPrinter.printCollection(writer, BundlePathMap.withoutIdentityMappings(pathCanonicalizations).toList(), pathMappingComparator(), BundlePathMap::printPathMapping);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathCanonicalizationsFile, e);
         }
         Path pathSubstitutionsFile = stageDir.resolve(pathSubstitutionsFileName);
         try (JsonWriter writer = new JsonWriter(pathSubstitutionsFile)) {
-            JsonPrinter.printCollection(writer, pathSubstitutions.entrySet(), Map.Entry.comparingByKey(),
-                            (entry, jsonWriter) -> printPathMapping(entry, jsonWriter, loadedPathSubstitutions, true));
+            JsonPrinter.printCollection(writer, pathSubstitutions.entrySet(), pathMappingComparator(), BundlePathMap::printPathMapping);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
@@ -853,29 +996,30 @@ final class BundleSupport {
         }
 
         Path buildArgsFile = stageDir.resolve("build.json");
-        List<String> bundleArgsSource = updatedNativeImageArgs != null ? updatedNativeImageArgs : bundleFileNativeImageArgs;
-        if (updatedNativeImageArgs != null && loadBundle && startsWithCurrentBuildArgs(bundleArgsSource, nativeImageArgs)) {
-            bundleArgsSource = serializeUpdatedBundleArgs(bundleArgsSource, nativeImageArgs, bundleFileNativeImageArgs);
-        }
-        ArrayList<String> bundleArgs = new ArrayList<>(bundleArgsSource);
+        List<ArgumentGroup> bundleArgGroups = updatedArgumentGroups != null ? updatedArgumentGroups : bundleFileArgumentGroups;
+        ArrayList<ArgumentGroup> filteredBundleArgGroups = new ArrayList<>(bundleArgGroups.size());
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
             List<String> equalsNonBundleOptions = List.of(CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
             List<String> startsWithNonBundleOptions = List.of(BUNDLE_OPTION, DefaultOptionHandler.ADD_ENV_VAR_OPTION, nativeImage.oHPath);
-            ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
-            while (bundleArgsIterator.hasNext()) {
-                String arg = bundleArgsIterator.next();
-                if (equalsNonBundleOptions.contains(arg) || startsWithNonBundleOptions.stream().anyMatch(arg::startsWith)) {
-                    bundleArgsIterator.remove();
-                } else if (arg.startsWith("-Dllvm.bin.dir=")) {
-                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(a -> a.startsWith("-Dllvm.bin.dir=")).findFirst();
-                    if (existing.isPresent() && !existing.get().equals(arg)) {
-                        throw NativeImage.showError("Bundle native-image argument '" + arg + "' conflicts with existing '" + existing.get() + "'.");
+            for (ArgumentGroup group : bundleArgGroups) {
+                ArrayList<String> bundleArgs = new ArrayList<>(group.arguments());
+                ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
+                while (bundleArgsIterator.hasNext()) {
+                    String arg = bundleArgsIterator.next();
+                    if (equalsNonBundleOptions.contains(arg) || startsWithNonBundleOptions.stream().anyMatch(arg::startsWith)) {
+                        bundleArgsIterator.remove();
+                    } else if (arg.startsWith("-Dllvm.bin.dir=")) {
+                        Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(a -> a.startsWith("-Dllvm.bin.dir=")).findFirst();
+                        if (existing.isPresent() && !existing.get().equals(arg)) {
+                            throw NativeImage.showError("Bundle native-image argument '" + arg + "' conflicts with existing '" + existing.get() + "'.");
+                        }
+                        bundleArgsIterator.remove();
                     }
-                    bundleArgsIterator.remove();
                 }
+                appendArgumentGroup(filteredBundleArgGroups, group.platform(), bundleArgs);
             }
-            /* Printing as list with defined sort-order ensures useful diffs are possible */
-            JsonPrinter.printCollection(writer, bundleArgs, null, BundleSupport::printBuildArg);
+            /* Preserve argument and provenance-group order in the serialized command line. */
+            JsonPrinter.printCollection(writer, filteredBundleArgGroups, null, BundleSupport::printArgumentGroup);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + buildArgsFile, e);
         }
@@ -924,16 +1068,20 @@ final class BundleSupport {
         return root.resolve(relativePath.toString());
     }
 
-    private static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter writer, Map<Path, Path> loadedPathMap, boolean destinationIsBundleRelative) throws IOException {
-        if (entry.getValue().equals(loadedPathMap.get(entry.getKey()))) {
-            BundlePathMap.printPortablePathMapping(entry, writer, BundlePathMap.PathStyle.currentSourceStyle(), destinationIsBundleRelative);
-        } else {
-            BundlePathMap.printPathMapping(entry, writer, BundlePathMap.PathStyle.currentSourceStyle(), destinationIsBundleRelative);
-        }
+    private static Comparator<Map.Entry<PortablePath, PortablePath>> pathMappingComparator() {
+        return Comparator.comparing((Map.Entry<PortablePath, PortablePath> entry) -> entry.getKey().style())
+                        .thenComparing(entry -> entry.getKey().kind())
+                        .thenComparing(entry -> entry.getKey().text());
     }
 
     private static void printBuildArg(String entry, JsonWriter w) throws IOException {
         w.quote(entry);
+    }
+
+    private static void printArgumentGroup(ArgumentGroup group, JsonWriter writer) throws IOException {
+        writer.append('{').quote("platform").append(':').quote(group.platform()).append(',').quote("args").append(':');
+        JsonPrinter.printCollection(writer, group.arguments(), null, BundleSupport::printBuildArg);
+        writer.append('}');
     }
 
     private static final String environmentKeyField = "key";
@@ -1031,14 +1179,19 @@ final class BundleSupport {
             return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILT_WITH_CONTAINER, Boolean.FALSE.toString()));
         }
 
-        private BundlePathMap.PathStyle bundlePathStyle() {
+        private String bundlePlatform() {
             assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
-            return BundlePathMap.PathStyle.fromBundlePlatform(properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, "unknown"));
+            return properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, "unknown");
         }
 
         private boolean usesLegacyPathMapFormat() {
             assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
             return bundleFileFormatVersionMajor < 1;
+        }
+
+        private boolean usesLegacyBuildArgsFormat() {
+            assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
+            return bundleFileFormatVersionMajor < 2;
         }
 
         private void write() {

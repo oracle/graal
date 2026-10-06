@@ -188,6 +188,15 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
      */
     void emitReturn(JavaKind javaKind, Value input, AllocatableValue tailCallTarget, AllocatableValue[] additionalReturns);
 
+    /**
+     * Returns the location used for an indexed multi-return result. By default, multi-return values
+     * reuse argument locations. Calling conventions with additional result-only locations can
+     * override this mapping.
+     */
+    default AllocatableValue getAdditionalReturnLocation(CallingConvention callingConvention, int index) {
+        return callingConvention.getArgument(index);
+    }
+
     default void emitMultiReturns(JavaKind returnResultKind, Value returnResult, Value[] additionalReturnResults, Value tailCallTarget) {
         CallingConvention cc = getResult().getCallingConvention();
         Value updatedReturnResult = returnResult;
@@ -195,7 +204,7 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
         // Move additionalReturnResults back to the parameter locations
         for (int i = 0; i < additionalReturnResults.length; i++) {
             Value additionalReturnResult = additionalReturnResults[i];
-            AllocatableValue operand = cc.getArgument(i);
+            AllocatableValue operand = getAdditionalReturnLocation(cc, i);
             if (operand instanceof RegisterValue registerValue) {
                 emitMove(registerValue, additionalReturnResult);
                 if (returnResult.equals(additionalReturnResult) || registerValue.equals(cc.getReturn())) {

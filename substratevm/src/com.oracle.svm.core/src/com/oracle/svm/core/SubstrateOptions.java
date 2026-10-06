@@ -63,6 +63,7 @@ import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
@@ -1775,6 +1776,9 @@ public class SubstrateOptions {
 
     public static class TruffleStableOptions {
 
+        @Option(help = "Enable the auxiliary engine cache features at runtime.", stability = OptionStability.STABLE) //
+        public static final HostedOptionKey<Boolean> AuxiliaryEngineCache = new HostedOptionKey<>(false);
+
         @Option(help = "Automatically copy the necessary language resources to the resources directory next to the produced image.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(false);
 
@@ -1918,9 +1922,4 @@ public class SubstrateOptions {
         }
     });
 
-    @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = Expert)//
-    public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
-
-    @Option(help = "Internal, instead use 'auxiliary_image_path' in 'graal_create_isolate_params_t'.", type = Expert)//
-    public static final RuntimeOptionKey<String> AuxiliaryImagePathIsolateArgument = new RuntimeOptionKey<>(null, RegisterForIsolateArgumentParser);
 }

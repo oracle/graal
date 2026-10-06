@@ -258,18 +258,17 @@ public class MultiCharacterCaseFolding {
                     CodePointSet allowedCodePoints, boolean transitiveEquivalence) {
         tmp.clear();
         caseFoldCharClass(algorithm, charClass, (from, to) -> {
-            if (transitiveEquivalence || hasNoCaseFolding(algorithm, to[0])) {
-                if (to.length == 1) {
-                    // Add the case-folded version to the character class...
-                    if (filter.test(from, to[0])) {
-                        tmp.addCodePoint(to[0]);
-                    }
+            if (to.length == 1 && (transitiveEquivalence || hasNoCaseFolding(algorithm, to[0]))) {
+                // Add the case-folded version to the character class.
+                if (filter.test(from, to[0])) {
+                    tmp.addCodePoint(to[0]);
                 }
-                // ... and also any characters which case-fold to the same.
-                for (int unfolding : CaseUnfoldingTrie.findSingleCharUnfoldings(algorithm, to)) {
-                    if (unfolding != from && filter.test(from, unfolding)) {
-                        tmp.addCodePoint(unfolding);
-                    }
+            }
+            // Add any characters which case-fold to the same, even if the common case-folded value
+            // itself has another case-folding.
+            for (int unfolding : CaseUnfoldingTrie.findSingleCharUnfoldings(algorithm, to)) {
+                if (unfolding != from && filter.test(from, unfolding)) {
+                    tmp.addCodePoint(unfolding);
                 }
             }
         });

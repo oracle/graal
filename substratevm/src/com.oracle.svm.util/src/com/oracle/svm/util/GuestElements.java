@@ -104,6 +104,16 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Double_valueOf = lookupMethod(java_lang_Double, "valueOf", double.class);
     public final ResolvedJavaMethod java_lang_Double_doubleValue = lookupMethod(java_lang_Double, "doubleValue");
 
+    public final Set<ResolvedJavaType> primitiveBoxTypes = Set.of(
+                    java_lang_Boolean,
+                    java_lang_Byte,
+                    java_lang_Short,
+                    java_lang_Character,
+                    java_lang_Integer,
+                    java_lang_Long,
+                    java_lang_Float,
+                    java_lang_Double);
+
     public final ResolvedJavaType java_lang_Void = lookupType(Void.class);
 
     public final ResolvedJavaType java_lang_Enum = lookupType(Enum.class);
@@ -113,6 +123,7 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Class_forName = lookupMethod(java_lang_Class, "forName", String.class, boolean.class, ClassLoader.class);
     public final ResolvedJavaMethod java_lang_Class_getAnnotation = lookupMethod(java_lang_Class, "getAnnotation", Class.class);
     public final ResolvedJavaMethod java_lang_Class_getClassLoader = lookupMethod(java_lang_Class, "getClassLoader");
+    public final ResolvedJavaMethod java_lang_Class_getNestMembers = lookupMethod(java_lang_Class, "getNestMembers");
     public final ResolvedJavaMethod java_lang_Class_getModifiers = lookupMethod(java_lang_Class, "getModifiers");
     public final ResolvedJavaMethod java_lang_Class_getResourceAsStream = lookupMethod(java_lang_Class, "getResourceAsStream", String.class);
 
@@ -146,6 +157,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Object_toString = lookupMethod(java_lang_Object, "toString");
 
     public final ResolvedJavaType java_lang_String = lookupType(String.class);
+
+    public final ResolvedJavaType java_lang_Package = lookupType(Package.class);
 
     public final ResolvedJavaType java_lang_Throwable = lookupType(Throwable.class);
     public final ResolvedJavaMethod java_lang_Throwable_getMessage = lookupMethod(java_lang_Throwable, "getMessage");
@@ -229,7 +242,6 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType CFunction = lookupType(CFunction.class);
     public final ResolvedJavaType InvokeCFunctionPointer = lookupType(InvokeCFunctionPointer.class);
     public final ResolvedJavaType InternalVMMethod = lookupType("com.oracle.svm.guest.staging.jdk.InternalVMMethod");
-
     public final ResolvedJavaType FieldValueTransformer = lookupType(FieldValueTransformer.class);
     public final ResolvedJavaMethod FieldValueTransformer_transform = lookupMethod(FieldValueTransformer, "transform", Object.class, Object.class);
     public final ResolvedJavaMethod FieldValueTransformer_isAvailable = lookupMethod(FieldValueTransformer, "isAvailable");

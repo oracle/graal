@@ -123,6 +123,7 @@ public final class RistrettoFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new RistrettoOptionsStartupHook());
         RuntimeSupport.getRuntimeSupport().addTearDownHook(RistrettoCompilationManager.getProfileSupportTearDownHook());
 
         if (RistrettoOptions.useDeoptimization()) {

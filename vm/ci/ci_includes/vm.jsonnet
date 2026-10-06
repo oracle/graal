@@ -84,6 +84,25 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     reduced_ee_dists:: error 'The vm suite does not define reduced dists',
   },
 
+  // Exercise the release pipeline on PRs without publishing to Maven repositories.
+  local maven_dry_run_builds = [
+    vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64', java_version='latest') + vm_common.vm_base('linux', 'amd64', 'tier3') + vm_common.maven_deploy_base_functions.graalos_resources_object(dry_run=true) + {
+      name: 'gate-vm-graalos-python-resources-linux-amd64',
+      timelimit: '1:00:00',
+    },
+  ] + [
+    local os = platform[0];
+    local arch = platform[1];
+    vm_common.graalvm_complete_build_deps('ce', os, arch, java_version='latest') +
+    (if os == 'linux' then vm_common.linux_deploy else if os == 'darwin' then vm_common.darwin_deploy else vm_common.deploy_build) +
+    vm_common.vm_base(os, arch, 'tier3') +
+    vm_common.maven_deploy_base_functions.base_object(os, arch, dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local', extra_resource_platforms=['linux-amd64-musl-swcfi']) + {
+      name: 'gate-vm-maven-dry-run-' + os + '-' + arch,
+      timelimit: '1:30:00',
+    }
+    for platform in [['linux', 'amd64'], ['linux', 'aarch64'], ['darwin', 'aarch64'], ['windows', 'amd64']]
+  ],
+
   local builds = [
     self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'post-merge') + graal_common.deps.sulong + {
      environment+: {
@@ -99,8 +118,15 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
      notify_groups:: ['deploy'],
     },
 
+    // Separate single-target producer: only Python resources, no isolate bundles.
+    vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64', java_version='latest') + vm_common.vm_base('linux', 'amd64', 'daily') + vm_common.maven_deploy_base_functions.graalos_resources_object(dry_run=false) + {
+      name: 'daily-vm-graalos-python-resources-linux-amd64',
+      timelimit: '1:00:00',
+      notify_groups:: ['deploy'],
+    },
+
     # Linux/AMD64
-    vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64', java_version='latest') + vm_common.linux_deploy + vm_common.vm_base('linux', 'amd64', 'daily', deploy=true) + vm_common.maven_deploy_base_functions.base_object('linux', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
+    vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64', java_version='latest') + vm_common.linux_deploy + vm_common.vm_base('linux', 'amd64', 'daily', deploy=true) + vm_common.maven_deploy_base_functions.base_object('linux', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local', extra_resource_platforms=['linux-amd64-musl-swcfi']) + {
       name: 'daily-deploy-vm-maven-linux-amd64',
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
@@ -158,7 +184,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.build_graalvm("ce", "linux", "amd64"),
   ],
 
-  builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_runspec.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],
+  builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_runspec.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds + maven_dry_run_builds, std.thisFile)],
 
   compiler_gate:: (import '../../../compiler/ci/ci_common/gate.jsonnet')
 }

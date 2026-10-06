@@ -55,7 +55,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
@@ -206,15 +206,14 @@ final class CompactingOldGeneration extends OldGeneration {
 
         int length = ArrayLengthNode.arrayLength(array);
         final int stride = 2048;
-        int endIndex = index + stride;
-        if (endIndex < length) {
+        int count = length - index;
+        if (count > stride) {
+            count = stride;
             arrayMarkStack.pushObject(array);
-            arrayMarkStack.pushInt(endIndex);
-        } else {
-            endIndex = length;
+            arrayMarkStack.pushInt(index + count);
         }
 
-        visitor.visitObjectArrayRange(array, index, endIndex - index);
+        visitor.visitObjectArrayRange(array, index, count);
     }
 
     @AlwaysInline("GC performance")
@@ -507,6 +506,11 @@ final class CompactingOldGeneration extends OldGeneration {
             }
             aChunk = next;
         }
+    }
+
+    @Override
+    void clean(boolean cleanUnusedMemory, boolean cleanFillerObjectMemory) {
+        space.clean(cleanUnusedMemory, cleanFillerObjectMemory);
     }
 
     @Override

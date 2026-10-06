@@ -46,6 +46,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -71,7 +72,7 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
     JfrRecurringCallbackExecutionSampler() {
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean isPresent() {
         VMError.guarantee(BuildPhaseProvider.isSetupFinished(), "JfrRecurringCallbackExecutionSampler.isPresent() must not be called too early");
         if (ImageSingletons.contains(JfrExecutionSampler.class)) {

@@ -30,7 +30,7 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 

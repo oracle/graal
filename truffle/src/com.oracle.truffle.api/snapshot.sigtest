@@ -86,6 +86,8 @@ meth public static void materialize(java.lang.Object)
 meth public static void preserveFrameStateHere()
 meth public static void transferToInterpreter()
 meth public static void transferToInterpreterAndInvalidate()
+meth public static int mergeExplodeKey(int)
+meth public static long mergeExplodeKey(long)
 supr java.lang.Object
 hcls ShouldNotReachHere
 
@@ -183,6 +185,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 innr public abstract interface static !annotation Argument
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean enableTailDuplication()
 meth public abstract !hasdefault boolean secondarySwitch()
 meth public abstract com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument[] arguments()
 meth public abstract int maximumOperationCode()
@@ -215,6 +218,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCom
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean nonNull()
 meth public abstract java.lang.String name()
+meth public abstract !hasdefault int templateVariable()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
  outer com.oracle.truffle.api.HostCompilerDirectives
@@ -451,7 +455,6 @@ meth public !varargs java.io.BufferedWriter newBufferedWriter(java.nio.charset.C
 meth public !varargs java.io.BufferedWriter newBufferedWriter(java.nio.file.OpenOption[]) throws java.io.IOException
 meth public !varargs java.io.InputStream newInputStream(java.nio.file.OpenOption[]) throws java.io.IOException
 meth public !varargs java.io.OutputStream newOutputStream(java.nio.file.OpenOption[]) throws java.io.IOException
-meth public !varargs java.nio.channels.SeekableByteChannel newByteChannel(java.util.Set<? extends java.nio.file.OpenOption>,java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
 meth public !varargs java.nio.file.attribute.FileTime getCreationTime(java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs java.nio.file.attribute.FileTime getLastAccessTime(java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs java.nio.file.attribute.FileTime getLastModifiedTime(java.nio.file.LinkOption[]) throws java.io.IOException
@@ -459,6 +462,7 @@ meth public !varargs java.nio.file.attribute.GroupPrincipal getGroup(java.nio.fi
 meth public !varargs java.nio.file.attribute.UserPrincipal getOwner(java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs java.util.Set<java.nio.file.attribute.PosixFilePermission> getPosixPermissions(java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs long size(java.nio.file.LinkOption[]) throws java.io.IOException
+meth public !varargs org.graalvm.polyglot.io.FileChannel newByteChannel(java.util.Set<? extends java.nio.file.OpenOption>,java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
 meth public !varargs void copy(com.oracle.truffle.api.TruffleFile,java.nio.file.CopyOption[]) throws java.io.IOException
 meth public !varargs void createDirectories(java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
 meth public !varargs void createDirectory(java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
@@ -504,7 +508,7 @@ meth public void createLink(com.oracle.truffle.api.TruffleFile) throws java.io.I
 meth public void delete() throws java.io.IOException
 supr java.lang.Object
 hfds BUFFER_SIZE,MAX_BUFFER_SIZE,fileSystemContext,isEmptyPath,normalizedPath,path
-hcls AllFiles,AttributeGroup,ByteChannelDecorator,FileSystemContext,TempFileRandomHolder,TruffleFileDirectoryStream,Walker
+hcls AllFiles,AttributeGroup,FileChannelDecorator,FileSystemContext,TempFileRandomHolder,TruffleFileDirectoryStream,Walker
 
 CLSS public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<%0 extends java.lang.Object>
  outer com.oracle.truffle.api.TruffleFile

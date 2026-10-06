@@ -133,6 +133,6 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void uncommitUnusedMemory() {
-        assert VMOperation.isGCInProgress() : "may only be called by the GC";
+        assert VMOperation.isInProgressAtSafepoint() : "may only be called at safepoint";
     }
 }

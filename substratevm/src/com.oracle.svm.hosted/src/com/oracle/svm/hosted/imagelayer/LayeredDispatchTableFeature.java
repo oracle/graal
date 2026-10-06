@@ -69,6 +69,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.VTableBuilder;
 import com.oracle.svm.hosted.snapshot.dynamichub.DispatchSlotInfoData;
 import com.oracle.svm.hosted.snapshot.dynamichub.DynamicHubInfoData;
+import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisMethodData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedHostedMethodData;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -173,17 +174,14 @@ public class LayeredDispatchTableFeature implements InternalFeature {
     }
 
     private static Map<Integer, List<Integer>> getPriorVirtualCallTargetsByDeclaringType() {
-        var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        var buildingSupport = HostedImageLayerBuildingSupport.singleton();
+        var loader = buildingSupport.getLoader();
         Map<Integer, List<Integer>> result = new HashMap<>();
-        for (DynamicHubInfoData.Loader hubInfo : loader.getDynamicHubInfos()) {
-            var locallyDeclaredSlots = hubInfo.getLocallyDeclaredSlotsHostedMethodIndexes();
-            for (int i = 0; i < locallyDeclaredSlots.size(); i++) {
-                PersistedHostedMethodData.Loader methodData = loader.getHostedMethodData(locallyDeclaredSlots.get(i));
-                if (methodData.getIsVirtualCallTarget()) {
-                    int methodId = methodData.getMethodId();
-                    assert methodId != PriorDispatchMethod.UNPERSISTED_METHOD_ID;
-                    result.computeIfAbsent(hubInfo.getTypeId(), _ -> new ArrayList<>()).add(methodId);
-                }
+        /* Inherited interface methods may not have a locally declared dispatch slot. */
+        for (PersistedAnalysisMethodData.Loader method : buildingSupport.getSnapshot().getMethods()) {
+            PersistedHostedMethodData.Loader hostedMethod = loader.getHostedMethodData(method.getHostedMethodIndex());
+            if (hostedMethod.getIsVirtualCallTarget()) {
+                result.computeIfAbsent(method.getDeclaringTypeId(), _ -> new ArrayList<>()).add(method.getId());
             }
         }
         return result;

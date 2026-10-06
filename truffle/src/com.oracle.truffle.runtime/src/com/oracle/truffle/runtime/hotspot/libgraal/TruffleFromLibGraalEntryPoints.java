@@ -183,7 +183,7 @@ final class TruffleFromLibGraalEntryPoints {
             output.writeUTF(e.getKey());
             Object value = e.getValue();
             if (!BinaryOutput.isTypedValue(value)) {
-                value = value.toString();
+                value = value.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(value));
             }
             output.writeTypedValue(value);
         }

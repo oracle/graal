@@ -44,7 +44,7 @@ public interface GCAllocationSupport {
 
     boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray);
 
-    Word getTLABInfo();
+    Word getThreadLocalData();
 
     int tlabTopOffset();
 

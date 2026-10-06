@@ -374,11 +374,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static void registerTypeForRuntimeAccess(AnalysisType type) {
-        if (PredefinedClassesSupport.isPredefined(type.getJavaClass())) {
+        if (PredefinedClassesSupport.isPredefined(type)) {
             return; // must be defined at runtime before it can be looked up
         }
         ClassLoader loader = ClassAccess.getClassLoader(type);
-        ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(loader), type.getJavaClass());
+        ClassRegistries.addAOTClass(ClassLoaderFeature.getRuntimeClassLoader(loader), OriginalClassProvider.getJavaClass(type));
     }
 
     /**
@@ -853,8 +853,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         TypeData data = types.computeIfAbsent(type, _ -> new TypeData());
         if (!data.reachabilityHandlerRegistered) {
             data.reachabilityHandlerRegistered = true;
-            analysisAccess.registerSubtypeReachabilityHandler((_, subtype) -> runConditionalTask(unconditional(), _ -> checkSubtypeForOverridingElements(type, metaAccess.lookupJavaType(subtype))),
-                            type.getJavaClass());
+            analysisAccess.registerSubtypeReachabilityHandler((_, subtype) -> {
+                AnalysisType analysisSubtype = subtype instanceof AnalysisType aType ? aType : universe.lookup(subtype);
+                runConditionalTask(unconditional(), _ -> checkSubtypeForOverridingElements(type, analysisSubtype));
+            }, type);
             return true;
         } else {
             return false;
@@ -1300,28 +1302,28 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses() {
+    public Map<ResolvedJavaType, Set<ResolvedJavaType>> getReflectionInnerClasses() {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
-        Map<Class<?>, Set<Class<?>>> innerClasses = new HashMap<>();
+        Map<ResolvedJavaType, Set<ResolvedJavaType>> innerClasses = new HashMap<>();
         types.forEach((type, typeData) -> {
             if (typeData.isRegisteredAs(ACCESSED)) {
                 try {
-                    var innerTypes = innerClasses.computeIfAbsent(type.getJavaClass(), _ -> new HashSet<>());
+                    var innerTypes = innerClasses.computeIfAbsent(OriginalClassProvider.getOriginalType(type), _ -> new HashSet<>());
                     for (var innerType : type.getDeclaredTypes()) {
-                        innerTypes.add(innerType.getJavaClass());
+                        innerTypes.add(OriginalClassProvider.getOriginalType(innerType));
                     }
                     forAllSuperTypes(type, t -> {
-                        var superTypeInnerTypes = innerClasses.computeIfAbsent(t.getJavaClass(), _ -> new HashSet<>());
+                        var superTypeInnerTypes = innerClasses.computeIfAbsent(OriginalClassProvider.getOriginalType(t), _ -> new HashSet<>());
                         for (var innerType : t.getDeclaredTypes()) {
                             if (innerType.isPublic()) {
-                                superTypeInnerTypes.add(innerType.getJavaClass());
+                                superTypeInnerTypes.add(OriginalClassProvider.getOriginalType(innerType));
                             }
                         }
                     });
                     if (!throwMissingRegistrationErrors()) {
                         AnalysisType enclosingType = type.getEnclosingType();
                         if (enclosingType != null) {
-                            innerClasses.computeIfAbsent(enclosingType.getJavaClass(), _ -> new HashSet<>()).add(type.getJavaClass());
+                            innerClasses.computeIfAbsent(OriginalClassProvider.getOriginalType(enclosingType), _ -> new HashSet<>()).add(OriginalClassProvider.getOriginalType(type));
                         }
                     }
                 } catch (LinkageError ignored) {
@@ -1332,13 +1334,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return Collections.unmodifiableMap(innerClasses);
     }
 
-    public int getEnabledReflectionQueries(Class<?> clazz) {
+    public int getEnabledReflectionQueries(AnalysisType type) {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         /*
          * Primitives and arrays are registered by default since they provide reflective access to
          * no members.
          */
-        AnalysisType type = metaAccess.lookupJavaType(clazz);
         if (type.isPrimitive() || type.isArray() || types.get(type).isRegisteredAs(ACCESSED)) {
             return ALL_DECLARED_CLASSES_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG |
                             ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG | ALL_RECORD_COMPONENTS_FLAG | ALL_PERMITTED_SUBCLASSES_FLAG | ALL_NEST_MEMBERS_FLAG | ALL_SIGNERS_FLAG;
@@ -1546,7 +1547,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         types.forEach((type, data) -> {
             LinkageError error = data.getClassLookupError();
             if (error != null) {
-                classLookupExceptions.put(type.getJavaClass(), error);
+                classLookupExceptions.put(OriginalClassProvider.getJavaClass(type), error);
             }
         });
         return Collections.unmodifiableMap(classLookupExceptions);
@@ -1588,7 +1589,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         types.forEach((type, data) -> {
             LinkageError error = errorGetter.apply(data);
             if (error != null) {
-                lookupExceptions.put(type.getJavaClass(), error);
+                lookupExceptions.put(OriginalClassProvider.getJavaClass(type), error);
             }
         });
         return Collections.unmodifiableMap(lookupExceptions);
@@ -1601,7 +1602,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         types.forEach((type, data) -> {
             LinkageError error = data.getRecordComponentLookupError();
             if (error != null) {
-                recordComponentLookupExceptions.put(type.getJavaClass(), error);
+                recordComponentLookupExceptions.put(OriginalClassProvider.getJavaClass(type), error);
             }
         });
         return Collections.unmodifiableMap(recordComponentLookupExceptions);
@@ -1940,7 +1941,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         public static ClassLoader getClassLoader(AnalysisType type) {
-            return type.getJavaClass().getClassLoader();
+            return OriginalClassProvider.getJavaClass(type).getClassLoader();
         }
 
         public static RecordComponent[] getRecordComponents(Class<?> clazz) {
@@ -1948,61 +1949,61 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         public static void checkDeclaredFields(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getDeclaredFields();
             }
         }
 
         public static void checkPublicFields(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getFields();
             }
         }
 
         public static void checkDeclaredMethods(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getDeclaredMethods();
             }
         }
 
         public static void checkPublicMethods(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getMethods();
             }
         }
 
         public static void checkDeclaredConstructors(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getDeclaredConstructors();
             }
         }
 
         public static void checkPublicConstructors(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getConstructors();
             }
         }
 
         public static void checkRecordComponents(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             if (javaClass != null) {
                 javaClass.getRecordComponents();
             }
         }
 
         public Collection<AnalysisType> getNestMembers(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? filterClasses(javaClass.getNestMembers()) : Collections.singleton(type);
         }
 
         public static Object[] getSigners(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? javaClass.getSigners() : null;
         }
 
@@ -2018,17 +2019,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         public static Type[] getTypeParameters(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? queryGenericInfo(javaClass::getTypeParameters) : null;
         }
 
         public static Type getGenericSuperclass(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? queryGenericInfo(javaClass::getGenericSuperclass) : null;
         }
 
         public static Type[] getGenericInterfaces(AnalysisType type) {
-            Class<?> javaClass = type.getJavaClass();
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
             return javaClass != null ? queryGenericInfo(javaClass::getGenericInterfaces) : null;
         }
 
@@ -2082,7 +2083,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         @SuppressWarnings("deprecation")
         public AnalysisType getProxyType(AnalysisType intf) {
             try {
-                return metaAccess.lookupJavaType(Proxy.getProxyClass(getClassLoader(intf), intf.getJavaClass()));
+                return metaAccess.lookupJavaType(Proxy.getProxyClass(getClassLoader(intf), OriginalClassProvider.getJavaClass(intf)));
             } catch (LinkageError e) {
                 return null;
             }

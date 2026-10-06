@@ -49,6 +49,12 @@ public class NumUtil {
         return (int) l == l;
     }
 
+    /** Determines if a value is in the range of signed byte values. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isByte(long value) {
+        return (byte) value == value;
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int safeToUInt(long v) {
         assert isUInt(v);
@@ -59,6 +65,13 @@ public class NumUtil {
     public static int safeToInt(long v) {
         assert isInt(v);
         return (int) v;
+    }
+
+    /** Converts a signed byte value to its byte representation. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static byte safeToByte(long value) {
+        assert isByte(value);
+        return (byte) value;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

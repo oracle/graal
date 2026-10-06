@@ -35,6 +35,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
@@ -128,7 +129,7 @@ public class LibC {
         return libc().strtoull(string, endPtr, base);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean isSupported() {
         return ImageSingletons.contains(LibCSupport.class) || isInstalledInInitialLayer();
     }
@@ -141,7 +142,7 @@ public class LibC {
         return false;
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static LibCSupport libc() {
         return ImageSingletons.lookup(LibCSupport.class);
     }

@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,6 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.StackVerifier.VerifyFrameReferencesVisitor;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -48,11 +48,12 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.hub.DynamicHubIntrinsics;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -69,7 +70,7 @@ public class HeapVerifier {
     public HeapVerifier() {
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static HeapVerifier singleton() {
         return ImageSingletons.lookup(HeapVerifier.class);
     }

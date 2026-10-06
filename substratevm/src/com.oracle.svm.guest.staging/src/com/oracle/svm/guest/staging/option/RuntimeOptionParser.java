@@ -40,10 +40,12 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.imagelayer.LayeredGuestFoldResolver;
 import com.oracle.svm.shared.meta.GuaranteeFolded;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.CommonOptionParser.BooleanOptionFormat;
@@ -195,7 +197,7 @@ public final class RuntimeOptionParser {
      * Returns the singleton instance that is created during native image generation and stored in
      * the {@link ImageSingletons}.
      */
-    @GuestFold
+    @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
     public static RuntimeOptionParser singleton() {
         return ImageSingletons.lookup(RuntimeOptionParser.class);
     }
@@ -231,7 +233,7 @@ public final class RuntimeOptionParser {
     /// Note that the logic of whether to parse options must be in sync with the isolate argument
     /// parser. [GuestStagingDependencyBridge#shouldParseRuntimeOptions] provides that policy here.
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        if (!GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions()) {
+        if (!GuestStagingDependencyBridge.singleton().shouldParseRuntimeOptions(IsolateArgumentParser.isCompilationIsolate())) {
             return initialArgs;
         }
 

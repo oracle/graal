@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 
 /**
  * Persisted execution state of a yielded continuation, use via {@link StoredContinuationAccess}.

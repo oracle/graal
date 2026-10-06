@@ -441,7 +441,7 @@ public class LoopFragmentInside extends LoopFragment {
                 newSegmentBegin.clearSuccessors();
                 if (newSegmentBegin.hasAnchored()) {
                     /*
-                     * LoopPartialUnrollPhase runs after guard lowering, thus we cannot see any
+                     * SimpleLoopPartialUnrollPhase runs after guard lowering, thus we cannot see any
                      * floating guards here except multi-guard nodes (pointing to abstract begins)
                      * and other anchored nodes. We need to ensure anything anchored on the original
                      * loop begin will be anchored on the unrolled iteration. Thus we create an

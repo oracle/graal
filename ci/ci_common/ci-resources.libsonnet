@@ -5,7 +5,8 @@
     benchmarking_config_repo: "<benchmarking_config_repo>",
     notify_releaser_service: ["<notify_releaser_service>"],
     notify_indexer_service(java_version, edition): ["<notify_indexer_service>"],
-    nexus_base_url: "<nexus_base_url>"
+    nexus_base_url: "<nexus_base_url>",
+    graalos_artifact_base_url: "",
   },
   // Public defaults are intentionally empty. Build definitions compose only the
   // repository environments they require; internal CI overrides the values.

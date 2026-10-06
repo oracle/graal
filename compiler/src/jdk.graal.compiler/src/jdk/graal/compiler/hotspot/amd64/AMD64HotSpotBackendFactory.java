@@ -137,7 +137,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, HotSpotHostForeignCallsProvider foreignCalls,
                     HotSpotRegistersProvider registers, HotSpotConstantReflectionProvider constantReflection, HotSpotPlatformConfigurationProvider platformConfig,
                     HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
-        boolean enableObjectVectorization = runtime.getVMConfig().gc.supportsVectorization();
+        boolean enableObjectVectorization = platformConfig.getBarrierSet().supportsObjectArrayRangeBarriers();
         VectorAMD64 varch = new VectorAMD64((AMD64) target.arch, metaAccess.getArrayIndexScale(JavaKind.Object), runtime.getVMConfig().useCompressedOops, runtime.getVMConfig().objectAlignment,
                         runtime.getVMConfig().maxVectorSize, enableObjectVectorization);
         return new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, metaAccessExtensionProvider, target, varch);

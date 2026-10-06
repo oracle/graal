@@ -3,6 +3,13 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
+* (GR-79881, GR-79883): Added aggressive partial loop unrolling and simulation-based loop peeling to the community
+  compiler. Aggressive partial unrolling is enabled by default and can be disabled with
+  `-Djdk.graal.AggressivePartialUnroll=false`. The original simple partial unrolling remains
+  available, and all partial unrolling is controlled by the master `-Djdk.graal.PartialUnroll=false` option.
+* (GR-79595): Added `RangeCheckEliminationPhase`, which rewrites eligible 64-bit range checks to
+  equivalent 32-bit forms after counted strip mining. The optimization is enabled by default and
+  can be disabled with `-Djdk.graal.RangeCheckElimination=false`.
 * (GR-79593): Added `BreakChainedPhisPhase`, which splits chained loop phi values in the low tier to
   improve register allocation. The optimization is enabled by default and can be disabled with
   `-Djdk.graal.BreakChainedPhis=false`.
@@ -26,6 +33,9 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 * (GR-79597): Added early checkcast expansion to expose null and type checks as control flow for
   subsequent optimizations. It is enabled by default and can be disabled with
   `-Djdk.graal.EarlyExpandCheckCast=false`.
+* (GR-79590): Added speculative store checks, which can remove array store checks by speculating
+  that an array's declared type is exact. The optimization is enabled by default and can be
+  disabled with `-Djdk.graal.SpeculativeStoreCheck=false`.
 * (GR-79031): Added strip mining for counted and non-counted loops, loop inversion, loop rotation,
   and exact arithmetic optimization. Strip mining bounds long-running loop bodies to reduce
   safepoint overhead, loop inversion transforms while loops into guarded do-while loops to improve

@@ -108,8 +108,27 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
                         field, constantFields, constantReflection, options, metaAccess, canonicalizeReads, allUsagesAvailable, false, position);
     }
 
-    public static LoadFieldNode createOverrideImmutable(LoadFieldNode node) {
-        return new LoadFieldNode(StampPair.create(node.stamp, node.uncheckedStamp), node.object(), node.field(), true);
+    /**
+     * Creates a field load with an immutable location identity. Java {@code final} fields normally
+     * use ordinary loads with mutable location identities, since writes during construction must
+     * still invalidate earlier reads. An immutable location identity is a stronger property than
+     * the field's {@code final} modifier.
+     *
+     * Read elimination retains this load's cached value across generic kill-any memory effects and
+     * can merge it with a field alias using the same identity. Invokes that kill any location also
+     * clear immutable field-cache entries on both normal and exceptional paths. This is an optional
+     * optimization to replace spill/reload pairs with field loads; the cached values remain valid
+     * across calls. Foreign calls do not receive this optional kill-any invalidation, but their
+     * declared specific field kills still invalidate both mutable and immutable entries for the
+     * same field, as do field stores. Floating reads must be disabled for graphs containing these
+     * reloads.
+     */
+    public static LoadFieldNode createImmutableFieldLoad(StampPair stamp, ValueNode object, ResolvedJavaField field) {
+        return new LoadFieldNode(stamp, object, field, true);
+    }
+
+    public boolean isImmutableFieldLoad() {
+        return getLocationIdentity().isImmutable();
     }
 
     public static LoadFieldNode createOverrideStamp(StampPair stamp, ValueNode object, ResolvedJavaField field) {

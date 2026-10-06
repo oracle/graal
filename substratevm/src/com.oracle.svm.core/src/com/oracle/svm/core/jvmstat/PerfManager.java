@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.heap.Heap;

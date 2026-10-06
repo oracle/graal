@@ -55,6 +55,7 @@ import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -129,7 +130,7 @@ public abstract class HostVM {
                 type.setReachabilityListenerNotified(true);
 
                 for (BiConsumer<DuringAnalysisAccess, Class<?>> listener : classReachabilityListeners) {
-                    listener.accept(access, type.getJavaClass());
+                    listener.accept(access, OriginalClassProvider.getJavaClass(type));
                 }
             }
         }

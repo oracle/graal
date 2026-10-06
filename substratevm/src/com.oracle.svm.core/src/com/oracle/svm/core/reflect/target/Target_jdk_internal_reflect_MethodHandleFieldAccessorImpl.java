@@ -30,9 +30,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 /**
  * Method handle base field accessor. This class must not become reachable because we have our own
  * unsafe-based field accessor code
- * {@link com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory}.
+ * {@link com.oracle.svm.guest.staging.reflect.fieldaccessor.UnsafeFieldAccessorFactory}.
  *
- * @see com.oracle.svm.core.reflect.fieldaccessor
+ * @see com.oracle.svm.guest.staging.reflect.fieldaccessor
  */
 @TargetClass(className = "jdk.internal.reflect.MethodHandleFieldAccessorImpl")
 @Delete

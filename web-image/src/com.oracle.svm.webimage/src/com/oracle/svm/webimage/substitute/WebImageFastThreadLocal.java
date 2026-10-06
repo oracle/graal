@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package com.oracle.svm.webimage.substitute;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
@@ -35,10 +36,14 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalByte;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalChar;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalShort;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.webimage.platform.WebImageJSPlatform;
 import com.oracle.svm.webimage.platform.WebImageWasmGCPlatform;
@@ -54,7 +59,7 @@ public class WebImageFastThreadLocal {
 }
 
 @TargetClass(FastThreadLocalObject.class)
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "static-method"})
 @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
 final class Target_FastThreadLocalObject_Web<T> {
 
@@ -113,6 +118,16 @@ final class Target_FastThreadLocalObject_Web<T> {
     @Substitute
     public boolean compareAndSet(IsolateThread thread, T expect, T update) {
         return compareAndSet(expect, update);
+    }
+
+    @Substitute
+    public Pointer getAddress() {
+        throw new UnsupportedOperationException("Target_FastThreadLocalObject_Web.getAddress()");
+    }
+
+    @Substitute
+    public Pointer getAddress(IsolateThread thread) {
+        throw new UnsupportedOperationException("Target_FastThreadLocalObject_Web.getAddress(IsolateThread)");
     }
 }
 
@@ -190,7 +205,7 @@ final class Target_FastThreadLocalWord_Web<T extends WordBase> {
 }
 
 @TargetClass(FastThreadLocalLong.class)
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "static-method"})
 @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
 final class Target_FastThreadLocalLong_Web {
 
@@ -250,10 +265,20 @@ final class Target_FastThreadLocalLong_Web {
     public boolean compareAndSet(IsolateThread thread, long expect, long update) {
         return compareAndSet(expect, update);
     }
+
+    @Substitute
+    public Pointer getAddress() {
+        throw new UnsupportedOperationException("Target_FastThreadLocalLong_Web.getAddress()");
+    }
+
+    @Substitute
+    public Pointer getAddress(IsolateThread thread) {
+        throw new UnsupportedOperationException("Target_FastThreadLocalLong_Web.getAddress(IsolateThread)");
+    }
 }
 
 @TargetClass(FastThreadLocalInt.class)
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "static-method"})
 @Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
 final class Target_FastThreadLocalInt_Web {
 
@@ -312,6 +337,308 @@ final class Target_FastThreadLocalInt_Web {
     @Substitute
     public boolean compareAndSet(IsolateThread thread, int expect, int update) {
         return compareAndSet(expect, update);
+    }
+
+    @Substitute
+    public Pointer getAddress() {
+        throw new UnsupportedOperationException("Target_FastThreadLocalInt_Web.getAddress()");
+    }
+
+    @Substitute
+    public Pointer getAddress(IsolateThread thread) {
+        throw new UnsupportedOperationException("Target_FastThreadLocalInt_Web.getAddress(IsolateThread)");
+    }
+}
+
+@TargetClass(FastThreadLocalBoolean.class)
+@SuppressWarnings({"unused", "static-method"})
+@Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+final class Target_FastThreadLocalBoolean_Web {
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private boolean obj = false;
+
+    @Substitute
+    public boolean get() {
+        return obj;
+    }
+
+    @Substitute
+    public boolean get(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void set(boolean value) {
+        obj = value;
+    }
+
+    @Substitute
+    public void set(IsolateThread thread, boolean value) {
+        set(value);
+    }
+
+    @Substitute
+    public boolean getVolatile() {
+        return get();
+    }
+
+    @Substitute
+    public boolean getVolatile(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void setVolatile(boolean value) {
+        set(value);
+    }
+
+    @Substitute
+    public void setVolatile(IsolateThread thread, boolean value) {
+        set(value);
+    }
+
+    @Substitute
+    public boolean compareAndSet(boolean expect, boolean update) {
+        if (get() == expect) {
+            set(update);
+            return true;
+        }
+
+        return false;
+    }
+
+    @Substitute
+    public boolean compareAndSet(IsolateThread thread, boolean expect, boolean update) {
+        return compareAndSet(expect, update);
+    }
+
+    @Substitute
+    public Pointer getAddress() {
+        throw new UnsupportedOperationException("Target_FastThreadLocalBoolean_Web.getAddress()");
+    }
+
+    @Substitute
+    public Pointer getAddress(IsolateThread thread) {
+        throw new UnsupportedOperationException("Target_FastThreadLocalBoolean_Web.getAddress(IsolateThread)");
+    }
+}
+
+@TargetClass(FastThreadLocalByte.class)
+@SuppressWarnings({"unused", "static-method"})
+@Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+final class Target_FastThreadLocalByte_Web {
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private byte obj = 0;
+
+    @Substitute
+    public byte get() {
+        return obj;
+    }
+
+    @Substitute
+    public byte get(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void set(byte value) {
+        obj = value;
+    }
+
+    @Substitute
+    public void set(IsolateThread thread, byte value) {
+        set(value);
+    }
+
+    @Substitute
+    public byte getVolatile() {
+        return get();
+    }
+
+    @Substitute
+    public byte getVolatile(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void setVolatile(byte value) {
+        set(value);
+    }
+
+    @Substitute
+    public void setVolatile(IsolateThread thread, byte value) {
+        set(value);
+    }
+
+    @Substitute
+    public boolean compareAndSet(byte expect, byte update) {
+        if (get() == expect) {
+            set(update);
+            return true;
+        }
+
+        return false;
+    }
+
+    @Substitute
+    public boolean compareAndSet(IsolateThread thread, byte expect, byte update) {
+        return compareAndSet(expect, update);
+    }
+
+    @Substitute
+    public Pointer getAddress() {
+        throw new UnsupportedOperationException("Target_FastThreadLocalByte_Web.getAddress()");
+    }
+
+    @Substitute
+    public Pointer getAddress(IsolateThread thread) {
+        throw new UnsupportedOperationException("Target_FastThreadLocalByte_Web.getAddress(IsolateThread)");
+    }
+}
+
+@TargetClass(FastThreadLocalShort.class)
+@SuppressWarnings({"unused", "static-method"})
+@Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+final class Target_FastThreadLocalShort_Web {
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private short obj = 0;
+
+    @Substitute
+    public short get() {
+        return obj;
+    }
+
+    @Substitute
+    public short get(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void set(short value) {
+        obj = value;
+    }
+
+    @Substitute
+    public void set(IsolateThread thread, short value) {
+        set(value);
+    }
+
+    @Substitute
+    public short getVolatile() {
+        return get();
+    }
+
+    @Substitute
+    public short getVolatile(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void setVolatile(short value) {
+        set(value);
+    }
+
+    @Substitute
+    public void setVolatile(IsolateThread thread, short value) {
+        set(value);
+    }
+
+    @Substitute
+    public boolean compareAndSet(short expect, short update) {
+        if (get() == expect) {
+            set(update);
+            return true;
+        }
+
+        return false;
+    }
+
+    @Substitute
+    public boolean compareAndSet(IsolateThread thread, short expect, short update) {
+        return compareAndSet(expect, update);
+    }
+
+    @Substitute
+    public Pointer getAddress() {
+        throw new UnsupportedOperationException("Target_FastThreadLocalShort_Web.getAddress()");
+    }
+
+    @Substitute
+    public Pointer getAddress(IsolateThread thread) {
+        throw new UnsupportedOperationException("Target_FastThreadLocalShort_Web.getAddress(IsolateThread)");
+    }
+}
+
+@TargetClass(FastThreadLocalChar.class)
+@SuppressWarnings({"unused", "static-method"})
+@Platforms({WebImageJSPlatform.class, WebImageWasmGCPlatform.class})
+final class Target_FastThreadLocalChar_Web {
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private char obj = 0;
+
+    @Substitute
+    public char get() {
+        return obj;
+    }
+
+    @Substitute
+    public char get(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void set(char value) {
+        obj = value;
+    }
+
+    @Substitute
+    public void set(IsolateThread thread, char value) {
+        set(value);
+    }
+
+    @Substitute
+    public char getVolatile() {
+        return get();
+    }
+
+    @Substitute
+    public char getVolatile(IsolateThread thread) {
+        return get();
+    }
+
+    @Substitute
+    public void setVolatile(char value) {
+        set(value);
+    }
+
+    @Substitute
+    public void setVolatile(IsolateThread thread, char value) {
+        set(value);
+    }
+
+    @Substitute
+    public boolean compareAndSet(char expect, char update) {
+        if (get() == expect) {
+            set(update);
+            return true;
+        }
+
+        return false;
+    }
+
+    @Substitute
+    public boolean compareAndSet(IsolateThread thread, char expect, char update) {
+        return compareAndSet(expect, update);
+    }
+
+    @Substitute
+    public Pointer getAddress() {
+        throw new UnsupportedOperationException("Target_FastThreadLocalChar_Web.getAddress()");
+    }
+
+    @Substitute
+    public Pointer getAddress(IsolateThread thread) {
+        throw new UnsupportedOperationException("Target_FastThreadLocalChar_Web.getAddress(IsolateThread)");
     }
 }
 

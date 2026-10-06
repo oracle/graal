@@ -46,7 +46,6 @@ import com.oracle.svm.hosted.FeatureImpl;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -117,7 +116,7 @@ public class ImageHeapRelocatableConstantFeature extends ImageHeapRelocatableCon
     }
 
     @Override
-    FloatingNode emitLoadConstant(StructuredGraph graph, LoweringTool tool, ImageHeapRelocatableConstant constant) {
+    FloatingNode emitLoadConstant(StructuredGraph graph, LoweringTool tool, ImageHeapRelocatableConstant constant, AbstractObjectStamp stamp) {
         /*
          * We need to load the appropriate spot from the array storing all image heap relocatable
          * constants referenced from the text section.
@@ -128,7 +127,7 @@ public class ImageHeapRelocatableConstantFeature extends ImageHeapRelocatableCon
         var address = new OffsetAddressNode(ConstantNode.forConstant(array, metaAccess, graph), ConstantNode.forLong(arrayOffset));
 
         var compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
-        var compressedStamp = SubstrateNarrowOopStamp.compressed((AbstractObjectStamp) StampFactory.forConstant(constant, metaAccess), compressEncoding);
+        var compressedStamp = SubstrateNarrowOopStamp.compressed(stamp, compressEncoding);
         ValueNode read = FloatingReadNode.createRead(graph, address, NamedLocationIdentity.FINAL_LOCATION, compressedStamp, null, BarrierType.NONE, tool.lastFixedNode());
         return SubstrateCompressionNode.uncompress(graph, graph.addOrUniqueWithInputs(read), compressEncoding);
     }

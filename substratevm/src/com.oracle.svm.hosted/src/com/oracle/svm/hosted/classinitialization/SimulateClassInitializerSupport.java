@@ -436,8 +436,7 @@ public class SimulateClassInitializerSupport {
     }
 
     private void checkStrictlyInitializeAtRunTime(SimulateClassInitializerClusterMember clusterMember) {
-        var clazz = clusterMember.type.getJavaClass();
-        if (classInitializationSupport.specifiedInitKindFor(clazz) == InitKind.RUN_TIME && classInitializationSupport.isStrictlyDefined(clazz)) {
+        if (classInitializationSupport.specifiedInitKindFor(clusterMember.type) == InitKind.RUN_TIME && classInitializationSupport.isStrictlyDefined(clusterMember.type)) {
             /*
              * The class itself (not just the whole package) is registered as
              * "initialize at run time", so we honor that registration. There was hopefully a good

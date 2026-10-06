@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.ref.Reference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -93,10 +92,10 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.guest.staging.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.hub.HubType;
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.hub.ReferenceType;
+import com.oracle.svm.guest.staging.hub.ReferenceType;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
@@ -502,7 +501,7 @@ public class SVMHost extends HostVM {
         classInitializationSupport.maybeInitializeAtBuildTime(analysisType);
 
         /* Compute the automatic substitutions. */
-        automaticUnsafeTransformations.computeTransformations(bb, this, lookupOriginalType(analysisType.getJavaClass()));
+        automaticUnsafeTransformations.computeTransformations(bb, this, OriginalClassProvider.getOriginalType(analysisType));
     }
 
     @Override
@@ -519,7 +518,7 @@ public class SVMHost extends HostVM {
                  * precedence over the generic ThrowMissingRegistrationError option.
                  */
             }
-        } else if (!missingRegistrationSupport.reportMissingRegistrationErrors(type.getJavaClass())) {
+        } else if (!missingRegistrationSupport.reportMissingRegistrationErrors(type)) {
             type.registerAsUnsafeAllocated("Type is not listed as ThrowMissingRegistrationError and therefore registered as Unsafe allocated automatically for compatibility reasons");
             typeToHub.get(type).setCanUnsafeAllocate();
         }
@@ -592,7 +591,7 @@ public class SVMHost extends HostVM {
         if ((type.isInstanceClass() && type.getSuperclass() != null) || type.isArray()) {
             superHub = dynamicHub(type.getSuperclass());
         }
-        Class<?> javaClass = type.getJavaClass();
+        Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
         DynamicHub componentHub = null;
         if (type.isArray()) {
             componentHub = dynamicHub(type.getComponentType());
@@ -716,16 +715,16 @@ public class SVMHost extends HostVM {
                 return HubType.OBJECT_ARRAY;
             }
         } else if (type.isInstanceClass()) {
-            if (Reference.class.isAssignableFrom(type.getJavaClass())) {
+            if (GuestAccess.elements().java_lang_ref_Reference.isAssignableFrom(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.REFERENCE_INSTANCE;
-            } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(type.getJavaClass())) {
+            } else if (PodSupport.isPresent() && PodSupport.singleton().isPodClass(OriginalClassProvider.getJavaClass(type))) {
                 return HubType.POD_INSTANCE;
-            } else if (ContinuationSupport.isSupported() && type.getJavaClass() == StoredContinuation.class) {
+            } else if (ContinuationSupport.isSupported() && GuestAccess.get().lookupType(StoredContinuation.class).equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.STORED_CONTINUATION_INSTANCE;
-            } else if (type.getJavaClass() == FillerArray.class) {
+            } else if (GuestAccess.get().lookupType(FillerArray.class).equals(OriginalClassProvider.getOriginalType(type))) {
                 return HubType.PRIMITIVE_ARRAY;
             }
-            assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
+            assert !GuestAccess.get().lookupType(Target_java_lang_ref_Reference.class).isAssignableFrom(OriginalClassProvider.getOriginalType(type)) : "should not see substitution type here";
             return HubType.INSTANCE;
         }
         return HubType.OTHER;
@@ -1228,7 +1227,7 @@ public class SVMHost extends HostVM {
          * they are replaced by the invocation plugin with a constant. If reachable in an extension
          * image, the plugin will replace it again.
          */
-        if (GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) && GuestAnnotationAccess.isAnnotationPresent(method, GuestFold.class)) {
+        if (GuestAnnotationAccess.isAnnotationPresent(method, Fold.class) || GuestAnnotationAccess.isAnnotationPresent(method, GuestFold.class)) {
             return false;
         }
 
@@ -1702,7 +1701,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public String loaderName(AnalysisType type) {
-        var originalLoader = type.getJavaClass().getClassLoader();
+        var originalLoader = OriginalClassProvider.getJavaClass(type).getClassLoader();
         var runtimeLoader = typeToHub.get(type).getClassLoader();
         if (Objects.equals(originalLoader, runtimeLoader)) {
             return loaderName(originalLoader);

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.g1;
 
+import static com.oracle.svm.core.g1.G1Options.G1HeapRegionSize;
 import static com.oracle.svm.core.heap.RuntimeCodeCacheCleaner.CLASSES_ASSUMED_REACHABLE;
 import static com.oracle.svm.guest.staging.log.Log.RIGHT_ALIGN;
-import static com.oracle.svm.core.g1.G1Options.G1HeapRegionSize;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.ref.Reference;
@@ -34,12 +34,12 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig.Mode;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -48,28 +48,26 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
-import com.oracle.svm.guest.staging.c.CGlobalData;
-import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.code.RuntimeCodeInstallation;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.g1.nativelib.G1Library;
+import com.oracle.svm.core.g1.nativelib.G1Structs.G1InitState;
+import com.oracle.svm.core.g1.nativelib.G1Structs.G1InternalState;
+import com.oracle.svm.core.g1.nativelib.G1Structs.G1RegionInfo;
 import com.oracle.svm.core.gc.shared.NativeGCStackWalker;
 import com.oracle.svm.core.gc.shared.NativeGCThreadTransitions;
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport;
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport.NativeGCVMOperationData;
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport.NativeGCVMOperationWrapperData;
-import com.oracle.svm.core.code.RuntimeCodeInstallation;
-import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.GC;
@@ -80,32 +78,35 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
-import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.c.CGlobalData;
+import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
+import com.oracle.svm.guest.staging.core.thread.ThreadStatus;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
-import com.oracle.svm.core.g1.nativelib.G1Library;
-import com.oracle.svm.core.g1.nativelib.G1Structs.G1InitState;
-import com.oracle.svm.core.g1.nativelib.G1Structs.G1InternalState;
-import com.oracle.svm.core.g1.nativelib.G1Structs.G1RegionInfo;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -117,6 +118,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.vm.ci.meta.JavaKind;
@@ -130,6 +132,9 @@ public final class G1Heap extends Heap {
     private static final CGlobalData<Word> IMAGE_HEAP_BOT_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_BOT_END_SYMBOL_NAME);
 
     public static final Field GC_TOTAL_COLLECTIONS_ADDRESS_FIELD = ReflectionUtil.lookupField(G1Heap.class, "gcTotalCollectionsAddress");
+    /* Keep frequently accessed allocation and barrier fields within compact displacement range. */
+    public static final FastThreadLocalBytes<Word> barrierAndAllocationDataTL = FastThreadLocalFactory.createBytes(G1Constants::barrierAndAllocationDataSize, "G1Heap.barrierAndAllocationData")
+                    .setMaxOffset(FastThreadLocal.BYTE_OFFSET - G1Constants.cardQueueBufferOffset());
     public static final FastThreadLocalBytes<Word> javaThreadTL = FastThreadLocalFactory.createBytes(G1Constants::javaThreadSize, "G1Heap.javaThread");
     private static final FastThreadLocalWord<Word> cardTableAddressTL = FastThreadLocalFactory.createWord("G1Heap.cardTableAddress").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
@@ -156,10 +161,6 @@ public final class G1Heap extends Heap {
     public G1Heap(G1PerfData perfData) {
         this.objectHeader = new G1ObjectHeader();
         this.perfData = perfData;
-
-        DiagnosticThunkRegistry.singleton().add(new DumpHeapSettingsAndGCInternalState());
-        DiagnosticThunkRegistry.singleton().add(new DumpRegionInformation());
-        DiagnosticThunkRegistry.singleton().add(new DumpCurrentGCThreadName());
     }
 
     @Fold
@@ -335,6 +336,31 @@ public final class G1Heap extends Heap {
     }
 
     @Fold
+    public static int getNullRegionSize() {
+        int buildTimePageSize = SubstrateOptions.getPageSize();
+        int result = Math.max(buildTimePageSize * G1Constants.cardSize(), G1HeapRegionSize.getValue());
+        assert result % G1HeapRegionSize.getValue() == 0 : "null region size must be region-aligned";
+        return result;
+    }
+
+    @Fold
+    static int getMetaspaceOffsetInAddressSpace() {
+        int result = getNullRegionSize();
+        assert result % G1HeapRegionSize.getValue() == 0 : "start of metaspace must be region-aligned";
+        return result;
+    }
+
+    @Fold
+    static int getReservedMetaspaceSize() {
+        if (!Metaspace.isSupported()) {
+            return 0;
+        }
+
+        int unalignedValue = SubstrateGCOptions.ConcealedOptions.getMaxMetaspaceSize();
+        return NumUtil.roundUp(unalignedValue, G1Options.G1HeapRegionSize.getValue());
+    }
+
+    @Fold
     @Override
     public int getHeapBaseAlignment() {
         int buildTimePageSize = SubstrateOptions.getPageSize();
@@ -350,8 +376,7 @@ public final class G1Heap extends Heap {
     @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
-        int buildTimePageSize = SubstrateOptions.getPageSize();
-        int result = Math.max(buildTimePageSize * G1Constants.cardSize(), G1HeapRegionSize.getValue());
+        int result = getNullRegionSize() + getReservedMetaspaceSize();
         assert result % getImageHeapAlignment() == 0 : "start of image heap must be aligned";
         return result;
     }
@@ -457,6 +482,18 @@ public final class G1Heap extends Heap {
         G1Library.endSafepoint();
     }
 
+    @Override
+    public boolean isRuntimeStateTrimSupported(Mode mode) {
+        return mode == Mode.LATENCY;
+    }
+
+    @Override
+    public void trimRuntimeState(Mode mode) {
+        // [GR-77514] Implement additional runtime-state trim modes.
+        assert mode == Mode.LATENCY;
+        gc.collect(GCCause.RuntimeStateTrimYoungGC);
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Pointer addressOfCardTableAddress() {
         return (Pointer) cardTableAddressTL.getAddress();
@@ -479,6 +516,7 @@ public final class G1Heap extends Heap {
         VMError.guarantee(G1Constants.youngCardValue() == state.youngCardValue(), "Failed while validating the G1 state: youngCardValue");
         VMError.guarantee(G1Constants.cardTableShift() == state.cardTableShift(), "Failed while validating the G1 state: cardTableShift");
         VMError.guarantee(G1Constants.logOfHeapRegionGrainBytes() == state.logOfHeapRegionGrainBytes(), "Failed while validating the G1 state: logOfHeapRegionGrainBytes");
+        VMError.guarantee(G1Constants.barrierAndAllocationDataSize() == state.barrierAndAllocationDataSize(), "Failed while validating the G1 state: barrierAndAllocationDataSize");
         VMError.guarantee(G1Constants.javaThreadSize() == state.javaThreadSize(), "Failed while validating the G1 state: javaThreadSize");
         VMError.guarantee(SizeOf.get(NativeGCVMOperationData.class) <= state.vmOperationDataSize(), "Failed while validating the G1 state: vmOperationDataSize");
         VMError.guarantee(SizeOf.get(NativeGCVMOperationWrapperData.class) <= state.vmOperationWrapperDataSize(), "Failed while validating the G1 state: vmOperationWrapperDataSize");
@@ -565,8 +603,8 @@ public final class G1Heap extends Heap {
         if (value.equal(heapBase)) {
             log.string("is the heap base");
             return true;
-        } else if (value.aboveThan(heapBase) && value.belowThan(imageHeapInfo.getImageHeapStart())) {
-            log.string("points into the protected memory between the heap base and the image heap");
+        } else if (value.aboveThan(heapBase) && value.belowThan(heapBase.add(getNullRegionSize()))) {
+            log.string("points into the protected null region after the heap base");
             return true;
         }
 
@@ -709,7 +747,7 @@ public final class G1Heap extends Heap {
         return true;
     }
 
-    private static final class DumpHeapSettingsAndGCInternalState extends DiagnosticThunk {
+    public static final class DumpHeapSettingsAndGCInternalState extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -734,7 +772,7 @@ public final class G1Heap extends Heap {
         }
     }
 
-    private static final class DumpRegionInformation extends DiagnosticThunk {
+    public static final class DumpRegionInformation extends DiagnosticThunk {
         private static final int MAX_REGIONS_TO_PRINT = 128 * 1024;
 
         @Override
@@ -784,7 +822,7 @@ public final class G1Heap extends Heap {
         }
     }
 
-    private static final class DumpCurrentGCThreadName extends DiagnosticThunk {
+    public static final class DumpCurrentGCThreadName extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;

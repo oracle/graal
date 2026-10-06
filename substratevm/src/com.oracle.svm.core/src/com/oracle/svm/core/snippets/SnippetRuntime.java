@@ -37,6 +37,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;

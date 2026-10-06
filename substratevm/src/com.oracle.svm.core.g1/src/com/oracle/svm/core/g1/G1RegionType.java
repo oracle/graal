@@ -57,7 +57,11 @@ public enum G1RegionType {
 
     OpenImageHeap(Flags.OpenImageHeapBit),
     OpenImageHeapStartsHumongous(Flags.OpenImageHeapBit | StartsHumongous.getTag()),
-    OpenImageHeapContinuesHumongous(Flags.OpenImageHeapBit | ContinuesHumongous.getTag());
+    OpenImageHeapContinuesHumongous(Flags.OpenImageHeapBit | ContinuesHumongous.getTag()),
+
+    Metaspace(Flags.MetaspaceBit),
+    MetaspaceStartsHumongous(Flags.MetaspaceBit | StartsHumongous.getTag()),
+    MetaspaceContinuesHumongous(Flags.MetaspaceBit | ContinuesHumongous.getTag());
 
     private final byte tag;
 
@@ -111,6 +115,12 @@ public enum G1RegionType {
             return "CIHS";
         } else if (tag == ClosedImageHeapContinuesHumongous.tag) {
             return "CIHC";
+        } else if (tag == Metaspace.tag) {
+            return "M";
+        } else if (tag == MetaspaceStartsHumongous.tag) {
+            return "MHS";
+        } else if (tag == MetaspaceContinuesHumongous.tag) {
+            return "MHC";
         } else {
             return "?";
         }
@@ -123,5 +133,6 @@ public enum G1RegionType {
         private static final byte OldBit = 8;
         private static final byte ClosedImageHeapBit = 16;
         private static final byte OpenImageHeapBit = 32;
+        private static final byte MetaspaceBit = 64;
     }
 }

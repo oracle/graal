@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.guest.staging;
 
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
+
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -40,6 +42,12 @@ public final class SubstrateGuestOptions {
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
+
+    @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
+
+    @Option(help = "Internal, instead use 'auxiliary_image_path' in 'graal_create_isolate_params_t'.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<String> AuxiliaryImagePathIsolateArgument = new RuntimeOptionKey<>(null, RegisterForIsolateArgumentParser);
 
     @LayerVerifiedOption(kind = LayerVerifiedOption.Kind.Changed, severity = LayerVerifiedOption.Severity.Error)//
     @Option(help = "Prefix that is added to the names of entry point methods.")//

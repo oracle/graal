@@ -44,10 +44,14 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalByte;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalChar;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalShort;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -74,7 +78,19 @@ public class VMThreadLocalInfos {
         Pointer threadLocals = (Pointer) thread;
         for (VMThreadLocalInfo info : ImageSingletons.lookup(VMThreadLocalInfos.class).infos) {
             log.signed(info.offset).string(": ").string(info.name).string(" = ");
-            if (info.threadLocalClass == FastThreadLocalInt.class) {
+            if (info.threadLocalClass == FastThreadLocalBoolean.class) {
+                boolean value = threadLocals.readByte(Word.signed(info.offset)) != 0;
+                log.string("(boolean) ").bool(value);
+            } else if (info.threadLocalClass == FastThreadLocalByte.class) {
+                byte value = threadLocals.readByte(Word.signed(info.offset));
+                log.string("(byte) ").zhex(value).string(" (").signed(value).string(")");
+            } else if (info.threadLocalClass == FastThreadLocalShort.class) {
+                short value = threadLocals.readShort(Word.signed(info.offset));
+                log.string("(short) ").zhex(value).string(" (").signed(value).string(")");
+            } else if (info.threadLocalClass == FastThreadLocalChar.class) {
+                char value = threadLocals.readChar(Word.signed(info.offset));
+                log.string("(char) ").zhex((short) value).string(" (").unsigned(value).string(")");
+            } else if (info.threadLocalClass == FastThreadLocalInt.class) {
                 int value = threadLocals.readInt(Word.signed(info.offset));
                 log.string("(int) ").zhex(value).string(" (").signed(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalLong.class) {

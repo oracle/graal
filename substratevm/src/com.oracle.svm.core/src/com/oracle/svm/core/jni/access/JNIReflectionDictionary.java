@@ -49,7 +49,7 @@ import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.util.DeferredKeyMap;
+import com.oracle.svm.guest.staging.util.DeferredKeyMap;
 import com.oracle.svm.core.util.DynamicHubKey;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.log.Log;

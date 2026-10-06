@@ -26,6 +26,8 @@ package com.oracle.svm.core.meta;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -41,7 +43,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  * which is crucial for the alias analysis of memory accesses during compilation.
  */
 public interface ObjectConstantEquality {
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static ObjectConstantEquality get() {
         return ImageSingletons.lookup(ObjectConstantEquality.class);
     }

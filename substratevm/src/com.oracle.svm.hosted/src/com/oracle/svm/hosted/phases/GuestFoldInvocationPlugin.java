@@ -28,11 +28,10 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalMethodProvider;
 
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -52,6 +51,12 @@ public final class GuestFoldInvocationPlugin implements NodePlugin {
             throw VMError.shouldNotReachHere("@GuestFold is not supported for void methods: %s", targetMethod.format("%H.%n(%p)"));
         }
 
+        ValueNode resultNode = b.executeFold(targetMethod, args, () -> invoke(b, targetMethod, args));
+        b.push(returnKind, resultNode);
+        return true;
+    }
+
+    private static JavaConstant invoke(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] args) {
         JavaConstant receiver = null;
         int argOffset = 0;
         if (targetMethod.hasReceiver()) {
@@ -78,10 +83,7 @@ public final class GuestFoldInvocationPlugin implements NodePlugin {
         if (b.getMetaAccess() instanceof UniverseMetaAccess uMetaAccess) {
             result = uMetaAccess.getUniverse().lookup(result);
         }
-
-        ConstantNode node = ConstantNode.forConstant(result, b.getMetaAccess(), b.getGraph());
-        b.push(returnKind, node);
-        return true;
+        return result;
     }
 
     private static JavaConstant asRequiredConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode node, String kind, int index) {

@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;

@@ -40,13 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.buffer;
 
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.string.Encoding;
 
 /**
@@ -67,8 +64,11 @@ public class CompilationBuffer {
     private final Encoding encoding;
     private ObjectArrayBuffer<Object> objectBuffer1;
     private ObjectArrayBuffer<Object> objectBuffer2;
-    private ObjectArrayBuffer<Object> objectBuffer3;
     private ByteArrayBuffer byteArrayBuffer;
+    private ByteArrayBuffer byteArrayBuffer2;
+    private ByteArrayBuffer byteArrayBuffer3;
+    private ByteArrayBuffer byteArrayBuffer4;
+    private ByteArrayBuffer byteArrayBuffer5;
     private ShortArrayBuffer shortArrayBuffer1;
     private ShortArrayBuffer shortArrayBuffer2;
     private IntRangesBuffer intRangesBuffer1;
@@ -76,7 +76,6 @@ public class CompilationBuffer {
     private IntRangesBuffer intRangesBuffer3;
     private CodePointSetAccumulator codePointSetAccumulator1;
     private CodePointSetAccumulator codePointSetAccumulator2;
-    private EconomicMap<DFACaptureGroupPartialTransition, DFACaptureGroupPartialTransition> lazyTransitionDeduplicationMap;
 
     public CompilationBuffer(Encoding encoding) {
         this.encoding = encoding;
@@ -104,21 +103,44 @@ public class CompilationBuffer {
         return (ObjectArrayBuffer<T>) objectBuffer2;
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> ObjectArrayBuffer<T> getObjectBuffer3() {
-        if (objectBuffer3 == null) {
-            objectBuffer3 = new ObjectArrayBuffer<>();
-        }
-        objectBuffer3.clear();
-        return (ObjectArrayBuffer<T>) objectBuffer3;
-    }
-
     public ByteArrayBuffer getByteArrayBuffer() {
         if (byteArrayBuffer == null) {
             byteArrayBuffer = new ByteArrayBuffer();
         }
         byteArrayBuffer.clear();
         return byteArrayBuffer;
+    }
+
+    public ByteArrayBuffer getByteArrayBuffer2() {
+        if (byteArrayBuffer2 == null) {
+            byteArrayBuffer2 = new ByteArrayBuffer();
+        }
+        byteArrayBuffer2.clear();
+        return byteArrayBuffer2;
+    }
+
+    public ByteArrayBuffer getByteArrayBuffer3() {
+        if (byteArrayBuffer3 == null) {
+            byteArrayBuffer3 = new ByteArrayBuffer();
+        }
+        byteArrayBuffer3.clear();
+        return byteArrayBuffer3;
+    }
+
+    public ByteArrayBuffer getByteArrayBuffer4() {
+        if (byteArrayBuffer4 == null) {
+            byteArrayBuffer4 = new ByteArrayBuffer();
+        }
+        byteArrayBuffer4.clear();
+        return byteArrayBuffer4;
+    }
+
+    public ByteArrayBuffer getByteArrayBuffer5() {
+        if (byteArrayBuffer5 == null) {
+            byteArrayBuffer5 = new ByteArrayBuffer();
+        }
+        byteArrayBuffer5.clear();
+        return byteArrayBuffer5;
     }
 
     public ShortArrayBuffer getShortArrayBuffer1() {
@@ -177,10 +199,4 @@ public class CompilationBuffer {
         return codePointSetAccumulator2;
     }
 
-    public EconomicMap<DFACaptureGroupPartialTransition, DFACaptureGroupPartialTransition> getLazyTransitionDeduplicationMap() {
-        if (lazyTransitionDeduplicationMap == null) {
-            lazyTransitionDeduplicationMap = EconomicMap.create();
-        }
-        return lazyTransitionDeduplicationMap;
-    }
 }

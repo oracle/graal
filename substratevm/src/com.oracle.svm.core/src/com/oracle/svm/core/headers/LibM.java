@@ -28,6 +28,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -38,7 +39,7 @@ public class LibM {
         return libm().log(value);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static LibMSupport libm() {
         return ImageSingletons.lookup(LibMSupport.class);
     }

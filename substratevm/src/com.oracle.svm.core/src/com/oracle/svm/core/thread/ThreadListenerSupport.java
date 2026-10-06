@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
@@ -61,7 +62,7 @@ public class ThreadListenerSupport {
         listeners[oldLength] = listener;
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static ThreadListenerSupport get() {
         return ImageSingletons.lookup(ThreadListenerSupport.class);
     }

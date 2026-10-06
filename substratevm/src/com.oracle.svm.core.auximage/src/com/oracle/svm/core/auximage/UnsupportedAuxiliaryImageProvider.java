@@ -31,10 +31,10 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.IsolateArgumentAccess;
-import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.IsolateArguments;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.guest.staging.IsolateArgumentAccess;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArguments;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.core.os.AuxiliaryImageProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
@@ -50,8 +50,8 @@ class UnsupportedAuxiliaryImageProvider implements AuxiliaryImageProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initializeHeapAddressRange(IsolateArguments arguments, Pointer reservedBegin, UnsignedWord reservedSize, Pointer imageHeapEnd, WordPointer collectedHeapBeginOut) {
-        CCharPointer auxImagePath = IsolateArgumentAccess.readCCharPointer(arguments, IsolateArgumentParser.getOptionIndex(SubstrateOptions.AuxiliaryImagePathIsolateArgument));
-        UnsignedWord auxImageReserved = unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateOptions.AuxiliaryImageBytesIsolateArgument)));
+        CCharPointer auxImagePath = IsolateArgumentAccess.readCCharPointer(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGuestOptions.AuxiliaryImagePathIsolateArgument));
+        UnsignedWord auxImageReserved = unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGuestOptions.AuxiliaryImageBytesIsolateArgument)));
         if (auxImagePath.isNonNull() || auxImageReserved.notEqual(0)) {
             return CEntryPointErrors.AUX_IMAGE_UNSUPPORTED;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,10 +52,10 @@ public class DFABQTrackingStateNode extends DFAStateNode {
 
     public DFABQTrackingStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
                     short[] successors,
-                    Matchers matchers,
+                    int matcherRef,
                     long[][] unAnchoredFinalConstraints,
                     long[][] anchoredFinalConstraints) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, (short) -1);
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matcherRef, (short) -1);
         this.unAnchoredFinalConstraints = unAnchoredFinalConstraints;
         this.anchoredFinalConstraints = anchoredFinalConstraints;
     }

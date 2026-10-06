@@ -200,12 +200,13 @@ public final class RistrettoOSRBackedgeState {
     /**
      * Reopens this backedge after a retryable OSR compilation failure owned by {@code requestId}.
      */
-    synchronized void onCompilationFailure(int requestId) {
+    synchronized boolean onCompilationFailure(int requestId) {
         if (!ownsCurrentSubmittedRequest(requestId)) {
-            return;
+            return false;
         }
         int nextState = compilationAttempts >= RistrettoConstants.COMPILE_STATE_MAX_ATTEMPTS ? STATE_MAX_ATTEMPTS_REACHED : STATE_INITIAL;
         compilationState = nextState;
+        return true;
     }
 
     /**

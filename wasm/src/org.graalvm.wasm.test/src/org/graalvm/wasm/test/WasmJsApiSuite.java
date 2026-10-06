@@ -1515,6 +1515,33 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testMemory64AllocationAndGrow() throws IOException {
+        runTest(options -> {
+            options.option("wasm.Memory64", "true");
+            options.option("wasm.UseUnsafeMemory", "true");
+        }, context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object memAlloc = wasm.readMember("mem_alloc");
+                final Object memGrow = wasm.readMember("mem_grow");
+                final WasmMemory memory = (WasmMemory) lib.execute(memAlloc, 1L, 3L, false, true);
+                Assert.assertTrue(memory.hasIndexType64());
+                Assert.assertEquals(1L, lib.execute(memGrow, memory, 1L));
+                Assert.assertEquals(2L, WasmMemoryLibrary.getUncached().size(memory));
+                try {
+                    lib.execute(memGrow, memory, Long.MAX_VALUE);
+                    Assert.fail("Expected a range error");
+                } catch (WasmJsApiException e) {
+                    Assert.assertEquals(WasmJsApiException.Kind.RangeError, e.kind());
+                }
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testInitialTableSizeOutOfBounds() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);

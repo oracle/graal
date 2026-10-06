@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 
 /**
  * A filler object with a variable size, for filling gaps in the heap. This is not a normal hybrid

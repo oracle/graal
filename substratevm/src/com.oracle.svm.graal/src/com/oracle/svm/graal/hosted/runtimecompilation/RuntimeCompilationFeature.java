@@ -922,9 +922,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             if (key == RUNTIME_COMPILED_METHOD) {
                 /*
                  * For runtime compiled methods, we must be careful to ensure new SubstrateTypes are
-                 * not created during the AnalysisStrengthenGraphsPhase. If the type does not
-                 * already exist at this point (which is after the analysis phase), then we must
-                 * return false.
+                 * not created during graph strengthening. If the type does not already exist at
+                 * this point (which is after the analysis phase), then we must return false.
                  */
                 return (t) -> objectReplacer.typeCreated(t);
             }

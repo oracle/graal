@@ -336,6 +336,7 @@ public class TruffleFeature implements InternalFeature {
         UserError.guarantee(runtime instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         truffleRuntime.resetHosted();
+        truffleRuntime.initializeEngineCacheSupport(new AuxiliaryEngineCacheSupport());
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         runtimeCompilationFeature.addAfterInstallRuntimeConfigCallback(() -> {
             Providers providers = RuntimeCompilationSupport.getRuntimeConfig().getProviders();

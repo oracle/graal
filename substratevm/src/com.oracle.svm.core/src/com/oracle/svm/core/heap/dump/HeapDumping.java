@@ -33,12 +33,13 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.shared.util.TimeUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class HeapDumping implements HeapDumpSupport {
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static HeapDumping singleton() {
         return ImageSingletons.lookup(HeapDumping.class);
     }
