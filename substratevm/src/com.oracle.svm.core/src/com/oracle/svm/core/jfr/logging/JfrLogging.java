@@ -44,17 +44,17 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
-/// Preserves the standalone SVM JFR log and also forwards records to unified logging.
+/// Preserves the legacy SVM JFR log and also forwards records to unified logging.
 public class JfrLogging {
 
-    /// Standalone level decorations indexed by the JDK numeric level.
+    /// Legacy level decorations indexed by the JDK numeric level.
     private final String[] logLevels;
 
-    /// Standalone tag decorations indexed by the JDK tag set identifier.
+    /// Legacy tag decorations indexed by the JDK tag set identifier.
     private final String[] logTagSets;
 
-    /// Standalone thresholds kept separately from the union thresholds published to JDK JFR.
-    private final int[] standaloneLevels;
+    /// Legacy thresholds kept separately from the union thresholds published to JDK JFR.
+    private final int[] legacyLevels;
 
     /// JDK tag instances indexed by their tag set identifiers.
     private final LogTag[] logTags;
@@ -70,81 +70,81 @@ public class JfrLogging {
     public JfrLogging() {
         logLevels = createLogLevels();
         logTagSets = createLogTagSets();
-        standaloneLevels = new int[logTagSets.length];
-        Arrays.fill(standaloneLevels, JfrLogConfiguration.JfrLogLevel.OFF.level);
+        legacyLevels = new int[logTagSets.length];
+        Arrays.fill(legacyLevels, JfrLogConfiguration.JfrLogLevel.OFF.level);
         logTags = createLogTags();
         unifiedLogging = new JfrUnifiedLogging();
     }
 
-    /// Parses and installs the standalone `FlightRecorderLogging` configuration.
+    /// Parses and installs the legacy `FlightRecorderLogging` configuration.
     public void parseConfiguration(String config) {
         JfrLogConfiguration.parse(config, this);
         updateLogLevels();
     }
 
-    /// Writes a standalone JFR system error and also offers it to unified logging when
+    /// Writes a legacy JFR system error and also offers it to unified logging when
     /// native allocation is allowed.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrSystemError(String message) {
         logJfrSystemError(message, true);
     }
 
-    /// Writes a standalone JFR system error and also offers it to unified logging when
+    /// Writes a legacy JFR system error and also offers it to unified logging when
     /// `nativeAllocationAllowed` is true.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrSystemError(String message, boolean nativeAllocationAllowed) {
         int tagSetId = tagSetId(LogTag.JFR_SYSTEM);
-        logStandaloneIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.ERROR.level, message);
+        logLegacyIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.ERROR.level, message);
         if (nativeAllocationAllowed) {
             JfrUnifiedLogging.logJfrSystemError(message);
         }
     }
 
-    /// Writes a standalone JFR informational message and also offers it to unified logging when
+    /// Writes a legacy JFR informational message and also offers it to unified logging when
     /// native allocation is allowed.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrInfo(String message) {
         logJfrInfo(message, true);
     }
 
-    /// Writes a standalone JFR informational message and also offers it to unified logging when
+    /// Writes a legacy JFR informational message and also offers it to unified logging when
     /// `nativeAllocationAllowed` is true.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrInfo(String message, boolean nativeAllocationAllowed) {
         int tagSetId = tagSetId(LogTag.JFR);
-        logStandaloneIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.INFO.level, message);
+        logLegacyIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.INFO.level, message);
         if (nativeAllocationAllowed) {
             JfrUnifiedLogging.logJfrInfo(message);
         }
     }
 
-    /// Writes a standalone JFR warning and also offers it to unified logging when
+    /// Writes a legacy JFR warning and also offers it to unified logging when
     /// native allocation is allowed.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrWarning(String message) {
         logJfrWarning(message, true);
     }
 
-    /// Writes a standalone JFR warning and also offers it to unified logging when
+    /// Writes a legacy JFR warning and also offers it to unified logging when
     /// `nativeAllocationAllowed` is true.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrWarning(String message, boolean nativeAllocationAllowed) {
         int tagSetId = tagSetId(LogTag.JFR);
-        logStandaloneIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
+        logLegacyIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
         if (nativeAllocationAllowed) {
             JfrUnifiedLogging.logJfrWarning(message);
         }
     }
 
-    /// Writes a standalone JFR setting warning and independently offers it to unified logging.
+    /// Writes a legacy JFR setting warning and independently offers it to unified logging.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrSettingWarning(String message) {
         int tagSetId = tagSetId(LogTag.JFR_SETTING);
-        logStandaloneIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
+        logLegacyIfEnabled(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
         JfrUnifiedLogging.logJfrSettingWarning(message);
     }
 
-    /// Routes one JFR record independently to the standalone and unified sinks.
+    /// Routes one JFR record independently to the legacy and unified sinks.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void log(int tagSetId, int level, String message) {
         if (message == null) {
@@ -153,13 +153,13 @@ public class JfrLogging {
         verifyLogLevel(level);
         verifyLogTagSetId(tagSetId);
 
-        if (standaloneLevelEnables(tagSetId, level)) {
-            logStandalone(tagSetId, level, message);
+        if (legacyLevelEnables(tagSetId, level)) {
+            logLegacy(tagSetId, level, message);
         }
         unifiedLogging.log(tagSetId, level, message);
     }
 
-    /// Routes one multiline JFR event independently to the standalone and unified sinks.
+    /// Routes one multiline JFR event independently to the legacy and unified sinks.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logEvent(int level, String[] lines, boolean system) {
         if (lines == null) {
@@ -170,10 +170,10 @@ public class JfrLogging {
         int eventTagSetId = tagSetId(LogTag.JFR_EVENT);
         int systemEventTagSetId = tagSetId(LogTag.JFR_SYSTEM_EVENT);
         int tagSetId = system ? systemEventTagSetId : eventTagSetId;
-        if (standaloneLevelEnables(tagSetId, level)) {
+        if (legacyLevelEnables(tagSetId, level)) {
             for (String line : lines) {
                 if (line != null) {
-                    logStandalone(tagSetId, level, line);
+                    logLegacy(tagSetId, level, line);
                 }
             }
         }
@@ -186,7 +186,7 @@ public class JfrLogging {
             LogTag logTag = logTags[tagSetId];
             if (logTag != null) {
                 Target_jdk_jfr_internal_LogTag target = SubstrateUtil.cast(logTag, Target_jdk_jfr_internal_LogTag.class);
-                int newLevel = Math.min(standaloneLevels[tagSetId], unifiedLogging.levelFor(tagSetId));
+                int newLevel = Math.min(legacyLevels[tagSetId], unifiedLogging.levelFor(tagSetId));
                 if (target.tagSetLevel != newLevel) {
                     target.tagSetLevel = newLevel;
                 }
@@ -194,17 +194,17 @@ public class JfrLogging {
         }
     }
 
-    /// Records the standalone threshold selected for `logTag`.
-    void setStandaloneLevel(LogTag logTag, int level) {
-        standaloneLevels[tagSetId(logTag)] = level;
+    /// Records the legacy threshold selected for `logTag`.
+    void setLegacyLevel(LogTag logTag, int level) {
+        legacyLevels[tagSetId(logTag)] = level;
     }
 
-    /// Disables every standalone JFR tag set.
-    void disableStandaloneLogging() {
-        Arrays.fill(standaloneLevels, JfrLogConfiguration.JfrLogLevel.OFF.level);
+    /// Disables every legacy JFR tag set.
+    void disableLegacyLogging() {
+        Arrays.fill(legacyLevels, JfrLogConfiguration.JfrLogLevel.OFF.level);
     }
 
-    private void logStandalone(int tagSetId, int level, String message) {
+    private void logLegacy(int tagSetId, int level, String message) {
         String levelDecoration = logLevels[level];
         String tagSetDecoration = logTagSets[tagSetId];
 
@@ -224,14 +224,14 @@ public class JfrLogging {
         log.string(message).newline();
     }
 
-    private void logStandaloneIfEnabled(int tagSetId, int level, String message) {
-        if (message != null && standaloneLevelEnables(tagSetId, level)) {
-            logStandalone(tagSetId, level, message);
+    private void logLegacyIfEnabled(int tagSetId, int level, String message) {
+        if (message != null && legacyLevelEnables(tagSetId, level)) {
+            logLegacy(tagSetId, level, message);
         }
     }
 
-    private boolean standaloneLevelEnables(int tagSetId, int level) {
-        return level >= standaloneLevels[tagSetId];
+    private boolean legacyLevelEnables(int tagSetId, int level) {
+        return level >= legacyLevels[tagSetId];
     }
 
     private void verifyLogLevel(int level) {
@@ -246,7 +246,7 @@ public class JfrLogging {
         }
     }
 
-    /// Creates the standalone level decorations indexed by JDK numeric level.
+    /// Creates the legacy level decorations indexed by JDK numeric level.
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String[] createLogLevels() {
         LogLevel[] values = LogLevel.values();
@@ -267,7 +267,7 @@ public class JfrLogging {
         return result;
     }
 
-    /// Creates the standalone tag decorations indexed by JDK tag set identifier.
+    /// Creates the legacy tag decorations indexed by JDK tag set identifier.
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String[] createLogTagSets() {
         LogTag[] values = LogTag.values();

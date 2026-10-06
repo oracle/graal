@@ -179,7 +179,7 @@ public class JfrManager {
         };
     }
 
-    /// Installs the standalone JFR logging configuration independently of unified logging.
+    /// Installs the legacy JFR logging configuration independently of unified logging.
     private static void parseFlightRecorderLogging() {
         String option = SubstrateOptions.FlightRecorderLogging.getValue();
         SubstrateJVM.getLogging().parseConfiguration(option);

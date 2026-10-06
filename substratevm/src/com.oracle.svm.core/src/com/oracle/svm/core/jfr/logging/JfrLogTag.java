@@ -30,7 +30,7 @@ import com.oracle.svm.shared.util.BasedOnJDKClass;
 /// Lists every component tag used by at least one jdk.jfr.internal.LogTag.
 ///
 /// The JDK enum represents complete tag sets, so this enum provides the individual tags needed
-/// when parsing the standalone FlightRecorderLogging syntax.
+/// when parsing the legacy FlightRecorderLogging syntax.
 @BasedOnJDKClass(className = "jdk.jfr.internal.LogTag")
 enum JfrLogTag {
     JFR,

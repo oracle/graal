@@ -39,7 +39,7 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
-/// Parses FlightRecorderLogging and configures the standalone JFR logging sink.
+/// Parses FlightRecorderLogging and configures the legacy JFR logging sink.
 final class JfrLogConfiguration {
     private static final String EMPTY_STRING_DEFAULT_CONFIG = "all=info";
 
@@ -50,10 +50,10 @@ final class JfrLogConfiguration {
     private JfrLogConfiguration() {
     }
 
-    /// Parses `str` and stores the selected standalone thresholds in `logging`.
+    /// Parses `str` and stores the selected legacy thresholds in `logging`.
     static void parse(String str, JfrLogging logging) {
         if (str.equalsIgnoreCase("disable")) {
-            logging.disableStandaloneLogging();
+            logging.disableLegacyLogging();
             return;
         }
 
@@ -65,12 +65,12 @@ final class JfrLogConfiguration {
         for (String selection : splitConfig) {
             selections[index++] = JfrLogSelection.parse(selection);
         }
-        applyStandaloneSelections(selections, logging);
+        applyLegacySelections(selections, logging);
         verifySelections(selections);
     }
 
-    /// Applies rightmost matching selections and the standalone warning default.
-    private static void applyStandaloneSelections(JfrLogSelection[] selections, JfrLogging logging) {
+    /// Applies rightmost matching selections and the legacy warning default.
+    private static void applyLegacySelections(JfrLogSelection[] selections, JfrLogging logging) {
         for (LogTag logTagSet : LogTag.values()) {
             JfrLogLevel logLevel = JfrLogLevel.WARNING;
             for (JfrLogSelection selection : selections) {
@@ -79,7 +79,7 @@ final class JfrLogConfiguration {
                     selection.matchesATagSet = true;
                 }
             }
-            logging.setStandaloneLevel(logTagSet, logLevel.level);
+            logging.setLegacyLevel(logTagSet, logLevel.level);
         }
     }
 
@@ -127,7 +127,7 @@ final class JfrLogConfiguration {
         return result;
     }
 
-    /// One standalone JFR logging selection.
+    /// One legacy JFR logging selection.
     private static final class JfrLogSelection {
         private final Set<JfrLogTag> tags;
         private final JfrLogLevel level;
@@ -180,7 +180,7 @@ final class JfrLogConfiguration {
         }
     }
 
-    /// Numeric levels used by the standalone JFR logging implementation.
+    /// Numeric levels used by the legacy JFR logging implementation.
     public enum JfrLogLevel {
         TRACE(JfrLogging.getLevel(LogLevel.TRACE)),
         DEBUG(JfrLogging.getLevel(LogLevel.DEBUG)),

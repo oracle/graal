@@ -32,7 +32,7 @@ routes and is not forwarded to the native collector.
 
 ## Writing log messages
 
-Every message is logged against a specifix tag set value (e.g. `LogTagSet.class_load`).
+Every message is logged against a specific tag set value (e.g. `LogTagSet.class_load`).
 It starts with a level predicate so minimal work is done when the tag set is not configured
 to log at the level specified in the predicate. Except for `LogTagSet.gc`, the folded
 `HasXlogSupport.get()` check should precede the predicate to keep unified logging
@@ -383,7 +383,7 @@ restricted to POSIX platforms.
 
 ### JFR integration
 
-JFR has two independent logging sinks. The standalone SVM JFR logger remains
+JFR has two independent logging sinks. The legacy SVM JFR logger remains
 configured by `-XX:FlightRecorderLogging` and writes its established
 `[level][tag set] message` format through the low-level SVM log. Its destination
 therefore remains the low-level log destination, which is normally standard
@@ -402,11 +402,11 @@ field on each `jdk.jfr.internal.LogTag`. SVM publishes the most detailed level
 required by either sink into this field. Each sink then checks its own threshold
 again before writing, so a level enabled only by `FlightRecorderLogging` cannot
 leak into unified output and a level enabled only by `-Xlog` cannot leak into
-the standalone output. Configuration changes recompute the combined JDK threshold.
-`FlightRecorderLogging=disable` disables only the standalone sink, and
+the legacy output. Configuration changes recompute the combined JDK threshold.
+`FlightRecorderLogging=disable` disables only the legacy sink, and
 `-Xlog:disable` disables only unified logging.
 
-The standalone sink preserves its existing low-level write and synchronization
+The legacy sink preserves its existing low-level write and synchronization
 behavior. The unified copy follows the synchronization rules described below:
 stream and file writes are protected by destination `VMMutex` instances, while
 asynchronous outputs copy the event into the
@@ -443,7 +443,7 @@ The main user-visible difference is:
 | Asynchronous buffering and locking | Native ping-pong buffers and producer and consumer synchronization protect the queue. | One native chunk contains a variable number of word-aligned raw records with inline bytes. Native ring state, `VMMutex` producer and consumer locks, and a `VMCondition` coordinate publication, waiting, consumption, flushing, and VM teardown. The daemon consumer waits in native state and is terminated before the chunk is freed at isolate destruction. |
 | Decoration state | Resolved event decorations can remain in asynchronous messages. | Event-only decorations live in fast thread-local state and are copied into each asynchronous queue record; line levels remain explicit per line or record. |
 | File rotation | Native C++ file streams and rotation locks. An existing active file is archived at startup when rotation is enabled. | Precomputed native paths, native byte counters, and raw close/delete/rename/reopen operations. An existing active file is truncated at startup regardless of rotation settings. The `%i` filename placeholder separates isolate-local rotation state into distinct operating-system paths. |
-| JFR integration | JFR writes directly through HotSpot unified logging. | SVM preserves its standalone `FlightRecorderLogging` output and optionally emits a second copy through unified logging. |
+| JFR integration | JFR writes directly through HotSpot unified logging. | SVM preserves its legacy `FlightRecorderLogging` output and optionally emits a second copy through unified logging. |
 | Allocation contract | Native C++ allocation rules apply. | Successful event processing, including dual JFR routing, is explicitly Java-heap allocation-free; native buffers may grow. |
 
 SVM's design is optimized for a native image whose tag sets and output routing
