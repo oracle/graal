@@ -80,6 +80,7 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
 
     /**
      * Returns all foreign-call linkages that may need compilation, including CPU-feature variants.
+     * Linkages registered under multiple ordinary signatures are returned only once.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public Iterable<SubstrateForeignCallLinkage> getForeignCalls() {
@@ -87,7 +88,7 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
                         StreamSupport.stream(foreignCalls.getValues().spliterator(), false),
                         StreamSupport.stream(runtimeCheckedForeignCalls.getValues().spliterator(), false).//
                                         flatMap(variants -> variants.stream().map(RuntimeCheckedForeignCall::linkage))).//
-                        iterator();
+                        distinct().iterator();
     }
 
     /**
@@ -123,6 +124,7 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
     private void register(ForeignCallSignature signature, SubstrateForeignCallDescriptor descriptor) {
         SubstrateForeignCallLinkage linkage = new SubstrateForeignCallLinkage(this, descriptor);
         foreignCalls.put(signature, linkage);
+        foreignCalls.put(descriptor.getSignature(), linkage);
     }
 
     /**
@@ -136,7 +138,8 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
     /**
      * Registers a foreign call target that is selected when its required CPU features are available
      * to the current runtime compilation. An empty feature set is registered as the ordinary
-     * fallback for {@code signature}.
+     * fallback for both {@code signature} and the variant's own signature, so that the descriptor
+     * returned by {@link #getDescriptor} can also be looked up directly.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unlikely-arg-type")
