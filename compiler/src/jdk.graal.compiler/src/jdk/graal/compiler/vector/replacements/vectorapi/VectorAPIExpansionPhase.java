@@ -772,11 +772,10 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
             return loadField.field().getName().equals("payload") && VectorAPIBoxingUtils.asUnboxableVectorType(value, providers) != null;
         } else if (use instanceof VectorAPILoadMaskedNode loadMasked && loadMasked.getMask() == value) {
             /*
-             * A scalar fallback masked load consumes a mask object. If the mask is a phi that is
-             * expanded as part of a SIMD component, provide an object value at this scalar use.
+             * A scalar masked load consumes a mask object. Box the expanded mask at the load so
+             * the mask computation and neighboring vector operations can expand to SIMD code.
              */
-            return value instanceof ValuePhiNode &&
-                            loadMasked.vectorStamp() != null &&
+            return loadMasked.vectorStamp() != null &&
                             shouldUseScalarMaskedFallback(loadMasked, VectorAPIUtils.vectorArchitecture(providers), providers) &&
                             VectorAPIBoxingUtils.asUnboxableVectorType(value, providers) != null;
         } else if (use instanceof VectorAPIStoreMaskedNode storeMasked) {
