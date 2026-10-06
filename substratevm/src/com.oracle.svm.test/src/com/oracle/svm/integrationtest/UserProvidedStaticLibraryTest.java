@@ -35,12 +35,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
@@ -62,25 +57,6 @@ public class UserProvidedStaticLibraryTest {
     private static final String DIRECT_DEPENDENCY_NAME = "user_provided_dependency";
     private static final String TRANSITIVE_DEPENDENCY_NAME = "user_provided_transitive_dependency";
     private static final String TEST_SYMBOL = "Java_test_UserProvidedStaticLibrary_test";
-
-    /*
-     * A reachable static JNI library creates a reference to its conventional JNI_OnLoad symbol.
-     * The synthetic test archive is otherwise empty, so the image provides that symbol itself.
-     */
-    private static final class EntryPoints {
-        private static final CEntryPointLiteral<OnLoadFunction> ON_LOAD = CEntryPointLiteral.create(EntryPoints.class, "onLoad", IsolateThread.class);
-
-        private interface OnLoadFunction extends CFunctionPointer {
-            @InvokeCFunctionPointer
-            int invoke(IsolateThread thread);
-        }
-
-        @CEntryPoint(name = "JNI_OnLoad_user_provided", include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.SymbolOnly)
-        @SuppressWarnings("unused")
-        private static int onLoad(IsolateThread thread) {
-            return 0;
-        }
-    }
 
     public static final class TestFeature implements Feature {
         private Path libraryDirectory;
@@ -149,8 +125,7 @@ public class UserProvidedStaticLibraryTest {
     }
 
     @Test
-    public void userProvidedStaticLibraryRegisteredDuringImageBuild() {
+    public void staticLibraryWithoutOnLoadCanBeLinked() {
         /* The feature performs the assertions while the native image is being built. */
-        assertTrue(EntryPoints.ON_LOAD.getFunctionPointer().isNonNull());
     }
 }

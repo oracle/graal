@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -69,29 +70,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = JNILibraryLoadFeature.LayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class JNILibraryLoadFeature implements Feature {
 
-    private static final String WINDOWS_EXTNET_ONLOAD_SYMBOL = JNILibraryInitializer.getOnLoadName("extnet", true);
     private static final String AOT_OWNED_NATIVE_SYMBOLS = "aotOwnedNativeSymbols";
 
     private final JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
     private final Set<String> aotOwnedNativeSymbols = new LinkedHashSet<>();
-
-    private boolean emitNopExtnetOnLoad = false;
+    private final Set<String> missingBuiltinOnLoadSymbols = new TreeSet<>();
 
     public static JNILibraryLoadFeature singleton() {
         return ImageSingletons.lookup(JNILibraryLoadFeature.class);
-    }
-
-    private static boolean shouldReferenceBuiltinOnLoad(String libName) {
-        if (Platform.includedIn(Platform.WINDOWS.class) && libName.equals("extnet")) {
-            /*
-             * The Windows extnet archive has no OnLoad function. Class-loader-aware images
-             * generate a no-op implementation so that the JDK can recognize extnet as a
-             * built-in library. Without that generated symbol table, no definition exists and
-             * creating a C-global reference would cause an unresolved symbol at link time.
-             */
-            return ClassRegistries.respectClassLoader();
-        }
-        return true;
     }
 
     @Override
@@ -110,12 +96,29 @@ public class JNILibraryLoadFeature implements Feature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(
-                        JNILibraryLinkagePlan.singleton().getReachableStaticLibraryNames(),
-                        JNILibraryLoadFeature::shouldReferenceBuiltinOnLoad);
+        NativeLibraries nativeLibraries = NativeLibraries.singleton();
+        List<String> reachableStaticLibraries = JNILibraryLinkagePlan.singleton().getReachableStaticLibraryNames();
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(reachableStaticLibraries, library -> shouldReferenceBuiltinOnLoad(nativeLibraries, library));
         if (isChanged) {
             access.requireAnalysisIteration();
         }
+    }
+
+    private boolean shouldReferenceBuiltinOnLoad(NativeLibraries nativeLibraries, String library) {
+        String onLoadSymbol = JNILibraryInitializer.getOnLoadName(library, true);
+        if (nativeLibraries.getStaticLibrarySymbols(library).contains(onLoadSymbol)) {
+            return true;
+        }
+        if (ClassRegistries.respectClassLoader()) {
+            /*
+             * The JDK identifies a built-in library by its OnLoad symbol. Generate a no-op
+             * implementation when an explicitly registered static JNI library does not provide
+             * one itself.
+             */
+            missingBuiltinOnLoadSymbols.add(onLoadSymbol);
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -161,7 +164,7 @@ public class JNILibraryLoadFeature implements Feature {
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
         Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibraries());
 
-        if (staticBuiltinSymbols.isEmpty() && !emitNopExtnetOnLoad) {
+        if (staticBuiltinSymbols.isEmpty() && missingBuiltinOnLoadSymbols.isEmpty()) {
             return;
         }
 
@@ -221,12 +224,6 @@ public class JNILibraryLoadFeature implements Feature {
         Set<String> staticBuiltinSymbols = new LinkedHashSet<>();
         for (String libName : staticLibNames) {
             staticBuiltinSymbols.addAll(nativeLibraries.getStaticLibrarySymbols(libName));
-            if (!shouldReferenceBuiltinOnLoad(libName)) {
-                staticBuiltinSymbols.remove(JNILibraryInitializer.getOnLoadName(libName, true));
-            }
-            if (Platform.includedIn(Platform.WINDOWS.class) && libName.equals("extnet")) {
-                emitNopExtnetOnLoad = true;
-            }
         }
         if (RuntimeClassLoading.isSupported()) {
             // Remove function symbols whose declaring classes are owned by the AOT image layers.
@@ -269,15 +266,15 @@ public class JNILibraryLoadFeature implements Feature {
             writer.appendln("extern void " + symbolName + "(void);");
         }
 
-        if (emitNopExtnetOnLoad) {
+        for (String symbolName : missingBuiltinOnLoadSymbols) {
             writer.appendln();
-            writer.appendln("int " + WINDOWS_EXTNET_ONLOAD_SYMBOL + "(void *vm, void *reserved) {");
+            writer.appendln("int " + symbolName + "(void *vm, void *reserved) {");
             writer.appendln("    (void) vm;");
             writer.appendln("    (void) reserved;");
             writer.appendln("    return 0x00010008;");
             writer.appendln("}");
-            staticBuiltinSymbols.add(WINDOWS_EXTNET_ONLOAD_SYMBOL);
         }
+        staticBuiltinSymbols.addAll(missingBuiltinOnLoadSymbols);
 
         writer.appendln();
         writer.appendln("typedef struct {");
