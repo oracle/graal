@@ -451,10 +451,18 @@ public class AggressivePartialUnrollPhase extends LoopPhase<LoopPolicies> {
         return true;
     }
 
+    /** Inserts pre/main/post loops for the original counted loops in their original order. */
     private boolean insertAllPreMainPost(StructuredGraph graph, CoreProviders context) {
         boolean insertedOne = false;
+        boolean refreshLoopsData = false;
         ArrayList<PreMainPostResult> loopsToProtectAfter = null;
-        for (Loop loop : getLoopsData(graph, context).countedLoops()) {
+        LoopsData loopsData = getLoopsData(graph, context);
+        for (Loop originalLoop : loopsData.countedLoops()) {
+            if (refreshLoopsData) {
+                loopsData = getLoopsData(graph, context);
+                refreshLoopsData = false;
+            }
+            Loop loop = loopsData.loop(originalLoop.loopBegin());
             if (!isUnrollableLoop(loop, 1)) {
                 continue;
             }
@@ -494,6 +502,12 @@ public class AggressivePartialUnrollPhase extends LoopPhase<LoopPolicies> {
                         }
                     }
                     insertedOne = true;
+                    /*
+                     * Before guard lowering, insertion can move floating guard anchors to new
+                     * control flow. Subsequent fragments need fresh loop data for guard
+                     * classification.
+                     */
+                    refreshLoopsData = graph.getGuardsStage().allowsFloatingGuards();
                 }
             }
         }

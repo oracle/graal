@@ -188,7 +188,7 @@ public class MidTierPhaseOrderTest extends GraalCompilerTest {
 
     /// Verifies the aggressive unrolling cleanup and guard-lowering order.
     @Test
-    public void aggressivePartialUnrollingPrecedesGuardLowering() {
+    public void aggressivePartialUnrollingFollowsGuardLowering() {
         OptionValues options = new OptionValues(getInitialOptions(),
                         GraalOptions.PartialUnroll, true,
                         AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, true,
@@ -196,9 +196,9 @@ public class MidTierPhaseOrderTest extends GraalCompilerTest {
         List<BasePhase<? super MidTierContext>> phases = new MidTier(options).getPhases();
 
         int unrolling = indexOf(phases, AggressivePartialUnrollPhase.class, 0);
-        int guardLowering = indexOf(phases, GuardLoweringPhase.class, unrolling + 1);
+        int guardLowering = indexOf(phases, GuardLoweringPhase.class, 0);
         Assert.assertTrue("aggressive unrolling must follow iterative conditional elimination", IterativeConditionalEliminationPhase.class.isInstance(phases.get(unrolling - 1)));
-        Assert.assertEquals("guard lowering must immediately follow aggressive unrolling", unrolling + 1, guardLowering);
+        Assert.assertEquals("guard lowering must immediately precede the cleanup before aggressive unrolling", guardLowering + 2, unrolling);
     }
 
     /// Verifies that the master switch disables aggressive partial unrolling and rejects an

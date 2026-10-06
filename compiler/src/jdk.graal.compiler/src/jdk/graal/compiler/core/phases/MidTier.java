@@ -228,14 +228,14 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new SpeculativeGuardMovementPhase(canonicalizer));
         }
 
+        appendPhase(new GuardLoweringPhase());
+
         if (AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.getValue(options) && GraalOptions.PartialUnroll.getValue(options) &&
                         AggressivePartialUnrollPhase.Options.MidTierPartialUnrolling.getValue(options)) {
             // Clean up repetitive conditions in the loop body before unrolling.
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
             appendPhase(new AggressivePartialUnrollPhase(createLoopPolicies(options), canonicalizer, false));
         }
-
-        appendPhase(new GuardLoweringPhase());
 
         /*
          * We apply loop rotation a second time after guard lowering for a special scenario: If a
