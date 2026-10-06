@@ -252,12 +252,15 @@ public final class Safepoint {
          * proceed.
          */
         ImageSingletons.lookup(Heap.class).endSafepoint();
+        if (HasXlogSupport.get()) {
+            /* Preserve the interval start even if safepoint logging is enabled only later. */
+            safepointEndTimeNs = System.nanoTime();
+        }
+
         SafepointEndEvent.emit(getSafepointId(), startTicks);
         VMThreads.singleton().cleanupExitedOsThreads();
 
         if (HasXlogSupport.get()) {
-            /* Preserve the interval start even if safepoint logging is enabled only later. */
-            safepointEndTimeNs = System.nanoTime();
             if (logSafepoint) {
                 LogMessage message = LogTagSet.safepoint.message();
                 try {
