@@ -134,7 +134,8 @@ public class ClassLoaderFeature implements InternalFeature {
             config.registerJVMCIObjectToConstantReplacer(constant -> (ImageHeapConstant) replaceClassLoadersWithLayerConstant(registry,
                             hostedValuesProvider.asObject(Object.class, constant)));
             // relink packages defined in the prior layers
-            config.registerObjectToConstantReplacer(packageManager::replaceWithPriorLayerPackage);
+            config.registerJVMCIObjectToConstantReplacer(constant -> packageManager.replaceWithPriorLayerPackage(
+                            hostedValuesProvider.asObject(Object.class, constant)));
         }
     }
 
