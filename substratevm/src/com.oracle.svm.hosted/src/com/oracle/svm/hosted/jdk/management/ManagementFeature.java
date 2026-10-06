@@ -149,7 +149,11 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
                 }
             }
 
-            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(source -> {
+            var config = (FeatureImpl.DuringSetupAccessImpl) access;
+            var hostedValuesProvider = config.getUniverse().getHostedValuesProvider();
+            // JVMCI migration blocked by GR-80269: Migrate ManagementFeature object replacement to Terminus
+            config.registerJVMCIObjectToConstantReplacer(constant -> {
+                Object source = hostedValuesProvider.asObject(Object.class, constant);
                 if (source instanceof PlatformManagedObject) {
                     return priorLayerPlatformManagedObjectReplacements.get(source);
                 }
