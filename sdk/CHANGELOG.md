@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 25.5
 * GR-79961: [Auxiliary engine caching](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCaching.md) is now available in both Oracle GraalVM and GraalVM Community Edition.
+* GR-80203: Documented `Context` and `Engine` lifecycle management, including the conditions for automatic closure. For more information, refer to the [Embedding Languages documentation](https://github.com/oracle/graal/blob/master/docs/reference-manual/embedding/embed-languages.md#manage-the-lifecycle-of-contexts-and-engines).
 
 ## Version 25.4
 * GR-63447: Added `HostAccess.Builder#allowPublicAccess(Predicate<Member>)` to selectively expose public host members without explicitly naming them upfront.
