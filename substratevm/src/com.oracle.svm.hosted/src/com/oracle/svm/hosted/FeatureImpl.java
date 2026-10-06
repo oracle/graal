@@ -569,16 +569,6 @@ public class FeatureImpl {
         }
 
         /**
-         * Register an object replacer which may return an ImageHeapConstant. Note only one replacer
-         * can be triggered for a given object; otherwise an error will be thrown. Too, if the
-         * object should not be replaced then {@code null} should be returned.
-         */
-        public void registerObjectToConstantReplacer(Function<Object, ImageHeapConstant> replacer) {
-            // GR-78998: migrate all clients to constant-based replacers.
-            getUniverse().registerObjectToConstantReplacer(new LegacyObjectToConstantReplacerAdapter(replacer, getUniverse().getHostedValuesProvider()));
-        }
-
-        /**
          * Registers a constant-based object replacer which may return an {@link ImageHeapConstant}.
          * Only one replacer can be triggered for a given constant. A replacer returns {@code null}
          * when the constant should not be replaced.
