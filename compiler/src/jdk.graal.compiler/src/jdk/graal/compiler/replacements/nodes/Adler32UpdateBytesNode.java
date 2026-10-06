@@ -103,7 +103,7 @@ public final class Adler32UpdateBytesNode extends PureFunctionStubIntrinsicNode 
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "updateBytesAdler32", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "updateBytesAdler32", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "maxFeaturesAMD64")
     public static native int update(int adler, Pointer bufferAddress, int length);
 
     @NodeIntrinsic

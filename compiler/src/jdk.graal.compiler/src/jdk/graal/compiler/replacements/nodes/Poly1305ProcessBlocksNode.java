@@ -95,46 +95,28 @@ public class Poly1305ProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         return KILLED_LOCATIONS;
     }
 
-    public static EnumSet<AMD64.CPUFeature> maxFeaturesAMD64() {
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64AVX512Variant() {
         // Preferred runtime-checked feature set. AVX_IFMA and AVX512_IFMA are alternative
         // instruction encodings, so this must not require both feature paths. The AVX512
         // version still emits AVX and AVX2 instructions.
         return EnumSet.of(AVX, AVX2, AVX512F, AVX512BW, AVX512VL, AVX512_IFMA);
     }
 
-    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64AVX2Variant() {
         return EnumSet.of(AVX, AVX2, AVX_IFMA);
     }
 
     @SuppressWarnings("unlikely-arg-type")
     public static boolean isSupported(Architecture arch) {
         return switch (arch) {
-            case AMD64 amd64 -> {
-                // GR-76192: SVM uses this static predicate to match the generated stub and
-                // foreign-call registration until alternative intrinsic-stub feature sets are
-                // modeled explicitly.
-                yield amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            }
+            case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64AVX2Variant()) || amd64.getFeatures().containsAll(minFeaturesAMD64AVX512Variant());
             case AArch64 aarch64 -> true;
             default -> false;
         };
     }
 
-    @SuppressWarnings("unlikely-arg-type")
-    public static boolean isSupportedForRuntimeCheckedStub(Architecture arch) {
-        return switch (arch) {
-            case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64()) || amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            case AArch64 aarch64 -> true;
-            default -> false;
-        };
-    }
-
-    /*
-     * GR-76192: SVM registers Poly1305 only for this feature set so the plugin predicate and the
-     * generated stub feature region cannot diverge.
-     */
     @NodeIntrinsic
-    @GenerateStub(name = "poly1305ProcessBlocks", minimumCPUFeaturesAMD64 = "maxFeaturesAMD64")
+    @GenerateStub(name = "poly1305ProcessBlocks", minimumCPUFeaturesAMD64 = {"minFeaturesAMD64AVX512Variant", "minFeaturesAMD64AVX2Variant"})
     public static native void apply(Pointer input, int length, Pointer accumulator, Pointer r);
 
     @NodeIntrinsic

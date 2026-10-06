@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,11 @@
 package jdk.graal.compiler.replacements.nodes;
 
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.stream.Stream;
 
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.vm.ci.amd64.AMD64;
 
 public class ArrayIndexOfForeignCalls {
 
@@ -174,60 +171,6 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_4_CONSECUTIVE_TABLES_FE_S4,
                     STUB_INDEX_OF_TABLE_FE_S2,
                     STUB_INDEX_OF_TABLE_FE_S4)).toArray(ForeignCallDescriptor[]::new);
-
-    public static EnumSet<AMD64.CPUFeature> getMinimumFeaturesAMD64(ForeignCallDescriptor foreignCallDescriptor) {
-        return ArrayIndexOfNode.minFeaturesAMD64(getStride(foreignCallDescriptor), getVariant(foreignCallDescriptor));
-    }
-
-    private static Stride getStride(ForeignCallDescriptor foreignCallDescriptor) {
-        return Stride.valueOf(foreignCallDescriptor.getName().substring(foreignCallDescriptor.getName().length() - 2));
-    }
-
-    private static LIRGeneratorTool.ArrayIndexOfVariant getVariant(ForeignCallDescriptor foreignCallDescriptor) {
-        String name = foreignCallDescriptor.getName();
-        if (name.startsWith("indexOfRangeForeignEndian")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.MatchRangeForeignEndian;
-        }
-        if (name.startsWith("indexOfRange")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.MatchRange;
-        }
-        if (name.startsWith("indexOfTableForeignEndian")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.TableForeignEndian;
-        }
-        if (name.startsWith("indexOf2ConsecutiveTablesForeignEndian")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindTwoConsecutiveTablesForeignEndian;
-        }
-        if (name.startsWith("indexOf2ConsecutiveTables")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindTwoConsecutiveTables;
-        }
-        if (name.startsWith("indexOf3ConsecutiveTablesForeignEndian")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindThreeConsecutiveTablesForeignEndian;
-        }
-        if (name.startsWith("indexOf3ConsecutiveTables")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindThreeConsecutiveTables;
-        }
-        if (name.startsWith("indexOf4ConsecutiveTablesForeignEndian")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindFourConsecutiveTablesForeignEndian;
-        }
-        if (name.startsWith("indexOf4ConsecutiveTables")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindFourConsecutiveTables;
-        }
-        if (name.startsWith("indexOfTable")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.Table;
-        }
-        if (name.startsWith("indexOfTwoConsecutiveWithMask")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindTwoConsecutiveWithMask;
-        }
-        if (name.startsWith("indexOfTwoConsecutive")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.FindTwoConsecutive;
-        }
-        if (name.startsWith("indexOfWithMask")) {
-            return LIRGeneratorTool.ArrayIndexOfVariant.WithMask;
-        }
-        char n = name.charAt("indexOf".length());
-        GraalError.guarantee(name.startsWith("indexOf") && '1' <= n && n <= '4', "unexpected foreign call descriptor name");
-        return LIRGeneratorTool.ArrayIndexOfVariant.MatchAny;
-    }
 
     public static ForeignCallDescriptor getStub(ArrayIndexOfNode indexOfNode) {
         Stride stride = indexOfNode.getStride();

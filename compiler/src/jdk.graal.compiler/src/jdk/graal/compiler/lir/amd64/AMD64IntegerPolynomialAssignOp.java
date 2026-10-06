@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.EVMOVDQU64;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU64;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp.EVPBROADCASTQ_GPR;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPANDD;
@@ -34,18 +34,15 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXORD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPAND;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static jdk.graal.compiler.lir.amd64.AMD64LIRHelper.registersToValues;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_IFMA;
+import static jdk.vm.ci.amd64.AMD64.r9;
 import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
-import static jdk.vm.ci.amd64.AMD64.r9;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.Label;
@@ -113,7 +110,7 @@ public final class AMD64IntegerPolynomialAssignOp extends AMD64LIRInstruction {
         Label labelDone = new Label();
 
         masm.negq(set);
-        if (masm.supports(AVX512_IFMA, AVX512VL, AVX512BW, AVX512F)) {
+        if (masm.supports(AVX512F)) {
             EVPBROADCASTQ_GPR.emit(masm, AVXSize.ZMM, select, set);
         } else {
             VMOVQ.emit(masm, AVXSize.XMM, select, set);

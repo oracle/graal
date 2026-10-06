@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 package jdk.graal.compiler.replacements.nodes;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 
 import java.util.EnumSet;
 
@@ -39,6 +41,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.vm.ci.amd64.AMD64;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
@@ -97,7 +100,7 @@ public class BigIntegerSquareToLenNode extends MemoryKillStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "squareToLen")
+    @GenerateStub(name = "squareToLen", runtimeCPUFeaturesAMD64 = "runtimeCheckedCPUFeaturesAMD64")
     public static native void apply(Pointer x,
                     int len,
                     Pointer z,
@@ -121,5 +124,9 @@ public class BigIntegerSquareToLenNode extends MemoryKillStubIntrinsicNode {
                         gen.operand(len),
                         gen.operand(z),
                         gen.operand(zlen));
+    }
+
+    public static EnumSet<AMD64.CPUFeature> runtimeCheckedCPUFeaturesAMD64() {
+        return EnumSet.of(AVX, BMI2);
     }
 }

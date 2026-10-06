@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -119,7 +120,12 @@ public final class EncodeArrayNode extends MemoryKillStubIntrinsicNode {
         gen.setResult(this, gen.getLIRGeneratorTool().emitEncodeArray(runtimeCheckedCPUFeatures, gen.operand(src), gen.operand(dst), gen.operand(len), charset));
     }
 
+    public static EnumSet<AMD64.CPUFeature> runtimeFeaturesAMD64() {
+        return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2);
+    }
+
     @NodeIntrinsic
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "runtimeFeaturesAMD64")
     @GenerateStub(name = "stringCodingEncodeArrayAscii", parameters = "ASCII")
     @GenerateStub(name = "stringCodingEncodeArrayLatin1", parameters = "ISO_8859_1")
     public static native int stringCodingEncodeArray(Pointer src, Pointer dst, int len, @ConstantNodeParameter CharsetName charSet);

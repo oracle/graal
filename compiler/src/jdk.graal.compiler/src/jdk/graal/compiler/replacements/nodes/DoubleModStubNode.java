@@ -111,7 +111,7 @@ public final class DoubleModStubNode extends FixedWithNextNode implements Intrin
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "fmod", minimumCPUFeaturesAMD64 = "minFeaturesAMD64")
+    @GenerateStub(name = "fmod", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "maxFeaturesAMD64")
     public static native double compute(double x, double y);
 
     @NodeIntrinsic

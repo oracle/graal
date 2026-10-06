@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,6 +169,7 @@ public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode impl
     }
 
     @NodeIntrinsic
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
     @GenerateStub(name = "arrayRegionCompareToS1S1", parameters = {"S1", "S1"})
     @GenerateStub(name = "arrayRegionCompareToS1S2", parameters = {"S1", "S2"})
     @GenerateStub(name = "arrayRegionCompareToS1S4", parameters = {"S1", "S4"})
@@ -189,6 +190,7 @@ public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode impl
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
     @GenerateStub(name = "arrayRegionCompareToDynamicStrides")
     public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides);
 

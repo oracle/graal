@@ -27,11 +27,7 @@ package jdk.graal.compiler.replacements.nodes;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_IFMA;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX_IFMA;
 
 import java.util.EnumSet;
 
@@ -103,38 +99,20 @@ public class IntegerPolynomialAssignNode extends MemoryKillStubIntrinsicNode {
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return EnumSet.of(AVX, AVX2, AVX_IFMA);
+        return EnumSet.of(AVX, AVX2);
     }
 
     public static EnumSet<AMD64.CPUFeature> maxFeaturesAMD64() {
-        // Preferred runtime-checked feature set. AVX_IFMA and AVX512_IFMA are alternative
-        // instruction encodings, so this must not require both feature paths. The AVX512
-        // version still emits AVX and AVX2 instructions.
-        return EnumSet.of(AVX, AVX2, AVX512F, AVX512BW, AVX512VL, AVX512_IFMA);
+        return EnumSet.of(AVX, AVX2, AVX512F);
     }
 
     @SuppressWarnings("unlikely-arg-type")
     public static boolean isSupported(Architecture arch) {
-        return switch (arch) {
-            case AMD64 amd64 -> {
-                // SVM uses this static predicate to match the generated stub and foreign-call
-                // registration until alternative intrinsic-stub feature sets are modeled explicitly.
-                yield amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            }
-            default -> false;
-        };
-    }
-
-    @SuppressWarnings("unlikely-arg-type")
-    public static boolean isSupportedForRuntimeCheckedStub(Architecture arch) {
-        return switch (arch) {
-            case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64()) || amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            default -> false;
-        };
+        return arch instanceof AMD64 amd64 && amd64.getFeatures().containsAll(minFeaturesAMD64());
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "intpolyAssign", minimumCPUFeaturesAMD64 = "maxFeaturesAMD64")
+    @GenerateStub(name = "intpolyAssign", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", runtimeCPUFeaturesAMD64 = "maxFeaturesAMD64")
     public static native void apply(int set, Pointer a, Pointer b, int length);
 
     @NodeIntrinsic

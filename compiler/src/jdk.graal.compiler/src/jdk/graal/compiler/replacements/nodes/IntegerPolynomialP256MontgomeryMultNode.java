@@ -100,11 +100,11 @@ public class IntegerPolynomialP256MontgomeryMultNode extends MemoryKillStubIntri
         return KILLED_LOCATIONS;
     }
 
-    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64AVX2Variant() {
         return EnumSet.of(AVX, AVX2, AVX_IFMA);
     }
 
-    public static EnumSet<AMD64.CPUFeature> maxFeaturesAMD64() {
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64AVX512Variant() {
         // Preferred runtime-checked feature set. AVX_IFMA and AVX512_IFMA are alternative
         // instruction encodings, so this must not require both feature paths. The AVX512
         // version still emits AVX and AVX2 instructions.
@@ -113,26 +113,11 @@ public class IntegerPolynomialP256MontgomeryMultNode extends MemoryKillStubIntri
 
     @SuppressWarnings("unlikely-arg-type")
     public static boolean isSupported(Architecture arch) {
-        return switch (arch) {
-            case AMD64 amd64 -> {
-                // SVM uses this static predicate to match the generated stub and foreign-call
-                // registration until alternative intrinsic-stub feature sets are modeled explicitly.
-                yield amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            }
-            default -> false;
-        };
-    }
-
-    @SuppressWarnings("unlikely-arg-type")
-    public static boolean isSupportedForRuntimeCheckedStub(Architecture arch) {
-        return switch (arch) {
-            case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64()) || amd64.getFeatures().containsAll(maxFeaturesAMD64());
-            default -> false;
-        };
+        return arch instanceof AMD64 amd64 && (amd64.getFeatures().containsAll(minFeaturesAMD64AVX512Variant()) || amd64.getFeatures().containsAll(minFeaturesAMD64AVX2Variant()));
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "intpolyMontgomeryMultP256", minimumCPUFeaturesAMD64 = "maxFeaturesAMD64")
+    @GenerateStub(name = "intpolyMontgomeryMultP256", minimumCPUFeaturesAMD64 = {"minFeaturesAMD64AVX512Variant", "minFeaturesAMD64AVX2Variant"})
     public static native void apply(Pointer a, Pointer b, Pointer r);
 
     @NodeIntrinsic
