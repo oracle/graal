@@ -45,7 +45,6 @@ import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.ModuleNative;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.logging.HasXlogSupport;
-import com.oracle.svm.core.logging.LogLevel;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.core.logging.NativeMemoryLog;
@@ -370,10 +369,10 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
                 /* Stack capture can allocate and must complete before entering the logging scope. */
                 String[] stackTrace = getFormattedCurrentStackTrace();
                 try (LogMessage logMessage = LogTagSet.class_load_cause.message()) {
-                    NativeMemoryLog line = logMessage.line(LogLevel.INFO);
+                    NativeMemoryLog line = logMessage.info();
                     line.string("Java stack when loading ").string(className);
                     for (String stackTraceElement : stackTrace) {
-                        logMessage.line(LogLevel.INFO).string("  at ").string(stackTraceElement);
+                        logMessage.info().string("  at ").string(stackTraceElement);
                     }
                 }
             }
