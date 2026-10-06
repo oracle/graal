@@ -238,7 +238,7 @@ public final class JNILibraryLinkagePlan {
 
         void processManifests() {
             assert !manifestsProcessed;
-            dependencies = nativeLibraries.getStaticLibraryDependencies(library);
+            dependencies = nativeLibraries.getStaticLibraryDependenciesIfPresent(library);
             registerNativeSymbols();
             manifestsProcessed = true;
         }
@@ -272,17 +272,17 @@ public final class JNILibraryLinkagePlan {
 
         @Override
         void prepareAfterAnalysis() {
-            for (String dependency : getDependencies()) {
+            VMError.guarantee(nativeLibraries.hasStaticLibrary(getLibrary()),
+                            "Missing static library for built-in JNI library: %s", getLibrary());
+            for (String dependency : nativeLibraries.getTransitiveStaticLibraryDependencies(getLibrary())) {
                 JNILibrary dependencyLibrary = libraries.get(dependency);
                 if (mustRemainDynamic(dependency) || (dependencyLibrary != null && !dependencyLibrary.isStatic())) {
                     throw UserError.abort("JNI library '%s' cannot be statically linked because it depends on dynamically linked JNI library '%s'. " +
                                     "Configure both libraries for static linkage or link '%s' dynamically.", getLibrary(), dependency, getLibrary());
                 }
             }
-            VMError.guarantee(nativeLibraries.hasStaticLibrary(getLibrary()),
-                            "Missing static library for built-in JNI library: %s", getLibrary());
             NativeLibrarySupport.singleton().registerUninitializedBuiltinLibrary(getLibrary());
-            nativeLibraries.registerStaticJniLibrary(getLibrary(), getDependencies());
+            nativeLibraries.registerStaticJniLibrary(getLibrary());
         }
 
         @Override

@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -58,6 +59,8 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 })
 public class UserProvidedStaticLibraryTest {
     private static final String TEST_LIBRARY_NAME = "user_provided";
+    private static final String DIRECT_DEPENDENCY_NAME = "user_provided_dependency";
+    private static final String TRANSITIVE_DEPENDENCY_NAME = "user_provided_transitive_dependency";
     private static final String TEST_SYMBOL = "Java_test_UserProvidedStaticLibrary_test";
 
     /*
@@ -89,12 +92,14 @@ public class UserProvidedStaticLibraryTest {
             libraryDirectory = directory.toAbsolutePath();
             Path conflictingDirectory = nativeLibraries.tempDirectory.resolve("conflicting-user-provided-static-library");
             try {
-                Path library = createLibrary(directory, TEST_SYMBOL);
+                Path library = createLibrary(directory, TEST_LIBRARY_NAME, List.of(DIRECT_DEPENDENCY_NAME), TEST_SYMBOL);
+                nativeLibraries.addStaticLibraryPath(createLibrary(directory, DIRECT_DEPENDENCY_NAME, List.of(TRANSITIVE_DEPENDENCY_NAME), null));
+                nativeLibraries.addStaticLibraryPath(createLibrary(directory, TRANSITIVE_DEPENDENCY_NAME, List.of(), null));
                 nativeLibraries.addStaticLibraryPath(library);
 
                 /* Registering the same path is idempotent, but a different archive with the same name is ambiguous. */
                 nativeLibraries.addStaticLibraryPath(library);
-                Path conflictingLibrary = createLibrary(conflictingDirectory, TEST_SYMBOL);
+                Path conflictingLibrary = createLibrary(conflictingDirectory, TEST_LIBRARY_NAME, List.of(), TEST_SYMBOL);
                 UserError.UserException error = assertThrows(UserError.UserException.class, () -> nativeLibraries.addStaticLibraryPath(conflictingLibrary));
                 assertTrue(error.getMessage().contains("is already registered"));
             } catch (IOException e) {
@@ -111,16 +116,34 @@ public class UserProvidedStaticLibraryTest {
             assertEquals(List.of(TEST_SYMBOL), nativeLibraries.getStaticLibrarySymbols(TEST_LIBRARY_NAME));
             assertTrue(nativeLibraries.getLibraryPaths().contains(libraryDirectory.toString()));
             assertTrue(PlatformNativeLibrarySupport.singleton().isBuiltinNative(TEST_SYMBOL));
+            assertEquals(Set.of(DIRECT_DEPENDENCY_NAME, TRANSITIVE_DEPENDENCY_NAME), nativeLibraries.getTransitiveStaticLibraryDependencies(TEST_LIBRARY_NAME));
             assertTrue(JNILibraryLinkagePlan.singleton().getReachableStaticLibraryNames().contains(TEST_LIBRARY_NAME));
         }
 
-        private static Path createLibrary(Path directory, String symbol) throws IOException {
+        @Override
+        public void afterAnalysis(AfterAnalysisAccess access) {
+            Set<String> linkedLibraries = NativeLibraries.singleton().getStaticLibraries().stream()
+                            .map(path -> path.getFileName().toString())
+                            .collect(java.util.stream.Collectors.toSet());
+            String prefix = Platform.includedIn(Platform.WINDOWS.class) ? "" : "lib";
+            String suffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
+            assertTrue(linkedLibraries.contains(prefix + TEST_LIBRARY_NAME + suffix));
+            assertTrue(linkedLibraries.contains(prefix + DIRECT_DEPENDENCY_NAME + suffix));
+            assertTrue(linkedLibraries.contains(prefix + TRANSITIVE_DEPENDENCY_NAME + suffix));
+        }
+
+        private static Path createLibrary(Path directory, String libraryName, List<String> dependencies, String symbol) throws IOException {
             Files.createDirectories(directory);
             String prefix = Platform.includedIn(Platform.WINDOWS.class) ? "" : "lib";
             String suffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
-            Path library = directory.resolve(prefix + TEST_LIBRARY_NAME + suffix).toAbsolutePath();
+            Path library = directory.resolve(prefix + libraryName + suffix).toAbsolutePath();
             Files.write(library, "!<arch>\n".getBytes(StandardCharsets.US_ASCII));
-            Files.writeString(Path.of(library + ".symbols"), symbol + System.lineSeparator());
+            StringBuilder manifest = new StringBuilder();
+            dependencies.forEach(dependency -> manifest.append("dependency:").append(dependency).append(System.lineSeparator()));
+            if (symbol != null) {
+                manifest.append(symbol).append(System.lineSeparator());
+            }
+            Files.writeString(Path.of(library + ".symbols"), manifest);
             return library;
         }
     }

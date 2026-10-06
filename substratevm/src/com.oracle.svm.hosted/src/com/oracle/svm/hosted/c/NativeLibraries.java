@@ -29,10 +29,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -42,6 +44,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -484,17 +487,44 @@ public final class NativeLibraries {
         }
     }
 
-    public void registerStaticJniLibrary(String library, List<String> dependencies) {
+    public void registerStaticJniLibrary(String library) {
         jniStaticLibraries.add(library);
-        dependencyGraph.add(library, dependencies);
+        walkStaticLibraryDependencies(library, dependencyGraph::add);
     }
 
-    public List<String> getStaticLibraryDependencies(String library) {
+    public List<String> getStaticLibraryDependenciesIfPresent(String library) {
         Path libraryPath = getStaticLibraryPath(allStaticLibs, library);
         if (libraryPath != null) {
             return getStaticLibraryManifest(libraryPath).dependencies();
         }
         return List.of();
+    }
+
+    private List<String> getStaticLibraryDependencies(String library) {
+        Path libraryPath = getStaticLibraryPath(allStaticLibs, library);
+        VMError.guarantee(libraryPath != null, "Missing static library dependency: %s", library);
+        return getStaticLibraryManifest(libraryPath).dependencies();
+    }
+
+    public Set<String> getTransitiveStaticLibraryDependencies(String library) {
+        Set<String> dependencies = new LinkedHashSet<>();
+        walkStaticLibraryDependencies(library, (_, directDependencies) -> dependencies.addAll(directDependencies));
+        return Collections.unmodifiableSet(dependencies);
+    }
+
+    private void walkStaticLibraryDependencies(String root, BiConsumer<String, List<String>> visitor) {
+        Deque<String> worklist = new ArrayDeque<>();
+        Set<String> visited = new LinkedHashSet<>();
+        worklist.add(root);
+        while (!worklist.isEmpty()) {
+            String library = worklist.removeFirst();
+            if (!visited.add(library)) {
+                continue;
+            }
+            List<String> dependencies = getStaticLibraryDependencies(library);
+            visitor.accept(library, dependencies);
+            worklist.addAll(dependencies);
+        }
     }
 
     public void addDynamicNonJniLibrary(String library) {
