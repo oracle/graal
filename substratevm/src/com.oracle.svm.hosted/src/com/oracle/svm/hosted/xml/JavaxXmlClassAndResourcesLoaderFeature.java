@@ -46,6 +46,13 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
+
+    /** The java.xml module is optional: without it, there are no XML classes to register. */
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml").isPresent();
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (RuntimeClassLoading.isSupported()) {

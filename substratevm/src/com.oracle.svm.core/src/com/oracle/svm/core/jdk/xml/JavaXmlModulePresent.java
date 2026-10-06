@@ -24,26 +24,21 @@
  */
 package com.oracle.svm.core.jdk.xml;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.annotate.TargetClass;
+import java.util.function.BooleanSupplier;
 
-@TargetClass(className = "jdk.xml.internal.JdkXmlUtils", onlyWith = JavaXmlModulePresent.class)
-public final class Target_jdk_xml_internal_JdkXmlUtils {
-    // Checkstyle: stop
-    @Alias @InjectAccessors(JdkXmlUtilsJavaHomeAccessors.class) //
-    public static String JAVA_HOME;
-    // Checkstyle: resume
-}
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
-@SuppressWarnings("unused")
-final class JdkXmlUtilsJavaHomeAccessors {
-    private static String javaHome;
+/**
+ * Whether the {@code java.xml} module is part of the JDK that runs the image builder. It is not
+ * required to be: {@code org.graalvm.nativeimage.base} requires it statically, so that a small JDK
+ * without it can run the builder. The substitutions of its classes then have no target to apply to.
+ */
+public final class JavaXmlModulePresent implements BooleanSupplier {
 
-    static String get() {
-        if (javaHome == null) {
-            javaHome = System.getProperty("java.home");
-        }
-        return javaHome;
+    private static final boolean PRESENT = JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml").isPresent();
+
+    @Override
+    public boolean getAsBoolean() {
+        return PRESENT;
     }
 }
