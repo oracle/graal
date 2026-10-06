@@ -96,7 +96,11 @@ public class SystemInOutErrFeature implements InternalFeature {
             access.registerObjectReplacer(this::replaceStreamsWithRuntimeObject);
         } else {
             var registry = CrossLayerConstantRegistry.singletonOrNull();
-            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> (ImageHeapConstant) replaceStreamsWithLayerConstant(registry, obj));
+            var config = (FeatureImpl.DuringSetupAccessImpl) access;
+            var hostedValuesProvider = config.getUniverse().getHostedValuesProvider();
+            // JVMCI migration blocked by GR-80267: Migrate SystemInOutErrFeature to Terminus
+            config.registerJVMCIObjectToConstantReplacer(constant -> (ImageHeapConstant) replaceStreamsWithLayerConstant(registry,
+                            hostedValuesProvider.asObject(Object.class, constant)));
         }
     }
 
