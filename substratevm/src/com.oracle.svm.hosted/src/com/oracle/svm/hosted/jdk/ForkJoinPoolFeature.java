@@ -45,7 +45,11 @@ class ForkJoinPoolFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess access) {
         CrossLayerConstantRegistry registry = CrossLayerConstantRegistry.singletonOrNull();
         if (ImageLayerBuildingSupport.buildingExtensionLayer() && registry.constantExists(KEY_NAME)) {
-            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> (ImageHeapConstant) replaceCommonPoolWithLayerConstant(registry, obj));
+            var config = (FeatureImpl.DuringSetupAccessImpl) access;
+            var hostedValuesProvider = config.getUniverse().getHostedValuesProvider();
+            // JVMCI migration blocked by GR-80268: Migrate ForkJoinPoolFeature to Terminus
+            config.registerJVMCIObjectToConstantReplacer(constant -> (ImageHeapConstant) replaceCommonPoolWithLayerConstant(registry,
+                            hostedValuesProvider.asObject(Object.class, constant)));
         } else {
             var commonPool = new DeferredCommonPool();
             access.registerObjectReplacer(obj -> replaceCommonPoolWithRuntimeObject(obj, commonPool));
