@@ -334,7 +334,7 @@ native-image --bundle-apply=application-pgo-optimized.nib
 
 As described later in [Bundle File Format](#bundle-file-format), a bundle file is a JAR file with a contained launcher for launching the bundled application.
 This means you can use a native image bundle with any JDK and execute it as a JAR file with `<jdk>/bin/java -jar [bundle-file.nib]`.
-The launcher uses the command line arguments stored in _run.json_ and adds all JAR files and directories in _input/classes/cp/_ and _input/classes/p/_ to the class path and module path, respectively.
+The launcher uses the command line arguments stored in _run.json_ and adds the captured entries recorded in _path_substitutions.json_ under _input/classes/cp/_ and _input/classes/p/_ to the class path and module path, respectively.
 
 The launcher also comes with a separate command-line interface described in its help text:
 ```
@@ -502,6 +502,29 @@ If a native executable is built as part of building the bundle (for example, the
 It contains the executable that was built along with any other files that were generated as part of building.
 Most output files are located in the directory _output/default_ (the executable, its debug info, and debug sources).
 Builder output files, that would have been written to arbitrary absolute paths if the executable had not been built in the bundle mode, can be found in _output/other_.
+
+### Numbered Entries
+
+Bundle format 2.0 stores each captured class-path, module-path, or auxiliary input in a separate numbered directory, preserving its original basename.
+Auxiliary output paths use the same layout.
+Each category has an independent sequence:
+
+| Category | Bundle Path |
+| --- | --- |
+| Class path | `input/classes/cp/<number>/<basename>` |
+| Module path | `input/classes/p/<number>/<basename>` |
+| Auxiliary input | `input/auxiliary/<number>/<basename>` |
+| Auxiliary output | `output/other/<number>/<basename>` |
+
+Different inputs with the same basename receive different numbers.
+A captured directory occupies one numbered entry, with its contents preserved beneath it.
+Repeated `-cp` or `-p` options continue the corresponding sequence, and dependencies discovered through JAR manifest `Class-Path` attributes use the class-path sequence.
+The default image output directory remains _output/default_.
+
+The saved path substitutions retain each path's assigned location across replay and derivation.
+New paths receive unused numbers, including when a previously assigned output has not been produced.
+Derived bundles can contain both flat entries retained from older bundles and new numbered entries.
+The launcher supports both layouts.
 
 ### Related Documentation
 

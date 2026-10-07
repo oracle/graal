@@ -24,15 +24,49 @@
  */
 package com.oracle.svm.driver.launcher;
 
+import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.oracle.svm.driver.launcher.configuration.BundleConfigurationParser;
+import com.oracle.svm.driver.launcher.json.BundleJSONParser;
 
 public class BundleLauncherUtil {
 
     private static final char[] HEX = "0123456789abcdef".toCharArray();
+
+    /// Uses recorded entry roots rather than walking captured directory contents. Numbered entries
+    /// retain their allocation order, while flat entries from older bundles remain supported.
+    public static List<Path> getPathEntries(Path root, Path pathDir) throws IOException {
+        List<Path> entries = new ArrayList<>();
+        try (Reader reader = Files.newBufferedReader(root.resolve("input/stage/path_substitutions.json"))) {
+            Object json = new BundleJSONParser(reader).parse();
+            for (Object rawEntry : BundleConfigurationParser.asList(json, "Expected a list of path substitutions")) {
+                var entry = BundleConfigurationParser.asMap(rawEntry, "Expected a path substitution object");
+                Object destination = entry.get("dst");
+                Object text = destination instanceof String ? destination : BundleConfigurationParser.asMap(destination, "Expected a destination path object").get("text");
+                if (text instanceof String pathText) {
+                    Path path = root.resolve(pathText).normalize();
+                    if (path.startsWith(pathDir) && !path.equals(pathDir) && Files.exists(path)) {
+                        entries.add(path);
+                    }
+                }
+            }
+        }
+        return entries.stream().distinct().sorted(Comparator.<Path> comparingInt(path -> {
+            Path relative = pathDir.relativize(path);
+            return relative.getNameCount() == 1 ? -1 : Integer.parseInt(relative.getName(0).toString());
+        }).thenComparing(Path::toString)).toList();
+    }
 
     static String digest(String value) {
         try {
