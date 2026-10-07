@@ -127,42 +127,42 @@ suite = {
     },
     "JLINE_READER": {
       "moduleName": "org.jline.reader",
-      "digest": "sha512:dafd45af79a9874d7b41d146d37386da605e19ec2bf9c8989f121f9403902ce60ca9708fb016afed785186935d2dddd4b5b3304aca234c926b0e4368607b11ed",
-      "sourceDigest": "sha512:f8ec62508f3e83278156b7bd14d5daded72976b10da63adac53be2f7b1c5e6c69340fac5b2f10ffe7e92d86b27425beee73e5d5b3c775e72595b47158bfbed1b",
+      "digest": "sha512:9a98b725406d9aaf9f52feb9bb1d3f999d250c77e514aa9484cfae468e611a61fdf3a46ea9465b96acdd57da5d3e5b3fcf3b6ea2fd05cc88deb2661d95f2dd04",
+      "sourceDigest": "sha512:52fcf6a097f158c70e2041ead0459863161b499c7cbd2195610a0ae64e97e38213d6e47fc05227c795ea0c44013b4617c7bcb8fe63a34daa3845659a55c731eb",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-reader",
-        "version": "3.28.0",
+        "version": "4.3.1",
       },
     },
     "JLINE_TERMINAL": {
       "moduleName": "org.jline.terminal",
-      "digest": "sha512:abe0ad0303e5eb81b549301dfdcf34aace14495240816f14302d193296c7a8be31488e468d18a215976b8e4e8fa29f72d830e492eed7d4a6f9f04c81a6e36c3c",
-      "sourceDigest": "sha512:cb70ad2bee2f7713fa5358c16fc7c53974c862e33957d3ec809468abcbc0b20de8546ecb41955dcc2003e702e5469069fd856a1ce51b132e29d0286beec4fe7e",
+      "digest": "sha512:21b66ae1428cd4f17beb09ae91c6226abea83d61b232a16e5e5b86cff63249502405a70ba453d99892fc4e9049ecdf17c2d533704439f59adbd801f489dc0eee",
+      "sourceDigest": "sha512:e51da5ec3e2f083b1fd8c956343ea28f5f5e90fb37745b9392173a7e8473c8dc98d3e8708dd7d82366dce8500d7f13fbb0d36f283029e0fa40e5207ea0b640cb",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-terminal",
-        "version": "3.28.0",
+        "version": "4.3.1",
       },
     },
     "JLINE_BUILTINS": {
       "moduleName": "org.jline.builtins",
-      "digest": "sha512:189d893405170a3edc624a6b822a8a394a2f8b623c23aed9e015d4b018b232307408b6038322719155fc7da7e9c04a9bb0a76c8521f49dd86a5f84ea3880acb6",
-      "sourceDigest": "sha512:33f06d7e2bb232ce413d8cf7234bdb416c3a6770dcf18a5c17e3889887b287378ff5fc531758143383c3f50b56613e5bf802b5c49a2a09b748c804568e0565b8",
+      "digest": "sha512:89145014194b7d429609ba9d391decf50edd4efa77513ddafa79f8a997a93336051534bfb62d8fa655d2785af1cb1fbb7860ca67073baecbd1d0fe3b2d63baca",
+      "sourceDigest": "sha512:21cfb7f37d34e4000f95966e1fb0f6287877db655f70179bb2990c5da00a984982b4d31e896af03571c2805f57e0de35d03b176673dc7e5f3306775e43509d87",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-builtins",
-        "version": "3.28.0",
+        "version": "4.3.1",
       },
     },
     "JLINE_TERMINAL_FFM": {
       "moduleName": "org.jline.terminal.ffm",
-      "digest": "sha512:e5839b04a2fd6119a11c6bc16e05203af88512039d85551b19d6e87c358a325ed5eb7051022a225e2641357c99d9c4121817a4795c50cf79a13b6b9d537cee96",
-      "sourceDigest": "sha512:c651ae99fe1f453d9b3d22913e2fb003c11ff9c43621bedd7508fa322b49f15c3d93cf146c00f2e1f9dd939f3ca9009a52ee407b63fa3f3d4f5c997a1efba139",
+      "digest": "sha512:ea3261b69df06fa8e352f9d482a115afd586369849ac8290ccc6aa7a2ab0a69910252b557b9fe42b9dc56f2aa7165d7c9c1ddcb4283bf7296e7ecffe785e92cf",
+      "sourceDigest": "sha512:9b958e96e4a4b4dc7b56967e448373e88c48834abb31a6d3ce92aae28f295c0bf940c8d18919c6757ae1fdd3fab26b954beae8d7f229edb14d7f128e28cc541c",
       "maven": {
         "groupId": "org.jline",
         "artifactId": "jline-terminal-ffm",
-        "version": "3.28.0",
+        "version": "4.3.1",
       },
     },
     "LLVM_ORG" : {
@@ -735,11 +735,29 @@ suite = {
         ],
         "exclude": [
           "META-INF/MANIFEST.MF",
+          # The source JARs contain module descriptors for the individual unshaded artifacts.
+          "module-info.java",
           # TTop.java would require java.lang.management (uses MXBean)
           "org/jline/builtins/TTop.java",
+          # Most of these optional JLine 4 features provide terminal graphics support. Their APIs
+          # expose BufferedImage and use AWT/ImageIO, which would add a java.desktop dependency to
+          # this CLI-focused reduced bundle. SwingTerminal likewise requires java.desktop,
+          # WebTerminal requires jdk.httpserver, and the command-group adapters require the
+          # separately packaged jline-shell module. None is needed for line editing or terminal
+          # provider support.
+          "org/jline/builtins/InteractiveCommandGroup.java",
+          "org/jline/builtins/PosixCommandGroup.java",
+          "org/jline/builtins/SwingTerminal.java",
+          "org/jline/builtins/WebTerminal.java",
+          "org/jline/terminal/impl/ITerm2Graphics.java",
+          "org/jline/terminal/impl/KittyGraphics.java",
+          "org/jline/terminal/impl/SixelGraphics.java",
+          "org/jline/terminal/impl/TerminalGraphics.java",
+          "org/jline/terminal/impl/TerminalGraphicsManager.java",
           # we patch the JLine's service loading mechanism with
           # hard-coded set of supported services, see one of the patches below
           "META-INF/services/**",
+          "META-INF/jline/**",
           "META-INF/maven/**",
           # We have our own native-image configuration
           "META-INF/native-image/**",
@@ -758,10 +776,20 @@ suite = {
                     String getDetectedCharset() { return null; }
                 }""",
           },
+          "org/jline/builtins/PosixCommands.java": {
+            # TTop is excluded because it requires java.lang.management.
+            "TTop.ttop\\(context.terminal\\(\\), context.out\\(\\), context.err\\(\\), argv\\);":
+              "throw new UnsupportedOperationException(\"ttop is not available\");",
+          },
           # Adds calls to initialize logging. This is a convenient way to enable JLine logging
           # in order to verify which terminal provider is used at runtime.
           "org/jline/terminal/TerminalBuilder.java": {
-            "private TerminalBuilder\\(\\) {}": "private TerminalBuilder() { org.graalvm.shadowed.org.jline.terminal.JLineLoggingSupport.init(); }"
+            "private TerminalBuilder\\(\\) {}": "private TerminalBuilder() { org.graalvm.shadowed.org.jline.terminal.JLineLoggingSupport.init(); }",
+            # Only the FFM and exec providers are included in this reduced bundle. Keep the JNI
+            # provider-selection API intact for compatibility, but do not probe its absent provider.
+            "public static final String PROP_PROVIDERS_DEFAULT =\\n            String.join\\(\",\", PROP_PROVIDER_FFM, PROP_PROVIDER_JNI, PROP_PROVIDER_EXEC\\);":
+              "public static final String PROP_PROVIDERS_DEFAULT =\n            String.join(\",\", PROP_PROVIDER_FFM, PROP_PROVIDER_EXEC);",
+            "checkProvider\\(provider, exception, providers, jni, PROP_JNI, PROP_PROVIDER_JNI\\);": "",
           },
           # Remove dependency on JLine's native library (would require shading and deployment of the library)
           # The native library is a fallback for functionality that is otherwise done via accessing
@@ -841,9 +869,12 @@ suite = {
         },
         "exclude": [
           "META-INF/MANIFEST.MF",
+          # The source JAR contains the descriptor of the unshaded artifact.
+          "module-info.java",
           # we patch the JLine's service loading mechanism with
           # hard-coded set of supported services, see one of the patches below
           "META-INF/services/**",
+          "META-INF/jline/**",
           "META-INF/maven/**",
           # We have our own native-image configuration (in the overlaid project)
           "META-INF/native-image/**",
