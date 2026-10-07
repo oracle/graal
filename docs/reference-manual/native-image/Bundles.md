@@ -316,7 +316,7 @@ Using a tool to compare directories, you can inspect the differences in detail.
 
 As you can see that _application-pgo-optimized.nib_ contains _default.iprof_ in the directory _input/auxiliary_, and there are also changes in other files. 
 The contents of _META-INF/nibundle.properties_, _input/stage/path_substitutions.json_ and _input/stage/path_canonicalizations.json_ will be explained [later](#bundle-file-format). 
-For example, deriving the bundle on Linux AMD64 adds the following argument group to _build.json_:
+Creating _application-pgo-optimized.nib_ on Linux AMD64 adds the following argument group to _build.json_:
 ```json
 {
   "platform": "linux-amd64",
@@ -458,7 +458,7 @@ Bundles with `BuilderOnClasspath=true` are permanently unsupported because runni
 This mode will not be restored.
 Application and dependency compatibility with the JDK used for rebuilding must also be considered.
 
-When you combine `--bundle-apply` and `--bundle-create`, the derived bundle uses the format written by the Native Image version creating it.
+When you combine `--bundle-apply` and `--bundle-create`, the new bundle uses the format written by the Native Image version creating it.
 It does not retain the original bundle's format version.
 
 ### Input Data
@@ -467,7 +467,7 @@ This directory contains all input data that gets passed to the `native-image` bu
 The file _input/stage/build.json_ holds the original command line that was passed to `native-image` when the bundle was created.
 In format 2.0, this file contains an ordered array of argument groups.
 Each group has a `platform` string and an `args` array of argument strings.
-When you derive a bundle, additional arguments form a new group with the platform on which you added them.
+When you create a new bundle from an existing one, additional arguments form a new group with the platform on which you added them.
 The group order preserves the command line order, and each platform determines how paths and path list separators in that group are interpreted.
 The file _input/stage/run.json_ continues to store a flat array of argument strings.
 
