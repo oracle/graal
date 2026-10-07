@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix;
 
 import java.io.File;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -59,8 +58,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 
     @Override
     public RawFileOperationSupport.RawFilePath allocatePath(String path) {
-        // Once GR-64572 is resolved, this should be `path.getBytes()`.
-        byte[] data = path.getBytes(StandardCharsets.UTF_8);
+        // Use the image's default charset to match other Java-to-C path conversions. This charset
+        // is fixed at image build time and does not read startup system properties.
+        byte[] data = path.getBytes();
         CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
             return Word.nullPointer();
