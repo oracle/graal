@@ -202,6 +202,14 @@
     }
   },
 
+  crema_xint_with_profiles:: self.crema + {
+    local edition = config.graalvm_edition,
+    platform:: "crema-xint-with-profiles-" + edition,
+    environment+: {
+      "JVM_CONFIG": "xint-with-profiles-" + edition
+    }
+  },
+
   crema_pgo:: self.crema + {
     local edition = config.graalvm_edition,
     local mx_env_path = "crema-" + edition + "-pgo",
