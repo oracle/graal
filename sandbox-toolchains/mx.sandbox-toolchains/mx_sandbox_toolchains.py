@@ -308,10 +308,9 @@ def jdk_checkout(args):
 class JdkAutoconfProject(AutoconfPkgConfigProject):
     def __init__(self, suite, name, deps, workingSets, **kwArgs):
         jdk = mx.get_jdk()
-        source_layout = _get_jdk_source_layout(jdk)
-        self._source_path = source_layout.build_root
-        self._java_source_path = source_layout.java_source_root
-        super().__init__(suite, name, deps, workingSets, source=None, results=['images/jdk', 'images/static-libs/lib', 'jdk/lib'], d=self._source_path, **kwArgs)
+        self._jdk = jdk
+        self._source_layout = None
+        super().__init__(suite, name, deps, workingSets, source=None, results=['images/jdk', 'images/static-libs/lib', 'jdk/lib'], d=suite.dir, **kwArgs)
         self._configure_args.insert(0, f"--with-boot-jdk={jdk.home}")
         self._configure_args.insert(0, f"--with-build-jdk={jdk.home}")
         if mx.get_env('CI') is not None:
@@ -324,11 +323,16 @@ class JdkAutoconfProject(AutoconfPkgConfigProject):
     def isJDKDependent(self):
         return True
 
+    def _get_source_layout(self):
+        if self._source_layout is None:
+            self._source_layout = _get_jdk_source_layout(self._jdk)
+        return self._source_layout
+
     def getSourcePath(self):
-        return self._source_path
+        return self._get_source_layout().build_root
 
     def getJavaSourcePath(self):
-        return self._java_source_path
+        return self._get_source_layout().java_source_root
 
     def getBuildTask(self, args):
         return JdkBuildTask(args, self)
