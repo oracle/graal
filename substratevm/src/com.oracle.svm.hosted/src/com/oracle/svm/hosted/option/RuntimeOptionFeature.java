@@ -129,7 +129,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            access.registerObjectReachableCallback(OptionKey.class, this::collectOptionKeys);
+            access.registerObjectReachabilityHandler(this::collectOptionKeys, OptionKey.class);
         } else {
             access.registerObjectReachableCallback(OptionKey.class, this::collectOptionKeysExtension);
             ImageHeapObjectAdder.singleton().registerObjectAdder(this::addDefaultValuesObject);
@@ -199,7 +199,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
     }
 
     @SuppressWarnings("unused")
-    private void collectOptionKeys(DuringAnalysisAccess access, OptionKey<?> optionKey, ObjectScanner.ScanReason reason) {
+    private void collectOptionKeys(OptionKey<?> optionKey) {
         if (optionKey instanceof HostedOptionKey<?>) {
             /* HostedOptionKey's are reached when building the NativeImage driver executable. */
             return;

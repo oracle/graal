@@ -32,7 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -54,11 +53,11 @@ public class AnnotationFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(Annotation.class, this::registerDeclaredMethods);
+        access.registerObjectReachabilityHandler(this::registerDeclaredMethods, Annotation.class);
     }
 
     @SuppressWarnings("unused")
-    private void registerDeclaredMethods(DuringAnalysisAccess access, Annotation annotation, ObjectScanner.ScanReason reason) {
+    private void registerDeclaredMethods(Annotation annotation) {
         if (Proxy.isProxyClass(annotation.getClass())) {
             Class<? extends Annotation> annotationType = annotation.annotationType();
             if (processedTypes.add(annotationType)) {

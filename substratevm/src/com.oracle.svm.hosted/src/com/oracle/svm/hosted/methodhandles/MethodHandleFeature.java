@@ -144,10 +144,10 @@ public class MethodHandleFeature implements InternalFeature {
         ImageSingletons.add(MethodHandleInvokerRenamingSubstitutionProcessor.class, substitutionProcessor);
         accessImpl.registerSubstitutionProcessor(substitutionProcessor);
 
-        accessImpl.registerObjectReachableCallback(memberNameClass, (a1, member, reason) -> registerHeapMemberName((Member) member));
-        accessImpl.registerObjectReachableCallback(MethodType.class, (a1, methodType, reason) -> registerHeapMethodType(methodType));
+        accessImpl.registerObjectReachabilityHandler(member -> registerHeapMemberName((Member) member), memberNameClass);
+        accessImpl.registerObjectReachabilityHandler(this::registerHeapMethodType, MethodType.class);
         Class<?> speciesDataClass = ReflectionUtil.lookupClass("java.lang.invoke.BoundMethodHandle$SpeciesData");
-        accessImpl.registerObjectReachableCallback(speciesDataClass, (a1, speciesData, reason) -> registerHeapSpeciesData(speciesData));
+        accessImpl.registerObjectReachabilityHandler(this::registerHeapSpeciesData, speciesDataClass);
     }
 
     @Override
