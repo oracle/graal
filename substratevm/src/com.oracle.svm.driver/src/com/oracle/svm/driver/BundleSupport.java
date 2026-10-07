@@ -619,19 +619,30 @@ final class BundleSupport {
 
         // TODO: Report error if overlapping dir-trees are passed in
 
-        int index = 0;
-        Path entryDir = destinationDir.resolve(Integer.toString(index));
-        while (Files.exists(entryDir) || isBundlePathReserved(entryDir)) {
-            entryDir = destinationDir.resolve(Integer.toString(++index));
-        }
-        try {
-            Files.createDirectory(entryDir);
-        } catch (IOException e) {
-            throw NativeImage.showError("Failed to create bundle path " + entryDir, e);
-        }
-        Path substitutedPath = entryDir.resolve(origPath.getFileName());
-
-        if (!isOutputPath) {
+        Path substitutedPath;
+        if (isOutputPath) {
+            substitutedPath = destinationDir.resolve(origPath.getFileName());
+            for (var entry : pathSubstitutions.entrySet()) {
+                if (entry.getValue().kind() != RootKind.Unavailable) {
+                    Path existingPath = BundlePathMap.resolveBundlePath(rootDir, entry.getValue());
+                    if (existingPath.startsWith(substitutedPath) || substitutedPath.startsWith(existingPath)) {
+                        throw NativeImage.showError("Bundle output paths '" + entry.getKey().sourcePathText() + "' and '" + origPath +
+                                        "' conflict at '" + rootDir.relativize(substitutedPath) + "'.");
+                    }
+                }
+            }
+        } else {
+            int index = 0;
+            Path entryDir = destinationDir.resolve(Integer.toString(index));
+            while (Files.exists(entryDir) || isBundlePathReserved(entryDir)) {
+                entryDir = destinationDir.resolve(Integer.toString(++index));
+            }
+            try {
+                Files.createDirectory(entryDir);
+            } catch (IOException e) {
+                throw NativeImage.showError("Failed to create bundle path " + entryDir, e);
+            }
+            substitutedPath = entryDir.resolve(origPath.getFileName());
             copyFiles(origPath, substitutedPath, false);
         }
 

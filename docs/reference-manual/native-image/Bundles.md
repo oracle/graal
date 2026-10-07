@@ -424,8 +424,7 @@ Inside a bundle you can find the following inner structure:
     │   ├── myimage.debug
     |   └── sources
     └── other      <- Other output created by the builder (not relative to image location)
-        └── 0
-            └── build-output.json
+        └── build-output.json
 ```
 ### META-INF
 
@@ -446,7 +445,7 @@ The following table lists format changes and the GraalVM versions that introduce
 
 | Bundle Format | Introduced In | Changes |
 | --- | --- | --- |
-| 2.0 | GraalVM 25.5 | Added explicit path root kinds, source-platform groups for build arguments, unavailable-input markers, and numbered directories for captured entries and auxiliary outputs. |
+| 2.0 | GraalVM 25.5 | Added explicit path root kinds, source-platform groups for build arguments, unavailable-input markers, and numbered directories for captured inputs. |
 | 1.0 | [GraalVM 25.1.3](https://www.graalvm.org/release-notes/25.1/); also backported to [Oracle GraalVM 25.0.4](https://docs.oracle.com/en/graalvm/jdk/25/docs/release-notes/) | Added portable path maps with path style information for replay across platforms. |
 | 0.9 | [GraalVM for JDK 17](https://www.graalvm.org/release-notes/JDK_17/) and [GraalVM for JDK 20](https://www.graalvm.org/release-notes/JDK_20/), internal version 23.0.0 | Initial bundle format. |
 
@@ -514,11 +513,12 @@ If a native executable is built as part of building the bundle (for example, the
 It contains the executable that was built along with any other files that were generated as part of building.
 Most output files are located in the directory _output/default_ (the executable, its debug info, and debug sources).
 Builder output files, that would have been written to arbitrary absolute paths if the executable had not been built in the bundle mode, can be found in _output/other_.
+Auxiliary outputs retain their basenames directly beneath _output/other_.
+Distinct output paths with conflicting basenames cause an error instead of overwriting each other.
 
 ### Numbered Entries
 
 Bundle format 2.0 stores each captured class-path, module-path, or auxiliary input in a separate numbered directory, preserving its original basename.
-Auxiliary output paths use the same layout.
 Each category has an independent sequence:
 
 | Category | Bundle Path |
@@ -526,7 +526,6 @@ Each category has an independent sequence:
 | Class path | `input/classes/cp/<number>/<basename>` |
 | Module path | `input/classes/p/<number>/<basename>` |
 | Auxiliary input | `input/auxiliary/<number>/<basename>` |
-| Auxiliary output | `output/other/<number>/<basename>` |
 
 Different inputs with the same basename receive different numbers.
 A captured directory occupies one numbered entry, with its contents preserved beneath it.
@@ -534,7 +533,7 @@ Repeated `-cp` or `-p` options continue the corresponding sequence, and dependen
 The default image output directory remains _output/default_.
 
 The saved path substitutions retain each path's assigned location across replay and derivation.
-New paths receive unused numbers, including when a previously assigned output has not been produced.
+New inputs receive unused numbers, including when a previously assigned directory is empty.
 Derived bundles can contain both flat entries retained from older bundles and new numbered entries.
 The launcher supports both layouts.
 

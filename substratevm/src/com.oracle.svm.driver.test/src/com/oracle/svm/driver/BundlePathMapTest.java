@@ -1110,8 +1110,7 @@ public class BundlePathMapTest {
     public void preservesNumberedPathsAcrossBundleDerivation() throws Exception {
         List<BiFunction<BundleSupport, Path, Path>> substitutions = List.of(
                         BundleSupport::substituteClassPath, BundleSupport::substituteModulePath,
-                        (support, path) -> support.substituteAuxiliaryPath(path, Role.Input),
-                        (support, path) -> support.substituteAuxiliaryPath(path, Role.Output));
+                        (support, path) -> support.substituteAuxiliaryPath(path, Role.Input));
         for (var substitute : substitutions) {
             Path fixture = newBundleSupport().rootDir;
             BundleSupport support = newBundleSupport();
@@ -1141,7 +1140,7 @@ public class BundlePathMapTest {
     }
 
     @Test
-    public void reservesAbsentLegacyOutputBeforeAllocatingNumberedPaths() throws Exception {
+    public void preservesFlatOutputPathsAcrossBundleDerivation() throws Exception {
         Path fixture = newBundleSupport().rootDir;
         Path original = fixture.resolve("0");
         Path legacyBundle = fixture.resolve("legacy.nib");
@@ -1168,9 +1167,27 @@ public class BundlePathMapTest {
             Path oldOutput = support.substituteAuxiliaryPath(original, Role.Output);
             Path newOutput = support.substituteAuxiliaryPath(fixture.resolve("new-" + generation), Role.Output);
             assertEquals(support.rootDir.resolve("output/other/0"), oldOutput);
-            assertEquals(support.rootDir.resolve("output/other/" + (generation + 1) + "/new-" + generation), newOutput);
+            assertEquals(support.rootDir.resolve("output/other/new-" + generation), newOutput);
             assertTrue(Files.notExists(oldOutput));
             support = writeAndReloadBundle(support, fixture.resolve("derived-" + generation + ".nib"));
+        }
+    }
+
+    @Test
+    public void rejectsConflictingAuxiliaryOutputNamesBeforeFilesExist() throws Exception {
+        Path fixture = newBundleSupport().rootDir;
+        Path first = fixture.resolve("first/report.json");
+        Path second = fixture.resolve("second/report.json");
+        BundleSupport support = newBundleSupport();
+        for (int generation = 0; generation < 3; generation++) {
+            Path output = support.substituteAuxiliaryPath(first, Role.Output);
+            assertEquals(support.auxiliaryOutputDir.resolve("report.json"), output);
+            assertEquals(output, support.substituteAuxiliaryPath(first, Role.Output));
+            assertTrue(Files.notExists(output));
+            BundleSupport current = support;
+            var error = assertThrows(NativeImage.NativeImageError.class, () -> current.substituteAuxiliaryPath(second, Role.Output));
+            assertEquals("Bundle output paths '" + first + "' and '" + second + "' conflict at '" + Path.of("output", "other", "report.json") + "'.", error.getMessage());
+            support = writeAndReloadBundle(support, fixture.resolve("outputs-" + generation + ".nib"));
         }
     }
 
