@@ -1308,11 +1308,23 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      * Helper method for emitting EVEX prefix in the form of RRRM. Because the memory addressing in
      * EVEX-encoded instructions employ a compressed displacement scheme when using disp8 form, the
      * user of this API should make sure to encode the operands using
-     * {@link #emitOperandHelper(Register, AMD64Address, int, int)}.
+     * {@link #emitOperandHelper(Register, AMD64Address, int, int)}. For VSIB addressing, EVEX.V'
+     * extends the vector index instead of {@code nds}, which must be absent.
      */
     protected final void evexPrefix(Register dst, Register mask, Register nds, AMD64Address src, AVXKind.AVXSize size, int pp, int mm, int w, int z, int b) {
         assert !mask.isValid() || inRC(MASK, mask);
-        emitEVEX(getLFlag(size), pp, mm, w, getRXB(dst, src), (dst == null ? 0 : dst.encoding), nds.isValid() ? nds.encoding() : 0, z, b, mask.isValid() ? mask.encoding : 0);
+        int vvvvv = nds.isValid() ? nds.encoding() : 0;
+        if (src.getIndex() != null && inRC(XMM, src.getIndex())) {
+            GraalError.guarantee(!nds.isValid(), "VSIB addressing cannot encode an NDS register: %s", nds);
+            /*
+             * The address index is a vector register, so this operand uses VSIB addressing. We must
+             * encode bit 4 of the index encoding in EVEX.V' rather than an NDS extension because V'
+             * selects the upper half of the vector register set for VSIB. We zero the low four bits
+             * because emitEVEX inverts them to the required EVEX.vvvv value of 1111.
+             */
+            vvvvv = src.getIndex().encoding() & 0x10;
+        }
+        emitEVEX(getLFlag(size), pp, mm, w, getRXB(dst, src), (dst == null ? 0 : dst.encoding), vvvvv, z, b, mask.isValid() ? mask.encoding : 0);
     }
 
 }
