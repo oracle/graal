@@ -73,7 +73,7 @@ import jdk.vm.ci.meta.Signature;
  * through {@link InterpreterStubSection} entry points because their bytecode is interpreted rather
  * than compiled into image code.
  */
-public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStubMethod {
+public final class CremaJNIUpcallWrapperMethod extends EntryPointCallStubMethod {
     /** The JNI call variant implemented by this wrapper. */
     private final CallVariant callVariant;
 
@@ -84,7 +84,7 @@ public final class JNIJavaCallInterpreterWrapperMethod extends EntryPointCallStu
      * Creates a wrapper for {@code callVariant} and {@code nonVirtual} using
      * {@code originalMetaAccess} and {@code wordTypes} to model the native ABI signature.
      */
-    public JNIJavaCallInterpreterWrapperMethod(CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, jdk.graal.compiler.word.WordTypes wordTypes) {
+    public CremaJNIUpcallWrapperMethod(CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, jdk.graal.compiler.word.WordTypes wordTypes) {
         super(createName(callVariant, nonVirtual),
                         originalMetaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class),
                         createSignature(originalMetaAccess, wordTypes),

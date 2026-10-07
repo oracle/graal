@@ -133,8 +133,8 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             CremaJNITrampolineData cremaData = null;
             if (RuntimeClassLoading.isSupported()) {
                 CallVariant variant = JNIJavaCallTrampolineHolder.getVariant(getName());
-                CFunctionPointer cremaMethodWrapperEntryPoint = CremaSupport.singleton().getCremaJNIMethodCallWrapperEntryPoint(variant, nonVirtual);
-                ResolvedJavaMethod wrapperMethod = ((MethodPointer) cremaMethodWrapperEntryPoint).getMethod();
+                CFunctionPointer cremaJNIUpcallWrapperEntryPoint = CremaSupport.singleton().getCremaJNIUpcallWrapperEntryPoint(variant, nonVirtual);
+                ResolvedJavaMethod wrapperMethod = ((MethodPointer) cremaJNIUpcallWrapperEntryPoint).getMethod();
                 cremaData = new CremaJNITrampolineData(wrapperMethod, variant);
             }
             return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers), cremaData);
