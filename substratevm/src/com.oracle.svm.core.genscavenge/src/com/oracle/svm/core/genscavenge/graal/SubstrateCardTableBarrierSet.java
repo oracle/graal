@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge.graal;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
@@ -95,10 +96,6 @@ public class SubstrateCardTableBarrierSet extends CardTableBarrierSet {
             return baseType.isInterface() || baseType.isJavaLangObject();
         }
 
-        /*
-         * Arrays smaller than HeapParameters.getLargeArrayThreshold() are allocated in the aligned
-         * chunks.
-         */
         ValueNode length = GraphUtil.arrayLength(base, ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, context.getConstantReflection());
         if (length == null) {
             return true;
@@ -107,7 +104,12 @@ public class SubstrateCardTableBarrierSet extends CardTableBarrierSet {
         IntegerStamp lengthStamp = (IntegerStamp) length.stamp(NodeView.DEFAULT);
         GraalError.guarantee(lengthStamp.getBits() == Integer.SIZE, "unexpected length %s", lengthStamp);
         int lengthBound = NumUtil.safeToInt(lengthStamp.upperBound());
-        UnsignedWord sizeBound = LayoutEncoding.getArrayAllocationSize(DynamicHubProvider.getHub((SharedType) baseType).getLayoutEncoding(), lengthBound);
-        return !GenScavengeAllocationSupport.arrayAllocatedInAlignedChunk(sizeBound);
+        int layoutEncoding = DynamicHubProvider.getHub((SharedType) baseType).getLayoutEncoding();
+        /*
+         * Include optional identity hash storage for image heap arrays. The large array threshold
+         * also covers image arrays that do not fit in an aligned chunk.
+         */
+        UnsignedWord sizeBound = LayoutEncoding.getArraySize(layoutEncoding, lengthBound, true);
+        return sizeBound.aboveOrEqual(HeapParameters.getLargeArrayThreshold());
     }
 }
