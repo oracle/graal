@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +34,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -52,6 +55,8 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.vm.annotation.Stable;
 
 @AutomaticallyRegisteredImageSingleton
 public final class StringInternSupport implements LayeredImageSingleton {
@@ -132,30 +137,19 @@ public final class StringInternSupport implements LayeredImageSingleton {
         return internedStringsIdentityMap;
     }
 
-    static String intern(String str) {
-        String result = RuntimeInternedStrings.getInternedStrings().get(str);
-        if (result != null) {
-            return result;
-        } else {
-            return doIntern(str);
-        }
+    public static String intern(String str) {
+        return RuntimeInternedStrings.singleton().intern(str);
     }
 
-    private static String doIntern(String str) {
-        String result = str;
+    static String findImageInternedString(String str) {
         for (ImageInternedStrings layer : MultiLayeredImageSingleton.getAllLayers(ImageInternedStrings.class)) {
             String[] layerImageInternedStrings = layer.getImageInternedStrings();
             int imageIdx = Arrays.binarySearch(layerImageInternedStrings, str);
             if (imageIdx >= 0) {
-                result = layerImageInternedStrings[imageIdx];
-                break;
+                return layerImageInternedStrings[imageIdx];
             }
         }
-        String oldValue = RuntimeInternedStrings.getInternedStrings().putIfAbsent(result, result);
-        if (oldValue != null) {
-            result = oldValue;
-        }
-        return result;
+        return null;
     }
 
     public static Object getImageInternedStrings() {
@@ -186,14 +180,147 @@ public final class StringInternSupport implements LayeredImageSingleton {
     }
 }
 
+/**
+ * Implements {@link String#intern} at run time. It first searches the strings interned in the image
+ * layers through {@link StringInternSupport#findImageInternedString}. Image strings are returned
+ * directly and are not added to the runtime set. Other strings are stored as weak references in a
+ * concurrent set and can be garbage collected. A keyed content hash prevents predictable hash
+ * collisions. Stale entries are removed when another string is interned.
+ * <p>
+ * This implementation has a lot of potential for future optimizations, see GR-78935.
+ */
 @AutomaticallyRegisteredImageSingleton
 class RuntimeInternedStrings implements InitialLayerOnlyImageSingleton {
+    final ConcurrentHashMap<Key, WeakKey> internedStrings = new ConcurrentHashMap<>();
+    private final ReferenceQueue<String> queue = new ReferenceQueue<>();
+    @Stable private long hashSeed;
 
-    /** The String intern table at run time. */
-    final ConcurrentHashMap<String, String> internedStrings = new ConcurrentHashMap<>(16, 0.75f, 1);
+    static RuntimeInternedStrings singleton() {
+        return ImageSingletons.lookup(RuntimeInternedStrings.class);
+    }
 
-    static ConcurrentHashMap<String, String> getInternedStrings() {
-        return ImageSingletons.lookup(RuntimeInternedStrings.class).internedStrings;
+    String intern(String value) {
+        assert value != null;
+        removeStaleEntries();
+
+        /* Check if there is a matching string in the image heap. */
+        String imageInterned = StringInternSupport.findImageInternedString(value);
+        if (imageInterned != null) {
+            return imageInterned;
+        }
+
+        /* Check if there is a matching string in the runtime map. */
+        int hash = hash(value);
+        WeakKey existing = internedStrings.get(new StrongKey(value, hash));
+        String interned = existing == null ? null : existing.get();
+        if (interned != null) {
+            return interned;
+        }
+
+        /* Try to store the string in the runtime map. */
+        WeakKey candidate = new WeakKey(value, queue, hash);
+        while (true) {
+            existing = internedStrings.putIfAbsent(candidate, candidate);
+            if (existing == null) {
+                return value;
+            }
+
+            interned = existing.get();
+            if (interned != null) {
+                candidate.clear();
+                return interned;
+            }
+        }
+    }
+
+    private void removeStaleEntries() {
+        WeakKey stale;
+        while ((stale = (WeakKey) queue.poll()) != null) {
+            internedStrings.remove(stale, stale);
+        }
+    }
+
+    private int hash(String value) {
+        long seed = getHashSeed();
+        return HalfSipHash.hash(seed, value);
+    }
+
+    private long getHashSeed() {
+        if (hashSeed != 0) {
+            return hashSeed;
+        }
+        return initializeHashSeed();
+    }
+
+    private synchronized long initializeHashSeed() {
+        if (hashSeed == 0) {
+            long seed = ThreadLocalRandom.current().nextLong();
+            hashSeed = seed != 0 ? seed : 1;
+        }
+        return hashSeed;
+    }
+
+    private static boolean keyEquals(Key key, Object other) {
+        if (key == other) {
+            return true;
+        }
+        if (other instanceof Key otherKey) {
+            String value = key.get();
+            return value != null && value.equals(otherKey.get());
+        }
+        return false;
+    }
+
+    private interface Key {
+        String get();
+    }
+
+    private static final class WeakKey extends WeakReference<String> implements Key {
+        private final int hashCode;
+
+        WeakKey(String value, ReferenceQueue<String> queue, int hashCode) {
+            super(value, queue);
+            this.hashCode = hashCode;
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return keyEquals(this, other);
+        }
+    }
+
+    /**
+     * A temporary strong key used to look up an existing weak entry without creating a weak
+     * reference.
+     */
+    private static final class StrongKey implements Key {
+        private final String value;
+        private final int hashCode;
+
+        StrongKey(String value, int hashCode) {
+            this.value = value;
+            this.hashCode = hashCode;
+        }
+
+        @Override
+        public String get() {
+            return value;
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return keyEquals(this, other);
+        }
     }
 
     @Override
@@ -212,10 +339,10 @@ class ImageInternedStrings implements MultiLayeredImageSingleton, UnsavedSinglet
 
     /**
      * The native image contains a lot of interned strings. All Java String literals, and all class
-     * names, are interned per Java specification. We don't want the memory overhead of an hash
-     * table entry, so we store them (sorted) in this String[] array. When a string is interned at
-     * run time, it is added to the real hash map, so we pay the (logarithmic) cost of the array
-     * access only once per string.
+     * names, are interned per Java specification. We don't want the memory overhead of a hash table
+     * entry, so we store them (sorted) in this String[] array. At run time, this array is searched
+     * before the runtime intern set. Image strings are returned directly and are not added to the
+     * runtime set.
      *
      * The field is set late during image generation, so the value is not available during static
      * analysis and compilation.
