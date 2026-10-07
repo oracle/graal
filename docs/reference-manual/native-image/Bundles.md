@@ -314,7 +314,7 @@ The new bundle should be larger than the original.
 The reason, as can be guessed, is that now the bundle contains the _default.iprof_ file.
 Using a tool to compare directories, you can inspect the differences in detail.
 
-As you can see that _application-pgo-optimized.nib_ contains _default.iprof_ in the directory _input/auxiliary_, and there are also changes in other files. 
+The bundle _application-pgo-optimized.nib_ contains _default.iprof_ beneath a numbered directory in _input/auxiliary_, and there are also changes in other files.
 The contents of _META-INF/nibundle.properties_, _input/stage/path_substitutions.json_ and _input/stage/path_canonicalizations.json_ will be explained [later](#bundle-file-format). 
 Creating _application-pgo-optimized.nib_ on Linux AMD64 adds the following argument group to _build.json_:
 ```json
@@ -381,7 +381,7 @@ All remaining arguments are then also passed on to the bundled application.
 A bundle file is a JAR file with a well-defined internal layout.
 Inside a bundle you can find the following inner structure:
 
-```
+```text
 [bundle-file.nib]
 ├── META-INF
 │   ├── MANIFEST.MF
@@ -393,9 +393,19 @@ Inside a bundle you can find the following inner structure:
 ├── input <- All information required to rebuild the image
 │   ├── auxiliary <- Contains auxiliary files passed to native-image via arguments
 │   │                (for example, external `config-*.json` files or PGO `*.iprof`-files)
+│   │   └── 0
+│   │       └── config.json
 │   ├── classes   <- Contains all class-path and module-path entries passed to the builder
 │   │   ├── cp
+│   │   │   ├── 0
+│   │   │   │   └── application.jar
+│   │   │   └── 1
+│   │   │       └── classes <- Captured class directory
+│   │   │           └── example
+│   │   │               └── Main.class
 │   │   └── p
+│   │       └── 0
+│   │           └── module.jar
 │   └── stage
 │       ├── build.json          <- Full native-image command line (minus --bundle options)
 │       ├── container.json            <- Containerization tool, tool version and container
@@ -414,6 +424,8 @@ Inside a bundle you can find the following inner structure:
     │   ├── myimage.debug
     |   └── sources
     └── other      <- Other output created by the builder (not relative to image location)
+        └── 0
+            └── build-output.json
 ```
 ### META-INF
 
@@ -434,7 +446,7 @@ The following table lists format changes and the GraalVM versions that introduce
 
 | Bundle Format | Introduced In | Changes |
 | --- | --- | --- |
-| 2.0 | GraalVM 25.5 | Added explicit path root kinds, source-platform groups for build arguments, and unavailable-input markers. |
+| 2.0 | GraalVM 25.5 | Added explicit path root kinds, source-platform groups for build arguments, unavailable-input markers, and numbered directories for captured entries and auxiliary outputs. |
 | 1.0 | [GraalVM 25.1.3](https://www.graalvm.org/release-notes/25.1/); also backported to [Oracle GraalVM 25.0.4](https://docs.oracle.com/en/graalvm/jdk/25/docs/release-notes/) | Added portable path maps with path style information for replay across platforms. |
 | 0.9 | [GraalVM for JDK 17](https://www.graalvm.org/release-notes/JDK_17/) and [GraalVM for JDK 20](https://www.graalvm.org/release-notes/JDK_20/), internal version 23.0.0 | Initial bundle format. |
 
@@ -484,7 +496,7 @@ For example, a captured JAR can have the following substitution:
 [
   {
     "src": {"style": "Unix", "kind": "Absolute", "text": "work/application.jar"},
-    "dst": {"style": "BundleRelative", "kind": "Relative", "text": "input/classes/cp/application.jar"}
+    "dst": {"style": "BundleRelative", "kind": "Relative", "text": "input/classes/cp/0/application.jar"}
   }
 ]
 ```
