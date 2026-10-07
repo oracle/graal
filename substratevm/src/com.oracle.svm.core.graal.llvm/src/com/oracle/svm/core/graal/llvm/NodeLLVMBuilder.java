@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -183,6 +183,11 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     @Override
     public LLVMGenerator getLIRGeneratorTool() {
         return gen;
+    }
+
+    @Override
+    public boolean narrowsUseCastValue() {
+        return gen.getProviders().getLowerer().narrowsUseCastValue();
     }
 
     private LLVMTypeRef getLLVMType(ValueNode node) {

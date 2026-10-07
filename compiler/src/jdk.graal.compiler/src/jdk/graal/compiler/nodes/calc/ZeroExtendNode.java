@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,12 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -58,6 +58,31 @@ import jdk.vm.ci.code.CodeUtil;
 public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
 
     public static final NodeClass<ZeroExtendNode> TYPE = NodeClass.create(ZeroExtendNode.class);
+
+    /**
+     * Whether LIR generation must emit an explicit zero extension. The default is {@code true}.
+     * {@link jdk.graal.compiler.phases.common.OptimizeExtendsPhase.ZeroExtendAnalysis#computeRequiresExplicitZeroExtend}
+     * may set this to {@code false} after final canonicalization if the operand generated for the
+     * input is guaranteed to have zero upper register bits. No subsequent canonicalization may
+     * remove the arithmetic on which that decision depends. Any replacement of the input must
+     * preserve that guarantee.
+     */
+    private boolean requiresExplicitZeroExtend = true;
+
+    public boolean requiresExplicitZeroExtend() {
+        return requiresExplicitZeroExtend;
+    }
+
+    /**
+     * Records whether LIR generation must emit an explicit zero extension. A {@code false} value
+     * requires the operand generated for the input to have zero upper register bits. Any
+     * replacement of the input must preserve that guarantee. The flag may change from
+     * {@code true} to {@code false}, but never from {@code false} to {@code true}.
+     */
+    public void setRequiresExplicitZeroExtend(boolean required) {
+        GraalError.guarantee(requiresExplicitZeroExtend || !required, "requiresExplicitZeroExtend must not change from false to true");
+        requiresExplicitZeroExtend = required;
+    }
 
     public ZeroExtendNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
@@ -167,8 +192,6 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
 
     @Override
     public void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
-        // If the value originates from caller, we have no control on the upper bits.
-        boolean requiresExplicitZeroExtend = getValue() instanceof ParameterNode || getValue() instanceof NarrowNode;
         boolean requiresLIRKindChange = usages().filter(ZeroExtendNode::mayBeLIRKindDependentOp).isNotEmpty();
 
         nodeValueMap.setResult(this, gen.emitZeroExtend(nodeValueMap.operand(getValue()), getInputBits(), getResultBits(),

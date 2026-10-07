@@ -119,6 +119,7 @@ import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -537,26 +538,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     protected Value emitZeroExtendMemory(AMD64Kind memoryKind, int resultBits, AMD64AddressValue address, LIRFrameState state) {
-        // Issue a zero extending load of the proper bit size and set the result to
-        // the proper kind.
-        Variable result = getLIRGen().newVariable(LIRKind.value(resultBits <= 32 ? AMD64Kind.DWORD : AMD64Kind.QWORD));
-        switch (memoryKind) {
-            case BYTE:
-                getLIRGen().append(new AMD64Unary.MemoryOp(MOVZXB, DWORD, result, address, state));
-                break;
-            case WORD:
-                getLIRGen().append(new AMD64Unary.MemoryOp(MOVZX, DWORD, result, address, state));
-                break;
-            case DWORD:
-                getLIRGen().append(new AMD64Unary.MemoryOp(MOV, DWORD, result, address, state));
-                break;
-            case QWORD:
-                getLIRGen().append(new AMD64Unary.MemoryOp(MOV, QWORD, result, address, state));
-                break;
-            default:
-                throw GraalError.shouldNotReachHereUnexpectedValue(memoryKind); // ExcludeFromJacocoGeneratedReport
-        }
-        return result;
+        return emitLoad(LIRKind.value(memoryKind), address, state, MemoryOrderMode.PLAIN, MemoryExtendKind.getZeroExtendKind(Math.max(32, resultBits)));
     }
 
     private AMD64MulDivOp emitIDIV(OperandSize size, Value a, Value b, LIRFrameState state) {
@@ -1029,8 +1011,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     GraalError.shouldNotReachHere("Unexpected Java kind for constant during narrowing: " + jKind);
             }
         } else if (inputVal.getPlatformKind() == AMD64Kind.QWORD && bits <= 32) {
-            // TODO make it possible to reinterpret Long as Int in LIR without move
-            return emitConvertOp(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), AMD64RMOp.MOV, DWORD, inputVal);
+            /* Narrowing only changes the kind; consumers use the low 32 bits of the same value. */
+            return new CastValue(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), asAllocatable(inputVal));
         }
         return inputVal;
     }
@@ -1371,24 +1353,38 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return (AMD64LIRGenerator) getLIRGen();
     }
 
+    /**
+     * Loads a value from memory. The platform kind in {@code kind} determines the number of bytes
+     * read. For an extending integer load, {@code extendKind} selects sign or zero extension and
+     * the result width. Zero extension from at most 32 bits uses a DWORD destination, which zeros
+     * the upper 32 register bits without an additional instruction, even for a QWORD result.
+     */
     @Override
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
-        assert extendKind.isNotExtended();
+        AMD64Kind memoryKind = (AMD64Kind) kind.getPlatformKind();
+        LIRKind resultKind = getLIRGen().toRegisterKind(kind);
+        if (extendKind.isExtended()) {
+            GraalError.guarantee(memoryKind.isInteger() && memoryKind.getSizeInBytes() * Byte.SIZE <= extendKind.getExtendedBitSize(),
+                            "Unsupported memory extension: %s, %s", memoryKind, extendKind);
+            resultKind = kind.changeType(extendKind.getExtendedBitSize() <= 32 ? AMD64Kind.DWORD : AMD64Kind.QWORD);
+        }
+        OperandSize size = resultKind.getPlatformKind() == AMD64Kind.QWORD ? QWORD : DWORD;
         /*
          * AMD64's consistency model does not require any fences for loads. Volatile store->load
          * ordering requirements are enforced at the stores.
          */
         AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
-        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
-        switch ((AMD64Kind) kind.getPlatformKind()) {
+        Variable result = getLIRGen().newVariable(resultKind);
+        switch (memoryKind) {
             case BYTE:
-                getLIRGen().append(new AMD64Unary.MemoryOp(MOVSXB, DWORD, result, loadAddress, state));
+                getLIRGen().append(new AMD64Unary.MemoryOp(extendKind.isZeroExtend() ? MOVZXB : MOVSXB, extendKind.isZeroExtend() ? DWORD : size, result, loadAddress, state));
                 break;
             case WORD:
-                getLIRGen().append(new AMD64Unary.MemoryOp(MOVSX, DWORD, result, loadAddress, state));
+                getLIRGen().append(new AMD64Unary.MemoryOp(extendKind.isZeroExtend() ? MOVZX : MOVSX, extendKind.isZeroExtend() ? DWORD : size, result, loadAddress, state));
                 break;
             case DWORD:
-                getLIRGen().append(new AMD64Unary.MemoryOp(MOV, DWORD, result, loadAddress, state));
+                boolean signExtend = extendKind.isExtended() && !extendKind.isZeroExtend() && size == QWORD;
+                getLIRGen().append(new AMD64Unary.MemoryOp(signExtend ? MOVSXD : MOV, signExtend ? QWORD : DWORD, result, loadAddress, state));
                 break;
             case QWORD:
                 getLIRGen().append(new AMD64Unary.MemoryOp(MOV, QWORD, result, loadAddress, state));

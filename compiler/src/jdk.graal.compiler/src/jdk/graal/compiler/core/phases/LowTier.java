@@ -100,6 +100,8 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new OptimizeOffsetAddressPhase(canonicalizerWithGVN));
 
+        appendPhase(new OptimizeExtendsPhase(OptimizeExtendsPhase.Mode.COMBINE));
+
         if (PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options)) {
             appendPhase(new FixReadsPhase(true, new PartialRedundancySchedulePhase()));
         } else {
@@ -136,7 +138,7 @@ public class LowTier extends BaseTier<LowTierContext> {
             appendPhase(new BreakChainedPhisPhase());
         }
 
-        appendPhase(new OptimizeExtendsPhase());
+        appendPhase(new OptimizeExtendsPhase(OptimizeExtendsPhase.Mode.FOLD_READS));
 
         appendPhase(new RemoveOpaqueValuePhase());
 

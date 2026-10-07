@@ -24,11 +24,18 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
+
 /**
- * Test (Zero|Sign)Extend Nodes are minimized. The constraints are validated in
- * {@code OptimizeExtendsPhase::validateOptimization}.
+ * Test (Zero|Sign)Extend Nodes are minimized.
  */
 
 public class OptimizeExtendsTest extends GraalCompilerTest {
@@ -120,6 +127,97 @@ public class OptimizeExtendsTest extends GraalCompilerTest {
                 break;
         }
         return result;
+    }
+
+    /**
+     * Checks that scheduling keeps the conversions off the path where their values are not used.
+     */
+    @Override
+    protected void checkLowTierGraph(StructuredGraph graph) {
+        if (graph.method().getName().equals("conditionalUnsigned") && PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(graph.getOptions())) {
+            var schedule = graph.getLastSchedule();
+            var cfg = schedule.getCFG();
+            for (ZeroExtendNode extend : graph.getNodes().filter(ZeroExtendNode.class)) {
+                Assert.assertNotSame("The path where the value is not used must not execute the conversion", cfg.getStartBlock(), schedule.getNodeToBlockMap().get(extend));
+            }
+            Assert.assertEquals("The conversions must remain in their branches", 2, graph.getNodes().filter(ZeroExtendNode.class).count());
+        } else if (graph.method().getName().equals("conditionalSigned") && PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(graph.getOptions())) {
+            Assert.assertEquals("Folding the read must preserve the signed conversions in their branches", 2,
+                            graph.getNodes().filter(node -> node instanceof SignExtendNode extend && extend.getInputBits() == 8).count());
+        } else if (graph.method().getName().equals("unsignedArithmetic") && getProviders().getLowerer().narrowsUseCastValue()) {
+            Assert.assertEquals(1, graph.getNodes().filter(ZeroExtendNode.class).count());
+            for (ZeroExtendNode extend : graph.getNodes().filter(ZeroExtendNode.class)) {
+                Assert.assertFalse("The late phase must prove the arithmetic input has zero upper bits", extend.requiresExplicitZeroExtend());
+            }
+        }
+    }
+
+    /** Integer arithmetic clears upper register bits before the unsigned conversion. */
+    public static long unsignedArithmetic(int input) {
+        return Integer.toUnsignedLong(input + 1);
+    }
+
+    @Test
+    public void testUnsignedArithmetic() {
+        for (int input : new int[]{0, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+            test("unsignedArithmetic", input);
+        }
+    }
+
+    /**
+     * Uses the unsigned conversion in two branches but not on the third path. The side effects
+     * preserve the branches so that scheduling cannot replace them with conditional moves.
+     */
+    public static long conditionalUnsigned(int input, int mode) {
+        if (mode == 0) {
+            return GraalDirectives.sideEffect(Integer.toUnsignedLong(input)) + 1;
+        } else if (mode == 1) {
+            return GraalDirectives.sideEffect(Integer.toUnsignedLong(input)) + 2;
+        } else {
+            return 42;
+        }
+    }
+
+    /**
+     * Checks conversion placement when partial scheduling is enabled and execution with either
+     * setting.
+     */
+    @Test
+    public void testConditionalUnsigned() {
+        for (boolean partialScheduling : new boolean[]{true, false}) {
+            OptionValues options = new OptionValues(getInitialOptions(), PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling, partialScheduling);
+            for (int input : new int[]{0, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+                for (int mode = 0; mode < 3; mode++) {
+                    test(options, "conditionalUnsigned", input, mode);
+                }
+            }
+        }
+    }
+
+    /**
+     * Needs an unsigned load on every path and signed conversions in two branches. Folding the
+     * unsigned extension into the read must not combine the signed conversions again.
+     */
+    public static long conditionalSigned(byte[] array, int mode) {
+        byte input = array[0];
+        GraalDirectives.sideEffect(Integer.toUnsignedLong(Byte.toUnsignedInt(input)));
+        if (mode == 0) {
+            return GraalDirectives.sideEffect((int) input) + 1L;
+        } else if (mode == 1) {
+            return GraalDirectives.sideEffect((long) input) + 2;
+        } else {
+            return 42;
+        }
+    }
+
+    @Test
+    public void testConditionalSigned() {
+        OptionValues options = new OptionValues(getInitialOptions(), PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling, true);
+        for (byte input : new byte[]{0, -1, Byte.MIN_VALUE, Byte.MAX_VALUE}) {
+            for (int mode = 0; mode < 3; mode++) {
+                test(options, "conditionalSigned", new byte[]{input}, mode);
+            }
+        }
     }
 
     @Test

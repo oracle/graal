@@ -232,6 +232,11 @@ public abstract class DilithiumNode extends MemoryKillStubIntrinsicNode {
         }
 
         @Override
+        public boolean needsExplicitZeroExtension(Architecture arch) {
+            return false;
+        }
+
+        @Override
         public void emitIntrinsic(NodeLIRBuilderTool gen) {
             gen.setResult(this, gen.getLIRGeneratorTool().emitDilithiumMontMulByConstant(gen.operand(coeffs), gen.operand(constant)));
         }
@@ -276,6 +281,11 @@ public abstract class DilithiumNode extends MemoryKillStubIntrinsicNode {
         @Override
         public ForeignCallDescriptor getForeignCallDescriptor() {
             return STUB;
+        }
+
+        @Override
+        public boolean needsExplicitZeroExtension(Architecture arch) {
+            return false;
         }
 
         @Override

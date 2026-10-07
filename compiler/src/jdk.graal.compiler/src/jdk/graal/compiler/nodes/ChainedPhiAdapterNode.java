@@ -30,25 +30,29 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.calc.UnaryNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class ChainedPhiAdapterNode extends FloatingNode implements LIRLowerable {
+public final class ChainedPhiAdapterNode extends UnaryNode implements LIRLowerable {
 
     public static final NodeClass<ChainedPhiAdapterNode> TYPE = NodeClass.create(ChainedPhiAdapterNode.class);
-    @Input ValueNode input;
 
     public ChainedPhiAdapterNode(ValueNode value) {
-        super(TYPE, value.stamp(NodeView.DEFAULT));
-        this.input = value;
+        super(TYPE, value.stamp(NodeView.DEFAULT), value);
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        return this;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        if (input instanceof ChainedPhiValueSplitNode) {
-            generator.setResult(this, ((ChainedPhiValueSplitNode) input).getNewValue());
+        if (getValue() instanceof ChainedPhiValueSplitNode split) {
+            generator.setResult(this, split.getNewValue());
         } else {
             throw GraalError.shouldNotReachHere("Illegal input."); // ExcludeFromJacocoGeneratedReport
         }
