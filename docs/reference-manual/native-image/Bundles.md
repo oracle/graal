@@ -419,7 +419,7 @@ Inside a bundle you can find the following inner structure:
 
 The bundle format version covers both the directory layout and the JSON representation of paths and build arguments.
 Two properties in _META-INF/nibundle.properties_ declare the format version of a bundle.
-In the GraalVM 25.5 development line, Native Image writes the following format version:
+Starting with GraalVM 25.5, Native Image writes the following bundle format version:
 ```properties
 BundleFileVersionMajor=2
 BundleFileVersionMinor=0
@@ -430,19 +430,13 @@ The bundle format version is independent of the GraalVM version.
 
 ### Format Version History
 
-The following table identifies the first GraalVM producer of each bundle format:
+The following table lists format changes and the GraalVM versions that introduced them:
 
-| Bundle Format | First GraalVM Producer | Format Changes |
+| Bundle Format | Introduced In | Changes |
 | --- | --- | --- |
-| 0.9 | GraalVM for JDK 17 and GraalVM for JDK 20 (internal version 23.0.0), released June 13, 2023 | Initial bundle format. Path maps store untyped strings, and _build.json_ stores a flat array of argument strings. |
-| 1.0 | GraalVM 25.1 (version 25.1.3), released June 30, 2026 | Portable path maps store `{style, text}` objects, with Windows root information encoded in `text`. Build arguments remain a flat array. |
-| 2.0 | GraalVM 25.5 development builds (internal version 25.5.5; first release pending) | Portable paths store `{style, kind, text}` objects. Build arguments are grouped by their source platform. Unavailable inputs have an explicit marker. |
-
-The release notes for [GraalVM for JDK 17](https://www.graalvm.org/release-notes/JDK_17/) and [GraalVM for JDK 20](https://www.graalvm.org/release-notes/JDK_20/) announce the initial bundle feature.
-The [GraalVM 25.1 release notes](https://www.graalvm.org/release-notes/25.1/) document the transition to format 1.0.
-Format 1.0 was subsequently backported to [Oracle GraalVM 25.0.4](https://docs.oracle.com/en/graalvm/jdk/25/docs/release-notes/), released July 21, 2026.
-GraalVM 25.0.3 and earlier releases on the 25.0 line write format 0.9.
-As of October 7, 2026, format 2.0 is available in development builds but is not yet part of a tagged GraalVM release.
+| 2.0 | GraalVM 25.5 | Added explicit path root kinds, source-platform groups for build arguments, and unavailable-input markers. |
+| 1.0 | [GraalVM 25.1.3](https://www.graalvm.org/release-notes/25.1/); also backported to [Oracle GraalVM 25.0.4](https://docs.oracle.com/en/graalvm/jdk/25/docs/release-notes/) | Added portable path maps with path style information for replay across platforms. |
+| 0.9 | [GraalVM for JDK 17](https://www.graalvm.org/release-notes/JDK_17/) and [GraalVM for JDK 20](https://www.graalvm.org/release-notes/JDK_20/), internal version 23.0.0 | Initial bundle format. |
 
 ### Compatibility
 
