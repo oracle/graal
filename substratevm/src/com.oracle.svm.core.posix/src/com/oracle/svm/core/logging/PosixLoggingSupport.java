@@ -128,8 +128,4 @@ final class PosixLoggingSupportFeature implements InternalFeature {
         ImageSingletons.add(LoggingSupport.class, new PosixLoggingSupport());
     }
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        LoggingSupport.singleton().initialize();
-    }
 }

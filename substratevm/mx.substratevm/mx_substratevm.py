@@ -1957,12 +1957,11 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         f'-H:LinkerRPath={base_layer_path}'
     ]))
 
-    # Starting asynchronous logging in the application layer verifies that the initial-layer
-    # logging singleton retains its native queue state across layer persistence.
+    # Verify that logging initialized in the application layer uses the persisted configuration.
     logging_output = mx.LinesOutputCapture()
-    mx.run([app_layer, '-Xlog:async', '-Xlog:logging=debug'], cwd=app_layer_path, out=logging_output, err=logging_output)
+    mx.run([app_layer, '-Xlog:logging=debug'], cwd=app_layer_path, out=logging_output, err=logging_output)
     if not any('Log configuration fully initialized.' in line for line in logging_output.lines):
-        mx.abort('Layered image did not initialize asynchronous unified logging.')
+        mx.abort('Layered image did not initialize unified logging.')
 
     # prepare environment
     env = os.environ.copy()

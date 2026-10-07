@@ -243,19 +243,11 @@ public enum LogTagSet {
         try {
             LogOutputList.Configuration configuration = outputList.configuration();
             LogOutputConfiguration[] outputs = configuration.outputsFor(message.getMostSevereLevel());
-            LogAsyncWriter asyncWriter = LogConfiguration.asyncWriter();
-            LogDecorations decorations = LogDecorations.capture(configuration.decorators());
-            boolean recordedVMOperationFallback = false;
+            LogDecorations.capture(configuration.decorators());
             for (LogOutputConfiguration outputConfiguration : outputs) {
                 LogOutput output = outputConfiguration.output();
                 LogLevel outputLevel = configuration.levelFor(output);
-                if (asyncWriter == null || !asyncWriter.enqueue(outputConfiguration, decorations, message, outputLevel)) {
-                    if (asyncWriter != null && com.oracle.svm.core.thread.VMOperationControl.mayExecuteVmOperations() && !recordedVMOperationFallback) {
-                        LogConfiguration.recordSynchronousEnqueueFromVMOperation();
-                        recordedVMOperationFallback = true;
-                    }
-                    output.write(this, decorations, message, outputLevel, outputConfiguration.decorators());
-                }
+                output.write(this, message, outputLevel, outputConfiguration.decorators());
             }
         } finally {
             LogConfiguration.endWrite();

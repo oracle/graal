@@ -51,8 +51,7 @@ public final class LogThreadLocal implements ThreadListener {
     public LogThreadLocal() {
     }
 
-    /// Gets the state installed for the current platform thread by [#afterThreadStart] or its first
-    /// logging scope.
+    /// Gets the state installed by the current platform thread's first logging scope.
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Data get() {
         return state.get();
@@ -70,8 +69,7 @@ public final class LogThreadLocal implements ThreadListener {
         return data.isNonNull() && data.getActiveTagSet() != 0;
     }
 
-    /// Gets the state for `isolateThread`, allocating it when the thread-start listener did not
-    /// preallocate it.
+    /// Gets the state for `isolateThread`, allocating it on first use.
     @Uninterruptible(reason = "May be called before a thread is fully started.")
     private static Data initialize(IsolateThread isolateThread) {
         Data result = state.get(isolateThread);
@@ -201,16 +199,6 @@ public final class LogThreadLocal implements ThreadListener {
 
     static long threadId() {
         return get().getThreadId();
-    }
-
-    /// Allocates logging state before the thread can execute a log site when async output has been
-    /// requested.
-    @Override
-    @Uninterruptible(reason = "Only uninterruptible code may run before the thread is fully started.")
-    public void afterThreadStart(IsolateThread isolateThread, Thread javaThread) {
-        if (LogConfiguration.isAsyncLoggingRequested()) {
-            initialize(isolateThread);
-        }
     }
 
     @Override

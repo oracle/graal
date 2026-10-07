@@ -27,14 +27,9 @@ package com.oracle.svm.core.logging;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.c.CIsolateData;
-import com.oracle.svm.core.c.CIsolateDataFactory;
-import com.oracle.svm.core.logging.LogAsyncWriterStructures.QueueState;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -42,27 +37,10 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /// Provides support for unified logging, bypassing Java libraries which may not be initialized.
 public abstract class LoggingSupport {
-    /// Native queue state belongs to the image singleton so each image build gets its own entry. It
-    /// is initialized before analysis, once native structure sizes are available.
-    private CIsolateData<QueueState> asyncLogWriterQueueState;
-
     /// Gets the platform implementation.
     @Fold
     public static LoggingSupport singleton() {
         return ImageSingletons.lookup(LoggingSupport.class);
-    }
-
-    /// Creates the native queue state after C interface processing has completed.
-    @Platforms(Platform.HOSTED_ONLY.class)
-    final void initialize() {
-        assert asyncLogWriterQueueState == null;
-        asyncLogWriterQueueState = CIsolateDataFactory.createStruct("logAsyncWriterQueue", QueueState.class);
-    }
-
-    /// Gets the native queue state used by the asynchronous writer.
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    final QueueState asyncLogWriterQueueState() {
-        return asyncLogWriterQueueState.get();
     }
 
     /// Writes a native byte range to standard output or standard error without a thread status

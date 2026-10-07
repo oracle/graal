@@ -133,8 +133,4 @@ final class WindowsLoggingSupportFeature implements InternalFeature {
         ImageSingletons.add(LoggingSupport.class, new WindowsLoggingSupport());
     }
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        LoggingSupport.singleton().initialize();
-    }
 }

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.logging;
 
-import static com.oracle.svm.core.logging.LogAsyncWriter.Options.AsyncLogBufferSize;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,10 +54,6 @@ public abstract class LogOutput {
 
     /// Largest value seen for each decorator keeps subsequent messages aligned.
     private final AtomicInteger[] decoratorPadding = createDecoratorPadding();
-
-    /// Counts messages discarded before asynchronous delivery to this output while the shared
-    /// queue was full.
-    final AtomicInteger droppedAsyncMessages = new AtomicInteger();
 
     /// Formatting state used by configurations published after the latest reconfiguration.
     private volatile LogOutputConfiguration configuration;
@@ -309,7 +303,7 @@ public abstract class LogOutput {
     }
 
     /// Writes one complete message to this output.
-    final void write(LogTagSet tagSet, LogDecorations decorations, LogMessage message, LogLevel outputLevel, LogDecorators configuredDecorators) {
+    final void write(LogTagSet tagSet, LogMessage message, LogLevel outputLevel, LogDecorators configuredDecorators) {
         OUTPUT_BUFFER.reset();
         int lineCount = message.lineCount();
         boolean hasLine = false;
@@ -317,7 +311,7 @@ public abstract class LogOutput {
             LogLevel lineLevel = message.lineLevel(index);
             if (outputLevel.enables(lineLevel)) {
                 hasLine = true;
-                int decoratorWidth = writeRecordPrefix(configuredDecorators, decorations, lineLevel, tagSet);
+                int decoratorWidth = writeRecordPrefix(configuredDecorators, lineLevel, tagSet);
                 message.writeLineTo(index, OUTPUT_BUFFER, foldMultilines, this, decoratorWidth);
                 OUTPUT_BUFFER.newline();
             }
@@ -325,29 +319,6 @@ public abstract class LogOutput {
         if (hasLine) {
             finishWrite();
         }
-    }
-
-    /// Writes one asynchronously queued message part using the copied event decorations.
-    final void write(LogDecorations decorations, CCharPointer message, int messageLength, LogLevel level, LogDecorators configuredDecorators) {
-        OUTPUT_BUFFER.reset();
-        int decoratorWidth = writeDecorators(configuredDecorators, decorations, level);
-        writeMessageBytes(message, messageLength, decoratorWidth);
-        OUTPUT_BUFFER.newline();
-        finishWrite();
-    }
-
-    /// Writes an untagged warning for messages dropped before asynchronous delivery to this output.
-    final void writeDroppedAsyncMessages(int count) {
-        OUTPUT_BUFFER.reset();
-        LogDecorations decorations = LogDecorations.capture(LogDecorators.DROPPED_MESSAGE);
-        writeDecorators(LogDecorators.DROPPED_MESSAGE, decorations, LogLevel.WARNING);
-        Long asyncLogBufferSize = AsyncLogBufferSize.getValue();
-        OUTPUT_BUFFER.unsigned(Integer.toUnsignedLong(count), 6, Log.RIGHT_ALIGN).string(" messages dropped due to async logging");
-        if (asyncLogBufferSize < LogAsyncWriter.MAXIMUM_BUFFER_SIZE) {
-            OUTPUT_BUFFER.string(" (try increasing ").string(AsyncLogBufferSize.getName()).string(")");
-        }
-        OUTPUT_BUFFER.newline();
-        finishWrite();
     }
 
     private void finishWrite() {
@@ -381,30 +352,9 @@ public abstract class LogOutput {
         return unreported;
     }
 
-    /// Copies a queued message into the output buffer, applying its multiline policy.
-    private void writeMessageBytes(CCharPointer message, int messageLength, int decoratorWidth) {
-        for (int position = 0; position < messageLength; position++) {
-            char value = (char) message.read(position);
-            if (value == '\r' && position + 1 < messageLength && message.read(position + 1) == '\n') {
-                /* The following LF represents the complete platform-independent newline. */
-                continue;
-            } else if (foldMultilines && value == '\\') {
-                OUTPUT_BUFFER.character('\\').character('\\');
-            } else if (foldMultilines && value == '\n') {
-                OUTPUT_BUFFER.character('\\').character('n');
-            } else if (!foldMultilines && value == '\n') {
-                OUTPUT_BUFFER.newline();
-                writeContinuationPrefix(decoratorWidth);
-            } else {
-                OUTPUT_BUFFER.character(value);
-            }
-        }
-    }
-
-    /// Writes [#decorators] to the thread-local output buffer and returns their bracketed width.
     /// Writes all metadata that precedes one physical log record.
-    private int writeRecordPrefix(LogDecorators configuredDecorators, LogDecorations decorations, LogLevel level, LogTagSet tagSet) {
-        int decoratorWidth = writeDecorators(configuredDecorators, decorations, level);
+    private int writeRecordPrefix(LogDecorators configuredDecorators, LogLevel level, LogTagSet tagSet) {
+        int decoratorWidth = writeDecorators(configuredDecorators, level);
         tagSet.writePrefix(OUTPUT_BUFFER);
         return decoratorWidth;
     }
@@ -418,7 +368,7 @@ public abstract class LogOutput {
 
     /// Writes `enabledDecorators` using values captured in `decorations` and returns the combined
     /// width of their bracketed values, excluding the trailing separator.
-    private int writeDecorators(LogDecorators enabledDecorators, LogDecorations decorations, LogLevel level) {
+    private int writeDecorators(LogDecorators enabledDecorators, LogLevel level) {
         int decoratorsLength = 0;
         boolean decorated = false;
         for (LogDecorators.Decorator decorator : LogDecorators.VALUES) {
@@ -426,7 +376,7 @@ public abstract class LogOutput {
                 decorated = true;
                 OUTPUT_BUFFER.character('[');
                 DECORATOR_BUFFER.reset();
-                decorations.value(decorator, level, DECORATOR_BUFFER);
+                LogDecorations.value(decorator, level, DECORATOR_BUFFER);
                 int length = DECORATOR_BUFFER.getPosition();
                 int index = decorator.ordinal();
                 int padding;
