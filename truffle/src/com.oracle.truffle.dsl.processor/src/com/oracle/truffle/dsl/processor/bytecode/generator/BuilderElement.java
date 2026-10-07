@@ -916,7 +916,7 @@ final class BuilderElement extends AbstractElement {
 
                 if (operation.kind == OperationKind.ROOT) {
                     b.startStatement();
-                    b.type(parent.asType()).string(" node = ").cast(parent.asType()).string("end" + operation.builderName + "()");
+                    b.type(model.getTemplateType().asType()).string(" node = ").string("end" + operation.builderName + "()");
                     b.end();
 
                     b.declaration(type(int.class), "serializedContextDepth", "buffer.readInt()");
@@ -9583,7 +9583,7 @@ final class BuilderElement extends AbstractElement {
             this.depth = this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "depth"));
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, Object.class), "consts")).//
                             createInitBuilder().startNew("ArrayList<>").end();
-            this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, parent.asType()), "builtNodes")).//
+            this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, model.getTemplateType().asType()), "builtNodes")).//
                             createInitBuilder().startNew("ArrayList<>").end();
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLabel), "labels")).//
                             createInitBuilder().startNew("ArrayList<>").end();

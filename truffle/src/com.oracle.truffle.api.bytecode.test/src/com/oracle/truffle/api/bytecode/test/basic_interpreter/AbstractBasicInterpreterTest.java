@@ -343,7 +343,9 @@ public abstract class AbstractBasicInterpreterTest {
 
         BytecodeRootNodes<BasicInterpreter> result = run.bytecode.create(language, config, builder);
         if (run.testSerialize) {
-            assertBytecodeNodesEqual(result, doRoundTrip(run, language, config, result));
+            BytecodeRootNodes<BasicInterpreter> roundTripped = doRoundTrip(run, language, config, result);
+            assertBytecodeNodesEqual(result, roundTripped);
+            result = roundTripped;
         }
 
         if (run.testTracer) {
