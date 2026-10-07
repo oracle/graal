@@ -29,15 +29,19 @@ import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.RecordComponent;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisMetaAccess extends UniverseMetaAccess {
 
@@ -58,7 +62,21 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
 
     @Override
     public ResolvedJavaRecordComponent lookupJavaRecordComponent(RecordComponent recordComponent) {
-        return wrapped.lookupJavaRecordComponent(recordComponent);
+        /*
+         * GR-80228: This duplicates MetaAccessProvider.lookupJavaRecordComponent except that it
+         * resolves the candidate's component type before comparing it with reflection's resolved
+         * type. Replace this with wrapped.lookupJavaRecordComponent(recordComponent) once the fix is
+         * available in all supported builder JDKs.
+         */
+        ResolvedJavaType holder = Objects.requireNonNull(wrapped.lookupJavaType(recordComponent.getDeclaringRecord()));
+        List<? extends ResolvedJavaRecordComponent> recordComponents = holder.getRecordComponents();
+        ResolvedJavaType fieldType = wrapped.lookupJavaType(recordComponent.getType());
+        for (ResolvedJavaRecordComponent rc : recordComponents) {
+            if (rc.getName().equals(recordComponent.getName()) && rc.getType().resolve(holder).equals(fieldType)) {
+                return rc;
+            }
+        }
+        throw new JVMCIError("Unresolved RecordComponent %s", recordComponent);
     }
 
     @Override
