@@ -91,6 +91,7 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -463,6 +464,14 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     public int getInstalledLayerNumber(Field field) {
         VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
 
+        /*
+         * Deleted fields can still have cached reflection objects, including fields deleted through
+         * their declaring type or a full substitution. Their accesses fail at runtime using the
+         * deletion reason, so they do not need an installed storage layer.
+         */
+        if (annotationSubstitutions.isDeleted(GuestAccess.get().lookupField(field))) {
+            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+        }
         HostedField hostedField = hostedMetaAccess().lookupJavaField(field);
         return hostedField.getInstalledLayerNum();
     }
