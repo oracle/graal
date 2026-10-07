@@ -344,6 +344,9 @@ final class UnalignedChunkRememberedSet {
                     if (!CardTable.isDirty(ctAdr, curIdx)) {
                         return curIdx;
                     }
+                    if (clean) {
+                        CardTable.setClean(ctAdr, curIdx);
+                    }
                     curIdx = curIdx.add(1);
                 }
                 VMError.shouldNotReachHere("should have early-returned");

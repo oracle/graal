@@ -77,7 +77,7 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
  * with a non-zero value takes more instruction space.</li>
  * </ul>
  */
-final class CardTable {
+public final class CardTable {
     public static final int BYTES_COVERED_BY_ENTRY = 512;
 
     static final byte DIRTY_ENTRY = 0;
