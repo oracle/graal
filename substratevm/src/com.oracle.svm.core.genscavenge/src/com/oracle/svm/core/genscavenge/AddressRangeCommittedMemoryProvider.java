@@ -989,13 +989,12 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         void setSize(UnsignedWord size);
 
         /**
-         * The start of unused but potentially committed memory. If this block does not contain any
-         * committed memory, both {@link #getCommittedStart} and {@link #getCommittedEnd} return
-         * null.
+         * The start of unused but potentially committed memory. If both {@link #getCommittedStart}
+         * and {@link #getCommittedEnd} return {@code null}, this block does not contain any
+         * committed memory.
          *
          * Note that the memory range that is covered by {@link #getCommittedStart} and
-         * {@link #getCommittedEnd} may contain memory that is not committed (only the beginning and
-         * the end of the memory range are guaranteed to be committed).
+         * {@link #getCommittedEnd} may contain memory that is not committed.
          */
         @RawField
         Pointer getCommittedStart();

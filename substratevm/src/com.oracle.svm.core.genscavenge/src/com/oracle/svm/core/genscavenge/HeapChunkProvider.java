@@ -42,6 +42,7 @@ import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
@@ -50,9 +51,9 @@ import com.oracle.svm.shared.Uninterruptible;
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
  * thread-safe, so no locking is necessary when calling them.
  *
- * Memory for aligned chunks is not immediately released to the OS. Chunks with a total of up to
- * {@link CollectionPolicy#getMaximumFreeAlignedChunksSize()} bytes are saved in an unused chunk
- * list. Memory for unaligned chunks is released immediately.
+ * Memory for aligned chunks is not immediately released to {@link CommittedMemoryProvider}. Chunks
+ * with a total of up to {@link CollectionPolicy#getMaximumFreeAlignedChunksSize()} bytes are saved
+ * in an unused chunk list. Memory for unaligned chunks is released immediately.
  */
 final class HeapChunkProvider {
     /**
@@ -104,8 +105,9 @@ final class HeapChunkProvider {
     }
 
     /**
-     * Releases a list of AlignedHeapChunks, either to the free list or back to the operating
-     * system. This method may only be called after the chunks were already removed from the spaces.
+     * Releases a list of AlignedHeapChunks, either to the free list or to
+     * {@link CommittedMemoryProvider} (and subsequently the OS). This method may only be called
+     * after the chunks were already removed from the spaces.
      */
     void consumeAlignedChunks(AlignedHeader firstChunk, boolean keepAll) {
         assert VMOperation.isGCInProgress();
@@ -281,8 +283,8 @@ final class HeapChunkProvider {
     }
 
     /**
-     * Releases a list of UnalignedHeapChunks back to the operating system. They are never recycled
-     * to a free list.
+     * Releases a list of UnalignedHeapChunks back to {@link CommittedMemoryProvider} (and
+     * subsequently, to the OS). They are never recycled to a free list.
      */
     static void consumeUnalignedChunks(UnalignedHeader firstChunk) {
         assert VMOperation.isGCInProgress();
