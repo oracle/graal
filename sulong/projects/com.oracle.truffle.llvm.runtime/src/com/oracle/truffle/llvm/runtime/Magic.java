@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ package com.oracle.truffle.llvm.runtime;
  * filetype detection and their mime-type.
  */
 public enum Magic {
+    // @formatter:off
     BC_MAGIC_WORD(0xdec04342L /* 'BC' c0de */, LLVMLanguage.LLVM_BITCODE_MIME_TYPE),
     WRAPPER_MAGIC_WORD(0x0B17C0DEL /* "bitcode" */, LLVMLanguage.LLVM_BITCODE_MIME_TYPE),
     ELF_MAGIC_WORD(0x464C457FL /* '.ELF' */, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE),
@@ -52,6 +53,7 @@ public enum Magic {
     MS_DOS(0x5A4DL /* MZ */, LLVMLanguage.LLVM_MS_DOS_MIME_TYPE, Short.SIZE),
     XAR_MAGIC(0x21726178L, null),
     UNKNOWN(0, null);
+    // @formatter:on
 
     public final long magic;
     public final String mimeType;

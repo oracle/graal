@@ -1208,8 +1208,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
             case MissingType _ -> typeConsumer.accept(GuestAccess.get().lookupType(TypeNotPresentExceptionProxy.class));
             case ElementTypeMismatch _ -> typeConsumer.accept(AnnotationTypeMismatchExceptionProxy);
+            // Up to at least Eclipse 4.36, there is no preference for spaces after commas between switch type patterns
+            // @formatter:off
             case AnnotationFormatError _, Number _, Boolean _, Character _ -> {
             }
+            // @formatter:on
             default -> throw GraalError.shouldNotReachHere("Invalid annotation member type: " + memberValue.getClass()); // ExcludeFromJacocoGeneratedReport
         }
     }
