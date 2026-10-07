@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,11 @@ package com.oracle.svm.hosted.c.libc;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.svm.core.c.libc.MuslLibC;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -45,7 +49,15 @@ public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
 
     @Override
     public String getTargetCompiler() {
-        return isCrossCompiling() ? "x86_64-linux-musl-gcc" : "gcc";
+        if (!isCrossCompiling()) {
+            return "gcc";
+        }
+        String targetArchitecture = ImageSingletons.lookup(Platform.class).getArchitecture();
+        return switch (targetArchitecture) {
+            case "amd64" -> "x86_64-linux-musl-gcc";
+            case "aarch64" -> "aarch64-linux-musl-gcc";
+            default -> throw UserError.abort("No default musl compiler is available for target architecture '%s'. Use --native-compiler-path to specify a compiler.", targetArchitecture);
+        };
     }
 
     @Override
