@@ -99,14 +99,18 @@ import jdk.graal.compiler.api.replacements.Fold;
  * so that they can be coalesced into a larger memory area. Observations have shown that the list of
  * allocatable blocks is around half of the size of the list of all unused blocks. Overall, list
  * traversals should be negligible in contrast to the cost of the performed commit and uncommit
- * operations that require system calls. Avoiding these operations is not a design goal of this
- * class and should be implemented by code using it.
+ * operations that require system calls.
  * <p>
  * However, traversing the list of allocatable blocks might become expensive in long-running
  * programs due to increasing fragmentation. In that case, the list could be replaced by a
  * self-balancing search tree with block sizes as keys, which guarantees logarithmic time complexity
  * for allocation. Several blocks of the same size could be grouped in one tree node to reduce tree
  * operations (particularly balancing).
+ * <p>
+ * Memory is uncommitted lazily. Usually, a lot of adjacent blocks are freed within a short time
+ * (such as, during garbage collection), so we coalesce the freed memory first and then uncommit a
+ * larger block of memory. Observations show that this tends to cut the number of required uncommit
+ * operations in half.
  */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider {
@@ -471,6 +475,29 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     /**
+     * When allocating an unaligned chunk, we only use freshly {@link VirtualMemoryProvider#commit
+     * committed} pages. This guarantees that a. unaligned chunks are pre-zeroed and b. only pages
+     * that are accessed by the application are committed into memory.
+     *
+     * To guarantee that only freshly committed pages are used, we need the following invariants:
+     * <ul>
+     * <li>The address space is only used for aligned and unaligned heap chunks.</li>
+     * <li>The GC does not cache or reuse unaligned chunks.</li>
+     * <li>At the end of a GC, the memory of all freed heap chunks is uncommitted.</li>
+     * <li>The GC does not allocate unaligned chunks.</li>
+     * </ul>
+     *
+     * On Windows, it is crucial that we only use pages that are in uncommitted state (VirtualAlloc
+     * only zeroes pages if they are not already in committed state). Note that this wouldn't be
+     * absolutely required on Linux/Darwin because mmap guarantees that pages are always zeroed.
+     */
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean areUnalignedChunksZeroed() {
+        return true;
+    }
+
+    /**
      * Allocates memory from the address space. If the allocation succeeded, {@link #NO_ERROR} is
      * returned. The allocated memory is always committed.
      */
@@ -593,8 +620,10 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected FreeListNode createNodeWhenSplitting(@SuppressWarnings("unused") FreeListNode fit, Pointer start, UnsignedWord size) {
-        return allocNode(start, size);
+    protected FreeListNode createNodeWhenSplitting(FreeListNode fit, Pointer start, UnsignedWord size) {
+        FreeListNode result = allocNode(start, size);
+        addCommitted(result, fit.getCommittedStart(), fit.getCommittedEnd());
+        return result;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -755,7 +784,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
                 container = node;
             }
 
-            uncommit(container, mapBegin, alignedSize);
+            uncommitLazily(container, mapBegin, alignedSize);
 
             /* Insert merged or created node into allocatables list if necessary. */
             if (isAllocatable(container.getSize()) && container != allocPrevious && container != allocNext) {
@@ -767,25 +796,20 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected void uncommit(@SuppressWarnings("unused") FreeListNode node, Pointer mapBegin, UnsignedWord mappingSize) {
-        if (VirtualMemoryProvider.get().uncommit(mapBegin, mappingSize) != 0) {
-            throw reportUncommitFailed(mapBegin, mappingSize);
-        }
-    }
-
-    @Uninterruptible(reason = "Switch to interruptible code for error reporting.", mayBeInlined = true, calleeMustBe = false)
-    private static RuntimeException reportUncommitFailed(Pointer mapBegin, UnsignedWord mappingSize) {
-        throw reportUncommitFailedInterruptibly(mapBegin, mappingSize);
-    }
-
-    private static RuntimeException reportUncommitFailedInterruptibly(Pointer mapBegin, UnsignedWord mappingSize) {
-        Log.log().string("Uncommitting ").unsigned(mappingSize).string(" bytes of unused memory at ").zhex(mapBegin).string(" failed.").newline();
-        throw VMError.shouldNotReachHere(UNCOMMIT_FAILED_ERROR_MSG);
+    protected void uncommitLazily(FreeListNode node, Pointer mapBegin, UnsignedWord alignedSize) {
+        /*
+         * Memory is uncommitted lazily. For most benchmarks, there is no difference between lazy
+         * and eager uncommit. However, on a few SPECjvm2008 benchmarks lazy uncommits have a
+         * relevant impact: GCs are a bit faster, so more GCs can be performed, which decreases
+         * memory usage on those benchmarks quite a bit.
+         */
+        addCommitted(node, mapBegin, mapBegin.add(alignedSize));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected void mergeNodes(FreeListNode target, FreeListNode obsolete) {
         increaseBounds(target, obsolete.getStart(), obsolete.getSize());
+        addCommitted(target, obsolete.getCommittedStart(), obsolete.getCommittedEnd());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -806,6 +830,51 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
                         fit.getStart().belowThan(newStart) && getNodeEnd(fit).equal(newStart.add(newSize));
 
         setBounds(fit, newStart, newSize);
+        trimCommitted(fit);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void addCommitted(FreeListNode node, Pointer committedStart, Pointer committedEnd) {
+        assert node.getCommittedStart().isNull() == node.getCommittedEnd().isNull();
+        assert committedStart.isNull() == committedEnd.isNull();
+
+        if (committedStart.isNull()) {
+            /* No memory needs to be added. */
+            return;
+        }
+
+        assert committedStart.aboveOrEqual(collectedHeapBegin);
+        assert committedStart.belowThan(committedEnd);
+        assert PointerUtils.isAMultiple(committedStart, getGranularity());
+        assert PointerUtils.isAMultiple(committedEnd, getGranularity());
+        assert committedEnd.subtract(committedStart).belowOrEqual(collectedHeapSize);
+
+        Pointer nodeEnd = getNodeEnd(node);
+        if (committedStart.aboveOrEqual(nodeEnd) || committedEnd.belowOrEqual(node.getStart())) {
+            /* Committed memory is outside the node's address range. */
+            return;
+        }
+
+        Pointer enclosedBegin = PointerUtils.max(committedStart, node.getStart());
+        Pointer enclosedEnd = PointerUtils.min(committedEnd, nodeEnd);
+
+        if (node.getCommittedStart().isNull() || enclosedBegin.belowThan(node.getCommittedStart())) {
+            node.setCommittedStart(enclosedBegin);
+        }
+        if (node.getCommittedEnd().isNull() || enclosedEnd.aboveThan(node.getCommittedEnd())) {
+            node.setCommittedEnd(enclosedEnd);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void trimCommitted(FreeListNode node) {
+        Pointer begin = node.getCommittedStart();
+        Pointer end = node.getCommittedEnd();
+        if (begin.isNonNull()) {
+            node.setCommittedStart(nullPointer());
+            node.setCommittedEnd(nullPointer());
+            addCommitted(node, begin, end);
+        }
     }
 
     @Override
@@ -827,6 +896,22 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     }
 
     protected void uncommitUnusedMemory0() {
+        for (FreeListNode n = unusedListHead; n.isNonNull(); n = n.getUnusedNext()) {
+            FreeListNode node = n;
+            Pointer mapping = node.getCommittedStart();
+            if (mapping.isNonNull()) {
+                assert mapping.aboveOrEqual(node.getStart()) && node.getCommittedEnd().belowOrEqual(getNodeEnd(node));
+                Pointer mappingSize = node.getCommittedEnd().subtract(mapping);
+                if (VirtualMemoryProvider.get().uncommit(mapping, mappingSize) != 0) {
+                    Log.log().string("Uncommitting ").unsigned(mappingSize).string(" bytes of unused memory at ").zhex(mapping).string(" failed. nodeStart=").zhex(node.getStart()).string(", nodeEnd=")
+                                    .zhex(getNodeEnd(node)).newline();
+                    throw VMError.shouldNotReachHere(UNCOMMIT_FAILED_ERROR_MSG);
+                }
+                node.setCommittedStart(nullPointer());
+                node.setCommittedEnd(nullPointer());
+            }
+        }
+
         if (SubstrateGCOptions.VerifyHeap.getValue()) {
             verifyFreeList();
         }
@@ -903,6 +988,27 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         @RawField
         void setSize(UnsignedWord size);
 
+        /**
+         * The start of unused but potentially committed memory. If this block does not contain any
+         * committed memory, both {@link #getCommittedStart} and {@link #getCommittedEnd} return
+         * null.
+         *
+         * Note that the memory range that is covered by {@link #getCommittedStart} and
+         * {@link #getCommittedEnd} may contain memory that is not committed (only the beginning and
+         * the end of the memory range are guaranteed to be committed).
+         */
+        @RawField
+        Pointer getCommittedStart();
+
+        @RawField
+        void setCommittedStart(Pointer committedStart);
+
+        @RawField
+        Pointer getCommittedEnd();
+
+        @RawField
+        void setCommittedEnd(Pointer committedEnd);
+
         @RawField
         FreeListNode getAllocNext();
 
@@ -920,5 +1026,42 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
         @RawField
         void setUnusedNext(FreeListNode unusedNext);
+    }
+
+    public static final class TestingBackdoor {
+        public static void initialize(AddressRangeCommittedMemoryProvider provider, Pointer spaceBegin, UnsignedWord spaceSize, Pointer runtimeHeapBegin) {
+            provider.initializeFields(spaceBegin, spaceSize, runtimeHeapBegin);
+        }
+
+        public static void guaranteeEmpty(AddressRangeCommittedMemoryProvider provider) {
+            VMError.guarantee(provider.unusedListCount == 1, "more than one unused node");
+            VMError.guarantee(provider.allocListCount == 1, "more than one alloc node");
+            VMError.guarantee(provider.allocListHead == provider.unusedListHead, "different nodes");
+            VMError.guarantee(provider.unusedListHead.getStart().equal(provider.collectedHeapBegin), "begin is incorrect");
+            VMError.guarantee(provider.unusedListHead.getSize().equal(provider.collectedHeapSize), "size is incorrect");
+            VMError.guarantee(provider.unusedListHead.getCommittedStart().isNull(), "committed start is incorrect");
+            VMError.guarantee(provider.unusedListHead.getCommittedEnd().isNull(), "committed end is incorrect");
+        }
+
+        public static void guaranteeFull(AddressRangeCommittedMemoryProvider provider) {
+            VMError.guarantee(provider.unusedListCount == 0, "there must not be any nodes left");
+            VMError.guarantee(provider.allocListCount == 0, "there must not be any nodes left");
+            VMError.guarantee(provider.allocListHead.isNull(), "must be null");
+            VMError.guarantee(provider.unusedListHead.isNull(), "must be null");
+        }
+
+        public static Pointer allocateInHeapAddressSpace(AddressRangeCommittedMemoryProvider provider, UnsignedWord size, UnsignedWord alignment) {
+            WordPointer allocOut = UnsafeStackValue.get(WordPointer.class);
+            provider.allocateInHeapAddressSpace(size, alignment, allocOut);
+            return allocOut.read();
+        }
+
+        public static void freeInHeapAddressSpace(AddressRangeCommittedMemoryProvider provider, Pointer start, UnsignedWord nbytes) {
+            provider.freeInHeapAddressSpace(start, nbytes);
+        }
+
+        public static void uncommitUnusedMemory0(AddressRangeCommittedMemoryProvider provider) {
+            provider.uncommitUnusedMemory0();
+        }
     }
 }
