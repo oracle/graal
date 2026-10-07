@@ -27,30 +27,35 @@ package com.oracle.svm.hosted;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import com.oracle.svm.util.GuestAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
+import com.oracle.graal.pointsto.meta.JVMCIObjectReachableCallback;
 
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Delegates reachable-object notifications to a guest {@link Consumer}. The builder-side
- * {@link #accept(JavaConstant)} contract exposes only the reachable object; analysis access and scan
- * reasons never cross into the guest.
+ * Adapts a legacy builder-side object reachability handler to the constant-based analysis pipeline.
+ * Object materialization is confined to this compatibility boundary.
+ *
+ * This adapter can be removed after GR-78928 migrates all builder-side clients to constant-based or
+ * guest handlers.
  */
-public final class WrappedObjectReachabilityHandler implements Consumer<JavaConstant> {
-    private final JavaConstant handler;
+final class LegacyObjectReachabilityHandlerAdapter<T> implements JVMCIObjectReachableCallback {
+    private final Consumer<T> handler;
+    private final HostedValuesProvider hostedValuesProvider;
 
-    /**
-     * Wraps the guest {@code handler} as a builder-side constant consumer.
-     *
-     * @param handler a {@link JavaConstant} representing the guest consumer
-     */
-    public WrappedObjectReachabilityHandler(JavaConstant handler) {
+    /** Creates an adapter for {@code handler} using {@code hostedValuesProvider}. */
+    LegacyObjectReachabilityHandlerAdapter(Consumer<T> handler, HostedValuesProvider hostedValuesProvider) {
         this.handler = Objects.requireNonNull(handler);
+        this.hostedValuesProvider = Objects.requireNonNull(hostedValuesProvider);
     }
 
     @Override
-    public void accept(JavaConstant object) {
-        GuestAccess access = GuestAccess.get();
-        access.invoke(access.elements.java_util_function_Consumer_accept, handler, object);
+    @SuppressWarnings("unchecked")
+    public void doCallback(DuringAnalysisAccess access, JavaConstant constant, ScanReason reason) {
+        T object = (T) hostedValuesProvider.asObject(Object.class, constant);
+        handler.accept(object);
     }
 }
