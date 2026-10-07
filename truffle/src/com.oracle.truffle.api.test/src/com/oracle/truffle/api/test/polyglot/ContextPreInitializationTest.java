@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1504,6 +1504,125 @@ public class ContextPreInitializationTest {
             assertEquals(1, newFirstLangCtx.initializeThreadCount);
             assertEquals(0, newFirstLangCtx.disposeThreadCount);
             assertEquals(1, instrumentCreateCount.get());
+        }
+    }
+
+    @Test
+    public void testPreInitializationWithoutTempDirectoryAccess() throws Exception {
+        setPatchable(FIRST);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            assertNotNull(env.getPublicTruffleFile("relative").getAbsoluteFile());
+            assertNotNull(env.getInternalTruffleFile("relative").getAbsoluteFile());
+        });
+        Properties originalProperties = System.getProperties();
+        System.setProperties(new PreInitializationProperties(originalProperties));
+        try {
+            doContextPreinitialize(FIRST);
+            assertEquals(1, emittedContexts.size());
+            assertEquals(1, findContext(FIRST, emittedContexts).initializeContextCount);
+        } finally {
+            System.setProperties(originalProperties);
+        }
+        try (Context context = Context.create(FIRST)) {
+            context.initialize(FIRST);
+            assertEquals(1, findContext(FIRST, emittedContexts).patchContextCount);
+        }
+    }
+
+    @Test
+    public void testCodeSharingPreInitializationWithoutTempDirectoryAccess() throws Exception {
+        try (Engine engine = Engine.create()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+            emittedContexts.clear();
+            Properties originalProperties = System.getProperties();
+            System.setProperties(new PreInitializationProperties(originalProperties));
+            try {
+                triggerPreinitialization(engine);
+                assertEquals(1, emittedContexts.size());
+                assertEquals(1, findContext(SHARED, emittedContexts).initializeContextCount);
+            } finally {
+                System.setProperties(originalProperties);
+            }
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.initialize(SHARED);
+                assertEquals(1, findContext(SHARED, emittedContexts).patchContextCount);
+            }
+        }
+    }
+
+    @Test
+    public void testPreInitializationLazyTempDirectoryAccess() throws Exception {
+        setPatchable(FIRST);
+        Path preInitializationTempDirectory = Files.createTempDirectory("preinit-temp").toRealPath();
+        Path runtimeTempDirectory = Files.createTempDirectory("runtime-temp").toRealPath();
+        Properties originalProperties = System.getProperties();
+        PreInitializationProperties properties = new PreInitializationProperties(originalProperties);
+        properties.setProperty("java.io.tmpdir", preInitializationTempDirectory.toString());
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            assertEquals(0, properties.tempDirectoryReads);
+            properties.allowTempDirectoryAccess = true;
+            try {
+                TruffleFile directory = env.createTempDirectory(null, "directory");
+                TruffleFile file = env.createTempFile(null, "file", ".tmp");
+                assertEquals(preInitializationTempDirectory.toString(), directory.getParent().getPath());
+                assertEquals(preInitializationTempDirectory.toString(), file.getParent().getPath());
+                assertEquals(1, properties.tempDirectoryReads);
+                file.delete();
+                directory.delete();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            try {
+                TruffleFile file = env.createTempFile(null, "file", ".tmp");
+                assertEquals(runtimeTempDirectory.toString(), file.getParent().getPath());
+                file.delete();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        });
+        try {
+            System.setProperties(properties);
+            try {
+                doContextPreinitialize(FIRST);
+            } finally {
+                System.setProperties(originalProperties);
+            }
+            FileSystem runtimeFileSystem = new FileSystemsTest.ForwardingFileSystem(FileSystem.newDefaultFileSystem()) {
+                @Override
+                public Path getTempDirectory() {
+                    return runtimeTempDirectory;
+                }
+            };
+            try (Context context = Context.newBuilder(FIRST).allowIO(IOAccess.newBuilder().fileSystem(runtimeFileSystem).build()).build()) {
+                context.initialize(FIRST);
+                assertEquals(1, findContext(FIRST, emittedContexts).patchContextCount);
+            }
+        } finally {
+            delete(preInitializationTempDirectory);
+            delete(runtimeTempDirectory);
+        }
+    }
+
+    private static final class PreInitializationProperties extends Properties {
+        private static final long serialVersionUID = 1L;
+        boolean allowTempDirectoryAccess;
+        int tempDirectoryReads;
+
+        PreInitializationProperties(Properties originalProperties) {
+            putAll(originalProperties);
+        }
+
+        @Override
+        public String getProperty(String key) {
+            if (key.equals("java.io.tmpdir")) {
+                assertTrue("Unexpected temporary-directory access during preinitialization", allowTempDirectoryAccess);
+                tempDirectoryReads++;
+            }
+            return super.getProperty(key);
         }
     }
 
