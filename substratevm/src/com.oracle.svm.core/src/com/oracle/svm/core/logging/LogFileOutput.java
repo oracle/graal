@@ -145,16 +145,12 @@ final class LogFileOutput extends LogOutput {
         return false;
     }
 
-    @Override
-    protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
-        return writeRawLocked(bytes, length);
-    }
-
     /// Writes a native byte range while serializing file access and rotation. The complete critical
     /// section is uninterruptible so that a thread cannot stop at a safepoint while owning the
     /// mutex.
+    @Override
     @Uninterruptible(reason = "The output mutex must not be held across a safepoint.")
-    private int writeRawLocked(CCharPointer bytes, UnsignedWord length) {
+    protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
         mutex.lockNoTransition();
         try {
             /* Rotation updates the descriptor while holding the same mutex. */

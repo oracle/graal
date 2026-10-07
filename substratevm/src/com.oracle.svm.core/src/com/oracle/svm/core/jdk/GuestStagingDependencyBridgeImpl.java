@@ -50,12 +50,14 @@ import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -287,9 +289,20 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     private static void reportImageModule(Module module, EconomicSet<Module> reportedModules) {
         String moduleName = ModuleNative.getName(module);
         if (moduleName != null && reportedModules.add(module)) {
-            try (LogMessage message = LogTagSet.module_load_image.message()) {
-                message.info().string(moduleName).string(" location: image");
-            }
+            logImageModule(moduleName);
+        }
+    }
+
+    /// Formats an image module event without allowing a safepoint inside the message scope.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logImageModule(String moduleName) {
+        LogMessage message = LogTagSet.module_load_image.message();
+        try {
+            message.info().string(moduleName).string(" location: image");
+        } finally {
+            message.close();
         }
     }
 

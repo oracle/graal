@@ -33,6 +33,9 @@ import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogLevel;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
 import jdk.jfr.internal.LogTag;
@@ -68,48 +71,28 @@ public final class JfrUnifiedLogging {
     /// Writes a JFR system error when the corresponding unified tag set is enabled.
     public static void logJfrSystemError(String message) {
         if (HasXlogSupport.get() && LogTagSet.jfr_system.isError()) {
-            LogMessage logMessage = LogTagSet.jfr_system.message();
-            try {
-                logMessage.line(LogLevel.ERROR).string(message);
-            } finally {
-                logMessage.close();
-            }
+            logJfrRecord(LogTagSet.jfr_system, LogLevel.ERROR, message);
         }
     }
 
     /// Writes a JFR informational message when the corresponding unified tag set is enabled.
     public static void logJfrInfo(String message) {
         if (HasXlogSupport.get() && LogTagSet.jfr.isInfo()) {
-            LogMessage logMessage = LogTagSet.jfr.message();
-            try {
-                logMessage.info().string(message);
-            } finally {
-                logMessage.close();
-            }
+            logJfrRecord(LogTagSet.jfr, LogLevel.INFO, message);
         }
     }
 
     /// Writes a JFR warning when the corresponding unified tag set is enabled.
     public static void logJfrWarning(String message) {
         if (HasXlogSupport.get() && LogTagSet.jfr.isWarning()) {
-            LogMessage logMessage = LogTagSet.jfr.message();
-            try {
-                logMessage.line(LogLevel.WARNING).string(message);
-            } finally {
-                logMessage.close();
-            }
+            logJfrRecord(LogTagSet.jfr, LogLevel.WARNING, message);
         }
     }
 
     /// Writes a JFR setting warning when the corresponding unified tag set is enabled.
     public static void logJfrSettingWarning(String message) {
         if (HasXlogSupport.get() && LogTagSet.jfr_setting.isWarning()) {
-            LogMessage logMessage = LogTagSet.jfr_setting.message();
-            try {
-                logMessage.line(LogLevel.WARNING).string(message);
-            } finally {
-                logMessage.close();
-            }
+            logJfrRecord(LogTagSet.jfr_setting, LogLevel.WARNING, message);
         }
     }
 
@@ -121,12 +104,7 @@ public final class JfrUnifiedLogging {
         LogLevel logLevel = LogLevel.forInt(level, verifyLogLevelException);
         LogTagSet logTag = logTagSets[tagSetId];
         if (logTag.isLevel(logLevel)) {
-            LogMessage logMessage = logTag.message();
-            try {
-                logMessage.line(logLevel).string(message);
-            } finally {
-                logMessage.close();
-            }
+            logJfrRecord(logTag, logLevel, message);
         }
     }
 
@@ -138,16 +116,37 @@ public final class JfrUnifiedLogging {
         LogLevel logLevel = LogLevel.forInt(level, verifyLogLevelException);
         LogTagSet logTag = system ? LogTagSet.jfr_system_event : LogTagSet.jfr_event;
         if (logTag.isLevel(logLevel)) {
-            LogMessage message = logTag.message();
-            try {
-                for (String line : lines) {
-                    if (line != null) {
-                        message.line(logLevel).string(line);
-                    }
+            logJfrEvent(logTag, logLevel, lines);
+        }
+    }
+
+    /// Formats a JFR record without crossing a safepoint before the record is delivered.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logJfrRecord(LogTagSet tagSet, LogLevel level, String text) {
+        LogMessage message = tagSet.message();
+        try {
+            message.line(level).string(text);
+        } finally {
+            message.close();
+        }
+    }
+
+    /// Formats one JFR event without crossing a safepoint before the event is delivered.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logJfrEvent(LogTagSet tagSet, LogLevel level, String[] lines) {
+        LogMessage message = tagSet.message();
+        try {
+            for (String line : lines) {
+                if (line != null) {
+                    message.line(level).string(line);
                 }
-            } finally {
-                message.close();
             }
+        } finally {
+            message.close();
         }
     }
 

@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.VMError;
 
@@ -40,37 +41,27 @@ import com.oracle.svm.shared.util.VMError;
 /// decorations are owned by the current carrier thread. A carrier thread may have only one open
 /// message scope at a time, including across different tag sets.
 ///
-/// In a context where heap allocation is unrestricted, a message is used in a try-with-resources
-/// statement:
+/// Production logging sites keep their level predicate and any allocating preparation outside a
+/// dedicated `log*` method. That method is never inlined, cannot allocate or safepoint, and owns
+/// the complete message scope, including synchronous delivery from [#close()].
 ///
-/// ```
-/// if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
-///     try (LogMessage msg = LogTagSet.class_load.message()) {
-///         msg.info().string("info message");
-///         msg.debug().string("debug message");
-///     }
-/// }
-/// ```
-///
-/// Since javac adds a call to [Throwable#addSuppressed] for try-with-resources statements, an
-/// allocation-restricted context uses try-finally instead:
-///
-/// ```
-/// if (LogTagSet.gc.isInfo()) {
-///     LogMessage msg = LogTagSet.gc.message();
+/// ```java
+/// @NeverInline(LogTagSet.LOG_METHOD_REASON)
+/// @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+/// @RestrictHeapAccess(access = NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+/// private static void logClassLoad(String className, String loaderDescription) {
+///     LogMessage message = LogTagSet.class_load.message();
 ///     try {
-///         msg.info().string("info message");
-///         msg.debug().string("debug message");
+///         message.info().string(className).string(" loader=").string(loaderDescription);
 ///     } finally {
-///         msg.close();
+///         message.close();
 ///     }
 /// }
 /// ```
 ///
-/// Each line can have a different level. An output configured at DEBUG receives both lines, with
-/// the DEBUG line immediately following the INFO line. An output configured at INFO receives only
-/// the INFO line. Every output receives the same event timestamp, uptime, thread, and tag
-/// decorations; the level decorator reflects the line's explicit level.
+/// Try-finally avoids the interruptible [Throwable#addSuppressed] call generated for
+/// try-with-resources. Native buffer growth does not allocate on the Java heap. Nested message
+/// scopes, including from an output callback, are unsupported.
 public final class LogMessage implements AutoCloseable {
     /// Number of integers in each native line-table entry. The first integer stores the line's
     /// [LogLevel] ordinal and the second stores its starting byte offset in [#lineBuffer].
@@ -89,6 +80,7 @@ public final class LogMessage implements AutoCloseable {
     }
 
     /// Gets the most severe level recorded in the current message.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     LogLevel getMostSevereLevel() {
         verifyOpen();
         return LogThreadLocal.mostDetailedLevel();
@@ -97,6 +89,7 @@ public final class LogMessage implements AutoCloseable {
     /// Commits the accumulated message and makes this scope available for reuse.
     @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Unified logging must not allocate at run time.")
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void close() {
         if (LogThreadLocal.activeTagSet() != tagSet) {
             return;
@@ -112,6 +105,7 @@ public final class LogMessage implements AutoCloseable {
 
     /// Gets the buffer for formatting a message line. Each call starts a new line.
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Unified logging must not allocate at run time.")
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public NativeMemoryLog line(LogLevel level) {
         verifyOpen();
         if (level.ordinal() > LogThreadLocal.mostDetailedLevel().ordinal()) {
@@ -129,31 +123,37 @@ public final class LogMessage implements AutoCloseable {
     }
 
     /// Gets the buffer for formatting a message line at level [LogLevel#INFO].
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public NativeMemoryLog info() {
         return line(LogLevel.INFO);
     }
 
     /// Gets the buffer for formatting a message line at level [LogLevel#DEBUG].
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public NativeMemoryLog debug() {
         return line(LogLevel.DEBUG);
     }
 
     /// Gets the buffer for formatting a message line at level [LogLevel#TRACE].
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public NativeMemoryLog trace() {
         return line(LogLevel.TRACE);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int lineCount() {
         verifyOpen();
         return LogThreadLocal.lineCount();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     LogLevel lineLevel(int index) {
         verifyLine(index);
         return LogLevel.VALUES[LogThreadLocal.lines().read(index * LINE_ENTRY_INTS)];
     }
 
     /// Writes one selected line to `other`, preserving or folding embedded newlines.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void writeLineTo(int index, Log other, boolean foldMultilines, LogOutput output, int decoratorWidth) {
         verifyLine(index);
         int start = lineStart(index);
@@ -176,19 +176,23 @@ public final class LogMessage implements AutoCloseable {
         }
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int lineStart(int index) {
         return LogThreadLocal.lines().read(index * LINE_ENTRY_INTS + 1);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void verifyOpen() {
         VMError.guarantee(LogThreadLocal.activeTagSet() == tagSet, "LogMessage can only be accessed within its open scope.");
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void verifyLine(int index) {
         verifyOpen();
         VMError.guarantee(index >= 0 && index < lineCount(), "LogMessage line index is outside the message.");
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void ensureLineCapacity() {
         int count = lineCount();
         int capacity = LogThreadLocal.lineCapacity();

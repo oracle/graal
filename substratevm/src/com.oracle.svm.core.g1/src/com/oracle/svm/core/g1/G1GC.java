@@ -33,6 +33,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.Uninterruptible;
 
 public class G1GC implements GC {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -55,6 +56,7 @@ public class G1GC implements GC {
     }
 
     @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void writeLogPrefix(LogTagSet logTagSet, Log log) {
         /* Native G1 logging adds any GC-specific prefix before entering Java logging. */
     }

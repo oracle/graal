@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.log.Log;
@@ -43,9 +44,7 @@ import com.oracle.svm.shared.util.VMError;
 ///
 /// ```
 /// if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
-///     try (LogMessage message = LogTagSet.class_load.message()) {
-///         message.info().string(className).string(" loader=").string(loaderDesc);
-///     }
+///     logClassLoad(className, loaderDesc);
 /// }
 /// ```
 ///
@@ -53,8 +52,8 @@ import com.oracle.svm.shared.util.VMError;
 /// code, including message construction, when `-Xlog` support is unavailable. Writing values
 /// directly to the message's [NativeMemoryLog] also avoids intermediate string allocation. These
 /// properties keep the minimal image size small and let allocation-restricted callers construct
-/// messages without Java heap allocation. Such callers must use `try`-`finally` as documented in
-/// [LogMessage]. The `gc` tag set deliberately omits the support check because legacy GC logging
+/// messages without Java heap allocation. Dedicated `log*` methods use the annotation contract
+/// described in [LogMessage]. The `gc` tag set deliberately omits the support check because legacy GC logging
 /// remains available without `-Xlog` support.
 ///
 /// Both single-line and multi-line messages are logged by [#message()].
@@ -110,6 +109,9 @@ public enum LogTagSet {
     safepoint;
     // END GENERATED
 
+    /// Contract shared by methods that format and deliver unified log messages.
+    public static final String LOG_METHOD_REASON = "Factored-out logging methods must not allocate, safepoint, or be inlined.";
+
     static final LogTagSet[] VALUES = LogTagSet.values();
 
     /// Marks the current collector thread while Java heap objects are unsafe to access from the
@@ -163,6 +165,7 @@ public enum LogTagSet {
 
     private final boolean isGC;
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void writePrefix(Log log) {
         if (isGC) {
             Heap.getHeap().getGC().writeLogPrefix(this, log);
@@ -173,6 +176,7 @@ public enum LogTagSet {
         return label;
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String commaSeparatedLabel() {
         return commaSeparatedLabel;
     }
@@ -226,8 +230,9 @@ public enum LogTagSet {
         return isLevel(LogLevel.ERROR);
     }
 
-    /// Opens a message for this tag set. This must be used in a try-with-resources or try-finally
-    /// statement as documented in [LogMessage].
+    /// Opens a message for this tag set. Production logging uses try-finally within an annotated
+    /// `log*` method as documented in [LogMessage].
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public LogMessage message() {
         guaranteeGCLoggingIsSafe();
         LogThreadLocal.activate(this);
@@ -235,6 +240,7 @@ public enum LogTagSet {
     }
 
     /// Writes one complete native memory message to every output enabled for one of its lines.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void write(LogMessage message) {
         guaranteeGCLoggingIsSafe();
         if (!LogConfiguration.beginWrite()) {
@@ -268,6 +274,7 @@ public enum LogTagSet {
         gcUnsafeRegion.set(0);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void guaranteeGCLoggingIsSafe() {
         VMError.guarantee(gcUnsafeRegion.get() == 0, "Unified logging cannot access Java heap objects inside a GC unsafe region.");
     }

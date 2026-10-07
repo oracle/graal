@@ -35,7 +35,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,6 +43,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.LibCHelper;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -52,6 +52,9 @@ import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
@@ -85,7 +88,7 @@ public final class LogConfiguration {
 
     /// Prevents output teardown from racing synchronous writers that retained an old immutable
     /// routing configuration.
-    private static final AtomicInteger ACTIVE_WRITES = new AtomicInteger();
+    private static final AtomicInteger ACTIVE_WRITES = new AtomicInteger(0);
 
     /// Controls admission to message routing while outputs are being disabled.
     private static volatile boolean writesEnabled = true;
@@ -358,21 +361,7 @@ public final class LogConfiguration {
                     outputDescriptions[descriptionIndex] = describeOutput(descriptionIndex, output);
                     descriptionIndex++;
                 }
-                try (LogMessage message = logging.message()) {
-                    message.info().string("Log configuration fully initialized.");
-                    for (String desc : AVAILABLE_DESCRIPTIONS) {
-                        message.info().string(desc);
-                    }
-
-                    if (logging.isDebug()) {
-                        message.debug().string(AVAILABLE_TAG_SETS);
-                    }
-
-                    message.info().string("Log output configuration:");
-                    for (String description : outputDescriptions) {
-                        message.info().string(description);
-                    }
-                }
+                logInitializationDetails(outputDescriptions, logging.isDebug());
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging());
         } else {
@@ -387,6 +376,29 @@ public final class LogConfiguration {
             }
         }
         initializationComplete = true;
+    }
+
+    /// Formats startup diagnostics without allowing a safepoint inside the message scope.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logInitializationDetails(String[] outputDescriptions, boolean debugEnabled) {
+        LogMessage message = logging.message();
+        try {
+            message.info().string("Log configuration fully initialized.");
+            for (String desc : AVAILABLE_DESCRIPTIONS) {
+                message.info().string(desc);
+            }
+            if (debugEnabled) {
+                message.debug().string(AVAILABLE_TAG_SETS);
+            }
+            message.info().string("Log output configuration:");
+            for (String description : outputDescriptions) {
+                message.info().string(description);
+            }
+        } finally {
+            message.close();
+        }
     }
 
     /// Sets the GC logging threshold to `level` on standard output when `-Xlog` is supported, or on
@@ -502,6 +514,7 @@ public final class LogConfiguration {
     }
 
     /// Acquires a lifetime lease for the outputs in a retained routing configuration.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean beginWrite() {
         if (!writesEnabled) {
             return false;
@@ -515,16 +528,19 @@ public final class LogConfiguration {
     }
 
     /// Releases the output lifetime lease acquired by [#beginWrite()].
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void endWrite() {
         ACTIVE_WRITES.decrementAndGet();
     }
 
     /// Gets the host name cached during startup configuration.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static String hostname() {
         return hostname;
     }
 
     /// Gets the process identifier cached during startup configuration.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static long pid() {
         return pid;
     }

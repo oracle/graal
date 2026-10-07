@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.Uninterruptible;
 
 public interface GC {
     /**
@@ -55,5 +56,6 @@ public interface GC {
     ///
     /// @param logTagSet tag set for log line
     /// @param log the buffer to which the line's content will be written
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void writeLogPrefix(LogTagSet logTagSet, Log log);
 }

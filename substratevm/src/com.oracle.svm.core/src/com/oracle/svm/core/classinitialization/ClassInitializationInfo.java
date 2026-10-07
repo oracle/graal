@@ -58,8 +58,10 @@ import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
@@ -555,20 +557,29 @@ public final class ClassInitializationInfo {
         try {
             boolean traceVerification = HasXlogSupport.get() && LogTagSet.class_init.isInfo() && RuntimeClassLoading.Options.ClassVerification.getValue().needsVerification(hub.getClassLoader());
             if (traceVerification) {
-                try (LogMessage message = LogTagSet.class_init.message()) {
-                    message.info().string("Start class verification for: ").string(hub.getName());
-                }
+                logClassVerification(true, hub.getName());
             }
             CremaSupport.singleton().prepareAndVerify(hub);
             if (traceVerification) {
-                try (LogMessage message = LogTagSet.class_init.message()) {
-                    message.info().string("End class verification for: ").string(hub.getName());
-                }
+                logClassVerification(false, hub.getName());
             }
         } finally {
             if (Platform.includedIn(NATIVE_ONLY.class)) {
                 StackOverflowCheck.singleton().makeYellowZoneAvailable();
             }
+        }
+    }
+
+    /// Formats a class verification event without allowing a safepoint inside the message scope.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logClassVerification(boolean starting, String className) {
+        LogMessage message = LogTagSet.class_init.message();
+        try {
+            message.info().string(starting ? "Start class verification for: " : "End class verification for: ").string(className);
+        } finally {
+            message.close();
         }
     }
 
@@ -744,19 +755,30 @@ public final class ClassInitializationInfo {
         try {
             int sequence = TRACE_CLASS_INIT_COUNTER.getAndIncrement();
             String method = hasInitializer ? "" : " (no method)";
-            try (LogMessage message = LogTagSet.class_init.message()) {
-                NativeMemoryLog line = message.info();
-                line.signed(sequence).string(" Initializing '");
-                String name = hub.getName();
-                /* Convert the class name without allocating a replacement string. */
-                for (int index = 0; index < name.length(); index++) {
-                    char value = name.charAt(index);
-                    line.character(value == '.' ? '/' : value);
-                }
-                line.string("'").string(method).string(" by thread \"").string(Thread.currentThread().getName()).string("\"");
-            }
+            char[] name = hub.getName().toCharArray();
+            String threadName = Thread.currentThread().getName();
+            logClassInitialization(sequence, name, method, threadName);
         } catch (Throwable cause) {
             throw VMError.shouldNotReachHere("Unified logging must not throw exceptions.", cause);
+        }
+    }
+
+    /// Formats a class initialization event without allowing a safepoint inside the message scope.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logClassInitialization(int sequence, char[] name, String method, String threadName) {
+        LogMessage message = LogTagSet.class_init.message();
+        try {
+            NativeMemoryLog line = message.info();
+            line.signed(sequence).string(" Initializing '");
+            /* Convert the class name without allocating a replacement string. */
+            for (char value : name) {
+                line.character(value == '.' ? '/' : value);
+            }
+            line.string("'").string(method).string(" by thread \"").string(threadName).string("\"");
+        } finally {
+            message.close();
         }
     }
 

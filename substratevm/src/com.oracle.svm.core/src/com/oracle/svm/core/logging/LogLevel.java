@@ -27,6 +27,7 @@ package com.oracle.svm.core.logging;
 import java.util.Locale;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.Uninterruptible;
 
 /// Defines the levels understood by unified logging in increasing order of severity.
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logLevel.hpp#L46-L59")
@@ -102,11 +103,13 @@ public enum LogLevel {
     }
 
     /// Gets the command-line spelling of this level.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String label() {
         return label;
     }
 
     /// Returns whether a threshold enables a message at `messageLevel`.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean enables(LogLevel messageLevel) {
         return this != OFF && messageLevel.ordinal() >= ordinal();
     }

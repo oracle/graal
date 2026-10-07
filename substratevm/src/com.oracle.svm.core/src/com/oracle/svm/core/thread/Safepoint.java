@@ -51,6 +51,7 @@ import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -262,22 +263,30 @@ public final class Safepoint {
 
         if (HasXlogSupport.get()) {
             if (logSafepoint) {
-                LogMessage message = LogTagSet.safepoint.message();
-                try {
-                    message.info().string("Safepoint ").unsigned(this.safepointId) //
-                                    .string(" \"").string(safepointReason) //
-                                    .string("\", Time since last: ").signed(appTimeNs) //
-                                    .string(" ns, Reaching safepoint: ").signed(safepointSyncTimeNs - safepointBeginTimeNs) //
-                                    .string(" ns, At safepoint: ").signed(safepointLeaveTimeNs - safepointSyncTimeNs) //
-                                    .string(" ns, Leaving safepoint: ").signed(safepointEndTimeNs - safepointLeaveTimeNs) //
-                                    .string(" ns, Total: ").signed(safepointEndTimeNs - safepointBeginTimeNs) //
-                                    .string(" ns, Threads: ") //
-                                    .signed(numRunningThreads).string(" runnable, ") //
-                                    .signed(numAllThreads).string(" total");
-                } finally {
-                    message.close();
-                }
+                logSafepointSummary();
             }
+        }
+    }
+
+    /// Formats the safepoint summary without allowing a safepoint inside the message scope.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    private void logSafepointSummary() {
+        LogMessage message = LogTagSet.safepoint.message();
+        try {
+            message.info().string("Safepoint ").unsigned(this.safepointId) //
+                            .string(" \"").string(safepointReason) //
+                            .string("\", Time since last: ").signed(appTimeNs) //
+                            .string(" ns, Reaching safepoint: ").signed(safepointSyncTimeNs - safepointBeginTimeNs) //
+                            .string(" ns, At safepoint: ").signed(safepointLeaveTimeNs - safepointSyncTimeNs) //
+                            .string(" ns, Leaving safepoint: ").signed(safepointEndTimeNs - safepointLeaveTimeNs) //
+                            .string(" ns, Total: ").signed(safepointEndTimeNs - safepointBeginTimeNs) //
+                            .string(" ns, Threads: ") //
+                            .signed(numRunningThreads).string(" runnable, ") //
+                            .signed(numAllThreads).string(" total");
+        } finally {
+            message.close();
         }
     }
 

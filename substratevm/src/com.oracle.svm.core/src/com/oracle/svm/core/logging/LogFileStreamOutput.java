@@ -26,7 +26,6 @@ package com.oracle.svm.core.logging;
 
 import java.util.Locale;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.UnsignedWord;
@@ -64,9 +63,11 @@ final class LogFileStreamOutput extends LogOutput {
     }
 
     @Override
+    @Uninterruptible(reason = "Destination writes must not allow a safepoint.")
     protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
         if (target == Target.VMLOG) {
-            Log.log().string(bytes, NumUtil.safeToInt(length.rawValue()));
+            // Output buffers have signed integer capacities, so this conversion is exact.
+            Log.log().string(bytes, (int) length.rawValue());
             return 0;
         }
         return writeRawLocked(LoggingSupport.singleton(), bytes, length);

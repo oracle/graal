@@ -41,6 +41,7 @@ import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.VMError;
 
 /// Holds mutable unified-logging state for the current platform thread.
@@ -71,6 +72,7 @@ public final class LogThreadLocal implements ThreadListener {
 
     /// Gets the state for `isolateThread`, allocating it on first use.
     @Uninterruptible(reason = "May be called before a thread is fully started.")
+    @NeverInline("Native logging state initialization must retain its uninterruptible boundary.")
     private static Data initialize(IsolateThread isolateThread) {
         Data result = state.get(isolateThread);
         if (result.isNull()) {
@@ -82,10 +84,12 @@ public final class LogThreadLocal implements ThreadListener {
     }
 
     /// Ensures that the current thread has state before formatting outside a logging scope.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Data ensureInitialized() {
         return initialize(CurrentIsolate.getCurrentThread());
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void activate(LogTagSet tagSet) {
         Data data = ensureInitialized();
         VMError.guarantee(data.getActiveTagSet() == 0, "Nested unified logging is not allowed.");
@@ -96,6 +100,7 @@ public final class LogThreadLocal implements ThreadListener {
         NativeMemoryLog.reset(data.getMessageBuffer());
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void deactivate() {
         Data data = get();
         data.setActiveTagSet(0);
@@ -106,23 +111,27 @@ public final class LogThreadLocal implements ThreadListener {
     }
 
     /// Gets the thread-local [NativeMemoryLog] buffer for `kind`.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static NativeMemoryLog.Data getBuffer(NativeMemoryLog.BufferKind kind) {
         Data data = get();
         return switch (kind) {
             case MESSAGE -> data.getMessageBuffer();
             case OUTPUT -> data.getOutputBuffer();
             case DECORATOR -> data.getDecoratorBuffer();
-            default -> throw VMError.shouldNotReachHere(kind.name());
+            case PREPARE -> data.getPrepareBuffer();
+            default -> throw VMError.shouldNotReachHere("Unexpected logging buffer kind.");
         };
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setBuffer(NativeMemoryLog.BufferKind kind, NativeMemoryLog.Data buffer) {
         Data data = get();
         switch (kind) {
             case MESSAGE -> data.setMessageBuffer(buffer);
             case OUTPUT -> data.setOutputBuffer(buffer);
             case DECORATOR -> data.setDecoratorBuffer(buffer);
-            default -> VMError.shouldNotReachHere(kind.name());
+            case PREPARE -> data.setPrepareBuffer(buffer);
+            default -> VMError.shouldNotReachHere("Unexpected logging buffer kind.");
         }
     }
 
@@ -134,6 +143,8 @@ public final class LogThreadLocal implements ThreadListener {
             return data.getMessageIndentation();
         } else if (kind == NativeMemoryLog.BufferKind.OUTPUT) {
             return data.getOutputIndentation();
+        } else if (kind == NativeMemoryLog.BufferKind.PREPARE) {
+            return data.getPrepareIndentation();
         } else {
             return data.getDecoratorIndentation();
         }
@@ -147,56 +158,70 @@ public final class LogThreadLocal implements ThreadListener {
             data.setMessageIndentation(value);
         } else if (kind == NativeMemoryLog.BufferKind.OUTPUT) {
             data.setOutputIndentation(value);
+        } else if (kind == NativeMemoryLog.BufferKind.PREPARE) {
+            data.setPrepareIndentation(value);
         } else {
             data.setDecoratorIndentation(value);
         }
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static CIntPointer lines() {
         return get().getLines();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int lineCount() {
         return get().getLineCount();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setLineCount(int value) {
         get().setLineCount(value);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static int lineCapacity() {
         return get().getLineCapacity();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setLineCapacity(int value) {
         get().setLineCapacity(value);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setLines(CIntPointer value) {
         get().setLines(value);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static LogTagSet activeTagSet() {
         int ordinal = get().getActiveTagSet();
         return ordinal == 0 ? null : LogTagSet.VALUES[ordinal - 1];
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static LogLevel mostDetailedLevel() {
         return LogLevel.VALUES[get().getMostDetailedLevel()];
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void setMostDetailedLevel(LogLevel level) {
         get().setMostDetailedLevel(level.ordinal());
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static long systemNanos() {
         return get().getSystemNanos();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static long uptimeNanos() {
         return get().getUptimeNanos();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static long threadId() {
         return get().getThreadId();
     }
@@ -223,6 +248,7 @@ public final class LogThreadLocal implements ThreadListener {
         freeBuffer(data.getMessageBuffer());
         freeBuffer(data.getOutputBuffer());
         freeBuffer(data.getDecoratorBuffer());
+        freeBuffer(data.getPrepareBuffer());
         NullableNativeMemory.free(data.getLines());
         state.set(isolateThread, WordFactory.nullPointer());
         NullableNativeMemory.free(data);
@@ -241,6 +267,7 @@ public final class LogThreadLocal implements ThreadListener {
     ///     struct NativeMemoryLog.Data *messageBuffer;
     ///     struct NativeMemoryLog.Data *outputBuffer;
     ///     struct NativeMemoryLog.Data *decoratorBuffer;
+    ///     struct NativeMemoryLog.Data *prepareBuffer;
     ///     int *lines;
     ///     int lineCount;
     ///     int lineCapacity;
@@ -249,6 +276,7 @@ public final class LogThreadLocal implements ThreadListener {
     ///     int messageIndentation;
     ///     int outputIndentation;
     ///     int decoratorIndentation;
+    ///     int prepareIndentation;
     ///     long systemMillis;
     ///     long systemNanos;
     ///     long uptimeNanos;
@@ -265,6 +293,9 @@ public final class LogThreadLocal implements ThreadListener {
 
         @RawField NativeMemoryLog.Data getDecoratorBuffer();
         @RawField void                 setDecoratorBuffer(NativeMemoryLog.Data value);
+
+        @RawField NativeMemoryLog.Data getPrepareBuffer();
+        @RawField void                 setPrepareBuffer(NativeMemoryLog.Data value);
 
         @RawField CIntPointer getLines();
         @RawField void        setLines(CIntPointer value);
@@ -289,6 +320,9 @@ public final class LogThreadLocal implements ThreadListener {
 
         @RawField int  getDecoratorIndentation();
         @RawField void setDecoratorIndentation(int value);
+
+        @RawField int  getPrepareIndentation();
+        @RawField void setPrepareIndentation(int value);
 
         @RawField long getSystemMillis();
         @RawField void setSystemMillis(long value);

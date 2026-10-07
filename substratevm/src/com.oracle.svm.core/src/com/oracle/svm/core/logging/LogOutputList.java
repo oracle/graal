@@ -26,6 +26,8 @@ package com.oracle.svm.core.logging;
 
 import java.util.Arrays;
 
+import com.oracle.svm.shared.Uninterruptible;
+
 /// Tracks the destinations configured for one tag set.
 ///
 /// The `outputsByLevel` array is indexed by message level. Each entry contains the
@@ -55,14 +57,16 @@ import java.util.Arrays;
 /// replacement configuration, while readers that already started continue to use the routing and
 /// formatting state that they observed.
 ///
-/// For example, consider the following message:
+/// For example, consider the following message inside an annotated `log*` method as described
+/// in [LogMessage]:
 ///
 /// ```
-/// if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
-///     try (LogMessage msg = LogTagSet.class_load.message()) {
-///         msg.info().string("info message");
-///         msg.debug().string("debug message");
-///     }
+/// LogMessage msg = LogTagSet.class_load.message();
+/// try {
+///     msg.info().string("info message");
+///     msg.debug().string("debug message");
+/// } finally {
+///     msg.close();
 /// }
 /// ```
 ///
@@ -114,6 +118,7 @@ public final class LogOutputList {
     }
 
     /// Gets the immutable routing configuration currently published for this tag set.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     Configuration configuration() {
         return configuration;
     }
@@ -169,6 +174,7 @@ public final class LogOutputList {
     }
 
     /// Finds `output` in the immutable output list by identity.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static int indexOf(LogOutputConfiguration[] outputs, LogOutput output) {
         for (int index = 0; index < outputs.length; index++) {
             if (outputs[index].output() == output) {
@@ -204,10 +210,12 @@ public final class LogOutputList {
             return new Configuration(emptyOutputsByLevel());
         }
 
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         LogOutputConfiguration[] outputsFor(LogLevel level) {
             return outputsByLevel[level.ordinal()];
         }
 
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         LogLevel levelFor(LogOutput output) {
             for (int index = LogLevel.TRACE.ordinal(); index < LogLevel.VALUES.length; index++) {
                 LogLevel level = LogLevel.VALUES[index];
@@ -218,6 +226,7 @@ public final class LogOutputList {
             return LogLevel.OFF;
         }
 
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         LogDecorators decorators() {
             return decorators;
         }

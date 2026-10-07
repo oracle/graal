@@ -40,6 +40,7 @@ import com.oracle.svm.core.log.RealLog;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -64,7 +65,10 @@ public final class NativeMemoryLog extends RealLog {
         OUTPUT,
 
         /// Holds a rendered decoration while its width and padding are determined.
-        DECORATOR
+        DECORATOR,
+
+        /// Holds complex log text prepared before an uninterruptible message scope.
+        PREPARE
     }
 
     private final BufferKind kind;
@@ -77,7 +81,7 @@ public final class NativeMemoryLog extends RealLog {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected byte[] lineSeparator() {
-        return kind == BufferKind.MESSAGE ? MESSAGE_LINE_SEPARATOR : super.lineSeparator();
+        return kind == BufferKind.MESSAGE || kind == BufferKind.PREPARE ? MESSAGE_LINE_SEPARATOR : super.lineSeparator();
     }
 
     /// Gets indentation from the current thread because this log object is a shared facade.
@@ -96,6 +100,7 @@ public final class NativeMemoryLog extends RealLog {
 
     /// Appends raw log bytes, growing the current thread's native buffer when necessary.
     @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
         int maximumCapacity = maximumCapacity();
         VMError.guarantee(length.belowOrEqual(Word.unsigned(maximumCapacity)), "NativeMemoryLog input is too large.");
@@ -131,17 +136,20 @@ public final class NativeMemoryLog extends RealLog {
         return this;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public CCharPointer getBuffer() {
         Data data = data();
         return data.isNull() ? Word.nullPointer() : dataStart(data);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getPosition() {
         Data data = data();
         return data.isNull() ? 0 : data.getPosition();
     }
 
     /// Writes the accumulated bytes to `other` without creating a Java string.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void writeTo(Log other) {
         int position = getPosition();
         if (position != 0) {
@@ -158,12 +166,15 @@ public final class NativeMemoryLog extends RealLog {
     }
 
     /// Clears the current contents while retaining the allocated native buffer.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void reset() {
+        LogThreadLocal.ensureInitialized();
         reset(data());
         LogThreadLocal.setIndentation(kind, 0);
     }
 
     /// Applies doubling growth algorithm to the native buffer.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void grow(int minimumCapacity) {
         int maximumCapacity = maximumCapacity();
         guaranteeValidMinimumCapacity(minimumCapacity, maximumCapacity);
@@ -191,6 +202,7 @@ public final class NativeMemoryLog extends RealLog {
         setData(newData);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void guaranteeValidMinimumCapacity(int minimumCapacity, int maximumCapacity) {
         if (minimumCapacity < 0 || minimumCapacity > maximumCapacity) {
             Log.log().string("minimum capacity: ").signed(minimumCapacity).newline().newline();
@@ -198,6 +210,7 @@ public final class NativeMemoryLog extends RealLog {
         }
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void guaranteeSuccessfulAllocation(Data newData, int allocationSize) {
         if (newData.isNull()) {
             Log.log().string("allocation size: ").signed(allocationSize).newline();
@@ -205,21 +218,25 @@ public final class NativeMemoryLog extends RealLog {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private Data data() {
         return LogThreadLocal.getBuffer(kind);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void setData(Data value) {
         LogThreadLocal.setBuffer(kind, value);
     }
 
     /// Resets a resolved thread-local buffer without looking up its storage owner again.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void reset(Data data) {
         if (data.isNonNull()) {
             data.setPosition(0);
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static CCharPointer dataStart(Data data) {
         return (CCharPointer) ((Pointer) data).add(headerSize());
     }

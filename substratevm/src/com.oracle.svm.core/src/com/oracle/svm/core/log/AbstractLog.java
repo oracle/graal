@@ -590,6 +590,10 @@ abstract class AbstractLog implements Log {
         }
     }
 
+    /// Unified logging uses RealLog or NativeMemoryLog. NativeMemoryLog appends without safepoints;
+    /// RealLog forwards to an allocation-free LogHandler whose safepoint behavior is trusted
+    /// rather than enforced by this bridge. Other low-level logging implementations can be
+    /// interruptible, so this deliberately does not extend the annotation contract to rawBytes.
     @Uninterruptible(reason = "Some implementations are interruptible.", mayBeInlined = true, calleeMustBe = false)
     protected void writeBytes0(CCharPointer bytes, UnsignedWord length) {
         rawBytes(bytes, length);

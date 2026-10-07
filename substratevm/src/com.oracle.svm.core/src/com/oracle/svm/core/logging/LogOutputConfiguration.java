@@ -24,7 +24,20 @@
  */
 package com.oracle.svm.core.logging;
 
+import com.oracle.svm.shared.Uninterruptible;
+
 /// Immutable formatting state for one destination. A [LogOutput] retains this object so that a
 /// concurrent reconfiguration cannot change how an already started message is written.
 record LogOutputConfiguration(LogOutput output, LogDecorators decorators) {
+    @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public LogOutput output() {
+        return output;
+    }
+
+    @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public LogDecorators decorators() {
+        return decorators;
+    }
 }

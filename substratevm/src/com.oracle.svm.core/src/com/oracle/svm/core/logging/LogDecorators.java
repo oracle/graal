@@ -25,6 +25,7 @@
 package com.oracle.svm.core.logging;
 
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.Uninterruptible;
 
 /// Represents a selection of decorators that should be prepended to
 /// each log message for a given output. Decorators are always prepended in
@@ -79,6 +80,7 @@ public final class LogDecorators {
             throw new IllegalArgumentException("Invalid log decorator '" + value + "'.");
         }
 
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public int bit() {
             return 1 << ordinal();
         }
@@ -121,10 +123,12 @@ public final class LogDecorators {
         return new LogDecorators(result);
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean contains(Decorator decorator) {
         return (decorators & decorator.bit()) != 0;
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean containsAny(int decoratorsMask) {
         return (decorators & decoratorsMask) != 0;
     }

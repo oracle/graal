@@ -26,13 +26,15 @@ package com.oracle.svm.core.logging;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
+import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 /// Base class for a configured log destination.
@@ -69,7 +71,7 @@ public abstract class LogOutput {
     private static final NativeMemoryLog DECORATOR_BUFFER = new NativeMemoryLog(NativeMemoryLog.BufferKind.DECORATOR);
 
     /// Tracks each output failure category that has already been reported.
-    private final AtomicInteger reportedWriteErrors = new AtomicInteger();
+    private final AtomicInteger reportedWriteErrors = new AtomicInteger(0);
 
     @SuppressWarnings("this-escape")
     protected LogOutput(String name) {
@@ -80,7 +82,7 @@ public abstract class LogOutput {
     private static AtomicInteger[] createDecoratorPadding() {
         AtomicInteger[] result = new AtomicInteger[LogDecorators.VALUES.length];
         for (int index = 0; index < result.length; index++) {
-            result[index] = new AtomicInteger();
+            result[index] = new AtomicInteger(0);
         }
         return result;
     }
@@ -303,6 +305,7 @@ public abstract class LogOutput {
     }
 
     /// Writes one complete message to this output.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void write(LogTagSet tagSet, LogMessage message, LogLevel outputLevel, LogDecorators configuredDecorators) {
         OUTPUT_BUFFER.reset();
         int lineCount = message.lineCount();
@@ -321,8 +324,9 @@ public abstract class LogOutput {
         }
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void finishWrite() {
-        int status = writeRaw(OUTPUT_BUFFER.getBuffer(), Word.unsigned(OUTPUT_BUFFER.getPosition()));
+        int status = writeRaw0(OUTPUT_BUFFER.getBuffer(), Word.unsigned(OUTPUT_BUFFER.getPosition()));
         int unreported = claimUnreportedWriteErrors(status);
         if (unreported != 0) {
             if ((unreported & WRITE_FAILED) != 0) {
@@ -338,7 +342,15 @@ public abstract class LogOutput {
         OUTPUT_BUFFER.reset();
     }
 
+    /// Production destinations use no-transition writes or the trusted low-level VM log.
+    /// Test destinations may instead capture bytes in managed storage.
+    @Uninterruptible(reason = "Production output follows the logging contract; test outputs may be interruptible.", calleeMustBe = false)
+    private int writeRaw0(CCharPointer bytes, UnsignedWord length) {
+        return writeRaw(bytes, length);
+    }
+
     /// Atomically claims failure categories that have not been diagnosed before.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private int claimUnreportedWriteErrors(int status) {
         int reported;
         int unreported;
@@ -353,6 +365,7 @@ public abstract class LogOutput {
     }
 
     /// Writes all metadata that precedes one physical log record.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private int writeRecordPrefix(LogDecorators configuredDecorators, LogLevel level, LogTagSet tagSet) {
         int decoratorWidth = writeDecorators(configuredDecorators, level);
         tagSet.writePrefix(OUTPUT_BUFFER);
@@ -360,14 +373,16 @@ public abstract class LogOutput {
     }
 
     /// Writes the blank marker that aligns an unfolded continuation with its first physical line.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void writeContinuationPrefix(int decoratorWidth) {
         if (decoratorWidth != 0) {
             OUTPUT_BUFFER.character('[').spaces(decoratorWidth - 2).character(']').character(' ');
         }
     }
 
-    /// Writes `enabledDecorators` using values captured in `decorations` and returns the combined
+    /// Writes `enabledDecorators` using the captured thread-local values and returns the combined
     /// width of their bracketed values, excluding the trailing separator.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private int writeDecorators(LogDecorators enabledDecorators, LogLevel level) {
         int decoratorsLength = 0;
         boolean decorated = false;

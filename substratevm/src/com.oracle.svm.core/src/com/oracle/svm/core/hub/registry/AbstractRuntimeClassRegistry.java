@@ -60,6 +60,8 @@ import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -368,14 +370,25 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             if (pattern.equals("*") || className.contains(pattern)) {
                 /* Stack capture can allocate and must complete before entering the logging scope. */
                 String[] stackTrace = getFormattedCurrentStackTrace();
-                try (LogMessage logMessage = LogTagSet.class_load_cause.message()) {
-                    NativeMemoryLog line = logMessage.info();
-                    line.string("Java stack when loading ").string(className);
-                    for (String stackTraceElement : stackTrace) {
-                        logMessage.info().string("  at ").string(stackTraceElement);
-                    }
-                }
+                logClassLoadCause(className, stackTrace);
             }
+        }
+    }
+
+    /// Formats a class loading stack trace without allowing a safepoint inside the message scope.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logClassLoadCause(String className, String[] stackTrace) {
+        LogMessage message = LogTagSet.class_load_cause.message();
+        try {
+            NativeMemoryLog line = message.info();
+            line.string("Java stack when loading ").string(className);
+            for (String stackTraceElement : stackTrace) {
+                message.info().string("  at ").string(stackTraceElement);
+            }
+        } finally {
+            message.close();
         }
     }
 
@@ -392,10 +405,19 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     /// Writes a class-loading event without allocating a formatted string.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Class loading diagnostics must not allocate at run time.")
     public static void traceMessage(LogTagSet tagSet, String className, ClassLoader loader, String source, String detail) {
+        String loaderName = ClassRegistries.loaderNameAndId(loader);
+        logClassLoadingMessage(tagSet, className, loaderName, source, detail);
+    }
+
+    /// Formats a class loading event without allowing a safepoint inside the message scope.
+    @NeverInline(LogTagSet.LOG_METHOD_REASON)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    private static void logClassLoadingMessage(LogTagSet tagSet, String className, String loaderName, String source, String detail) {
         LogMessage message = tagSet.message();
         try {
             NativeMemoryLog line = message.info();
-            line.string(className).string(" loader=").string(ClassRegistries.loaderNameAndId(loader));
+            line.string(className).string(" loader=").string(loaderName);
             if (source != null && !source.isEmpty()) {
                 line.string(" source='").string(source).character('\'');
             }

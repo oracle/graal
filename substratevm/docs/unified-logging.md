@@ -40,8 +40,19 @@ infrastructure out of images that do not support parsing `-Xlog`:
 
 ```java
 if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
-    try (LogMessage message = LogTagSet.class_load.message()) {
+    String loaderDescription = prepareLoaderDescription(loader);
+    logClassLoad(className, loaderDescription);
+}
+
+@NeverInline(LogTagSet.LOG_METHOD_REASON)
+@Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+@RestrictHeapAccess(access = NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
+private static void logClassLoad(String className, String loaderDescription) {
+    LogMessage message = LogTagSet.class_load.message();
+    try {
         message.info().string(className).string(" loader=").string(loaderDescription);
+    } finally {
+        message.close();
     }
 }
 ```
@@ -52,8 +63,12 @@ to happen before analysis, so the annotation cannot be relied upon to fold the g
 construction away. The support check therefore remains explicit at each non-GC logging site.
 
 Values are appended directly to the message's native buffer instead of being combined with Java
-string concatenation. Allocation-restricted code uses an equivalent `try`-`finally` statement as
-described by `LogMessage`. The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
+string concatenation.
+The dedicated `log*` method owns formatting and synchronous delivery through `LogMessage.close()`.
+Its annotations prevent inlining, heap allocation, safepoints, and class initialization on the checked path.
+Keep level predicates and any allocating preparation outside that method.
+Use try-finally because try-with-resources generates an interruptible `Throwable.addSuppressed` call that violates the annotation contract.
+The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
 `VerboseGC` can route it to the low-level VM log in images without `-Xlog` support.
 
 The level predicates and message APIs use the same output table for configured
@@ -79,11 +94,12 @@ output discards any preexisting active file contents at startup regardless of
 its rotation configuration; only output from the current process is rotated.
 Consequently, synchronous events cannot be interleaved on a destination, file
 rotation cannot occur between their lines, and formatting does not hold an
-output lock. The low-level VM log fallback uses the synchronization provided by `Log.log()` instead of the
+output lock.
+The low-level VM log fallback uses the synchronization provided by `Log.log()` instead of the
 stream-output mutex. The safepoint consequences of a blocked raw write are
 described below.
 
-`LogDecorations` is a reusable event record. It captures the wall-clock
+`LogDecorations` is a static utility backed by native thread-local state. It captures the wall-clock
 timestamp, isolate uptime, and thread id once before an event is sent to its
 outputs, but only when at least one active output requests the corresponding
 decorator. The message level is passed separately for each line. The tag set
@@ -120,6 +136,12 @@ Configuration changes remain interruptible and cannot run within a VM operation.
 Disabling output first stops new writers and waits for admitted writers to finish
 before clearing their routes and closing destinations.
 
+The low-level VM-log destination and output-error diagnostics use `RealLog`.
+Its `AbstractLog.writeBytes0` bridge deliberately permits interruptible callees.
+The installed `LogHandler` must not allocate, but its safepoint behavior is trusted rather than enforced.
+The annotation checks therefore do not provide a transitive safepoint guarantee for this legacy boundary.
+Production stream and file destinations use checked no-transition native operations; managed test destinations are outside that guarantee.
+
 ## Allocation-free runtime behavior
 
 Successful normal logging operations are annotated with
@@ -135,7 +157,8 @@ The runtime path maintains this contract as follows:
    rewinds a reusable buffer, whereas `clear` frees it during teardown. These buffers
    may grow with native `malloc` or `realloc`, but do not allocate Java heap
    objects during logging. A thread listener releases all thread-local buffers
-   when a platform thread exits.
+   after Java thread execution, including launcher handoff, and again during thread exit if needed.
+   A separate preparation buffer holds complex GC diagnostics before the checked message scope opens.
 2. `LogDecorations` formats event metadata and the explicitly supplied line
    level directly into native memory. Host name and process id are cached
    during initialization, while `SVM_localUTCOffsetSeconds` computes the local
