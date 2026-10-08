@@ -655,6 +655,16 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     private DynamicHub createArrayHub(DynamicHub componentHub) {
+        int dimensions = 1;
+        DynamicHub elementalHub = componentHub;
+        while (elementalHub.isArray()) {
+            dimensions += 1;
+            elementalHub = elementalHub.getComponentHub();
+        }
+        if (dimensions > Constants.MAX_ARRAY_DIMENSIONS) {
+            throw new IllegalArgumentException();
+        }
+
         String name;
         if (componentHub.isArray()) {
             name = '[' + componentHub.getName();
@@ -671,12 +681,6 @@ public class CremaSupportImpl implements CremaSupport {
         Module module = componentHub.getModule();
         int typeID = TypeIDs.singleton().nextTypeId();
 
-        int dimensions = 1;
-        DynamicHub elementalHub = componentHub;
-        while (elementalHub.isArray()) {
-            dimensions += 1;
-            elementalHub = elementalHub.getComponentHub();
-        }
         DynamicHub typeCheckSuperHub = getArrayTypeCheckSuperHub(elementalHub, dimensions);
         Class<?>[] transitiveSuperInterfaces = getSortedTransitiveArrayInterfaces(elementalHub, dimensions);
 
