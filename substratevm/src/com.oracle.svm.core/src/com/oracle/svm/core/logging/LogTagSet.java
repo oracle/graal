@@ -230,8 +230,15 @@ public enum LogTagSet {
         return isLevel(LogLevel.ERROR);
     }
 
-    /// Opens a message for this tag set. Production logging uses try-finally within an annotated
-    /// `log*` method as documented in [LogMessage].
+    /// Opens a message for this tag set. Every call, including calls in tests, must be enclosed in
+    /// a `void` method whose name starts with `log`. The enclosing method must declare
+    /// `@NeverInline`, `@Uninterruptible`, and `@RestrictHeapAccess(access = NO_ALLOCATION)`, all
+    /// with [#LOG_METHOD_REASON] as their reason. The uninterruptible annotation must retain its
+    /// default options so the entire message scope is checked and cannot be inlined.
+    ///
+    /// The enclosing method owns formatting and synchronous delivery, using try-finally with one
+    /// [LogMessage#close()] call. Level predicates and any allocating preparation remain outside
+    /// the method. Image building checks this caller contract without exceptions for tests.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public LogMessage message() {
         guaranteeGCLoggingIsSafe();

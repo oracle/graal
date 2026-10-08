@@ -335,8 +335,10 @@ public class RealLog extends AbstractLog {
         return this;
     }
 
+    /// Changes indentation and starts a line without a safepoint in a unified logging scope.
     @Override
     @NeverInline("Logging is always slow-path code")
+    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log indent(boolean addOrRemove) {
         indent0(addOrRemove);

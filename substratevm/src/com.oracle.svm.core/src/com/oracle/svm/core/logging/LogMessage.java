@@ -41,7 +41,7 @@ import com.oracle.svm.shared.util.VMError;
 /// decorations are owned by the current carrier thread. A carrier thread may have only one open
 /// message scope at a time, including across different tag sets.
 ///
-/// Production logging sites keep their level predicate and any allocating preparation outside a
+/// All logging sites keep their level predicate and any allocating preparation outside a
 /// dedicated `log*` method. That method is never inlined, cannot allocate or safepoint, and owns
 /// the complete message scope, including synchronous delivery from [#close()].
 ///

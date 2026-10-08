@@ -65,6 +65,9 @@ construction away. The support check therefore remains explicit at each non-GC l
 Values are appended directly to the message's native buffer instead of being combined with Java
 string concatenation.
 The dedicated `log*` method owns formatting and synchronous delivery through `LogMessage.close()`.
+Every call to `LogTagSet.message()`, including calls in tests, must appear directly in a `void` method whose name starts with `log`.
+That method must declare all three annotations shown above, using `LogTagSet.LOG_METHOD_REASON` and the default `@Uninterruptible` options.
+Native Image checks this caller contract during image building, before inlining can hide a call.
 Its annotations prevent inlining, heap allocation, safepoints, and class initialization on the checked path.
 Keep level predicates and any allocating preparation outside that method.
 Use try-finally because try-with-resources generates an interruptible `Throwable.addSuppressed` call that violates the annotation contract.
