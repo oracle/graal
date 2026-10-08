@@ -91,6 +91,8 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias private Target_java_lang_ClassLoader parent;
 
+    @Alias public String name;
+
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
      * of ClassLoader, so we just reset it. The original javadoc mentions: "The classes loaded by

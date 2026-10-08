@@ -50,6 +50,7 @@ import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
@@ -57,6 +58,7 @@ import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
  * Repository that collects and writes used classes, packages, modules, and classloaders.
@@ -615,7 +617,7 @@ public class JfrTypeRepository implements JfrRepository {
         SnapshotClassLoaderEntry classLoaderEntry = StackValue.get(SnapshotClassLoaderEntry.class);
         classLoaderEntry.setId(++currentClassLoaderId);
         classLoaderEntry.setClassTraceId(0L);
-        classLoaderEntry.setNameSymbolId(getSymbolId(classLoader.getName(), true, false));
+        classLoaderEntry.setNameSymbolId(getSymbolId(getClassLoaderName(classLoader), true, false));
         classLoaderEntry.setHash(getIdHash(classLoaderEntry.getId()));
         if (snapshot.classLoaders.putNew(classLoaderEntry).isNull()) {
             currentClassLoaderId--;
@@ -630,6 +632,15 @@ public class JfrTypeRepository implements JfrRepository {
         }
         ensureClassLoaderClassTraceId(snapshot, classLoader, classLoaderEntry.getId());
         return classLoaderEntry.getId();
+    }
+
+    /**
+     * Reads the stored class loader name without calling an override of {@link ClassLoader#getName}.
+     * An override could allocate or explicitly trigger a GC.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static String getClassLoaderName(ClassLoader classLoader) {
+        return SubstrateUtil.cast(classLoader, Target_java_lang_ClassLoader.class).name;
     }
 
     private void ensureClassLoaderClassTraceId(PreviousEpochTypeSnapshot snapshot, ClassLoader classLoader, long classLoaderId) {
