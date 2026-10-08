@@ -87,7 +87,7 @@ public final class PodReferenceMapDecoder {
         mapOffset = mapOffset.subtract(2);
         int gap = toUnsignedInt(ObjectAccess.readByte(obj, mapOffset));
         int nrefs = toUnsignedInt(ObjectAccess.readByte(obj, mapOffset.add(1)));
-        return gap == 0 && nrefs != 0xff;
+        return gap == 0 && nrefs == 0;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
