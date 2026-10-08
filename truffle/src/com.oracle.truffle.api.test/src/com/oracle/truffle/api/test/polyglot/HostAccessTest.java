@@ -1663,6 +1663,42 @@ public class HostAccessTest extends AbstractHostAccessTest {
         public String m(Runnable s) {
             return "runnable";
         }
+
+        @Export
+        public String m(String prefix, Function<Value, Value> s) {
+            return prefix + "function";
+        }
+
+        @Export
+        public String m(String prefix, Runnable s) {
+            return prefix + "runnable";
+        }
+    }
+
+    @Test
+    public void testConverterOverloadHighestPrecedenceWithStrictArgument() {
+        OverloadPrecedenceFunctionProxy obj = new OverloadPrecedenceFunctionProxy();
+        ProxyExecutable f = new TestProxyExecutable();
+        for (boolean preferFunction : new boolean[]{true, false}) {
+            setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, Value::canExecute,
+                            (v) -> null, preferFunction ? TargetMappingPrecedence.HIGHEST : TargetMappingPrecedence.HIGH).targetTypeMapping(Value.class, Runnable.class, Value::canExecute,
+                                            (v) -> null, preferFunction ? TargetMappingPrecedence.HIGH : TargetMappingPrecedence.HIGHEST));
+            String expected = preferFunction ? "function" : "runnable";
+            Value methods = context.asValue(obj);
+            assertEquals(expected, methods.invokeMember("m", f).asString());
+            assertEquals("prefix:" + expected, methods.invokeMember("m", "prefix:", f).asString());
+        }
+    }
+
+    @Test
+    public void testConverterOverloadEqualPrecedenceWithStrictArgument() {
+        setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, Value::canExecute,
+                        (v) -> null, TargetMappingPrecedence.HIGHEST).targetTypeMapping(Value.class, Runnable.class, Value::canExecute,
+                                        (v) -> null, TargetMappingPrecedence.HIGHEST));
+        Value methods = context.asValue(new OverloadPrecedenceFunctionProxy());
+        ProxyExecutable f = new TestProxyExecutable();
+        assertFails(() -> methods.invokeMember("m", f), IllegalArgumentException.class);
+        assertFails(() -> methods.invokeMember("m", "prefix:", f), IllegalArgumentException.class);
     }
 
     @Test
