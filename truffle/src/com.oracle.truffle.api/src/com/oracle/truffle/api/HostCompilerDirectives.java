@@ -356,6 +356,20 @@ public final class HostCompilerDirectives {
             ExpansionKind expand() default ExpansionKind.NONE;
 
             /**
+             * Exact concrete type reconstructed for a {@link ExpansionKind#VIRTUAL} argument.
+             * {@code void.class} uses the declared parameter type. An explicit type must be a
+             * concrete instance class assignable to the parameter type. It may be defined by a
+             * different class loader from the handler's declaring class. At each outlined call,
+             * the compiler must prove that the argument is non-null and has this exact type.
+             * All instance fields, including inherited fields, are expanded. The expansion type
+             * must have at least one instance field. This property is ignored on HotSpot, which
+             * uses the declared parameter type.
+             *
+             * @since 25.5
+             */
+            Class<?> expandedType() default void.class;
+
+            /**
              * Indicates the fields to be expanded of this argument if its expansion kind is
              * {@link ExpansionKind#MATERIALIZED}.
              */

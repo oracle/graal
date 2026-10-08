@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-79068: `FileChannel` instances returned by `TruffleFile.newByteChannel` now expose file locking through the `lock` and `tryLock` methods when supported by the underlying file system.
 * GR-80089: Bytecode DSL: Made the ClearLocal builtin non-optional. Custom operations that conflict with this builtin should be renamed.
 * GR-79950: Added `DynamicObject.SetAllPropertyFlagsNode` for updating flags of multiple existing properties without assigning their values. It supports uniform flags, per-key flags, and remove/add masks.
+* GR-80293: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.expandedType()` to select an exact concrete class for virtual argument expansion.
 
 ## Version 25.4
 * GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.

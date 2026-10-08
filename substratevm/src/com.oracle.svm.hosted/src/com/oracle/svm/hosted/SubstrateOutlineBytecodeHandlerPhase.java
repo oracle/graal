@@ -36,6 +36,7 @@ import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
@@ -93,8 +94,9 @@ public final class SubstrateOutlineBytecodeHandlerPhase extends OutlineBytecodeH
     }
 
     @Override
-    protected BytecodeHandlerCallSite getBytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod) {
-        return new BytecodeHandlerCallSite(unwrap(enclosingMethod), bci, unwrap(targetMethod), templateModeEnabled());
+    protected BytecodeHandlerCallSite getBytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod, MetaAccessProvider metaAccess) {
+        AnalysisMetaAccess analysisMetaAccess = (AnalysisMetaAccess) ((HostedMetaAccess) metaAccess).getWrapped();
+        return new BytecodeHandlerCallSite(unwrap(enclosingMethod), bci, unwrap(targetMethod), templateModeEnabled(), analysisMetaAccess.getUniverse()::lookup);
     }
 
     @Override

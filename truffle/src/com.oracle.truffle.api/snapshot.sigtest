@@ -201,6 +201,7 @@ meth public abstract !hasdefault boolean nonNull()
 meth public abstract !hasdefault boolean returnValue()
 meth public abstract !hasdefault com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind expand()
 meth public abstract !hasdefault com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$Field[] fields()
+meth public abstract !hasdefault java.lang.Class<?> expandedType()
 
 CLSS public final static !enum com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument$ExpansionKind
  outer com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterHandlerConfig$Argument
