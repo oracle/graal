@@ -65,6 +65,20 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+        if (compressed) {
+            visitObjectReferencesImpl(firstObjRef, true, referenceSize, holderObject, count);
+        } else {
+            visitObjectReferencesImpl(firstObjRef, false, referenceSize, holderObject, count);
+        }
+    }
+
+    /**
+     * Specializes reference decoding and encoding before entering the scan loop. The promotion
+     * code inside the loop is too large for automatic loop unswitching to reliably do this.
+     */
+    @AlwaysInline("Specialize reference compression outside the scan loop")
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
+    private void visitObjectReferencesImpl(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
         Pointer pos = firstObjRef;
         Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
         while (pos.belowThan(end)) {
