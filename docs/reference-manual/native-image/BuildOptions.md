@@ -19,6 +19,9 @@ Options to configure Native Image are provided in the following categories:
 - Table of available options: run `native-image --print-options` (table), `native-image --print-options=md` (Markdown), or `native-image --print-options=json` (machine-readable JSON).
 
 Depending on the GraalVM version, the options to the `native-image` builder may differ.
+An unrecognized option starting with `--` produces an error instead of being treated as a main class or an output filename.
+Use `native-image --help` to check which build options your installed distribution supports.
+
 Native Image options can also be categorized as **hosted** or **runtime** options:
 
 - **Hosted options**: to configure the build process and set default values for run-time behavior. These options use the prefix `-H:`. For example, `-H:MaxHeapSize=2g` sets the default maximum heap size for the native executable.
