@@ -1483,12 +1483,23 @@ public final class NativeImageClassLoaderSupport {
             var entries = JsonParser.parseDict(reader).getEntries();
             Map<Path, Path> aliases = new LinkedHashMap<>();
             while (entries.advance()) {
-                aliases.put(Path.of(entries.getKey()), Path.of((String) entries.getValue()));
+                aliases.put(normalizeImagePathAlias(Path.of(entries.getKey())), Path.of((String) entries.getValue()));
             }
             return aliases;
         } catch (IOException e) {
             throw VMError.shouldNotReachHere("Unable to read image path aliases from " + file, e);
         }
+    }
+
+    /// Removes redundant dots without collapsing parent components through possible symlinks.
+    private static Path normalizeImagePathAlias(Path path) {
+        Path normalized = path.getRoot();
+        for (Path component : path) {
+            if (!component.toString().equals(".")) {
+                normalized = normalized == null ? component : normalized.resolve(component);
+            }
+        }
+        return normalized == null ? Path.of("") : normalized;
     }
 
     public class IncludeSelectors {
@@ -1523,7 +1534,7 @@ public final class NativeImageClassLoaderSupport {
             EconomicSet<Path> resolvedJavaPathsToInclude = EconomicSet.create();
             List<String> missingClassPathEntries = new ArrayList<>();
             classpathEntries.keySet().forEach(requestedCPEntry -> {
-                Path requestedPath = pathAliases.getOrDefault(requestedCPEntry, requestedCPEntry);
+                Path requestedPath = pathAliases.getOrDefault(normalizeImagePathAlias(requestedCPEntry), requestedCPEntry);
                 Optional<Path> optResolvedEntry = toRealPath(requestedPath)
                                 .map(resolved -> pathAliases.getOrDefault(resolved, resolved)).findAny();
                 if (optResolvedEntry.isPresent()) {
