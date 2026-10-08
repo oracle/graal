@@ -120,7 +120,10 @@ public class RuntimeCompilationSupport {
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
 
     public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, Object compilable, PrintStream logStream) {
-        Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
+        return openDebugContext(options, new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID)), logStream);
+    }
+
+    public DebugContext openDebugContext(OptionValues options, Description description, PrintStream logStream) {
         return new Builder(options, runtimeConfig.getDebugHandlersFactories()).globalMetrics(metricValues).description(description).logStream(logStream).build();
     }
 
