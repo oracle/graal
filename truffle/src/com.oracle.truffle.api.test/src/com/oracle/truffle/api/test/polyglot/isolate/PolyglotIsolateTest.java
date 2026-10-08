@@ -459,6 +459,26 @@ public class PolyglotIsolateTest {
     }
 
     @Test
+    public void testEngineCloseWithoutCompilerIsolate() throws IOException, InterruptedException {
+        assumeFalse(ImageInfo.inImageRuntimeCode());
+        assumeFalse(TruffleTestAssumptions.isExternalIsolate());
+        // Isolate a potential native teardown hang so the subprocess timeout can stop it.
+        SubprocessTestUtils.newBuilder(PolyglotIsolateTest.class, () -> {
+            try (Engine engine = Engine.newBuilder("sl").allowExperimentalOptions(true).//
+                            option("engine.SpawnIsolate", "true").//
+                            option("engine.IsolateOption.CompileInIsolates", "false").//
+                            option("engine.CompilerIdleDelay", "0").//
+                            option("engine.CompileImmediately", "true").//
+                            option("engine.BackgroundCompilation", "false").build()) {
+                try (Context context = Context.newBuilder("sl").engine(engine).build()) {
+                    // Synchronous compilation ensures the compiler pool has started before close.
+                    assertEquals(42, context.eval("sl", "function main() { return 42; }").asInt());
+                }
+            }
+        }).run();
+    }
+
+    @Test
     public void testToStringAfterClose() {
         Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.SpawnIsolate", "true").build();
         Context context = Context.newBuilder().engine(engine).build();
