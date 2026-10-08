@@ -34,6 +34,7 @@ import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -62,8 +63,17 @@ public class PartialRedundancyTest extends GraalCompilerTest {
 
     @Test
     public void testFastPathBranchSplitting() {
+        testFastPathBranchSplitting(getInitialOptions());
+    }
+
+    @Test
+    public void testFastPathBranchSplittingAboveLimit() {
+        testFastPathBranchSplitting(new OptionValues(getInitialOptions(), PartialRedundancySchedulePhase.Options.MaxSplitsPerNode, 2));
+    }
+
+    private void testFastPathBranchSplitting(OptionValues options) {
         for (boolean enabled : new boolean[]{false, true}) {
-            StructuredGraph graph = parseEager("switchSplittingSnippet", AllowAssumptions.YES);
+            StructuredGraph graph = parseEager("switchSplittingSnippet", AllowAssumptions.YES, options);
             createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
             if (enabled) {
                 ReturnNode returnNode = graph.getNodes(ReturnNode.TYPE).first();
