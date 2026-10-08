@@ -778,7 +778,7 @@ abstract class HostExecuteNode extends Node {
     }
 
     private static int compareByPriority(HostContext context, Class<?> t1, Class<?> t2, Object arg, int priority) {
-        if (priority <= HostToTypeNode.STRICT) {
+        if (priority <= HostToTypeNode.HIGHEST) {
             return 0;
         }
         InteropLibrary argInterop = InteropLibrary.getFactory().getUncached(arg);
