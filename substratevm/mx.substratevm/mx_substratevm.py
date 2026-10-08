@@ -2833,9 +2833,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     library_configs=[
         mx_sdk_vm.LibraryConfig(
             use_modules='image',
-            destination='<lib:jvm>',
+            # Keep the library in the per-VM directory used by the JDK launcher.
+            destination='svm/<lib:jvm>',
             jar_distributions=['substratevm:SVM_LIBJVM'],
             build_args=lib_jvm_build_args,
+            jvm_library=True,
             headers=False,
             home_finder=False,
         ),
