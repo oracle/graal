@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,10 @@
  */
 package jdk.graal.compiler.jtt.threads;
 
+import jdk.graal.compiler.graph.Cancellable;
 import jdk.graal.compiler.jtt.JTTTest;
 import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.Cancellable;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
