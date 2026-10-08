@@ -56,6 +56,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 
@@ -1065,44 +1066,34 @@ public class BundlePathMapTest {
     }
 
     @Test
-    public void exportsImagePathAliasesAcrossBundleReplay() throws Exception {
-        Path fixture = newBundleSupport().rootDir;
-        Path first = Files.createDirectories(fixture.resolve("first")).resolve("same.jar");
-        Path second = Files.createDirectories(fixture.resolve("second")).resolve("same.jar");
-        Path module = Files.createDirectories(fixture.resolve("module")).resolve("same.jar");
-        Path auxiliary = fixture.resolve("config.json");
-        for (Path file : List.of(first, second, module, auxiliary)) {
-            Files.writeString(file, "input");
-        }
+    public void pathReferencesReuseCapturedInputsWithoutCapturingNewFiles() throws Exception {
         BundleSupport support = newBundleSupport();
-        Path firstAlias = Path.of("libA", "same.jar");
-        Path secondAlias = Path.of("libB", "same.jar");
-        support.recordCanonicalization(firstAlias, first);
-        support.recordCanonicalization(secondAlias, second);
-        Path bundledFirst = support.substituteClassPath(first);
-        Path bundledSecond = support.substituteClassPath(second);
-        Path bundledModule = support.substituteModulePath(module);
-        support.substituteAuxiliaryPath(auxiliary, com.oracle.svm.shared.option.BundleMember.Role.Input);
-        assertEquals(support.classPathDir.resolve("0/same.jar"), bundledFirst);
-        assertEquals(support.classPathDir.resolve("1/same.jar"), bundledSecond);
-        assertEquals(support.modulePathDir.resolve("0/same.jar"), bundledModule);
-        assertEquals(bundledFirst, support.substituteClassPath(first));
-        for (Path file : List.of(first, second, module, auxiliary)) {
-            Files.delete(file);
+        Path classes = Files.createDirectories(newBundleSupport().rootDir.resolve("classes"));
+        assertEquals(classes, support.substituteAuxiliaryPath(classes, Role.InputReference));
+        Path captured = support.substituteClassPath(classes);
+        assertEquals(captured, support.substituteAuxiliaryPath(classes, Role.InputReference));
+        try (Stream<Path> inputs = Files.list(support.auxiliaryDir)) {
+            assertEquals(0, inputs.count());
         }
-        for (int generation = 0; generation < 3; generation++) {
-            List<Path> imagePaths = List.of(bundledFirst, bundledSecond, bundledModule);
-            assertEquals(Map.of(
-                            firstAlias.toString(), bundledFirst.toString(),
-                            secondAlias.toString(), bundledSecond.toString(),
-                            first.toString(), bundledFirst.toString(),
-                            second.toString(), bundledSecond.toString(),
-                            module.toString(), bundledModule.toString()), support.imagePathAliases(imagePaths));
-            assertEquals(Map.of(firstAlias.toString(), bundledFirst.toString(), first.toString(), bundledFirst.toString()), support.imagePathAliases(List.of(bundledFirst)));
-            support = writeAndReloadBundle(support, fixture.resolve("aliases-" + generation + ".nib"));
-            bundledFirst = support.restoreBundlePath(firstAlias);
-            bundledSecond = support.restoreBundlePath(secondAlias);
-            bundledModule = support.restoreBundlePath(module);
+    }
+
+    @Test
+    public void rewritesOnlyPrefixedPathEntries() {
+        BundleSupport support = newBundleSupport();
+        APIOptionHandler handler = support.nativeImage.apiOptionHandler;
+        String option = "-H:Preserve@user+api=none,module=java.logging,path=classes,package=my.library.*,all";
+        assertEquals("-H:Preserve@user+api=none,module=java.logging,path=captured,package=my.library.*,all",
+                        handler.transformBuilderArgument(option, (_, role) -> {
+                            assertEquals(Role.InputReference, role);
+                            return Path.of("captured");
+                        }));
+        assertEquals("-H:Preserve@user+api=none,module=java.logging,path=rewritten,package=my.library.*,all",
+                        handler.rewriteBundleHostedOptionArgument(option, _ -> "rewritten"));
+        for (String value : List.of("", "path=")) {
+            String emptyOption = "-H:Preserve=" + value;
+            assertEquals(emptyOption, handler.transformBuilderArgument(emptyOption, (_, _) -> {
+                throw new AssertionError("Empty selection was treated as a path");
+            }));
         }
     }
 

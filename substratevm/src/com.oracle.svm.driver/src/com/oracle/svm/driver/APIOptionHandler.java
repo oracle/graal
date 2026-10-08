@@ -89,7 +89,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    record PathsOptionInfo(String delimiter, BundleMember.Role role) {
+    record PathsOptionInfo(String delimiter, BundleMember.Role role, String valuePrefix) {
+        String rewriteEntry(String entry, Function<String, String> pathRewriter) {
+            return entry.startsWith(valuePrefix) && entry.length() > valuePrefix.length() ? valuePrefix + pathRewriter.apply(entry.substring(valuePrefix.length())) : entry;
+        }
     }
 
     private final SortedMap<String, OptionInfo> apiOptions;
@@ -288,14 +291,19 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         Object defaultValue = optionDescriptor.getOptionKey().getDefaultValue();
         if (defaultValue instanceof MultiOptionValue) {
             var multiOptionDefaultValue = ((MultiOptionValue<?>) defaultValue);
-            if (Path.class.isAssignableFrom(multiOptionDefaultValue.getValueType())) {
-                String rawOptionName = optionDescriptor.getName();
-                String builderOption = optionPrefix + rawOptionName;
-                BundleMember.Role role = BundleMember.Role.Ignore;
-                for (BundleMember bundleMember : OptionUtils.getAnnotationsByType(optionDescriptor, BundleMember.class)) {
-                    role = bundleMember.role();
+            BundleMember.Role role = BundleMember.Role.Ignore;
+            String valuePrefix = "";
+            String delimiter = multiOptionDefaultValue.getDelimiter();
+            for (BundleMember bundleMember : OptionUtils.getAnnotationsByType(optionDescriptor, BundleMember.class)) {
+                role = bundleMember.role();
+                valuePrefix = bundleMember.valuePrefix();
+                if (!bundleMember.delimiter().isEmpty()) {
+                    delimiter = bundleMember.delimiter();
                 }
-                pathOptions.put(builderOption, new PathsOptionInfo(multiOptionDefaultValue.getDelimiter(), role));
+            }
+            if (Path.class.isAssignableFrom(multiOptionDefaultValue.getValueType()) || !valuePrefix.isEmpty()) {
+                String builderOption = optionPrefix + optionDescriptor.getName();
+                pathOptions.put(builderOption, new PathsOptionInfo(delimiter, role, valuePrefix));
             }
         }
     }
@@ -522,6 +530,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return builderArgument;
         }
 
+        if (!pathsOptionInfo.valuePrefix.isEmpty() && !nativeImage.useBundle()) {
+            return builderArgument;
+        }
+
         /*
          * Option requests value-transformations, first split value aggregate into individual values
          */
@@ -536,10 +548,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         /* Perform value-transformation on individual values with given transformFunction */
         try {
             String transformedOptionValue = rawEntries.stream()
-                            .filter(s -> !s.isEmpty())
-                            .map(this::tryCanonicalize)
-                            .map(src -> transformFunction.apply(src, pathsOptionInfo.role))
-                            .map(Path::toString)
+                            .filter(s -> !s.isEmpty() || !pathsOptionInfo.valuePrefix.isEmpty())
+                            .map(entry -> pathsOptionInfo.rewriteEntry(entry, path -> transformFunction.apply(tryCanonicalize(path), pathsOptionInfo.role).toString()))
                             .collect(Collectors.joining(delimiter));
             /* Update argumentParts with transformed aggregate value and return as string */
             argumentParts.optionValue = transformedOptionValue;
@@ -565,7 +575,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (pathsOptionInfo == null || pathsOptionInfo.role == BundleMember.Role.Ignore) {
             return builderArgument;
         }
-        argumentParts.optionValue = rewritePathAggregate(argumentParts.optionValue, pathsOptionInfo.delimiter, pathRewriter);
+        argumentParts.optionValue = rewritePathAggregate(argumentParts.optionValue, pathsOptionInfo, pathRewriter);
         return argumentParts.toString();
     }
 
@@ -600,7 +610,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                             // Consume the separate value argument owned by this
                             // whitespace-separated option.
                             String nextArg = args.poll();
-                            return List.of(headArg, rewritePathAggregate(nextArg, pathsOptionInfo.delimiter, pathRewriter));
+                            return List.of(headArg, rewritePathAggregate(nextArg, pathsOptionInfo, pathRewriter));
                         }
                     } else {
                         String optionNameWithSeparator = optionName + APIOption.Utils.valueSeparatorToString(valueSeparator);
@@ -609,7 +619,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                             // value.
                             args.poll();
                             String optionValue = headArg.substring(optionNameWithSeparator.length());
-                            String rewrittenValue = rewritePathAggregate(optionValue, pathsOptionInfo.delimiter, pathRewriter);
+                            String rewrittenValue = rewritePathAggregate(optionValue, pathsOptionInfo, pathRewriter);
                             return List.of(optionNameWithSeparator + rewrittenValue);
                         }
                     }
@@ -656,8 +666,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return builderOption.endsWith("=") ? builderOption.substring(0, builderOption.length() - 1) : builderOption;
     }
 
-    private static String rewritePathAggregate(String value, String delimiter, Function<String, String> pathRewriter) {
-        return rewritePathAggregate(value, delimiter::isEmpty, delimiter, delimiter, pathRewriter);
+    private static String rewritePathAggregate(String value, PathsOptionInfo info, Function<String, String> pathRewriter) {
+        return rewritePathAggregate(value, info.delimiter::isEmpty, info.delimiter, info.delimiter, entry -> info.rewriteEntry(entry, pathRewriter));
     }
 
     static String rewritePathAggregate(String value, BooleanSupplier isSingleValue, String splitDelimiter, String joinDelimiter, Function<String, String> pathRewriter) {

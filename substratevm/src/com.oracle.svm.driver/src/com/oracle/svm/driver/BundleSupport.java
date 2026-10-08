@@ -36,7 +36,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -46,7 +45,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -519,15 +517,12 @@ final class BundleSupport {
     }
 
     Path substituteAuxiliaryPath(Path origPath, BundleMember.Role bundleMemberRole) {
-        Path destinationDir = switch (bundleMemberRole) {
-            case Input -> auxiliaryDir;
-            case Output -> auxiliaryOutputDir;
-            case Ignore -> null;
+        return switch (bundleMemberRole) {
+            case Input -> substitutePath(origPath, auxiliaryDir);
+            case Output -> substitutePath(origPath, auxiliaryOutputDir);
+            case InputReference -> Objects.requireNonNullElse(resolveSubstitutedPath(portableSourcePath(origPath)), origPath);
+            case Ignore -> origPath;
         };
-        if (destinationDir == null) {
-            return origPath;
-        }
-        return substitutePath(origPath, destinationDir);
     }
 
     Path substituteImagePath(Path origPath) {
@@ -657,19 +652,6 @@ final class BundleSupport {
         return pathSubstitutions.values().stream()
                         .filter(substitution -> substitution.kind() != RootKind.Unavailable)
                         .anyMatch(substitution -> BundlePathMap.resolveBundlePath(rootDir, substitution).startsWith(path));
-    }
-
-    /// Exports only aliases of paths actually passed to the builder, including recorded symlink
-    /// and relative spellings. Bundle-specific path representations stay in the driver.
-    Map<String, String> imagePathAliases(Collection<Path> imagePaths) {
-        Map<String, String> aliases = new TreeMap<>();
-        Stream.concat(pathSubstitutions.keySet().stream(), pathCanonicalizations.keySet().stream()).forEach(original -> {
-            Path substituted = resolveSubstitutedPath(original);
-            if (substituted != null && imagePaths.contains(substituted)) {
-                aliases.put(original.sourcePathText(), substituted.toString());
-            }
-        });
-        return aliases;
     }
 
     PortablePath originalPortablePath(Path substitutedPath) {

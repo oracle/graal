@@ -35,9 +35,6 @@ public final class SharedConstants {
      */
     public static final String DRIVER_TEMP_DIR_ENV_VARIABLE = "DRIVER_TEMP_DIR_ENV_VARIABLE";
 
-    /// System property naming the driver-generated JSON map from original image paths to builder paths.
-    public static final String IMAGE_PATH_ALIASES_PROPERTY = "com.oracle.svm.imagePathAliases";
-
     /**
      * The name of the Java environment variable used to indicate that it is a build initiated due
      * to a {@link com.oracle.svm.core.util.ExitStatus#REBUILD_AFTER_ANALYSIS exit status}. The

@@ -120,7 +120,6 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.EconomicHashSet;
-import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.internal.module.Modules;
 import jdk.internal.module.Resources;
@@ -1474,34 +1473,6 @@ public final class NativeImageClassLoaderSupport {
         dynamicAccessSelectors.addModule(ALL_UNNAMED, origin);
     }
 
-    private static Map<Path, Path> readImagePathAliases() {
-        String file = System.getProperty(SharedConstants.IMAGE_PATH_ALIASES_PROPERTY);
-        if (file == null) {
-            return Map.of();
-        }
-        try (var reader = Files.newBufferedReader(Path.of(file))) {
-            var entries = JsonParser.parseDict(reader).getEntries();
-            Map<Path, Path> aliases = new LinkedHashMap<>();
-            while (entries.advance()) {
-                aliases.put(normalizeImagePathAlias(Path.of(entries.getKey())), Path.of((String) entries.getValue()));
-            }
-            return aliases;
-        } catch (IOException e) {
-            throw VMError.shouldNotReachHere("Unable to read image path aliases from " + file, e);
-        }
-    }
-
-    /// Removes redundant dots without collapsing parent components through possible symlinks.
-    private static Path normalizeImagePathAlias(Path path) {
-        Path normalized = path.getRoot();
-        for (Path component : path) {
-            if (!component.toString().equals(".")) {
-                normalized = normalized == null ? component : normalized.resolve(component);
-            }
-        }
-        return normalized == null ? Path.of("") : normalized;
-    }
-
     public class IncludeSelectors {
         private static final String CLASS_INCLUSION_SEALED_MSG = "Class inclusion configuration is already sealed.";
 
@@ -1530,13 +1501,10 @@ public final class NativeImageClassLoaderSupport {
          * them.
          */
         private void verifyClasspathEntriesPresentAndResolve() {
-            Map<Path, Path> pathAliases = classpathEntries.isEmpty() ? Map.of() : readImagePathAliases();
             EconomicSet<Path> resolvedJavaPathsToInclude = EconomicSet.create();
             List<String> missingClassPathEntries = new ArrayList<>();
             classpathEntries.keySet().forEach(requestedCPEntry -> {
-                Path requestedPath = pathAliases.getOrDefault(normalizeImagePathAlias(requestedCPEntry), requestedCPEntry);
-                Optional<Path> optResolvedEntry = toRealPath(requestedPath)
-                                .map(resolved -> pathAliases.getOrDefault(resolved, resolved)).findAny();
+                Optional<Path> optResolvedEntry = toRealPath(requestedCPEntry).findAny();
                 if (optResolvedEntry.isPresent()) {
                     Path resolvedEntry = optResolvedEntry.get();
                     if (applicationClassPath().contains(resolvedEntry)) {
