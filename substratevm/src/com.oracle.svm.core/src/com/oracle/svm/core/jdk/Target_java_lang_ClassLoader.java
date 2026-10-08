@@ -91,6 +91,8 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias private Target_java_lang_ClassLoader parent;
 
+    @Alias public String name;
+
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
      * of ClassLoader, so we just reset it. The original javadoc mentions: "The classes loaded by
@@ -157,21 +159,21 @@ public final class Target_java_lang_ClassLoader {
     private static native ClassLoader initSystemClassLoader();
 
     @Alias
-    public native Enumeration<URL> findResources(String name);
+    public native Enumeration<URL> findResources(String resourceName);
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    private Enumeration<URL> getResources(String name) {
+    private Enumeration<URL> getResources(String resourceName) {
         /* Every class loader sees every resource, so we still need this substitution (GR-19998). */
-        Enumeration<URL> urls = ResourcesHelper.nameToResourceEnumerationURLs(name);
-        return urls.hasMoreElements() ? urls : findResources(name);
+        Enumeration<URL> urls = ResourcesHelper.nameToResourceEnumerationURLs(resourceName);
+        return urls.hasMoreElements() ? urls : findResources(resourceName);
     }
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
     @SuppressWarnings("unused")
-    static NativeLibrary loadLibrary(Class<?> fromClass, String name) {
-        NativeLibrarySupport.singleton().loadLibraryRelative(name);
+    static NativeLibrary loadLibrary(Class<?> fromClass, String libraryName) {
+        NativeLibrarySupport.singleton().loadLibraryRelative(libraryName);
         // We don't use the JDK's NativeLibraries or NativeLibrary implementations
         return null;
     }
@@ -192,25 +194,25 @@ public final class Target_java_lang_ClassLoader {
     public native String nameAndId();
 
     @Alias
-    protected native Class<?> findLoadedClass(String name);
+    protected native Class<?> findLoadedClass(String className);
 
     @Alias
-    protected native Class<?> findClass(String name);
+    protected native Class<?> findClass(String className);
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
     @SuppressWarnings("unused")
-    Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        Class<?> clazz = findLoadedClass(name);
+    Class<?> loadClass(String className, boolean resolve) throws ClassNotFoundException {
+        Class<?> clazz = findLoadedClass(className);
         if (clazz != null) {
             return clazz;
         }
         if (!PredefinedClassesSupport.hasBytecodeClasses()) {
-            throw new ClassNotFoundException(name);
+            throw new ClassNotFoundException(className);
         }
         if (parent != null) {
             try {
-                clazz = parent.loadClass(name, resolve);
+                clazz = parent.loadClass(className, resolve);
                 if (clazz != null) {
                     return clazz;
                 }
@@ -218,19 +220,19 @@ public final class Target_java_lang_ClassLoader {
                 // not found in parent loader
             }
         }
-        return findClass(name);
+        return findClass(className);
     }
 
     @Substitute
     @TargetElement(onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
     @SuppressWarnings("unused")
-    Class<?> loadClass(Module module, String name) {
+    Class<?> loadClass(Module module, String className) {
         /*
          * When runtime class loading is disabled, named-module lookups still need to resolve
          * classes already linked into the image.
          */
         try {
-            return loadClass(name, false);
+            return loadClass(className, false);
         } catch (ClassNotFoundException e) {
             return null;
         }
@@ -240,8 +242,8 @@ public final class Target_java_lang_ClassLoader {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/ClassLoader.c#L320-L329")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1056-L1096")
     @SuppressWarnings({"unused"}) //
-    private Class<?> findLoadedClass0(String name) {
-        if (name == null) {
+    private Class<?> findLoadedClass0(String className) {
+        if (className == null) {
             return null;
         }
 
@@ -249,8 +251,8 @@ public final class Target_java_lang_ClassLoader {
          * HotSpot supports both dot- and slash-names here as well as array types The only caller
          * (findLoadedClass) errors out on slash-names and array types so we assume dot-names
          */
-        assert !name.contains("/") && !name.startsWith("[");
-        return ClassRegistries.findLoadedClass(name, SubstrateUtil.cast(this, ClassLoader.class));
+        assert !className.contains("/") && !className.startsWith("[");
+        return ClassRegistries.findLoadedClass(className, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     /**
@@ -317,34 +319,34 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
-        return RuntimeClassLoading.defineClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, new ClassDefinitionInfo(protectionDomain));
+    private Class<?> defineClass(String className, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
+        return RuntimeClassLoading.defineClass(SubstrateUtil.cast(this, ClassLoader.class), className, b, off, len, new ClassDefinitionInfo(protectionDomain));
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     @TargetElement(onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
-        return defineClass2(SubstrateUtil.cast(this, ClassLoader.class), name, b, b.position(), b.remaining(), protectionDomain, null);
+    private Class<?> defineClass(String className, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
+        return defineClass2(SubstrateUtil.cast(this, ClassLoader.class), className, b, b.position(), b.remaining(), protectionDomain, null);
     }
 
     @Delete
     @TargetElement(name = "defineClass1", onlyWith = ClassRegistries.IgnoresClassLoader.class)
     @SuppressWarnings("unused")
-    private static native Class<?> defineClass1Deleted(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
+    private static native Class<?> defineClass1Deleted(ClassLoader loader, String className, byte[] b, int off, int len, ProtectionDomain pd, String source);
 
     @Delete
     @TargetElement(name = "defineClass2", onlyWith = ClassRegistries.IgnoresClassLoader.class)
-    private static native Class<?> defineClass2Deleted(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
+    private static native Class<?> defineClass2Deleted(ClassLoader loader, String className, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
 
     @Substitute
     @TargetElement(onlyWith = ClassRegistries.RespectsClassLoader.class)
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/ClassLoader.c#L71-L151")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1051-L1054")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L857-L896")
-    private static Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source) {
-        // Note that if name is not null, it is a binary name in either / or .-form
-        return RuntimeClassLoading.defineClass(loader, name, b, off, len, new ClassDefinitionInfo(pd, source));
+    private static Class<?> defineClass1(ClassLoader loader, String className, byte[] b, int off, int len, ProtectionDomain pd, String source) {
+        // Note that if className is not null, it is a binary name in either / or .-form
+        return RuntimeClassLoading.defineClass(loader, className, b, off, len, new ClassDefinitionInfo(pd, source));
     }
 
     @Substitute
@@ -352,8 +354,8 @@ public final class Target_java_lang_ClassLoader {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/ClassLoader.c#L153-L213")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1051-L1054")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L857-L896")
-    private static Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source) {
-        // Note that if name is not null, it is a binary name in either / or .-form
+    private static Class<?> defineClass2(ClassLoader loader, String className, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source) {
+        // Note that if className is not null, it is a binary name in either / or .-form
         // only bother extracting the bytes if it has a chance to work
         if (PredefinedClassesSupport.hasBytecodeClasses() || RuntimeClassLoading.isSupported()) {
             byte[] array;
@@ -366,21 +368,21 @@ public final class Target_java_lang_ClassLoader {
                 b.get(off, array);
                 offset = 0;
             }
-            return RuntimeClassLoading.defineClass(loader, name, array, offset, len, new ClassDefinitionInfo(pd, source));
+            return RuntimeClassLoading.defineClass(loader, className, array, offset, len, new ClassDefinitionInfo(pd, source));
         }
-        throw RuntimeClassLoading.throwNoBytecodeClasses(name);
+        throw RuntimeClassLoading.throwNoBytecodeClasses(className);
     }
 
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/ClassLoader.c#L215-L283")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L1039-L1049")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L909-L1022")
-    private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd,
+    private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String className, byte[] b, int off, int len, ProtectionDomain pd,
                     boolean initialize, int flags, Object classData) {
-        // Note that if name is not null, it is a binary name in either / or .-form
-        String actualName = name;
+        // Note that if className is not null, it is a binary name in either / or .-form
+        String actualName = className;
         assert !(PredefinedClassesSupport.hasBytecodeClasses() && RuntimeClassLoading.isSupported());
-        if (!RuntimeClassLoading.isSupported() && LambdaUtils.isLambdaClassName(name)) {
+        if (!RuntimeClassLoading.isSupported() && LambdaUtils.isLambdaClassName(className)) {
             actualName += Digest.digest(b);
         }
         boolean isNestMate = (flags & ClassLoaderHelper.NESTMATE_CLASS) != 0;
@@ -425,13 +427,13 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/java.base/share/native/libjava/ClassLoader.c#L288-L328")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/prims/jvm.cpp#L780-L800")
-    static Class<?> findBootstrapClass(String name) {
+    static Class<?> findBootstrapClass(String className) {
         /*
          * HotSpot supports both dot- and slash-names here as well as array types The only caller
          * (findBootstrapClassOrNull) errors out on slash-names and array types.
          */
-        assert !name.contains("/") && !name.startsWith("[");
-        return ClassRegistries.findBootstrapClass(name);
+        assert !className.contains("/") && !className.startsWith("[");
+        return ClassRegistries.findBootstrapClass(className);
     }
 
 }
