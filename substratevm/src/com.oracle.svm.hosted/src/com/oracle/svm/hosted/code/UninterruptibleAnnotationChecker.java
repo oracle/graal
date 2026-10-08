@@ -51,12 +51,17 @@ import com.oracle.svm.util.GuestAnnotationAccess;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
+import jdk.graal.compiler.nodes.java.AllocateWithExceptionNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.replacements.nodes.ObjectClone;
+import jdk.graal.compiler.vector.replacements.CopyOfNode;
+import jdk.graal.compiler.vector.replacements.UncheckedCopyOfNode;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -334,8 +339,10 @@ public final class UninterruptibleAnnotationChecker {
         return System.lineSeparator() + "  at " + invoke.getNodeSourcePosition();
     }
 
+    /** Includes nodes that can allocate when lowered, such as boxing, cloning, and array-copy intrinsics. */
     public static boolean isAllocationNode(Node node) {
-        return node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode;
+        return node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode ||
+                        node instanceof AllocateWithExceptionNode || node instanceof BoxNode || node instanceof ObjectClone || node instanceof CopyOfNode || node instanceof UncheckedCopyOfNode;
     }
 
     private static boolean isCallerMustBe(HostedMethod method) {

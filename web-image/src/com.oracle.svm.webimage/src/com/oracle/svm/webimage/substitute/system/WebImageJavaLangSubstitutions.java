@@ -138,6 +138,11 @@ final class Target_com_oracle_svm_core_shared_VMError_Web {
     }
 
     @Substitute
+    private static RuntimeException shouldNotReachHereUnexpectedInput(long input) {
+        throw JSInternalErrors.shouldNotReachHere(VMError.msgShouldNotReachHereUnexpectedInput);
+    }
+
+    @Substitute
     private static RuntimeException shouldNotReachHereAtRuntime() {
         throw JSInternalErrors.shouldNotReachHere(VMError.msgShouldNotReachHereAtRuntime);
     }

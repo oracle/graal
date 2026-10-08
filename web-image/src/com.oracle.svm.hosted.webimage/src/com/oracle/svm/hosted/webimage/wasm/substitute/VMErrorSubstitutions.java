@@ -127,6 +127,13 @@ final class Target_com_oracle_svm_core_shared_VMError_Web {
     @NeverInline("Accessing instruction pointer of the caller frame")
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @Substitute
+    private static RuntimeException shouldNotReachHereUnexpectedInput(long input) {
+        throw VMErrorSubstitutions.shouldNotReachHere(VMError.msgShouldNotReachHereUnexpectedInput, null);
+    }
+
+    @NeverInline("Accessing instruction pointer of the caller frame")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Substitute
     private static RuntimeException shouldNotReachHereAtRuntime() {
         throw VMErrorSubstitutions.shouldNotReachHere(VMError.msgShouldNotReachHereAtRuntime, null);
     }

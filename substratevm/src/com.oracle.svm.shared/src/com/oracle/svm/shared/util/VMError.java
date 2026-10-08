@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,6 +137,11 @@ public final class VMError {
      * A hardcoded list of options (if, switch) did not handle the case actually provided.
      */
     public static RuntimeException shouldNotReachHereUnexpectedInput(Object input) {
+        throw new HostedError(msgShouldNotReachHereUnexpectedInput + ": " + input);
+    }
+
+    /** Overload that avoids boxing in allocation-free code. */
+    public static RuntimeException shouldNotReachHereUnexpectedInput(long input) {
         throw new HostedError(msgShouldNotReachHereUnexpectedInput + ": " + input);
     }
 
