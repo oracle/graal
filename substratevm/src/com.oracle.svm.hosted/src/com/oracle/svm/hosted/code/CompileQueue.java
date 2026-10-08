@@ -110,6 +110,7 @@ import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
+import jdk.graal.compiler.duplication.phases.simulation.TailCallDuplicationPhase;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.Indent;
@@ -161,6 +162,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.virtual.phases.ea.FinalPartialEscapePhase;
 import jdk.graal.compiler.phases.util.GraphOrder;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
@@ -1611,6 +1613,9 @@ public class CompileQueue {
                 if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method)) {
                     // Suites are shared between compilation threads; specialize only this stub.
                     suites = suites.copy();
+                    if (suites.getHighTier().findPhase(FinalPartialEscapePhase.class) != null) {
+                        suites.getHighTier().insertAfterPhase(FinalPartialEscapePhase.class, new TailCallDuplicationPhase(CanonicalizerPhase.create()));
+                    }
                     // Keep reloads after calls instead of extending their live ranges through GVN.
                     suites.getHighTier().removeSubTypePhases(DominatorBasedGlobalValueNumberingPhase.class);
                     suites.getMidTier().removeSubTypePhases(DominatorBasedGlobalValueNumberingPhase.class);

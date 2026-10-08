@@ -35,12 +35,14 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpScope;
+import jdk.graal.compiler.duplication.phases.simulation.TailCallDuplicationPhase;
 import jdk.graal.compiler.duplication.util.DuplicationUtil;
 import jdk.graal.compiler.duplication.util.DuplicationUtil.DuplicationRegion;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardPhiNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -48,6 +50,7 @@ import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.MultiReturnNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
@@ -71,6 +74,7 @@ import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.GraphOrder;
@@ -165,6 +169,28 @@ public class GR74049ManualLoopExitProxyTest extends GraalCompilerTest {
         } catch (Throwable t) {
             throw debug.handle(t);
         }
+    }
+
+    @Test
+    public void testTailDuplicationPreparesEscapingGuardPhi() throws Exception {
+        ReproGraph repro = buildGraph();
+        StructuredGraph graph = repro.graph;
+        LoopEndNode loopEnd = (LoopEndNode) repro.regionEnd.next();
+        repro.regionEnd.setNext(null);
+        BeginNode continueBegin = graph.add(new BeginNode());
+        continueBegin.setNext(loopEnd);
+        LoopExitNode exit = graph.add(new LoopExitNode(loopEnd.loopBegin()));
+        exit.setStateAfter(graph.addWithoutUnique(new FrameState(BytecodeFrame.UNKNOWN_BCI)));
+        MultiReturnNode result = graph.addWithoutUnique(new MultiReturnNode(exactLongConstant(graph, 0), exactLongConstant(graph, 1), true));
+        exit.setNext(graph.add(new ReturnNode(result)));
+        repro.regionEnd.setNext(graph.add(new IfNode(createLongEqualsCondition(graph, graph.getParameter(1), 23), exit, continueBegin, BranchProbabilityData.unknown())));
+        new DisableOverflownCountedLoopsPhase().apply(graph);
+        graph.getGraphState().setAfterStage(StageFlag.FINAL_PARTIAL_ESCAPE);
+        Assert.assertTrue("fixture has a merge escaping through a guard phi", repro.duplicationMerge.usages().filter(GuardPhiNode.class).isNotEmpty());
+        new TailCallDuplicationPhase(CanonicalizerPhase.createWithoutCFGSimplification()).apply(graph, getProviders());
+        Assert.assertFalse("the guarded tail must actually be duplicated", repro.duplicationMerge.isAlive());
+        Assert.assertTrue(graph.verify(true));
+        Assert.assertTrue("duplicated guard dependencies must remain schedulable", GraphOrder.assertSchedulableGraph(graph));
     }
 
     /**
