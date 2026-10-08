@@ -573,7 +573,7 @@ public class ParserState {
         for (int i = labelTypes.length - 2; i >= 0; i--) {
             popChecked(labelTypes[i]);
         }
-        for (int i = 0; i < labelTypes.length - 2; i++) {
+        for (int i = 0; i < labelTypes.length - 1; i++) {
             push(labelTypes[i]);
         }
         push(noJumpReferenceType);
