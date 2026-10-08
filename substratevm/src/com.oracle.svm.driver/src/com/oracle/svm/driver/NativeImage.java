@@ -2293,6 +2293,10 @@ public class NativeImage {
             if (!Files.isReadable(realPath)) {
                 showError("Path entry " + path + " is not readable");
             }
+            if (useBundle()) {
+                // Keep the absolute spelling before resolving symlinks available for bundle replay.
+                bundleSupport.recordCanonicalization(absolutePath, realPath);
+            }
             return useBundle() ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + path, e);
