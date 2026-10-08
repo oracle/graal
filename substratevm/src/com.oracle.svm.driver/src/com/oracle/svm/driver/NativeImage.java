@@ -1244,9 +1244,6 @@ public class NativeImage {
             }
 
             Optional<ArgumentEntry> lastImageName = getHostedOptionArgument(imageBuilderArgs, oHName);
-            if (!lastImageName.isEmpty()) {
-                validateImageName(lastImageName.get().value());
-            }
 
             if (!jarOptionMode) {
                 mainClassModule = getHostedOptionArgumentValue(imageBuilderArgs, oHModule);
@@ -1287,7 +1284,7 @@ public class NativeImage {
                     boolean extraNameIsLast = lastImageName.isEmpty() || lastImageName.get().index < extraImageName.index;
                     if (extraNameIsLast) {
                         /* extraImageArg that comes after lastImageName wins */
-                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + validateImageName(extraImageName.value));
+                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageName.value);
                     }
                 }
             } else { /* jarOptionMode */
@@ -1453,13 +1450,6 @@ public class NativeImage {
             }
         }
         return null;
-    }
-
-    private static String validateImageName(String imageName) {
-        if (imageName.startsWith("-")) {
-            LogUtils.warning("Image name ('" + imageName + "') start with a dash. Is another option wrongly interpreted as image name? (see --help)");
-        }
-        return imageName;
     }
 
     private static void updateArgumentEntryValue(List<String> argList, ArgumentEntry listEntry, String newValue) {
@@ -2295,6 +2285,8 @@ public class NativeImage {
                 if (!consumed) {
                     if (strict) {
                         showError("Property 'Args' contains invalid entry '" + queue.peek() + "'");
+                    } else if (queue.peek().startsWith("-")) {
+                        showError("Unrecognized option '" + queue.peek() + "'. Use '--help' to list available options.");
                     } else {
                         /* Ensure unique object identity for leftover arg */
                         String uniqueLeftoverArg = new String(queue.poll());
