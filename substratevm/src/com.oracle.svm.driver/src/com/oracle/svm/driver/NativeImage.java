@@ -2295,7 +2295,7 @@ public class NativeImage {
                 if (!consumed) {
                     if (strict) {
                         showError("Property 'Args' contains invalid entry '" + queue.peek() + "'");
-                    } else if (queue.peek().startsWith("--")) {
+                    } else if (queue.peek().startsWith("-")) {
                         showError("Unrecognized option '" + queue.peek() + "'. Use '--help' to list available options.");
                     } else {
                         /* Ensure unique object identity for leftover arg */

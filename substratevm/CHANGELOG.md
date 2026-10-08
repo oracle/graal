@@ -3,8 +3,8 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
-* (GR-79971) Unrecognized Native Image options starting with `--` now produce an error instead of being interpreted as a main class or output filename.
-  Compatibility change: positional output names starting with `--` are now rejected.
+* (GR-79971) Unrecognized Native Image options starting with `-` or `--` now produce an error instead of being interpreted as a main class or output filename.
+  Compatibility change: positional output names beginning with a dash are now rejected.
   To use such a name, specify it with `-o`, for example `native-image -jar hello.jar -o --my-image`, or prefix the positional name with `./`.
 * (GR-77491) Bundle format version is now 2.0, with explicit path root kinds, build argument groups that retain their source platform, and persistent markers for unavailable inputs.
   Older bundle formats remain readable.
