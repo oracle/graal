@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
@@ -39,7 +40,9 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.extended.BytecodeHandlerDispatchAddressNode;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.vm.ci.code.InstalledCode;
@@ -56,6 +59,77 @@ public class BytecodeHandlerDispatchAddressTest extends GraalCompilerTest {
 
     public static long dynamic(int opcode, int state, int secondState) {
         return opcode + state + secondState;
+    }
+
+    public static int sharedState(int first, int second, int third) {
+        int state;
+        if (first == 0) {
+            GraalDirectives.controlFlowAnchor();
+            state = 0;
+        } else {
+            GraalDirectives.controlFlowAnchor();
+            state = 1;
+        }
+        int other;
+        if (second == 0) {
+            GraalDirectives.controlFlowAnchor();
+            other = state;
+        } else {
+            GraalDirectives.controlFlowAnchor();
+            other = 2;
+        }
+        int result;
+        if (third == 0) {
+            GraalDirectives.controlFlowAnchor();
+            result = state;
+        } else {
+            GraalDirectives.controlFlowAnchor();
+            result = other;
+        }
+        return result;
+    }
+
+    @Test
+    public void testSharedStatePhiLoadsEachPathOnce() throws InvalidInstalledCodeException {
+        checkSharedStatePhi(1);
+    }
+
+    @Test
+    public void testSeparateDispatchesShareTableLoads() throws InvalidInstalledCodeException {
+        checkSharedStatePhi(2);
+    }
+
+    private void checkSharedStatePhi(int dispatchCount) throws InvalidInstalledCodeException {
+        StructuredGraph graph = parseEager("sharedState", AllowAssumptions.NO);
+        long[][] tables = {{11}, {22}, {33}};
+        int[] selections = new int[3];
+        ReturnNode result = graph.getNodes(ReturnNode.TYPE).first();
+        ValueNode sum = ConstantNode.forLong(0, graph);
+        for (int i = 0; i < dispatchCount; i++) {
+            BytecodeHandlerDispatchAddressNode dispatch = graph.add(new BytecodeHandlerDispatchAddressNode(
+                            ConstantNode.forInt(0, graph), new ValueNode[]{result.result()}, new int[]{3}, index -> {
+                                selections[index]++;
+                                return tables[index];
+                            }));
+            graph.addBeforeFixed(result, dispatch);
+            sum = graph.addOrUnique(new AddNode(sum, dispatch));
+        }
+        // Keep the Java return kind while returning a distinguishable table entry.
+        result.replaceFirstInput(result.result(), graph.addOrUnique(new NarrowNode(sum, 32)));
+        graph.getGraphState().setAfterStage(StageFlag.FINAL_PARTIAL_ESCAPE);
+        lowerDispatchBeforeCompilation(graph);
+        Assert.assertArrayEquals(new int[]{dispatchCount, dispatchCount, dispatchCount}, selections);
+        Assert.assertEquals(3, graph.getNodes().filter(node -> node.getClass().getSimpleName().equals("BytecodeHandlerTableLoadNode")).count());
+        Assert.assertTrue(graph.verify());
+        graph.getGraphState().getStageFlags().remove(StageFlag.FINAL_PARTIAL_ESCAPE);
+        InstalledCode code = getCode(graph.method(), graph, true);
+        for (int first = 0; first < 2; first++) {
+            for (int second = 0; second < 2; second++) {
+                for (int third = 0; third < 2; third++) {
+                    Assert.assertEquals((sharedState(first, second, third) + 1) * 11 * dispatchCount, code.executeVarargs(first, second, third));
+                }
+            }
+        }
     }
 
     private StructuredGraph dispatchGraph(boolean constantState) {
