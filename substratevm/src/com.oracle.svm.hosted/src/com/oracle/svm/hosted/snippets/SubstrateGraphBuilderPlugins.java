@@ -73,6 +73,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
+import com.oracle.svm.core.graal.nodes.UnreachablePathNode;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.SubstrateSharedGraphBuilderPlugins;
 import com.oracle.svm.core.graal.stackvalue.LateStackValueNode;
@@ -120,6 +121,7 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
@@ -211,6 +213,13 @@ public class SubstrateGraphBuilderPlugins {
                     boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
+        plugins.register(GraalDirectives.class, new RequiredInlineOnlyInvocationPlugin("unreachable") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new UnreachablePathNode());
+                return true;
+            }
+        });
         registerArenaPlugins(plugins);
         registerSystemPlugins(plugins);
         registerReflectionPlugins(plugins);

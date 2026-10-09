@@ -254,6 +254,64 @@ public final class GraalDirectives {
     }
 
     /**
+     * Reads the low 32 bits of a packed primitive without requiring a narrowing move. The upper
+     * bits are ignored.
+     */
+    public static int unpackInt(long value) {
+        return (int) value;
+    }
+
+    /**
+     * Packs an integer into the low 32 bits of a long location without extending it. The upper
+     * bits are unspecified and must not be observed. Use {@link #unpackInt(long)} to read it.
+     */
+    public static long packInt(int value) {
+        return value;
+    }
+
+    /**
+     * Declares an impossible execution path. The compiler may discard preceding operations on
+     * that path. This is not a runtime error check. An uncompiled invocation throws an error.
+     */
+    public static void unreachable() {
+        throw new AssertionError("Unreachable execution path");
+    }
+
+    /**
+     * Returns the float represented by the low 32 bits of a packed primitive. The upper bits
+     * are ignored.
+     */
+    public static float assumeFloat(long value) {
+        return Float.intBitsToFloat((int) value);
+    }
+
+    /**
+     * Returns the float represented by the low 32 raw bits of {@code value}, without a numeric
+     * conversion. The upper 32 bits are ignored.
+     */
+    public static float assumeFloat(double value) {
+        return Float.intBitsToFloat((int) Double.doubleToRawLongBits(value));
+    }
+
+    /**
+     * Packs the raw bits of {@code value} into the low 32 bits of a {@code double}, without a
+     * numeric conversion. The upper 32 bits are unspecified and must not be observed. Use
+     * {@link #assumeFloat(double)} to read the packed value.
+     */
+    public static double packFloat(float value) {
+        return Double.longBitsToDouble(Float.floatToRawIntBits(value));
+    }
+
+    /**
+     * Returns a {@code long} whose value must not be observed. When used as an additional return
+     * value, the compiler may leave the corresponding fixed return register unchanged. The
+     * result has no input dependency. In interpreted execution this method returns zero.
+     */
+    public static long unconstrainedValue() {
+        return 0;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
