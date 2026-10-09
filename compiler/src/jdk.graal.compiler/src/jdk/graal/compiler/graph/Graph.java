@@ -36,6 +36,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.common.util.EventCounter;
@@ -199,16 +200,23 @@ public class Graph implements EventCounter {
      */
     private int eventCounter;
     private final EventCounterMarker eventCounterMarker = new EventCounterMarker();
+    private final Cancellable cancellable;
 
     @Override
     public EventCounterMarker getEventCounterMarker() {
         return eventCounterMarker;
     }
 
+    /**
+     * Increments the event counter and checks cancellation when it overflows.
+     *
+     * @throws CancellationBailoutException if the counter overflows and cancellation was requested
+     */
     @Override
     public boolean eventCounterOverflows(int max) {
         if (eventCounter++ > max) {
             eventCounter = 0;
+            checkCancellation();
             return true;
         }
         return false;
@@ -329,6 +337,20 @@ public class Graph implements EventCounter {
      * @param name the name of the graph, used for debugging purposes
      */
     public Graph(String name, OptionValues options, DebugContext debug, boolean trackNodeSourcePosition) {
+        this(name, options, debug, trackNodeSourcePosition, null);
+    }
+
+    /**
+     * Creates an empty graph with an optional cooperative cancellation token.
+     *
+     * @param name the graph name for debugging, or {@code null}
+     * @param options the graph options
+     * @param debug the debugging context
+     * @param trackNodeSourcePosition whether to track node source positions
+     * @param cancellable the cancellation token, or {@code null} if cancellation is not supported
+     */
+    public Graph(String name, OptionValues options, DebugContext debug, boolean trackNodeSourcePosition, Cancellable cancellable) {
+        this.cancellable = cancellable;
         nodes = new Node[INITIAL_NODES_SIZE];
         iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterableIds());
         iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterableIds());
@@ -407,7 +429,7 @@ public class Graph implements EventCounter {
     }
 
     /**
-     * Creates a copy of this graph.
+     * Creates a copy of this graph sharing its cancellation token.
      *
      * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
      *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
@@ -418,7 +440,7 @@ public class Graph implements EventCounter {
     }
 
     /**
-     * Creates a copy of this graph.
+     * Creates a copy of this graph sharing its cancellation token.
      *
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
@@ -430,7 +452,7 @@ public class Graph implements EventCounter {
     }
 
     /**
-     * Creates a copy of this graph.
+     * Creates a copy of this graph sharing its cancellation token.
      *
      * @param newName the name of the copy, used for debugging purposes (can be null)
      * @param duplicationMapCallback consumer of the duplication map created during the copying
@@ -439,12 +461,22 @@ public class Graph implements EventCounter {
      *            accessed by multiple threads).
      */
     protected Graph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy) {
-        Graph copy = new Graph(newName, options, debugForCopy, trackNodeSourcePosition());
+        Graph copy = new Graph(newName, options, debugForCopy, trackNodeSourcePosition(), cancellable);
         UnmodifiableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (EconomicMap<Node, Node>) null);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
         return copy;
+    }
+
+    public Cancellable getCancellable() {
+        return cancellable;
+    }
+
+    public void checkCancellation() {
+        if (cancellable != null && cancellable.isCancelled()) {
+            CancellationBailoutException.cancelCompilation();
+        }
     }
 
     public final OptionValues getOptions() {

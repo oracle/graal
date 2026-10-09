@@ -47,6 +47,7 @@ import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.common.util.IntList;
 import jdk.graal.compiler.core.common.util.TypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
@@ -1718,12 +1719,15 @@ public class GraphDecoder {
                 }
             }
         }
+        // Do not start graph cleanup for a cancelled compilation.
+        graph.checkCancellation();
     }
 
     private MethodScope processMethodScope(MethodScope methodScope) {
         while (methodScope.currentLoopScope != null) {
             /* Process nodes of loop. */
             while (!methodScope.currentLoopScope.nodesToProcess.isEmpty()) {
+                CompilationAlarm.checkProgress(graph);
                 // TODO(GR-71752): use MethodScope instead of LoopScope here
                 LoopScope newLoopScope = processNextNode(methodScope, methodScope.currentLoopScope);
                 /*

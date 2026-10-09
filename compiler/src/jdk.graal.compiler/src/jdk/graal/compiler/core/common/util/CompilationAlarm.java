@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -538,7 +538,7 @@ public final class CompilationAlarm implements AutoCloseable {
     }
 
     /**
-     * Number of graph events (iterating inputs, usages, etc) before triggering a check on the
+     * Number of graph events (iterating inputs, usages, etc) before checking cancellation and the
      * compilation alarm.
      */
     public static final int CHECK_BAILOUT_COUNTER = 1024 * 4;
