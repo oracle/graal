@@ -35,6 +35,7 @@ import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -49,6 +51,7 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
@@ -68,6 +71,13 @@ import com.oracle.truffle.espresso.shared.verifier.Verifier;
  * the class files into {@link ParserKlass} instances. The time is per pass over all classes, and
  * {@code instructions} in the first output line gives the size of a pass, so divide to get a cost
  * per instruction.
+ *
+ * <p>
+ * {@link #hotspotLoad} gives the same classes to HotSpot's own verifier, by loading and linking
+ * them in a fresh class loader, and {@link #hotspotLoadUnverified} does the same with verification
+ * turned off; the difference of the two is what HotSpot's verifier costs. After each iteration of
+ * either, a {@code [hotspot-verifier]} line also reports the time HotSpot measured in its verifier
+ * itself ({@code sun.cls.classVerifyTime}) per pass.
  *
  * <p>
  * Run it from the {@code espresso-shared} directory with
@@ -98,7 +108,15 @@ public class VerifierBenchmark {
 
     private static final MethodTypeDesc WORK = MethodTypeDesc.of(CD_int, CD_Object, CD_Object.arrayType(), CD_int);
 
+    private static final String ADD_EXPORTS = "--add-exports=java.management/sun.management=ALL-UNNAMED";
+
     private byte[][] classFiles;
+    private String[] classNames;
+    /** {@code HotspotClassLoadingMBean.getClassVerificationTime()}, or null if not accessible. */
+    private Method verificationTime;
+    private Object hotspotClassLoading;
+    private long verificationTimeAtStart;
+    private int hotspotLoads;
     private BenchRuntime runtime;
     private final List<BenchRuntime.BMethod> toVerify = new ArrayList<>();
     private long instructions;
@@ -107,9 +125,11 @@ public class VerifierBenchmark {
     @Setup
     public void setup() throws Exception {
         classFiles = new byte[classes][];
+        classNames = new String[classes];
         long[] counted = new long[1];
         for (int i = 0; i < classes; i++) {
             classFiles[i] = generate("cremabench/Generated" + i, counted);
+            classNames[i] = "cremabench.Generated" + i;
         }
         instructions = counted[0];
         runtime = new BenchRuntime();
@@ -126,6 +146,32 @@ public class VerifierBenchmark {
         }
         PrintStream out = System.out;
         out.println("[verifier-benchmark] classes=" + classes + " methods=" + toVerify.size() + " instructions=" + instructions);
+        try {
+            /* Not an exported API: needs the --add-exports of the forks of the hotspot benchmarks. */
+            hotspotClassLoading = Class.forName("sun.management.ManagementFactoryHelper").getMethod("getHotspotClassLoadingMBean").invoke(null);
+            verificationTime = Class.forName("sun.management.HotspotClassLoadingMBean").getMethod("getClassVerificationTime");
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            verificationTime = null;
+        }
+    }
+
+    @Setup(Level.Iteration)
+    public void startIteration() throws Exception {
+        hotspotLoads = 0;
+        verificationTimeAtStart = readVerificationTime();
+    }
+
+    @TearDown(Level.Iteration)
+    public void endIteration() throws Exception {
+        if (hotspotLoads > 0) {
+            String perPass = verificationTime == null ? "unavailable" : String.format("%.3f ms", (double) (readVerificationTime() - verificationTimeAtStart) / hotspotLoads);
+            PrintStream out = System.out;
+            out.println("[hotspot-verifier] passes=" + hotspotLoads + " verification time per pass=" + perPass);
+        }
+    }
+
+    private long readVerificationTime() throws ReflectiveOperationException {
+        return verificationTime == null ? 0 : (long) verificationTime.invoke(hotspotClassLoading);
     }
 
     /** Verifies every method of every generated class. */
@@ -156,6 +202,55 @@ public class VerifierBenchmark {
     public void parse(Blackhole blackhole) throws Exception {
         for (byte[] classFile : classFiles) {
             blackhole.consume(runtime.parse(classFile));
+        }
+    }
+
+    /**
+     * Loads and links every generated class in a fresh class loader, so that HotSpot parses and
+     * verifies them anew: the work of {@link #parse} and {@link #verify} done by HotSpot, plus the
+     * rest of defining and linking a class.
+     */
+    @Benchmark
+    @Fork(value = 2, jvmArgsAppend = ADD_EXPORTS)
+    public void hotspotLoad(Blackhole blackhole) throws Exception {
+        loadAll(blackhole);
+    }
+
+    /** {@link #hotspotLoad} with HotSpot's verification of the classes turned off. */
+    @Benchmark
+    @Fork(value = 2, jvmArgsAppend = {ADD_EXPORTS, "-XX:+UnlockDiagnosticVMOptions", "-XX:-BytecodeVerificationRemote"})
+    public void hotspotLoadUnverified(Blackhole blackhole) throws Exception {
+        loadAll(blackhole);
+    }
+
+    private void loadAll(Blackhole blackhole) throws ClassNotFoundException {
+        GeneratedLoader loader = new GeneratedLoader(classNames, classFiles);
+        for (String name : classNames) {
+            /* Initializing a class links it, and linking verifies it. */
+            blackhole.consume(Class.forName(name, true, loader));
+        }
+        hotspotLoads++;
+    }
+
+    /** Defines the generated classes, each when it is first asked for. */
+    private static final class GeneratedLoader extends ClassLoader {
+        private final String[] names;
+        private final byte[][] classFiles;
+
+        GeneratedLoader(String[] names, byte[][] classFiles) {
+            super(ClassLoader.getPlatformClassLoader());
+            this.names = names;
+            this.classFiles = classFiles;
+        }
+
+        @Override
+        protected Class<?> findClass(String name) throws ClassNotFoundException {
+            for (int i = 0; i < names.length; i++) {
+                if (names[i].equals(name)) {
+                    return defineClass(name, classFiles[i], 0, classFiles[i].length);
+                }
+            }
+            throw new ClassNotFoundException(name);
         }
     }
 
