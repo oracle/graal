@@ -33,7 +33,6 @@ import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogLevel;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -123,7 +122,6 @@ public final class JfrUnifiedLogging {
     /// Formats a JFR record without crossing a safepoint before the record is delivered.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logJfrRecord(LogTagSet tagSet, LogLevel level, String text) {
         LogMessage message = tagSet.message();
         try {
@@ -136,7 +134,6 @@ public final class JfrUnifiedLogging {
     /// Formats one JFR event without crossing a safepoint before the event is delivered.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logJfrEvent(LogTagSet tagSet, LogLevel level, String[] lines) {
         LogMessage message = tagSet.message();
         try {

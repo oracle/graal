@@ -271,7 +271,6 @@ public final class Safepoint {
     /// Formats the safepoint summary without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private void logSafepointSummary() {
         LogMessage message = LogTagSet.safepoint.message();
         try {

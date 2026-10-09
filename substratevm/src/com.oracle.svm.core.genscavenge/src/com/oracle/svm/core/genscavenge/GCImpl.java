@@ -461,7 +461,6 @@ public final class GCImpl implements GC {
     /// Formats a heap verification event without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logHeapVerification(String occasionName, long elapsedNanos, boolean finished) {
         LogMessage message = LogTagSet.gc.message();
         try {
@@ -535,7 +534,6 @@ public final class GCImpl implements GC {
     /// Formats the collector name without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logGcName(String name) {
         LogMessage message = LogTagSet.gc.message();
         try {
@@ -548,7 +546,6 @@ public final class GCImpl implements GC {
     /// Formats the collector configuration as one event without a safepoint in the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logGcConfiguration(String gcName, UnsignedWord memorySize, String policyName, UnsignedWord maximumYoungSize, UnsignedWord maximumHeapSize,
                     UnsignedWord minimumHeapSize, UnsignedWord alignedChunkSize, UnsignedWord largeArrayThreshold) {
         LogMessage message = LogTagSet.gc.message();
@@ -569,7 +566,6 @@ public final class GCImpl implements GC {
     /// Formats a GC cause without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logGcCause(String name) {
         LogMessage message = LogTagSet.gc.message();
         try {
@@ -611,7 +607,6 @@ public final class GCImpl implements GC {
     /// Copies prepared GC text into one debug line without allowing a safepoint in its scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logPreparedGCDebugText(CCharPointer text, int length) {
         LogMessage message = LogTagSet.gc.message();
         try {
@@ -624,7 +619,6 @@ public final class GCImpl implements GC {
     /// Formats a GC pause summary without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logGcPause(String collectionType, String causeName, UnsignedWord before, UnsignedWord after, long elapsedNanos) {
         LogMessage message = LogTagSet.gc.message();
         try {
@@ -639,7 +633,6 @@ public final class GCImpl implements GC {
     /// Formats a heap size change without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logHeapSizeChange(String text, UnsignedWord before, UnsignedWord after) {
         LogMessage message = LogTagSet.gc.message();
         try {
@@ -1346,7 +1339,6 @@ public final class GCImpl implements GC {
     /// Formats reference processing time without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logReferenceProcessing(long executionTime) {
         LogMessage message = LogTagSet.gc.message();
         try {

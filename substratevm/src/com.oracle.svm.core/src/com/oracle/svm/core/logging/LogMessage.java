@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.VMError;
@@ -48,7 +47,6 @@ import com.oracle.svm.shared.util.VMError;
 /// ```java
 /// @NeverInline(LogTagSet.LOG_METHOD_REASON)
 /// @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-/// @RestrictHeapAccess(access = NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
 /// private static void logClassLoad(String className, String loaderDescription) {
 ///     LogMessage message = LogTagSet.class_load.message();
 ///     try {
@@ -88,7 +86,6 @@ public final class LogMessage implements AutoCloseable {
 
     /// Commits the accumulated message and makes this scope available for reuse.
     @Override
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Unified logging must not allocate at run time.")
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void close() {
         if (LogThreadLocal.activeTagSet() != tagSet) {
@@ -104,7 +101,6 @@ public final class LogMessage implements AutoCloseable {
     }
 
     /// Gets the buffer for formatting a message line. Each call starts a new line.
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Unified logging must not allocate at run time.")
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public NativeMemoryLog line(LogLevel level) {
         verifyOpen();

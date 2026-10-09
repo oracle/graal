@@ -232,9 +232,12 @@ public enum LogTagSet {
 
     /// Opens a message for this tag set. Every call, including calls in tests, must be enclosed in
     /// a `void` method whose name starts with `log`. The enclosing method must declare
-    /// `@NeverInline`, `@Uninterruptible`, and `@RestrictHeapAccess(access = NO_ALLOCATION)`, all
-    /// with [#LOG_METHOD_REASON] as their reason. The uninterruptible annotation must retain its
-    /// default options so the entire message scope is checked and cannot be inlined.
+    /// `@NeverInline` and `@Uninterruptible`, both with [#LOG_METHOD_REASON] as their reason.
+    /// The uninterruptible annotation must retain its default options so the entire message
+    /// scope is checked and cannot be inlined. It implies `RestrictHeapAccess.NO_ALLOCATION`,
+    /// which is guaranteed on the checked path by `UninterruptibleAnnotationChecker` without
+    /// requiring an explicit allocation restriction. The low-level VM log handler remains a
+    /// trusted boundary for allocation and safepoint behavior.
     ///
     /// The enclosing method owns formatting and synchronous delivery, using try-finally with one
     /// [LogMessage#close()] call. Level predicates and any allocating preparation remain outside

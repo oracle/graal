@@ -34,8 +34,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.UninterruptibleGuestValue;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access;
-import com.oracle.svm.hosted.RestrictHeapAccessGuestValue;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -92,10 +90,6 @@ public final class LogMessageScopeChecker {
         if (uninterruptible == null || !LogTagSet.LOG_METHOD_REASON.equals(uninterruptible.reason()) || uninterruptible.mayBeInlined() ||
                         !uninterruptible.calleeMustBe() || uninterruptible.callerMustBe()) {
             result.add("LogTagSet.message() callers must declare @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON) with default options.");
-        }
-        RestrictHeapAccessGuestValue restriction = RestrictHeapAccessGuestValue.get(caller);
-        if (restriction == null || restriction.access() != Access.NO_ALLOCATION || !LogTagSet.LOG_METHOD_REASON.equals(restriction.reason())) {
-            result.add("LogTagSet.message() callers must declare @RestrictHeapAccess(access = NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON).");
         }
         return result;
     }

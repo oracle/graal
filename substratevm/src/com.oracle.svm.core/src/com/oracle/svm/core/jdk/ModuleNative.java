@@ -36,7 +36,6 @@ import javax.lang.model.SourceVersion;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -141,7 +140,6 @@ public final class ModuleNative {
     /// Formats a module load event without allowing a safepoint inside the message scope.
     @NeverInline(LogTagSet.LOG_METHOD_REASON)
     @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
     private static void logModuleLoad(String moduleName, String location) {
         LogMessage message = LogTagSet.module_load.message();
         try {

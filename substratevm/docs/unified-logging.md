@@ -46,7 +46,6 @@ if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
 
 @NeverInline(LogTagSet.LOG_METHOD_REASON)
 @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-@RestrictHeapAccess(access = NO_ALLOCATION, reason = LogTagSet.LOG_METHOD_REASON)
 private static void logClassLoad(String className, String loaderDescription) {
     LogMessage message = LogTagSet.class_load.message();
     try {
@@ -66,9 +65,10 @@ Values are appended directly to the message's native buffer instead of being com
 string concatenation.
 The dedicated `log*` method owns formatting and synchronous delivery through `LogMessage.close()`.
 Every call to `LogTagSet.message()`, including calls in tests, must appear directly in a `void` method whose name starts with `log`.
-That method must declare all three annotations shown above, using `LogTagSet.LOG_METHOD_REASON` and the default `@Uninterruptible` options.
+That method must declare both annotations shown above, using `LogTagSet.LOG_METHOD_REASON` and the default `@Uninterruptible` options.
 Native Image checks this caller contract during image building, before inlining can hide a call.
 Its annotations prevent inlining, heap allocation, safepoints, and class initialization on the checked path.
+`@Uninterruptible` implies `RestrictHeapAccess.NO_ALLOCATION`; `UninterruptibleAnnotationChecker` enforces this without a separate allocation annotation.
 Keep level predicates and any allocating preparation outside that method.
 Use try-finally because try-with-resources generates an interruptible `Throwable.addSuppressed` call that violates the annotation contract.
 The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
@@ -147,10 +147,10 @@ Production stream and file destinations use checked no-transition native operati
 
 ## Allocation-free runtime behavior
 
-Successful normal logging operations are annotated with
-`RestrictHeapAccess.NO_ALLOCATION`. The contract starts after the caller has
-provided the message text; string concatenation or formatting at the call site
-can still allocate before logging is entered.
+Successful normal logging operations are checked by `UninterruptibleAnnotationChecker`, which also forbids heap allocation.
+The contract starts after the caller has provided the message text; string concatenation or formatting
+at the call site can still allocate before logging is entered if the broader context
+allows allocation.
 
 The runtime path maintains this contract as follows:
 
