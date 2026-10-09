@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -87,7 +86,6 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.core.logging.NativeMemoryLog;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -130,9 +128,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 public final class GCImpl implements GC {
     private static final long K = 1024;
     static final long M = K * K;
-
-    /// Holds complex GC diagnostics before the no-safepoint message scope begins.
-    private static final NativeMemoryLog PREPARED_GC_TEXT = new NativeMemoryLog(NativeMemoryLog.BufferKind.PREPARE);
 
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
@@ -513,134 +508,101 @@ public final class GCImpl implements GC {
         }
     }
 
+    /// Owns diagnostics before collection within the allocation-free collection VM operation.
+    /// The collector thread cannot safepoint, so the formatting helpers need no logging annotations.
     private void printGCBefore(GCCause cause) {
         if (LogTagSet.gc.isInfo()) {
-            if (collectionEpoch.equal(0)) {
-                String gcName = getName();
-                if (LogTagSet.gc.isDebug()) {
-                    CollectionPolicy currentPolicy = getPolicy();
-                    logGcConfiguration(gcName, PhysicalMemory.size(), currentPolicy.getName(), currentPolicy.getMaximumYoungGenerationSize(), currentPolicy.getMaximumHeapSize(),
-                                    currentPolicy.getMinimumHeapSize(), HeapParameters.getAlignedHeapChunkSize(), HeapParameters.getLargeArrayThreshold());
-                } else {
-                    logGcName(gcName);
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                if (collectionEpoch.equal(0)) {
+                    String gcName = getName();
+                    if (LogTagSet.gc.isDebug()) {
+                        CollectionPolicy currentPolicy = getPolicy();
+                        logGcConfiguration(message, gcName, PhysicalMemory.size(), currentPolicy.getName(), currentPolicy.getMaximumYoungGenerationSize(), currentPolicy.getMaximumHeapSize(),
+                                        currentPolicy.getMinimumHeapSize(), HeapParameters.getAlignedHeapChunkSize(), HeapParameters.getLargeArrayThreshold());
+                    } else {
+                        logGcName(message, gcName);
+                    }
                 }
-            }
-            if (LogTagSet.gc.isDebug()) {
-                logGcCause(cause.getName());
+                if (LogTagSet.gc.isDebug()) {
+                    logGcCause(message, cause.getName());
+                }
+            } finally {
+                message.close();
             }
         }
     }
 
-    /// Formats the collector name without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    private static void logGcName(String name) {
-        LogMessage message = LogTagSet.gc.message();
-        try {
-            message.info().string("Using ").string(name);
-        } finally {
-            message.close();
-        }
+    /// Appends the collector name to the caller's message.
+    private static void logGcName(LogMessage message, String name) {
+        message.info().string("Using ").string(name);
     }
 
-    /// Formats the collector configuration as one event without a safepoint in the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    private static void logGcConfiguration(String gcName, UnsignedWord memorySize, String policyName, UnsignedWord maximumYoungSize, UnsignedWord maximumHeapSize,
+    /// Appends collector configuration to the caller's message at the appropriate levels.
+    private static void logGcConfiguration(LogMessage message, String gcName, UnsignedWord memorySize, String policyName, UnsignedWord maximumYoungSize, UnsignedWord maximumHeapSize,
                     UnsignedWord minimumHeapSize, UnsignedWord alignedChunkSize, UnsignedWord largeArrayThreshold) {
-        LogMessage message = LogTagSet.gc.message();
-        try {
-            message.info().string("Using ").string(gcName);
-            message.debug().spaces(2).string("Memory: ").rational(memorySize, M, 0).string("M");
-            message.debug().spaces(2).string("GC policy: ").string(policyName);
-            message.debug().spaces(2).string("Maximum young generation size: ").rational(maximumYoungSize, M, 0).string("M");
-            message.debug().spaces(2).string("Maximum heap size: ").rational(maximumHeapSize, M, 0).string("M");
-            message.debug().spaces(2).string("Minimum heap size: ").rational(minimumHeapSize, M, 0).string("M");
-            message.debug().spaces(2).string("Aligned chunk size: ").rational(alignedChunkSize, K, 0).string("K");
-            message.debug().spaces(2).string("Large array threshold: ").rational(largeArrayThreshold, K, 0).string("K");
-        } finally {
-            message.close();
-        }
+        message.info().string("Using ").string(gcName);
+        message.debug().spaces(2).string("Memory: ").rational(memorySize, M, 0).string("M");
+        message.debug().spaces(2).string("GC policy: ").string(policyName);
+        message.debug().spaces(2).string("Maximum young generation size: ").rational(maximumYoungSize, M, 0).string("M");
+        message.debug().spaces(2).string("Maximum heap size: ").rational(maximumHeapSize, M, 0).string("M");
+        message.debug().spaces(2).string("Minimum heap size: ").rational(minimumHeapSize, M, 0).string("M");
+        message.debug().spaces(2).string("Aligned chunk size: ").rational(alignedChunkSize, K, 0).string("K");
+        message.debug().spaces(2).string("Large array threshold: ").rational(largeArrayThreshold, K, 0).string("K");
     }
 
-    /// Formats a GC cause without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    private static void logGcCause(String name) {
-        LogMessage message = LogTagSet.gc.message();
-        try {
-            message.debug().string(name);
-        } finally {
-            message.close();
-        }
+    /// Appends the collection cause to the caller's debug message.
+    private static void logGcCause(LogMessage message, String name) {
+        message.debug().string(name);
     }
 
+    /// Owns diagnostics after collection within the allocation-free collection VM operation.
+    /// The collector thread cannot safepoint, so the formatting helpers need no logging annotations.
     private void printGCAfter(GCCause cause) {
         HeapAccounting heapAccounting = HeapImpl.getAccounting();
         HeapSizes beforeGc = heapAccounting.getHeapSizesBeforeGc();
 
         if (LogTagSet.gc.isDebug()) {
-            logHeapSizeChange("Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
-            logHeapSizeChange("Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
-            logHeapSizeChange("Old", beforeGc.old, heapAccounting.getOldUsedBytes());
-            logHeapSizeChange("Free", beforeGc.free, heapAccounting.getBytesInUnusedChunks());
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                logHeapSizeChange(message, "Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
+                logHeapSizeChange(message, "Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
+                logHeapSizeChange(message, "Old", beforeGc.old, heapAccounting.getOldUsedBytes());
+                logHeapSizeChange(message, "Free", beforeGc.free, heapAccounting.getBytesInUnusedChunks());
 
-            if (SerialGCOptions.PrintGCTimes.getValue()) {
-                PREPARED_GC_TEXT.reset();
-                timers.logAfterCollection(PREPARED_GC_TEXT);
-                logPreparedGCDebugText(PREPARED_GC_TEXT.getBuffer(), PREPARED_GC_TEXT.getPosition());
-            }
+                if (SerialGCOptions.PrintGCTimes.getValue()) {
+                    timers.logAfterCollection(message);
+                }
 
-            if (SerialGCOptions.TraceHeapChunks.getValue()) {
-                PREPARED_GC_TEXT.reset();
-                HeapImpl.getHeapImpl().logChunks(PREPARED_GC_TEXT, false);
-                logPreparedGCDebugText(PREPARED_GC_TEXT.getBuffer(), PREPARED_GC_TEXT.getPosition());
+                if (SerialGCOptions.TraceHeapChunks.getValue()) {
+                    HeapImpl.getHeapImpl().logChunks(message);
+                }
+            } finally {
+                message.close();
             }
         }
 
         if (LogTagSet.gc.isInfo()) {
-            String collectionType = completeCollection ? "Full GC" : "Incremental GC";
-            logGcPause(collectionType, cause.getName(), beforeGc.totalUsed(), heapAccounting.getUsedBytes(), timers.collection.totalNanos());
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                String collectionType = completeCollection ? "Full GC" : "Incremental GC";
+                logGcPause(message, collectionType, cause.getName(), beforeGc.totalUsed(), heapAccounting.getUsedBytes(), timers.collection.totalNanos());
+            } finally {
+                message.close();
+            }
         }
     }
 
-    /// Copies prepared GC text into one debug line without allowing a safepoint in its scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    private static void logPreparedGCDebugText(CCharPointer text, int length) {
-        LogMessage message = LogTagSet.gc.message();
-        try {
-            message.debug().string(text, length);
-        } finally {
-            message.close();
-        }
+    /// Appends a GC pause summary to the caller's informational message.
+    private static void logGcPause(LogMessage message, String collectionType, String causeName, UnsignedWord before, UnsignedWord after, long elapsedNanos) {
+        message.info().string("Pause ").string(collectionType).string(" (").string(causeName).string(") ")
+                        .rational(before, M, 2).string("M->").rational(after, M, 2).string("M ")
+                        .rational(elapsedNanos, TimeUtils.nanosPerMilli, 3).string("ms");
     }
 
-    /// Formats a GC pause summary without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    private static void logGcPause(String collectionType, String causeName, UnsignedWord before, UnsignedWord after, long elapsedNanos) {
-        LogMessage message = LogTagSet.gc.message();
-        try {
-            message.info().string("Pause ").string(collectionType).string(" (").string(causeName).string(") ")
-                            .rational(before, M, 2).string("M->").rational(after, M, 2).string("M ")
-                            .rational(elapsedNanos, TimeUtils.nanosPerMilli, 3).string("ms");
-        } finally {
-            message.close();
-        }
-    }
-
-    /// Formats a heap size change without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
-    private static void logHeapSizeChange(String text, UnsignedWord before, UnsignedWord after) {
-        LogMessage message = LogTagSet.gc.message();
-        try {
-            NativeMemoryLog log = message.debug();
-            log.string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M");
-        } finally {
-            message.close();
-        }
+    /// Appends a heap size change to the caller's debug message.
+    private static void logHeapSizeChange(LogMessage message, String text, UnsignedWord before, UnsignedWord after) {
+        message.debug().string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M");
     }
 
     private static void checkSanityBeforeCollection() {

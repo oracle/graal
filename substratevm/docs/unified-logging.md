@@ -64,13 +64,18 @@ construction away. The support check therefore remains explicit at each non-GC l
 Values are appended directly to the message's native buffer instead of being combined with Java
 string concatenation.
 The dedicated `log*` method owns formatting and synchronous delivery through `LogMessage.close()`.
-Every call to `LogTagSet.message()`, including calls in tests, must appear directly in a `void` method whose name starts with `log`.
+Except for the two Serial GC methods described below, every call to `LogTagSet.message()`, including calls in tests, must appear directly in a `void` method whose name starts with `log`.
 That method must declare both annotations shown above, using `LogTagSet.LOG_METHOD_REASON` and the default `@Uninterruptible` options.
 Native Image checks this caller contract during image building, before inlining can hide a call.
 Its annotations prevent inlining, heap allocation, safepoints, and class initialization on the checked path.
 `@Uninterruptible` implies `RestrictHeapAccess.NO_ALLOCATION`; `UninterruptibleAnnotationChecker` enforces this without a separate allocation annotation.
 Keep level predicates and any allocating preparation outside that method.
 Use try-finally because try-with-resources generates an interruptible `Throwable.addSuppressed` call that violates the annotation contract.
+Serial GC's `GCImpl.printGCBefore(GCCause)` and `GCImpl.printGCAfter(GCCause)` are the only exceptions to this caller contract.
+They execute in the allocation-free collection VM operation, whose thread cannot safepoint.
+These methods open and close messages directly, passing `LogMessage` into formatting helpers.
+Their existing GC context provides the allocation and safepoint guarantees without requiring annotations throughout the formatting code.
+
 The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
 `VerboseGC` can route it to the low-level VM log in images without `-Xlog` support.
 
@@ -147,7 +152,7 @@ Production stream and file destinations use checked no-transition native operati
 
 ## Allocation-free runtime behavior
 
-Successful normal logging operations are checked by `UninterruptibleAnnotationChecker`, which also forbids heap allocation.
+Outside the two Serial GC exceptions, successful normal logging operations are checked by `UninterruptibleAnnotationChecker`, which also forbids heap allocation.
 The contract starts after the caller has provided the message text; string concatenation or formatting
 at the call site can still allocate before logging is entered if the broader context
 allows allocation.
@@ -161,7 +166,6 @@ The runtime path maintains this contract as follows:
    may grow with native `malloc` or `realloc`, but do not allocate Java heap
    objects during logging. A thread listener releases all thread-local buffers
    after Java thread execution, including launcher handoff, and again during thread exit if needed.
-   A separate preparation buffer holds complex GC diagnostics before the checked message scope opens.
 2. `LogDecorations` formats event metadata and the explicitly supplied line
    level directly into native memory. Host name and process id are cached
    during initialization, while `SVM_localUTCOffsetSeconds` computes the local

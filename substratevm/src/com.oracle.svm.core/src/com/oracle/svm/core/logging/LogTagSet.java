@@ -230,8 +230,9 @@ public enum LogTagSet {
         return isLevel(LogLevel.ERROR);
     }
 
-    /// Opens a message for this tag set. Every call, including calls in tests, must be enclosed in
-    /// a `void` method whose name starts with `log`. The enclosing method must declare
+    /// Opens a message for this tag set. Except for the two Serial GC methods described below,
+    /// every call, including calls in tests, must be enclosed in a `void` method whose name starts
+    /// with `log`. The enclosing method must declare
     /// `@NeverInline` and `@Uninterruptible`, both with [#LOG_METHOD_REASON] as their reason.
     /// The uninterruptible annotation must retain its default options so the entire message
     /// scope is checked and cannot be inlined. It implies `RestrictHeapAccess.NO_ALLOCATION`,
@@ -242,6 +243,11 @@ public enum LogTagSet {
     /// The enclosing method owns formatting and synchronous delivery, using try-finally with one
     /// [LogMessage#close()] call. Level predicates and any allocating preparation remain outside
     /// the method. Image building checks this caller contract without exceptions for tests.
+    ///
+    /// The only exceptions are `GCImpl.printGCBefore(GCCause)` and
+    /// `GCImpl.printGCAfter(GCCause)`. They run in the allocation-free collection VM operation,
+    /// whose thread cannot safepoint. They own the complete message scopes and pass the message
+    /// into formatting helpers without requiring those helpers to be annotated.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public LogMessage message() {
         guaranteeGCLoggingIsSafe();

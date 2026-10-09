@@ -40,9 +40,12 @@ import com.oracle.svm.shared.util.VMError;
 /// decorations are owned by the current carrier thread. A carrier thread may have only one open
 /// message scope at a time, including across different tag sets.
 ///
-/// All logging sites keep their level predicate and any allocating preparation outside a
+/// Logging sites normally keep their level predicate and any allocating preparation outside a
 /// dedicated `log*` method. That method is never inlined, cannot allocate or safepoint, and owns
-/// the complete message scope, including synchronous delivery from [#close()].
+/// the complete message scope, including synchronous delivery from [#close()]. The only exceptions
+/// are `GCImpl.printGCBefore(GCCause)` and `GCImpl.printGCAfter(GCCause)`. They own the message
+/// scopes within the allocation-free collection VM operation, whose thread cannot safepoint,
+/// and pass this object into formatting helpers.
 ///
 /// ```java
 /// @NeverInline(LogTagSet.LOG_METHOD_REASON)

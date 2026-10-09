@@ -84,7 +84,7 @@ public final class LogThreadLocal implements ThreadListener {
         return result;
     }
 
-    /// Ensures that the current thread has state before formatting outside a logging scope.
+    /// Ensures that the current thread has state before resetting a logging buffer.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static Data ensureInitialized() {
         return initialize(CurrentIsolate.getCurrentThread());
@@ -116,7 +116,6 @@ public final class LogThreadLocal implements ThreadListener {
             case MESSAGE -> data.getMessageBuffer();
             case OUTPUT -> data.getOutputBuffer();
             case DECORATOR -> data.getDecoratorBuffer();
-            case PREPARE -> data.getPrepareBuffer();
             default -> throw VMError.shouldNotReachHere("Unexpected logging buffer kind.");
         };
     }
@@ -128,7 +127,6 @@ public final class LogThreadLocal implements ThreadListener {
             case MESSAGE -> data.setMessageBuffer(buffer);
             case OUTPUT -> data.setOutputBuffer(buffer);
             case DECORATOR -> data.setDecoratorBuffer(buffer);
-            case PREPARE -> data.setPrepareBuffer(buffer);
             default -> VMError.shouldNotReachHere("Unexpected logging buffer kind.");
         }
     }
@@ -141,8 +139,6 @@ public final class LogThreadLocal implements ThreadListener {
             return data.getMessageIndentation();
         } else if (kind == NativeMemoryLog.BufferKind.OUTPUT) {
             return data.getOutputIndentation();
-        } else if (kind == NativeMemoryLog.BufferKind.PREPARE) {
-            return data.getPrepareIndentation();
         } else {
             return data.getDecoratorIndentation();
         }
@@ -156,8 +152,6 @@ public final class LogThreadLocal implements ThreadListener {
             data.setMessageIndentation(value);
         } else if (kind == NativeMemoryLog.BufferKind.OUTPUT) {
             data.setOutputIndentation(value);
-        } else if (kind == NativeMemoryLog.BufferKind.PREPARE) {
-            data.setPrepareIndentation(value);
         } else {
             data.setDecoratorIndentation(value);
         }
@@ -240,7 +234,6 @@ public final class LogThreadLocal implements ThreadListener {
         freeBuffer(data.getMessageBuffer());
         freeBuffer(data.getOutputBuffer());
         freeBuffer(data.getDecoratorBuffer());
-        freeBuffer(data.getPrepareBuffer());
         NullableNativeMemory.free(data.getLines());
         state.set(isolateThread, WordFactory.nullPointer());
         NullableNativeMemory.free(data);
@@ -259,7 +252,6 @@ public final class LogThreadLocal implements ThreadListener {
     ///     struct NativeMemoryLog.Data *messageBuffer;
     ///     struct NativeMemoryLog.Data *outputBuffer;
     ///     struct NativeMemoryLog.Data *decoratorBuffer;
-    ///     struct NativeMemoryLog.Data *prepareBuffer;
     ///     int *lines;
     ///     int lineCount;
     ///     int lineCapacity;
@@ -268,7 +260,6 @@ public final class LogThreadLocal implements ThreadListener {
     ///     int messageIndentation;
     ///     int outputIndentation;
     ///     int decoratorIndentation;
-    ///     int prepareIndentation;
     ///     long systemMillis;
     ///     long systemNanos;
     ///     long uptimeNanos;
@@ -285,9 +276,6 @@ public final class LogThreadLocal implements ThreadListener {
 
         @RawField NativeMemoryLog.Data getDecoratorBuffer();
         @RawField void                 setDecoratorBuffer(NativeMemoryLog.Data value);
-
-        @RawField NativeMemoryLog.Data getPrepareBuffer();
-        @RawField void                 setPrepareBuffer(NativeMemoryLog.Data value);
 
         @RawField CIntPointer getLines();
         @RawField void        setLines(CIntPointer value);
@@ -312,9 +300,6 @@ public final class LogThreadLocal implements ThreadListener {
 
         @RawField int  getDecoratorIndentation();
         @RawField void setDecoratorIndentation(int value);
-
-        @RawField int  getPrepareIndentation();
-        @RawField void setPrepareIndentation(int value);
 
         @RawField long getSystemMillis();
         @RawField void setSystemMillis(long value);

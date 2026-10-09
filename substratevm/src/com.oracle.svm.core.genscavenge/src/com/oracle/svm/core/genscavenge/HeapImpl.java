@@ -82,6 +82,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -311,6 +312,11 @@ public final class HeapImpl extends Heap {
         }
         youngGeneration.logUsage(log);
         oldGeneration.logUsage(log);
+    }
+
+    /// Appends GC chunk diagnostics to the caller's debug message.
+    void logChunks(LogMessage message) {
+        logChunks(message.debug(), false);
     }
 
     void logChunks(Log log, boolean allowUnsafe) {

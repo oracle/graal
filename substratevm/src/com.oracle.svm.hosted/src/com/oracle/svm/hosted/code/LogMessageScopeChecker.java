@@ -78,6 +78,13 @@ public final class LogMessageScopeChecker {
 
     /// Returns violations of the message-opening contract declared by `caller`.
     public static List<String> callerViolations(ResolvedJavaMethod caller) {
+        // These two methods run only in the allocation-free collection VM operation. Its thread
+        // cannot safepoint, so their formatting helpers do not need uninterruptible annotations.
+        String signature = caller.format("%H.%n(%P):%R");
+        if (signature.equals("com.oracle.svm.core.genscavenge.GCImpl.printGCBefore(com.oracle.svm.core.heap.GCCause):void") ||
+                        signature.equals("com.oracle.svm.core.genscavenge.GCImpl.printGCAfter(com.oracle.svm.core.heap.GCCause):void")) {
+            return List.of();
+        }
         List<String> result = new ArrayList<>();
         if (!caller.getName().startsWith("log") || caller.getSignature().getReturnKind() != JavaKind.Void) {
             result.add("LogTagSet.message() callers must be void log* methods.");

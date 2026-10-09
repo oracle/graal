@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.util.Timer;
+import com.oracle.svm.core.logging.LogMessage;
 
 /** Collection timers primarily for {@link GCImpl}. */
 final class Timers {
@@ -92,55 +93,52 @@ final class Timers {
         /* The mutator timer is *not* reset here. */
     }
 
-    void logAfterCollection(Log log) {
-        if (log.isEnabled()) {
-            log.newline();
-            log.string("  [GC nanoseconds:");
-            logOneTimer(log, "    ", collection);
-            logOneTimer(log, "      ", rootScan);
-            logOneTimer(log, "        ", scanFromRoots);
-            logOneTimer(log, "        ", scanFromDirtyRoots);
-            logOneTimer(log, "          ", promotePinnedObjects);
-            logOneTimer(log, "          ", blackenStackRoots);
-            logOneTimer(log, "          ", walkThreadLocals);
-            logOneTimer(log, "          ", walkRuntimeCodeCache);
-            logOneTimer(log, "          ", cleanRuntimeCodeCache);
-            logOneTimer(log, "          ", blackenImageHeapRoots);
-            logOneTimer(log, "          ", blackenDirtyCardRoots);
-            logOneTimer(log, "          ", scanGreyObjects);
-            if (SerialGCOptions.useCompactingOldGen()) {
-                logOneTimer(log, "      ", oldPlanning);
-                logOneTimer(log, "      ", oldFixup);
-                logOneTimer(log, "          ", oldFixupAlignedChunks);
-                logOneTimer(log, "          ", oldFixupImageHeap);
-                logOneTimer(log, "          ", oldFixupMetaspace);
-                logOneTimer(log, "          ", oldFixupThreadLocals);
-                logOneTimer(log, "          ", oldFixupRuntimeCodeCache);
-                logOneTimer(log, "          ", oldFixupStack);
-                logOneTimer(log, "          ", oldFixupUnalignedChunks);
-                logOneTimer(log, "      ", oldCompaction);
-                logOneTimer(log, "          ", oldCompactionRememberedSets);
-            }
-            logOneTimer(log, "      ", cleanCodeCache);
-            logOneTimer(log, "      ", referenceObjects);
-            logOneTimer(log, "      ", releaseSpaces);
-            logGCLoad(log, "    ", "GCLoad", collection, mutator);
-            log.string("]");
+    /// Appends collection timings to the caller's debug message.
+    void logAfterCollection(LogMessage message) {
+        Log log = message.debug();
+        log.newline();
+        log.string("  [GC nanoseconds:");
+        logOneTimer(log, "    ", collection);
+        logOneTimer(log, "      ", rootScan);
+        logOneTimer(log, "        ", scanFromRoots);
+        logOneTimer(log, "        ", scanFromDirtyRoots);
+        logOneTimer(log, "          ", promotePinnedObjects);
+        logOneTimer(log, "          ", blackenStackRoots);
+        logOneTimer(log, "          ", walkThreadLocals);
+        logOneTimer(log, "          ", walkRuntimeCodeCache);
+        logOneTimer(log, "          ", cleanRuntimeCodeCache);
+        logOneTimer(log, "          ", blackenImageHeapRoots);
+        logOneTimer(log, "          ", blackenDirtyCardRoots);
+        logOneTimer(log, "          ", scanGreyObjects);
+        if (SerialGCOptions.useCompactingOldGen()) {
+            logOneTimer(log, "      ", oldPlanning);
+            logOneTimer(log, "      ", oldFixup);
+            logOneTimer(log, "          ", oldFixupAlignedChunks);
+            logOneTimer(log, "          ", oldFixupImageHeap);
+            logOneTimer(log, "          ", oldFixupMetaspace);
+            logOneTimer(log, "          ", oldFixupThreadLocals);
+            logOneTimer(log, "          ", oldFixupRuntimeCodeCache);
+            logOneTimer(log, "          ", oldFixupStack);
+            logOneTimer(log, "          ", oldFixupUnalignedChunks);
+            logOneTimer(log, "      ", oldCompaction);
+            logOneTimer(log, "          ", oldCompactionRememberedSets);
         }
+        logOneTimer(log, "      ", cleanCodeCache);
+        logOneTimer(log, "      ", referenceObjects);
+        logOneTimer(log, "      ", releaseSpaces);
+        logGCLoad(log, "    ", "GCLoad", collection, mutator);
+        log.string("]");
     }
 
+    /// Appends an elapsed timer when it recorded work during the collection.
     static void logOneTimer(Log log, String prefix, Timer timer) {
         if (timer.totalNanos() > 0) {
             log.newline().string(prefix).string(timer.name()).string(": ").signed(timer.totalNanos());
         }
     }
 
-    /**
-     * Log the "GC load" for the past collection as the collection time divided by the sum of the
-     * previous mutator interval plus the collection time. This method uses wall-time, and so does
-     * not take in to account that the collector is single-threaded, while the mutator might be
-     * multi-threaded.
-     */
+    /// Appends the collection's share of the combined mutator and collection interval.
+    /// Uses wall time, so it does not account for differences in the number of active threads.
     private static void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
         long collectionNanos = cTimer.lastIntervalNanos();
         long mutatorNanos = mTimer.lastIntervalNanos();

@@ -65,10 +65,7 @@ public final class NativeMemoryLog extends RealLog {
         OUTPUT,
 
         /// Holds a rendered decoration while its width and padding are determined.
-        DECORATOR,
-
-        /// Holds complex log text prepared before an uninterruptible message scope.
-        PREPARE
+        DECORATOR
     }
 
     private final BufferKind kind;
@@ -81,7 +78,7 @@ public final class NativeMemoryLog extends RealLog {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected byte[] lineSeparator() {
-        return kind == BufferKind.MESSAGE || kind == BufferKind.PREPARE ? MESSAGE_LINE_SEPARATOR : super.lineSeparator();
+        return kind == BufferKind.MESSAGE ? MESSAGE_LINE_SEPARATOR : super.lineSeparator();
     }
 
     /// Gets indentation from the current thread because this log object is a shared facade.
