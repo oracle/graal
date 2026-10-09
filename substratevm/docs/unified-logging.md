@@ -8,10 +8,11 @@ for a native image.
 
 ## Using unified logging
 
-SVM accepts the familiar HotSpot `-Xlog` syntax, so [JEP 158](https://openjdk.org/jeps/158)
-is a useful introduction from the user's perspective. SVM only instantiates tag
-sets used by its runtime. `-Xlog:help` is the authoritative list for a
-particular native image; a tag that is not listed cannot be selected.
+SVM accepts the familiar HotSpot `-Xlog` syntax, so
+[JEP 158](https://openjdk.org/jeps/158) is a useful introduction from the user's
+perspective. SVM only instantiates tag sets used by its runtime.
+`-Xlog:help` is the authoritative list for a particular native image; a tag that
+is not listed cannot be selected.
 
 The `-Xlog` command line interface is included when
 `StrictRuntimeJavaOptions` is enabled. The logging API remains available when
@@ -32,11 +33,13 @@ routes and is not forwarded to the native collector.
 
 ## Writing log messages
 
-Every message is logged against a specific tag set value (e.g. `LogTagSet.class_load`).
-It starts with a level predicate so minimal work is done when the tag set is not configured
-to log at the level specified in the predicate. Except for `LogTagSet.gc`, the folded
-`HasXlogSupport.get()` check should precede the predicate to keep unified logging
-infrastructure out of images that do not support parsing `-Xlog`:
+Every message is logged against a specific tag set value (e.g.
+`LogTagSet.class_load`).
+It starts with a level predicate so minimal work is done when the tag set is not
+configured to log at the level specified in the predicate. Except for
+`LogTagSet.gc`, the folded `HasXlogSupport.get()` check should precede the
+predicate to keep unified logging infrastructure out of images that do not
+support parsing `-Xlog`:
 
 ```java
 if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
@@ -49,50 +52,71 @@ if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
 private static void logClassLoad(String className, String loaderDescription) {
     LogMessage message = LogTagSet.class_load.message();
     try {
-        message.info().string(className).string(" loader=").string(loaderDescription);
+        message.info().string(className).string(" loader=")
+                        .string(loaderDescription);
     } finally {
         message.close();
     }
 }
 ```
 
-Ideally, applying `@AlwaysInline` to the level predicates would make the explicit
-`HasXlogSupport.get()` check at each logging site unnecessary. However, inlining is not guaranteed
-to happen before analysis, so the annotation cannot be relied upon to fold the guarded message
-construction away. The support check therefore remains explicit at each non-GC logging site.
+Ideally, applying `@AlwaysInline` to the level predicates would make the
+explicit `HasXlogSupport.get()` check at each logging site unnecessary. However,
+inlining is not guaranteed to happen before analysis, so the annotation cannot
+be relied upon to fold the guarded message construction away. The support
+check therefore remains explicit at each non-GC logging site.
 
-Values are appended directly to the message's native buffer instead of being combined with Java
-string concatenation.
-The dedicated `log*` method owns formatting and synchronous delivery through `LogMessage.close()`.
-Every call to `LogTagSet.message()`, including calls in tests and GC code, must appear directly in a `void` method whose name starts with `log`.
-That method must declare `@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)` and `@Uninterruptible` with one of the two ownership reasons described below.
-Native Image checks this caller contract during image building, before inlining can hide a call.
+Values are appended directly to the message's native buffer instead of being
+combined with Java string concatenation.
+The dedicated `log*` method owns formatting and synchronous delivery through
+`LogMessage.close()`.
+Every call to `LogTagSet.message()`, including calls in tests and GC code, must
+appear directly in a `void` method whose name starts with `log`.
+That method must declare `@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)` and
+`@Uninterruptible` with one of the two ownership reasons described below.
+Native Image checks this caller contract during image building, before
+inlining can hide a call.
 There are no exemptions for particular methods or test classes.
 
-For ordinary logging, use `@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)` with the default options.
+For ordinary logging, use
+`@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)` with the default
+options.
 The logging checker requires `calleeMustBe = true` for this reason.
-The annotations prevent inlining, heap allocation, safepoints, and class initialization on the checked path.
-`@Uninterruptible` implies `RestrictHeapAccess.NO_ALLOCATION`; `UninterruptibleAnnotationChecker` enforces this without a separate allocation annotation.
+The annotations prevent inlining, heap allocation, safepoints, and class
+initialization on the checked path.
+`@Uninterruptible` implies `RestrictHeapAccess.NO_ALLOCATION`;
+`UninterruptibleAnnotationChecker` enforces this without a separate allocation
+annotation.
 Keep level predicates and any allocating preparation outside that method.
-Use try-finally because try-with-resources generates an interruptible `Throwable.addSuppressed` call that violates the annotation contract.
+Use try-finally because try-with-resources generates an interruptible
+`Throwable.addSuppressed` call that violates the annotation contract.
 
 Logging within an uninterruptible GC phase can instead use:
 
 ```java
 @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
-@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC, calleeMustBe = false)
+@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC,
+                calleeMustBe = false)
 ```
 
-`GCImpl.logGCBefore(GCCause)` and `GCImpl.logGCAfter(GCCause)` use this contract within the allocation-free collection VM operation, whose thread cannot safepoint.
-They own complete message scopes; `logGCBefore` formats configuration and cause lines directly, while `logGCAfter` passes the line buffer returned by `message.debug()` to the timer and heap chunk formatting helpers.
-The GC reason applies only to `@Uninterruptible`; `@NeverInline` still uses `LOG_MESSAGE_OWNER`.
-With `calleeMustBe = false`, annotation checking forbids allocations in the owner but does not reject its class initialization or require its callees to be uninterruptible.
-The existing GC context must provide the allocation and safepoint guarantees for those callees.
-The logging checker accepts this reason without verifying that the method actually executes within such a GC phase.
-Reference handling outside the collection VM operation uses the ordinary checked contract in `GCImpl.logReferenceHandling(long)`.
+These methods own complete message scopes within an allocation-free GC phase
+whose thread cannot safepoint. They can pass the line buffer returned by
+`message.debug()` to formatting helpers.
+The GC reason applies only to `@Uninterruptible`; `@NeverInline` still uses
+`LOG_MESSAGE_OWNER`.
+With `calleeMustBe = false`, annotation checking forbids allocations in the
+owner but does not reject its class initialization or require its callees to
+be uninterruptible.
+The existing GC context must provide the allocation and safepoint guarantees
+for those callees.
+The logging checker accepts this reason without verifying that the method
+actually executes within such a GC phase.
+Logging outside that phase, including reference handling outside the collection
+VM operation, uses the ordinary checked contract.
 
 The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
-`VerboseGC` can route it to the low-level VM log in images without `-Xlog` support.
+`VerboseGC` can route it to the low-level VM log in images without `-Xlog`
+support.
 
 The level predicates and message APIs use the same output table for configured
 `-Xlog` routes and the legacy GC fallback. The fallback is filtered in the same
@@ -100,11 +124,12 @@ way as any other output, but uses only the uptime decorator and the GC prefix.
 It writes through `Log.log()`, so it honors `-XX:LogFile` and embedding log
 callbacks rather than creating a separate unified-log destination.
 
-For multi-line events (e.g., logging a stack trace), `LogTagSet.message()` returns
-a shared facade for the tag set, while the mutable message bytes, line metadata, and event decorations live
-in fast thread-local native state. A carrier thread may have only one open
-message scope, including an empty scope; nested scopes across tag sets are
-rejected. Each line can have its own level. On close, the complete message is
+For multi-line events (e.g., logging a stack trace), `LogTagSet.message()`
+returns a shared facade for the tag set, while the mutable message bytes, line
+metadata, and event decorations live in fast thread-local native state. A
+carrier thread may have only one open message scope, including an empty scope;
+nested scopes across tag sets are rejected.
+Each line can have its own level. On close, the complete message is
 routed to every output enabled by its most severe line. Each output's threshold
 then filters individual lines while preserving their order.
 
@@ -118,14 +143,15 @@ its rotation configuration; only output from the current process is rotated.
 Consequently, synchronous events cannot be interleaved on a destination, file
 rotation cannot occur between their lines, and formatting does not hold an
 output lock.
-The low-level VM log fallback uses the synchronization provided by `Log.log()` instead of the
-stream-output mutex. The safepoint consequences of a blocked raw write are
-described below.
+The low-level VM log fallback uses the synchronization provided by `Log.log()`
+instead of the stream-output mutex. The safepoint consequences of a blocked
+raw write are described below.
 
-`LogDecorations` is a static utility backed by native thread-local state. It captures the wall-clock
-timestamp, isolate uptime, and thread id once before an event is sent to its
-outputs, but only when at least one active output requests the corresponding
-decorator. The message level is passed separately for each line. The tag set
+`LogDecorations` is a static utility backed by native thread-local state. It
+captures the wall-clock timestamp, isolate uptime, and thread id once before an
+event is sent to its outputs, but only when at least one active output requests
+the corresponding decorator.
+The message level is passed separately for each line. The tag set
 maintains the union of decorators requested by its active outputs, while each
 output formats only its own decorators. The captured epoch, uptime, and thread
 id are therefore identical on all outputs. Host name and process id are fixed
@@ -152,36 +178,43 @@ file locking starts only after `close` has formatted the complete event.
 Stream and file outputs hold their mutex only in an uninterruptible critical
 section and use no-transition native operations. A thread cannot stop at a
 safepoint while holding one of these mutexes. A slow file system, full pipe, or
-wait for an output mutex can nevertheless delay safepoint progress. A VM operation
-that blocks in output cannot complete until that output returns.
+wait for an output mutex can nevertheless delay safepoint progress. A VM
+operation that blocks in output cannot complete until that output returns.
 
 Configuration changes remain interruptible and cannot run within a VM operation.
-Disabling output first stops new writers and waits for admitted writers to finish
-before clearing their routes and closing destinations.
+Disabling output first stops new writers and waits for admitted writers to
+finish before clearing their routes and closing destinations.
 
 The low-level VM-log destination and output-error diagnostics use `RealLog`.
 Its `AbstractLog.writeBytes0` bridge deliberately permits interruptible callees.
-The installed `LogHandler` must not allocate, but its safepoint behavior is trusted rather than enforced.
-The annotation checks therefore do not provide a transitive safepoint guarantee for this legacy boundary.
-Production stream and file destinations use checked no-transition native operations; managed test destinations are outside that guarantee.
+The installed `LogHandler` must not allocate, but its safepoint behavior is
+trusted rather than enforced.
+The annotation checks therefore do not provide a transitive safepoint guarantee
+for this legacy boundary.
+Production stream and file destinations use checked no-transition native
+operations; managed test destinations are outside that guarantee.
 
 ## Allocation-free runtime behavior
 
-Ordinary logging owners and their checked callees are validated by `UninterruptibleAnnotationChecker`, which also forbids heap allocation.
-GC owners using `LOG_MESSAGE_OWNER_IN_GC` with `calleeMustBe = false` rely on the existing GC context for the same guarantees in their formatting callees.
-The contract starts after the caller has provided the message text; string concatenation or formatting
-at the call site can still allocate before logging is entered if the broader context
-allows allocation.
+Ordinary logging owners and their checked callees are validated by
+`UninterruptibleAnnotationChecker`, which also forbids heap allocation.
+GC owners using `LOG_MESSAGE_OWNER_IN_GC` with `calleeMustBe = false` rely on
+the existing GC context for the same guarantees in their formatting callees.
+The contract starts after the caller has provided the message text; string
+concatenation or formatting at the call site can still allocate before logging
+is entered if the broader context allows allocation.
 
 The runtime path maintains this contract as follows:
 
-1. `NativeMemoryLog` stores thread-local event bytes in raw native structures containing a position,
-   capacity, and inline byte storage. Message, output, and decorator buffers are
-   shared by the current carrier thread through `FastThreadLocalFactory`. `reset`
-   rewinds a reusable buffer, whereas `clear` frees it during teardown. These buffers
-   may grow with native `malloc` or `realloc`, but do not allocate Java heap
-   objects during logging. A thread listener releases all thread-local buffers
-   after Java thread execution, including launcher handoff, and again during thread exit if needed.
+1. `NativeMemoryLog` stores thread-local event bytes in raw native structures
+   containing a position, capacity, and inline byte storage. Message, output,
+   and decorator buffers are shared by the current carrier thread through
+   `FastThreadLocalFactory`. `reset` rewinds a reusable buffer, whereas `clear`
+   frees it during teardown. These buffers may grow with native `malloc` or
+   `realloc`, but do not allocate Java heap objects during logging. A thread
+   listener releases all thread-local buffers
+   after Java thread execution, including launcher handoff, and again during
+   thread exit if needed.
 2. `LogDecorations` formats event metadata and the explicitly supplied line
    level directly into native memory. Host name and process id are cached
    during initialization, while `SVM_localUTCOffsetSeconds` computes the local
@@ -191,10 +224,10 @@ The runtime path maintains this contract as follows:
    events do not create formatted intermediate strings or byte arrays. Stream
    and file output locks cover only native operations after formatting.
 4. `LogMessage` stores line levels, byte offsets, and message bytes in the
-   thread-local native state. Its local index walk filters levels and either preserves
-   embedded newlines with continuation prefixes or folds them according to the
-   output setting. Native line metadata starts with capacity for ten lines and
-   grows outside the Java heap when necessary.
+   thread-local native state. Its local index walk filters levels and either
+   preserves embedded newlines with continuation prefixes or folds them
+   according to the output setting. Native line metadata starts with capacity
+   for ten lines and grows outside the Java heap when necessary.
 5. `LogFileOutput` retains the expanded active path and archive paths as native
    `RawFilePath` values. Runtime file operations use
    `RawFileOperationSupport` and do not construct `Path`, filename strings, or
@@ -224,8 +257,8 @@ the timestamp is formatted.
 Mutating configuration methods synchronize on `LogConfiguration.class`. Each
 tag set's `LogOutputList` also synchronizes updates and publishes a replacement
 `outputsByLevel` table through a volatile field. The arrays in a published table
-are immutable, so a logging thread reads one stable routing snapshot without taking the
-configuration monitor.
+are immutable, so a logging thread reads one stable routing snapshot without
+taking the configuration monitor.
 
 For example, after the default configuration and
 
@@ -269,17 +302,18 @@ configured, and does not abort the VM. Each later event whose descriptor is
 still unavailable retries opening the active file before safely skipping its
 write when the retry fails.
 
-Normal writes use the platform-specific `RawFileOperationSupport` implementation;
-`LoggingSupport` supplies the platform-specific archive delete and rename
-operations. If a write operation fails, `LogOutput` emits one emergency
-`Could not write to log` diagnostic for that output and suppresses repeated
-copies of the same diagnostic. The event path remains non-fatal.
+Normal writes use the platform-specific `RawFileOperationSupport`
+implementation; `LoggingSupport` supplies the platform-specific archive delete
+and rename operations. If a write operation fails, `LogOutput` emits one
+emergency `Could not write to log` diagnostic for that output and suppresses
+repeated copies of the same diagnostic. The event path remains non-fatal.
 
 Rotation is performed after `LogOutput` completes a write batch and the byte
-threshold has been reached. The batch is the whole possibly multi-line event. The
-active descriptor is closed, the oldest archive is deleted, existing archives
-are renamed toward the last slot, the active path is renamed to `.0`, and the
-active file is reopened. Active-file rename failures produce an emergency
+threshold has been reached. The batch is the whole possibly multi-line event.
+The active descriptor is closed, the oldest archive is deleted, existing
+archives are renamed toward the last slot, the active path is renamed to `.0`,
+and the active file is reopened.
+Active-file rename failures produce an emergency
 diagnostic; archive maintenance failures are best-effort. If reopening fails,
 the same non-fatal open-file handling applies.
 
@@ -324,7 +358,8 @@ JFR record through either or both sinks does not allocate on the Java heap.
 ## Comparison with HotSpot unified logging
 
 This comparison uses HotSpot from OpenJDK JDK 25 build 36
-([`jdk-25+36`](https://github.com/openjdk/jdk/tree/jdk-25%2B36)) as its baseline.
+([`jdk-25+36`](https://github.com/openjdk/jdk/tree/jdk-25%2B36))
+as its baseline.
 The relevant HotSpot implementation uses linked output lists, reader tracking,
 file stream locks, and a rotation semaphore; see
 [`logTagSet.cpp`](https://github.com/openjdk/jdk/blob/jdk-25%2B36/src/hotspot/share/logging/logTagSet.cpp),
