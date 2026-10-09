@@ -307,6 +307,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     // Internal info
     private final int[] bciStates;
+    /**
+     * The bci of the instruction after each unconditional stop (goto, return, athrow, ...), which
+     * must have a stack map frame. Recorded while {@link #initVerifier} walks the code, so that
+     * {@link #validateUnconditionalJumps} does not have to walk it a second time.
+     */
+    private int[] stopSuccessors = new int[16];
+    private int stopSuccessorCount;
     private final StackFrame<R, C, M, F>[] stackFrames;
     private final byte[] handlerStatus;
     private boolean stackMapInitialized = false;
@@ -598,6 +605,36 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
+    /*
+     * Overloads for the arities the hot checks use. A call with an int or an object argument binds
+     * to one of these and not to the varargs form, so it allocates no Object[] and boxes nothing
+     * when the check passes; the message is formatted only on failure.
+     */
+
+    static void verifyGuarantee(boolean guarantee, String format, int arg) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String format, int arg1, int arg2) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg1, arg2));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String format, Object arg) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String format, Object arg1, Object arg2) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg1, arg2));
+        }
+    }
+
     static RuntimeException failFormat(String s) {
         throw sneakyThrow(new VerificationException(s, VerificationException.Kind.ClassFormat));
     }
@@ -674,6 +711,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             bci = code.nextBCI(bci);
             // Check instruction has enough bytes after it
             verifyGuarantee(bci <= code.endBCI(), "Incomplete bytecode");
+            if (useStackMaps && Bytecodes.isStop(opcode) && bci < code.endBCI()) {
+                recordStopSuccessor(bci);
+            }
         }
         bci = 0;
         if (!useStackMaps) {
@@ -975,19 +1015,16 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     }
 
+    private void recordStopSuccessor(int nextBCI) {
+        if (stopSuccessorCount == stopSuccessors.length) {
+            stopSuccessors = Arrays.copyOf(stopSuccessors, stopSuccessorCount * 2);
+        }
+        stopSuccessors[stopSuccessorCount++] = nextBCI;
+    }
+
     private void validateUnconditionalJumps() {
-        if (useStackMaps) {
-            int bci = 0;
-            int nextBCI;
-            while (bci < code.endBCI()) {
-                nextBCI = code.nextBCI(bci);
-                if (Bytecodes.isStop(code.currentBC(bci))) {
-                    if (nextBCI < code.endBCI()) {
-                        verifyGuarantee(stackFrames[nextBCI] != null, "Control flow stop does not have a stack map at next instruction!");
-                    }
-                }
-                bci = nextBCI;
-            }
+        for (int i = 0; i < stopSuccessorCount; i++) {
+            verifyGuarantee(stackFrames[stopSuccessors[i]] != null, "Control flow stop does not have a stack map at next instruction!");
         }
     }
 
@@ -1292,7 +1329,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         bciStates[bci] = setStatus(bciStates[bci], DONE);
         int curOpcode;
         curOpcode = code.opcode(bci);
-        verifyGuarantee(curOpcode < SLIM_QUICK, "invalid bytecode: %s", code.readUByte(bci));
+        if (curOpcode >= SLIM_QUICK) {
+            throw failVerify(String.format("invalid bytecode: %s", code.readUByte(bci)));
+        }
         // @formatter:off
         // Checkstyle: stop
 
