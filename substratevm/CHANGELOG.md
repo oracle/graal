@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
+* (PR-14513) The JNI function `DestroyJavaVM` no longer tears down the isolate. It just waits for non-daemon threads, runs the shutdown and tear-down hooks, and detaches the calling thread.
 * (GR-79971) Unrecognized Native Image options starting with `-` or `--` now produce an error instead of being interpreted as a main class or output filename.
   This also rejects positional output names beginning with a dash.
   To keep using such a name, specify it with `-o`, for example `native-image -jar hello.jar -o --my-image`, or prefix the positional name with `./`.
