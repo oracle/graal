@@ -30,11 +30,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.collections.EnumBitmask;
 import com.oracle.svm.shared.util.VMError;
@@ -111,15 +109,17 @@ public enum LogTagSet {
     safepoint;
     // END GENERATED
 
-    /// Contract shared by methods that format and deliver unified log messages.
+    /// Reason used by [com.oracle.svm.shared.NeverInline] on every unified logging message owner and by
+    /// [Uninterruptible] on owners whose callees must also be uninterruptible.
     ///
     /// @see #message()
     public static final String LOG_MESSAGE_OWNER = "Logging methods must not allocate, safepoint, or be inlined.";
 
-    /// Contract shared by methods that format and deliver unified log messages
-    /// from within an uninterruptible phase of a GC operation. These methods
-    /// can specify `false` for [Uninterruptible#calleeMustBe] to avoid having to
-    /// annotate all the callees used in the logging message.
+    /// Reason used by [Uninterruptible] on message owners within an uninterruptible GC phase.
+    /// These methods can specify `false` for [Uninterruptible#calleeMustBe] because their existing
+    /// GC context guarantees allocation and safepoint safety in the formatting callees.
+    /// That guarantee is not established by the logging caller checker or checked transitively
+    /// by the uninterruptible annotation. [com.oracle.svm.shared.NeverInline] still uses [#LOG_MESSAGE_OWNER].
     ///
     /// @see #message()
     public static final String LOG_MESSAGE_OWNER_IN_GC = "Logging methods within GC must not allocate, safepoint, or be inlined.";
@@ -242,24 +242,28 @@ public enum LogTagSet {
         return isLevel(LogLevel.ERROR);
     }
 
-    /// Opens a message for this tag set. Except for the two Serial GC methods described below,
-    /// every call, including calls in tests, must be enclosed in a `void` method whose name starts
-    /// with `log`. The enclosing method must declare
-    /// [NeverInline] and [Uninterruptible], both with [#LOG_MESSAGE_OWNER] as their reason.
-    /// The uninterruptible annotation must retain its default options so the entire message
-    /// scope is checked and cannot be inlined. It implies [RestrictHeapAccess.Access#NO_ALLOCATION],
-    /// which is guaranteed on the checked path by `UninterruptibleAnnotationChecker` without
-    /// requiring an explicit allocation restriction. The low-level VM log handler remains a
-    /// trusted boundary for allocation and safepoint behavior.
+    /// Opens a message for this tag set. Every call, including calls in tests and GC code, must
+    /// be enclosed in a `void` method whose name starts with `log`. The enclosing method must
+    /// declare `@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)` and [Uninterruptible] with one of the
+    /// two ownership reasons below. Image building checks this contract without exemptions.
     ///
-    /// The enclosing method owns formatting and synchronous delivery, using try-finally with one
-    /// [LogMessage#close()] call. Level predicates and any allocating preparation remain outside
-    /// the method. Image building checks this caller contract without exceptions for tests.
+    /// Ordinary owners use [#LOG_MESSAGE_OWNER] as the uninterruptible reason, with the default
+    /// options. The logging checker requires [Uninterruptible#calleeMustBe] to be `true` for this
+    /// reason. The annotation implies [com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access#NO_ALLOCATION],
+    /// enforced on the checked path by `UninterruptibleAnnotationChecker` without an explicit allocation annotation.
     ///
-    /// The only exceptions are `GCImpl.printGCBefore(GCCause)` and
-    /// `GCImpl.printGCAfter(GCCause)`. They run in the allocation-free collection VM operation,
-    /// whose thread cannot safepoint. They own the complete message scopes and pass the message
-    /// into formatting helpers without requiring those helpers to be annotated.
+    /// Owners within an uninterruptible GC phase can instead use [#LOG_MESSAGE_OWNER_IN_GC] as
+    /// the uninterruptible reason and set `calleeMustBe = false`. `GCImpl.logGCBefore(GCCause)`
+    /// and `GCImpl.logGCAfter(GCCause)` use this contract. Allocations in the annotated owner are
+    /// still forbidden, but its callees need not be uninterruptible and class initialization is
+    /// not rejected. The existing GC context must guarantee allocation and safepoint safety for
+    /// those callees; the logging checker does not verify that context. [com.oracle.svm.shared.NeverInline] still uses
+    /// [#LOG_MESSAGE_OWNER].
+    ///
+    /// The enclosing method owns formatting and synchronous delivery. Each message scope uses
+    /// try-finally with one [LogMessage#close()] call. Level predicates and any allocating preparation
+    /// remain outside an ordinary owner. The low-level VM log handler remains a trusted boundary for allocation
+    /// and safepoint behavior rather than providing a transitive annotation guarantee.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public LogMessage message() {
         guaranteeGCLoggingIsSafe();

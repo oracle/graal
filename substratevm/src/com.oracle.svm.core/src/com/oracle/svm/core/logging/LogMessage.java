@@ -40,16 +40,17 @@ import com.oracle.svm.shared.util.VMError;
 /// decorations are owned by the current carrier thread. A carrier thread may have only one open
 /// message scope at a time, including across different tag sets.
 ///
-/// Logging sites normally keep their level predicate and any allocating preparation outside a
-/// dedicated `log*` method. That method is never inlined, cannot allocate or safepoint, and owns
-/// the complete message scope, including synchronous delivery from [#close()]. The only exceptions
-/// are `GCImpl.printGCBefore(GCCause)` and `GCImpl.printGCAfter(GCCause)`. They own the message
-/// scopes within the allocation-free collection VM operation, whose thread cannot safepoint,
-/// and pass this object into formatting helpers.
+/// Every message scope belongs to a `void log*` method with the ownership annotations described
+/// by [LogTagSet#message()]. The owner is never inlined and includes synchronous delivery from
+/// [#close()]. Ordinary logging sites keep their level predicate and any allocating preparation
+/// outside this method, and annotation checking covers its callees. GC owners can use
+/// [LogTagSet#LOG_MESSAGE_OWNER_IN_GC] with `calleeMustBe = false`, relying on their existing GC
+/// context for allocation and safepoint safety in callees. They still use
+/// `@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)`; there are no method-specific checker exemptions.
 ///
 /// ```java
-/// @NeverInline(LogTagSet.LOG_METHOD_REASON)
-/// @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+/// @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+/// @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
 /// private static void logClassLoad(String className, String loaderDescription) {
 ///     LogMessage message = LogTagSet.class_load.message();
 ///     try {

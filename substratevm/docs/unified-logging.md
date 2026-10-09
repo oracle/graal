@@ -44,8 +44,8 @@ if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
     logClassLoad(className, loaderDescription);
 }
 
-@NeverInline(LogTagSet.LOG_METHOD_REASON)
-@Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
 private static void logClassLoad(String className, String loaderDescription) {
     LogMessage message = LogTagSet.class_load.message();
     try {
@@ -64,17 +64,32 @@ construction away. The support check therefore remains explicit at each non-GC l
 Values are appended directly to the message's native buffer instead of being combined with Java
 string concatenation.
 The dedicated `log*` method owns formatting and synchronous delivery through `LogMessage.close()`.
-Except for the two Serial GC methods described below, every call to `LogTagSet.message()`, including calls in tests, must appear directly in a `void` method whose name starts with `log`.
-That method must declare both annotations shown above, using `LogTagSet.LOG_METHOD_REASON` and the default `@Uninterruptible` options.
+Every call to `LogTagSet.message()`, including calls in tests and GC code, must appear directly in a `void` method whose name starts with `log`.
+That method must declare `@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)` and `@Uninterruptible` with one of the two ownership reasons described below.
 Native Image checks this caller contract during image building, before inlining can hide a call.
-Its annotations prevent inlining, heap allocation, safepoints, and class initialization on the checked path.
+There are no exemptions for particular methods or test classes.
+
+For ordinary logging, use `@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)` with the default options.
+The logging checker requires `calleeMustBe = true` for this reason.
+The annotations prevent inlining, heap allocation, safepoints, and class initialization on the checked path.
 `@Uninterruptible` implies `RestrictHeapAccess.NO_ALLOCATION`; `UninterruptibleAnnotationChecker` enforces this without a separate allocation annotation.
 Keep level predicates and any allocating preparation outside that method.
 Use try-finally because try-with-resources generates an interruptible `Throwable.addSuppressed` call that violates the annotation contract.
-Serial GC's `GCImpl.printGCBefore(GCCause)` and `GCImpl.printGCAfter(GCCause)` are the only exceptions to this caller contract.
-They execute in the allocation-free collection VM operation, whose thread cannot safepoint.
-These methods open and close messages directly, passing `LogMessage` into formatting helpers.
-Their existing GC context provides the allocation and safepoint guarantees without requiring annotations throughout the formatting code.
+
+Logging within an uninterruptible GC phase can instead use:
+
+```java
+@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC, calleeMustBe = false)
+```
+
+`GCImpl.logGCBefore(GCCause)` and `GCImpl.logGCAfter(GCCause)` use this contract within the allocation-free collection VM operation, whose thread cannot safepoint.
+They own complete message scopes; `logGCBefore` formats configuration and cause lines directly, while `logGCAfter` passes the line buffer returned by `message.debug()` to the timer and heap chunk formatting helpers.
+The GC reason applies only to `@Uninterruptible`; `@NeverInline` still uses `LOG_MESSAGE_OWNER`.
+With `calleeMustBe = false`, annotation checking forbids allocations in the owner but does not reject its class initialization or require its callees to be uninterruptible.
+The existing GC context must provide the allocation and safepoint guarantees for those callees.
+The logging checker accepts this reason without verifying that the method actually executes within such a GC phase.
+Reference handling outside the collection VM operation uses the ordinary checked contract in `GCImpl.logReferenceHandling(long)`.
 
 The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
 `VerboseGC` can route it to the low-level VM log in images without `-Xlog` support.
@@ -152,7 +167,8 @@ Production stream and file destinations use checked no-transition native operati
 
 ## Allocation-free runtime behavior
 
-Outside the two Serial GC exceptions, successful normal logging operations are checked by `UninterruptibleAnnotationChecker`, which also forbids heap allocation.
+Ordinary logging owners and their checked callees are validated by `UninterruptibleAnnotationChecker`, which also forbids heap allocation.
+GC owners using `LOG_MESSAGE_OWNER_IN_GC` with `calleeMustBe = false` rely on the existing GC context for the same guarantees in their formatting callees.
 The contract starts after the caller has provided the message text; string concatenation or formatting
 at the call site can still allocate before logging is entered if the broader context
 allows allocation.
