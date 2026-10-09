@@ -94,7 +94,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
 
     @Override
     public boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
-        return !isArray || arrayAllocatedInAlignedChunk(size);
+        return !isArray || shouldAllocateInAlignedChunk(size);
     }
 
     @Override
@@ -113,7 +113,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean arrayAllocatedInAlignedChunk(UnsignedWord objectSize) {
+    public static boolean shouldAllocateInAlignedChunk(UnsignedWord objectSize) {
         return objectSize.belowThan(HeapParameters.getLargeArrayThreshold());
     }
 
