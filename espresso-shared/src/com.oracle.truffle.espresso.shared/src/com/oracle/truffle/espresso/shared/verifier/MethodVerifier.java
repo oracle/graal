@@ -242,6 +242,7 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.TABLESWIT
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -316,6 +317,24 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private int stopSuccessorCount;
     private final StackFrame<R, C, M, F>[] stackFrames;
     private final byte[] handlerStatus;
+    /**
+     * What the last check of each exception handler was made against, or null if it has not been
+     * checked yet. See {@link #checkExceptionHandlers}.
+     */
+    private final List<HandlerCheck<R, C, M, F>> exceptionHandlerChecks;
+
+    /**
+     * The state a check of an exception handler was made against: the locals, how often they had
+     * been modified, the constructor status, and the handler's frame afterwards.
+     */
+    private record HandlerCheck<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>(Locals<R, C, M, F> locals,
+                    int modCount, boolean calledConstructor, StackFrame<R, C, M, F> frame) {
+        /** Whether a check of the same handler now would be made against the same state. */
+        boolean isSameAs(Locals<R, C, M, F> currentLocals, boolean currentCalledConstructor, StackFrame<R, C, M, F> currentFrame) {
+            return locals == currentLocals && modCount == currentLocals.modCount && calledConstructor == currentCalledConstructor && frame == currentFrame;
+        }
+    }
+
     private boolean stackMapInitialized = false;
 
     // <init> method validation
@@ -548,6 +567,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         this.handlerStatus = new byte[exceptionHandlers.length];
         Arrays.fill(handlerStatus, UNENCOUNTERED);
+        this.exceptionHandlerChecks = Arrays.asList(new HandlerCheck[exceptionHandlers.length]);
 
         booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
 
@@ -1255,11 +1275,28 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     /**
      * Checks that an instruction can merge into all its handlers.
+     *
+     * <p>
+     * What a handler is merged with is the locals, the constructor status, and the same one-element
+     * stack every time, so a check that finds all of them as the previous check of that handler left
+     * them would merge the same state into the same frame again, and is skipped. Most instructions
+     * of a covered region do not change a local. Subroutines are not tracked, and are always
+     * checked.
      */
     private void checkExceptionHandlers(int nextBCI, Locals<R, C, M, F> locals) {
         for (int i = 0; i < exceptionHandlers.length; i++) {
             ExceptionHandler handler = exceptionHandlers[i];
             if (handler.covers(nextBCI)) {
+                HandlerCheck<R, C, M, F> lastCheck = exceptionHandlerChecks.get(i);
+                if (lastCheck != null && locals.subRoutineModifications == null) {
+                    boolean isSame = lastCheck.isSameAs(
+                                    locals,
+                                    calledConstructor,
+                                    stackFrames[handler.getHandlerBCI()]);
+                    if (isSame) {
+                        continue;
+                    }
+                }
                 OperandStack<R, C, M, F> stack = new OperandStack<>(this, 1);
                 Symbol<Type> catchType = handler.getCatchType();
                 stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType, handler.catchTypeCPI()));
@@ -1274,6 +1311,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     handlerStatus[i] = setConstructorStatus(handlerStatus[i], NOCONSTRUCTORCALLED);
                 }
                 stackFrames[handler.getHandlerBCI()] = newFrame;
+                exceptionHandlerChecks.set(i, new HandlerCheck<>(locals, locals.modCount, calledConstructor, newFrame));
             }
         }
     }

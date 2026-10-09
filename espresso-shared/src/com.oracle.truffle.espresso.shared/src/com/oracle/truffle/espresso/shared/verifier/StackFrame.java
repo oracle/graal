@@ -463,6 +463,12 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
     // Will stay null in most cases.
     SubroutineModificationStack subRoutineModifications;
 
+    /**
+     * Counts the changes made to {@link #registers}, so that a check made against these locals can
+     * tell that they have not changed since it last ran.
+     */
+    int modCount;
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     Locals(MethodVerifier<R, C, M, F> mv) {
         this.mv = mv;
@@ -529,6 +535,7 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
     }
 
     void store(int index, Operand<R, C, M, F> op) {
+        modCount++;
         boolean subRoutine = subRoutineModifications != null;
         registers[index] = op;
         if (subRoutine) {
@@ -563,6 +570,7 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
     }
 
     void initUninit(UninitReferenceOperand<R, C, M, F> toInit, Operand<R, C, M, F> stackOp) {
+        modCount++;
         for (int i = 0; i < registers.length; i++) {
             if ((registers[i].isUninit() && ((UninitReferenceOperand<R, C, M, F>) registers[i]).newBCI == toInit.newBCI)) {
                 registers[i] = stackOp;
