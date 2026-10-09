@@ -88,6 +88,11 @@ final class Target_com_oracle_svm_shared_util_VMError_Web {
     }
 
     @Substitute
+    private static RuntimeException shouldNotReachHereUnexpectedInput(long input) {
+        throw WasmGCVMErrorSubstitutions.shouldNotReachHere(VMError.msgShouldNotReachHereUnexpectedInput, null);
+    }
+
+    @Substitute
     private static RuntimeException shouldNotReachHereAtRuntime() {
         throw WasmGCVMErrorSubstitutions.shouldNotReachHere(VMError.msgShouldNotReachHereAtRuntime, null);
     }

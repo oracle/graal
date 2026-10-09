@@ -887,10 +887,26 @@ public abstract class InterpreterStubSection {
     }
 
     @AlwaysInline("Performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Uses raw object pointers.", mayBeInlined = true)
     private static Object decodeReturnValue(JavaKind returnKind, long rawReturnValue, ObjectReturnKind objectKind) {
+        if (returnKind == JavaKind.Boolean) {
+            return (rawReturnValue & 0xff) != 0 ? Boolean.TRUE : Boolean.FALSE;
+        } else if (returnKind == JavaKind.Void) {
+            return null;
+        } else if (returnKind == JavaKind.Object && objectKind == ObjectReturnKind.OOP) {
+            return ((Pointer) Word.pointer(rawReturnValue)).toObject();
+        } else {
+            return decodeReturnValueInterruptibly(returnKind, rawReturnValue, objectKind);
+        }
+    }
+
+    @Uninterruptible(reason = "Switch to interruptible code to decode other return values.", calleeMustBe = false)
+    private static Object decodeReturnValueInterruptibly(JavaKind returnKind, long rawReturnValue, ObjectReturnKind objectKind) {
+        return decodeReturnValueInterruptibly0(returnKind, rawReturnValue, objectKind);
+    }
+
+    private static Object decodeReturnValueInterruptibly0(JavaKind returnKind, long rawReturnValue, ObjectReturnKind objectKind) {
         return switch (returnKind) {
-            case Boolean -> (rawReturnValue & 0xff) != 0;
             case Byte -> (byte) rawReturnValue;
             case Short -> (short) rawReturnValue;
             case Char -> (char) rawReturnValue;
@@ -898,13 +914,10 @@ public abstract class InterpreterStubSection {
             case Long -> rawReturnValue;
             case Float -> Float.intBitsToFloat((int) rawReturnValue);
             case Double -> Double.longBitsToDouble(rawReturnValue);
-            case Object ->
-                switch (objectKind) {
-                    case HANDLE -> JNIMethodSupport.unboxHandle(Word.pointer(rawReturnValue));
-                    case OOP -> ((Pointer) Word.pointer(rawReturnValue)).toObject();
-                    default -> throw VMError.shouldNotReachHereAtRuntime();
-                };
-            case Void -> null;
+            case Object -> {
+                VMError.guarantee(objectKind == ObjectReturnKind.HANDLE);
+                yield JNIMethodSupport.unboxHandle(Word.pointer(rawReturnValue));
+            }
             default -> throw VMError.shouldNotReachHereAtRuntime();
         };
     }
