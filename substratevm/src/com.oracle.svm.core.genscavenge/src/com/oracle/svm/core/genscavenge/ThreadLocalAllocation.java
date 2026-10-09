@@ -287,7 +287,7 @@ public final class ThreadLocalAllocation {
         allocatedOutsideTlab.write(false);
 
         Object array;
-        if (!GenScavengeAllocationSupport.arrayAllocatedInAlignedChunk(size)) {
+        if (!GenScavengeAllocationSupport.shouldAllocateInAlignedChunk(size)) {
             /*
              * Large arrays go into their own unaligned chunk. Only arrays and stored continuations
              * may be allocated in an unaligned chunk.
