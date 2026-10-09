@@ -43,7 +43,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.LibCHelper;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -53,10 +52,11 @@ import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
 
 /// Owns the configuration for `-Xlog` and the GC logging fallback used when that command line
@@ -377,9 +377,8 @@ public final class LogConfiguration {
         initializationComplete = true;
     }
 
-    /// Formats startup diagnostics without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logInitializationDetails(String[] outputDescriptions, boolean debugEnabled) {
         LogMessage message = logging.message();
         try {

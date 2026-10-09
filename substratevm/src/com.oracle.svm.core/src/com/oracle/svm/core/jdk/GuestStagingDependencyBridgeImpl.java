@@ -27,9 +27,9 @@ package com.oracle.svm.core.jdk;
 import java.io.PrintStream;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AssertionsSupport;
@@ -37,9 +37,9 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
@@ -55,8 +55,8 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -292,9 +292,8 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
         }
     }
 
-    /// Formats an image module event without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logImageModule(String moduleName) {
         LogMessage message = LogTagSet.module_load_image.message();
         try {

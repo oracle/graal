@@ -375,9 +375,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
     }
 
-    /// Formats a class loading stack trace without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logClassLoadCause(String className, String[] stackTrace) {
         LogMessage message = LogTagSet.class_load_cause.message();
         try {
@@ -408,9 +407,8 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         logClassLoadingMessage(tagSet, className, loaderName, source, detail);
     }
 
-    /// Formats a class loading event without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logClassLoadingMessage(LogTagSet tagSet, String className, String loaderName, String source, String detail) {
         LogMessage message = tagSet.message();
         try {

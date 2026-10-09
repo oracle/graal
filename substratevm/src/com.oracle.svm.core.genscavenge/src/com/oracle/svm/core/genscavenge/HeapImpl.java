@@ -29,7 +29,6 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -69,6 +68,7 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
@@ -82,7 +82,6 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -314,9 +313,8 @@ public final class HeapImpl extends Heap {
         oldGeneration.logUsage(log);
     }
 
-    /// Appends GC chunk diagnostics to the caller's debug message.
-    void logChunks(LogMessage message) {
-        logChunks(message.debug(), false);
+    void logChunks(Log log) {
+        logChunks(log, false);
     }
 
     void logChunks(Log log, boolean allowUnsafe) {

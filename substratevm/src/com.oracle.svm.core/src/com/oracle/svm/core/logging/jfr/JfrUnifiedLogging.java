@@ -120,8 +120,8 @@ public final class JfrUnifiedLogging {
     }
 
     /// Formats a JFR record without crossing a safepoint before the record is delivered.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logJfrRecord(LogTagSet tagSet, LogLevel level, String text) {
         LogMessage message = tagSet.message();
         try {
@@ -132,8 +132,8 @@ public final class JfrUnifiedLogging {
     }
 
     /// Formats one JFR event without crossing a safepoint before the event is delivered.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logJfrEvent(LogTagSet tagSet, LogLevel level, String[] lines) {
         LogMessage message = tagSet.message();
         try {

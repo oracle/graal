@@ -30,10 +30,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.collections.EnumBitmask;
 import com.oracle.svm.shared.util.VMError;
 
@@ -110,7 +112,17 @@ public enum LogTagSet {
     // END GENERATED
 
     /// Contract shared by methods that format and deliver unified log messages.
-    public static final String LOG_METHOD_REASON = "Factored-out logging methods must not allocate, safepoint, or be inlined.";
+    ///
+    /// @see #message()
+    public static final String LOG_MESSAGE_OWNER = "Logging methods must not allocate, safepoint, or be inlined.";
+
+    /// Contract shared by methods that format and deliver unified log messages
+    /// from within an uninterruptible phase of a GC operation. These methods
+    /// can specify `false` for [Uninterruptible#calleeMustBe] to avoid having to
+    /// annotate all the callees used in the logging message.
+    ///
+    /// @see #message()
+    public static final String LOG_MESSAGE_OWNER_IN_GC = "Logging methods within GC must not allocate, safepoint, or be inlined.";
 
     static final LogTagSet[] VALUES = LogTagSet.values();
 
@@ -233,9 +245,9 @@ public enum LogTagSet {
     /// Opens a message for this tag set. Except for the two Serial GC methods described below,
     /// every call, including calls in tests, must be enclosed in a `void` method whose name starts
     /// with `log`. The enclosing method must declare
-    /// `@NeverInline` and `@Uninterruptible`, both with [#LOG_METHOD_REASON] as their reason.
+    /// [NeverInline] and [Uninterruptible], both with [#LOG_MESSAGE_OWNER] as their reason.
     /// The uninterruptible annotation must retain its default options so the entire message
-    /// scope is checked and cannot be inlined. It implies `RestrictHeapAccess.NO_ALLOCATION`,
+    /// scope is checked and cannot be inlined. It implies [RestrictHeapAccess.Access#NO_ALLOCATION],
     /// which is guaranteed on the checked path by `UninterruptibleAnnotationChecker` without
     /// requiring an explicit allocation restriction. The low-level VM log handler remains a
     /// trusted boundary for allocation and safepoint behavior.

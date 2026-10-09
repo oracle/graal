@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.util.Timer;
-import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.guest.staging.log.Log;
 
 /** Collection timers primarily for {@link GCImpl}. */
 final class Timers {
@@ -93,9 +92,7 @@ final class Timers {
         /* The mutator timer is *not* reset here. */
     }
 
-    /// Appends collection timings to the caller's debug message.
-    void logAfterCollection(LogMessage message) {
-        Log log = message.debug();
+    void logAfterCollection(Log log) {
         log.newline();
         log.string("  [GC nanoseconds:");
         logOneTimer(log, "    ", collection);

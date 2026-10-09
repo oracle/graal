@@ -50,8 +50,8 @@ import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -268,9 +268,8 @@ public final class Safepoint {
         }
     }
 
-    /// Formats the safepoint summary without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private void logSafepointSummary() {
         LogMessage message = LogTagSet.safepoint.message();
         try {

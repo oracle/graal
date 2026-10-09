@@ -39,6 +39,7 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
@@ -65,7 +66,7 @@ public final class LogMessageScopeChecker {
         }
         for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod target = call.targetMethod();
-            if (target.getName().equals("message") && target.getDeclaringClass().toClassName().equals("com.oracle.svm.core.logging.LogTagSet") &&
+            if (target.getName().equals("message") && target.getDeclaringClass().toClassName().equals(LogTagSet.class.getName()) &&
                             target.getSignature().getParameterCount(false) == 0) {
                 ResolvedJavaMethod caller = call.invoke().stateAfter().getMethod();
                 for (String violation : callerViolations(caller)) {
@@ -76,27 +77,41 @@ public final class LogMessageScopeChecker {
         }
     }
 
+    private static String logTagSetFieldRef(String fieldName) {
+        try {
+            LogTagSet.class.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+        return ClassUtil.getUnqualifiedName(LogTagSet.class) + "." + fieldName;
+    }
+
     /// Returns violations of the message-opening contract declared by `caller`.
     public static List<String> callerViolations(ResolvedJavaMethod caller) {
-        // These two methods run only in the allocation-free collection VM operation. Its thread
-        // cannot safepoint, so their formatting helpers do not need uninterruptible annotations.
-        String signature = caller.format("%H.%n(%P):%R");
-        if (signature.equals("com.oracle.svm.core.genscavenge.GCImpl.printGCBefore(com.oracle.svm.core.heap.GCCause):void") ||
-                        signature.equals("com.oracle.svm.core.genscavenge.GCImpl.printGCAfter(com.oracle.svm.core.heap.GCCause):void")) {
-            return List.of();
-        }
         List<String> result = new ArrayList<>();
         if (!caller.getName().startsWith("log") || caller.getSignature().getReturnKind() != JavaKind.Void) {
-            result.add("LogTagSet.message() callers must be void log* methods.");
+            result.add("LogTagSet.message() caller must be a void method starting with \"log\".");
         }
         AnnotationValue neverInline = GuestAnnotationAccess.getAnnotationValue(caller, NeverInline.class);
-        if (neverInline == null || !LogTagSet.LOG_METHOD_REASON.equals(neverInline.getString("value"))) {
-            result.add("LogTagSet.message() callers must declare @NeverInline(LogTagSet.LOG_METHOD_REASON).");
+        if (neverInline == null || !LogTagSet.LOG_MESSAGE_OWNER.equals(neverInline.getString("value"))) {
+            result.add("LogTagSet.message() callers must declare @NeverInline(%s).".formatted(
+                            logTagSetFieldRef("LOG_MESSAGE_OWNER")));
         }
         UninterruptibleGuestValue uninterruptible = UninterruptibleAnnotationUtils.getAnnotation(caller);
-        if (uninterruptible == null || !LogTagSet.LOG_METHOD_REASON.equals(uninterruptible.reason()) || uninterruptible.mayBeInlined() ||
-                        !uninterruptible.calleeMustBe() || uninterruptible.callerMustBe()) {
-            result.add("LogTagSet.message() callers must declare @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON) with default options.");
+        if (uninterruptible != null) {
+            if (LogTagSet.LOG_MESSAGE_OWNER.equals(uninterruptible.reason())) {
+                if (!uninterruptible.calleeMustBe()) {
+                    result.add("LogTagSet.message() caller with @Uninterruptible(reason = %s) must have `calleeMustBe = true`.".formatted(
+                                    logTagSetFieldRef("LOG_MESSAGE_OWNER")));
+                }
+            } else if (!LogTagSet.LOG_MESSAGE_OWNER_IN_GC.equals(uninterruptible.reason())) {
+                uninterruptible = null;
+            }
+        }
+        if (uninterruptible == null) {
+            result.add("LogTagSet.message() caller must declare @Uninterruptible with reason set to %s or %s.".formatted(
+                            logTagSetFieldRef("LOG_MESSAGE_OWNER"),
+                            logTagSetFieldRef("LOG_MESSAGE_OWNER_IN_GC")));
         }
         return result;
     }

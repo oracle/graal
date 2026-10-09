@@ -137,9 +137,8 @@ public final class ModuleNative {
         }
     }
 
-    /// Formats a module load event without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logModuleLoad(String moduleName, String location) {
         LogMessage message = LogTagSet.module_load.message();
         try {

@@ -38,15 +38,12 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
-import com.oracle.svm.guest.staging.c.function.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
@@ -57,8 +54,11 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
+import com.oracle.svm.guest.staging.c.function.InvokeJavaFunctionPointer;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -569,9 +569,8 @@ public final class ClassInitializationInfo {
         }
     }
 
-    /// Formats a class verification event without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logClassVerification(boolean starting, String className) {
         LogMessage message = LogTagSet.class_init.message();
         try {
@@ -761,9 +760,8 @@ public final class ClassInitializationInfo {
         }
     }
 
-    /// Formats a class initialization event without allowing a safepoint inside the message scope.
-    @NeverInline(LogTagSet.LOG_METHOD_REASON)
-    @Uninterruptible(reason = LogTagSet.LOG_METHOD_REASON)
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logClassInitialization(int sequence, char[] name, String method, String threadName) {
         LogMessage message = LogTagSet.class_init.message();
         try {
