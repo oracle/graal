@@ -29,10 +29,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
+import jdk.graal.compiler.annotation.AnnotationValue;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ReadArgumentNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -57,6 +60,7 @@ public final class BytecodeHandlerCallSite {
     private final int bci;
     private final ResolvedJavaMethod targetMethod;
     private final BytecodeHandlerConfig handlerConfig;
+    private final boolean expandedTypeEnabled;
 
     /**
      * Creates metadata for a handler call site.
@@ -69,6 +73,17 @@ public final class BytecodeHandlerCallSite {
      */
     public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod,
                     boolean templateModeEnabled) {
+        this(enclosingMethod, bci, targetMethod, templateModeEnabled, Function.identity());
+    }
+
+    public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod,
+                    boolean templateModeEnabled, Function<ResolvedJavaType, ResolvedJavaType> typeMap) {
+        this(enclosingMethod, bci, targetMethod, templateModeEnabled, typeMap, true);
+    }
+
+    public BytecodeHandlerCallSite(ResolvedJavaMethod enclosingMethod, int bci, ResolvedJavaMethod targetMethod,
+                    boolean templateModeEnabled, Function<ResolvedJavaType, ResolvedJavaType> typeMap, boolean expandedTypeEnabled) {
+        this.expandedTypeEnabled = expandedTypeEnabled;
         this.enclosingMethod = enclosingMethod;
         this.bci = bci;
 
@@ -76,7 +91,7 @@ public final class BytecodeHandlerCallSite {
                         "Target method %s is not annotated by @BytecodeInterpreterHandler", targetMethod.format("%H.%n(%p)"));
         this.targetMethod = targetMethod;
 
-        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod, templateModeEnabled);
+        this.handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, targetMethod, templateModeEnabled, typeMap, expandedTypeEnabled);
     }
 
     public List<ResolvedJavaType> getCalleeParameterTypes() {
@@ -115,7 +130,21 @@ public final class BytecodeHandlerCallSite {
      * Constructs the stub ABI argument list at the caller. Expanded arguments are lowered to field
      * loads from their Java owner objects; non-expanded arguments are forwarded unchanged.
      */
-    public ValueNode[] createCallerArguments(ValueNode[] oldArguments, FixedNode insertBefore, Function<ResolvedJavaField, ResolvedJavaField> fieldMap) {
+    public ValueNode[] createCallerArguments(ValueNode[] oldArguments, FixedNode insertBefore, Function<ResolvedJavaField, ResolvedJavaField> fieldMap,
+                    Function<ResolvedJavaType, ResolvedJavaType> typeMap) {
+        List<AnnotationValue> configs = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(enclosingMethod).getList("arguments", AnnotationValue.class);
+        for (int i = 0; expandedTypeEnabled && i < configs.size(); i++) {
+            ResolvedJavaType expandedType = BytecodeHandlerConfig.getExplicitExpandedType(configs.get(i));
+            if (expandedType != null) {
+                int originalIndex = i;
+                ArgumentInfo field = handlerConfig.getAllArgumentInfos().stream().filter(info -> info.originalIndex() == originalIndex).findFirst().orElseThrow();
+                ResolvedJavaType expectedType = typeMap.apply(field.ownerType());
+                GraalError.guarantee(oldArguments[i].stamp(NodeView.DEFAULT) instanceof ObjectStamp stamp &&
+                                stamp.isExactType() && expectedType.equals(stamp.type()) && stamp.nonNull(),
+                                "Virtual argument %s of %s must have proven exact non-null type %s, got %s",
+                                i, targetMethod, expectedType, oldArguments[i].stamp(NodeView.DEFAULT));
+            }
+        }
         List<ArgumentInfo> calleeParameterInfos = handlerConfig.getCalleeParameterInfos();
         List<ValueNode> newArguments = new ArrayList<>();
         StructuredGraph graph = insertBefore.graph();

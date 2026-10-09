@@ -338,6 +338,31 @@ public final class HostCompilerDirectives {
                  * @since 25.5
                  */
                 int templateVariable() default 0;
+
+                /**
+                 * Names the template-variable field on the same virtual-expanded argument that
+                 * controls whether this field's incoming value is valid. An empty name disables
+                 * conditional validity and requires {@link #valid()} to be empty.
+                 * <p>
+                 * Only non-final, non-template {@code long} or {@code double} fields of {@link ExpansionKind#VIRTUAL} arguments
+                 * support conditional validity. This metadata is ignored on HotSpot and whenever
+                 * template mode is disabled.
+                 *
+                 * @since 25.5
+                 */
+                String validWhen() default "";
+
+                /**
+                 * Values of {@link #validWhen()} for which the incoming field value is valid.
+                 * Otherwise, the generated handler starts with an arbitrary field value that must
+                 * not be observed, including through exception-state materialization. The handler
+                 * may overwrite the field before reading it. This contract applies at handler
+                 * entry, not to subsequent changes of the template-variable field. This metadata
+                 * is ignored on HotSpot and whenever template mode is disabled.
+                 *
+                 * @since 25.5
+                 */
+                int[] valid() default {};
             }
 
             /**
@@ -354,6 +379,20 @@ public final class HostCompilerDirectives {
              * handler stub if its expansion kind is not {@link ExpansionKind#NONE}.
              */
             ExpansionKind expand() default ExpansionKind.NONE;
+
+            /**
+             * Exact concrete type reconstructed for a {@link ExpansionKind#VIRTUAL} argument.
+             * {@code void.class} uses the declared parameter type. An explicit type must be a
+             * concrete instance class assignable to the parameter type. It may be defined by a
+             * different class loader from the handler's declaring class. At each outlined call,
+             * the compiler must prove that the argument is non-null and has this exact type.
+             * All instance fields, including inherited fields, are expanded. The expansion type
+             * must have at least one instance field. This property is ignored on HotSpot, which
+             * uses the declared parameter type.
+             *
+             * @since 25.5
+             */
+            Class<?> expandedType() default void.class;
 
             /**
              * Indicates the fields to be expanded of this argument if its expansion kind is

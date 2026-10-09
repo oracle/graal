@@ -26,8 +26,11 @@ package jdk.graal.compiler.phases.util;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.Assertions;
@@ -73,7 +76,11 @@ public final class BytecodeHandlerConfig {
      */
     private final List<ResolvedJavaType> calleeParameterTypes;
 
-    private BytecodeHandlerConfig(int maximumOperationCode, int templatesLength, boolean enableTailDuplication, ResolvedJavaType returnType, List<ArgumentInfo> arguments) {
+    private final Map<ArgumentInfo, FieldValidity> fieldValidity;
+
+    private BytecodeHandlerConfig(int maximumOperationCode, int templatesLength, boolean enableTailDuplication, ResolvedJavaType returnType, List<ArgumentInfo> arguments,
+                    Map<ArgumentInfo, FieldValidity> fieldValidity) {
+        this.fieldValidity = fieldValidity;
         this.maximumOperationCode = maximumOperationCode;
         this.templatesLength = templatesLength;
         this.enableTailDuplication = enableTailDuplication;
@@ -107,7 +114,8 @@ public final class BytecodeHandlerConfig {
      * on {@code targetMethod}. When {@code templateModeEnabled} is false, {@code templateVariable}
      * metadata is ignored and those fields remain ordinary ABI arguments.
      */
-    public static BytecodeHandlerConfig fromAnnotation(AnnotationValue handlerConfig, ResolvedJavaMethod targetMethod, boolean templateModeEnabled) {
+    public static BytecodeHandlerConfig fromAnnotation(AnnotationValue handlerConfig, ResolvedJavaMethod targetMethod, boolean templateModeEnabled,
+                    Function<ResolvedJavaType, ResolvedJavaType> typeMap, boolean expandedTypeEnabled) {
         Objects.requireNonNull(handlerConfig, "handlerConfig");
         Objects.requireNonNull(targetMethod, "targetMethod");
 
@@ -125,7 +133,7 @@ public final class BytecodeHandlerConfig {
         if (!targetMethod.isStatic()) {
             GraalError.guarantee(originalIndex < argumentAnnotations.size(), "Missing receiver argument config for %s", targetMethod);
             currentIndex = appendReceiver(arguments, argumentAnnotations.get(originalIndex), declaringClass, originalIndex, currentIndex,
-                            templateModeEnabled);
+                            templateModeEnabled, typeMap, expandedTypeEnabled);
             originalIndex++;
         }
 
@@ -134,14 +142,74 @@ public final class BytecodeHandlerConfig {
             GraalError.guarantee(originalIndex < argumentAnnotations.size(), "Missing argument config for parameter %d of %s", i, targetMethod);
             ResolvedJavaType parameterType = signature.getParameterType(i, declaringClass).resolve(declaringClass);
             currentIndex = appendParameter(arguments, argumentAnnotations.get(originalIndex), parameterType, declaringClass, originalIndex, currentIndex,
-                            templateModeEnabled);
+                            templateModeEnabled, typeMap, expandedTypeEnabled);
         }
         GraalError.guarantee(originalIndex == argumentAnnotations.size(), "Unused argument config for %s", targetMethod);
 
         assignTemplateArgumentIndexes(arguments, currentIndex);
         int templatesLength = computeTemplatesLength(arguments);
 
-        return new BytecodeHandlerConfig(maximumOperationCode, templatesLength, handlerConfig.getBoolean("enableTailDuplication"), returnType, arguments);
+        return new BytecodeHandlerConfig(maximumOperationCode, templatesLength, handlerConfig.getBoolean("enableTailDuplication"), returnType, arguments,
+                        templateModeEnabled ? parseFieldValidity(argumentAnnotations, arguments) : Collections.emptyMap());
+    }
+
+    private static Map<ArgumentInfo, FieldValidity> parseFieldValidity(List<AnnotationValue> annotations, List<ArgumentInfo> arguments) {
+        Map<ArgumentInfo, FieldValidity> result = new LinkedHashMap<>();
+        for (int originalIndex = 0; originalIndex < annotations.size(); originalIndex++) {
+            for (AnnotationValue field : annotations.get(originalIndex).getList("fields", AnnotationValue.class)) {
+                if (!field.getElements().containsKey("validWhen")) {
+                    continue;
+                }
+                String validWhen = field.getString("validWhen");
+                List<Integer> valid = field.getList("valid", Integer.class);
+                if (validWhen.isEmpty()) {
+                    GraalError.guarantee(valid.isEmpty(), "Field %s specifies valid values without validWhen", field.getString("name"));
+                    continue;
+                }
+                ArgumentInfo value = null;
+                ArgumentInfo template = null;
+                int divisor = 1;
+                int templateDivisor = 0;
+                for (ArgumentInfo argument : arguments) {
+                    if (argument.originalIndex() == originalIndex && argument.isExpanded()) {
+                        if (argument.field().getName().equals(field.getString("name"))) {
+                            value = argument;
+                        }
+                        if (argument.field().getName().equals(validWhen) && argument.isTemplateVariable()) {
+                            template = argument;
+                            templateDivisor = divisor;
+                        }
+                    }
+                    if (argument.isTemplateVariable()) {
+                        divisor *= argument.templateVariants();
+                    }
+                }
+                GraalError.guarantee(value != null && value.isOwnerVirtual() && !value.isTemplateVariable() &&
+                                (value.type().getJavaKind() == JavaKind.Long || value.type().getJavaKind() == JavaKind.Double),
+                                "Conditional validity requires a non-template virtual-expanded long or double field: %s", field.getString("name"));
+                GraalError.guarantee(!value.field().isFinal(), "Conditional validity is not supported for final field %s", field.getString("name"));
+                GraalError.guarantee(template != null, "Field %s validWhen must name a template field on the same argument: %s", field.getString("name"), validWhen);
+                for (int variant : valid) {
+                    GraalError.guarantee(variant >= 0 && variant < template.templateVariants(), "Invalid valid value %d for template field %s", variant, validWhen);
+                }
+                GraalError.guarantee(!result.containsKey(value), "Duplicate validity configuration for field %s", field.getString("name"));
+                result.put(value, new FieldValidity(templateDivisor, template.templateVariants(), List.copyOf(valid)));
+            }
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    private record FieldValidity(int divisor, int variants, List<Integer> valid) {
+    }
+
+    /** Whether the incoming field value may be observed in the selected handler variant. */
+    public boolean isFieldValid(ArgumentInfo argument, int templateIndex) {
+        FieldValidity validity = fieldValidity.get(argument);
+        return validity == null || validity.valid().contains(templateIndex / validity.divisor() % validity.variants());
+    }
+
+    public boolean hasConditionalValidity(ArgumentInfo argument) {
+        return fieldValidity.containsKey(argument);
     }
 
     private static int computeTemplatesLength(List<ArgumentInfo> arguments) {
@@ -172,14 +240,25 @@ public final class BytecodeHandlerConfig {
      * {@code templateVariable} metadata is ignored and those fields remain ordinary ABI arguments.
      */
     public static BytecodeHandlerConfig getHandlerConfig(ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod targetMethod, boolean templateModeEnabled) {
+        return getHandlerConfig(enclosingMethod, targetMethod, templateModeEnabled, Function.identity());
+    }
+
+    public static BytecodeHandlerConfig getHandlerConfig(ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod targetMethod, boolean templateModeEnabled,
+                    Function<ResolvedJavaType, ResolvedJavaType> typeMap) {
+        return getHandlerConfig(enclosingMethod, targetMethod, templateModeEnabled, typeMap, true);
+    }
+
+    public static BytecodeHandlerConfig getHandlerConfig(ResolvedJavaMethod enclosingMethod, ResolvedJavaMethod targetMethod, boolean templateModeEnabled,
+                    Function<ResolvedJavaType, ResolvedJavaType> typeMap, boolean expandedTypeEnabled) {
         AnnotationValue configAnnotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandlerConfig(enclosingMethod);
         GraalError.guarantee(configAnnotation != null, "Method %s is missing @BytecodeInterpreterHandlerConfig", enclosingMethod.format("%H.%n(%p)"));
-        return BytecodeHandlerConfig.fromAnnotation(configAnnotation, targetMethod, templateModeEnabled);
+        return BytecodeHandlerConfig.fromAnnotation(configAnnotation, targetMethod, templateModeEnabled, typeMap, expandedTypeEnabled);
     }
 
     private static int appendReceiver(List<ArgumentInfo> arguments, AnnotationValue receiverConfig, ResolvedJavaType declaringClass, int originalIndex, int currentIndex,
-                    boolean templateModeEnabled) {
+                    boolean templateModeEnabled, Function<ResolvedJavaType, ResolvedJavaType> typeMap, boolean expandedTypeEnabled) {
         ExpansionKind expansionKind = getExpansionKind(receiverConfig);
+        getExpandedType(receiverConfig, declaringClass, typeMap, expandedTypeEnabled);
         boolean nonNull = receiverConfig.getBoolean("nonNull");
         int nextIndex = currentIndex;
 
@@ -198,8 +277,9 @@ public final class BytecodeHandlerConfig {
     }
 
     private static int appendParameter(List<ArgumentInfo> arguments, AnnotationValue parameterConfig, ResolvedJavaType parameterType, ResolvedJavaType declaringClass, int originalIndex,
-                    int currentIndex, boolean templateModeEnabled) {
+                    int currentIndex, boolean templateModeEnabled, Function<ResolvedJavaType, ResolvedJavaType> typeMap, boolean expandedTypeEnabled) {
         ExpansionKind expansionKind = getExpansionKind(parameterConfig);
+        ResolvedJavaType expandedType = getExpandedType(parameterConfig, parameterType, typeMap, expandedTypeEnabled);
         boolean copyFromReturn = parameterConfig.getBoolean("returnValue");
         boolean nonNull = !parameterType.isPrimitive() && parameterConfig.getBoolean("nonNull");
         int nextIndex = currentIndex;
@@ -210,7 +290,7 @@ public final class BytecodeHandlerConfig {
             }
             case VIRTUAL -> {
                 List<AnnotationValue> fields = parameterConfig.getList("fields", AnnotationValue.class);
-                for (ResolvedJavaField javaField : parameterType.getInstanceFields(true)) {
+                for (ResolvedJavaField javaField : expandedType.getInstanceFields(true)) {
                     ResolvedJavaType fieldType = javaField.getType().resolve(declaringClass);
                     boolean fieldNonNull = false;
                     AnnotationValue fieldConfig = findFieldConfig(fields, javaField.getName());
@@ -222,7 +302,7 @@ public final class BytecodeHandlerConfig {
                         GraalError.guarantee(fieldType.getJavaKind() == JavaKind.Int, "Template variable field %s must be int", javaField.format("%H.%n"));
                     }
                     int argumentIndex = templateVariants > 0 ? -1 : nextIndex++;
-                    arguments.add(new ArgumentInfo(fieldType, argumentIndex, originalIndex, false, false, true, parameterType, javaField, true, javaField.isFinal(),
+                    arguments.add(new ArgumentInfo(fieldType, argumentIndex, originalIndex, false, false, true, expandedType, javaField, true, javaField.isFinal(),
                                     fieldNonNull, templateVariants));
                 }
             }
@@ -271,6 +351,48 @@ public final class BytecodeHandlerConfig {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolves the virtual layout type, shared by stub construction and early ABI accounting.
+     */
+    public static ResolvedJavaType getExpandedType(AnnotationValue argumentConfig, ResolvedJavaType declaredType, Function<ResolvedJavaType, ResolvedJavaType> typeMap) {
+        return getExpandedType(argumentConfig, declaredType, typeMap, true);
+    }
+
+    private static ResolvedJavaType getExpandedType(AnnotationValue argumentConfig, ResolvedJavaType declaredType, Function<ResolvedJavaType, ResolvedJavaType> typeMap,
+                    boolean expandedTypeEnabled) {
+        ResolvedJavaType type = expandedTypeEnabled ? getExplicitExpandedType(argumentConfig) : null;
+        if (type == null) {
+            type = declaredType;
+        } else {
+            GraalError.guarantee(getExpansionKind(argumentConfig) == ExpansionKind.VIRTUAL,
+                            "expandedType requires VIRTUAL expansion");
+            GraalError.guarantee(type.isInstanceClass() && !type.isAbstract(),
+                            "expandedType %s must be a concrete instance class", type);
+            // Preserve the defining class loader when mapping the already resolved annotation type
+            // from the underlying VM into the analysis/hosted universe.
+            type = typeMap.apply(type);
+            GraalError.guarantee(declaredType.isAssignableFrom(type),
+                            "expandedType %s must be a concrete instance class assignable to %s", type, declaredType);
+        }
+        if (getExpansionKind(argumentConfig) == ExpansionKind.VIRTUAL) {
+            GraalError.guarantee(type.getInstanceFields(true).length > 0,
+                            "Virtual expansion type %s must have at least one instance field, including inherited fields", type);
+        }
+        return type;
+    }
+
+    /**
+     * Returns null for the default layout, including annotation families that do not expose
+     * expandedType (such as older versions of HostCompilerDirectives).
+     */
+    public static ResolvedJavaType getExplicitExpandedType(AnnotationValue argumentConfig) {
+        if (!argumentConfig.getElements().containsKey("expandedType")) {
+            return null;
+        }
+        ResolvedJavaType type = argumentConfig.getType("expandedType");
+        return type.getJavaKind() == JavaKind.Void ? null : type;
     }
 
     private static ExpansionKind getExpansionKind(AnnotationValue argumentConfig) {
@@ -367,12 +489,12 @@ public final class BytecodeHandlerConfig {
         }
         return maximumOperationCode == other.maximumOperationCode && templatesLength == other.templatesLength && enableTailDuplication == other.enableTailDuplication &&
                         returnType.equals(other.returnType) &&
-                        allArgumentInfos.equals(other.allArgumentInfos);
+                        allArgumentInfos.equals(other.allArgumentInfos) && fieldValidity.equals(other.fieldValidity);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(maximumOperationCode, templatesLength, enableTailDuplication, returnType, allArgumentInfos);
+        return Objects.hash(maximumOperationCode, templatesLength, enableTailDuplication, returnType, allArgumentInfos, fieldValidity);
     }
 
     public boolean hasPendingExceptionState() {

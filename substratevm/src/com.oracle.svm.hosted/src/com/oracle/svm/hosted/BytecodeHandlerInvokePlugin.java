@@ -122,7 +122,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
             return false;
         }
 
-        BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, target, threadingEnabled);
+        BytecodeHandlerConfig handlerConfig = BytecodeHandlerConfig.getHandlerConfig(enclosingMethod, target, threadingEnabled, ((AnalysisMetaAccess) b.getMetaAccess()).getUniverse()::lookup);
 
         boolean threading = threadingEnabled && handlerAnnotationValue.getBoolean("threading");
         boolean safepoint = handlerAnnotationValue.getBoolean("safepoint");
@@ -218,7 +218,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
          * exception path whether a generated stub actually published pending state or whether the
          * original input value must be kept.
          */
-        CopyFromReturnInfo copyFromReturnInfo = findCopyFromReturnInfo(handlerConfigAnnotation, target);
+        CopyFromReturnInfo copyFromReturnInfo = findCopyFromReturnInfo(handlerConfigAnnotation, target, ((AnalysisMetaAccess) b.getMetaAccess()).getUniverse());
         if (copyFromReturnInfo != null) {
             registerHandlerInvoke(b, enclosingMethod, copyFromReturnInfo, arguments, PendingExceptionStateValueNode.Source.INFER);
         }
@@ -305,7 +305,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         }
     }
 
-    private static CopyFromReturnInfo findCopyFromReturnInfo(AnnotationValue handlerConfigAnnotation, ResolvedJavaMethod target) {
+    private static CopyFromReturnInfo findCopyFromReturnInfo(AnnotationValue handlerConfigAnnotation, ResolvedJavaMethod target, AnalysisUniverse universe) {
         List<AnnotationValue> argumentAnnotations = handlerConfigAnnotation.getList("arguments", AnnotationValue.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
         Signature signature = target.getSignature();
@@ -315,7 +315,7 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
         int abiSlotIndex = 0;
         if (!target.isStatic()) {
             GraalError.guarantee(!argumentAnnotations.isEmpty(), "Missing receiver argument config for %s", target);
-            abiSlotIndex = nextAbiSlotIndex(argumentAnnotations.get(originalParameterIndex), declaringClass, abiSlotIndex, true);
+            abiSlotIndex = nextAbiSlotIndex(argumentAnnotations.get(originalParameterIndex), declaringClass, universe, abiSlotIndex, true);
             originalParameterIndex++;
         }
 
@@ -332,19 +332,20 @@ public final class BytecodeHandlerInvokePlugin implements NodePlugin {
                                 "returnValue argument type %s does not match return type %s", parameterType.getJavaKind(), returnKind);
                 copyFromReturnInfo = new CopyFromReturnInfo(originalParameterIndex, abiSlotIndex, returnKind);
             }
-            abiSlotIndex = nextAbiSlotIndex(parameterConfig, parameterType, abiSlotIndex, false);
+            abiSlotIndex = nextAbiSlotIndex(parameterConfig, parameterType, universe, abiSlotIndex, false);
         }
         GraalError.guarantee(originalParameterIndex == argumentAnnotations.size(), "Unused argument config for %s", target);
         return copyFromReturnInfo;
     }
 
-    private static int nextAbiSlotIndex(AnnotationValue argumentConfig, ResolvedJavaType argumentType, int currentAbiSlotIndex, boolean receiver) {
+    private static int nextAbiSlotIndex(AnnotationValue argumentConfig, ResolvedJavaType argumentType, AnalysisUniverse universe, int currentAbiSlotIndex, boolean receiver) {
+        ResolvedJavaType expandedType = BytecodeHandlerConfig.getExpandedType(argumentConfig, argumentType, universe::lookup);
         return switch (expansionKind(argumentConfig)) {
             case "NONE" -> currentAbiSlotIndex + 1;
             case "MATERIALIZED" -> currentAbiSlotIndex + 1 + countMaterializedFields(argumentConfig, argumentType);
             case "VIRTUAL" -> {
                 GraalError.guarantee(!receiver, "Receiver cannot be VIRTUAL");
-                yield currentAbiSlotIndex + countVirtualAbiFields(argumentConfig, argumentType);
+                yield currentAbiSlotIndex + countVirtualAbiFields(argumentConfig, expandedType);
             }
             default -> throw GraalError.shouldNotReachHere("Unknown expansion kind " + expansionKind(argumentConfig));
         };

@@ -230,11 +230,12 @@ public final class SubstrateBytecodeHandlerStub extends NonBytecodeMethod implem
          * registers are exhausted. These lists define only the order within each register class;
          * actual selection is restricted to registers exposed by RegisterConfig, so platform-owned
          * reserved registers stay controlled by the platform register configuration. The AMD64 GP
-         * list intentionally does not include rbp.
+         * list intentionally does not include rbp. Prefer rdi/rsi over rcx/rdx to leave the implicit
+         * shift-count and division registers available for handler operations.
          */
         private static final List<String> AMD64_BYTECODE_HANDLER_GP_ARGUMENT_ORDER = List.of(
                         "rbx", "r11", "r10", "r14", "r13", "r12",
-                        "r9", "r8", "rcx", "rdx", "rsi", "rdi", "rax");
+                        "r9", "r8", "rdi", "rsi", "rcx", "rdx", "rax");
 
         private static final List<String> AMD64_BYTECODE_HANDLER_FP_ARGUMENT_ORDER = List.of(
                         "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15",
