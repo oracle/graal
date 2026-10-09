@@ -36,7 +36,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
@@ -91,7 +90,6 @@ public final class ObjectLayout {
         return ImageSingletons.lookup(ObjectLayout.class);
     }
 
-    private final SubstrateTarget target;
     private final int referenceSize;
     private final int objectAlignment;
     private final int alignmentMask;
@@ -105,7 +103,7 @@ public final class ObjectLayout {
     private final int identityHashNumBits;
     private final int identityHashShift;
 
-    public ObjectLayout(SubstrateTarget target, int referenceSize, int objectAlignment, int hubSize, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
+    public ObjectLayout(int referenceSize, int objectAlignment, int hubSize, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
                     int headerIdentityHashOffset, IdentityHashMode identityHashMode, int identityHashNumBits, int identityHashShift) {
         assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
@@ -117,7 +115,6 @@ public final class ObjectLayout {
         assert identityHashNumBits > 0 && identityHashNumBits <= Integer.SIZE;
         assert identityHashShift >= 0 && identityHashShift < Long.SIZE;
 
-        this.target = target;
         this.referenceSize = referenceSize;
         this.objectAlignment = objectAlignment;
         this.alignmentMask = objectAlignment - 1;
@@ -159,7 +156,11 @@ public final class ObjectLayout {
      * The size (in bytes) of values with the given kind.
      */
     public int sizeInBytes(JavaKind kind) {
-        return (kind == JavaKind.Object) ? referenceSize : target.arch.getPlatformKind(kind).getSizeInBytes();
+        return switch (kind) {
+            case Object -> referenceSize;
+            case Boolean, Byte, Char, Short, Int, Long, Float, Double -> kind.getByteCount();
+            default -> throw new NullPointerException();
+        };
     }
 
     public int getArrayIndexShift(JavaKind kind) {
@@ -316,8 +317,7 @@ public final class ObjectLayout {
     }
 
     private List<Integer> getCurrentValues() {
-        return List.of(/* this.target, */
-                        this.referenceSize,
+        return List.of(this.referenceSize,
                         this.objectAlignment,
                         this.alignmentMask,
                         this.hubSize,
@@ -378,7 +378,7 @@ public final class ObjectLayout {
                     List<Integer> priorValues = loader.readIntList("priorValues");
 
                     var numFields = Arrays.stream(GuestAccess.get().lookupType(ObjectLayout.class).getInstanceFields(false)).filter(Predicate.not(ResolvedJavaField::isSynthetic)).count();
-                    VMError.guarantee(numFields - 1 == currentValues.size(), "Missing fields");
+                    VMError.guarantee(numFields == currentValues.size(), "Missing fields");
 
                     VMError.guarantee(currentValues.equals(priorValues),
                                     "The object layout values should be consistent across layers. The previous layer object layout were %s, but the current layer are %s",

@@ -206,7 +206,7 @@ public class HostedConfiguration {
         int identityHashNumBits = Integer.SIZE;
         int identityHashShift = 0;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
+        return new ObjectLayout(referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
                         headerIdentityHashOffset, identityHashMode, identityHashNumBits, identityHashShift);
     }
 
