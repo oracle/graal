@@ -406,7 +406,7 @@ public final class Pod<T> {
                     putUV(buffer, index - previous); // gap
                 } else {
                     buffer.write(0);
-                    if ((nrefs & 0xff) == 0) { // needs an explicit end marker
+                    if (nrefs % 0xff == 0) { // needs an explicit end marker
                         buffer.write(0);
                         buffer.write(0);
                     }
