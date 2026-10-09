@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jdwp.resident;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.interpreter.InterpreterOptions;
 
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -46,6 +47,7 @@ public final class JDWPOptions {
             if (newValue) {
                 InterpreterOptions.DebuggerWithInterpreter.update(values, true);
                 DebuggerEventsFeature.DebuggerOptions.DebuggerEvents.update(values, true);
+                SubstrateOptions.EnableJVMCIGuest.update(values, true);
             }
         }
     };

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import static com.oracle.svm.core.meta.SharedField.LOC_UNINITIALIZED;
+import static com.oracle.svm.jvmci.shared.meta.SharedField.LOC_UNINITIALIZED;
 import static com.oracle.svm.shared.singletons.MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
 
 import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;

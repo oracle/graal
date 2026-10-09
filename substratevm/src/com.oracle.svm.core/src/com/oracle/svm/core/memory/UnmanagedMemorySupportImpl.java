@@ -28,12 +28,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -41,7 +43,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.word.impl.Word;
 
 /**
  * Delegates to the libc-specific memory management functions. Some platforms use a different
@@ -78,7 +79,7 @@ class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
         libc().free(ptr);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static LibCSupport libc() {
         return ImageSingletons.lookup(LibCSupport.class);
     }

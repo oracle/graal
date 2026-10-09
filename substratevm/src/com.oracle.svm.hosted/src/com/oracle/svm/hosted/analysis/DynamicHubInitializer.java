@@ -64,6 +64,7 @@ import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -127,7 +128,7 @@ public class DynamicHubInitializer {
 
         AnalysisError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Initializing type metadata after analysis for %s.", type.toJavaName(true));
 
-        Class<?> javaClass = type.getJavaClass();
+        Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
         DynamicHub hub = hostVM.dynamicHub(type);
 
         ScanReason reason = new MetadataInitializationReason(hub);

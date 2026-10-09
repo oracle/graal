@@ -41,7 +41,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
-import com.oracle.svm.core.util.DeferredKeyMap;
+import com.oracle.svm.guest.staging.util.DeferredKeyMap;
 import com.oracle.svm.core.util.DynamicHubKey;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;

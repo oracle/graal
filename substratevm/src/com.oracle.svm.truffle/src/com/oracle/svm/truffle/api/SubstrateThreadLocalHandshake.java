@@ -44,7 +44,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
@@ -66,8 +66,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     static final SubstrateThreadLocalHandshake SINGLETON = new SubstrateThreadLocalHandshake();
 
     static final FastThreadLocalInt PENDING = FastThreadLocalFactory.createInt("SubstrateThreadLocalHandshake.PENDING").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
-    static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class, "SubstrateThreadLocalHandshake.STATE")
-                    .setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
+    static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class, "SubstrateThreadLocalHandshake.STATE");
 
     @Platforms(Platform.HOSTED_ONLY.class)//
     static final ThreadLocal<Boolean> HOSTED_PENDING = ThreadLocal.withInitial(() -> Boolean.FALSE);

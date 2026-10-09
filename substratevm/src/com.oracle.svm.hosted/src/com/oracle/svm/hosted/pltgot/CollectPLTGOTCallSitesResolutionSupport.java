@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.MethodAddressResolver;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.meta.HostedMethod;

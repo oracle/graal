@@ -43,7 +43,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.guest.staging.c.function.InvokeJavaFunctionPointer;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;

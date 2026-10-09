@@ -334,8 +334,8 @@ public final class Engine implements AutoCloseable {
      * <code>true</code> to use this feature. Stored caches may be loaded by specifying the path
      * using the <code>engine.CacheLoad</code> option.
      * <p>
-     * Note that this feature is experimental and only supported on native-image hosts with
-     * Truffle's enterprise extensions.
+     * Note that this feature is experimental and only supported on native-image hosts built with
+     * auxiliary engine caching enabled.
      * </p>
      *
      * <h3>Basic Usage:</h3>
@@ -361,7 +361,7 @@ public final class Engine implements AutoCloseable {
      *
      * <p>
      * See the <a href=
-     * "https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCachingEnterprise.md">
+     * "https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCaching.md">
      * documentation</a> on auxiliary engine caching for further details.
      * </p>
      *
@@ -392,8 +392,8 @@ public final class Engine implements AutoCloseable {
      * The returned buffer contains the cache image bytes and can be written to a file by the
      * caller.
      * <p>
-     * Note that this feature is experimental and only supported on native-image hosts with
-     * Truffle's enterprise extensions.
+     * Note that this feature is experimental and only supported on native-image hosts built with
+     * auxiliary engine caching enabled.
      * <p>
      * If {@code callback} is non-null, it is polled periodically to request cancellation.
      * Cancellation support during the low-level auxiliary image persistence phase is only available

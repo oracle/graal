@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
@@ -254,11 +255,11 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
         IsolateCreationOnly,
         /**
          * If this flag is set, then the option is always included in the image. The option is also
-         * registered for being parsed by {@code com.oracle.svm.core.IsolateArgumentParser} and its value can typically
+         * registered for being parsed by {@link IsolateArgumentParser} and its value can typically
          * only be set during isolate creation. This implies {@link #Immutable} and
          * {@link #IsolateCreationOnly}.
          * <p>
-         * See {@code com.oracle.svm.core.IsolateArgumentParser.verifyOptionValues()} for the
+         * See {@link IsolateArgumentParser#verifyOptionValues()} for the
          * validation that these options are not changed after isolate creation and potential
          * exceptions to the rule.
          */

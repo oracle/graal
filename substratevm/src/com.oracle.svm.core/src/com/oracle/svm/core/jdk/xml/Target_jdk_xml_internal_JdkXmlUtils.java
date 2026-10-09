@@ -28,7 +28,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "jdk.xml.internal.JdkXmlUtils")
+@TargetClass(className = "jdk.xml.internal.JdkXmlUtils", onlyWith = JavaXmlModulePresent.class)
 public final class Target_jdk_xml_internal_JdkXmlUtils {
     // Checkstyle: stop
     @Alias @InjectAccessors(JdkXmlUtilsJavaHomeAccessors.class) //

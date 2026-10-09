@@ -1301,11 +1301,11 @@ final class CustomIllegalLocalException extends AbstractTruffleException {
     }
 }
 
-@ExpectWarning("Custom operation with name ClearLocal conflicts with a built-in operation with the same name. The built-in operation will not be generated.%")
+@ExpectWarning("Multiple operations declared with name ClearLocal. Operation names must be distinct.%")
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
-abstract class HidesBuiltin extends RootNode implements BytecodeRootNode {
+abstract class ConflictsWithBuiltin extends RootNode implements BytecodeRootNode {
 
-    protected HidesBuiltin(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+    protected ConflictsWithBuiltin(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 

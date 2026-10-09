@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 import org.graalvm.webimage.api.JSObject;
 
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.hosted.meta.HostedField;

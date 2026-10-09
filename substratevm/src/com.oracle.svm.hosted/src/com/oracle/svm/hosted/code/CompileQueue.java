@@ -124,7 +124,8 @@ import jdk.graal.compiler.lir.asm.FrameContext;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.core.phases.MidTier;
-import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -150,6 +151,7 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;
 import jdk.graal.compiler.phases.common.FixReadsPhase;
 import jdk.graal.compiler.phases.common.LoweringPhase;
@@ -167,6 +169,7 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
 import jdk.graal.compiler.vector.phases.VectorLoweringPhaseSuite;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
+import jdk.graal.compiler.virtual.phases.ea.FieldLoadRefreshPhase;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -564,8 +567,15 @@ public class CompileQueue {
 
         Suites tunedSuites = suites.copy();
         PhaseSuite<MidTierContext> midTier = tunedSuites.getMidTier();
-        if (!GraalOptions.PartialUnroll.hasBeenSet(hostedOptions)) {
-            midTier.removeSubTypePhases(LoopPartialUnrollPhase.class);
+        boolean partialUnrollSet = GraalOptions.PartialUnroll.hasBeenSet(hostedOptions);
+        boolean aggressivePartialUnrollSet = AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.hasBeenSet(hostedOptions);
+        if (!partialUnrollSet && !aggressivePartialUnrollSet) {
+            tunedSuites.getHighTier().removeSubTypePhases(AggressivePartialUnrollPhase.class);
+            midTier.removeSubTypePhases(AggressivePartialUnrollPhase.class);
+        }
+        boolean aggressivePartialUnrollEnabledExplicitly = aggressivePartialUnrollSet && AggressivePartialUnrollPhase.Options.AggressivePartialUnroll.getValue(hostedOptions);
+        if (!partialUnrollSet && !aggressivePartialUnrollEnabledExplicitly) {
+            midTier.removeSubTypePhases(SimpleLoopPartialUnrollPhase.class);
         }
         if (!LoopVectorizationPhase.Options.VectorizeLoops.hasBeenSet(hostedOptions)) {
             midTier.removeSubTypePhases(LoopVectorizationPhase.class);
@@ -794,7 +804,7 @@ public class CompileQueue {
         }
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        for (SubstrateForeignCallLinkage linkage : foreignCallsProvider.getForeignCalls().values()) {
+        for (SubstrateForeignCallLinkage linkage : foreignCallsProvider.getForeignCalls()) {
             HostedMethod method = (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess());
             if (method.wrapped.isDirectRootMethod() && method.wrapped.isSimplyImplementationInvoked()) {
                 ensureParsed(method, null, new EntryPointReason());
@@ -1314,8 +1324,12 @@ public class CompileQueue {
         return SubstrateOptions.optimizationLevel() == SubstrateOptions.OptimizationLevel.O2;
     }
 
-    protected OptionValues getCustomizedOptions(@SuppressWarnings("unused") HostedMethod method, DebugContext debug) {
+    protected OptionValues getCustomizedOptions(HostedMethod method, DebugContext debug) {
         OptionValues customizedOptions = debug.getOptions();
+        if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method)) {
+            // Keep handler reads fixed and branch-local to avoid increasing register pressure.
+            customizedOptions = new OptionValues(customizedOptions, GraalOptions.OptFloatingReads, false, GraalOptions.OptDeduplicateReadsAcrossBranches, false);
+        }
         if (omitPriorityInliningTuning()) {
             return customizedOptions;
         }
@@ -1592,6 +1606,16 @@ public class CompileQueue {
                         suites = createSuitesForRegularCompile(graph, regularSuites);
                         lirSuites = regularLIRSuites;
                     }
+                }
+
+                if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method)) {
+                    // Suites are shared between compilation threads; specialize only this stub.
+                    suites = suites.copy();
+                    // Keep reloads after calls instead of extending their live ranges through GVN.
+                    suites.getHighTier().removeSubTypePhases(DominatorBasedGlobalValueNumberingPhase.class);
+                    suites.getMidTier().removeSubTypePhases(DominatorBasedGlobalValueNumberingPhase.class);
+                    suites.getLowTier().removeSubTypePhases(DominatorBasedGlobalValueNumberingPhase.class);
+                    suites.getHighTier().insertBeforePhase(DeadStoreRemovalPhase.class, new FieldLoadRefreshPhase(CanonicalizerPhase.create()));
                 }
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());

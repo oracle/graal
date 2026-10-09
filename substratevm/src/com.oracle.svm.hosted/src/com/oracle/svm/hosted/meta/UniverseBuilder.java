@@ -65,7 +65,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
-import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -184,7 +184,7 @@ public class UniverseBuilder {
                 assert previous == null : "Overwriting analysis key";
             }
 
-            // see SharedMethod#getIndirectCallTarget for more information
+            // see com.oracle.svm.jvmci.shared.meta.SharedMethod#getIndirectCallTarget for more information
             if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 OpenTypeWorldSupport.singleton().computeIndirectCallTargets(hUniverse, hUniverse.methods);
             } else {

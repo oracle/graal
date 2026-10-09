@@ -29,7 +29,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.snippets.SafepointSnippets;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
@@ -37,7 +37,7 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.RecurringCallbackSupport.RecurringCallbackTimer;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;

@@ -36,7 +36,7 @@ import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;

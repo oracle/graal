@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.g1;
 
-import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.g1.G1Options.G1HeapRegionSize;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -38,30 +38,34 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.IsolateArguments;
-import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
-import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.ContainerLibrary;
+import com.oracle.svm.core.g1.nativelib.G1Library;
+import com.oracle.svm.core.g1.nativelib.G1Structs.G1HeapOptions;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.AbstractCommittedMemoryProvider;
 import com.oracle.svm.core.os.AbstractImageHeapProvider;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.util.PointerUtils;
+import com.oracle.svm.guest.staging.IsolateArguments;
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.shared.util.UnsignedUtils;
-import com.oracle.svm.core.g1.nativelib.G1Library;
-import com.oracle.svm.core.g1.nativelib.G1Structs.G1HeapOptions;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -71,9 +75,9 @@ import jdk.graal.compiler.core.common.CompressEncoding;
  * placed. The layout of this block of memory is as follows:
  *
  * <pre>
- * | null regions |  image heap   |     collected Java heap      |
- * |              | closed | open | size determined by -Xms/-Xmx |
- * |                       G1 managed heap                       |
+ * | null regions | metaspace |  image heap   |     collected Java heap      |
+ * |              |           | closed | open | size determined by -Xms/-Xmx |
+ * |                             G1 managed heap                             |
  * ^
  * heapBase
  * </pre>
@@ -97,8 +101,17 @@ public class G1CommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     private UnsignedWord maxHeapSize;
     private UnsignedWord physicalMemorySize;
 
+    private Pointer metaspaceBegin;
+    private Pointer metaspaceEnd;
+    private UnsignedWord collectedHeapSize;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public G1CommittedMemoryProvider() {
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static G1CommittedMemoryProvider singleton() {
+        return (G1CommittedMemoryProvider) CommittedMemoryProvider.get();
     }
 
     @Override
@@ -107,7 +120,8 @@ public class G1CommittedMemoryProvider extends AbstractCommittedMemoryProvider {
         int argc = arguments.getArgc();
         CCharPointerPointer argv = arguments.getArgv();
 
-        UnsignedWord nullRegionSize = Word.unsigned(G1Heap.get().getImageHeapOffsetInAddressSpace());
+        UnsignedWord nullRegionSize = Word.unsigned(G1Heap.getNullRegionSize());
+        UnsignedWord metaspaceSize = Word.unsigned(G1Heap.getReservedMetaspaceSize());
         // The image heap size in the file may be smaller than the image heap at run-time because we
         // don't fill the last image heap region completely. This reduces the file size.
         UnsignedWord imageHeapSize = UnsignedUtils.roundUp(AbstractImageHeapProvider.getImageHeapSizeInFile(), Word.unsigned(getRegionSize()));
@@ -122,14 +136,14 @@ public class G1CommittedMemoryProvider extends AbstractCommittedMemoryProvider {
         int containerActiveProcessorCount = isContainerized ? ContainerLibrary.getActiveProcessorCount() : 0;
 
         G1Library.parseOptions(G1Library.VERSION, argc, argv, G1Options.HOSTED_ARGUMENTS.get(), G1Options.RUNTIME_ARGUMENTS.get(),
-                        ReferenceAccess.singleton().getMaxAddressSpaceSize(), heapBaseAlignment, nullRegionSize, imageHeapSize,
+                        ReferenceAccess.singleton().getMaxAddressSpaceSize(), heapBaseAlignment, nullRegionSize, metaspaceSize, imageHeapSize,
                         getCompressedReferenceShift(), isContainerized, containerMemoryLimitInBytes, containerActiveProcessorCount, heapOptions);
 
         UnsignedWord heapAddressSpaceSize = heapOptions.heapAddressSpaceSize();
         UnsignedWord newMaxHeapSize = heapOptions.maxHeapSize();
         assert heapAddressSpaceSize.belowOrEqual(ReferenceAccess.singleton().getMaxAddressSpaceSize()) : "must be";
 
-        if (heapAddressSpaceSize.belowThan(nullRegionSize.add(imageHeapSize))) {
+        if (heapAddressSpaceSize.belowThan(imageHeapSize.add(Heap.getHeap().getImageHeapOffsetInAddressSpace()))) {
             return CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE;
         }
 
@@ -146,35 +160,63 @@ public class G1CommittedMemoryProvider extends AbstractCommittedMemoryProvider {
         }
 
         CEntryPointSnippets.initBaseRegisters(heapBaseOut.read());
-        return initialize0(reservedMemory, heapAddressSpaceSize, newMaxHeapSize, heapOptions);
+
+        Pointer collectedHeapBegin = PointerUtils.roundUp(imageHeapEndOut.read(), Word.unsigned(getRegionSize()));
+        return initialize0(reservedMemory, heapAddressSpaceSize, collectedHeapBegin, newMaxHeapSize, heapOptions);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     @NeverInline("Force loading of a new instance reference, now that the heap base is initialized.")
     @SuppressWarnings("hiding")
-    private static int initialize0(Pointer reservedBegin, UnsignedWord reservedSize, UnsignedWord maxHeapSize, G1HeapOptions heapOptions) {
-        G1CommittedMemoryProvider instance = getInstance();
-        instance.reservedBegin = reservedBegin;
-        instance.reservedSize = reservedSize;
-        instance.maxHeapSize = maxHeapSize;
-        instance.physicalMemorySize = heapOptions.physicalMemorySize();
+    private static int initialize0(Pointer reservedBegin, UnsignedWord reservedSize, Pointer collectedHeapBegin, UnsignedWord maxHeapSize, G1HeapOptions heapOptions) {
+        G1CommittedMemoryProvider provider = singleton();
+        return provider.initializeFields(reservedBegin, reservedSize, collectedHeapBegin, maxHeapSize, heapOptions);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @SuppressWarnings("hiding")
+    private int initializeFields(Pointer reservedBegin, UnsignedWord reservedSize, Pointer collectedHeapBegin, UnsignedWord maxHeapSize, G1HeapOptions heapOptions) {
+        this.reservedBegin = reservedBegin;
+        this.reservedSize = reservedSize;
+        this.maxHeapSize = maxHeapSize;
+        this.physicalMemorySize = heapOptions.physicalMemorySize();
+
+        initializeMetaspaceFields();
+        initializeCollectedHeapFields(reservedBegin, reservedSize, collectedHeapBegin);
         return CEntryPointErrors.NO_ERROR;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static G1CommittedMemoryProvider getInstance() {
-        return (G1CommittedMemoryProvider) CommittedMemoryProvider.get();
+    protected void initializeMetaspaceFields() {
+        int metaspaceSize = G1Heap.getReservedMetaspaceSize();
+        this.metaspaceBegin = KnownIntrinsics.heapBase().add(G1Heap.getMetaspaceOffsetInAddressSpace());
+        this.metaspaceEnd = metaspaceBegin.add(metaspaceSize);
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport() && metaspaceSize > 0) {
+            NativeMemoryTracking.singleton().trackReserve(metaspaceSize, NmtCategory.Metaspace);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @SuppressWarnings("hiding")
+    private void initializeCollectedHeapFields(Pointer reservedBegin, UnsignedWord reservedSize, Pointer collectedHeapBegin) {
+        this.collectedHeapSize = reservedSize.subtract(collectedHeapBegin.subtract(reservedBegin));
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            UnsignedWord collectedHeapSize = reservedSize.subtract(collectedHeapBegin.subtract(reservedBegin));
+            NativeMemoryTracking.singleton().trackReserve(collectedHeapSize, NmtCategory.JavaHeap);
+        }
     }
 
     @Override
     public UnsignedWord getCollectedHeapAddressSpaceSize() {
-        Pointer collectedHeapStart = KnownIntrinsics.heapBase().add(getCollectedHeapOffsetInAddressSpace());
-        assert collectedHeapStart.aboveOrEqual(reservedBegin);
-        return reservedSize.subtract(collectedHeapStart.subtract(reservedBegin));
+        return collectedHeapSize;
     }
 
-    private static UnsignedWord getCollectedHeapOffsetInAddressSpace() {
-        return UnsignedUtils.roundUp(ImageHeapProvider.get().getImageHeapEndOffsetInAddressSpace(), Word.unsigned(getRegionSize()));
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isInMetaspace(Pointer ptr) {
+        return ptr.aboveOrEqual(metaspaceBegin) && ptr.belowThan(metaspaceEnd);
     }
 
     @Override

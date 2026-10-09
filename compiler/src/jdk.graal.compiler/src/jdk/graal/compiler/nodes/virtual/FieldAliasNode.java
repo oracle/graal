@@ -48,6 +48,42 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Represents a node in the graph that establishes an aliasing relationship between the value stored
  * in the {@link #field} of {@link #receiver} and the {@link #aliasValue}. It allows read
  * elimination to replace future {@link #field} accesses with the {@link #aliasValue}.
+ *
+ * <p>
+ * The producer of an immutable alias must ensure that the field of the aliased receiver does not
+ * change while the alias or derived immutable reads can be used. The Java {@code final} modifier
+ * alone does not establish this contract. Initializing the same field on another instance is allowed.
+ *
+ * <p>
+ * An immutable alias survives generic memory kills and remains available at a merge if it is
+ * present on every predecessor. For a specific field kill, read elimination and partial escape
+ * analysis conservatively invalidate both mutable and immutable cache entries for that field,
+ * regardless of the receiver. Initializing another instance can therefore discard an alias without
+ * requiring receiver alias analysis or rejecting the compilation.
+ *
+ * <p>
+ * This invalidation is more conservative than dominator-based global value numbering (DGVN), which
+ * uses {@link LocationIdentity#overlaps(LocationIdentity)}. A mutable field identity does not overlap
+ * its immutable counterpart, so DGVN can retain an immutable read across the same kill. The extra
+ * invalidation in read elimination is conservative cache bookkeeping, not support for writes to the
+ * aliased receiver's immutable field.
+ *
+ * <p>
+ * In particular, unsafe or ordered writes that report only {@link LocationIdentity#any()} can leave
+ * immutable aliases cached, and DGVN still trusts derived immutable reads. If a future producer
+ * permits such writes to the aliased receiver, stale values could be reused. Supporting that case
+ * requires revisiting the immutable-location contract across compiler phases; specific-field
+ * invalidation in read elimination alone is insufficient. Invoke invalidation below is likewise an
+ * optional optimization, not a substitute for this contract.
+ *
+ * <p>
+ * An optional optimization after inlining inserts field-alias reloads on normal invoke
+ * continuations to replace spill/reload pairs with field loads. The immutable values remain valid
+ * across calls even without this optimization. Read elimination invalidates the incoming alias
+ * there and caches the reload under the same immutable
+ * identity, allowing it to merge with an incoming alias on a path that bypasses the call. Invokes also
+ * invalidate cached aliases on exceptional continuations. Floating reads must be disabled for these
+ * graphs so that reloads remain fixed after calls.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class FieldAliasNode extends FixedWithNextNode implements MemoryAccess, Virtualizable, Lowerable {
@@ -61,12 +97,13 @@ public final class FieldAliasNode extends FixedWithNextNode implements MemoryAcc
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
-    public FieldAliasNode(ValueNode receiver, ResolvedJavaField field, ValueNode aliasValue) {
+    public FieldAliasNode(ValueNode receiver, ResolvedJavaField field, ValueNode aliasValue, boolean immutable) {
         super(TYPE, StampFactory.forVoid());
+        assert !immutable || field.isFinal() : "immutable fields must also be final";
         this.receiver = receiver;
         this.field = field;
         this.aliasValue = aliasValue;
-        this.location = new FieldLocationIdentity(field);
+        this.location = new FieldLocationIdentity(field, immutable);
     }
 
     public ResolvedJavaField getField() {

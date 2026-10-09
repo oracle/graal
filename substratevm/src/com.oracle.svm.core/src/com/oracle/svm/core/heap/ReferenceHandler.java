@@ -29,7 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.util.SubstrateUtil;

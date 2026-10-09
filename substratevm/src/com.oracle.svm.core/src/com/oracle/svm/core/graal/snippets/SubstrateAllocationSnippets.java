@@ -60,15 +60,16 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -218,9 +219,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter long ipOffset,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
+        Word threadLocalData = getThreadLocalData();
+        Word top = readTlabTop(threadLocalData);
+        Word end = readTlabEnd(threadLocalData);
         ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // A negative array length will result in an array size larger than the largest possible
@@ -230,7 +231,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         Object result;
         if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
+            writeTlabTop(threadLocalData, newTop);
             emitPrefetchAllocate(newTop, true);
             result = formatStoredContinuation(encodeAsTLABObjectHeader(hub), allocationSize, length, top, emitMemoryBarrier, ipOffset, profilingData.snippetCounters);
         } else {
@@ -251,9 +252,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationSnippets.AllocationProfilingData profilingData) {
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
+        Word threadLocalData = getThreadLocalData();
+        Word top = readTlabTop(threadLocalData);
+        Word end = readTlabEnd(threadLocalData);
         ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // A negative array length will result in an array size larger than the largest possible
@@ -264,7 +265,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         Object result;
         if (useTLAB && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
+            writeTlabTop(threadLocalData, newTop);
             emitPrefetchAllocate(newTop, true);
             result = formatPod(encodeAsTLABObjectHeader(hub), hub, allocationSize, arrayLength, referenceMap, top, AllocationSnippets.FillContent.WITH_ZEROES,
                             emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
@@ -612,23 +613,23 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public Word getTLABInfo() {
-        return gcAllocationSupport().getTLABInfo();
+    public Word getThreadLocalData() {
+        return gcAllocationSupport().getThreadLocalData();
     }
 
     @Override
-    public Word readTlabTop(Word tlabInfo) {
-        return tlabInfo.readWord(gcAllocationSupport().tlabTopOffset(), TLAB_TOP_IDENTITY);
+    public Word readTlabTop(Word threadLocalData) {
+        return threadLocalData.readWord(gcAllocationSupport().tlabTopOffset(), TLAB_TOP_IDENTITY);
     }
 
     @Override
-    public Word readTlabEnd(Word tlabInfo) {
-        return tlabInfo.readWord(gcAllocationSupport().tlabEndOffset(), TLAB_END_IDENTITY);
+    public Word readTlabEnd(Word threadLocalData) {
+        return threadLocalData.readWord(gcAllocationSupport().tlabEndOffset(), TLAB_END_IDENTITY);
     }
 
     @Override
-    public void writeTlabTop(Word tlabInfo, Word newTop) {
-        tlabInfo.writeWord(gcAllocationSupport().tlabTopOffset(), newTop, TLAB_TOP_IDENTITY);
+    public void writeTlabTop(Word threadLocalData, Word newTop) {
+        threadLocalData.writeWord(gcAllocationSupport().tlabTopOffset(), newTop, TLAB_TOP_IDENTITY);
     }
 
     @Fold
@@ -868,7 +869,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     throw VMError.shouldNotReachHereUnexpectedInput(node);
                 }
 
-                DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
+                DynamicHub hub = ensureMarkedAsInstantiated(DynamicHubProvider.getHub(type));
                 long size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()).rawValue();
                 Arguments args;
 
@@ -903,7 +904,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 SharedType instanceClass = (SharedType) node.instanceClass();
                 ValueNode length = node.length();
-                DynamicHub hub = instanceClass.getHub();
+                DynamicHub hub = DynamicHubProvider.getHub(instanceClass);
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
@@ -953,7 +954,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     throw VMError.shouldNotReachHereUnexpectedInput(node);
                 }
 
-                DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
+                DynamicHub hub = ensureMarkedAsInstantiated(DynamicHubProvider.getHub(type));
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
@@ -1000,7 +1001,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 SharedType type = (SharedType) node.type();
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(type.getHub()), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(DynamicHubProvider.getHub(type)), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -1027,7 +1028,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 SharedType type = (SharedType) node.type();
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(type.getHub()), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(DynamicHubProvider.getHub(type)), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);

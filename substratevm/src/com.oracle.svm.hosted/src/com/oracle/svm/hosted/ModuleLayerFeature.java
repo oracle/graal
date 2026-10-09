@@ -99,12 +99,14 @@ import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.HostedModuleSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
+import jdk.internal.module.ModuleLoaderMap;
 import jdk.internal.module.ModuleReferenceImpl;
 import jdk.internal.module.ServicesCatalog;
 import jdk.internal.module.SystemModuleFinders;
@@ -337,7 +339,7 @@ public class ModuleLayerFeature implements InternalFeature {
         Set<Module> runtimeImageModules = accessImpl.getUniverse().getTypes()
                         .stream()
                         .filter(t1 -> !t1.isInSharedLayer() && typeIsReachable(t1))
-                        .map(t -> t.getJavaClass().getModule())
+                        .map(t -> OriginalClassProvider.getJavaClass(t).getModule())
                         .collect(Collectors.toSet());
 
         Set<Module> runtimeImageNamedModules = runtimeImageModules.stream().filter(Module::isNamed).collect(Collectors.toSet()); // noEconomicSet(streaming)
@@ -1522,7 +1524,16 @@ public class ModuleLayerFeature implements InternalFeature {
 
         ClassLoader getClassLoaderForModuleInModuleLayer(ModuleLayer hostedModuleLayer, String name) {
             Optional<Module> module = hostedModuleLayer.findModule(name);
-            return module.isPresent() ? module.get().getClassLoader() : imageClassLoader.getClassLoader();
+            if (module.isPresent()) {
+                return module.get().getClassLoader();
+            }
+            if (ModuleLoaderMap.bootModules().contains(name)) {
+                return null;
+            }
+            if (ModuleLoaderMap.platformModules().contains(name)) {
+                return ClassLoaders.platformClassLoader();
+            }
+            return imageClassLoader.getClassLoader();
         }
 
         Object invokeSystemModuleFinderAllSystemModules() {

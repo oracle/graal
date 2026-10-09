@@ -26,27 +26,31 @@ package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AssertionsSupport;
-import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
-import com.oracle.svm.guest.staging.HeapSizeVerifier;
-import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -60,11 +64,6 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 @AutomaticallyRegisteredImageSingleton(GuestStagingDependencyBridge.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBridge {
-
-    @Override
-    public void verifyIsolateArgumentOptionValues() {
-        IsolateArgumentParser.singleton().verifyOptionValues();
-    }
 
     @Override
     public boolean useEpsilonGC() {
@@ -89,27 +88,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public int getHeapCompressionShift() {
         return ReferenceAccess.singleton().getCompressionShift();
-    }
-
-    @Override
-    public void minHeapSizeOptionValueChanged(long newValue) {
-        HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MinHeapSize);
-        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
-    }
-
-    @Override
-    public void maxHeapSizeOptionValueChanged(long newValue) {
-        HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize);
-        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
-    }
-
-    @Override
-    public void maxNewSizeOptionValueChanged(long newValue) {
-        HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxNewSize);
-        IsolateArgumentParser.singleton().setLongOptionValue(optionIndex, newValue);
     }
 
     @Override
@@ -154,12 +132,50 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public boolean shouldParseRuntimeOptions() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean shouldParseRuntimeOptions(boolean isCompilationIsolate) {
         return SubstrateOptions.ParseRuntimeOptions.getValue() ||
-                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && IsolateArgumentParser.isCompilationIsolate();
+                        RuntimeCompilation.isEnabled() && SubstrateOptions.SupportCompileInIsolates.getValue() && isCompilationIsolate;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isLibCSupported() {
+        return LibC.isSupported();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int libcErrno() {
+        return LibC.errno();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void libcSetErrno(int value) {
+        LibC.setErrno(value);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int libcIsDigit(int value) {
+        return LibC.isdigit(value);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord libcStrlen(CCharPointer string) {
+        return LibC.strlen(string);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord libcStrtoull(CCharPointer string, CCharPointerPointer endPtr, int base) {
+        return LibC.strtoull(string, endPtr, base);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean strictRuntimeJavaOptions() {
         return SubstrateOptions.StrictRuntimeJavaOptions.getValue();
     }
@@ -219,5 +235,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
                 }
             });
         }
+    }
+
+    @Override
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
+    public void trimRuntimeState(RuntimeStateTrimConfig config) {
+        RuntimeStateTrimSupport.singleton().trimRuntimeState(config);
     }
 }

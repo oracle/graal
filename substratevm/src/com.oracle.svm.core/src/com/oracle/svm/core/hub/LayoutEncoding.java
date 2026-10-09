@@ -37,6 +37,8 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.hub.HubType;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;

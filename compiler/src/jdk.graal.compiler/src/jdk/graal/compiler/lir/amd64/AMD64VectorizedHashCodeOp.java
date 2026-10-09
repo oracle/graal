@@ -26,7 +26,6 @@ package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTI128;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU32;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VBROADCASTSS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPMOVSXBD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPMOVSXBQ;
@@ -44,6 +43,7 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDW;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPHADDD;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPMULLD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
@@ -87,7 +87,7 @@ import jdk.vm.ci.meta.Value;
  * multiplier is materialized as an immediate rather than loaded from the coefficient table.</li>
  * <li>The data temporaries are reused for coefficients, reducing the number of vector temporary
  * registers from 13 to 9.</li>
- * <li>The vector loop and powers-of-31 coefficient data are aligned.</li>
+ * <li>The powers-of-31 coefficient data are aligned.</li>
  * <li>XMM/AVX1 and scalar-only x86-64-v1 targets are supported in addition to YMM/AVX2.</li>
  * </ul>
  */
@@ -370,14 +370,17 @@ public final class AMD64VectorizedHashCodeOp extends AMD64ComplexVectorOp {
             Register next = tmp3;
             masm.movl(next, powerOf31(elementsPerLoop));
             masm.movdl(vnext, next);
-            masm.emit(supports(CPUFeature.AVX2) ? VPBROADCASTD : VBROADCASTSS, vnext, vnext, avxSize);
+            if (supports(CPUFeature.AVX2)) {
+                masm.emit(VPBROADCASTD, vnext, vnext, avxSize);
+            } else {
+                VSHUFPS.emit(masm, XMM, vnext, vnext, vnext, 0);
+            }
 
             // index = 0;
             // bound = cnt1 & ~(elementsPerLoop - 1);
             masm.movl(bound, cnt1);
             masm.andl(bound, ~(elementsPerLoop - 1));
             // for (; index < bound; index += elementsPerLoop) {
-            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelUnrolledVectorLoopBegin);
             // result *= next;
             masm.imull(result, next);

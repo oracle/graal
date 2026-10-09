@@ -33,6 +33,8 @@ import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEn
 import static jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8;
 import static jdk.graal.compiler.nodes.NamedLocationIdentity.getArrayLocation;
 
+import java.lang.reflect.Type;
+
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.Stride;
@@ -71,10 +73,9 @@ import jdk.graal.compiler.replacements.nodes.ArrayIndexOfMacroNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import jdk.graal.compiler.replacements.nodes.CalcStringAttributesMacroNode;
-import jdk.graal.compiler.replacements.nodes.IndexOfZeroMacroNode;
+import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
+import jdk.graal.compiler.replacements.nodes.IndexOfZeroNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
-import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexMacroNode;
 import jdk.graal.compiler.replacements.nodes.StringCodepointIndexToByteIndexNode;
 import jdk.graal.compiler.replacements.nodes.ThreadedSwitchNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
@@ -634,84 +635,88 @@ public class TruffleInvocationPlugins {
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesLatin1", nodeType, byte[].class, long.class, int.class, boolean.class) {
+
+        abstract class CalcStringAttributesInvocationPlugin extends OptionalInlineOnlyConditionalInvocationPlugin {
+
+            CalcStringAttributesInvocationPlugin(String name, Type... argumentTypes) {
+                super(name, argumentTypes);
+            }
+
+            @Override
+            public final boolean isApplicable(Architecture arch) {
+                return CalcStringAttributesNode.isSupported(arch);
+            }
+        }
+
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesLatin1", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
-                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, LATIN1, false, inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesNode(array, offset, length, LATIN1, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesBMP", nodeType, byte[].class, long.class, int.class, boolean.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesBMP", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
-                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, BMP, false, inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesNode(array, offset, length, BMP, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF8", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesUTF8", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative, assumeValid);
-                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_8, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Long, new CalcStringAttributesNode(array, offset, length, UTF_8, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF16", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesUTF16", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative, assumeValid);
-                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_16, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Long, new CalcStringAttributesNode(array, offset, length, UTF_16, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF16C", nodeType, char[].class, long.class, int.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesUTF16C", nodeType, char[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length);
-                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_16, false, getArrayLocation(JavaKind.Char)));
+                b.addPush(JavaKind.Long, new CalcStringAttributesNode(array, offset, length, UTF_16, false, getArrayLocation(JavaKind.Char)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF16FE", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesUTF16FE", nodeType, byte[].class, long.class, int.class, boolean.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative, ValueNode assumeValid) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative, assumeValid);
-                b.addPush(JavaKind.Long, new CalcStringAttributesMacroNode(params, UTF_16_FOREIGN_ENDIAN, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Long, new CalcStringAttributesNode(array, offset, length, UTF_16_FOREIGN_ENDIAN, constantBooleanParam(assumeValid), inferLocationIdentity(isNative)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF32", nodeType, byte[].class, long.class, int.class, boolean.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesUTF32", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
-                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32, false, inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesNode(array, offset, length, UTF_32, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF32I", nodeType, int[].class, long.class, int.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesUTF32I", nodeType, int[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length);
-                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32, false, getArrayLocation(JavaKind.Int)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesNode(array, offset, length, UTF_32, false, getArrayLocation(JavaKind.Int)));
                 return true;
             }
         });
-        r.register(new OptionalInlineOnlyInvocationPlugin("runCalcStringAttributesUTF32FE", nodeType, byte[].class, long.class, int.class, boolean.class) {
+        r.register(new CalcStringAttributesInvocationPlugin("runCalcStringAttributesUTF32FE", nodeType, byte[].class, long.class, int.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode isNative) {
-                MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, isNative);
-                b.addPush(JavaKind.Int, new CalcStringAttributesMacroNode(params, UTF_32_FOREIGN_ENDIAN, false, inferLocationIdentity(isNative)));
+                b.addPush(JavaKind.Int, new CalcStringAttributesNode(array, offset, length, UTF_32_FOREIGN_ENDIAN, false, inferLocationIdentity(isNative)));
                 return true;
             }
         });
@@ -743,42 +748,44 @@ public class TruffleInvocationPlugins {
             }
         });
 
-        if (architecture instanceof AMD64) {
-            r.register(new OptionalInlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF8Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
-                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
-                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
-                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_8, inferLocationIdentity(isNative)));
-                    return true;
-                }
-            });
-            r.register(new OptionalInlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF16Valid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
-                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
-                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
-                    b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16, inferLocationIdentity(isNative)));
-                    return true;
-                }
-            });
-            r.register(new OptionalInlineOnlyInvocationPlugin("runCodePointIndexToByteIndexUTF16FEValid", nodeType, byte[].class, long.class, int.class, int.class, boolean.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
-                                ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
-                    MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, location, array, offset, length, index, isNative);
-                    b.addPush(JavaKind.Int,
-                                    new StringCodepointIndexToByteIndexMacroNode(params, StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16_FOREIGN_ENDIAN, inferLocationIdentity(isNative)));
-                    return true;
-                }
-            });
+        class CodepointIndexToByteIndexInvocationPlugin extends OptionalInlineOnlyConditionalInvocationPlugin {
+            private final StringCodepointIndexToByteIndexNode.InputEncoding inputEncoding;
+
+            CodepointIndexToByteIndexInvocationPlugin(String name, StringCodepointIndexToByteIndexNode.InputEncoding inputEncoding) {
+                super(name, nodeType, byte[].class, long.class, int.class, int.class, boolean.class);
+                this.inputEncoding = inputEncoding;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                            ValueNode array, ValueNode offset, ValueNode length, ValueNode index, ValueNode isNative) {
+                b.addPush(JavaKind.Int, new StringCodepointIndexToByteIndexNode(array, offset, length, index, inputEncoding, inferLocationIdentity(isNative)));
+                return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return StringCodepointIndexToByteIndexNode.isSupported(arch);
+            }
         }
+
+        if (architecture instanceof AMD64) {
+            r.register(new CodepointIndexToByteIndexInvocationPlugin("runCodePointIndexToByteIndexUTF8Valid", StringCodepointIndexToByteIndexNode.InputEncoding.UTF_8));
+            r.register(new CodepointIndexToByteIndexInvocationPlugin("runCodePointIndexToByteIndexUTF16Valid", StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16));
+            r.register(new CodepointIndexToByteIndexInvocationPlugin("runCodePointIndexToByteIndexUTF16FEValid", StringCodepointIndexToByteIndexNode.InputEncoding.UTF_16_FOREIGN_ENDIAN));
+        }
+
         for (Stride stride : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-            r.register(new OptionalInlineOnlyInvocationPlugin("runIndexOfZeroS" + stride.value, nodeType, long.class) {
+            r.register(new OptionalInlineOnlyConditionalInvocationPlugin("runIndexOfZeroS" + stride.value, nodeType, long.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location, ValueNode array) {
-                    b.addPush(JavaKind.Long, new IndexOfZeroMacroNode(MacroNode.MacroParams.of(b, targetMethod, location, array), stride));
+                    b.addPush(JavaKind.Long, new IndexOfZeroNode(stride, array));
                     return true;
+                }
+
+                @Override
+                public boolean isApplicable(Architecture arch) {
+                    return IndexOfZeroNode.isSupported(arch);
                 }
             });
         }

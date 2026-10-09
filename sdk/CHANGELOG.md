@@ -2,12 +2,18 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 25.5
+* GR-79961: [Auxiliary engine caching](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCaching.md) is now available in both Oracle GraalVM and GraalVM Community Edition.
+* GR-13989: Added `FileChannel`. On JDK 22 and later, its `map` method maps file regions to `MemorySegment` instances whose lifetime is controlled by a caller-provided `Arena`.
+* GR-79068: Added file-locking support to `FileChannel` through the `lock` and `tryLock` methods.
+
 ## Version 25.4
 * GR-63447: Added `HostAccess.Builder#allowPublicAccess(Predicate<Member>)` to selectively expose public host members without explicitly naming them upfront.
 * GR-72910: Added `Feature.DuringSetupAccess#registerBuildTimeBootstrapIndy` and `Feature.DuringSetupAccess#registerBuildTimeBootstrapCondy`, allowing frameworks to register invokedynamic and constant-dynamic bootstrap methods for execution at image build time.
 
 ## Version 25.3.4
 * GR-76904: Isolated polyglot contexts now warn when host access is enabled without host method scoping. The warning can be disabled with the `engine.WarnMethodScoping=false` option.
+* GR-61383 JLine3 upgrade from 3.28 to 4.3.1.
 
 ## Version 25.1.3
 * GR-65048: GR-65048: Introduced the `-Dpolyglot.engine.allowUnsupportedPlatform=true` system property to enable Truffle to run on unsupported platforms. If this property is enabled then the failure will be suppressed. Please see follow-up errors and warnings for instructions on how to continue. Note that using an unsupported platform will also force the fallback runtime without runtime optimization.
@@ -53,7 +59,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-55996 Added the options `engine.SourceCacheStatistics` and `engine.SourceCacheStatisticDetails` to print polyglot source cache statistics on engine close.
 
 * GR-65561 Added `Context.Builder#apply`, `ContextBuilder#extendIO`, and `ContextBuilder#extendHostAccess` to enable composable Context configuration
-* GR-64947 Added `Engine.storeCache(Path)` to manually store [auxiliary engine caches](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCachingEnterprise.md) when needed.
+* GR-64947 Added `Engine.storeCache(Path)` to manually store [auxiliary engine caches](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCaching.md) when needed.
 * GR-63009: The WebAssembly (Wasm) language is now available as a polyglot isolate.
 
 ## Version 24.2.0

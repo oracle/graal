@@ -161,7 +161,7 @@ final class PolyglotIsolateCreateSupport {
                 }
             }
             CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
-            // set defaults (see EnterpriseAddressRangeCommittedMemoryProvider.initialize())
+            // set defaults (see AddressRangeCommittedMemoryProvider.initialize())
             params.setReservedSpaceSize(Word.zero());
             params.setAuxiliaryImageReservedSpaceSize(Word.zero());
             params.setAuxiliaryImagePath(Word.nullPointer());

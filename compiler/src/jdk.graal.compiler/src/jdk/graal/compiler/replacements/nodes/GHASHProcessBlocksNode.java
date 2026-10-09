@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
@@ -112,7 +113,7 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "ghashProcessBlocks", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "ghashProcessBlocks", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", runtimeCPUFeaturesAMD64 = "runtimeCheckedCPUFeaturesAMD64")
     public static native void apply(Pointer state,
                     Pointer hashSubkey,
                     Pointer data,
@@ -133,5 +134,9 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitGHASHProcessBlocks(runtimeCheckedCPUFeatures, gen.operand(state), gen.operand(hashSubkey), gen.operand(data), gen.operand(blocks));
+    }
+
+    public static EnumSet<AMD64.CPUFeature> runtimeCheckedCPUFeaturesAMD64() {
+        return EnumSet.of(AVX, CLMUL);
     }
 }

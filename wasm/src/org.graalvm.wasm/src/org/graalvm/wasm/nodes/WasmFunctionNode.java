@@ -8051,7 +8051,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         table.fill((int) offset, (int) length, value);
     }
 
-    @TruffleBoundary
     private void memory_init(WasmInstance instance, int length, int source, long destination, int dataIndex, int memoryIndex) {
         final WasmMemory memory = memory(instance, memoryIndex);
         final WasmMemoryLibrary memoryLib = memoryLib(memoryIndex);
@@ -8069,16 +8068,14 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         instance.dropDataInstance(dataIndex);
     }
 
-    @TruffleBoundary
     private void memory_fill(WasmInstance instance, long length, int value, long offset, int memoryIndex) {
         final WasmMemory memory = memory(instance, memoryIndex);
         memoryLib(memoryIndex).fill(memory, this, offset, length, (byte) value);
     }
 
-    @TruffleBoundary
     private void memory_copy(WasmInstance instance, long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
         final WasmMemory destMemory = memory(instance, destMemoryIndex);
-        final WasmMemory srcMemory = memory(instance, srcMemoryIndex);
+        final WasmMemory srcMemory = srcMemoryIndex == destMemoryIndex ? destMemory : memory(instance, srcMemoryIndex);
         memoryLib(destMemoryIndex).copyFrom(destMemory, this, srcMemory, source, destination, length);
     }
 
@@ -8378,9 +8375,15 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
             int fieldType = module.structTypeFieldTypeAt(structTypeIndex, fieldIndex);
             CompilerAsserts.partialEvaluationConstant(fieldType);
             boolean fieldIsReferenceType = WasmType.isReferenceType(fieldType);
+            boolean fieldIsVectorType = WasmType.isVectorType(fieldType);
             CompilerAsserts.partialEvaluationConstant(fieldIsReferenceType);
+            CompilerAsserts.partialEvaluationConstant(fieldIsVectorType);
             if (fieldIsReferenceType) {
                 structAccess.properties()[fieldIndex].setObject(struct, WasmConstant.NULL);
+            } else if (fieldIsVectorType) {
+                structAccess.properties()[fieldIndex].setObject(struct, Vector128.ZERO);
+            } else {
+                assert WasmType.isNumberType(fieldType) || WasmType.isPackedType(fieldType);
             }
         }
     }

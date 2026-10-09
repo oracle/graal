@@ -28,6 +28,8 @@ package com.oracle.svm.core.sampler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
@@ -36,7 +38,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  */
 public interface SamplerStackTraceSerializer {
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static SamplerStackTraceSerializer singleton() {
         return ImageSingletons.lookup(SamplerStackTraceSerializer.class);
     }

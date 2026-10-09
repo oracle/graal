@@ -29,7 +29,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.phases.Phase;
 
-import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
 
 public class DeadStoreRemovalPhase extends Phase {
 

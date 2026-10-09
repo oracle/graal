@@ -62,12 +62,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.ForeignSupport;
-import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.guest.staging.c.function.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.foreign.AbiUtils.TrampolineTemplate;
 import com.oracle.svm.core.foreign.phases.SubstrateOptimizeSharedArenaAccessPhase.OptimizeSharedArenaConfig;
 import com.oracle.svm.core.graal.code.PreparedSignature;
@@ -76,13 +76,14 @@ import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects.DisallowedObjectReporter;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignDowncallPlan;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallData;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_BoundMethodHandle;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -160,13 +161,13 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         abiUtils.generateTrampolineTemplate(backend, this.trampolineTemplate);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean isLibcSupported() {
         VMError.guarantee(BuildPhaseProvider.isSetupFinished());
         return LibC.isSupported();
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean isWindowsApiSupported() {
         VMError.guarantee(BuildPhaseProvider.isSetupFinished());
         return WindowsAPIs.isSupported();

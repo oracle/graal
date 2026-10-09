@@ -202,6 +202,26 @@ public enum Encoding {
         }
     }
 
+    /**
+     * Returns {@code true} if the given code point set can be represented as a literal and a bit
+     * mask without matching any additional code points.
+     */
+    public boolean canBeMatchedWithMask(CodePointSet set) {
+        if (set.matchesSingleChar()) {
+            return true;
+        }
+        if (!set.matches2CharsWith1BitDifference() || !isFixedCodePointWidth(set)) {
+            return false;
+        }
+        if (isUTF16() && set.getMin() > Character.MAX_VALUE) {
+            int c1 = set.getMin();
+            int c2 = set.getMax();
+            return Integer.bitCount(Character.highSurrogate(c1) ^ Character.highSurrogate(c2)) +
+                            Integer.bitCount(Character.lowSurrogate(c1) ^ Character.lowSurrogate(c2)) == 1;
+        }
+        return true;
+    }
+
     public boolean isUnicode() {
         return switch (this) {
             case LATIN_1, ASCII, BYTES -> false;
@@ -248,16 +268,6 @@ public enum Encoding {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             });
         }
-    }
-
-    public SequentialMatchers toMatchers(Builder mb) {
-        return switch (this) {
-            case UTF_8 -> new SequentialMatchers.UTF8SequentialMatchers(mb.materialize(0), mb.materialize(1), mb.materialize(2), mb.materialize(3), mb.getNoMatchSuccessor());
-            case UTF_16, UTF_16BE, UTF_32, UTF_32BE ->
-                new SequentialMatchers.UTF16Or32SequentialMatchers(mb.materialize(0), mb.materialize(1), mb.materialize(2), mb.materialize(3), mb.getNoMatchSuccessor());
-            case UTF_16_RAW -> new SequentialMatchers.UTF16RawSequentialMatchers(mb.materialize(0), mb.materialize(1), mb.materialize(2), mb.getNoMatchSuccessor());
-            case LATIN_1, BYTES, ASCII -> new SequentialMatchers.SimpleSequentialMatchers(mb.materialize(0), mb.getNoMatchSuccessor());
-        };
     }
 
     @Override

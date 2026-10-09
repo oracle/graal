@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
@@ -45,6 +46,10 @@ public class HostedLibCFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         String targetLibC = SubstrateOptions.UseLibC.getValue();
+        if (MuslLibC.NAME.equals(targetLibC)) {
+            UserError.guarantee(Platform.includedIn(Platform.AMD64.class),
+                            "The musl libc is not supported for target architecture '%s'. Currently, only AMD64 is supported.", ImageSingletons.lookup(Platform.class).getArchitecture());
+        }
         ServiceLoader<HostedLibCBase> loader = ServiceLoader.load(HostedLibCBase.class);
         for (HostedLibCBase libc : loader) {
             if (libc.getName().equals(targetLibC)) {

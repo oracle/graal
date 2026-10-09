@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;

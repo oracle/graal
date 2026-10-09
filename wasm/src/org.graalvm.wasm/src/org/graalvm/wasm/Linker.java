@@ -719,8 +719,13 @@ public class Linker {
                             int fieldCount = symtab.structTypeFieldCount(structTypeIdx);
                             StaticProperty[] properties = symtab.structTypeAccess(structTypeIdx).properties();
                             for (int fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
-                                if (WasmType.isReferenceType(symtab.structTypeFieldTypeAt(structTypeIdx, fieldIndex))) {
+                                int fieldType = symtab.structTypeFieldTypeAt(structTypeIdx, fieldIndex);
+                                if (WasmType.isReferenceType(fieldType)) {
                                     properties[fieldIndex].setObject(struct, WasmConstant.NULL);
+                                } else if (WasmType.isVectorType(fieldType)) {
+                                    properties[fieldIndex].setObject(struct, Vector128.ZERO);
+                                } else {
+                                    assert WasmType.isNumberType(fieldType) || WasmType.isPackedType(fieldType);
                                 }
                             }
                             stack.add(struct);

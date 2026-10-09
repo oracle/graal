@@ -39,7 +39,7 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 
 import jdk.graal.compiler.api.replacements.Snippet;

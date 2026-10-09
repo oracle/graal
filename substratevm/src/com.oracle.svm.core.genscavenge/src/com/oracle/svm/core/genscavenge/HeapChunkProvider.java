@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -41,6 +42,7 @@ import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.Uninterruptible;
@@ -49,9 +51,9 @@ import com.oracle.svm.shared.Uninterruptible;
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
  * thread-safe, so no locking is necessary when calling them.
  *
- * Memory for aligned chunks is not immediately released to the OS. Chunks with a total of up to
- * {@link CollectionPolicy#getMaximumFreeAlignedChunksSize()} bytes are saved in an unused chunk
- * list. Memory for unaligned chunks is released immediately.
+ * Memory for aligned chunks is not immediately released to {@link CommittedMemoryProvider}. Chunks
+ * with a total of up to {@link CollectionPolicy#getMaximumFreeAlignedChunksSize()} bytes are saved
+ * in an unused chunk list. Memory for unaligned chunks is released immediately.
  */
 final class HeapChunkProvider {
     /**
@@ -86,8 +88,8 @@ final class HeapChunkProvider {
         if (result.isNull()) {
             /* Unused list was empty, need to allocate memory. */
             result = (AlignedHeader) ChunkBasedCommittedMemoryProvider.get().allocateAlignedChunk(chunkSize, HeapParameters.getAlignedHeapChunkAlignment());
-            AlignedHeapChunk.initialize(result, chunkSize);
         }
+        AlignedHeapChunk.initialize(result, chunkSize);
         assert HeapChunk.getTopOffset(result).equal(AlignedHeapChunk.getObjectsStartOffset());
         assert HeapChunk.getSize(result).equal(chunkSize);
 
@@ -103,8 +105,9 @@ final class HeapChunkProvider {
     }
 
     /**
-     * Releases a list of AlignedHeapChunks, either to the free list or back to the operating
-     * system. This method may only be called after the chunks were already removed from the spaces.
+     * Releases a list of AlignedHeapChunks, either to the free list or to
+     * {@link CommittedMemoryProvider} (and subsequently the OS). This method may only be called
+     * after the chunks were already removed from the spaces.
      */
     void consumeAlignedChunks(AlignedHeader firstChunk, boolean keepAll) {
         assert VMOperation.isGCInProgress();
@@ -207,7 +210,7 @@ final class HeapChunkProvider {
     }
 
     private void freeUnusedAlignedChunksAtSafepoint(UnsignedWord count) {
-        assert VMOperation.isGCInProgress();
+        assert VMOperation.isInProgressAtSafepoint();
         if (count.equal(0)) {
             return;
         }
@@ -222,6 +225,37 @@ final class HeapChunkProvider {
         }
         unusedAlignedChunks.set(chunk);
         numUnusedAlignedChunks.subtractAndGet(released);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void cleanUnusedAlignedChunks() {
+        assert VMOperation.isInProgressAtSafepoint();
+
+        UnsignedWord chunkSize = HeapParameters.getAlignedHeapChunkSize();
+        UnsignedWord count = numUnusedAlignedChunks.get();
+        AlignedHeader chunk = unusedAlignedChunks.get();
+        UnsignedWord zeroed = Word.zero();
+        while (chunk.isNonNull() && zeroed.belowThan(count)) {
+            AlignedHeader next = HeapChunk.getNext(chunk);
+            Pointer start = HeapChunk.asPointer(chunk);
+            Pointer end = HeapChunk.getEndPointer(chunk);
+            UnmanagedMemoryUtil.fill(start, end.subtract(start), (byte) 0);
+            /*
+             * Restore the fields that do not generally have valid zero values: top and end describe
+             * an empty chunk for diagnostics, and next preserves the free-list linkage. All other
+             * header fields have valid zero values while the chunk remains unused.
+             */
+            HeapChunk.setEndOffset(chunk, chunkSize);
+            HeapChunk.setTopPointer(chunk, AlignedHeapChunk.getObjectsStart(chunk));
+            HeapChunk.setNext(chunk, next);
+            chunk = next;
+            zeroed = zeroed.add(1);
+        }
+    }
+
+    void freeUnusedAlignedChunks() {
+        VMOperation.guaranteeInProgressAtSafepoint("HeapChunkProvider.freeUnusedAlignedChunks");
+        freeUnusedAlignedChunksAtSafepoint(numUnusedAlignedChunks.get());
     }
 
     /** Acquire an UnalignedHeapChunk from the operating system. */
@@ -249,8 +283,8 @@ final class HeapChunkProvider {
     }
 
     /**
-     * Releases a list of UnalignedHeapChunks back to the operating system. They are never recycled
-     * to a free list.
+     * Releases a list of UnalignedHeapChunks back to {@link CommittedMemoryProvider} (and
+     * subsequently, to the OS). They are never recycled to a free list.
      */
     static void consumeUnalignedChunks(UnalignedHeader firstChunk) {
         assert VMOperation.isGCInProgress();

@@ -320,8 +320,9 @@ local devkits = graal_common.devkits;
       + extra_args,
     ],
 
-    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms, mvn_artifacts=true, mvn_bundle=true, mvn_reduced_bundle=true)::
-      local multiplatform_build(reduced) = self.build(os, arch, reduced, mx_args=['--multi-platform-layout-directories=' + std.join(',', [main_platform] + other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}']);  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
+    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms, mvn_artifacts=true, mvn_bundle=true, mvn_reduced_bundle=true, extra_resource_platforms=[])::
+      local resource_platforms = other_platforms + extra_resource_platforms;
+      local multiplatform_build(reduced) = self.build(os, arch, reduced, mx_args=['--multi-platform-layout-directories=' + std.join(',', [main_platform] + resource_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}']);  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
 
       local mvn_artifacts_snippet =
         # remotely deploy only the suites that are defined in the current repository, to avoid duplicated deployments
@@ -401,7 +402,7 @@ local devkits = graal_common.devkits;
       if (self.compose_platform(os, arch) == main_platform) then (
         # The polyglot isolate layout distributions are not merged; each distribution exists solely for the current platform.
         # Therefore, it's necessary to ignore these distributions for other platforms."
-        [self.mx_cmd_base(os, arch, reduced=false) + ['restore-pd-layouts', '--ignore-unknown-distributions', self.pd_layouts_archive_name(platform)] for platform in other_platforms]
+        [self.mx_cmd_base(os, arch, reduced=false) + ['restore-pd-layouts', '--ignore-unknown-distributions', self.pd_layouts_archive_name(platform)] for platform in resource_platforms]
         + (
           if (mvn_artifacts || mvn_bundle) then
             multiplatform_build(reduced=false)
@@ -448,15 +449,32 @@ local devkits = graal_common.devkits;
         + [self.mx_cmd_base(os, arch, reduced=false) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
       ),
 
-    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform='linux-amd64', other_platforms=['linux-aarch64', 'darwin-aarch64', 'windows-amd64'],):: {
-      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms),
+    // Resource-only targets have no polyglot isolate bundles and build in their own job.
+    graalos_resources_object(dry_run):: {
+      local artifact_base_url = self.ci_resources.infra.graalos_artifact_base_url,
+      // Install the artifact-manager client dependencies used to download the toolchain.
+      deploysArtifacts: true,
+      environment+: {
+        GRAALPY_GRAALOS_ARTIFACT_BASE_URL: artifact_base_url,
+      },
+      run: [$.maven_deploy_base_functions.mx_cmd_base('linux', 'amd64', reduced=true) +
+            ['python-graalos-resources', $.maven_deploy_base_functions.pd_layouts_archive_name('linux-amd64-musl-swcfi')]],
+      publishArtifacts+: [{
+        name: $.maven_deploy_base_functions.pd_layouts_artifact_name('linux-amd64-musl-swcfi', dry_run),
+        dir: vm.vm_dir,
+        patterns: [$.maven_deploy_base_functions.pd_layouts_archive_name('linux-amd64-musl-swcfi')],
+      }],
+    },
+
+    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform='linux-amd64', other_platforms=['linux-aarch64', 'darwin-aarch64', 'windows-amd64'], extra_resource_platforms=[]):: {
+      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms, extra_resource_platforms=extra_resource_platforms),
     } + if (self.compose_platform(os, arch) == main_platform) then {
        requireArtifacts+: [
          {
            name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
            dir: vm.vm_dir,
            autoExtract: true,
-         } for platform in other_platforms
+         } for platform in other_platforms + extra_resource_platforms
        ] + [
          {
            name: $.maven_deploy_base_functions.isolate_bundle_artifact_name(platform, dry_run),

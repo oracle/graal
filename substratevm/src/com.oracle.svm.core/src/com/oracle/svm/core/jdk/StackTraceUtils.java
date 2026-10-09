@@ -40,7 +40,7 @@ import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
 import com.oracle.svm.core.reflect.FallbackCallerSensitiveCremaMethodAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;

@@ -79,7 +79,7 @@ import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.GraalSupport;
@@ -922,9 +922,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             if (key == RUNTIME_COMPILED_METHOD) {
                 /*
                  * For runtime compiled methods, we must be careful to ensure new SubstrateTypes are
-                 * not created during the AnalysisStrengthenGraphsPhase. If the type does not
-                 * already exist at this point (which is after the analysis phase), then we must
-                 * return false.
+                 * not created during graph strengthening. If the type does not already exist at
+                 * this point (which is after the analysis phase), then we must return false.
                  */
                 return (t) -> objectReplacer.typeCreated(t);
             }

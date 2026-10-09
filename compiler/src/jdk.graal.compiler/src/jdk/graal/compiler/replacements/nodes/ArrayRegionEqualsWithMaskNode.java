@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -243,6 +243,7 @@ public final class ArrayRegionEqualsWithMaskNode extends PureFunctionStubIntrins
     }
 
     @NodeIntrinsic
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
     @GenerateStub(name = "arrayRegionEqualsWithMaskS1S2S1", parameters = {"S1", "S2", "S1"})
     @GenerateStub(name = "arrayRegionEqualsWithMaskS2S2S1", parameters = {"S2", "S2", "S1"})
     @GenerateStub(name = "arrayRegionEqualsWithMaskS1S1", parameters = {"S1", "S1", "S1"})
@@ -267,6 +268,7 @@ public final class ArrayRegionEqualsWithMaskNode extends PureFunctionStubIntrins
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
+    @GenerateStub.Default(runtimeCPUFeaturesAMD64 = "amd64FeaturesAVX2")
     @GenerateStub(name = "arrayRegionEqualsWithMaskDynamicStrides")
     public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Pointer mask, int length, int stride);
 

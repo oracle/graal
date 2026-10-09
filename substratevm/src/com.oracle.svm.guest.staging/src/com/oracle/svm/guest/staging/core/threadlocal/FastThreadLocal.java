@@ -86,10 +86,13 @@ public abstract class FastThreadLocal {
     public static final int BYTE_OFFSET = 127;
 
     /**
-     * Sets the maximum offset of this thread local variable in the memory block reserved for each
+     * Sets the maximum start offset of this thread local variable in the memory block reserved for each
      * thread. This can be used for performance and footprint optimization, to group frequently
      * accessed values closely together with low offsets that can be encoded more efficiently in
      * machine code.
+     *
+     * For primitive values, natural alignment ensures that a start in the first cache line also
+     * places the entire value in that cache line. This is not guaranteed for other thread locals.
      */
     @SuppressWarnings("unchecked")
     @Platforms(Platform.HOSTED_ONLY.class)

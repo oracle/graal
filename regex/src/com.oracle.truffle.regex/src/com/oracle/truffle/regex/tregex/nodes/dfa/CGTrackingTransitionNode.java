@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,31 +46,32 @@ import com.oracle.truffle.api.CompilerAsserts;
 
 public final class CGTrackingTransitionNode extends CGTrackingAbstractTransitionNode {
 
-    private final DFACaptureGroupLazyTransition transition;
+    /** Reference to a {@link DFACaptureGroupLazyTransition}. */
+    private final int transitionRef;
     private final short lastTransitionIndex;
 
-    public CGTrackingTransitionNode(short id, short successor, DFACaptureGroupLazyTransition transition, short lastTransitionIndex) {
+    public CGTrackingTransitionNode(short id, short successor, int transitionRef, short lastTransitionIndex) {
         super(id, successor);
-        this.transition = transition;
+        this.transitionRef = transitionRef;
         this.lastTransitionIndex = lastTransitionIndex;
     }
 
-    public static CGTrackingTransitionNode create(short id, short successor, DFACaptureGroupLazyTransition transition, short lastTransitionIndex) {
-        if (transition.isEmpty() && lastTransitionIndex < 0) {
+    public static CGTrackingTransitionNode create(short id, short successor, int transitionRef, short lastTransitionIndex) {
+        if (DFACaptureGroupLazyTransition.isEmpty(transitionRef) && lastTransitionIndex < 0) {
             return null;
         }
-        return new CGTrackingTransitionNode(id, successor, transition, lastTransitionIndex);
+        return new CGTrackingTransitionNode(id, successor, transitionRef, lastTransitionIndex);
     }
 
     @Override
-    public int getCGTrackingCost() {
-        return transition.getCost();
+    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
+        return DFACaptureGroupLazyTransition.getCost(transitionRef, executor);
     }
 
     @Override
     public void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        transition.apply(locals, executor, false);
+        DFACaptureGroupLazyTransition.apply(transitionRef, locals, executor, false);
         if (lastTransitionIndex >= 0) {
             locals.setLastTransition(lastTransitionIndex);
         }
@@ -81,11 +82,11 @@ public final class CGTrackingTransitionNode extends CGTrackingAbstractTransition
         if (!(obj instanceof CGTrackingTransitionNode o)) {
             return false;
         }
-        return getSuccessor() == o.getSuccessor() && lastTransitionIndex == o.lastTransitionIndex && Objects.equals(transition, o.transition);
+        return getSuccessor() == o.getSuccessor() && lastTransitionIndex == o.lastTransitionIndex && transitionRef == o.transitionRef;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getSuccessor(), transition, lastTransitionIndex);
+        return Objects.hash(getSuccessor(), transitionRef, lastTransitionIndex);
     }
 }

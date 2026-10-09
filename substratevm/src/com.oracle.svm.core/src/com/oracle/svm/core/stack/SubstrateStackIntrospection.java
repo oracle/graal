@@ -43,7 +43,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.VirtualFrame;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -199,7 +199,6 @@ class SubstrateInspectedFrame implements InspectedFrame {
     private Deoptimizer deoptimizer;
     private final int deoptMethodOffset;
     private final long encodedBci;
-    private final int sourceMethodId;
 
     SubstrateInspectedFrame(Pointer sp, CodePointer ip, VirtualFrame virtualFrame, CodeInfoQueryResult codeInfo, FrameInfoQueryResult frameInfo, int virtualFrameIndex) {
         this.sp = sp;
@@ -215,7 +214,6 @@ class SubstrateInspectedFrame implements InspectedFrame {
         this.numLocals = this.frameInfo.getNumLocals();
         this.deoptMethodOffset = this.frameInfo.getDeoptMethodOffset();
         this.encodedBci = this.frameInfo.getEncodedBci();
-        this.sourceMethodId = this.frameInfo.getSourceMethodId();
     }
 
     private Deoptimizer getDeoptimizer() {
@@ -367,8 +365,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
 
     private boolean matchesCapturedFrameInfo(FrameInfoQueryResult currentFrameInfo) {
         return currentFrameInfo.getDeoptMethodOffset() == deoptMethodOffset &&
-                        currentFrameInfo.getEncodedBci() == encodedBci &&
-                        currentFrameInfo.getSourceMethodId() == sourceMethodId;
+                        currentFrameInfo.getEncodedBci() == encodedBci;
     }
 
     private final class LiveFrameLookupVisitor extends StackFrameVisitor {

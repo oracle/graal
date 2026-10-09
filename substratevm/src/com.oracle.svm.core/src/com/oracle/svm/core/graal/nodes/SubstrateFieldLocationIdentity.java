@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
 
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.vm.ci.meta.ResolvedJavaField;

@@ -39,12 +39,13 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.GuestTypes;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -128,7 +129,7 @@ public class JfrEventFeature implements InternalFeature {
         // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
         Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
         for (SharedType type : types) {
-            DynamicHub hub = type.getHub();
+            DynamicHub hub = DynamicHubProvider.getHub(type);
             Class<?> clazz = hub.getHostedJavaClass();
             // Off-set by one for error-catcher
             JfrTraceId.assign(clazz, hub.getTypeID() + 1);

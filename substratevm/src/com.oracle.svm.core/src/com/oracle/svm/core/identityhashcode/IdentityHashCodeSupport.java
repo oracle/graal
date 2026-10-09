@@ -38,7 +38,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.shared.Uninterruptible;

@@ -44,7 +44,7 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.Phase;
 
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 
 /**

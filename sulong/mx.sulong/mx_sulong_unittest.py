@@ -117,6 +117,8 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
         cfg = SulongUnittestConfigBase.sulongConfig
         deps.add(mx.distribution(cfg.testConfigDep))
         if mx.get_opts().use_llvm_standalone is None:
+            if mx.suite('compiler', fatalIfMissing=False) is not None:
+                deps.add(mx.distribution('truffle:TRUFFLE_RUNTIME'))
             for d in cfg.runtimeDeps:
                 deps.add(mx.distribution(d))
             if SulongUnittestConfigBase.useResources:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import java.io.PrintWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
@@ -102,6 +101,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ClassUtil;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
@@ -234,6 +234,7 @@ public class PermissionsFeature implements Feature {
         safePackages.add("jdk.graal.compiler.");
         safePackages.add("com.oracle.graalvm.");
         safePackages.add("com.oracle.svm.core.");
+        safePackages.add("com.oracle.svm.guest.staging.jdk.");
         safePackages.add("com.oracle.truffle.api.");
         safePackages.add("com.oracle.truffle.polyglot.");
         safePackages.add("com.oracle.truffle.polyglot.isolate.");
@@ -249,8 +250,7 @@ public class PermissionsFeature implements Feature {
         safePackages.add("com.oracle.truffle.runtime.hotspot.libgraal.");
         safePackages.add("com.oracle.truffle.runtime.enterprise.");
         safePackages.add("com.oracle.truffle.object.enterprise.");
-        safePackages.add("com.oracle.svm.truffle.api.");
-        safePackages.add("com.oracle.svm.truffle.isolated.");
+        safePackages.add("com.oracle.svm.truffle.");
         safePackages.add("com.oracle.svm.enterprise.truffle.");
     }
 
@@ -454,7 +454,7 @@ public class PermissionsFeature implements Feature {
         if (LambdaUtils.isLambdaType(type)) {
             return true;
         }
-        Class<?> javaClass = type.getJavaClass();
+        Class<?> javaClass = OriginalClassProvider.getJavaClass(type);
         return javaClass != null && javaClass.isAnonymousClass();
     }
 
@@ -605,7 +605,7 @@ public class PermissionsFeature implements Feature {
             return;
         }
 
-        if (Proxy.isProxyClass(mNode.getOwner().getJavaClass())) {
+        if (JVMCIReflectionUtil.isProxyClass(mNode.getOwner())) {
             /*
              * Starting JDK-23+26 Proxy generated code does unsafe compare and set. The generated
              * proxy method calls the used invocation handler which is checked for possible unsafe
@@ -912,7 +912,7 @@ public class PermissionsFeature implements Feature {
      * @param methodNode the {@link BaseMethodNode} to check
      */
     private static boolean isSystemClass(BaseMethodNode methodNode) {
-        return isSystemClass(methodNode.getOwner().getJavaClass());
+        return isSystemClass(OriginalClassProvider.getJavaClass(methodNode.getOwner()));
     }
 
     private static boolean isSystemClass(Class<?> clz) {

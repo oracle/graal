@@ -48,11 +48,12 @@ import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
@@ -210,7 +211,9 @@ public class CardTableBasedRememberedSet implements RememberedSet {
                 AlignedChunkRememberedSet.dirtyCardForObject(holderObject, false);
             } else {
                 assert ObjectHeaderImpl.isUnalignedObject(holderObject);
-                UnalignedChunkRememberedSet.dirtyCardForObject(holderObject, objRef, false);
+                /* Stored continuations use imprecise card marking, so their scanner checks at the start of the object. */
+                Pointer address = holderObject instanceof StoredContinuation ? Word.objectToUntrackedPointer(holderObject) : objRef;
+                UnalignedChunkRememberedSet.dirtyCardForObject(holderObject, address, false);
             }
         }
     }

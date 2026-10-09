@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import com.oracle.svm.core.SkipEpilogueSafepointCheck;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.nodes.ReturnNode;

@@ -39,19 +39,23 @@ import jdk.graal.compiler.core.phases.EconomyHighTier;
 import jdk.graal.compiler.core.phases.EconomyLowTier;
 import jdk.graal.compiler.core.phases.EconomyMarkFixReadsPhase;
 import jdk.graal.compiler.core.phases.EconomyMidTier;
+import jdk.graal.compiler.core.phases.LowTier;
 import jdk.graal.compiler.core.phases.MidTier;
+import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
-import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningReassociationPhase;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.FixReadsPhase;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase;
 import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
@@ -84,12 +88,16 @@ public class CompileQueueConfigurationTest {
         Suites tuned = CompileQueue.applyRegularSuiteTuning(original, defaults, false);
 
         Assert.assertNotSame(original, tuned);
-        Assert.assertNull(tuned.getMidTier().findPhase(LoopPartialUnrollPhase.class));
+        Assert.assertNull(tuned.getHighTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNull(tuned.getMidTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNull(tuned.getMidTier().findPhase(SimpleLoopPartialUnrollPhase.class));
         Assert.assertNull(tuned.getMidTier().findPhase(LoopVectorizationPhase.class));
         Assert.assertNull(tuned.getMidTier().findPhase(NonCountedStripMiningPhase.class));
         Assert.assertEquals(-1, phaseIndex(tuned.getMidTier(), LoopRotationPhase.class));
         Assert.assertNotNull(tuned.getMidTier().findPhase(CountedStripMiningPhase.class));
-        Assert.assertNotNull(original.getMidTier().findPhase(LoopPartialUnrollPhase.class));
+        Assert.assertNotNull(original.getHighTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNotNull(original.getMidTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNotNull(original.getMidTier().findPhase(SimpleLoopPartialUnrollPhase.class));
         Assert.assertNotNull(original.getMidTier().findPhase(LoopVectorizationPhase.class));
         Assert.assertNotNull(original.getMidTier().findPhase(NonCountedStripMiningPhase.class));
         Assert.assertTrue(phaseIndex(original.getMidTier(), LoopRotationPhase.class) >= 0);
@@ -101,9 +109,25 @@ public class CompileQueueConfigurationTest {
         optionsMap.put(LoopRotationPhase.Options.LoopRotation, true);
         OptionValues explicit = new OptionValues(optionsMap);
         Suites explicitSuites = CompileQueue.applyRegularSuiteTuning(createRegularTestSuites(explicit), explicit, false);
-        Assert.assertNotNull(explicitSuites.getMidTier().findPhase(LoopPartialUnrollPhase.class));
+        Assert.assertNotNull(explicitSuites.getHighTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNotNull(explicitSuites.getMidTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNotNull(explicitSuites.getMidTier().findPhase(SimpleLoopPartialUnrollPhase.class));
         Assert.assertNotNull(explicitSuites.getMidTier().findPhase(LoopVectorizationPhase.class));
         Assert.assertTrue(phaseIndex(explicitSuites.getMidTier(), LoopRotationPhase.class) >= 0);
+
+        EconomicMap<OptionKey<?>, Object> aggressiveOptionsMap = OptionValues.newOptionMap();
+        aggressiveOptionsMap.put(AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, false);
+        OptionValues aggressiveDisabled = new OptionValues(aggressiveOptionsMap);
+        Suites aggressiveDisabledSuites = CompileQueue.applyRegularSuiteTuning(createRegularTestSuites(aggressiveDisabled), aggressiveDisabled, false);
+        Assert.assertNull(aggressiveDisabledSuites.getHighTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNull(aggressiveDisabledSuites.getMidTier().findPhase(AggressivePartialUnrollPhase.class));
+        Assert.assertNull(aggressiveDisabledSuites.getMidTier().findPhase(SimpleLoopPartialUnrollPhase.class));
+
+        EconomicMap<OptionKey<?>, Object> aggressiveEnabledOptionsMap = OptionValues.newOptionMap();
+        aggressiveEnabledOptionsMap.put(AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, true);
+        OptionValues aggressiveEnabled = new OptionValues(aggressiveEnabledOptionsMap);
+        Suites aggressiveEnabledSuites = CompileQueue.applyRegularSuiteTuning(createRegularTestSuites(aggressiveEnabled), aggressiveEnabled, false);
+        Assert.assertNotNull(aggressiveEnabledSuites.getMidTier().findPhase(SimpleLoopPartialUnrollPhase.class));
 
         Suites maximumSuites = createRegularTestSuites(defaults);
         Assert.assertSame(maximumSuites, CompileQueue.applyRegularSuiteTuning(maximumSuites, defaults, true));
@@ -123,7 +147,9 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
+        Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, true, true);
@@ -141,7 +167,9 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
+        Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
 
         map = OptionValues.newOptionMap();
         SubstrateOptions.configureOptimizeForCodeSize(map, false, false, false);
@@ -154,7 +182,9 @@ public class CompileQueueConfigurationTest {
         Assert.assertTrue(ConditionalMoveOptimizationPhase.Options.CMoveALot.getValue(options));
         Assert.assertFalse(GraalOptions.OptDuplication.getValue(options));
         Assert.assertFalse(PullThroughPhiPhase.Options.OptPullThroughPhi.getValue(options));
+        Assert.assertFalse(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options));
         Assert.assertFalse(GraalOptions.EarlyExpandCheckCast.getValue(options));
+        Assert.assertFalse(LowTier.Options.BreakChainedPhis.getValue(options));
     }
 
     @Test
@@ -183,7 +213,7 @@ public class CompileQueueConfigurationTest {
     }
 
     private static Suites createRegularTestSuites(OptionValues options) {
-        return new Suites(new PhaseSuite<>(), new MidTier(options), new PhaseSuite<>());
+        return new Suites(new HighTier(options), new MidTier(options), new PhaseSuite<>());
     }
 
     private static Suites createFallbackTestSuites(OptionValues options) {

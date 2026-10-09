@@ -76,10 +76,10 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.graal.code.AssignedLocation;
+import com.oracle.svm.jvmci.shared.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.shared.util.VMError;
 
@@ -426,7 +426,15 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
                 returnLocation = getReturnRegister(returnKind).asValue(returnValueKind);
             }
         }
-        return new SubstrateCallingConvention(type, kinds, currentStackOffset, returnLocation, locations);
+        AllocatableValue[] additionalReturnLocations = new AllocatableValue[type.additionalReturnAssignments.length];
+        for (int i = 0; i < additionalReturnLocations.length; i++) {
+            AssignedLocation assignment = type.additionalReturnAssignments[i];
+            VMError.guarantee(assignment.assignsToRegister(), "Additional return must be assigned to a register");
+            ValueKind<?> valueKind = valueKindFactory.getValueKind(type.additionalReturnKinds[i].getStackKind());
+            VMError.guarantee(target.arch.canStoreValue(assignment.register().getRegisterCategory(), valueKind.getPlatformKind()), "Cannot assign additional return to register.");
+            additionalReturnLocations[i] = assignment.register().asValue(valueKind);
+        }
+        return new SubstrateCallingConvention(type, kinds, currentStackOffset, returnLocation, additionalReturnLocations, locations);
     }
 
     @Override

@@ -61,7 +61,7 @@ import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.core.thread.OSThreadId;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBoolean;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
@@ -146,7 +146,7 @@ public abstract class VMThreads {
      * started thread which was attached to the isolate. This distinction determines the teardown
      * process for the thread.
      */
-    private static final FastThreadLocalBytes<Pointer> StartedByCurrentIsolate = FastThreadLocalFactory.createBytes(() -> 1, "VMThreads.StartedByCurrentIsolate");
+    private static final FastThreadLocalBoolean StartedByCurrentIsolate = FastThreadLocalFactory.createBoolean("VMThreads.StartedByCurrentIsolate");
 
     private static final int STATE_UNINITIALIZED = 0;
     private static final int STATE_FAILED = 1;
@@ -245,7 +245,7 @@ public abstract class VMThreads {
     public void initializeNewlyStartedThread(IsolateThread thread, Isolate isolate) {
         assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
         IsolateTL.set(thread, isolate);
-        StartedByCurrentIsolate.getAddress(thread).writeByte(0, (byte) 1);
+        StartedByCurrentIsolate.set(thread, true);
     }
 
     @Uninterruptible(reason = "Thread state no longer set up.")
@@ -320,7 +320,7 @@ public abstract class VMThreads {
         }
 
         /* Set well-known thread-local values before publishing the thread. */
-        StartedByCurrentIsolate.getAddress().writeByte(0, (byte) (startedByCurrentIsolate ? 1 : 0));
+        StartedByCurrentIsolate.set(startedByCurrentIsolate);
         OSThreadIdTL.set(getCurrentOSThreadId());
         OSThreadHandleTL.set(getCurrentOSThreadHandle());
 
@@ -450,7 +450,7 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
-        return StartedByCurrentIsolate.getAddress(thread).readByte(0) != 0;
+        return StartedByCurrentIsolate.get(thread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

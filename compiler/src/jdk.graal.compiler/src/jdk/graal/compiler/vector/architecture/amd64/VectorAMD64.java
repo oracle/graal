@@ -76,7 +76,6 @@ public final class VectorAMD64 extends VectorArchitecture {
     public final AMD64 arch;
     private final boolean enabled;
     private final int objectAlignment;
-    private final boolean enableObjectVectorization;
 
     private int maxVectorSize;
 
@@ -89,17 +88,20 @@ public final class VectorAMD64 extends VectorArchitecture {
             return false;
         }
         VectorAMD64 that = (VectorAMD64) o;
-        return enabled == that.enabled && objectAlignment == that.objectAlignment && enableObjectVectorization == that.enableObjectVectorization && maxVectorSize == that.maxVectorSize &&
-                        Objects.equals(arch, that.arch);
+        return enabled == that.enabled && objectAlignment == that.objectAlignment && maxVectorSize == that.maxVectorSize && Objects.equals(arch, that.arch);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), arch, enabled, objectAlignment, enableObjectVectorization, maxVectorSize);
+        return Objects.hash(super.hashCode(), arch, enabled, objectAlignment, maxVectorSize);
     }
 
     public VectorAMD64(AMD64 arch, boolean enabled, int oopVectorStride, boolean useCompressedOops, int objectAlignment) {
-        this(arch, enabled, oopVectorStride, useCompressedOops, objectAlignment, arch.getLargestStorableKind(AMD64.XMM).getSizeInBytes(), true);
+        this(arch, enabled, oopVectorStride, useCompressedOops, objectAlignment, true);
+    }
+
+    public VectorAMD64(AMD64 arch, boolean enabled, int oopVectorStride, boolean useCompressedOops, int objectAlignment, boolean enableObjectVectorization) {
+        this(arch, enabled, oopVectorStride, useCompressedOops, objectAlignment, arch.getLargestStorableKind(AMD64.XMM).getSizeInBytes(), enableObjectVectorization);
     }
 
     public VectorAMD64(AMD64 arch, int oopVectorStride, boolean useCompressedOops, int objectAlignment, int maxVectorSize, boolean enableObjectVectorization) {
@@ -107,12 +109,11 @@ public final class VectorAMD64 extends VectorArchitecture {
     }
 
     private VectorAMD64(AMD64 arch, boolean enabled, int oopVectorStride, boolean useCompressedOops, int objectAlignment, int maxVectorSize, boolean enableObjectVectorization) {
-        super(oopVectorStride, useCompressedOops);
+        super(oopVectorStride, useCompressedOops, enableObjectVectorization);
         this.arch = arch;
         this.enabled = enabled;
         this.objectAlignment = objectAlignment;
         this.maxVectorSize = Math.min(maxVectorSize, maxVectorSizeForArchitecture(arch));
-        this.enableObjectVectorization = enableObjectVectorization;
     }
 
     @Override
@@ -586,7 +587,7 @@ public final class VectorAMD64 extends VectorArchitecture {
      * </ul>
      */
     private int getSupportedVectorLength(Stamp stamp, int maxLength, AVXSize avxSize) {
-        if (stamp instanceof AbstractObjectStamp && !enableObjectVectorization) {
+        if (!supportsObjectVectorization() && stamp instanceof AbstractObjectStamp) {
             /* Only handling primitive values. */
             return 1;
         }

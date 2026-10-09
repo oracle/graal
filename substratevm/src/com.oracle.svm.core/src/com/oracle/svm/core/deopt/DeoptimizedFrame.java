@@ -275,10 +275,12 @@ public abstract class DeoptimizedFrame {
             this.lockData = lockData;
         }
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public Object getLockData() {
             return lockData;
         }
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public Object getObject() {
             return object;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -59,14 +60,16 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jni.JNITestingBackdoor;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes;
+import com.oracle.svm.core.jvmstat.PerfUnit;
+import com.oracle.svm.core.jvmstat.PerfVariability;
 import com.oracle.svm.core.log.DebugLog;
 import com.oracle.svm.core.os.RawFileOperationSupport;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.thread.SafepointCheckCounter;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointSetup;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -76,6 +79,8 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -105,6 +110,10 @@ public class InitialLayerFeature implements InternalFeature {
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "getRuntime"), PINNED_TO_INITIAL_LAYER);
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Runtime.class, "gc"), PINNED_TO_INITIAL_LAYER);
         compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(Class.class, "getResource", String.class), PINNED_TO_INITIAL_LAYER);
+        Class<?> runtimeOptionSupportImpl = ReflectionUtil.lookupClass("com.oracle.svm.guest.staging.option.RuntimeOptionsSupportImpl");
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(runtimeOptionSupportImpl, "get", String.class), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(OptionKey.class, "getValue", OptionValues.class), PINNED_TO_INITIAL_LAYER);
+        compilationSupport.registerCompilationBehavior(ReflectionUtil.lookupMethod(RuntimeStateTrimConfig.Builder.class, "build"), PINNED_TO_INITIAL_LAYER);
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         access.getUniverse().lookup(GuestAccess.elements().Uninterruptible).registerAsReachable("Core type");
@@ -152,6 +161,8 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(RuntimeCodeInfoMemory.SizeCounters.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(CEnumArrayLookup.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(CEnumMapLookup.class).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(PerfVariability.class).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(PerfUnit.class).registerAsInstantiated("Core type");
 
         registerAllTypes(metaAccess.lookupJavaType(JNIFunctionPointerTypes.class), t -> t.registerAsReachable("Core type"));
         registerAllTypes(metaAccess.lookupJavaType(CEntryPointOptions.class), t -> t.registerAsReachable("Core type"));
@@ -164,8 +175,7 @@ public class InitialLayerFeature implements InternalFeature {
         MetaAccessProvider metaAccess = access.getProviders().getMetaAccess();
         ConstantReflectionProvider constantReflection = access.getProviders().getConstantReflection();
 
-        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elements.java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class,
-                        Class[].class);
+        ResolvedJavaMethod getProxyClassMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elements.java_lang_reflect_Proxy, "getProxyClass", ClassLoader.class, Class[].class);
         ResolvedJavaMethod appClassLoaderMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, access.elements.jdk_internal_loader_ClassLoaders, "appClassLoader");
 
         JavaConstant appClassLoader = access.invoke(appClassLoaderMethod, null);

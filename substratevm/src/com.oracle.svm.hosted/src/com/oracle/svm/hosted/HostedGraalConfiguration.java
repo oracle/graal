@@ -42,6 +42,7 @@ import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
 import jdk.graal.compiler.phases.common.LateLockEliminationPhase;
+import jdk.graal.compiler.phases.common.writesinking.WriteSinkingPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
@@ -80,6 +81,8 @@ public class HostedGraalConfiguration extends GraalConfiguration {
              */
             position.remove();
         }
+        /* Write sinking can move stores across deoptimization entry points. */
+        suites.getLowTier().removePhase(WriteSinkingPhase.class);
     }
 
     /// Installs the substrate priority inliner when it is enabled for hosted compilation.

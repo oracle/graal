@@ -36,7 +36,7 @@ import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.pltgot.GOTEntryAllocator;

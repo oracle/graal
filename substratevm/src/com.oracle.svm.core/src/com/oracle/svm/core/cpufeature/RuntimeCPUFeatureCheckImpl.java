@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,11 +50,11 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -300,6 +300,10 @@ public final class RuntimeCPUFeatureCheckImpl {
 
     public static boolean intrinsify(GraphBuilderContext b, Enum<?> first, Enum<?>... rest) {
         return buildRuntimeCPUFeatureCheck(b, toEnumSet(first, rest));
+    }
+
+    public static boolean intrinsify(GraphBuilderContext b, EnumSet<?> set) {
+        return buildRuntimeCPUFeatureCheck(b, set);
     }
 
     /**

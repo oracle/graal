@@ -31,20 +31,23 @@ import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.guards.GuardRangeGroupingPhase;
 import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPhase;
+import jdk.graal.compiler.guards.optimistic.SpeculativeStoreChecksPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.InjectLoopCounterStampsPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
-import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.loop.phases.LoopRotationPhase;
 import jdk.graal.compiler.loop.phases.LoopPredicationPhase;
 import jdk.graal.compiler.loop.phases.OptimizeLoopAccessesPhase;
+import jdk.graal.compiler.loop.phases.RangeCheckEliminationPhase;
 import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.nodes.memory.MemoryMap;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -52,6 +55,7 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.BreakChainedPhisPhase;
 import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
@@ -65,10 +69,12 @@ import jdk.graal.compiler.phases.common.OptimizeDivPhase;
 import jdk.graal.compiler.phases.common.OptimizeExactArithmeticPhase;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
+import jdk.graal.compiler.phases.common.writesinking.WriteSinkingPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.common.priorityinline.PriorityInliningPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase;
 import jdk.graal.compiler.phases.constantblinding.ConstantBlindingPhase.Options;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode;
 import jdk.graal.compiler.vector.nodes.SimplifiableVectorNode.VectorSimplifier;
@@ -214,6 +220,26 @@ public enum CEOptimization {
     EarlyExpandCheckCast(GraalOptions.EarlyExpandCheckCast, EarlyExpandCheckCastPhase.class),
 
     /**
+     * {@link SpeculativeStoreChecksPhase} tries to remove array store checks by speculating that
+     * the <b>declared</b> type of the array is actually its <b>exact</b> type. This can improve
+     * program performance since less type checks are necessary.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link GraalOptions#SpeculativeStoreCheck}.
+     */
+    SpeculativeStoreChecks(GraalOptions.SpeculativeStoreCheck, SpeculativeStoreChecksPhase.class),
+
+    /**
+     * {@link PartialRedundancySchedulePhase} is Graal's implementation of partial redundancy
+     * elimination. An optimization that tries to improve program performance by removing
+     * (partially) redundant operations along branches.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase.Options#PartialRedundancyScheduling}.
+     */
+    PartialRedundancyElimination(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling, PartialRedundancySchedulePhase.class),
+
+    /**
      * {@link SchedulePhase} is Graal's implementation of an instruction scheduling algorithm for
      * the compiler IR. <a href="http://ssw.jku.at/General/Staff/GD/APPLC-2013-paper_12.pdf">Graal
      * IR</a> is a graph-based intermediate representation loosely based on the idea of the
@@ -227,6 +253,15 @@ public enum CEOptimization {
     InstructionScheduling(null, SchedulePhase.class),
 
     /**
+     * {@link BreakChainedPhisPhase} is an optimization that optimizes chains of loop phis by using
+     * rematerialization on the HIR level.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link LowTier.Options#BreakChainedPhis}.
+     */
+    BreakChainedPhisPhase(LowTier.Options.BreakChainedPhis, BreakChainedPhisPhase.class),
+
+    /**
      * {@link FloatingReadPhase} rewrites fixed memory read nodes to floating read nodes that can
      * move more freely (see {@link #InstructionScheduling}). It builds a {@linkplain MemoryMap
      * memory graph} which allows better optimization of memory related instructions.
@@ -235,6 +270,15 @@ public enum CEOptimization {
      * {@link GraalOptions#OptFloatingReads}.
      */
     FloatingReads(GraalOptions.OptFloatingReads, FloatingReadPhase.class),
+
+    /**
+     * {@link WriteSinkingPhase} moves eligible writes out of loops when no intervening read needs
+     * the value written in the loop body.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link LowTier.Options#OptWriteSinking}.
+     */
+    WriteSinking(LowTier.Options.OptWriteSinking, WriteSinkingPhase.class),
 
     /**
      * {@link ReadEliminationPhase} removes redundant memory access operations using a control-flow
@@ -331,6 +375,16 @@ public enum CEOptimization {
      * {@link MidTier.Options#StripMineCountedLoops}.
      */
     CountedStripMining(MidTier.Options.StripMineCountedLoops, CountedStripMiningPhase.class),
+
+    /**
+     * {@link RangeCheckEliminationPhase} is an optimization that tries to rewrite 64bit integer
+     * range checks (in general guards) to semantically equivalent 32bit range guards in order to
+     * make them amenable to other optimizations like {@link SpeculativeGuardMovementPhase}. This
+     * optimization is enabled when {@link CountedStripMiningPhase} is enabled. It can be disabled
+     * selectively with
+     * {@link jdk.graal.compiler.loop.phases.RangeCheckEliminationPhase.Options#RangeCheckElimination}.
+     */
+    RangeCheckElimination(RangeCheckEliminationPhase.Options.RangeCheckElimination, RangeCheckEliminationPhase.class),
 
     /**
      * {@link NonCountedStripMiningPhase} is an optimization that tiles the iteration space of
@@ -462,14 +516,19 @@ public enum CEOptimization {
      */
     LoopUnswitching(GraalOptions.LoopUnswitch, LoopUnswitchingPhase.class),
 
-    /**
-     * {@link LoopPartialUnrollPhase} is a compiler optimization unrolling the body of a loop
-     * multiple times to improve instruction-level parallelism, reduce the loop control overhead and
-     * enable other optimizations.
-     *
-     * This phase is enabled by default and can be disabled with {@link GraalOptions#PartialUnroll}.
-     */
-    PartialLoopUnrolling(GraalOptions.PartialUnroll, LoopPartialUnrollPhase.class),
+    /// [AggressivePartialUnrollPhase] is a compiler optimization unrolling the body of a loop
+    /// multiple times to improve instruction-level parallelism, reduce the loop control overhead
+    /// and enable other optimizations. It handles a broad range of loop shapes and uses simulation
+    /// to estimate the benefit of each unrolling step.
+    ///
+    /// This phase is enabled by default and can be disabled with
+    /// [AggressivePartialUnrollPhase.Options#AggressivePartialUnroll]. The master
+    /// [GraalOptions#PartialUnroll] switch also disables this optimization.
+    PartialLoopUnrolling(AggressivePartialUnrollPhase.Options.AggressivePartialUnroll, AggressivePartialUnrollPhase.class),
+
+    /// [SimpleLoopPartialUnrollPhase] provides a restricted partial loop unrolling algorithm.
+    /// It is controlled by the master [GraalOptions#PartialUnroll] switch.
+    SimplePartialLoopUnrolling(GraalOptions.PartialUnroll, SimpleLoopPartialUnrollPhase.class),
 
     /**
      * {@link BoxNodeOptimizationPhase} is a compiler optimization for Java box operations. The

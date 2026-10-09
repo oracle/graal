@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -45,6 +45,7 @@ import jdk.graal.compiler.replacements.nodes.MemoryKillStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -119,8 +120,12 @@ public final class StringUTF16CompressNode extends MemoryKillStubIntrinsicNode {
         gen.setResult(this, res);
     }
 
+    public static EnumSet<AMD64.CPUFeature> runtimeFeaturesAMD64() {
+        return EnumSet.of(AMD64.CPUFeature.SSE4_2, AMD64.CPUFeature.AVX);
+    }
+
     @NodeIntrinsic
-    @GenerateStub
+    @GenerateStub(runtimeCPUFeaturesAMD64 = "runtimeFeaturesAMD64")
     public static native int stringUTF16Compress(Pointer src, Pointer dst, int len);
 
     @NodeIntrinsic

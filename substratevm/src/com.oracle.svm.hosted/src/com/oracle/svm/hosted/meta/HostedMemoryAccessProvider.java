@@ -163,7 +163,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
             throw VMError.shouldNotReachHere("May only be called for arrays.");
         }
 
-        JavaKind arrayKind = JavaKind.fromJavaClass(type.getComponentType().getJavaClass());
+        JavaKind arrayKind = type.getComponentType().getJavaKind();
         int runtimeBaseOffset = hMetaAccess.getArrayBaseOffset(arrayKind);
         int runtimeIndexScale = hMetaAccess.getArrayIndexScale(arrayKind);
 

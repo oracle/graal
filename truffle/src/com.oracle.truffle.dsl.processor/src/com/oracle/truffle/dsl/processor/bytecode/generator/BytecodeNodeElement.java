@@ -1690,6 +1690,9 @@ final class BytecodeNodeElement extends AbstractElement {
             parent.emitWriteBytecodeIndexToFrame(b, localFrame(), "-1");
         }
 
+        if (tier.isCached()) {
+            b.startAssign("bci").startStaticCall(types.CompilerDirectives, "mergeExplodeKey").string("bci").end(2);
+        }
         b.string("loop: ").startWhile().string("true").end().startBlock();
         if (tier.isCached()) {
             b.lineComment("Detect if a tier-down occurred.");

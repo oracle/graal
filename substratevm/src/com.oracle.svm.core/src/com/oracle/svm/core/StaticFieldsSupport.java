@@ -41,8 +41,8 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
@@ -183,6 +183,11 @@ public final class StaticFieldsSupport {
         return StaticFieldBaseProxyNode.staticFieldBaseProxyNode(MultiLayeredStaticFieldsBase.forLayer(layerNum).getPrimitiveFields());
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Object staticFieldBaseProxy(Object staticFields) {
+        return StaticFieldBaseProxyNode.staticFieldBaseProxyNode(staticFields);
+    }
+
     public static FloatingNode createStaticFieldBaseNode(ResolvedJavaField field) {
         if (field instanceof SharedField sField) {
             assert sField.getStaticFieldBaseForRuntimeLoadedClass() == null : "Static field support with static field base should be handled in lowering providers";
@@ -214,7 +219,6 @@ public final class StaticFieldsSupport {
          */
         protected StaticFieldBaseProxyNode(ValueNode staticFieldsArray) {
             super(TYPE, StampFactory.objectNonNull());
-            assert ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.useRistretto();
             this.staticFieldsArray = staticFieldsArray;
         }
 

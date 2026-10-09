@@ -36,7 +36,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.IdentityMethodAddressResolver;
 import com.oracle.svm.core.pltgot.MethodAddressResolver;
 import com.oracle.svm.hosted.FeatureImpl;

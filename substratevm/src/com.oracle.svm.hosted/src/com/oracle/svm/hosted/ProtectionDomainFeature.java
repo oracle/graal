@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.guest.staging.jdk.ProtectionDomainSupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.shared.util.ReflectionUtil;

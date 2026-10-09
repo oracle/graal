@@ -37,7 +37,7 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.nodes.foreign.MemoryArenaValidInScopeNode;
 import com.oracle.svm.core.thread.SafepointCheckCounter;

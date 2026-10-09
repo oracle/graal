@@ -42,15 +42,31 @@ import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.GCRelatedMXBeans;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.g1.G1CommittedMemoryProvider;
+import com.oracle.svm.core.g1.G1Constants;
+import com.oracle.svm.core.g1.G1Heap;
+import com.oracle.svm.core.g1.G1ImageHeapInfo;
+import com.oracle.svm.core.g1.G1Metaspace;
+import com.oracle.svm.core.g1.G1ObjectHeader;
+import com.oracle.svm.core.g1.G1Options;
+import com.oracle.svm.core.g1.G1PerfData;
+import com.oracle.svm.core.g1.G1PhysicalMemorySupport;
+import com.oracle.svm.core.g1.G1PinnedObjectSupport;
+import com.oracle.svm.core.g1.G1RelatedMXBeans;
+import com.oracle.svm.core.g1.graal.G1AllocationSupport;
+import com.oracle.svm.core.g1.graal.G1BarrierSetProvider;
+import com.oracle.svm.core.g1.graal.SubstrateG1WriteBarrierSnippets;
 import com.oracle.svm.core.gc.shared.graal.NativeGCAllocationSupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -64,26 +80,20 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfManager;
+import com.oracle.svm.core.metaspace.AbstractMetaspace;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.posix.darwin.DarwinPhysicalMemorySupportImpl;
 import com.oracle.svm.core.posix.linux.LinuxPhysicalMemorySupportImpl;
+import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.windows.WindowsPhysicalMemorySupportImpl;
-import com.oracle.svm.core.g1.G1CommittedMemoryProvider;
-import com.oracle.svm.core.g1.G1Heap;
-import com.oracle.svm.core.g1.G1ImageHeapInfo;
-import com.oracle.svm.core.g1.G1ObjectHeader;
-import com.oracle.svm.core.g1.G1Options;
-import com.oracle.svm.core.g1.G1PerfData;
-import com.oracle.svm.core.g1.G1PhysicalMemorySupport;
-import com.oracle.svm.core.g1.G1PinnedObjectSupport;
-import com.oracle.svm.core.g1.G1RelatedMXBeans;
-import com.oracle.svm.core.g1.graal.G1AllocationSupport;
-import com.oracle.svm.core.g1.graal.G1BarrierSetProvider;
-import com.oracle.svm.core.g1.graal.SubstrateG1WriteBarrierSnippets;
+import com.oracle.svm.guest.staging.SubstrateGCOptions;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -97,6 +107,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
@@ -128,6 +139,16 @@ public class G1Feature implements InternalFeature {
         G1CommittedMemoryProvider memoryProvider = new G1CommittedMemoryProvider();
         ImageSingletons.add(CommittedMemoryProvider.class, memoryProvider);
         ImageSingletons.add(G1CommittedMemoryProvider.class, memoryProvider);
+
+        if (RuntimeClassLoading.isSupported() && ImageLayerBuildingSupport.firstImageBuild()) {
+            /* The aligned metaspace reservation must leave room for image-heap hubs. */
+            int metaspaceSize = NumUtil.roundUp(SubstrateGCOptions.ConcealedOptions.getMaxMetaspaceSize(), G1Options.G1HeapRegionSize.getValue());
+            if (!new G1ObjectHeader().isInHubAddressSpace(G1Heap.getNullRegionSize() + metaspaceSize)) {
+                throw UserError.invalidOptionValue(SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize, SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize.getValue(),
+                                "The metaspace reservation leaves no address space for image-heap hubs with the selected G1 object layout");
+            }
+            ImageSingletons.add(Metaspace.class, new G1Metaspace());
+        }
 
         ImageSingletons.add(PlatformPhysicalMemorySupport.class, new G1PhysicalMemorySupport(createPlatformPhysicalMemorySupport()));
         ImageSingletons.add(GCRelatedMXBeans.class, new G1RelatedMXBeans());
@@ -162,12 +183,30 @@ public class G1Feature implements InternalFeature {
 
         G1PinnedObjectSupport pinnedObjectSupport = new G1PinnedObjectSupport();
         ImageSingletons.add(PinnedObjectSupport.class, pinnedObjectSupport);
+
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            registerDiagnosticThunks();
+        }
+    }
+
+    private static void registerDiagnosticThunks() {
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new G1Heap.DumpHeapSettingsAndGCInternalState());
+        if (RuntimeClassLoading.isSupported()) {
+            SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new AbstractMetaspace.DumpMetaspaceInfo());
+        }
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new G1Heap.DumpRegionInformation());
+        SubstrateDiagnostics.DiagnosticThunkRegistry.singleton().add(new G1Heap.DumpCurrentGCThreadName());
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
         NativeGCAccessedFields.markAsAccessed(accessImpl, G1AccessedFields.ACCESSED_CLASSES);
+
+        /* Ensure that thread locals whose offsets are only used by native code are discovered. */
+        ResolvedJavaType g1HeapType = accessImpl.getMetaAccess().lookupJavaType(G1Heap.class);
+        accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "barrierAndAllocationDataTL"), "its offset is used by G1 native code");
+        accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "javaThreadTL"), "its offset is used by G1 native code");
 
         /* G1 needs a custom filler array class that does not match int[].class. */
         accessImpl.registerAsUsed(FillerArray.class);
@@ -199,6 +238,8 @@ public class G1Feature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
+        assert hotThreadLocalDataHasSmallOffsets();
+
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
         G1Heap heap = G1Heap.get();
 
@@ -209,8 +250,8 @@ public class G1Feature implements InternalFeature {
         access.registerAsImmutable(imageHeapInfo.getRegionFreeSpaces());
 
         /* Collect data and offsets that are needed when initializing G1. */
-        byte[] fieldOffsets = NativeGCAccessedFields.writeOffsets(access, G1ObjectHeader.getMarkWordOffset(), G1Heap.javaThreadTL, G1AllocationSupport.podReferenceMapTL,
-                        G1AccessedFields.ACCESSED_CLASSES);
+        byte[] fieldOffsets = NativeGCAccessedFields.writeOffsets(access, G1ObjectHeader.getMarkWordOffset(), G1Heap.barrierAndAllocationDataTL, G1Heap.javaThreadTL,
+                        G1AllocationSupport.podReferenceMapTL, G1AccessedFields.ACCESSED_CLASSES);
         heap.setAccessedFieldOffsets(fieldOffsets);
         access.registerAsImmutable(fieldOffsets);
     }
@@ -275,10 +316,13 @@ public class G1Feature implements InternalFeature {
         verifyOptionEnabled(SubstrateOptions.ConcealedOptions.UseDedicatedVMOperationThread);
         verifyOptionEnabled(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
         verifyOptionEnabled(SubstrateOptions.UseNullRegion);
+        if (SubstrateOptions.useCompressedReferences()) {
+            verifyOptionEnabled(SubstrateOptions.ConcealedOptions.UseCompressedReferenceShift);
+        }
 
         UserError.guarantee(!SubstrateOptions.SupportCompileInIsolates.getValue(), "The G1 garbage collector ('--gc=G1') does not support isolated compilation.");
-        UserError.guarantee(!RuntimeClassLoading.isSupported(), "The G1 garbage collector ('--gc=G1') does not support option '%s' because it requires metaspace support.",
-                        RuntimeClassLoading.Options.RuntimeClassLoading.getName());
+
+        SubstrateGCOptions.validateMaxMetaspaceSize(G1Options.G1HeapRegionSize.getValue(), G1Heap.getNullRegionSize());
     }
 
     private static void verifyOptionEnabled(SubstrateOptionKey<Boolean> option) {
@@ -336,5 +380,23 @@ public class G1Feature implements InternalFeature {
             referenceKind = JavaKind.Int;
         }
         return target.arch.getPlatformKind(referenceKind).getSizeInBytes();
+    }
+
+    private static boolean hotThreadLocalDataHasSmallOffsets() {
+        VMThreadLocalOffsetProvider offsetProvider = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class);
+        int structOffset = offsetProvider.offsetOf(G1Heap.barrierAndAllocationDataTL);
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.satbQueueIndexOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.satbQueueBufferOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.satbQueueMarkingActiveOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.tlabTopOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.tlabEndOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.cardQueueIndexOffset());
+        assert hasSmallThreadLocalOffset(structOffset, G1Constants.cardQueueBufferOffset());
+        return true;
+    }
+
+    private static boolean hasSmallThreadLocalOffset(int structOffset, int fieldOffset) {
+        int offset = structOffset + fieldOffset;
+        return offset <= FastThreadLocal.BYTE_OFFSET;
     }
 }

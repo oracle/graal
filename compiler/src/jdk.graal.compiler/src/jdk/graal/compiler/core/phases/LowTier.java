@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PlaceholderPhase;
 import jdk.graal.compiler.phases.common.AddressLoweringPhase;
+import jdk.graal.compiler.phases.common.BreakChainedPhisPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.ExpandLogicPhase;
@@ -49,6 +50,8 @@ import jdk.graal.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.common.WriteBarrierAdditionPhase;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
+import jdk.graal.compiler.phases.common.writesinking.WriteSinkingPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
@@ -58,11 +61,15 @@ import jdk.graal.compiler.virtual.phases.ea.LowTierReadEliminationPhase;
 
 public class LowTier extends BaseTier<LowTierContext> {
 
-    static class Options {
+    public static class Options {
 
         // @formatter:off
+        @Option(help = "Break chained phis", type = OptionType.Debug)
+        public static final OptionKey<Boolean> BreakChainedPhis = new OptionKey<>(true);
         @Option(help = "", type = OptionType.Debug)
         public static final OptionKey<Boolean> ProfileCompiledMethods = new OptionKey<>(false);
+        @Option(help = "Enable write sinking.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> OptWriteSinking = new OptionKey<>(true);
         // @formatter:on
 
     }
@@ -93,8 +100,16 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new OptimizeOffsetAddressPhase(canonicalizerWithGVN));
 
-        appendPhase(new FixReadsPhase(true,
-                        new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
+        if (PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options)) {
+            appendPhase(new FixReadsPhase(true, new PartialRedundancySchedulePhase()));
+        } else {
+            appendPhase(new FixReadsPhase(true,
+                            new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
+        }
+
+        if (Options.OptWriteSinking.getValue(options)) {
+            appendPhase(new WriteSinkingPhase(canonicalizerWithoutGVN));
+        }
 
         if (GraalOptions.OptReadElimination.getValue(options)) {
             appendPhase(new LowTierReadEliminationPhase(canonicalizerWithoutGVN));
@@ -116,6 +131,10 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new DeadCodeEliminationPhase(Required));
 
         appendPhase(new PropagateDeoptimizeProbabilityPhase());
+
+        if (Options.BreakChainedPhis.getValue(options)) {
+            appendPhase(new BreakChainedPhisPhase());
+        }
 
         appendPhase(new OptimizeExtendsPhase());
 

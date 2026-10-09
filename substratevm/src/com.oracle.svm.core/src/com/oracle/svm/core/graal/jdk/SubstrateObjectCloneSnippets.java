@@ -43,15 +43,16 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubSupport;
-import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -205,7 +206,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         ResolvedJavaType type = ObjectClone.getConcreteType(alias.stamp(NodeView.DEFAULT));
         if (type instanceof SharedType) {
             // Hybrids are instances with array-like encoding; cloning virtually is unimplemented.
-            int encoding = ((SharedType) type).getHub().getLayoutEncoding();
+            int encoding = DynamicHubProvider.getHub((SharedType) type).getLayoutEncoding();
             return !LayoutEncoding.isHybrid(encoding);
         }
         if (type != null && type.isArray()) {

@@ -2536,6 +2536,7 @@ mx_sdk_vm.register_graalvm_component(
         suite=_suite,
         name="Truffle API",
         short_name="tfla",
+        jlink=False,
         dir_name="truffle",
         license_files=[],
         third_party_license_files=[],

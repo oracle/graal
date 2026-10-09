@@ -32,7 +32,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
-import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.SimpleLoopPartialUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -134,7 +134,7 @@ public class LoopFragmentTest extends GraalCompilerTest {
         new GuardLoweringPhase().apply(g, getDefaultMidTierContext());
         new MidTierLoweringPhase(c).apply(g, getDefaultMidTierContext());
         new FrameStateAssignmentPhase().apply(g);
-        new LoopPartialUnrollPhase(new DefaultLoopPolicies(), c).apply(g, getDefaultHighTierContext());
+        new SimpleLoopPartialUnrollPhase(new DefaultLoopPolicies(), c).apply(g, getDefaultHighTierContext());
         assert g.verify();
         assert GraphOrder.assertSchedulableGraph(g);
 

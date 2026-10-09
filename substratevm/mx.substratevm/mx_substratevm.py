@@ -262,6 +262,7 @@ GraalTags = Tags([
     'terminus',
     'debuginfotest',
     'standalone_pointsto_unittests',
+    'driver_unittests',
     'native_unittests',
     'generic_field_type',
     'runtime_assertions',
@@ -514,6 +515,8 @@ def svm_gate_body(args, tasks):
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+StrictRuntimeJavaOptions']))
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+ClassForNameRespectsClassLoader', '-H:+StrictRuntimeJavaOptions']))
             hellomodule(args.extra_image_builder_arguments + svm_experimental_options(['-H:+RuntimeClassLoading', '-H:+AllowJRTFileSystem', '-H:+StrictRuntimeJavaOptions']))
+            sqlmoduletest(args.extra_image_builder_arguments)
+            smalljdktest(args.extra_image_builder_arguments)
 
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
@@ -566,6 +569,10 @@ def svm_gate_body(args, tasks):
             else:
                 standalone_pointsto_unittest(['espresso'])
                 standalone_pointsto_unittest(['host'])
+
+    with Task('driver unittests', tasks, tags=[GraalTags.driver_unittests]) as t:
+        if t:
+            jvm_unittest_distribution('SVM_DRIVER_TESTS')
 
     with Task('native unittests', tasks, tags=[GraalTags.native_unittests, GraalTags.all_native_unittests]) as t:
         if t:
@@ -709,7 +716,6 @@ TERMINUS_HELLO_WORLD_EXPECTED_FAILURE = """
     at jdk.internal.vm.ci/jdk.vm.ci.common.JVMCIError.shouldNotReachHere(JVMCIError.java:48)
     at jdk.graal.compiler.espresso.vmaccess/com.oracle.truffle.espresso.vmaccess.EspressoExternalSnippetReflectionProvider.originalClass(EspressoExternalSnippetReflectionProvider.java:124)
     at org.graalvm.nativeimage.base/com.oracle.svm.util.OriginalClassProvider.getJavaClass(OriginalClassProvider.java:60)
-    at org.graalvm.nativeimage.pointsto/com.oracle.graal.pointsto.meta.AnalysisType.getJavaClass(AnalysisType.java:936)
     at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.SVMHost.createHub(SVMHost.java:599)
     at org.graalvm.nativeimage.builder/com.oracle.svm.hosted.SVMHost.registerType(SVMHost.java:465)
     at org.graalvm.nativeimage.pointsto/com.oracle.graal.pointsto.meta.AnalysisUniverse.createType(AnalysisUniverse.java:314)
@@ -811,6 +817,7 @@ def _run_terminus_gate(args):
 
 
 def _run_terminus_user_feature_gate(args):
+    """Run user-feature tests for host/Espresso and the guest-module test only for fully isolated Espresso."""
     espresso_compiler_stub = 'espresso-compiler-stub'
     if not mx.suite(espresso_compiler_stub, fatalIfMissing=False):
         mx.abort(f'The {espresso_compiler_stub} suite is required for the Terminus user-feature test.\n'
@@ -865,6 +872,34 @@ def _run_terminus_user_feature_gate(args):
         if not expected_stacktrace.search(output):
             mx.abort(f'The {vmaccess_name} native-image output did not match the expected user-feature exception '
                      f'stack trace. Captured output:\n{output}')
+
+    module_test_class = 'com.oracle.svm.test.terminus.GuestModuleLayerTest'
+    module_exception = f'{module_test_class}$ModuleLayerTestException'
+    captured = mx.LinesOutputCapture()
+    with tempfile.TemporaryDirectory() as image_dir:
+        with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+            image_path = native_image(args.extra_image_builder_arguments +
+                                      svm_experimental_options([f'-H:Path={image_dir}']) + [
+                                          '-cp', test_distribution,
+                                          '-Dorg.graalvm.nativeimage.vmaccess.name=espresso',
+                                          '--features=' + module_test_class + '$TestFeature',
+                                          module_test_class,
+                                      ], out=mx.TeeOutputCapture(captured), err=mx.TeeOutputCapture(captured),
+                                      nonZeroIsFatal=False)
+
+        output = '\n'.join(captured.lines)
+        if exists(image_path):
+            mx.abort('The Terminus guest module layer native-image build unexpectedly succeeded for VMAccess espresso.\n'
+                     'The feature should throw after verifying the guest boot module set. Captured output:\n' + output)
+
+    expected_module_failure = re.compile(
+        rf'^Error: Feature defined by {re.escape(module_test_class + "$TestFeature")} unexpectedly failed with a\(n\) '
+        rf'{re.escape(module_exception)}\.[^\r\n]*(?:\r?\n|$)'
+        rf'^Caused by: {re.escape(module_exception)}: {re.escape("guest-module-layer-sentinel")}(?:\r?\n|$)',
+        re.MULTILINE)
+    if not expected_module_failure.search(output):
+        mx.abort('The Espresso native-image output did not match the expected guest module layer '
+                 'sentinel failure. Captured output:\n' + output)
 
 
 def _compute_native_unittest_args(extra_build_args=None, include_svm_test_features=True):
@@ -1542,6 +1577,15 @@ def _native_unittest(native_image, cmdline_args, custom_batch=None):
 
 def jvm_unittest(args):
     return mx_unittest.unittest(['--suite', 'substratevm'] + args)
+
+
+def jvm_unittest_distribution(distribution_name):
+    distribution = mx.distribution(distribution_name)
+    candidates = mx_unittest.find_test_candidates(['@Theory', '@Test', '@Parameters'], suite, get_jdk())
+    test_classes = sorted(test_class for test_class, dependency in candidates.items() if dependency == distribution)
+    if not test_classes:
+        mx.abort(f'No unit tests found in {distribution_name}. Did you forget to run "mx build"?')
+    return jvm_unittest(test_classes)
 
 
 @mx.command(suite_name=suite.name, command_name='standalone-pointsto-unittest', usage_msg='[host|espresso] [test-spec] [analysis-option ...]')
@@ -2249,12 +2293,14 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     # On the other hand, SVM_SHARED contains code that is shared between the guest and the builder. Conceptually, the
     # module is loaded twice, once in the guest and once in the builder. Thus, it can not be used for data sharing,
     # e.g., via static fields. It is only for sharing implementation for functionality that is used in both.
-    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM_GUEST_STAGING', 'substratevm:SVM_SHARED', 'sdk:VMACCESS_GUEST'],
+    jar_distributions=['substratevm:LIBRARY_SUPPORT', 'substratevm:SVM_GUEST', 'substratevm:SVM_GUEST_STAGING', 'substratevm:SVM_SHARED', 'substratevm:SVM_JVMCI_GUEST', 'substratevm:SVM_JVMCI_GUEST_STAGING', 'substratevm:SVM_JVMCI_SHARED', 'sdk:VMACCESS_GUEST'],
     builder_jar_distributions=[
         'substratevm:SVM',
         'substratevm:SVM_CONFIGURE',
         'substratevm:SVM_GUEST_STAGING',
         'substratevm:SVM_SHARED',
+        'substratevm:SVM_JVMCI_GUEST_STAGING',
+        'substratevm:SVM_JVMCI_SHARED',
         'espresso-shared:ESPRESSO_SVM',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
@@ -2794,6 +2840,7 @@ lib_jvm_preserved_modules = [
     'java.xml',
     'java.xml.crypto',
     'jdk.charsets',
+    'jdk.net',
 ]
 
 lib_jvm_experimental_build_args = (['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
@@ -2803,7 +2850,7 @@ if mx.is_linux():
         '-H:ExportedSymbolsVersion=SUNWprivate_1.1',
     ]
 
-lib_jvm_build_args = svm_experimental_options(lib_jvm_experimental_build_args)
+lib_jvm_build_args = ['--add-modules=jdk.net'] + svm_experimental_options(lib_jvm_experimental_build_args)
 if mx.is_linux():
     lib_jvm_build_args += [
         '-H:NativeLinkerOption=-Wl,-soname=libjvm.so'
@@ -3164,6 +3211,137 @@ def jnidestroyvmtest(args):
     ignores interrupts is running.
     """
     native_image_context_run(_jnidestroyvmtest, args)
+# The platform and Graal modules of a small JDK that can run the image builder: no java.se and no
+# java.sql, which is what a distribution that ships a slimmed-down JDK (rather than a full one)
+# would leave out. jlink adds whatever these require.
+_small_jdk_modules = [
+    'java.base',
+    'java.compiler',
+    'java.instrument',
+    'java.logging',
+    'java.management',
+    'jdk.graal.compiler',
+    'jdk.graal.compiler.management',
+    'jdk.graal.compiler.options',
+    'jdk.internal.vm.ci',
+    'jdk.jfr',
+    'jdk.management',
+    'jdk.management.jfr',
+    'jdk.zipfs',
+    'org.graalvm.collections',
+    'org.graalvm.nativeimage',
+    'org.graalvm.nativeimage.libgraal',
+    'org.graalvm.polyglot',
+    'org.graalvm.truffle.compiler',
+    'org.graalvm.word',
+]
+
+
+def _build_small_jdk(vm_home, output_dir, modules):
+    """
+    Builds a small JDK that can run native-image, from the GraalVM at vm_home: a jlink image of the
+    given modules, plus the native-image launcher and the lib directories the launcher needs. The
+    builder's own modules stay on their module path in lib/svm/builder, as in the GraalVM, and are
+    resolved against the small JDK when native-image starts. lib/truffle is copied too: the driver
+    adds the Truffle runtime to the builder module path if it is there.
+    """
+    if exists(output_dir):
+        mx.rmtree(output_dir)
+    mx_util.ensure_dir_exists(dirname(output_dir))
+    mx.run([join(vm_home, 'bin', mx.exe_suffix('jlink')),
+            '--module-path', join(vm_home, 'jmods'),
+            '--add-modules', ','.join(modules),
+            '--output', output_dir])
+    for lib_dir in ('graalvm', 'svm', 'static', 'truffle'):
+        source = join(vm_home, 'lib', lib_dir)
+        if exists(source):
+            shutil.copytree(source, join(output_dir, 'lib', lib_dir), symlinks=False)
+    # Preserve the relative symlink on Unix or the .cmd wrapper on Windows.
+    launcher = mx.cmd_suffix('native-image')
+    shutil.copy2(join(vm_home, 'bin', launcher), join(output_dir, 'bin', launcher), follow_symlinks=False)
+    return output_dir
+
+
+def _smalljdktest(args):
+    """
+    Builds a small JDK without java.sql from the GraalVM, and builds and runs a hello world image
+    with the native-image of that small JDK. The image builder must not need java.sql.
+    """
+    vm_home = _vm_home(None)
+    small_jdk = _build_small_jdk(vm_home, join(svmbuild_dir(), 'small-jdk'), _small_jdk_modules)
+
+    listed = mx.OutputCapture()
+    mx.run([join(small_jdk, 'bin', mx.exe_suffix('java')), '--list-modules'], out=listed)
+    modules = [line.split('@')[0] for line in listed.data.splitlines()]
+    for excluded in ('java.sql', 'java.xml'):
+        if excluded in modules:
+            mx.abort('The small JDK contains ' + excluded + ', so it does not test that the builder can do without it.')
+
+    build_dir = join(svmbuild_dir(), 'small-jdk-hello')
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    mx_util.ensure_dir_exists(build_dir)
+    with open(join(build_dir, 'HelloWorld.java'), 'w', encoding='utf-8') as source:
+        source.write('public class HelloWorld { public static void main(String[] args) { System.out.println("Hello from a small JDK"); } }\n')
+    mx.run([join(vm_home, 'bin', mx.exe_suffix('javac')), '-d', build_dir, join(build_dir, 'HelloWorld.java')])
+
+    with native_image_context(hosted_assertions=False, native_image_cmd=join(small_jdk, 'bin', mx.cmd_suffix('native-image'))) as native_image:
+        native_image(['-cp', build_dir, '-o', join(build_dir, 'helloworld'), 'HelloWorld'] + args)
+    output = mx.OutputCapture()
+    mx.run([join(build_dir, mx.exe_suffix('helloworld'))], out=output)
+    if output.data.strip() != 'Hello from a small JDK':
+        mx.abort('Unexpected output of the image built with the small JDK: ' + output.data)
+
+
+@mx.command(suite.name, 'smalljdktest', 'Runs native-image from a small JDK without java.sql')
+def smalljdktest(args):
+    """
+    builds a small JDK without java.sql from the GraalVM and builds a hello world image with it.
+    """
+    _smalljdktest(args)
+
+
+def _sqlmoduletest(native_image, args=None):
+    """
+    Builds and runs an application module that requires java.sql, with the native-image of the
+    GraalVM. java.sql is a system module that the image builder itself does not require (see
+    `smalljdktest`), so the driver has to add it to the builder's boot layer for the application.
+    """
+    args = [] if args is None else args
+    build_dir = join(svmbuild_dir(), 'sql-module')
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    module_dir = join(build_dir, 'src', 'sqlapp')
+    package_dir = join(module_dir, 'example')
+    mx_util.ensure_dir_exists(package_dir)
+    with open(join(module_dir, 'module-info.java'), 'w', encoding='utf-8') as source:
+        source.write('module sqlapp {\n    requires java.sql;\n}\n')
+    with open(join(package_dir, 'Main.java'), 'w', encoding='utf-8') as source:
+        source.write('package example;\n'
+                     'public class Main {\n'
+                     '    public static void main(String[] args) {\n'
+                     '        System.out.println(java.sql.Date.valueOf("2026-09-24").toLocalDate());\n'
+                     '    }\n'
+                     '}\n')
+    modules_dir = join(build_dir, 'modules')
+    mx_util.ensure_dir_exists(modules_dir)
+    mx.run([join(_vm_home(None), 'bin', mx.exe_suffix('javac')), '-d', join(modules_dir, 'sqlapp'),
+            join(module_dir, 'module-info.java'), join(package_dir, 'Main.java')])
+
+    image = join(build_dir, 'sqlapp')
+    native_image(['--module-path', modules_dir, '--module', 'sqlapp/example.Main', '-o', image] + args)
+    output = mx.OutputCapture()
+    mx.run([image], out=output)
+    if output.data.strip() != '2026-09-24':
+        mx.abort('Unexpected output of the image built from the module that requires java.sql: ' + output.data)
+
+
+@mx.command(suite.name, 'sqlmoduletest', 'Builds an image from an application module that requires java.sql')
+def sqlmoduletest(args):
+    """
+    builds and runs an image from an application module that requires java.sql.
+    """
+    native_image_context_run(_sqlmoduletest, args)
 
 
 @mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
@@ -4138,6 +4316,8 @@ class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
             '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
             '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
             '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.core.common.util=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
             '--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED',
             '--add-exports=jdk.graal.compiler/jdk.graal.compiler.util.json=ALL-UNNAMED',
             '--add-exports=java.base/jdk.internal.module=jdk.graal.compiler.vmaccess',

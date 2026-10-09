@@ -42,7 +42,6 @@ import org.graalvm.word.Pointer;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
@@ -68,6 +67,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -131,7 +131,7 @@ public class CremaFeature implements InternalFeature {
                             "enterInterpreterForFFMUpcall", Pointer.class, Isolate.class, Pointer.class);
             CEntryPointData entryPointData = CEntryPointData.create(enterInterpreterForFFMUpcallTarget);
             enterInterpreterForFFMUpcall = CEntryPointCallStubSupport.singleton().registerStubForMethod(enterInterpreterForFFMUpcallTarget, () -> entryPointData, List.of(
-                            newAnnotationValue(Deoptimizer.DeoptStub.class, "stubType", Deoptimizer.StubType.InterpreterFFMUpcallStub)));
+                            newAnnotationValue(DeoptStub.class, "stubType", DeoptStub.StubType.InterpreterFFMUpcallStub)));
 
             access.registerAsInHeap(CremaJNIFieldIds.CremaJNIStaticFieldId.class);
             access.registerAsInHeap(CremaJNIMethodIds.CremaJNIMethodId.class);

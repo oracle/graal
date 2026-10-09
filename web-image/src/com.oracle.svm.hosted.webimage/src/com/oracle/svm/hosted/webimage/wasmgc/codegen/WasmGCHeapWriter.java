@@ -45,7 +45,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;

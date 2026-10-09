@@ -45,7 +45,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.Hybrid;
+import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;

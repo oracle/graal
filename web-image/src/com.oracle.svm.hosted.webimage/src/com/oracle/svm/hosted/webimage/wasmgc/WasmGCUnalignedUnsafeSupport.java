@@ -38,7 +38,7 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 
 import jdk.vm.ci.meta.JavaKind;
 

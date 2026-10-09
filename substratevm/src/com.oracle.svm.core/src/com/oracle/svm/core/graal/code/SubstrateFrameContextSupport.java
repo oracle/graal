@@ -30,11 +30,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.SkipEpilogueSafepointCheck;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.snippets.StackOverflowCheckImpl;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.SafepointSlowpath;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -197,7 +198,7 @@ public final class SubstrateFrameContextSupport {
         assert !SubstrateUtil.HOSTED;
 
         SharedMethod targetMethod = (SharedMethod) callTarget;
-        long callTargetStart = targetMethod.getImageCodeInfo().getCodeStart().rawValue() + targetMethod.getImageCodeOffset();
+        long callTargetStart = ImageCodeInfoProvider.getImageCodeInfo(targetMethod).getCodeStart().rawValue() + targetMethod.getImageCodeOffset();
         if (callTargetStart == 0) {
             throw VMError.shouldNotReachHere("target method not compiled: " + targetMethod.format("%H.%n(%p)"));
         }

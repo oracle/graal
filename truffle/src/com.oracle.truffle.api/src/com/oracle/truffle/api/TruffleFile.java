@@ -48,6 +48,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -92,6 +96,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
+import org.graalvm.polyglot.io.FileChannel;
+import org.graalvm.polyglot.io.FileLock;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -102,7 +108,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
  *
  * @since 19.0
  */
-public final class TruffleFile {
+public final class TruffleFile extends TruffleFileLegacy {
 
     /**
      * The file's last modified time. Supported by all filesystems.
@@ -775,16 +781,18 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens or creates a file returning a {@link SeekableByteChannel} to access the file content.
-     * In most cases, the returned {@link SeekableByteChannel} should be closed using
-     * try-with-resources construct. When the channel must keep being opened for the lifetime of a
-     * context it should be {@link Env#registerOnDispose(Closeable) registered} for automatic close
-     * on context dispose.
-     *
+     * Opens or creates a file returning a {@link FileChannel} to access the file content.
+     * In most cases, the returned channel should be closed using a try-with-resources construct.
+     * When the channel must remain open for the lifetime of a context, it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context disposal.
+     * <p>
+     * The returned channel supports file locking when locking is supported by the underlying file
+     * system. On JDK 22 and later, it also supports mapping file regions when memory mapping is
+     * supported by the underlying file system.
      *
      * @param options the options specifying how the file should be opened
      * @param attributes the optional attributes to set atomically when creating the new file
-     * @return the created {@link SeekableByteChannel}
+     * @return the created {@link FileChannel}
      * @throws FileAlreadyExistsException if {@link StandardOpenOption#CREATE_NEW} option is set and
      *             a file already exists on given path
      * @throws IOException in case of IO error
@@ -795,10 +803,11 @@ public final class TruffleFile {
      * @since 19.0
      */
     @TruffleBoundary
-    public SeekableByteChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException {
+    @Override
+    public FileChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException {
         try {
             checkFileOperationPreconditions();
-            return ByteChannelDecorator.create(fileSystemContext.fileSystem.newByteChannel(normalizedPath, options, attributes));
+            return new FileChannelDecorator(fileSystemContext.fileSystem.newByteChannel(normalizedPath, options, attributes));
         } catch (IOException | UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -2334,62 +2343,6 @@ public final class TruffleFile {
         }
     }
 
-    private static final class ByteChannelDecorator implements SeekableByteChannel {
-
-        private final SeekableByteChannel delegate;
-
-        ByteChannelDecorator(final SeekableByteChannel delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public int read(ByteBuffer dst) throws IOException {
-            return delegate.read(dst);
-        }
-
-        @Override
-        public int write(ByteBuffer src) throws IOException {
-            return delegate.write(src);
-        }
-
-        @Override
-        public boolean isOpen() {
-            return delegate.isOpen();
-        }
-
-        @Override
-        public void close() throws IOException {
-            delegate.close();
-        }
-
-        @Override
-        public long position() throws IOException {
-            return delegate.position();
-        }
-
-        @Override
-        public SeekableByteChannel position(long newPosition) throws IOException {
-            delegate.position(newPosition);
-            return this;
-        }
-
-        @Override
-        public long size() throws IOException {
-            return delegate.size();
-        }
-
-        @Override
-        public SeekableByteChannel truncate(long size) throws IOException {
-            delegate.truncate(size);
-            return this;
-        }
-
-        static SeekableByteChannel create(final SeekableByteChannel delegate) {
-            Objects.requireNonNull(delegate, "Delegate must be non null.");
-            return new ByteChannelDecorator(delegate);
-        }
-    }
-
     private static final class TruffleFileDirectoryStream implements DirectoryStream<TruffleFile> {
 
         private final TruffleFile directory;
@@ -2698,4 +2651,235 @@ public final class TruffleFile {
             }
         }
     }
+
+    private static final class FileChannelDecorator implements FileChannel {
+
+        private static final MethodHandle MAP_METHOD_HANDLE = initializeMapMethodHandle();
+
+        final SeekableByteChannel delegate;
+
+        FileChannelDecorator(SeekableByteChannel delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "Delegate must not be null");
+        }
+
+        @Override
+        public int read(ByteBuffer dst) throws IOException {
+            return delegate.read(dst);
+        }
+
+        @Override
+        public int write(ByteBuffer src) throws IOException {
+            return delegate.write(src);
+        }
+
+        @Override
+        public boolean isOpen() {
+            return delegate.isOpen();
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
+
+        @Override
+        public long position() throws IOException {
+            return delegate.position();
+        }
+
+        @Override
+        public FileChannel position(long newPosition) throws IOException {
+            delegate.position(newPosition);
+            return this;
+        }
+
+        @Override
+        public long size() throws IOException {
+            return delegate.size();
+        }
+
+        @Override
+        public FileChannel truncate(long size) throws IOException {
+            delegate.truncate(size);
+            return this;
+        }
+
+        @Override
+        public FileLock lock() throws IOException {
+            if (delegate instanceof java.nio.channels.FileChannel fileChannel) {
+                return new NIOFileLock(this, fileChannel.lock());
+            } else if (delegate instanceof FileChannel fileChannel) {
+                return new PolyglotFileLock(this, fileChannel.lock());
+            } else {
+                throw new UnsupportedOperationException("Channel does not support locking");
+            }
+        }
+
+        @Override
+        public FileLock lock(long position, long size, boolean shared) throws IOException {
+            if (delegate instanceof java.nio.channels.FileChannel fileChannel) {
+                return new NIOFileLock(this, fileChannel.lock(position, size, shared));
+            } else if (delegate instanceof FileChannel fileChannel) {
+                return new PolyglotFileLock(this, fileChannel.lock(position, size, shared));
+            } else {
+                throw new UnsupportedOperationException("Channel does not support locking");
+            }
+        }
+
+        @Override
+        public FileLock tryLock() throws IOException {
+            if (delegate instanceof java.nio.channels.FileChannel fileChannel) {
+                var impl = fileChannel.tryLock();
+                return impl != null ? new NIOFileLock(this, impl) : null;
+            } else if (delegate instanceof FileChannel fileChannel) {
+                var impl = fileChannel.tryLock();
+                return impl != null ? new PolyglotFileLock(this, impl) : null;
+            } else {
+                throw new UnsupportedOperationException("Channel does not support locking");
+            }
+        }
+
+        @Override
+        public FileLock tryLock(long position, long size, boolean shared) throws IOException {
+            if (delegate instanceof java.nio.channels.FileChannel fileChannel) {
+                var impl = fileChannel.tryLock(position, size, shared);
+                return impl != null ? new NIOFileLock(this, impl) : null;
+            } else if (delegate instanceof FileChannel fileChannel) {
+                var impl = fileChannel.tryLock(position, size, shared);
+                return impl != null ? new PolyglotFileLock(this, impl) : null;
+            } else {
+                throw new UnsupportedOperationException("Channel does not support locking");
+            }
+        }
+
+        @Override
+        public Object map(java.nio.channels.FileChannel.MapMode mode, long offset, long size, Object arena) throws IOException {
+            if (delegate instanceof FileChannel fileChannel) {
+                return fileChannel.map(mode, offset, size, arena);
+            } else if (delegate instanceof java.nio.channels.FileChannel fileChannel && MAP_METHOD_HANDLE != null) {
+                try {
+                    return MAP_METHOD_HANDLE.invokeExact(fileChannel, mode, offset, size, arena);
+                } catch (IOException | RuntimeException | Error e) {
+                    throw e;
+                } catch (Throwable e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw new UnsupportedOperationException("Channel does not support memory mapping");
+            }
+        }
+
+        private static MethodHandle initializeMapMethodHandle() {
+            if (Runtime.version().feature() >= 22) {
+                try {
+                    Class<?> arena = Class.forName("java.lang.foreign.Arena", false, TruffleFile.class.getClassLoader());
+                    Class<?>[] parameterTypes = new Class<?>[]{
+                                    java.nio.channels.FileChannel.MapMode.class,
+                                    long.class,
+                                    long.class,
+                                    arena
+                    };
+                    Method method = java.nio.channels.FileChannel.class.getDeclaredMethod("map", parameterTypes);
+                    MethodHandle mapHandle = MethodHandles.lookup().unreflect(method);
+                    return mapHandle.asType(MethodType.methodType(
+                                    Object.class,
+                                    java.nio.channels.FileChannel.class,
+                                    java.nio.channels.FileChannel.MapMode.class,
+                                    long.class,
+                                    long.class,
+                                    Object.class));
+                } catch (ReflectiveOperationException e) {
+                    throw new AssertionError("java.nio.channels.FileChannel.map(MapMode, long, long, Arena) method not found.", e);
+                }
+            }
+            return null;
+        }
+
+        private static final class NIOFileLock implements FileLock {
+
+            private final FileChannel owner;
+            private final java.nio.channels.FileLock impl;
+
+            NIOFileLock(FileChannel owner, java.nio.channels.FileLock impl) {
+                this.owner = Objects.requireNonNull(owner, "Owner must be non-null");
+                this.impl = Objects.requireNonNull(impl, "Impl must be non-null");
+            }
+
+            @Override
+            public FileChannel acquiredBy() {
+                return owner;
+            }
+
+            @Override
+            public long position() {
+                return impl.position();
+            }
+
+            @Override
+            public long size() {
+                return impl.size();
+            }
+
+            @Override
+            public boolean isShared() {
+                return impl.isShared();
+            }
+
+            @Override
+            public boolean isValid() {
+                return impl.isValid();
+            }
+
+            @Override
+            public void close() throws IOException {
+                impl.close();
+            }
+        }
+
+        private static final class PolyglotFileLock implements FileLock {
+
+            private final FileChannel owner;
+            private final FileLock impl;
+
+            PolyglotFileLock(FileChannel owner, FileLock impl) {
+                this.owner = Objects.requireNonNull(owner, "Owner must be non-null");
+                this.impl = Objects.requireNonNull(impl, "Impl must be non-null");
+            }
+
+            @Override
+            public FileChannel acquiredBy() {
+                return owner;
+            }
+
+            @Override
+            public long position() {
+                return impl.position();
+            }
+
+            @Override
+            public long size() {
+                return impl.size();
+            }
+
+            @Override
+            public boolean isShared() {
+                return impl.isShared();
+            }
+
+            @Override
+            public boolean isValid() {
+                return impl.isValid();
+            }
+
+            @Override
+            public void close() throws IOException {
+                impl.close();
+            }
+        }
+    }
+}
+
+abstract sealed class TruffleFileLegacy permits TruffleFile {
+
+    public abstract SeekableByteChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException;
 }

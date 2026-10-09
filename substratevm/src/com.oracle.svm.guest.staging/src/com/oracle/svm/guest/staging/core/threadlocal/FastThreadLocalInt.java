@@ -27,6 +27,7 @@ package com.oracle.svm.guest.staging.core.threadlocal;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 
 /**
  * Represents a fast thread local variable of the primitive type {@code int}. See
@@ -78,5 +79,13 @@ public final class FastThreadLocalInt extends FastThreadLocal {
 
     public boolean compareAndSet(IsolateThread thread, int expect, int update) {
         throw new IllegalArgumentException("Value of VM thread local variable cannot be accessed during native image generation");
+    }
+
+    public Pointer getAddress() {
+        throw new IllegalArgumentException("VM thread local variable cannot be accessed during native image generation");
+    }
+
+    public Pointer getAddress(IsolateThread thread) {
+        throw new IllegalArgumentException("VM thread local variable cannot be accessed during native image generation");
     }
 }

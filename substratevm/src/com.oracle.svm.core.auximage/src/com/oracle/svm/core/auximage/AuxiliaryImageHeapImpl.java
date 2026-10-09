@@ -33,6 +33,7 @@ import com.oracle.svm.core.genscavenge.HeapChunkVisitor;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.ImageHeapWalker;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -43,7 +44,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 final class AuxiliaryImageHeapImpl implements AuxiliaryImageHeap {
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static AuxiliaryImageHeapImpl singleton() {
         return (AuxiliaryImageHeapImpl) ImageSingletons.lookup(AuxiliaryImageHeap.class);
     }

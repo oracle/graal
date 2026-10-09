@@ -39,7 +39,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.util.GuestAccess;
 

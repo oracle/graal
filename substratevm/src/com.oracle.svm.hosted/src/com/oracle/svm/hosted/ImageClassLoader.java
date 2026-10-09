@@ -43,6 +43,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.shared.option.HostedOptionValues;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -527,7 +528,10 @@ public final class ImageClassLoader {
             modules.add(guestAccess.getModule(guestAccess.lookupType(SVMHost.class)));
         }
         ResolvedJavaModuleLayer guestModuleLayer = guestModuleLayer(guestAccess);
-        HostedModuleSupport.GUEST_MODULES.forEach(moduleName -> addCoreModule(modules, guestModuleLayer, moduleName));
+        HostedModuleSupport.STANDARD_GUEST_MODULES.forEach(moduleName -> addCoreModule(modules, guestModuleLayer, moduleName));
+        if (SubstrateOptions.EnableJVMCIGuest.getValue(HostedOptionValues.singleton().get())) {
+            HostedModuleSupport.JVMCI_GUEST_MODULES.forEach(moduleName -> addCoreModule(modules, guestModuleLayer, moduleName));
+        }
         if (SubstrateOptions.useLLVMBackend()) {
             String llvmBackendModule = "org.graalvm.nativeimage.llvm";
             modules.add(guestAccess.bootModuleLayer().findModule(llvmBackendModule)

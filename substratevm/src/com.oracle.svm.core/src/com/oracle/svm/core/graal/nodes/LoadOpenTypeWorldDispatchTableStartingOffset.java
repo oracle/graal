@@ -25,7 +25,7 @@
 package com.oracle.svm.core.graal.nodes;
 
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;

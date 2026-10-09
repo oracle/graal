@@ -32,7 +32,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.guest.staging.core.c.struct.PinnedObjectField;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.code.CompilationResult;

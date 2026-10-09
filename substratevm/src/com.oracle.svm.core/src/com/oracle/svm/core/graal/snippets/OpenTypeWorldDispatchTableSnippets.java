@@ -41,8 +41,8 @@ import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.NumUtil;

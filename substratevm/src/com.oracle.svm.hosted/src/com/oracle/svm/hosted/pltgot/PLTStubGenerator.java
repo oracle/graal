@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.function.ObjIntConsumer;
 
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 
 public interface PLTStubGenerator {

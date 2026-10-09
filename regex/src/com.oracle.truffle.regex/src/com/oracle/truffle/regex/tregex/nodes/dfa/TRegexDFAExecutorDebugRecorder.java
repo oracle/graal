@@ -177,8 +177,8 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
     }
 
     @TruffleBoundary
-    public void recordCGPartialTransition(int currentIndex, int cgPartialTransitionIndex) {
-        curRecording().recordCGPartialTransition(currentIndex, cgPartialTransitionIndex);
+    public void recordCGPartialTransition(int currentIndex, int cgPartialTransitionRef) {
+        curRecording().recordCGPartialTransition(currentIndex, dfa.getCGPartialTransitionId(cgPartialTransitionRef));
     }
 
     @TruffleBoundary

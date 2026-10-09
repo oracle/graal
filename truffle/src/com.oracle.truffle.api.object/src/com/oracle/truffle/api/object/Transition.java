@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 abstract class Transition {
@@ -300,6 +301,35 @@ abstract class Transition {
         @Override
         public boolean isDirect() {
             return false;
+        }
+    }
+
+    /** An indirect transition for a batch of location-preserving property replacements. */
+    static final class ReplacePropertiesTransition extends Transition {
+        private final Property[] properties;
+
+        ReplacePropertiesTransition(Property[] properties) {
+            this.properties = properties.clone();
+        }
+
+        @Override
+        public boolean isDirect() {
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(properties);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return super.equals(obj) && Arrays.equals(properties, ((ReplacePropertiesTransition) obj).properties);
+        }
+
+        @Override
+        public String toString() {
+            return "replaceAll" + Arrays.toString(properties);
         }
     }
 

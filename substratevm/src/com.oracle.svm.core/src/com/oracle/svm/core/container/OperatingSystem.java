@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
@@ -57,7 +58,7 @@ public class OperatingSystem {
     OperatingSystem() {
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static OperatingSystem singleton() {
         return ImageSingletons.lookup(OperatingSystem.class);
     }

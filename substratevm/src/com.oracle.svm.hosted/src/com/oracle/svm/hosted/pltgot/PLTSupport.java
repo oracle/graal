@@ -33,7 +33,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 

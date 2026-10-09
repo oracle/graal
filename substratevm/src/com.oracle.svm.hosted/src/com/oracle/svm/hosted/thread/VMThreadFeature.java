@@ -42,7 +42,6 @@ import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
@@ -111,6 +110,7 @@ public class VMThreadFeature implements InternalFeature {
             Class<?> valueClass = VMThreadLocalInfo.getValueClass(threadLocalClass);
             registerAccessors(r, valueClass, false);
             registerAccessors(r, valueClass, true);
+            registerAddressAccessors(r);
 
             /* compareAndSet() method without the VMThread parameter. */
             r.register(new RequiredInvocationPlugin("compareAndSet", Receiver.class, valueClass, valueClass) {
@@ -129,25 +129,25 @@ public class VMThreadFeature implements InternalFeature {
             });
         }
 
-        Class<?>[] typesWithGetAddress = new Class<?>[]{FastThreadLocalBytes.class, FastThreadLocalWord.class};
-        for (Class<?> type : typesWithGetAddress) {
-            Registration r = new Registration(plugins.getInvocationPlugins(), type);
-            /* getAddress() method without the VMThread parameter. */
-            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode threadNode = currentThread(b);
-                    return handleGetAddress(b, targetMethod, receiver, threadNode);
-                }
-            });
-            /* getAddress() method with the VMThread parameter. */
-            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
-                    return handleGetAddress(b, targetMethod, receiver, threadNode);
-                }
-            });
-        }
+        registerAddressAccessors(new Registration(plugins.getInvocationPlugins(), FastThreadLocalBytes.class));
+    }
+
+    private void registerAddressAccessors(Registration r) {
+        /* getAddress() method without the VMThread parameter. */
+        r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode threadNode = currentThread(b);
+                return handleGetAddress(b, targetMethod, receiver, threadNode);
+            }
+        });
+        /* getAddress() method with the VMThread parameter. */
+        r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
+                return handleGetAddress(b, targetMethod, receiver, threadNode);
+            }
+        });
     }
 
     private void registerAccessors(Registration r, Class<?> valueClass, boolean isVolatile) {
@@ -223,7 +223,7 @@ public class VMThreadFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
-        int nextOffset = threadLocalCollector.sortAndAssignOffsets();
+        int nextOffset = threadLocalCollector.layoutThreadLocals();
 
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             /*

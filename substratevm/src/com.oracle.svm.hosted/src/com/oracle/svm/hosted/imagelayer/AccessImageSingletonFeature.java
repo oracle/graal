@@ -229,7 +229,7 @@ public class AccessImageSingletonFeature implements InternalFeature {
              */
             for (var singleton : layeredImageSingletonSupport.getSingletonsWithTrait(SingletonLayeredInstallationKind.INITIAL_LAYER_ONLY)) {
                 ImageHeapConstant constant = (ImageHeapConstant) universe.getSnippetReflection().forObject(singleton);
-                SVMImageLayerSnapshotUtil.forcePersistConstant(constant);
+                layerBuildingSupport.getWriter().forcePersistConstant(constant);
             }
         }
 

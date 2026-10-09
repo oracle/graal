@@ -36,7 +36,7 @@ import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListInitializationNode;

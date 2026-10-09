@@ -39,4 +39,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface GuestFold {
+
+    /**
+     * The binary name of the builder-side {@code Fold.Resolver} that controls how the
+     * {@link GuestFold} value is resolved, or an empty string to use the default policy provided by
+     * the compiler environment.
+     */
+    String resolver() default "";
 }

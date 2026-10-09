@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.phases.common.util;
 
+import static jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase.Options.ForceUnroll;
+
 import java.util.ArrayDeque;
 import java.util.EnumSet;
 
@@ -35,16 +37,22 @@ import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.duplication.util.DuplicationUtil;
+import jdk.graal.compiler.duplication.phases.simulation.DuplicationOptions;
 import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.graph.Position;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -55,10 +63,12 @@ import jdk.graal.compiler.nodes.GuardProxyNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.MemoryProxyNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.ProfileData.ProfileSource;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -74,19 +84,31 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.CaptureStateBeginNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.Loop;
+import jdk.graal.compiler.nodes.loop.LoopExpandableNode;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
+import jdk.graal.compiler.nodes.java.MonitorEnterNode;
+import jdk.graal.compiler.nodes.java.MonitorExitNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.LockEliminationPhase;
+import jdk.graal.compiler.phases.common.LateLockEliminationPhase;
+import jdk.graal.compiler.phases.contract.NodeCostUtil;
+import jdk.graal.compiler.loop.phases.AggressivePartialUnrollPhase;
+import jdk.graal.compiler.loop.phases.SimulationBasedLoopPeeling;
+import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.vector.phases.LoopVectorizationAnalysis;
+import jdk.graal.compiler.vector.phases.RemoveEmptyLoopsPhase;
 import jdk.graal.compiler.vector.phases.VectorLoopUtility;
 
 public class LoopUtility {
@@ -706,4 +728,448 @@ public class LoopUtility {
         // just anchor the pi before the loop, that dominates the other input
         return graph.addWithoutUnique(new PiNode(opaqueDivisor, s, AbstractBeginNode.prevBegin(loop.loopBegin().forwardEnd())));
     }
+
+    /**
+     * Compute an abstract, relative, number of saved CPU cycles when unrolling this loop: checks
+     * for canonicalizations, loop carried dependencies and saved condition evaluations when
+     * unrolling a loop.
+     */
+    private static int computeUnrollingBenefit(Loop loop, CoreProviders providers) {
+        int benefit = SimulationBasedLoopPeeling.computeBenefitUnrolling(loop, loop.loopsData().getCFG(), providers).cyclesSavedLoopRest();
+        benefit += loop.counted().getLimitTest().condition().estimatedNodeCycles().value + IfNode.TYPE.cycles().value;
+        return benefit;
+    }
+
+    /**
+     * Maximum frequency bonus for a loop used during calculating an abstract benefit to decide if a
+     * loop should be unrolled.
+     */
+    private static final double MAXIMUM_LOOP_FREQUENCY_BONUS = 5D;
+
+    /**
+     * Compute a benefit bonus for the given loop based on its frequency, i.e., loops with a very
+     * high frequency are favored over loops with low frequency.
+     */
+    private static double computeLoopFrequencyBonus(LoopBeginNode loopBegin, ControlFlowGraph cfg) {
+        if (!ProfileSource.isTrusted(cfg.localLoopFrequencySource(loopBegin))) {
+            return 1;
+        }
+        /*
+         * bonus is default 1 for every loop since it is used to multiply (scale) the estimated
+         * benefit when unrolling the loop
+         */
+        double frequencyBonus = 1;
+        final double relativeFrequency = cfg.localLoopFrequency(loopBegin);
+        /*
+         * Use logarithm function of the relative frequency to "flatten" the frequency for very high
+         * frequency loops.
+         */
+        final double logRelFrequency = Math.log10(relativeFrequency);
+        final double maxFrequencyBonus = Math.min(MAXIMUM_LOOP_FREQUENCY_BONUS, logRelFrequency);
+        frequencyBonus += maxFrequencyBonus;
+        return frequencyBonus;
+    }
+
+    /**
+     * Decide if its beneficial to unroll the given loop based on its size and optimization
+     * capabilities.
+     */
+    public static boolean shouldPartiallyUnroll(Loop loop, int loopSize, CoreProviders providers, CounterKey benefitTooLowCounter, CounterKey unrolledCounter, int costReductionFactor,
+                    int maxUnroll) {
+        LoopBeginNode loopBegin = loop.loopBegin();
+        final int unrollFactor = loopBegin.getUnrollFactor();
+        DebugContext debug = loopBegin.getDebug();
+        if (unrollFactor * 2 <= maxUnroll) {
+            /*
+             * The benefit is calculated as an abstract number of cycles saved when unrolling this
+             * loop times a bonus for very high frequent loops.
+             */
+            double loopFrequencyBonus = computeLoopFrequencyBonus(loopBegin, loop.loopsData().getCFG());
+            int unrollingBenefit = computeUnrollingBenefit(loop, providers);
+            double benefit = unrollingBenefit * loopFrequencyBonus;
+
+            // See NonCountedStripMiningBenefitBoost - for rotated and non counted strip mined loops
+            // we want to get rid of the artificial control flow added to the loop body, thus try
+            // hard finding benefits for unrolling
+            if (loop.loopBegin().isNonCountedStripMinedInner() || loop.loopBegin().isRotated()) {
+                benefit += AggressivePartialUnrollPhase.Options.NonCountedStripMinedBenefitBoost.getValue(loopBegin.getOptions());
+            }
+
+            if (loop.loopBegin().isCountedStripMinedInner()) {
+                benefit += AggressivePartialUnrollPhase.Options.CountedStripMinedBenefitBoost.getValue(loopBegin.getOptions());
+            }
+
+            int endCostIncrease = 0;
+            int endCount = 0;
+            for (LoopEndNode len : loopBegin.loopEnds()) {
+                if (endCount > 0) {
+                    /*
+                     * Loop end nodes create a merge when unrolling them, this can create more
+                     * complex control flow, thus we account for that by increasing the cost
+                     */
+                    endCostIncrease += len.estimatedNodeSize().value;
+                }
+                endCount++;
+            }
+            int exitCostIncrease = 0;
+            // we treat strip mined loops differently wrt benefit, we want to unroll
+            // them to remove overhead of the trip check
+            if (!loop.loopBegin().isAnyStripMinedInner()) {
+                for (LoopExitNode lex : loopBegin.loopExits()) {
+                    if (lex == loop.counted().getCountedExit()) {
+                        continue;
+                    }
+                    // though exits itself are for free, they create a merge outside, which
+                    // increases control flow complexity
+                    FixedNode cur = null;
+                    if (lex.next() instanceof EndNode) {
+                        cur = ((EndNode) lex.next()).merge();
+                    } else {
+                        cur = lex.next();
+                    }
+                    while (cur instanceof FixedWithNextNode) {
+                        cur = ((FixedWithNextNode) cur).next();
+                    }
+                    if (cur instanceof ControlSinkNode) {
+                        /*
+                         * loop exits that sink will be duplicated and thus are very cheap in terms
+                         * of control flow complexity
+                         */
+                        exitCostIncrease += AggressivePartialUnrollPhase.Options.MultiExitCostFactorSink.getValue(loopBegin.getOptions());
+                    } else {
+                        /*
+                         * loop exits that do not sink create complex pre/main/post paths that merge
+                         * early exits, thus there must be a high benefit to unroll them
+                         */
+                        exitCostIncrease += AggressivePartialUnrollPhase.Options.MultiExitCostFactor.getValue(loopBegin.getOptions());
+                    }
+                }
+            }
+            /*
+             * The cost is calculated as an abstract number of instructions code size increase
+             * divided by a constant specifying how many abstract instructions code size increase we
+             * are willing to spend per abstract cycle performance reduction
+             */
+            double sizeIncrease = (double) loopSize / (double) costReductionFactor;
+            double cost = endCostIncrease + exitCostIncrease + sizeIncrease;
+            boolean doUnroll = benefit >= cost || ForceUnroll.getValue(loopBegin.getOptions());
+            if (doUnroll) {
+                unrolledCounter.increment(debug);
+            } else {
+                benefitTooLowCounter.increment(debug);
+            }
+            debug.log(DebugContext.BASIC_LEVEL,
+                            "%s loop %s in method %s with cost %s (endCostIncrease %s exitCostIncrease %s sizeIncrease %s) and benefit %s (unrollingBenefit %s loopFrequencyBonus %s)",
+                            doUnroll ? "Unrolling" : "Not unrolling", loop, loopBegin.graph(), cost, endCostIncrease, exitCostIncrease, sizeIncrease, benefit, unrollingBenefit, loopFrequencyBonus);
+            return doUnroll;
+        }
+        debug.log(DebugContext.BASIC_LEVEL, "shouldPartiallyUnroll %s unrolled loop is too large %s, inverted? %s ", loopBegin, loopSize, loop.counted().isInverted());
+        return false;
+
+    }
+
+    /**
+     * Determine if the size of the loop allows unrolling the given loop. This is decided based on
+     * two factors: the maximum size of the loop itself based on a maximum loop size option and the
+     * overall size of the graph after unrolling, i.e., the graph can already be too big (based on a
+     * maximum graph size option) before unrolling or it may be too big after unrolling.
+     *
+     * @param loop the loop to reason about
+     * @param maxSizeSingleLoop the maximum size of a single loop
+     * @param loopSize the size of the loop
+     */
+    public static boolean loopSizeAllowsUnrolling(Loop loop, int maxSizeSingleLoop, int loopSize, CounterKey loopSizeTooBigCounter) {
+        LoopBeginNode loopBegin = loop.loopBegin();
+        int effectiveSize = loopSize;
+        NodeBitMap optimizableMonitorOps = LoopUtility.benefitLockCoarsening(loop);
+        if (optimizableMonitorOps != null) {
+            for (Node n : optimizableMonitorOps) {
+                // size after unrolling will not change since they optimise away
+                effectiveSize -= n.estimatedNodeSize().value;
+            }
+        }
+        if (loopSize > maxSizeSingleLoop || NodeCostUtil.computeGraphSize(loopBegin.graph()) + effectiveSize > DuplicationOptions.MaxGraphSizeNodeCost.getValue(loopBegin.getOptions())) {
+            loopSizeTooBigCounter.increment(loopBegin.getDebug());
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Compute the set of monitor operations that can be optimized away after unrolling this loop.
+     * This typically happens for patterns like
+     *
+     * <pre>
+     * for (;;) {
+     *     monitorEnter(o);
+     *     body();
+     *     monitorExit(o);
+     * }
+     * </pre>
+     *
+     * where we can optimize away the unlock relock pattern after unrolling
+     *
+     * <pre>
+     * for (;;) {
+     *     monitorEnter(o);
+     *     body();
+     *     monitorExit(o);
+     *     monitorEnter(o);
+     *     body();
+     *     monitorExit(o);
+     * }
+     * </pre>
+     *
+     * to
+     *
+     * *
+     *
+     * <pre>
+     * for (;;) {
+     *     monitorEnter(o);
+     *     body();
+     *     body();
+     *     monitorExit(o);
+     * }
+     * </pre>
+     */
+    public static NodeBitMap benefitLockCoarsening(Loop loop) {
+        int monitorOps = 0;
+        for (Node n : loop.inside().nodes()) {
+            if (n instanceof AccessMonitorNode) {
+                monitorOps++;
+            }
+        }
+        if (monitorOps == 0 || monitorOps % 2 != 0) {
+            return null;
+        }
+
+        StructuredGraph graph = loop.loopBegin().graph();
+        CountedLoopInfo cli = loop.counted();
+        LoopEndNode singleEnd = loop.loopBegin().loopEnds().first();
+
+        FixedNode startDown = null;
+        FixedNode startUp = null;
+        if (cli.isInverted()) {
+            startDown = cli.getBody().next();
+            startUp = (FixedNode) cli.getLimitTest().predecessor();
+        } else {
+            startDown = cli.getBody().next();
+            startUp = (FixedNode) singleEnd.predecessor();
+        }
+        /*
+         * Simulate skipping over reorderable nodes as lock elimination would do for the region
+         * after unrolling.
+         */
+        NodeBitMap invariant = graph.createNodeBitMap();
+        while (!(startDown instanceof AccessMonitorNode)) {
+            if (!LateLockEliminationPhase.isReorderable(startDown) && !Loop.willBecomeLoopInvariantAfterFloatingReads(startDown, loop, invariant)) {
+                break;
+            }
+            if (startDown instanceof FixedWithNextNode fwn) {
+                startDown = fwn.next();
+                continue;
+            }
+            break;
+        }
+        for (FixedNode fn : GraphUtil.predecessorIterable(startUp)) {
+            startUp = fn;
+            if (fn instanceof AccessMonitorNode) {
+                break;
+            }
+            if (!LateLockEliminationPhase.isReorderable(fn) && !Loop.willBecomeLoopInvariantAfterFloatingReads(startDown, loop, invariant)) {
+                break;
+            }
+        }
+        NodeBitMap optimizable = null;
+        if (startDown instanceof MonitorEnterNode enter && startUp instanceof MonitorExitNode exit) {
+            /*
+             * Cannot use the control flow graph for dominance computation here, we might be
+             * performing loop optimizations and the CFG can be out of sync with the loops data.
+             * Caller logic can deal with such cases but its not worth for the heuristic as a
+             * correct answer would mean recompute the CFG. This is not necessary for a heuristic.
+             */
+            if (LockEliminationPhase.isCompatibleLock(enter, exit, true, null)) {
+                optimizable = graph.createNodeBitMap();
+                optimizable.mark(enter);
+                optimizable.mark(exit);
+            }
+        }
+        return optimizable;
+    }
+
+    /**
+     * Compute the size of the loop using the {@linkplain NodeSize} annotations.
+     */
+    public static int loopSize(Loop loop) {
+        int size = 0;
+        for (Node n : loop.inside().nodes()) {
+            size += n.estimatedNodeSize().value;
+        }
+        return size;
+    }
+
+    /**
+     * Determines if this loop qualifies for partial loop unrolling, there can be multiple reasons
+     * why that is not the case including frequency, vectorization capabilities, etc.
+     */
+    public static boolean loopQualifiesForPartialUnrolling(Loop loop, CoreProviders providers, CounterKey vectorizable, CounterKey frequency) {
+        LoopBeginNode loopBegin = loop.loopBegin();
+
+        boolean forceUnroll = AggressivePartialUnrollPhase.Options.ForceUnroll.getValue(loopBegin.getOptions());
+
+        if (!forceUnroll && ProfileSource.isTrusted(loop.localFrequencySource())) {
+            // little gain
+            if (loop.localLoopFrequency() < AggressivePartialUnrollPhase.Options.PartialUnrollMinFrequency.getValue(loopBegin.getOptions())) {
+                loopBegin.getDebug().log(DebugContext.BASIC_LEVEL, "shouldPartiallyUnroll %s probability is too low, inverted? %s", loopBegin, loop.counted().isInverted());
+                frequency.increment(loopBegin.getDebug());
+                return false;
+            }
+        }
+        // let community unrolling handle that
+        if (!forceUnroll && LoopUtility.potentialVectorLoop(loop, loop.getCFGLoop().getHeader().getBeginNode().graph(), providers)) {
+            loopBegin.getDebug().log(DebugContext.BASIC_LEVEL, "shouldPartiallyUnroll %s false, loop potentially vectorizable, inverted? %s", loopBegin, loop.counted().isInverted());
+            vectorizable.increment(loopBegin.getDebug());
+            return false;
+        }
+
+        // we only consider innermost loops for unrolling
+        if (!loop.getCFGLoop().getChildren().isEmpty()) {
+            loopBegin.getDebug().log(DebugContext.BASIC_LEVEL, "shouldPartiallyUnroll %s no leaf loop, inverted? %s", loopBegin, loop.counted().isInverted());
+            return false;
+        }
+
+        // consider "hidden" parent loops, i.e., loops containing nodes that may expand to child
+        // loops during lowering later
+        for (Node n : loop.inside().nodes()) {
+            if (n instanceof LoopExpandableNode && ((LoopExpandableNode) n).mayExpandToLoop()) {
+                loopBegin.getDebug().log(DebugContext.BASIC_LEVEL, "shouldPartiallyUnroll %s no leaf loop due to the to-be-expanded node %s loops, inverted? %s", loopBegin, n,
+                                loop.counted().isInverted());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Determines whether this is a counted loop with an empty body where all phis on the loop have
+     * induction variables. Returns {@code true} iff the loop is empty in this sense. It is not
+     * useful to optimize such loops since they will be removed by {@link RemoveEmptyLoopsPhase}.
+     */
+    public static boolean isEmptyLoop(Loop loop) {
+        if (loop.detectCounted() && (loop.counted().counterNeverOverflows() || loop.counted().getOverFlowGuard() != null)) {
+            FixedNode body = loop.counted().getBody();
+            while (body instanceof BeginNode) {
+                body = ((FixedWithNextNode) body).next();
+            }
+            if (body instanceof LoopEndNode) {
+                boolean allPhisAreInductive = true;
+                for (PhiNode phi : loop.loopBegin().phis()) {
+                    InductionVariable iv = loop.getInductionVariables().get(phi);
+                    if (iv == null) {
+                        allPhisAreInductive = false;
+                        break;
+                    }
+                }
+                if (allPhisAreInductive) {
+                    // RemoveEmptyLoopsPhase will remove this loop
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determines whether this loop could have been generated from a guarded case pattern in a
+     * switch statement. Consider the following switch statement:
+     *
+     * <pre>
+     * public static int foo(Object number) {
+     *     return switch (number) {
+     *         case Integer i // when i >= 0 -> 0;
+     *         case Integer i -> 1;
+     *         case Long l -> 2;
+     *         default -> -1;
+     *     };
+     * }
+     * </pre>
+     *
+     * The generated bytecode is nearly identical to that produced by the following code:
+     *
+     * <pre>
+     * public static int bar(Object number) {
+     *     java.util.Objects.requireNonNull(number);
+     *     byte phi = 0;
+     *     while (true) {
+     *         switch (typeSwitch(number, phi)) {
+     *             case 0:
+     *                 Integer var0 = (Integer) number;
+     *                 if (var0 < 0) {
+     *                     phi = 1;
+     *                     break;
+     *                 }
+     *                 return 0;
+     *             case 1:
+     *                 Integer var1 = (Integer) number;
+     *                 return 1;
+     *             case 2:
+     *                 Long var2 = (Long) number;
+     *                 return 2;
+     *             default:
+     *                 return -1;
+     *         }
+     *     }
+     * }
+     *
+     * public static final int typeSwitch(Object var0, int var1) {
+     *     java.util.Objects.checkIndex(var1, 4);
+     *     if (var0 == null) {
+     *         return -1;
+     *     } else {
+     *         switch (var1) {
+     *             case 0:
+     *                 if (var0 instanceof Integer) {
+     *                     return 0;
+     *                 }
+     *                 break;
+     *             case 1:
+     *                 if (var0 instanceof Integer) {
+     *                     return 1;
+     *                 }
+     *             case 2:
+     *                 break;
+     *             default:
+     *                 return 3;
+     *         }
+     *
+     *         if (var0 instanceof Long) {
+     *             return 2;
+     *         } else {
+     *             return 3;
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * Both versions contain a non-counted loop that can be transformed into sequential code if loop
+     * peeling is applied.
+     */
+    public static boolean maybeSwitchWhenLoop(Loop loop) {
+        if (loop.isCounted()) {
+            return false;
+        }
+        LoopBeginNode loopBegin = loop.loopBegin();
+        for (PhiNode phi : loopBegin.valuePhis()) {
+            if (phi.values().filter(ConstantNode.class).count() != phi.valueCount()) {
+                return false;
+            }
+            if (phi.usages().filter(IntegerSwitchNode.class).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

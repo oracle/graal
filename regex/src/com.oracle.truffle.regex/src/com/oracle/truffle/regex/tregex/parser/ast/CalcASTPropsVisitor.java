@@ -579,7 +579,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     protected void visit(CharacterClass characterClass) {
         if (isForward()) {
             if (!characterClass.getCharSet().matchesSingleChar()) {
-                if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
+                if (!ast.getEncoding().canBeMatchedWithMask(characterClass.getCharSet())) {
                     ast.getProperties().unsetCharClassesCanBeMatchedWithMask();
                 }
                 if (!ast.getEncoding().isFixedCodePointWidth(characterClass.getCharSet())) {

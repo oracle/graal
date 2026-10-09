@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.headers;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.shared.Uninterruptible;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public class WindowsAPIs {
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -40,12 +42,12 @@ public class WindowsAPIs {
         return win().wsaGetLastError();
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static boolean isSupported() {
         return ImageSingletons.contains(WindowsAPIsSupport.class);
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     static WindowsAPIsSupport win() {
         return ImageSingletons.lookup(WindowsAPIsSupport.class);
     }

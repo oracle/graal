@@ -55,7 +55,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
-import com.oracle.svm.core.graal.code.AssignedLocation;
+import com.oracle.svm.jvmci.shared.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.graal.code.PreparedSignature.ArgumentAdaptation;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;

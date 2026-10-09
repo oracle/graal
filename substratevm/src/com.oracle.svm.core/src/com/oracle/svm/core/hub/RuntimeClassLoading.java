@@ -94,6 +94,7 @@ public class RuntimeClassLoading {
                     SubstrateOptions.ClosedTypeWorld.update(values, false);
                     ClassRegistries.Options.ClassForNameRespectsClassLoader.update(values, true);
                     PredefinedClassesSupport.Options.SupportPredefinedClasses.update(values, false);
+                    SubstrateOptions.EnableJVMCIGuest.update(values, true);
                 }
             }
         };

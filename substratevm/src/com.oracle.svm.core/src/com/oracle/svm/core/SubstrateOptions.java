@@ -63,6 +63,7 @@ import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.GCOptionValue;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.Uninterruptible;
@@ -90,6 +91,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.phases.LowTier;
 import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
 import jdk.graal.compiler.loop.phases.CountedStripMiningReassociationPhase;
@@ -101,6 +103,7 @@ import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 import jdk.graal.compiler.vector.phases.ConditionalMoveOptimizationPhase;
 import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
@@ -204,6 +207,9 @@ public class SubstrateOptions {
 
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable JVMCI in the guest", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> EnableJVMCIGuest = new HostedOptionKey<>(false);
 
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
@@ -361,10 +367,16 @@ public class SubstrateOptions {
         disable(GraalOptions.OptDuplication, values);
         disable(PullThroughPhiPhase.Options.OptPullThroughPhi, values);
 
+        /* Partial redundancy scheduling duplicates operations and can increase code size. */
+        disable(PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling, values);
+
         /*
          * Expanding checkcasts for performance increases code size.
          */
         disable(GraalOptions.EarlyExpandCheckCast, values);
+
+        /* Breaking chained phis can increase code size by adding copies. */
+        disable(LowTier.Options.BreakChainedPhis, values);
 
         if (disableLoopOptimizations) {
             /*
@@ -1430,6 +1442,7 @@ public class SubstrateOptions {
                 super.onValueUpdate(values, oldValue, newValue);
                 if (newValue) {
                     SubstrateOptions.SupportCompileInIsolates.update(values, false);
+                    SubstrateOptions.EnableJVMCIGuest.update(values, true);
                 }
             }
         };
@@ -1763,6 +1776,9 @@ public class SubstrateOptions {
 
     public static class TruffleStableOptions {
 
+        @Option(help = "Enable the auxiliary engine cache features at runtime.", stability = OptionStability.STABLE) //
+        public static final HostedOptionKey<Boolean> AuxiliaryEngineCache = new HostedOptionKey<>(false);
+
         @Option(help = "Automatically copy the necessary language resources to the resources directory next to the produced image.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(false);
 
@@ -1906,9 +1922,4 @@ public class SubstrateOptions {
         }
     });
 
-    @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = Expert)//
-    public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
-
-    @Option(help = "Internal, instead use 'auxiliary_image_path' in 'graal_create_isolate_params_t'.", type = Expert)//
-    public static final RuntimeOptionKey<String> AuxiliaryImagePathIsolateArgument = new RuntimeOptionKey<>(null, RegisterForIsolateArgumentParser);
 }

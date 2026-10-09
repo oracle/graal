@@ -41,7 +41,7 @@ import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.replacements.nodes.BasicObjectCloneNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode;
 
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaKind;

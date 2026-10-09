@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.ameta;
 
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
 import org.graalvm.nativeimage.Platform;
@@ -150,8 +149,6 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return EmptyMemoryAccessProvider.SINGLETON;
     }
 
-    private static final Set<Class<?>> BOXING_CLASSES = Set.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class);
-
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
         if (!source.getJavaKind().isObject() || source.isNull()) {
@@ -163,7 +160,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
          * correct unboxed type.
          */
         AnalysisType type = imageHeapConstant.getType();
-        if (BOXING_CLASSES.contains(type.getJavaClass())) {
+        if (GuestAccess.get().isBoxingType(type.getWrapped())) {
             imageHeapConstant.ensureReaderInstalled();
             ResolvedJavaField[] fields = type.getInstanceFields(true);
             assert fields.length == 1 && fields[0].getName().equals("value");
@@ -232,7 +229,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (array instanceof ImageHeapPrimitiveArray heapArray) {
             /* Unaligned accesses are only allowed for primitive arrays. */
             MetaAccessProvider originalMetaAccess = GuestAccess.get().getProviders().getMetaAccess();
-            JavaKind arrayKind = JavaKind.fromJavaClass(heapArray.getType().getComponentType().getJavaClass());
+            JavaKind arrayKind = heapArray.getType().getComponentType().getJavaKind();
             long hostedIndexScale = originalMetaAccess.getArrayIndexScale(arrayKind);
             assert hostedIndexScale == runtimeIndexScale : "element size must match for primitive arrays";
 

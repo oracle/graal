@@ -47,6 +47,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.CGlobalDataPointerSingleton;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.code.ImageCodeInfoProvider;
 import com.oracle.svm.core.InterpreterJNIUpcallStubGuestValue;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
@@ -58,15 +59,15 @@ import com.oracle.svm.core.c.CGlobalDataLoadPolicy;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.graal.code.AssignedLocation;
+import com.oracle.svm.jvmci.shared.meta.DeoptStub;
+import com.oracle.svm.jvmci.shared.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
@@ -79,6 +80,7 @@ import com.oracle.svm.core.graal.lir.VerificationMarkerOp;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
@@ -90,8 +92,8 @@ import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -654,7 +656,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
             LIRKind wordKind = getLIRKindTool().getWordKind();
             Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getImageCodeOffset()));
-            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(targetMethod.getImageCodeInfo()));
+            Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(ImageCodeInfoProvider.getImageCodeInfo(targetMethod)));
             int wordBits = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = KnownOffsets.singleton().getImageCodeInfoCodeStartOffset();
             Value codeStartField = AArch64AddressValue.makeAddress(wordKind, wordBits, asAllocatable(codeInfo), codeStartFieldOffset);
@@ -819,6 +821,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
     }
 
     public class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
+
+        private AllocatableValue[] callerReturnLocations = AllocatableValue.NONE;
+
         public SubstrateAArch64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AArch64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
         }
@@ -853,7 +858,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             }
 
             Value[] values = super.visitInvokeArguments(invokeCc, arguments, callTarget);
-            SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
+            SubstrateCallingConvention convention = (SubstrateCallingConvention) invokeCc;
+            callerReturnLocations = convention.getAdditionalReturnLocations();
+            SubstrateCallingConventionType type = (SubstrateCallingConventionType) convention.getType();
 
             if (type.usesReturnBuffer()) {
                 /*
@@ -930,6 +937,16 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             return assignedLocation.register().asValue(kind);
         }
 
+        private Value[] getCallerReturns(SubstrateCallingConventionType callingConventionType, Value result, Value[] parameters) {
+            Value[] parameterReturns = callingConventionType.getAdditionalReturns(result, parameters);
+            if (callerReturnLocations.length == 0) {
+                return parameterReturns;
+            }
+            Value[] callerReturns = Arrays.copyOf(parameterReturns, parameterReturns.length + callerReturnLocations.length);
+            System.arraycopy(callerReturnLocations, 0, callerReturns, parameterReturns.length, callerReturnLocations.length);
+            return callerReturns;
+        }
+
         @Override
         protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
             var cc = (SubstrateCallingConventionType) callTarget.callType();
@@ -967,7 +984,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             if (cc.customABI()) {
                 VMError.guarantee(temps.length == 0, "existing temps");
                 actualTemps = cc.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters());
-                additionalReturns = cc.getAdditionalReturns(result, parameters);
+                additionalReturns = getCallerReturns(cc, result, parameters);
             }
 
             append(new SubstrateAArch64DirectCallOp(targetMethod, result, parameters,
@@ -984,11 +1001,18 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             SubstrateCallingConventionType cc = (SubstrateCallingConventionType) callTarget.callType();
 
-            Value[] multipleResults = new Value[0];
-            if (cc.customABI() && cc.usesReturnBuffer()) {
-                multipleResults = Arrays.stream(cc.returnSaving)
-                                .map(SubstrateAArch64NodeLIRBuilder::asReturnedValue)
-                                .toList().toArray(new Value[0]);
+            Value[] actualTemps = temps;
+            Value[] multipleResults = Value.NO_VALUES;
+            if (cc.customABI()) {
+                if (cc.usesReturnBuffer()) {
+                    multipleResults = Arrays.stream(cc.returnSaving)
+                                    .map(SubstrateAArch64NodeLIRBuilder::asReturnedValue)
+                                    .toList().toArray(new Value[0]);
+                } else {
+                    VMError.guarantee(temps.length == 0, "existing temps");
+                    actualTemps = cc.getKilledRegister(getCodeCache().getRegisterConfig().getCallerSaveRegisters());
+                    multipleResults = getCallerReturns(cc, result, parameters);
+                }
             }
 
             Value hiddenArgument = Value.ILLEGAL;
@@ -997,7 +1021,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 hiddenArgument = HIDDEN_ARGUMENT_REGISTER.asValue(LIRKind.value(AArch64Kind.QWORD));
             }
 
-            append(new SubstrateAArch64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState, setupJavaFrameAnchor(callTarget),
+            append(new SubstrateAArch64IndirectCallOp(targetMethod, result, parameters, actualTemps, targetAddress, callState, setupJavaFrameAnchor(callTarget),
                             getNewThreadStatus(callTarget), getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget), multipleResults,
                             hiddenArgument));
         }
@@ -1086,7 +1110,8 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 return null;
             }
             // Assume the SVM ForeignCallSignature are identical to the Graal ones.
-            return gen.getForeignCalls().lookupForeignCall(foreignCallDescriptor);
+            SubstrateForeignCallsProvider foreignCalls = (SubstrateForeignCallsProvider) gen.getForeignCalls();
+            return foreignCalls.lookupForeignCallWithCPUFeatures(foreignCallDescriptor, ((AArch64) gen.target().arch).getFeatures());
         }
     }
 
@@ -1448,7 +1473,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
     }
 
     /**
-     * Generates the prologue of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EntryStub}
+     * Generates the prologue of a {@link com.oracle.svm.jvmci.shared.meta.DeoptStub.StubType#EntryStub}
      * method.
      */
     protected static class DeoptEntryStubContext extends SubstrateAArch64FrameContext {
@@ -1492,7 +1517,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
     }
 
     /**
-     * Generates the epilogue of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#ExitStub}
+     * Generates the epilogue of a {@link com.oracle.svm.jvmci.shared.meta.DeoptStub.StubType#ExitStub}
      * method.
      */
     protected static class DeoptExitStubContext extends SubstrateAArch64FrameContext {
@@ -1782,29 +1807,29 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
     }
 
     static class SubstrateAArch64FrameMap extends AArch64FrameMap {
-        private StackSlot interpreterJNIUpcallData;
-        private StackSlot interpreterFFMUpcallData;
+        private StackSlot interpreterData;
+        private StackSlot interpreterLeaveData;
 
         SubstrateAArch64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
             super(codeCache, registerConfig, referenceMapFactory);
         }
 
-        void allocateInterpreterJNIUpcallData() {
-            assert interpreterJNIUpcallData == null;
-            interpreterJNIUpcallData = allocateStackMemory(AArch64InterpreterStubs.sizeOfInterpreterData(), getTarget().wordSize);
+        void allocateInterpreterData() {
+            assert interpreterData == null;
+            interpreterData = allocateStackMemory(AArch64InterpreterStubs.sizeOfInterpreterData(), getTarget().wordSize);
         }
 
-        StackSlot getInterpreterJNIUpcallData() {
-            return interpreterJNIUpcallData;
+        StackSlot getInterpreterData() {
+            return interpreterData;
         }
 
-        void allocateInterpreterFFMUpcallData() {
-            assert interpreterFFMUpcallData == null;
-            interpreterFFMUpcallData = allocateStackMemory(AArch64InterpreterStubs.sizeOfInterpreterData(), getTarget().wordSize);
+        void allocateInterpreterLeaveData() {
+            assert interpreterLeaveData == null;
+            interpreterLeaveData = allocateStackMemory(2 * getTarget().wordSize, getTarget().wordSize);
         }
 
-        StackSlot getInterpreterFFMUpcallData() {
-            return interpreterFFMUpcallData;
+        StackSlot getInterpreterLeaveData() {
+            return interpreterLeaveData;
         }
     }
 
@@ -1824,7 +1849,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         }
         masm.setCodePatchingAnnotationConsumer(patchConsumerFactory.newConsumer(compilationResult));
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenResult).getMethod();
-        Deoptimizer.StubType stubType = method.getDeoptStubType();
+        DeoptStub.StubType stubType = method.getDeoptStubType();
         DataBuilder dataBuilder = new SubstrateDataBuilder();
         CallingConvention callingConvention = lirGenResult.getCallingConvention();
         FrameContext frameContext = createFrameContext(method, stubType, callingConvention);
@@ -1842,9 +1867,9 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         return crb;
     }
 
-    protected FrameContext createFrameContext(SharedMethod method, Deoptimizer.StubType stubType, CallingConvention callingConvention) {
+    protected FrameContext createFrameContext(SharedMethod method, DeoptStub.StubType stubType, CallingConvention callingConvention) {
         // GR-60556: This should compose better with custom stub frame contexts.
-        if (stubType == Deoptimizer.StubType.NoDeoptStub && frameContextSupport.canEmitTailCalls(method)) {
+        if (stubType == DeoptStub.StubType.NoDeoptStub && frameContextSupport.canEmitTailCalls(method)) {
             return new TailCallSubstrateAArch64FrameContext(method);
         }
         return switch (stubType) {
@@ -2109,7 +2134,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                         callingConvention, method);
 
         FrameMap frameMap = ((FrameMapBuilderTool) lirGenerationResult.getFrameMapBuilder()).getFrameMap();
-        Deoptimizer.StubType stubType = method.getDeoptStubType();
+        DeoptStub.StubType stubType = method.getDeoptStubType();
         /*
          * Ristretto currently makes this path reachable during analysis. Avoid accessing the
          * hosted-only CallVariant in that case until GR-74744 is fixed.
@@ -2118,19 +2143,19 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
             InterpreterJNIUpcallStubGuestValue jniAnnotation = InterpreterJNIUpcallStubGuestValue.get(method);
             if (jniAnnotation != null && jniAnnotation.callVariant() == CallVariant.VARARGS && !Platform.includedIn(Platform.DARWIN.class)) {
                 assert InterpreterSupport.isEnabled();
-                ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterJNIUpcallData();
+                ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterData();
             }
-            if (stubType == Deoptimizer.StubType.InterpreterFFMUpcallStub) {
+            if (stubType == DeoptStub.StubType.InterpreterFFMUpcallStub) {
                 assert InterpreterSupport.isEnabled();
-                ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterFFMUpcallData();
+                ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterData();
             }
         }
-        if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
+        if (stubType == DeoptStub.StubType.InterpreterEnterStub) {
             assert InterpreterSupport.isEnabled();
-            frameMap.reserveOutgoing(AArch64InterpreterStubs.additionalFrameSizeEnterStub());
-        } else if (stubType == Deoptimizer.StubType.InterpreterLeaveStub || stubType == Deoptimizer.StubType.InterpreterNativeDowncallStub) {
+            ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterData();
+        } else if (stubType == DeoptStub.StubType.InterpreterLeaveStub || stubType == DeoptStub.StubType.InterpreterNativeDowncallStub) {
             assert InterpreterSupport.isEnabled();
-            frameMap.reserveOutgoing(AArch64InterpreterStubs.additionalFrameSizeLeaveStub());
+            ((SubstrateAArch64FrameMap) frameMap).allocateInterpreterLeaveData();
         }
         return lirGenerationResult;
     }

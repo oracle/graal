@@ -74,7 +74,7 @@ public class WebImageNopAllocationSupport implements GCAllocationSupport {
     }
 
     @Override
-    public Word getTLABInfo() {
+    public Word getThreadLocalData() {
         throw GraalError.unimplementedOverride();
     }
 

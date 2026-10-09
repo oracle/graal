@@ -40,7 +40,7 @@ import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.aarch64.AArch64MethodAddressResolutionDispatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;

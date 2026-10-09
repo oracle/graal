@@ -113,6 +113,7 @@ import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
@@ -133,6 +134,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImageCodeCache {
@@ -455,11 +457,11 @@ public abstract class NativeImageCodeCache {
         RuntimeMetadataEncoder runtimeMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(hUniverse.getSnippetReflection(), encoders, hMetaAccess);
         ReflectionHostedSupport reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
 
-        Map<Class<?>, Set<Class<?>>> innerClasses = reflectionSupport.getReflectionInnerClasses();
+        Map<ResolvedJavaType, Set<ResolvedJavaType>> innerClasses = reflectionSupport.getReflectionInnerClasses();
         Set<?> heapDynamicHubs = reflectionSupport.getHeapDynamicHubs();
         for (HostedType type : hUniverse.getTypes()) {
             if (type.getWrapped().isReachable() && heapDynamicHubs.contains(type.getHub())) {
-                Class<?>[] typeInnerClasses = innerClasses.getOrDefault(type.getJavaClass(), Collections.emptySet()).toArray(new Class<?>[0]);
+                ResolvedJavaType[] typeInnerClasses = innerClasses.getOrDefault(OriginalClassProvider.getOriginalType(type), Collections.emptySet()).toArray(new ResolvedJavaType[0]);
                 runtimeMetadataEncoder.addClassMetadata(type, typeInnerClasses);
             }
         }
@@ -963,7 +965,7 @@ public abstract class NativeImageCodeCache {
     }
 
     public interface RuntimeMetadataEncoder {
-        void addClassMetadata(HostedType type, Class<?>[] reflectionClasses);
+        void addClassMetadata(HostedType type, ResolvedJavaType[] reflectionClasses);
 
         void addReflectionFieldMetadata(HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);
 

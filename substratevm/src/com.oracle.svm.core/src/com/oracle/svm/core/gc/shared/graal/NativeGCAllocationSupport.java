@@ -42,7 +42,7 @@ import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
@@ -188,6 +188,14 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
 
     @Uninterruptible(reason = "The newly allocated object must be young or all its covered cards must be dirty.", callerMustBe = true, calleeMustBe = false)
     protected abstract Object allocatePod0(int length, DynamicHub hub);
+
+    public abstract DynamicHub allocateMetaspaceDynamicHub(int numVTableEntries);
+
+    public abstract byte[] allocateMetaspaceByteArray(int length);
+
+    public abstract int[] allocateMetaspaceIntArray(int length);
+
+    public abstract Object allocateMetaspaceInstance(DynamicHub hub);
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void checkArrayLength(int length) {

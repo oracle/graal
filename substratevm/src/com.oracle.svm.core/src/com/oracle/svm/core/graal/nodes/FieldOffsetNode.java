@@ -28,7 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.type.StampFactory;

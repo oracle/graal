@@ -40,10 +40,10 @@ import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
-import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalBytes;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.shared.util.ClassUtil;
@@ -71,12 +71,12 @@ public class NativeGCAccessedFields {
     }
 
     /** Writes all offsets as integer values (4 bytes per value) into a byte array. */
-    public static byte[] writeOffsets(BeforeCompilationAccess access, int markWordOffset, FastThreadLocalBytes<Word> nativeJavaThreadTL, FastThreadLocalObject<Object> podReferenceMapTL,
-                    AccessedClass[] accessedClasses) {
+    public static byte[] writeOffsets(BeforeCompilationAccess access, int markWordOffset, FastThreadLocalBytes<Word> barrierAndAllocationDataTL,
+                    FastThreadLocalBytes<Word> nativeJavaThreadTL, FastThreadLocalObject<Object> podReferenceMapTL, AccessedClass[] accessedClasses) {
         UnsafeArrayTypeWriter buffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
 
         writeObjectLayoutOffsets(buffer, markWordOffset);
-        writeThreadLocalOffsets(buffer, nativeJavaThreadTL, podReferenceMapTL);
+        writeThreadLocalOffsets(buffer, barrierAndAllocationDataTL, nativeJavaThreadTL, podReferenceMapTL);
         writeCodeInfoOffsets(buffer);
         for (AccessedClass accessedClass : accessedClasses) {
             writeFieldOffsets(access, buffer, accessedClass.clazz, accessedClass.fields);
@@ -125,10 +125,12 @@ public class NativeGCAccessedFields {
         buffer.putS4(SubstrateOptions.useClosedTypeWorldHubLayout() ? DynamicHubLayout.singleton().getClosedTypeWorldTypeCheckSlotsOffset() : -1);
     }
 
-    private static void writeThreadLocalOffsets(UnsafeArrayTypeWriter buffer, FastThreadLocalBytes<Word> nativeJavaThreadTL, FastThreadLocalObject<Object> podReferenceMapTL) {
+    private static void writeThreadLocalOffsets(UnsafeArrayTypeWriter buffer, FastThreadLocalBytes<Word> barrierAndAllocationDataTL, FastThreadLocalBytes<Word> nativeJavaThreadTL,
+                    FastThreadLocalObject<Object> podReferenceMapTL) {
         VMThreadLocalOffsetProvider vmThreadLocalOffsetProvider = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class);
 
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(VMThreads.nextTL));
+        buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(barrierAndAllocationDataTL));
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(nativeJavaThreadTL));
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(StatusSupport.statusTL));
         buffer.putS4(vmThreadLocalOffsetProvider.offsetOf(podReferenceMapTL));

@@ -32,6 +32,8 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.svm.driver.BundlePathMap.PathStyle;
+
 final class DriverPathOptions {
 
     interface ArgumentCursor {
@@ -122,8 +124,8 @@ final class DriverPathOptions {
          * Aggregate path options are split with the source platform separator and re-joined with
          * the local platform separator.
          */
-        String rewriteValue(String rawValue, BundlePathMap.PathStyle sourcePathStyle, Function<String, String> pathRewriter) {
-            String sourceDelimiter = sourcePathStyle == BundlePathMap.PathStyle.Windows ? ";" : ":";
+        String rewriteValue(String rawValue, PathStyle sourcePathStyle, Function<String, String> pathRewriter) {
+            String sourceDelimiter = sourcePathStyle == PathStyle.Windows ? ";" : ":";
             return APIOptionHandler.rewritePathAggregate(rawValue, () -> valueKind == ValueKind.SINGLE_PATH, sourceDelimiter, File.pathSeparator, pathRewriter);
         }
     }
@@ -133,7 +135,7 @@ final class DriverPathOptions {
          * Rewrites the matched option value while preserving the option's original aggregate
          * semantics.
          */
-        String rewriteValue(BundlePathMap.PathStyle sourcePathStyle, Function<String, String> pathRewriter) {
+        String rewriteValue(PathStyle sourcePathStyle, Function<String, String> pathRewriter) {
             return option.rewriteValue(rawValue, sourcePathStyle, pathRewriter);
         }
 

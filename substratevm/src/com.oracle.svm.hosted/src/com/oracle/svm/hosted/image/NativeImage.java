@@ -73,7 +73,7 @@ import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuilderUtil;
-import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.OS;
@@ -457,7 +457,7 @@ public abstract class NativeImage extends AbstractImage {
     private Method getMethod(HostedMethod hostedMethod) {
         AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub(((CEntryPointCallStubMethod) hostedMethod.wrapped.wrapped));
         try {
-            return entryPoint.getDeclaringClass().getJavaClass().getDeclaredMethod(entryPoint.getName(),
+            return OriginalClassProvider.getJavaClass(entryPoint.getDeclaringClass()).getDeclaredMethod(entryPoint.getName(),
                             MethodType.fromMethodDescriptorString(entryPoint.getSignature().toMethodDescriptor(), imageClassLoader).parameterArray());
         } catch (NoSuchMethodException e) {
             throw shouldNotReachHere(e);

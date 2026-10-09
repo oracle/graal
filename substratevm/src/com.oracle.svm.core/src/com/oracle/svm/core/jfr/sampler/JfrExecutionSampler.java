@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.core.jfr.sampler;
 
-import com.oracle.svm.shared.Uninterruptible;
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+import com.oracle.svm.shared.Uninterruptible;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
 public abstract class JfrExecutionSampler {
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static JfrExecutionSampler singleton() {
         return ImageSingletons.lookup(JfrExecutionSampler.class);
     }

@@ -37,8 +37,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -52,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
+public abstract class HostedType extends HostedElement implements SharedType, DynamicHubProvider, WrappedJavaType, OriginalClassProvider {
 
     public static final int INVALID_TYPECHECK_ID = -1;
 

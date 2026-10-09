@@ -440,7 +440,9 @@ public class LoopInversionPhase extends LoopPhase<LoopPolicies> {
         }
         canonicalizer.applyIncremental(graph, context, ev.getNodes());
         assert !inverted || verifyInversion(graph, context);
-        new InjectLoopCounterStampsPhase().apply(graph, context);
+        if (InjectLoopCounterStampsPhase.Options.OptLoopPhiStamps.getValue(graph.getOptions())) {
+            new InjectLoopCounterStampsPhase().apply(graph, context);
+        }
         logIVAndExitVals(graph, context);
     }
 

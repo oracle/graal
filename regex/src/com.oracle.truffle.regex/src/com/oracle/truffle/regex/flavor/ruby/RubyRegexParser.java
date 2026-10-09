@@ -1068,14 +1068,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     /**
      * A comment starts with a '#' and ends at the end of the line. The leading '#' is assumed to
-     * have already been parsed.
+     * have already been parsed. A newline always terminates the comment, even when preceded by a
+     * backslash.
      */
     private void comment() {
         while (!atEnd()) {
             int ch = consumeChar();
-            if (ch == '\\' && !atEnd()) {
-                advance();
-            } else if (ch == '\n') {
+            if (ch == '\n') {
                 break;
             }
         }

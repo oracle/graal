@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,6 +91,7 @@ import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.ExitStatus;
+import com.oracle.svm.driver.BundlePathMap.PortablePath;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.driver.launcher.ContainerSupport;
@@ -634,7 +635,7 @@ public class NativeImage {
                  * Truffle to the builder module path. This is legacy support and should in the
                  * future no longer be needed.
                  */
-                jars.addAll(getJars(libTruffleDir, "truffle-compiler"));
+                jars.addAll(getJars(libTruffleDir, "truffle-compiler", "jniutils", "nativebridge"));
                 Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
                 if (Files.exists(builderPath)) {
                     List<Path> truffleRuntimeSVMJars = getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm");
@@ -644,10 +645,6 @@ public class NativeImage {
                         // JDKs
                         jars.addAll(getJars(libJvmciDir, "polyglot"));
                     }
-                }
-                if (libJvmciDir != null) {
-                    // truffle-runtime depends on polyglot, which is not part of non-jlinked JDKs
-                    jars.addAll(getJars(libTruffleDir, "jniutils"));
                 }
             }
             /*
@@ -768,10 +765,10 @@ public class NativeImage {
 
         @Override
         public boolean isExcluded(Path resourcePath, Path entry) {
-            Path srcPath = useBundle() ? bundleSupport.originalPath(entry) : null;
-            Path matchPath = srcPath != null ? srcPath : entry;
+            PortablePath srcPath = useBundle() ? bundleSupport.originalPortablePath(entry) : null;
+            String matchPath = srcPath != null ? srcPath.sourcePathText() : entry.toString();
             return excludedConfigs.stream()
-                            .filter(e -> e.jarPattern.matcher(matchPath.toString()).find())
+                            .filter(e -> e.jarPattern.matcher(matchPath).find())
                             .anyMatch(e -> e.resourcePattern.matcher(resourcePath.toString()).find());
         }
     }
@@ -1018,25 +1015,86 @@ public class NativeImage {
         /* Missing Class-Path Attribute is tolerable */
         if (classPathValue != null) {
             /* Cache expensive reverse lookup in bundle-case */
-            Path origJarFilePath = null;
+            PortablePath origJarFilePath = null;
             for (String cp : classPathValue.split(" +")) {
-                Path manifestClassPath = Path.of(cp);
-                if (!manifestClassPath.isAbsolute()) {
-                    /* Resolve relative manifestClassPath against directory containing jar */
-                    Path relativeManifestClassPath = manifestClassPath;
-                    manifestClassPath = jarFilePath.getParent().resolve(relativeManifestClassPath);
-                    if (useBundle() && !Files.exists(manifestClassPath)) {
-                        if (origJarFilePath == null) {
-                            origJarFilePath = bundleSupport.originalPath(jarFilePath);
+                if (cp.isEmpty()) {
+                    continue;
+                }
+                URI classPathEntry;
+                URI resolvedEntry;
+                try {
+                    classPathEntry = URI.create(cp);
+                    /* URI represents both relative URL references and absolute file URLs. */
+                    resolvedEntry = jarFilePath.toUri().resolve(classPathEntry);
+                    if (!"file".equalsIgnoreCase(resolvedEntry.getScheme())) {
+                        continue;
+                    }
+                } catch (IllegalArgumentException e) {
+                    /* Invalid Class-Path entries are ignored. */
+                    continue;
+                }
+
+                Path manifestClassPath;
+                try {
+                    manifestClassPath = Path.of(resolvedEntry);
+                } catch (IllegalArgumentException e) {
+                    manifestClassPath = null;
+                }
+                if (useBundle()) {
+                    if (origJarFilePath == null) {
+                        origJarFilePath = bundleSupport.originalPortablePath(jarFilePath);
+                    }
+                    if (origJarFilePath != null) {
+                        /*
+                         * Bundle creation and application process manifests from the JAR copy
+                         * under the bundle root. Relative Class-Path entries still describe
+                         * locations relative to the original context JAR. Resolve the full URI
+                         * reference before converting back to PortablePath: using only getPath()
+                         * would discard authority, query, and fragment semantics.
+                         */
+                        try {
+                            URI originalResolvedEntry = origJarFilePath.toFileURI().resolve(classPathEntry);
+                            PortablePath origManifestClassPath = PortablePath.parseFileURI(origJarFilePath.style(), originalResolvedEntry).normalize();
+                            /*
+                             * Reuse an existing capture during bundle replay. During bundle creation,
+                             * a manifest entry may be encountered for the first time; materialize its
+                             * original source path so normal classpath processing below can validate
+                             * and capture it.
+                             */
+                            Path substitutedPath = bundleSupport.resolveSubstitutedPath(origManifestClassPath);
+                            if (substitutedPath != null) {
+                                manifestClassPath = substitutedPath;
+                            } else {
+                                manifestClassPath = bundleSupport.materializeSourcePath(origManifestClassPath);
+                                if (manifestClassPath == null || !Files.isReadable(manifestClassPath)) {
+                                    // Freeze this missing dependency before a later replay can find it.
+                                    manifestClassPath = bundleSupport.recordUnavailablePath(origManifestClassPath);
+                                }
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // URI decoding can produce a filesystem-invalid path, such as a NUL.
+                            continue;
                         }
+                    }
+                    if (manifestClassPath == null || !Files.exists(manifestClassPath)) {
                         if (origJarFilePath == null) {
                             assert false : "Manifest Class-Path handling failed. No original path for " + jarFilePath + " available.";
                             break;
                         }
-                        manifestClassPath = origJarFilePath.getParent().resolve(relativeManifestClassPath);
+                        /* Missing Class-Path entries are allowed; continue with later entries. */
+                        continue;
                     }
                 }
+                if (manifestClassPath == null) {
+                    /* The resolved file URI is not a path on the current platform. */
+                    continue;
+                }
                 /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
+                /*
+                 * This also remains necessary for an already captured entry: it adds the entry to
+                 * the builder classpath and recursively processes its manifest. Path substitutions
+                 * only locate captured files.
+                 */
                 addImageClasspathEntry(destination, manifestClassPath.normalize(), false);
             }
         }
@@ -1186,9 +1244,6 @@ public class NativeImage {
             }
 
             Optional<ArgumentEntry> lastImageName = getHostedOptionArgument(imageBuilderArgs, oHName);
-            if (!lastImageName.isEmpty()) {
-                validateImageName(lastImageName.get().value());
-            }
 
             if (!jarOptionMode) {
                 mainClassModule = getHostedOptionArgumentValue(imageBuilderArgs, oHModule);
@@ -1229,7 +1284,7 @@ public class NativeImage {
                     boolean extraNameIsLast = lastImageName.isEmpty() || lastImageName.get().index < extraImageName.index;
                     if (extraNameIsLast) {
                         /* extraImageArg that comes after lastImageName wins */
-                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + validateImageName(extraImageName.value));
+                        imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageName.value);
                     }
                 }
             } else { /* jarOptionMode */
@@ -1395,13 +1450,6 @@ public class NativeImage {
             }
         }
         return null;
-    }
-
-    private static String validateImageName(String imageName) {
-        if (imageName.startsWith("-")) {
-            LogUtils.warning("Image name ('" + imageName + "') start with a dash. Is another option wrongly interpreted as image name? (see --help)");
-        }
-        return imageName;
     }
 
     private static void updateArgumentEntryValue(List<String> argList, ArgumentEntry listEntry, String newValue) {
@@ -1933,7 +1981,13 @@ public class NativeImage {
                         .collect(Collectors.toMap(m -> m.descriptor().name(), m -> m));
 
         Set<String> modulePathRequiredModules = new HashSet<>(); // noEconomicSet(api)
-        Queue<ModuleReference> discoveryQueue = new ArrayDeque<>(modules.values());
+        /*
+         * Only the modules on the module path are discovery roots. Other modules (including system
+         * ones) are brought in only as transitive dependencies.
+         */
+        Queue<ModuleReference> discoveryQueue = modulePathFinder.findAll().stream()
+                        .map(m -> modules.get(m.descriptor().name()))
+                        .collect(Collectors.toCollection(ArrayDeque::new));
 
         while (!discoveryQueue.isEmpty()) {
             ModuleReference module = discoveryQueue.poll();
@@ -2147,7 +2201,7 @@ public class NativeImage {
 
     Path canonicalize(Path path, boolean strict) {
         if (useBundle()) {
-            Path prev = bundleSupport.restoreCanonicalization(path);
+            Path prev = bundleSupport.restoreBundlePath(path);
             if (prev != null) {
                 return prev;
             }
@@ -2231,6 +2285,8 @@ public class NativeImage {
                 if (!consumed) {
                     if (strict) {
                         showError("Property 'Args' contains invalid entry '" + queue.peek() + "'");
+                    } else if (queue.peek().startsWith("-")) {
+                        showError("Unrecognized option '" + queue.peek() + "'. Use '--help' to list available options.");
                     } else {
                         /* Ensure unique object identity for leftover arg */
                         String uniqueLeftoverArg = new String(queue.poll());
@@ -2302,7 +2358,8 @@ public class NativeImage {
                 LogUtils.warning("Invalid module-path entry: " + modulePathEntry);
             }
             /* Allow non-existent module-path entries to comply with `java` command behaviour. */
-            imageModulePath.add(canonicalize(modulePathEntry, false));
+            mpEntry = canonicalize(modulePathEntry, false);
+            imageModulePath.add(useBundle() ? bundleSupport.substituteModulePath(mpEntry) : mpEntry);
             return;
         }
 
@@ -2373,7 +2430,8 @@ public class NativeImage {
                 LogUtils.warning("Invalid classpath entry: " + classpath);
             }
             /* Allow non-existent classpath entries to comply with `java` command behaviour. */
-            destination.add(canonicalize(classpath, false));
+            classpathEntry = canonicalize(classpath, false);
+            destination.add(useBundle() ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry);
             return;
         }
 

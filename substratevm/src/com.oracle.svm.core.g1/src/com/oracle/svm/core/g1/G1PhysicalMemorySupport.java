@@ -49,7 +49,7 @@ public class G1PhysicalMemorySupport extends PlatformPhysicalMemorySupport {
          * Return the size that was computed on the C++ side to ensure that Native Image
          * and G1 use the same values.
         */
-        return G1CommittedMemoryProvider.getInstance().getPhysicalMemorySize();
+        return G1CommittedMemoryProvider.singleton().getPhysicalMemorySize();
     }
 
     @Override

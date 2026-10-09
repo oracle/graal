@@ -30,7 +30,7 @@ import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.pltgot.MethodAddressResolutionDispatcher;
 
 import jdk.graal.compiler.nodes.UnreachableNode;

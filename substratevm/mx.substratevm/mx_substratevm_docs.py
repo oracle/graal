@@ -104,6 +104,15 @@ def _remove_option_commands(table_text, commands_to_remove):
             filtered.append(line)
     return '\n'.join(filtered).strip()
 
+
+def _has_renderable_table_boundaries(content, begin_marker, end_marker):
+    table_header = '| Command | Type | Description | Default | Usage |'
+    expected_start = begin_marker + '\n\n' + table_header
+    begin_idx = content.find(expected_start)
+    end_idx = content.find(end_marker)
+    return begin_idx != -1 and end_idx != -1 and begin_idx < end_idx and content[:end_idx].endswith('\n\n')
+
+
 def verify_build_options_table():
     """
     Verify that the BuildOptions.md table is up-to-date with @Option annotations.
@@ -144,6 +153,10 @@ def verify_build_options_table():
 
         existing_table = content[table_start:table_end].strip()
     else:
+        if not _has_renderable_table_boundaries(content, begin_marker, end_marker):
+            mx.log_error("BuildOptions.md table markers must be separated from the table by blank lines.")
+            return False
+
         # Extract content between markers
         existing_table = content[begin_idx + len(begin_marker):end_idx].strip()
 
@@ -261,7 +274,7 @@ def update_build_options_table():
 
         # Replace content between markers
         new_content = (content[:begin_idx + len(begin_marker)] +
-                   '\n' + table_content + '\n' +
+                   '\n\n' + table_content + '\n\n' +
                    content[end_idx:])
 
     # Write updated content

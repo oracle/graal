@@ -36,7 +36,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WebImageWasmGCProviders;

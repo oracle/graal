@@ -28,7 +28,6 @@ import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
-import java.security.CodeSource;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -37,6 +36,7 @@ import com.oracle.svm.hosted.DynamicAccessDetectionSupport;
 import com.oracle.svm.hosted.DynamicAccessMethodLookupSupport;
 import com.oracle.svm.hosted.InlinedCalleeTrackingNode;
 import com.oracle.svm.hosted.ReachabilityCallbackNode;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -136,26 +136,23 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
     private static String getSourceEntry(AnalysisType callerClass) {
         EconomicSet<String> sourceEntries = DynamicAccessDetectionSupport.singleton().getSourceEntries();
         try {
-            CodeSource entryPathSource = callerClass.getJavaClass().getProtectionDomain().getCodeSource();
-            if (entryPathSource != null) {
-                URL entryPathURL = entryPathSource.getLocation();
-                if (entryPathURL != null) {
-                    String classPathEntry = Path.of(entryPathURL.toURI()).toString();
-                    if (classPathEntry.endsWith(File.separator)) {
-                        classPathEntry = classPathEntry.substring(0, classPathEntry.length() - 1);
-                    }
-                    if (sourceEntries.contains(classPathEntry)) {
-                        return classPathEntry;
-                    }
+            URL entryPathURL = JVMCIReflectionUtil.getOrigin(callerClass);
+            if (entryPathURL != null) {
+                String classPathEntry = Path.of(entryPathURL.toURI()).toString();
+                if (classPathEntry.endsWith(File.separator)) {
+                    classPathEntry = classPathEntry.substring(0, classPathEntry.length() - 1);
+                }
+                if (sourceEntries.contains(classPathEntry)) {
+                    return classPathEntry;
                 }
             }
 
-            String moduleName = callerClass.getJavaClass().getModule().getName();
+            String moduleName = JVMCIReflectionUtil.getModule(callerClass).getName();
             if (moduleName != null && sourceEntries.contains(moduleName)) {
                 return moduleName;
             }
 
-            String packageName = callerClass.getJavaClass().getPackageName();
+            String packageName = JVMCIReflectionUtil.getPackageName(callerClass);
             if (sourceEntries.contains(packageName)) {
                 return packageName;
             }

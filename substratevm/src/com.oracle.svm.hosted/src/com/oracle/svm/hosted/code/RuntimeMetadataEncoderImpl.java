@@ -91,7 +91,7 @@ import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.ByteArrayReader;
@@ -287,15 +287,16 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addClassMetadata(HostedType type, Class<?>[] innerClasses) {
+    public void addClassMetadata(HostedType type, ResolvedJavaType[] innerClasses) {
+        AnalysisType analysisType = type.getWrapped();
         Class<?> javaClass = type.getHub().getHostedJavaClass();
         Object enclosingMethodInfo = getEnclosingMethodInfo(javaClass);
         RecordComponentMetadata[] recordComponents = getRecordComponents(type, javaClass);
-        Class<?>[] permittedSubclasses = getPermittedSubclasses(javaClass);
-        Class<?>[] nestMembers = getNestMembers(javaClass);
-        Object[] signers = getSigners(javaClass);
+        int enabledQueries = dataBuilder.getEnabledReflectionQueries(analysisType);
+        ResolvedJavaType[] permittedSubclasses = getPermittedSubclasses(type, enabledQueries);
+        ResolvedJavaType[] nestMembers = getNestMembers(type, enabledQueries);
+        Object[] signers = getSigners(javaClass, enabledQueries);
         int classAccessFlags = Reflection.getClassAccessFlags(javaClass) & CLASS_ACCESS_FLAGS_MASK;
-        int enabledQueries = dataBuilder.getEnabledReflectionQueries(javaClass);
         VMError.guarantee((classAccessFlags & enabledQueries) == 0);
         int flags = classAccessFlags | enabledQueries;
         RuntimeDynamicAccessMetadata dynamicAccess = dataBuilder.getTypeMetadata(javaClass);
@@ -329,7 +330,6 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 encoders.classes.addObject(conditionType);
             }
         }
-        AnalysisType analysisType = type.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisType);
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisType);
 
@@ -374,51 +374,48 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.otherStrings.addObject((String) enclosingMethodInfo[2]);
     }
 
-    private static final Method getPermittedSubclasses = ReflectionUtil.lookupMethod(true, Class.class, "getPermittedSubclasses");
-
-    private Class<?>[] getPermittedSubclasses(Class<?> clazz) {
-        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
+    private static ResolvedJavaType[] getPermittedSubclasses(HostedType type, int enabledQueries) {
+        if ((enabledQueries & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
             return null;
         }
-        try {
-            Class<?>[] permittedSubclasses = (Class<?>[]) getPermittedSubclasses.invoke(clazz);
-            return filterDeletedClasses(permittedSubclasses);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private Class<?>[] getNestMembers(Class<?> clazz) {
-        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_NEST_MEMBERS_FLAG) == 0) {
+        List<? extends HostedType> permittedSubclasses = type.getPermittedSubclasses();
+        if (permittedSubclasses == null) {
             return null;
         }
-        return filterDeletedClasses(clazz.getNestMembers());
+        ResolvedJavaType[] resolvedPermittedSubclasses = permittedSubclasses.stream().map(OriginalClassProvider::getOriginalType).toArray(ResolvedJavaType[]::new);
+        return filterDeletedTypes(resolvedPermittedSubclasses);
     }
 
-    private Object[] getSigners(Class<?> clazz) {
-        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_SIGNERS_FLAG) == 0) {
+    private static ResolvedJavaType[] getNestMembers(HostedType type, int enabledQueries) {
+        if ((enabledQueries & ALL_NEST_MEMBERS_FLAG) == 0) {
+            return null;
+        }
+        return filterDeletedTypes(GuestAccess.get().getNestMembers(type));
+    }
+
+    private static Object[] getSigners(Class<?> clazz, int enabledQueries) {
+        if ((enabledQueries & ALL_SIGNERS_FLAG) == 0) {
             return null;
         }
         return clazz.getSigners();
     }
 
-    private Class<?>[] filterDeletedClasses(Class<?>[] classes) {
-        if (classes == null) {
+    private static ResolvedJavaType[] filterDeletedTypes(ResolvedJavaType[] types) {
+        if (types == null) {
             return null;
         }
         SubstitutionReflectivityFilter reflectivityFilter = SubstitutionReflectivityFilter.singleton();
-        Set<Class<?>> reachableClasses = new HashSet<>(); // noEconomicSet(temp)
-        for (Class<?> clazz : classes) {
+        Set<ResolvedJavaType> reachableTypes = new HashSet<>(); // noEconomicSet(temp)
+        for (ResolvedJavaType type : types) {
             try {
-                if (!reflectivityFilter.shouldExclude(clazz)) {
-                    metaAccess.lookupJavaType(clazz);
-                    reachableClasses.add(clazz);
+                if (!reflectivityFilter.shouldExclude(type)) {
+                    reachableTypes.add(type);
                 }
             } catch (DeletedElementException | AnalysisError.TypeNotFoundError e) {
                 // class has been deleted or otherwise deemed unreachable by the analysis -> ignore
             }
         }
-        return reachableClasses.toArray(new Class<?>[0]);
+        return reachableTypes.toArray(new ResolvedJavaType[0]);
     }
 
     @Override
@@ -554,21 +551,18 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         heapData.add(metadata);
     }
 
-    private HostedType[] registerClassValues(Class<?>[] classes) {
-        Set<HostedType> includedClasses = new HashSet<>(); // noEconomicSet(temp)
-        for (Class<?> clazz : classes) {
-            HostedType type;
-            try {
-                type = metaAccess.optionalLookupJavaType(clazz).orElse(null);
-            } catch (DeletedElementException e) {
-                type = null;
-            }
-            if (type != null && type.getWrapped().isReachable()) {
-                encoders.classes.addObject(type.getJavaClass());
-                includedClasses.add(type);
+    private HostedType[] registerClassValues(ResolvedJavaType[] types) {
+        Set<HostedType> includedTypes = new HashSet<>(); // noEconomicSet(temp)
+        AnalysisUniverse analysisUniverse = ((AnalysisMetaAccess) metaAccess.getWrapped()).getUniverse();
+        for (ResolvedJavaType type : types) {
+            AnalysisType analysisType = analysisUniverse.optionalLookup(type);
+            HostedType hostedType = analysisType == null ? null : metaAccess.getUniverse().optionalLookup(analysisType);
+            if (hostedType != null && hostedType.getWrapped().isReachable()) {
+                encoders.classes.addObject(hostedType.getJavaClass());
+                includedTypes.add(hostedType);
             }
         }
-        return includedClasses.toArray(HostedType.EMPTY_ARRAY);
+        return includedTypes.toArray(HostedType.EMPTY_ARRAY);
     }
 
     private AnnotationValue[] registerAnnotationValues(Annotated element) {

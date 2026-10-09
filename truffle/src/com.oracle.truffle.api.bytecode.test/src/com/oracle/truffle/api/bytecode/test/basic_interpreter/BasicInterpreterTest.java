@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -196,15 +197,19 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         }
 
         if (expected.activeSpecializations != null) {
-            List<Argument> nodeArgs = actual.getArguments().stream().filter(arg -> arg.getKind() == Kind.NODE_PROFILE).toList();
-            assertEquals(1, nodeArgs.size());
-            List<SpecializationInfo> specializations = nodeArgs.get(0).getSpecializationInfo();
-            Set<String> activeSpecializations = specializations.stream() //
-                            .filter(SpecializationInfo::isActive) //
-                            .map(SpecializationInfo::getMethodName) //
-                            .collect(Collectors.toSet());
-            assertEquals(expected.activeSpecializations, activeSpecializations);
+            assertEquals(expected.activeSpecializations, getActiveSpecializations(actual));
         }
+    }
+
+    private static Set<String> getActiveSpecializations(Instruction instr) {
+        List<Argument> nodeArgs = instr.getArguments().stream().filter(arg -> arg.getKind() == Kind.NODE_PROFILE).toList();
+        assertEquals(1, nodeArgs.size());
+        List<SpecializationInfo> specializations = nodeArgs.getFirst().getSpecializationInfo();
+        assertNotNull(specializations);
+        return specializations.stream() //
+                        .filter(SpecializationInfo::isActive) //
+                        .map(SpecializationInfo::getMethodName) //
+                        .collect(Collectors.toSet());
     }
 
     @Test
@@ -3145,6 +3150,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.argument$Long",
                         "c.Add$AddLongs",
                         "return");
+        assertEquals(Set.of("addLongs"), getActiveSpecializations(filterTrace(node.getBytecodeNode().getInstructionsAsList()).get(2)));
 
         BasicInterpreter cloned = node.doCloneUninitialized();
         // clone should be unquickened
@@ -3153,12 +3159,16 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.argument",
                         "c.Add",
                         "return");
+        assertEquals(Set.of(), getActiveSpecializations(filterTrace(cloned.getBytecodeNode().getInstructionsAsList()).get(2)));
+
         // original should be unchanged
         AbstractInstructionTest.assertInstructions(node,
                         "load.constant$Long",
                         "load.argument$Long",
                         "c.Add$AddLongs",
                         "return");
+        assertEquals(Set.of("addLongs"), getActiveSpecializations(filterTrace(node.getBytecodeNode().getInstructionsAsList()).get(2)));
+
         // clone call should work like usual
         assertEquals(42L, cloned.getCallTarget().call(2L));
     }

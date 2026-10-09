@@ -135,7 +135,7 @@ public class GaloisCounterModeAESNode extends MemoryKillStubIntrinsicNode {
     }
 
     @NodeIntrinsic
-    @GenerateStub(name = "galoisCounterModeAESCrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64")
+    @GenerateStub(name = "galoisCounterModeAESCrypt", minimumCPUFeaturesAMD64 = "minFeaturesAMD64", minimumCPUFeaturesAARCH64 = "minFeaturesAARCH64", runtimeCPUFeaturesAMD64 = "maxFeaturesAMD64")
     public static native int apply(Pointer in,
                     int len,
                     Pointer ct,

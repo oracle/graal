@@ -50,7 +50,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -192,8 +192,8 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected void lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool) {
-        super.lowerNewArrayToVector(newArray, tool, wordTypes.asKind(newArray.elementType()));
+    protected boolean lowerNewArrayToVector(NewArrayNode newArray, LoweringTool tool) {
+        return super.lowerNewArrayToVector(newArray, tool, wordTypes.asKind(newArray.elementType()));
     }
 
     @Override

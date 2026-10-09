@@ -48,17 +48,12 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
-import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.jdk.SignalHandlerSupport;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -68,11 +63,17 @@ import com.oracle.svm.core.posix.headers.Signal.sigset_tPointer;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
+import com.oracle.svm.guest.staging.c.CGlobalData;
+import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.guest.staging.c.CGlobalData;
-import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
@@ -115,7 +116,7 @@ public final class PosixSignalHandlerSupport implements SignalHandlerSupport {
     public PosixSignalHandlerSupport() {
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static PosixSignalHandlerSupport singleton() {
         return ImageSingletons.lookup(PosixSignalHandlerSupport.class);
     }
