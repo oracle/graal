@@ -231,7 +231,11 @@ public final class ThreadLocalAllocation {
         HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
         GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
-        return slowPathNewInstanceWithoutAllocation0(hub, size);
+        try {
+            return slowPathNewInstanceWithoutAllocation0(hub, size);
+        } catch (HeapChunkAllocationException e) {
+            throw OutOfMemoryUtil.reportOutOfMemoryError(e.getOutOfMemoryError());
+        }
     }
 
     @Uninterruptible(reason = "Possible use of StackValue in virtual thread.")
@@ -274,7 +278,11 @@ public final class ThreadLocalAllocation {
         HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayLikeObjectWithoutAllocating", DynamicHub.toClass(hub).getName());
         GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
-        return slowPathNewArrayLikeObjectWithoutAllocation0(hub, length, size, podReferenceMap);
+        try {
+            return slowPathNewArrayLikeObjectWithoutAllocation0(hub, length, size, podReferenceMap);
+        } catch (HeapChunkAllocationException e) {
+            throw OutOfMemoryUtil.reportOutOfMemoryError(e.getOutOfMemoryError());
+        }
     }
 
     @Uninterruptible(reason = "Possible use of StackValue in virtual thread.")
