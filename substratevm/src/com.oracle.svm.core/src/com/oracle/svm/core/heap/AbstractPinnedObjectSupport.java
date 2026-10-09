@@ -101,6 +101,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         PinnedObjectImpl newHead = null;
 
         while (cur != null) {
+            PinnedObjectImpl next = cur.next;
             if (cur.open) {
                 if (newHead == null) {
                     newHead = cur;
@@ -109,8 +110,11 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
                     lastOpen.next = cur;
                 }
                 lastOpen = cur;
+            } else if (next != null) {
+                /* Clear the link so a PinnedObject retained elsewhere does not keep other PinnedObjects alive. */
+                cur.next = null;
             }
-            cur = cur.next;
+            cur = next;
         }
 
         if (lastOpen != null) {
