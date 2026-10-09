@@ -67,9 +67,9 @@ public final class LogDecorations {
         data.setThreadId(decorators.contains(TID) ? VMThreads.OSThreadIdTL.get().rawValue() : 0);
     }
 
-    /// Writes one decorator value for `level` from this event record to `target`.
+    /// Writes one decorator value for `level` and `tagSet` from this event record to `target`.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void value(LogDecorators.Decorator decorator, LogLevel level, NativeMemoryLog target) {
+    public static void value(LogDecorators.Decorator decorator, LogLevel level, LogTagSet tagSet, NativeMemoryLog target) {
         if (!HasXlogSupport.get()) {
             VMError.guarantee(decorator == UPTIME, "Only uptime is supported (for PrintGC and VerboseGC) when -Xlog is not supported");
             writeRoundedUptime(target, uptimeNanos());
@@ -90,12 +90,7 @@ public final class LogDecorations {
             case PID -> target.signed(LogConfiguration.pid());
             case TID -> target.signed(threadId());
             case LEVEL -> target.string(level.label());
-            case TAGS -> {
-                LogTagSet currentTagSet = LogThreadLocal.activeTagSet();
-                if (currentTagSet != null) {
-                    target.string(currentTagSet.commaSeparatedLabel());
-                }
-            }
+            case TAGS -> target.string(tagSet.commaSeparatedLabel());
         }
     }
 

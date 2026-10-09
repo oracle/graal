@@ -308,10 +308,10 @@ public abstract class LogOutput {
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void write(LogTagSet tagSet, LogMessage message, LogLevel outputLevel, LogDecorators configuredDecorators) {
         OUTPUT_BUFFER.reset();
-        int lineCount = message.lineCount();
+        int lineCount = LogMessage.lineCount();
         boolean hasLine = false;
         for (int index = 0; index < lineCount; index++) {
-            LogLevel lineLevel = message.lineLevel(index);
+            LogLevel lineLevel = LogMessage.lineLevel(index);
             if (outputLevel.enables(lineLevel)) {
                 hasLine = true;
                 int decoratorWidth = writeRecordPrefix(configuredDecorators, lineLevel, tagSet);
@@ -367,7 +367,7 @@ public abstract class LogOutput {
     /// Writes all metadata that precedes one physical log record.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private int writeRecordPrefix(LogDecorators configuredDecorators, LogLevel level, LogTagSet tagSet) {
-        int decoratorWidth = writeDecorators(configuredDecorators, level);
+        int decoratorWidth = writeDecorators(configuredDecorators, level, tagSet);
         tagSet.writePrefix(OUTPUT_BUFFER);
         return decoratorWidth;
     }
@@ -380,10 +380,10 @@ public abstract class LogOutput {
         }
     }
 
-    /// Writes `enabledDecorators` using the captured thread-local values and returns the combined
-    /// width of their bracketed values, excluding the trailing separator.
+    /// Writes `enabledDecorators` for `level` and `tagSet` using the captured thread-local values.
+    /// Returns the combined width of their bracketed values, excluding the trailing separator.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private int writeDecorators(LogDecorators enabledDecorators, LogLevel level) {
+    private int writeDecorators(LogDecorators enabledDecorators, LogLevel level, LogTagSet tagSet) {
         int decoratorsLength = 0;
         boolean decorated = false;
         for (LogDecorators.Decorator decorator : LogDecorators.VALUES) {
@@ -391,7 +391,7 @@ public abstract class LogOutput {
                 decorated = true;
                 OUTPUT_BUFFER.character('[');
                 DECORATOR_BUFFER.reset();
-                LogDecorations.value(decorator, level, DECORATOR_BUFFER);
+                LogDecorations.value(decorator, level, tagSet, DECORATOR_BUFFER);
                 int length = DECORATOR_BUFFER.getPosition();
                 int index = decorator.ordinal();
                 int padding;

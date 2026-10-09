@@ -79,7 +79,7 @@ public final class LogMessage implements AutoCloseable {
 
     /// Gets the most severe level recorded in the current message.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    LogLevel getMostSevereLevel() {
+    static LogLevel getMostSevereLevel() {
         verifyOpen();
         return LogThreadLocal.mostDetailedLevel();
     }
@@ -88,7 +88,7 @@ public final class LogMessage implements AutoCloseable {
     @Override
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void close() {
-        if (LogThreadLocal.activeTagSet() != tagSet) {
+        if (!LogThreadLocal.hasActiveMessage()) {
             return;
         }
         try {
@@ -136,14 +136,16 @@ public final class LogMessage implements AutoCloseable {
         return line(LogLevel.TRACE);
     }
 
+    /// Gets the number of lines in the current thread's open message.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    int lineCount() {
+    static int lineCount() {
         verifyOpen();
         return LogThreadLocal.lineCount();
     }
 
+    /// Gets the level of line `index` in the current thread's open message.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    LogLevel lineLevel(int index) {
+    static LogLevel lineLevel(int index) {
         verifyLine(index);
         return LogLevel.VALUES[LogThreadLocal.lines().read(index * LINE_ENTRY_INTS)];
     }
@@ -177,19 +179,22 @@ public final class LogMessage implements AutoCloseable {
         return LogThreadLocal.lines().read(index * LINE_ENTRY_INTS + 1);
     }
 
+    /// Requires an open scope on the current thread before accessing its message state.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void verifyOpen() {
-        VMError.guarantee(LogThreadLocal.activeTagSet() == tagSet, "LogMessage can only be accessed within its open scope.");
+    private static void verifyOpen() {
+        VMError.guarantee(LogThreadLocal.hasActiveMessage(), "LogMessage can only be accessed within an open scope.");
     }
 
+    /// Requires `index` to identify a line in the current thread's open message.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void verifyLine(int index) {
+    private static void verifyLine(int index) {
         verifyOpen();
         VMError.guarantee(index >= 0 && index < lineCount(), "LogMessage line index is outside the message.");
     }
 
+    /// Grows the current thread's native line table when another line would not fit.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void ensureLineCapacity() {
+    private static void ensureLineCapacity() {
         int count = lineCount();
         int capacity = LogThreadLocal.lineCapacity();
         if (count < capacity) {

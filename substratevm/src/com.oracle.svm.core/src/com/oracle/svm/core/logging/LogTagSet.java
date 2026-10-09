@@ -245,7 +245,7 @@ public enum LogTagSet {
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public LogMessage message() {
         guaranteeGCLoggingIsSafe();
-        LogThreadLocal.activate(this);
+        LogThreadLocal.activate();
         return logMessage;
     }
 
@@ -258,7 +258,7 @@ public enum LogTagSet {
         }
         try {
             LogOutputList.Configuration configuration = outputList.configuration();
-            LogOutputConfiguration[] outputs = configuration.outputsFor(message.getMostSevereLevel());
+            LogOutputConfiguration[] outputs = configuration.outputsFor(LogMessage.getMostSevereLevel());
             LogDecorations.capture(configuration.decorators());
             for (LogOutputConfiguration outputConfiguration : outputs) {
                 LogOutput output = outputConfiguration.output();

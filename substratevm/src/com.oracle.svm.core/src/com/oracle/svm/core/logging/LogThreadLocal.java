@@ -65,9 +65,10 @@ public final class LogThreadLocal implements ThreadListener {
 
     /// Gets whether the current thread has an open logging message without initializing its
     /// logging state.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean hasActiveMessage() {
         Data data = get();
-        return data.isNonNull() && data.getActiveTagSet() != 0;
+        return data.isNonNull() && data.getActive();
     }
 
     /// Gets the state for `isolateThread`, allocating it on first use.
@@ -89,25 +90,22 @@ public final class LogThreadLocal implements ThreadListener {
         return initialize(CurrentIsolate.getCurrentThread());
     }
 
+    /// Opens a scope and resets the reusable message state left by the previous scope.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static void activate(LogTagSet tagSet) {
+    static void activate() {
         Data data = ensureInitialized();
-        VMError.guarantee(data.getActiveTagSet() == 0, "Nested unified logging is not allowed.");
-        data.setActiveTagSet(tagSet.ordinal() + 1);
+        VMError.guarantee(!data.getActive(), "Nested unified logging is not allowed.");
+        data.setActive(true);
         data.setLineCount(0);
         data.setMostDetailedLevel(LogLevel.OFF.ordinal());
         data.setMessageIndentation(0);
         NativeMemoryLog.reset(data.getMessageBuffer());
     }
 
+    /// Closes the scope; the next activation resets its retained message state.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void deactivate() {
-        Data data = get();
-        data.setActiveTagSet(0);
-        data.setLineCount(0);
-        data.setMostDetailedLevel(LogLevel.OFF.ordinal());
-        data.setMessageIndentation(0);
-        NativeMemoryLog.reset(data.getMessageBuffer());
+        get().setActive(false);
     }
 
     /// Gets the thread-local [NativeMemoryLog] buffer for `kind`.
@@ -196,12 +194,6 @@ public final class LogThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static LogTagSet activeTagSet() {
-        int ordinal = get().getActiveTagSet();
-        return ordinal == 0 ? null : LogTagSet.VALUES[ordinal - 1];
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static LogLevel mostDetailedLevel() {
         return LogLevel.VALUES[get().getMostDetailedLevel()];
     }
@@ -272,7 +264,7 @@ public final class LogThreadLocal implements ThreadListener {
     ///     int lineCount;
     ///     int lineCapacity;
     ///     int mostDetailedLevel;
-    ///     int activeTagSet;
+    ///     bool active;
     ///     int messageIndentation;
     ///     int outputIndentation;
     ///     int decoratorIndentation;
@@ -309,8 +301,8 @@ public final class LogThreadLocal implements ThreadListener {
         @RawField int  getMostDetailedLevel();
         @RawField void setMostDetailedLevel(int value);
 
-        @RawField int  getActiveTagSet();
-        @RawField void setActiveTagSet(int value);
+        @RawField boolean getActive();
+        @RawField void    setActive(boolean value);
 
         @RawField int  getMessageIndentation();
         @RawField void setMessageIndentation(int value);
