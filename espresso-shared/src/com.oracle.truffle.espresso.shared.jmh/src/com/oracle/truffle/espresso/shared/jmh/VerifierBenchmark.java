@@ -32,6 +32,7 @@ import static java.lang.constant.ConstantDescs.CD_int;
 import java.io.PrintStream;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.CodeBuilder;
+import java.lang.classfile.Label;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
@@ -92,6 +93,8 @@ public class VerifierBenchmark {
     @Param({"8"}) public int methods;
     @Param({"120"}) public int statements;
     @Param({"300"}) public int constants;
+    /** Branchy blocks per {@code flow} method: guarded blocks, a loop and a handler region. 0 turns the methods off. */
+    @Param({"60"}) public int blocks;
 
     private static final MethodTypeDesc WORK = MethodTypeDesc.of(CD_int, CD_Object, CD_Object.arrayType(), CD_int);
 
@@ -163,6 +166,11 @@ public class VerifierBenchmark {
                 int index = m;
                 classBuilder.withMethodBody("work" + m, WORK, ACC_PUBLIC | ACC_STATIC, code -> work(code, self, index, counted));
             }
+            if (blocks > 0) {
+                for (int m = 0; m < methods; m++) {
+                    classBuilder.withMethodBody("flow" + m, WORK, ACC_PUBLIC | ACC_STATIC, code -> flow(code, counted));
+                }
+            }
             classBuilder.withMethodBody("constants", MethodTypeDesc.of(CD_int), ACC_PUBLIC | ACC_STATIC, code -> {
                 for (int c = 0; c < constants; c++) {
                     code.ldc(className + " constant " + c).pop();
@@ -174,6 +182,44 @@ public class VerifierBenchmark {
             classBuilder.withMethodBody("answer", MethodTypeDesc.of(CD_int), ACC_PUBLIC | ACC_STATIC, code -> code.bipush(42).ireturn());
             counted[0] += 2;
         });
+    }
+
+    /**
+     * One method of the form {@code int flowN(Object o, Object[] a, int n)} with control flow:
+     * blocks of straight-line code that a forward branch may skip, each target having a stack map
+     * frame, then a loop, then two regions each covered by a catch-all handler.
+     */
+    private void flow(CodeBuilder code, long[] counted) {
+        for (int b = 0; b < blocks; b++) {
+            Label skip = code.newLabel();
+            code.iload(2).ifeq(skip);
+            straight(code, counted);
+            code.labelBinding(skip);
+            counted[0] += 2;
+        }
+        Label top = code.newLabel();
+        code.labelBinding(top);
+        straight(code, counted);
+        code.iinc(2, -1).iload(2).ifgt(top);
+        counted[0] += 3;
+        for (int region = 0; region < 2; region++) {
+            code.trying(tryBlock -> {
+                for (int b = 0; b < blocks; b++) {
+                    straight(tryBlock, counted);
+                }
+            }, handlers -> handlers.catchingAll(handler -> handler.astore(5)));
+            counted[0] += 1;
+        }
+        code.iload(2).ireturn();
+        counted[0] += 2;
+    }
+
+    /** Ten instructions that store before they load, so they are valid after any join. */
+    private static void straight(CodeBuilder code, long[] counted) {
+        code.aload(0).astore(3);
+        code.aload(1).iload(2).aaload().astore(4);
+        code.iload(2).iconst_1().iadd().istore(2);
+        counted[0] += 2 + 4 + 4;
     }
 
     /** One method of the form {@code int workN(Object o, Object[] a, int n)}. */
