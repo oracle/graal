@@ -35,6 +35,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.asm.JumpTableOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
@@ -514,6 +515,7 @@ public class AArch64ControlFlow {
             GraalError.guarantee(!key.equals(scratch), "must not alias");
             Label jumpTable = new Label();
             // load start of jump table
+            int adrPosition = masm.position();
             masm.adr(scratch, jumpTable);
             /*
              * Note scratch holds the start of the jump table and index stores the normalized index.
@@ -527,7 +529,12 @@ public class AArch64ControlFlow {
             // jump to target
             masm.jmp(scratch);
 
-            crb.getLIR().addSlowPath(null, () -> {
+            Runnable emitTable = () -> {
+                // Check before binding: an out-of-range ADR requires emission to be retried.
+                int displacement = masm.position() + Integer.BYTES - adrPosition;
+                if (!NumUtil.isSignedNbit(21, displacement)) {
+                    throw new JumpTableOutOfBoundsException("Jump-table ADR target %d out of bounds", displacement);
+                }
                 // Insert halt so that static analyzers do not continue decoding past this point
                 masm.halt();
                 masm.bind(jumpTable);
@@ -535,7 +542,13 @@ public class AArch64ControlFlow {
                 targets.forEach(label -> masm.emitJumpTableOffset(jumpTable, label));
                 JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, EntryFormat.OFFSET_ONLY);
                 crb.compilationResult.addAnnotation(jt);
-            });
+            };
+            if (masm.isInlineJumpTables()) {
+                // The indirect jump prevents execution from falling through into the table.
+                emitTable.run();
+            } else {
+                crb.getLIR().addSlowPath(null, emitTable);
+            }
         }
     }
 

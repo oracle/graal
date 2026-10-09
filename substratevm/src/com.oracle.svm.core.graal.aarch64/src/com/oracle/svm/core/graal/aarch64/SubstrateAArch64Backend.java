@@ -110,6 +110,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
+import jdk.graal.compiler.asm.JumpTableOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
@@ -2087,18 +2088,36 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
-        try {
-            crb.buildLabelOffsets();
-            crb.emitLIR();
-            finalizeCode(crb);
-        } catch (BranchTargetOutOfBoundsException e) {
-            // A branch estimation was wrong, now retry with conservative label ranges, this
-            // should always work
-            resetForEmittingCode(crb);
-            crb.resetForEmittingCode();
-            crb.setConservativeLabelRanges();
-            crb.emitLIR();
-            finalizeCode(crb);
+        AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+        // Branch expansion and table relocation may each require a retry, in either order.
+        boolean conservativeBranches = false;
+        crb.buildLabelOffsets();
+        while (true) { // TERMINATION ARGUMENT: Each retry enables a fallback once; repeated failures throw.
+            try {
+                crb.emitLIR();
+                finalizeCode(crb);
+                return;
+            } catch (BranchTargetOutOfBoundsException e) {
+                if (e instanceof JumpTableOutOfBoundsException) {
+                    if (masm.isInlineJumpTables()) {
+                        throw e;
+                    }
+                    masm.setInlineJumpTables();
+                } else {
+                    if (conservativeBranches) {
+                        throw e;
+                    }
+                    // A branch estimation was wrong; retry with conservative label ranges.
+                    conservativeBranches = true;
+                }
+                resetForEmittingCode(crb);
+                crb.resetForEmittingCode();
+                if (conservativeBranches) {
+                    crb.setConservativeLabelRanges();
+                } else {
+                    crb.buildLabelOffsets();
+                }
+            }
         }
     }
 
