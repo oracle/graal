@@ -1712,6 +1712,29 @@ final class FileSystems {
         }
 
         @Override
+        public void copy(Path source, Path target, CopyOption... options) throws IOException {
+            FileSystemInfo sourceFileSystemInfo = selectFileSystem(source);
+            FileSystemInfo targetFileSystemInfo = selectFileSystem(target);
+            if (sourceFileSystemInfo.fileSystem == targetFileSystemInfo.fileSystem) {
+                sourceFileSystemInfo.fileSystem.copy(sourceFileSystemInfo.path, targetFileSystemInfo.path, options);
+            } else {
+                PolyglotFileSystem.super.copy(source, target, options);
+            }
+        }
+
+        @Override
+        public void move(Path source, Path target, CopyOption... options) throws IOException {
+            FileSystemInfo sourceFileSystemInfo = selectFileSystem(source);
+            FileSystemInfo targetFileSystemInfo = selectFileSystem(target);
+            if (sourceFileSystemInfo.fileSystem == targetFileSystemInfo.fileSystem) {
+                // Within one file system the delegate can honor ATOMIC_MOVE.
+                sourceFileSystemInfo.fileSystem.move(sourceFileSystemInfo.path, targetFileSystemInfo.path, options);
+            } else {
+                PolyglotFileSystem.super.move(source, target, options);
+            }
+        }
+
+        @Override
         public void createLink(Path link, Path existing) throws IOException {
             FileSystemInfo linkFileSystemInfo = selectFileSystem(link);
             FileSystemInfo existingFileSystemInfo = selectFileSystem(existing);
