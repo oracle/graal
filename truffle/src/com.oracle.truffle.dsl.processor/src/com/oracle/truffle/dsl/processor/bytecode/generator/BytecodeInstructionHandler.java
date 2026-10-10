@@ -214,7 +214,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         }
 
         if (callsSlowPath) {
-            emitSlowPath(b, name -> name, "null");
+            emitSlowPath(b, name -> name, BytecodeNodeElement.NO_UNEXPECTED_RESULT);
         } else {
             if (isEarlyDeclareUnexpectedOperands()) {
                 Signature customSignature = instruction.signature;
@@ -652,7 +652,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
     private void emitSlowPath(CodeTreeBuilder b, Function<String, String> nameFunction, String unexpectedResult) {
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         if (handlerKind.isBranch()) {
-            if (unexpectedResult.equals("null")) {
+            if (unexpectedResult.equals(BytecodeNodeElement.NO_UNEXPECTED_RESULT)) {
                 b.startDeclaration(type(boolean.class), "condition_");
             } else {
                 b.startAssign("condition_");
@@ -701,6 +701,11 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             String unexpectedResult = null;
             if (findSingleUnexpectedOperand() != null) {
+                /*
+                 * The fast path may clear the operand before throwing UnexpectedResultException.
+                 * null is a valid result, so the absent case uses a private sentinel instead.
+                 */
+                parent.ensureNoUnexpectedResultField();
                 method.addParameter(new CodeVariableElement(type(Object.class), "unexpectedResult"));
                 unexpectedResult = "unexpectedResult";
             }
@@ -1726,7 +1731,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 emitClearStackValue(b, "sp - 1", valueOperand.type(), mode);
             } else {
                 b.startIf().string("FRAMES.getTag(frame, sp - 1) != ").staticReference(parent.parent.frameTagsElement.get(valueOperand.type())).end().startBlock();
-                emitSlowPath(b, name -> name, "null");
+                emitSlowPath(b, name -> name, BytecodeNodeElement.NO_UNEXPECTED_RESULT);
                 b.end().startElseBlock();
                 emitClearStackValue(b, "sp - 1", valueOperand.type(), mode);
                 b.end();
@@ -2746,9 +2751,14 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             String stackIndex = createOperandStackIndex(useInstruction, operand);
             Operand singleUnexpected = findSingleUnexpectedOperand();
+            /*
+             * unexpectedResult == null means this slow path has no passed-in operand. When it does,
+             * compare against NO_UNEXPECTED_RESULT rather than null: a null guest value is real,
+             * and re-reading the frame can observe a slot the fast path already cleared.
+             */
             boolean hasUnexpected = unexpectedResult != null && singleUnexpected.dynamicIndex() == operand.dynamicIndex();
             if (hasUnexpected) {
-                b.string("(", unexpectedResult, " != null ? ", unexpectedResult, " : (");
+                b.string("(", unexpectedResult, " != ", BytecodeNodeElement.NO_UNEXPECTED_RESULT, " ? ", unexpectedResult, " : (");
             }
             if (!expectOtherTypes) {
                 // FRAMES.uncheckedGetObject
