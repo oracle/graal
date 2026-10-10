@@ -842,11 +842,16 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             Method values = ReflectionUtil.lookupMethod(enumClass, "values");
             companion.enumConstantsReference = new LazyFinalReference<>(() -> initEnumConstantsAtRuntime(values));
         } catch (ReflectionUtilError e) {
-            /*
-             * This can happen when users concoct enum-like classes that don't comply with the enum
-             * spec.
-             */
-            companion.enumConstantsReference = null;
+            if (e.getCause() instanceof NoClassDefFoundError noClassDefFoundError) {
+                String message = noClassDefFoundError.getMessage();
+                companion.enumConstantsReference = new LazyFinalReference<>(() -> throwNoClassDefFoundErrorAtRuntime(message));
+            } else {
+                /*
+                 * This can happen when users concoct enum-like classes that don't comply with the enum
+                 * spec.
+                 */
+                companion.enumConstantsReference = null;
+            }
         } catch (NoClassDefFoundError e) {
             /*
              * This can happen when an enum references a missing class. So, in order to match the
