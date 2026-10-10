@@ -118,6 +118,8 @@ public class LinearScan {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
         public static final OptionKey<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionKey(LIRPhase.Options.LIROptimization, true);
+        @Option(help = "Consider call clobbers when choosing spill victims and avoiding reloads on fast paths", type = OptionType.Debug)
+        public static final OptionKey<Boolean> LIROptLSRACallClobberAwareSpilling = new OptionKey<>(false);
         @Option(help = "Maximum number of interval splits created to keep pressure spills off unrelated fast paths. Non-positive values disable this optimization.", type = OptionType.Debug)
         public static final OptionKey<Integer> LIROptLSRAMaxFastPathRecoverySplits = new OptionKey<>(100);
         @Option(help = "Maximum number of LIR blocks in a compilation eligible for fast-path spill recovery. Non-positive values disable this optimization.", type = OptionType.Debug)

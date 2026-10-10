@@ -718,7 +718,8 @@ public final class PartialRedundancySchedulePhase extends BasePhase<CoreProvider
                 // Before actual splitting, we should:
                 // 1. avoid splitting if the number of splits exceeds MaxSplitsPerNode
                 ArrayList<UsageNode> splits = collectSplits(usageNode);
-                if (!usageNode.isThreadedSwitchBlock() && splits.size() > maxSplitsPerNode) {
+                // Honor fast-path splitting hints even when a handler has many dispatch tails.
+                if (!usageNode.isThreadedSwitchBlock() && !usageNode.block.isFastPathBlock() && splits.size() > maxSplitsPerNode) {
                     super.calcLatestBlock(earliestBlock, strategy, currentNode, currentNodeMap, constrainingLocation, watchListMap, latestBlockToNodesMap, visited, immutableGraph,
                                     moveInputsIntoDominator);
                     return;

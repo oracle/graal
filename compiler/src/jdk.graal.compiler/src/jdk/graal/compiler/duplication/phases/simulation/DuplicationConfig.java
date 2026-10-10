@@ -33,7 +33,6 @@ import jdk.graal.compiler.nodes.FixedNode;
 
 import jdk.graal.compiler.duplication.phases.simulation.opportunity.PEAOpportunity;
 import jdk.graal.compiler.duplication.phases.simulation.opportunity.ReadEliminationOpportunity;
-import jdk.graal.compiler.duplication.phases.simulation.opportunity.TailCallOpportunity;
 
 /**
  * Class to specify the impact of different optimization opportunities on the benefit calculation of
@@ -47,10 +46,9 @@ class DuplicationConfig {
     private final boolean considerReadEliminations;
     private final boolean considerPEAOpportunities;
     private final int conditionDominatedByEndEnhace;
-    private final int tailCallEnhance;
 
     DuplicationConfig(int splitKillEnhance, int guardKillEnhance, int mergeRemovedEnhanceSink, int mergeRemovedEnhanceSplit, boolean considerReadEliminations, boolean considerPEAOpportunities,
-                    int conditionDominatedByEndEnhace, int tailCallEnhance) {
+                    int conditionDominatedByEndEnhace) {
         this.splitKillEnhance = splitKillEnhance;
         this.guardKillEnhance = guardKillEnhance;
         this.mergeRemovedEnhanceSink = mergeRemovedEnhanceSink;
@@ -58,7 +56,6 @@ class DuplicationConfig {
         this.considerReadEliminations = considerReadEliminations;
         this.considerPEAOpportunities = considerPEAOpportunities;
         this.conditionDominatedByEndEnhace = conditionDominatedByEndEnhace;
-        this.tailCallEnhance = tailCallEnhance;
     }
 
     int getGuardKillEnhance() {
@@ -111,10 +108,6 @@ class DuplicationConfig {
             return ReadEliminationOpportunity.DEFAULT_RE_OPPORTUNITY;
         }
         return ReadEliminationOpportunity.getReadEliminationOpportunity(s.getOriginalMerge(), s.getEnd());
-    }
-
-    TailCallOpportunity benefitTailCall(SimulationEndInfo s, FixedNode regionEnd) {
-        return TailCallOpportunity.get(s.getOriginalMerge(), regionEnd, tailCallEnhance);
     }
 
     int benefitConditionDominatedByEnd(SimulationEndInfo s, FixedNode regionEnd) {

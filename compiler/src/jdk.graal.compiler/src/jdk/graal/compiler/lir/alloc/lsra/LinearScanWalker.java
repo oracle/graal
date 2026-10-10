@@ -29,8 +29,10 @@ import static jdk.vm.ci.code.CodeUtil.isOdd;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -362,7 +364,8 @@ class LinearScanWalker extends IntervalWalker {
                 if (isActiveRegister(interval)) {
                     int nextUsage = interval.nextUsage(registerPriority, currentPosition);
                     int usePosition;
-                    if (preferStateOnlyVictim && !hasFutureRegisterUsageInSplitFamily(interval)) {
+                    int nextRegisterUsage = preferStateOnlyVictim ? nextRegisterUsageInSplitFamily(interval, currentPosition) : Integer.MAX_VALUE;
+                    if (preferStateOnlyVictim && nextRegisterUsage == Integer.MAX_VALUE) {
                         /*
                          * A value with no future register-requiring use can remain in its spill
                          * slot. Prefer it as the victim over a value that must later return to a
@@ -372,6 +375,9 @@ class LinearScanWalker extends IntervalWalker {
                         usePosition = Integer.MAX_VALUE;
                     } else {
                         usePosition = Math.min(nextUsage, interval.to());
+                        if (preferStateOnlyVictim && nextUsage == Integer.MAX_VALUE && LinearScan.Options.LIROptLSRACallClobberAwareSpilling.getValue(allocator.getOptions())) {
+                            usePosition = Math.min(nextRegisterUsage, nextCallClobberAfterSplit(interval));
+                        }
                     }
                     setUsePos(interval, usePosition, false);
                 }
@@ -380,17 +386,47 @@ class LinearScanWalker extends IntervalWalker {
         }
     }
 
-    private boolean hasFutureRegisterUsageInSplitFamily(Interval interval) {
-        Interval splitParent = interval.splitParent();
-        if (splitParent.getSplitChildren().isEmpty()) {
-            return splitParent.nextUsage(RegisterPriority.ShouldHaveRegister, currentPosition) != Integer.MAX_VALUE;
+    /**
+     * A split at a block boundary is a move-placement decision, not necessarily a register use.
+     * Look through the following child for a call clobber, without ranking past an intervening use
+     * or a hole. This only changes spill-victim ranking; the split position remains unchanged.
+     */
+    private int nextCallClobberAfterSplit(Interval interval) {
+        return allocator.isCallerSave(interval.location()) ? callClobberAfterSplit(interval) : interval.to();
+    }
+
+    private int callClobberAfterSplit(Interval interval) {
+        int splitPos = interval.to();
+        if (splitPos > allocator.maxOpId() || !allocator.isBlockBegin(splitPos)) {
+            return splitPos;
         }
-        for (Interval splitChild : splitParent.getSplitChildren()) {
-            if (splitChild.nextUsage(RegisterPriority.ShouldHaveRegister, currentPosition) != Integer.MAX_VALUE) {
-                return true;
+        for (Interval child : interval.splitParent().getSplitChildren()) {
+            if (child.from() == splitPos) {
+                int blockEnd = allocator.getLastLirInstructionId(allocator.blockForId(splitPos));
+                for (int pos = splitPos; pos <= blockEnd && pos < child.to(); pos += 2) {
+                    if (allocator.hasCall(pos)) {
+                        if (!child.hasHoleBetween(splitPos, pos + 1)) {
+                            return Math.min(pos, child.nextUsage(RegisterPriority.LiveAtLoopEnd, splitPos));
+                        }
+                        break;
+                    }
+                }
+                break;
             }
         }
-        return false;
+        return splitPos;
+    }
+
+    private static int nextRegisterUsageInSplitFamily(Interval interval, int from) {
+        Interval splitParent = interval.splitParent();
+        if (splitParent.getSplitChildren().isEmpty()) {
+            return splitParent.nextUsage(RegisterPriority.ShouldHaveRegister, from);
+        }
+        int nextUsage = Integer.MAX_VALUE;
+        for (Interval splitChild : splitParent.getSplitChildren()) {
+            nextUsage = Math.min(nextUsage, splitChild.nextUsage(RegisterPriority.ShouldHaveRegister, from));
+        }
+        return nextUsage;
     }
 
     @SuppressWarnings("try")
@@ -874,9 +910,7 @@ class LinearScanWalker extends IntervalWalker {
                             } else {
                                 /*
                                  * Do not propagate the spill through a register child that is used
-                                 * or covers a marked fast-path block. This retains an existing
-                                 * register allocation without requiring later children to use a
-                                 * register.
+                                 * or covers a marked fast-path block.
                                  */
                                 parent = null;
                             }
@@ -1182,6 +1216,9 @@ class LinearScanWalker extends IntervalWalker {
             }
 
             splitPos = usePos[reg.number];
+            if (keepSpilledUntilCall(interval, reg, splitPos)) {
+                return true;
+            }
             interval.assignLocation(reg.asValue(interval.kind()));
             if (debug.isLogEnabled()) {
                 debug.log("selected register %d", reg.number);
@@ -1195,6 +1232,111 @@ class LinearScanWalker extends IntervalWalker {
             // only return true if interval is completely assigned
             return true;
         }
+    }
+
+    /**
+     * Check every path affected by keeping the unused prefix spilled. Allocation order can place
+     * sibling blocks next to each other, or separate a block from its successor. A register use
+     * reachable before a clobber must therefore be found through CFG edges, including backedges.
+     * Different paths may reach different clobbering calls; paths ending without a use need no
+     * reload either.
+     */
+    private boolean canKeepSpilledUntilCall(Interval interval, int spillEnd) {
+        ArrayDeque<Integer> pending = new ArrayDeque<>();
+        BitSet visited = new BitSet();
+        int firstBlock = allocator.blockForId(interval.from()).getLinearScanNumber();
+        int lastBlock = allocator.blockForId(spillEnd - 1).getLinearScanNumber();
+        pending.add(interval.from());
+        // Check each entry into the spill region, including independently entered siblings.
+        // Internal continuations must not restart the search after an already visited clobber.
+        for (int i = firstBlock + 1; i <= lastBlock; i++) {
+            BasicBlock<?> block = blockAt(i);
+            for (int j = 0; j < block.getPredecessorCount(); j++) {
+                int predecessor = block.getPredecessorAt(j).getLinearScanNumber();
+                if (predecessor < firstBlock || predecessor > lastBlock) {
+                    pending.add(allocator.getFirstLirInstructionId(block));
+                    break;
+                }
+            }
+        }
+        while (!pending.isEmpty()) {
+            int from = pending.removeFirst();
+            BasicBlock<?> block = allocator.blockForId(from);
+            if (visited.get(block.getLinearScanNumber())) {
+                continue;
+            }
+            // A backedge must also check the prefix preceding a mid-block interval start.
+            if (from == allocator.getFirstLirInstructionId(block)) {
+                visited.set(block.getLinearScanNumber());
+            }
+            int nextUse = nextRegisterUsageInSplitFamily(interval, from);
+            int end = allocator.getLastLirInstructionId(block);
+            boolean clobbered = false;
+            for (int pos = (from + 1) & ~1; pos <= end; pos += 2) {
+                if (nextUse <= pos) {
+                    return false;
+                }
+                if (allocator.hasCall(pos)) {
+                    clobbered = true;
+                    break;
+                }
+            }
+            if (!clobbered) {
+                for (int i = 0; i < block.getSuccessorCount(); i++) {
+                    pending.add(allocator.getFirstLirInstructionId(block.getSuccessorAt(i)));
+                }
+            }
+        }
+        return true;
+    }
+
+    /** Avoid reloading a spilled child solely to spill it again at a call. */
+    private boolean keepSpilledUntilCall(Interval interval, Register reg, int splitPos) {
+        if (!LinearScan.Options.LIROptLSRACallClobberAwareSpilling.getValue(allocator.getOptions()) || !allocator.hasFastPathBlocks() ||
+                        !interval.isSplitChild() || !allocator.isCallerSave(reg.asValue(interval.kind())) ||
+                        (!LIRValueUtil.isStackSlotValue(interval.currentSplitChild().location()) &&
+                                        !(allocator.isBlockBegin(interval.from()) && allocator.blockForId(interval.from()).getPredecessorCount() > 1))) {
+            return false;
+        }
+        if (splitPos >= interval.to()) {
+            // A later range can belong to a cold path; do not force its spill onto an earlier
+            // disconnected live range merely because neither range needs a register.
+            if (interval.hasHoleBetween(interval.from(), interval.to())) {
+                return false;
+            }
+            int clobber = callClobberAfterSplit(interval);
+            if (clobber <= interval.to() || !allocator.hasCall(clobber) || nextRegisterUsageInSplitFamily(interval, interval.from()) <= clobber) {
+                return false;
+            }
+            if (!canKeepSpilledUntilCall(interval, interval.to())) {
+                return false;
+            }
+            // The call-boundary continuation is already split off. Do not recover an unused
+            // register child merely because the register is free up to that boundary.
+            splitForSpilling(interval);
+            return true;
+        }
+        if ((splitPos & 1) != 0 || !allocator.hasCall(splitPos) || interval.firstUsage(RegisterPriority.ShouldHaveRegister) <= splitPos) {
+            return false;
+        }
+        int nextUse = Math.min(interval.firstUsage(RegisterPriority.ShouldHaveRegister), interval.to());
+        int spillEnd = findOptimalSplitPos(interval, splitPos + 1, nextUse, true);
+        // The chosen spill prefix can include sibling blocks laid out after the call.
+        // Check that entire prefix and retain the checked endpoint when splitting below.
+        if (!canKeepSpilledUntilCall(interval, spillEnd)) {
+            return false;
+        }
+        /*
+         * A call-boundary child can have been queued before an earlier child was spilled under
+         * pressure. Normal allocation would give it a register even without a use before the
+         * clobber, introducing edge reloads followed immediately by another spill. Keep the stack
+         * location until after the call; do not move the next split back to the call block's entry.
+         * At a merge, the preceding child in allocation order need not be an incoming child. Let
+         * edge resolution preserve incoming stack locations or spill incoming registers once.
+         */
+        splitBeforeUsage(interval, spillEnd, spillEnd);
+        splitForSpilling(interval);
+        return true;
     }
 
     @SuppressWarnings("try")

@@ -41,7 +41,6 @@ import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase.VectorizationCheck;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationSimulationUtil.SimulationAdvancement;
-import jdk.graal.compiler.duplication.phases.simulation.opportunity.TailCallOpportunity;
 import jdk.graal.compiler.duplication.util.DuplicationUtil;
 import jdk.graal.compiler.duplication.util.DuplicationUtil.CFGFrequencyInfo;
 
@@ -502,7 +501,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                     return false;
                 }
                 MergeNode merge = (MergeNode) block.getFirstSuccessor().getBeginNode();
-                return merge.getDuplicationHint() == MergeNode.DuplicationHint.EXPLORE || TailCallOpportunity.isTailCallMerge(merge);
+                return merge.getDuplicationHint() == MergeNode.DuplicationHint.EXPLORE;
             }
 
             @Override
