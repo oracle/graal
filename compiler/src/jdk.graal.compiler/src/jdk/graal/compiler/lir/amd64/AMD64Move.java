@@ -73,6 +73,36 @@ import jdk.vm.ci.meta.Value;
 
 public class AMD64Move {
 
+    /** A 32-bit floating move with a double-width result for safe spilling. */
+    public static final class PackFloatOp extends AMD64LIRInstruction implements StandardOp.ValueMoveOp {
+        public static final LIRInstructionClass<PackFloatOp> TYPE = LIRInstructionClass.create(PackFloatOp.class);
+
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue input;
+
+        public PackFloatOp(AllocatableValue result, AllocatableValue input) {
+            super(TYPE);
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public AllocatableValue getInput() {
+            return input;
+        }
+
+        @Override
+        public AllocatableValue getResult() {
+            return result;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            // Narrow only the physical destination view, not its allocated spill storage.
+            move(AMD64Kind.SINGLE, crb, masm, LIRValueUtil.changeValueKind(result, input.getValueKind(), false), input);
+        }
+    }
+
     private abstract static class AbstractMoveOp extends AMD64LIRInstruction implements StandardOp.ValueMoveOp {
         public static final LIRInstructionClass<AbstractMoveOp> TYPE = LIRInstructionClass.create(AbstractMoveOp.class);
 

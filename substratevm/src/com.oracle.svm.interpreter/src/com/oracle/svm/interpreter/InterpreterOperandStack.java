@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
  * {@link #top} and {@link #state} fields. Handlers therefore must not let it escape across calls
  * that would force materialization. At a frame-stack operation boundary, {@link #topForFrameStackOperation()}
  * exposes only the stack top to code that operates directly on the frame, and
- * {@link #applyFrameStackOperationDelta(int)} applies any resulting stack-slot delta. The
+ * {@link #applyFrameStackOperationDelta(InterpreterFrame, int)} applies any resulting stack-slot delta. The
  * operation does not need to be outlined; the boundary prevents this overlay from being passed to
  * it and materialized.
  *
@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.JavaKind;
  * of the call's frame state. Keeping the canonical top across the call avoids that intermediate
  * frame-state value.
  */
-final class InterpreterOperandStack {
+class InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     static final int STATE_NORMAL = 0;
@@ -72,9 +72,9 @@ final class InterpreterOperandStack {
     static final int STATE_DEBUGGING = 2;
 
     /** First stack slot above the operand stack. */
-    private long top;
-    /** Execution mode used to select the bytecode handler template variant. */
-    private int state = STATE_NORMAL;
+    long top;
+    /** Execution mode and cached TOS occupancy used to select the bytecode handler variant. */
+    int state = STATE_NORMAL;
 
     @AlwaysInline("Keep the operand-stack overlay virtual in interpreter entry")
     InterpreterOperandStack(long top) {
@@ -88,8 +88,26 @@ final class InterpreterOperandStack {
 
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     void setState(int state) {
-        assert state >= STATE_NORMAL && state <= STATE_DEBUGGING;
+        assert isValidState(state);
         this.state = state;
+    }
+
+    /** Materialized stacks have no cached fields to flush. */
+    void materialize(InterpreterFrame frame) {
+    }
+
+    /** Materialized stacks have no cached dependencies to kill. */
+    void killUnusedFields() {
+    }
+
+    @AlwaysInline("Materialize cached primitives before direct frame-stack access")
+    long materializeForFrameStackOperation(InterpreterFrame frame) {
+        materialize(frame);
+        return top;
+    }
+
+    boolean isValidState(int state) {
+        return state >= STATE_NORMAL && state <= STATE_DEBUGGING;
     }
 
     /**
@@ -111,13 +129,13 @@ final class InterpreterOperandStack {
      *            removed by the operation
      */
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
-    void applyFrameStackOperationDelta(int slotDelta) {
+    void applyFrameStackOperationDelta(InterpreterFrame frame, int slotDelta) {
         top += slotDelta;
     }
 
     @AlwaysInline("Keep InterpreterOperandStack virtual-expanded")
     void pushInt(InterpreterFrame frame, int value) {
-        frame.setPrimitive(top, 0, value);
+        frame.setPrimitive(top, 0, GraalDirectives.packInt(value));
         top++;
     }
 
@@ -230,17 +248,28 @@ final class InterpreterOperandStack {
         if (argumentKinds == null) {
             throw InterpreterUtil.shouldNotReachHereAtRuntime();
         }
-        long argumentIndex = arguments.length - 1L;
-        if (appendix != null) {
+        // Subtract before widening to avoid retaining a long copy of the allocation length.
+        long argumentIndex = arguments.length - 1;
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, appendix != null)) {
             assert UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE) == JVM_ArrayType_Object;
             UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, appendix);
             argumentIndex--;
         }
+        popArguments(frame, argumentKinds, arguments, argumentIndex);
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    void popArguments(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex) {
         for (; GraalDirectives.injectBranchProbability(GraalDirectives.LIKELY_PROBABILITY, argumentIndex >= 0); argumentIndex--) {
-            int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-            Object value = popBasicType(frame, basicType);
-            UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
+            popArgument(frame, argumentKinds, arguments, argumentIndex);
         }
+    }
+
+    @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
+    final void popArgument(InterpreterFrame frame, byte[] argumentKinds, Object[] arguments, long argumentIndex) {
+        int basicType = UNSAFE.getByte(argumentKinds, Unsafe.ARRAY_BYTE_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        Object value = popBasicType(frame, basicType);
+        UNSAFE.putReference(arguments, Unsafe.ARRAY_OBJECT_BASE_OFFSET + argumentIndex * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
     }
 
     @AlwaysInline("Keep invocation argument stack transitions in bytecode-handler stubs")
@@ -255,6 +284,8 @@ final class InterpreterOperandStack {
 
     @AlwaysInline("Keep materialized invocation argument stack transitions together")
     void popArgumentsWithAppendix(InterpreterFrame frame, boolean hasReceiver, InterpreterUnresolvedSignature signature, Object[] arguments, Object appendix) {
+        assert state == STATE_NORMAL || state == STATE_PROFILING || state == STATE_DEBUGGING;
+        int invocationState = state;
         int argumentCount = signature.getParameterCount(false);
         int receiverCount = hasReceiver ? 1 : 0;
 
@@ -263,6 +294,8 @@ final class InterpreterOperandStack {
         arguments[lastStackArgument + receiverCount] = appendix;
         lastStackArgument--;
         for (int index = lastStackArgument; index >= 0; index--) {
+            // Keep the entry mode constant across virtual pops in the loop.
+            setState(invocationState);
             arguments[index + receiverCount] = popKind(frame, signature.getParameterKind(index));
         }
         if (hasReceiver) {

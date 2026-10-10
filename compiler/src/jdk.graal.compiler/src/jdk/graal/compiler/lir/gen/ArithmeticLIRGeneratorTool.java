@@ -96,6 +96,9 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitReinterpret(LIRKind to, Value inputVal);
 
+    /** Packs float bits into the low 32 bits of a double; the upper bits are unspecified. */
+    Value emitPackFloat(Value inputVal);
+
     Value emitNarrow(Value inputVal, int bits);
 
     Value emitSignExtend(Value inputVal, int fromBits, int toBits);

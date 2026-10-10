@@ -27,7 +27,7 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.interpreter.InterpreterOptions.DebuggerWithInterpreter;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
-import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
+import static com.oracle.svm.interpreter.InterpreterUtil.forceTraceInterpreter;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -54,6 +54,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -966,36 +967,37 @@ public final class InterpreterToVM {
 
     @NeverInline("Keep invocation dispatch implementation out of bytecode-handler stubs")
     public static Object dispatchInvocation(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, CallKind callKind,
-                    boolean forceStayInInterpreter, boolean preferStayInInterpreter, boolean quiet)
+                    boolean stayInInterpreter, boolean quiet)
                     throws SemanticJavaException {
+        boolean trace = InterpreterTraceSupport.getValue() && !quiet && InterpreterOptions.InterpreterTrace.getValue();
 
-        if (InterpreterTraceSupport.getValue() && !quiet) {
-            traceInterpreter().string("Dispatching ").string(callKind.toString()).string(" invocation for seed: ").string(seedMethod.toString()).newline();
+        if (trace) {
+            forceTraceInterpreter().string("Dispatching ").string(callKind.toString()).string(" invocation for seed: ").string(seedMethod.toString()).newline();
         }
 
         // First, find the target method.
-        InterpreterResolvedJavaMethod target = resolveCallSiteTarget(seedMethod, calleeArgs, callKind, quiet);
+        InterpreterResolvedJavaMethod target = resolveCallSiteTarget(seedMethod, calleeArgs, callKind, trace);
         boolean callRuntimeLoadedJNI = target.isNative() && target instanceof CremaResolvedJavaMethodImpl;
 
         // Next, determine whether the call should stay in interpreter or call the compiled target.
         /* Runtime-loaded bytecode methods have only an interpreter stub as their AOT entry. */
         boolean callAOTEntryPoint = !callRuntimeLoadedJNI &&
-                        (InterpreterTraceSupport.getValue() || !(target instanceof CremaResolvedJavaMethodImpl && target.hasBytecodes())) &&
-                        shouldCallAOTEntryPoint(forceStayInInterpreter, preferStayInInterpreter, target, quiet);
+                        (trace || !(target instanceof CremaResolvedJavaMethodImpl && target.hasBytecodes())) &&
+                        shouldCallAOTEntryPoint(stayInInterpreter, target, trace);
 
         InterpreterUtil.guarantee(target.getSymbolicName() == seedMethod.getSymbolicName() && target.getSymbolicSignature() == seedMethod.getSymbolicSignature(),
                         "Erroneous dispatching for seed: %s%n  With dispatch index: %s%n  Resulted in : %s", seedMethod, seedMethod.getVTableIndex(), target);
 
         /* arguments to Log methods might have side-effects */
-        if (InterpreterOptions.InterpreterTraceSupport.getValue() && !quiet) {
-            traceInterpreter()
+        if (trace) {
+            forceTraceInterpreter()
                             .string(" -> calling (")
                             .string(callRuntimeLoadedJNI ? "jni" : (callAOTEntryPoint ? "compiled" : "interp")).string(") ")
                             .string(target.hasNativeEntryPoint() ? "(compiled entry available) " : "");
             if (target.hasNativeEntryPoint()) {
-                traceInterpreter("(addr: ").hex(target.getNativeEntryPoint()).string(" ) ");
+                Log.log().string("(addr: ").hex(target.getNativeEntryPoint()).string(" ) ");
             }
-            traceInterpreter(target.getDeclaringClass().getName())
+            Log.log().string(target.getDeclaringClass().getName())
                             .string("::").string(target.getName())
                             .string(target.getSignature().toMethodDescriptor())
                             .newline();
@@ -1016,7 +1018,8 @@ public final class InterpreterToVM {
         }
     }
 
-    static InterpreterResolvedJavaMethod resolveCallSiteTarget(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, CallKind callKind, boolean quiet) {
+    @AlwaysInline("Fold invocation tracing in the dispatch entry")
+    static InterpreterResolvedJavaMethod resolveCallSiteTarget(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, CallKind callKind, boolean trace) {
         boolean isVirtual = callKind.hasLookup();
         if (callKind.isStatic()) {
             InterpreterUtil.guarantee(seedMethod.isStatic(), "Statically calling a non-static method: %s", seedMethod);
@@ -1036,8 +1039,8 @@ public final class InterpreterToVM {
             }
         } else if (isVirtual && seedMethod.isDevirtualized()) {
             InterpreterResolvedJavaMethod target = seedMethod.devirtualizationTarget();
-            if (InterpreterTraceSupport.getValue() && !quiet) {
-                traceInterpreter().string("found devirtualized target: ").string(target.toString()).newline();
+            if (trace) {
+                forceTraceInterpreter().string("found devirtualized target: ").string(target.toString()).newline();
             }
             return target;
         } else {
@@ -1046,7 +1049,8 @@ public final class InterpreterToVM {
         }
     }
 
-    private static boolean shouldCallAOTEntryPoint(boolean forceStayInInterpreter, boolean preferStayInInterpreter, InterpreterResolvedJavaMethod target, boolean quiet) {
+    @AlwaysInline("Fold invocation tracing in the dispatch entry")
+    private static boolean shouldCallAOTEntryPoint(boolean stayInInterpreter, InterpreterResolvedJavaMethod target, boolean trace) {
         boolean canBeInterpreterInvoked = target.hasBytecodes() ||
                         (RuntimeClassLoading.isSupported() && target.isSignaturePolymorphicIntrinsic());
         boolean canBeAOTCalled = target.hasNativeEntryPoint() &&
@@ -1077,36 +1081,30 @@ public final class InterpreterToVM {
 
         if (!canBeInterpreterInvoked) {
             // No valid interpretation target: Unconditional call to compiled target.
-            if (InterpreterTraceSupport.getValue() && !quiet) {
-                traceInterpreter().string("No valid interpretation target, calling compiled target");
-                if (forceStayInInterpreter || preferStayInInterpreter) {
-                    traceInterpreter(" (Unable to enforce stay in interpreter)");
+            if (trace) {
+                forceTraceInterpreter().string("No valid interpretation target, calling compiled target");
+                if (stayInInterpreter) {
+                    Log.log().string(" (Unable to enforce stay in interpreter)");
                 }
-                traceInterpreter(".").newline();
+                Log.log().string(".").newline();
             }
             return true;
         } else if (!canBeAOTCalled) {
-            if (InterpreterTraceSupport.getValue() && !quiet) {
-                traceInterpreter().string("Invalid native entry point: invoking in interpreter.").newline();
+            if (trace) {
+                forceTraceInterpreter().string("Invalid native entry point: invoking in interpreter.").newline();
             }
             return false;
-        } else if (forceStayInInterpreter) {
-            // Unconditionally stay in interpreter.
-            if (InterpreterTraceSupport.getValue() && !quiet) {
-                traceInterpreter().string("'forceStayInInterpreter' set to true: invoking in interpreter.").newline();
+        } else if (stayInInterpreter) {
+            // Follow the caller's requirement or debugger hint.
+            if (trace) {
+                forceTraceInterpreter().string("'stayInInterpreter' set to true: invoking in interpreter.").newline();
             }
             return false;
         } else {
             // No more unconditional requirements. Use heuristics.
-            if (preferStayInInterpreter) {
-                // Follow the given hint
-                if (InterpreterTraceSupport.getValue() && !quiet) {
-                    traceInterpreter().string("'preferStayInInterpreter' set to true: invoking in interpreter.").newline();
-                }
-                return false;
-            } else if (target instanceof CremaResolvedJavaMethodImpl) {
-                if (InterpreterTraceSupport.getValue() && !quiet) {
-                    traceInterpreter().string("Runtime-loaded method detected: invoking in interpreter.").newline();
+            if (target instanceof CremaResolvedJavaMethodImpl) {
+                if (trace) {
+                    forceTraceInterpreter().string("Runtime-loaded method detected: invoking in interpreter.").newline();
                 }
                 /*
                  * This is a runtime-loaded class. While there exists a valid AOT entry point (the
@@ -1115,8 +1113,8 @@ public final class InterpreterToVM {
                  */
                 return false;
             } else {
-                if (InterpreterTraceSupport.getValue() && !quiet) {
-                    traceInterpreter().string("Defaulting to calling compiled target.").newline();
+                if (trace) {
+                    forceTraceInterpreter().string("Defaulting to calling compiled target.").newline();
                 }
                 // Otherwise prefer calling optimized code.
                 return true;
