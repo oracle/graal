@@ -26,6 +26,11 @@ package com.oracle.svm.core.logging;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Locale;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -79,6 +84,9 @@ final class LogFileOutput extends LogOutput {
     /// Number of archived files retained, where zero disables rotation.
     private int fileCount = DEFAULT_FILE_COUNT;
 
+    /// Next archive slot in the rotation cycle.
+    private int nextArchive;
+
     /// Raw descriptor for the active file, recreated after rotation. Zero remains the unavailable
     /// sentinel until GR-79635 resolves handling of POSIX descriptors in the standard stream range.
     private long rawDescriptor;
@@ -109,10 +117,26 @@ final class LogFileOutput extends LogOutput {
         return path;
     }
 
-    /// Attempts to open the active file after every part of its first configuration has been
-    /// validated.
+    /// Archives an existing active file when rotation is enabled, then opens a fresh active file.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logFileOutput.cpp#L198-L252")
     void initialize() {
         assert !initialized;
+        if (fileCount > 0) {
+            try {
+                BasicFileAttributes active = readAttributes(Path.of(pathName));
+                if (active != null) {
+                    if (!active.isRegularFile()) {
+                        throw new IllegalArgumentException("Unified log file is not a regular file: " + pathName);
+                    }
+                    nextArchive = nextArchiveSlot();
+                    if (!archiveActiveFile()) {
+                        throw new IllegalArgumentException("Could not archive unified log file: " + pathName);
+                    }
+                }
+            } catch (IOException exception) {
+                throw new IllegalArgumentException("Could not inspect unified log file: " + pathName, exception);
+            }
+        }
         initialized = true;
         ensureOpen();
     }
@@ -173,8 +197,7 @@ final class LogFileOutput extends LogOutput {
         }
     }
 
-    /// Opens a fresh active file after discarding any preexisting contents. Unlike HotSpot,
-    /// rotation does not archive an active file left by an earlier process during initialization.
+    /// Opens a fresh active file after startup has preserved any contents required by rotation.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logFileOutput.cpp#L220-L252")
     private void ensureOpen() {
         RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
@@ -208,18 +231,50 @@ final class LogFileOutput extends LogOutput {
         return status;
     }
 
-    /// Shifts archived files and renames the active file to the first archive slot.
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private boolean archiveActiveFile() {
-        if (LoggingSupport.singleton().isRegularFile(archivePaths[fileCount - 1]) && !LoggingSupport.singleton().delete(archivePaths[fileCount - 1])) {
-            return false;
-        }
-        for (int index = fileCount - 2; index >= 0; index--) {
-            if (LoggingSupport.singleton().isRegularFile(archivePaths[index]) && LoggingSupport.singleton().rename(archivePaths[index], archivePaths[index + 1]) != 0) {
-                return false;
+    /// Selects the first unused archive slot, or the oldest archive when all slots are occupied.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logFileOutput.cpp#L119-L165")
+    private int nextArchiveSlot() throws IOException {
+        int oldest = 0;
+        long oldestTime = Long.MAX_VALUE;
+        for (int index = 0; index < fileCount; index++) {
+            BasicFileAttributes attributes = readAttributes(Path.of(archiveName(index, fileCount)));
+            if (attributes == null) {
+                return index;
+            }
+            if (!attributes.isRegularFile()) {
+                throw new IllegalArgumentException("Unified log archive is not a regular file: " + archiveName(index, fileCount));
+            }
+            long modifiedTime = attributes.lastModifiedTime().toMillis();
+            if (modifiedTime < oldestTime) {
+                oldest = index;
+                oldestTime = modifiedTime;
             }
         }
-        return LoggingSupport.singleton().rename(path, archivePaths[0]) == 0;
+        return oldest;
+    }
+
+    /// Returns file metadata, distinguishing an absent path from other inspection failures.
+    private static BasicFileAttributes readAttributes(Path name) throws IOException {
+        try {
+            return Files.readAttributes(name, BasicFileAttributes.class);
+        } catch (NoSuchFileException exception) {
+            return null;
+        }
+    }
+
+    /// Replaces the next archive and advances through the same circular slots as HotSpot.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logFileOutput.cpp#L324-L352")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private boolean archiveActiveFile() {
+        RawFilePath archive = archivePaths[nextArchive];
+        if (LoggingSupport.singleton().isRegularFile(archive) && !LoggingSupport.singleton().delete(archive)) {
+            return false;
+        }
+        if (LoggingSupport.singleton().rename(path, archive) != 0) {
+            return false;
+        }
+        nextArchive = (nextArchive + 1) % fileCount;
+        return true;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -254,7 +309,7 @@ final class LogFileOutput extends LogOutput {
         int allocated = 0;
         try {
             for (; allocated < count; allocated++) {
-                result[allocated] = allocatePath(pathName + "." + allocated);
+                result[allocated] = allocatePath(archiveName(allocated, count));
             }
             return result;
         } catch (RuntimeException | Error exception) {
@@ -264,6 +319,13 @@ final class LogFileOutput extends LogOutput {
             }
             throw exception;
         }
+    }
+
+    /// Formats archive numbers with the width of the largest configured slot.
+    private String archiveName(int index, int count) {
+        int width = Integer.toString(count - 1).length();
+        String number = Integer.toString(index);
+        return pathName + "." + "0".repeat(width - number.length()) + number;
     }
 
     /// Converts a Java path to a platform-dependent raw string.
