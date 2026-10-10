@@ -252,7 +252,7 @@ public final class RuntimeOptionParser {
     /** Parses runtime options for a Java main image and returns the application main arguments. */
     public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
-            return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
+            return parseAndConsumeAllOptions(initialArgs.clone(), ignoreUnrecognized);
         }
 
         int separatorIndex = ArgsSupport.firstEndOfOptionsMarkerIndex(initialArgs);
