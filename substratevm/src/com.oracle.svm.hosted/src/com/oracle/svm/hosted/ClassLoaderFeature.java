@@ -118,20 +118,24 @@ public class ClassLoaderFeature implements InternalFeature {
             packageManager.initialize(appClassLoader, registry);
         }
 
-        var config = (FeatureImpl.DuringSetupAccessImpl) access;
+        var accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-                config.registerObjectReachableCallback(ClassLoader.class, (_, classLoader, _) -> {
+                accessImpl.registerObjectReachableCallback(ClassLoader.class, (_, classLoader, _) -> {
                     if (HostedClassLoaderPackageManagement.isGeneratedSerializationClassLoader(classLoader)) {
                         registry.registerHeapConstant(HostedClassLoaderPackageManagement.getClassLoaderSerializationLookupKey(classLoader), classLoader);
                     }
                 });
             }
         } else {
-            config.registerObjectToConstantReplacer(obj -> (ImageHeapConstant) replaceClassLoadersWithLayerConstant(registry, obj));
+            var hostedValuesProvider = accessImpl.getUniverse().getHostedValuesProvider();
+            // JVMCI migration blocked by GR-72593: Migrate ClassLoaderFeature to terminus
+            accessImpl.registerJVMCIObjectToConstantReplacer(constant -> (ImageHeapConstant) replaceClassLoadersWithLayerConstant(registry,
+                            hostedValuesProvider.asObject(Object.class, constant)));
             // relink packages defined in the prior layers
-            config.registerObjectToConstantReplacer(packageManager::replaceWithPriorLayerPackage);
+            accessImpl.registerJVMCIObjectToConstantReplacer(constant -> packageManager.replaceWithPriorLayerPackage(
+                            hostedValuesProvider.asObject(Object.class, constant)));
         }
     }
 
