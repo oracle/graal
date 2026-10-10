@@ -119,13 +119,13 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Cross
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        var config = (FeatureImpl.DuringSetupAccessImpl) access;
+        var accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         loader = HostedImageLayerBuildingSupport.singleton().getLoader();
         ImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
         var registry = CrossLayerConstantRegistry.singletonOrNull();
-        var hostedValuesProvider = config.getUniverse().getHostedValuesProvider();
+        var hostedValuesProvider = accessImpl.getUniverse().getHostedValuesProvider();
         // JVMCI migration blocked by GR-80021: Adapt the CrossLayerConstantRegistry for Terminus
-        config.registerJVMCIObjectToConstantReplacer(constant -> replacePriorMarkersWithConstant(registry,
+        accessImpl.registerJVMCIObjectToConstantReplacer(constant -> replacePriorMarkersWithConstant(registry,
                         hostedValuesProvider.asObject(Object.class, constant)));
     }
 
