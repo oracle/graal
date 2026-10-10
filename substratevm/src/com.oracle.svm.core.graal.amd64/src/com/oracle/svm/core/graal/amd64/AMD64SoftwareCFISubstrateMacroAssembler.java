@@ -139,7 +139,8 @@ public class AMD64SoftwareCFISubstrateMacroAssembler extends SubstrateAMD64Macro
     }
 
     private static boolean restoreScratchRegisterAfterValidation(InvokeTarget callTarget) {
-        return callTarget instanceof SharedMethod sharedMethod && sharedMethod.hasCalleeSavedRegisters();
+        // Bytecode-handler stubs can receive custom calling convention arguments in r10 or r11.
+        return callTarget instanceof SharedMethod sharedMethod && (sharedMethod.hasCalleeSavedRegisters() || sharedMethod.isBytecodeHandlerStub());
     }
 
     private PostCallAction wrapPostCallAction(PostCallAction original, InvokeTarget callTarget) {
