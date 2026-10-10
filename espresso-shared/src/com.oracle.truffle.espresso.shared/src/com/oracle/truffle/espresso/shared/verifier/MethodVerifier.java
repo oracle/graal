@@ -242,6 +242,7 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.TABLESWIT
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -307,8 +308,33 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     // Internal info
     private final int[] bciStates;
+    /**
+     * The bci of the instruction after each unconditional stop (goto, return, athrow, ...), which
+     * must have a stack map frame. Recorded while {@link #initVerifier} walks the code, so that
+     * {@link #validateUnconditionalJumps} does not have to walk it a second time.
+     */
+    private int[] stopSuccessors = new int[16];
+    private int stopSuccessorCount;
     private final StackFrame<R, C, M, F>[] stackFrames;
     private final byte[] handlerStatus;
+    /**
+     * What the last check of each exception handler was made against, or null if it has not been
+     * checked yet. See {@link #checkExceptionHandlers}.
+     */
+    private final List<HandlerCheck<R, C, M, F>> exceptionHandlerChecks;
+
+    /**
+     * The state a check of an exception handler was made against: the locals, how often they had
+     * been modified, the constructor status, and the handler's frame afterwards.
+     */
+    private record HandlerCheck<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>(Locals<R, C, M, F> locals,
+                    int modCount, boolean calledConstructor, StackFrame<R, C, M, F> frame) {
+        /** Whether a check of the same handler now would be made against the same state. */
+        boolean isSameAs(Locals<R, C, M, F> currentLocals, boolean currentCalledConstructor, StackFrame<R, C, M, F> currentFrame) {
+            return locals == currentLocals && modCount == currentLocals.modCount && calledConstructor == currentCalledConstructor && frame == currentFrame;
+        }
+    }
+
     private boolean stackMapInitialized = false;
 
     // <init> method validation
@@ -541,6 +567,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         this.handlerStatus = new byte[exceptionHandlers.length];
         Arrays.fill(handlerStatus, UNENCOUNTERED);
+        this.exceptionHandlerChecks = Arrays.asList(new HandlerCheck[exceptionHandlers.length]);
 
         booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
 
@@ -570,9 +597,61 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
+    /**
+     * Like {@link #formatGuarantee(boolean, String)}, for a message that is computed from the
+     * checked values. The message is only built, with {@link String#format}, when the check fails:
+     * building it at the call site would format (and call {@code toString()} on) the operands every
+     * time a check <em>passes</em>, which is on the path of nearly every verified bytecode.
+     */
+    static void formatGuarantee(boolean guarantee, String format, Object... args) {
+        if (!guarantee) {
+            throw failFormat(String.format(format, args));
+        }
+    }
+
     static void verifyGuarantee(boolean guarantee, String s) {
         if (!guarantee) {
             throw failVerify(s);
+        }
+    }
+
+    /**
+     * Like {@link #verifyGuarantee(boolean, String)}, for a message that is computed from the checked
+     * values. See {@link #formatGuarantee(boolean, String, Object...)}.
+     */
+    static void verifyGuarantee(boolean guarantee, String format, Object... args) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, args));
+        }
+    }
+
+    /*
+     * Overloads for the arities the hot checks use. A call with an int or an object argument binds
+     * to one of these and not to the varargs form, so it allocates no Object[] and boxes nothing
+     * when the check passes; the message is formatted only on failure.
+     */
+
+    static void verifyGuarantee(boolean guarantee, String format, int arg) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String format, int arg1, int arg2) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg1, arg2));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String format, Object arg) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String format, Object arg1, Object arg2) {
+        if (!guarantee) {
+            throw failVerify(String.format(format, arg1, arg2));
         }
     }
 
@@ -646,12 +725,15 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         int opcode;
         while (bci < code.endBCI()) {
             opcode = code.currentBC(bci);
-            verifyGuarantee(opcode < QUICK, "invalid bytecode: " + opcode);
+            verifyGuarantee(opcode < QUICK, "invalid bytecode: %s", opcode);
             verifyEnoughBytecodes(opcode, bci);
             bciStates[bci] = setStatus(bciStates[bci], UNSEEN);
             bci = code.nextBCI(bci);
             // Check instruction has enough bytes after it
             verifyGuarantee(bci <= code.endBCI(), "Incomplete bytecode");
+            if (useStackMaps && Bytecodes.isStop(opcode) && bci < code.endBCI()) {
+                recordStopSuccessor(bci);
+            }
         }
         bci = 0;
         if (!useStackMaps) {
@@ -812,7 +894,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     void setLocal(Operand<R, C, M, F>[] locals, Operand<R, C, M, F> op, int pos, String message) {
-        formatGuarantee(pos >= 0 && pos < locals.length, message);
+        formatGuarantee(pos >= 0 && pos < locals.length, "%s", message);
         locals[pos] = op;
     }
 
@@ -839,7 +921,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             case ITEM_NewObject:
                 int newOffset = vti.getNewOffset();
                 validateFormatBCI(newOffset);
-                formatGuarantee(code.currentBC(newOffset) == NEW, "NewObject in stack map not referencing a NEW instruction! " + Bytecodes.nameOf(code.currentBC(newOffset)));
+                formatGuarantee(code.currentBC(newOffset) == NEW, "NewObject in stack map not referencing a NEW instruction! %s", Bytecodes.nameOf(code.currentBC(newOffset)));
                 assert vti.hasType();
                 return new UninitReferenceOperand<>(vti.getType(pool, getTypes(), code), newOffset);
             default:
@@ -953,19 +1035,16 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     }
 
+    private void recordStopSuccessor(int nextBCI) {
+        if (stopSuccessorCount == stopSuccessors.length) {
+            stopSuccessors = Arrays.copyOf(stopSuccessors, stopSuccessorCount * 2);
+        }
+        stopSuccessors[stopSuccessorCount++] = nextBCI;
+    }
+
     private void validateUnconditionalJumps() {
-        if (useStackMaps) {
-            int bci = 0;
-            int nextBCI;
-            while (bci < code.endBCI()) {
-                nextBCI = code.nextBCI(bci);
-                if (Bytecodes.isStop(code.currentBC(bci))) {
-                    if (nextBCI < code.endBCI()) {
-                        verifyGuarantee(stackFrames[nextBCI] != null, "Control flow stop does not have a stack map at next instruction!");
-                    }
-                }
-                bci = nextBCI;
-            }
+        for (int i = 0; i < stopSuccessorCount; i++) {
+            verifyGuarantee(stackFrames[stopSuccessors[i]] != null, "Control flow stop does not have a stack map at next instruction!");
         }
     }
 
@@ -977,17 +1056,17 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             validateFormatBCI(startBCI);
             int endBCI = handler.getEndBCI();
             formatGuarantee(endBCI > startBCI, "End BCI of handler is before start BCI");
-            formatGuarantee(endBCI >= 0, "negative branch target: " + endBCI);
+            formatGuarantee(endBCI >= 0, "negative branch target: %s", endBCI);
             // handler end BCI can be equal to code end.
             formatGuarantee(endBCI <= code.endBCI(), "Control flow falls through code end");
             if (handler.catchTypeCPI() != 0) {
                 C catchType = thisKlass.resolveClassConstantInPool(handler.catchTypeCPI());
                 ReferenceOperand<R, C, M, F> catchTypeOperand = new ReferenceOperand<>(catchType);
-                verifyGuarantee(catchTypeOperand.compliesWith(jlThrowable, this), "Illegal exception handler catch type: " + catchType);
+                verifyGuarantee(catchTypeOperand.compliesWith(jlThrowable, this), "Illegal exception handler catch type: %s", catchType);
             }
 
             if (endBCI != code.endBCI()) {
-                formatGuarantee(bciStates[endBCI] != UNREACHABLE, "Jump to the middle of an instruction: " + endBCI);
+                formatGuarantee(bciStates[endBCI] != UNREACHABLE, "Jump to the middle of an instruction: %s", endBCI);
             }
         }
     }
@@ -1116,20 +1195,20 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void validateBCI(int bci) {
         verifyGuarantee(bci < code.endBCI(), "Control flow falls through code end");
-        verifyGuarantee(bci >= 0, "negative branch target: " + bci);
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: " + bci);
+        verifyGuarantee(bci >= 0, "negative branch target: %s", bci);
+        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: %s", bci);
     }
 
     private void validateFormatBCI(int bci) {
         formatGuarantee(bci < code.endBCI(), "Control flow falls through code end");
-        formatGuarantee(bci >= 0, "negative branch target: " + bci);
-        formatGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: " + bci);
+        formatGuarantee(bci >= 0, "negative branch target: %s", bci);
+        formatGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: %s", bci);
     }
 
     private void validateFrameBCI(int bci) {
         verifyGuarantee(bci < code.endBCI(), "StackFrame offset falls outside of method");
-        verifyGuarantee(bci >= 0, "negative stack frame offset: " + bci);
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "StackFrame offset falls to the middle of an instruction: " + bci);
+        verifyGuarantee(bci >= 0, "negative stack frame offset: %s", bci);
+        verifyGuarantee(bciStates[bci] != UNREACHABLE, "StackFrame offset falls to the middle of an instruction: %s", bci);
     }
 
     /**
@@ -1196,11 +1275,28 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     /**
      * Checks that an instruction can merge into all its handlers.
+     *
+     * <p>
+     * What a handler is merged with is the locals, the constructor status, and the same one-element
+     * stack every time, so a check that finds all of them as the previous check of that handler left
+     * them would merge the same state into the same frame again, and is skipped. Most instructions
+     * of a covered region do not change a local. Subroutines are not tracked, and are always
+     * checked.
      */
     private void checkExceptionHandlers(int nextBCI, Locals<R, C, M, F> locals) {
         for (int i = 0; i < exceptionHandlers.length; i++) {
             ExceptionHandler handler = exceptionHandlers[i];
             if (handler.covers(nextBCI)) {
+                HandlerCheck<R, C, M, F> lastCheck = exceptionHandlerChecks.get(i);
+                if (lastCheck != null && locals.subRoutineModifications == null) {
+                    boolean isSame = lastCheck.isSameAs(
+                                    locals,
+                                    calledConstructor,
+                                    stackFrames[handler.getHandlerBCI()]);
+                    if (isSame) {
+                        continue;
+                    }
+                }
                 OperandStack<R, C, M, F> stack = new OperandStack<>(this, 1);
                 Symbol<Type> catchType = handler.getCatchType();
                 stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType, handler.catchTypeCPI()));
@@ -1215,6 +1311,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     handlerStatus[i] = setConstructorStatus(handlerStatus[i], NOCONSTRUCTORCALLED);
                 }
                 stackFrames[handler.getHandlerBCI()] = newFrame;
+                exceptionHandlerChecks.set(i, new HandlerCheck<>(locals, locals.modCount, calledConstructor, newFrame));
             }
         }
     }
@@ -1266,11 +1363,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      *         (in case of a return bytecode, for example).
      */
     private int verify(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: " + bci);
+        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: %s", bci);
         bciStates[bci] = setStatus(bciStates[bci], DONE);
         int curOpcode;
         curOpcode = code.opcode(bci);
-        verifyGuarantee(curOpcode < SLIM_QUICK, "invalid bytecode: " + code.readUByte(bci));
+        if (curOpcode >= SLIM_QUICK) {
+            throw failVerify(String.format("invalid bytecode: %s", code.readUByte(bci)));
+        }
         // @formatter:off
         // Checkstyle: stop
 
@@ -1366,7 +1465,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case AALOAD: {
                     stack.popInt();
                     Operand<R, C, M, F> op = stack.popArray();
-                    verifyGuarantee(op == nullOp || op.getComponent().isReference(), "Loading reference from " + op + " array.");
+                    verifyGuarantee(op == nullOp || op.getComponent().isReference(), "Loading reference from %s array.", op);
                     stack.push(op.getComponent());
                     break;
                 }
@@ -1416,7 +1515,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     Operand<R, C, M, F> toStore = stack.popRef();
                     stack.popInt();
                     Operand<R, C, M, F> array = stack.popArray();
-                    verifyGuarantee(array == nullOp || array.getComponent().isReference(), "Trying to store " + toStore + " in " + array);
+                    verifyGuarantee(array == nullOp || array.getComponent().isReference(), "Trying to store %s in %s", toStore, array);
                     // Other checks are done at runtime
                     break;
                 }
@@ -1545,7 +1644,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
                 case IRETURN: {
                     stack.pop(intOp);
-                    verifyGuarantee(returnOperand.getKind().isStackInt(), "Found an IRETURN when return type is " + returnOperand);
+                    verifyGuarantee(returnOperand.getKind().isStackInt(), "Found an IRETURN when return type is %s", returnOperand);
                     return bci;
                 }
                 case LRETURN: doReturn(stack, longOp);       return bci;
@@ -1553,10 +1652,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case DRETURN: doReturn(stack, doubleOp);     return bci;
                 case ARETURN: stack.popRef(returnOperand); return bci;
                 case RETURN:
-                    verifyGuarantee(returnOperand == voidOp, "Encountered RETURN, but method return type is not void: " + returnOperand);
+                    verifyGuarantee(returnOperand == voidOp, "Encountered RETURN, but method return type is not void: %s", returnOperand);
                     // Only j.l.Object.<init> can omit calling another initializer.
                     if (isInstanceInit(methodName) && thisKlass.getSymbolicType() != ParserTypes.java_lang_Object) {
-                        verifyGuarantee(calledConstructor, "Did not call super() or this() in constructor " + thisKlass.getJavaName() + "." + methodName);
+                        verifyGuarantee(calledConstructor, "Did not call super() or this() in constructor %s.%s", thisKlass.getJavaName(), methodName);
                     }
                     return bci;
 
@@ -1587,7 +1686,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
                 case WIDE:
                     curOpcode = code.currentBC(bci);
-                    verifyGuarantee(wideOpcodes(curOpcode), "invalid widened opcode: " + Bytecodes.nameOf(curOpcode));
+                    verifyGuarantee(wideOpcodes(curOpcode), "invalid widened opcode: %s", Bytecodes.nameOf(curOpcode));
                     continue wideEscape;
 
                 case MULTIANEWARRAY: verifyMultiNewArray(bci, stack); break;
@@ -1613,14 +1712,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         ConstantPool.Tag tag = tagAt(indyIndex);
 
         // Check CP validity
-        verifyGuarantee(tag == ConstantPool.Tag.INVOKEDYNAMIC, "Invalid CP constant for INVOKEDYNAMIC: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.INVOKEDYNAMIC, "Invalid CP constant for INVOKEDYNAMIC: %s", tag);
         validateOrFailVerification(indyIndex, pool);
 
         Symbol<Name> indyName = pool.invokeDynamicName(indyIndex);
         Symbol<Signature> indySignature = pool.invokeDynamicSignature(indyIndex);
 
         // Check invokedynamic does not call initializers
-        verifyGuarantee(!isInstanceInit(indyName) && !isClassInit(indyName), "Invalid bootstrap method name: " + indyName);
+        verifyGuarantee(!isInstanceInit(indyName) && !isClassInit(indyName), "Invalid bootstrap method name: %s", indyName);
 
         // Check and pop arguments
         Operand<R, C, M, F>[] parsedSig = getOperandSig(indySignature);
@@ -1638,7 +1737,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private Symbol<Type> getTypeFromPool(int classIndex, String s) {
         ConstantPool.Tag tag = tagAt(classIndex);
-        verifyGuarantee(tag == CLASS, s + tag);
+        verifyGuarantee(tag == CLASS, "%s%s", s, tag);
         validateOrFailVerification(classIndex, pool);
         Symbol<Name> className = pool.className(classIndex);
         assert Validation.validClassNameEntry(className);
@@ -1648,12 +1747,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void verifyMultiNewArray(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for MULTIANEWARRAY: ");
-        verifyGuarantee(TypeSymbols.isArray(type), "Class " + type + " for MULTINEWARRAY is not an array type.");
+        verifyGuarantee(TypeSymbols.isArray(type), "Class %s for MULTINEWARRAY is not an array type.", type);
 
         // Check dimensions
         int dim = code.readUByte(bci + 3);
-        verifyGuarantee(dim > 0, "Negative or 0 dimension for MULTIANEWARRAY: " + dim);
-        verifyGuarantee(TypeSymbols.getArrayDimensions(type) >= dim, "Incompatible dimensions from constant pool: " + TypeSymbols.getArrayDimensions(type) + " and instruction: " + dim);
+        verifyGuarantee(dim > 0, "Negative or 0 dimension for MULTIANEWARRAY: %s", dim);
+        verifyGuarantee(TypeSymbols.getArrayDimensions(type) >= dim, "Incompatible dimensions from constant pool: %s and instruction: %s", TypeSymbols.getArrayDimensions(type), dim);
 
         // Pop lengths
         for (int i = 0; i < dim; i++) {
@@ -1670,7 +1769,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for INSTANCEOF: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for INSTANCEOF: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for INSTANCEOF: %s", type);
 
         // push result
         stack.pushInt();
@@ -1683,7 +1782,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int cpi = code.readCPI(bci);
         Symbol<Type> type = getTypeFromPool(cpi, "Invalid CP constant for CHECKCAST: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for CHECKCAST: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for CHECKCAST: %s", type);
 
         // push new type
         Operand<R, C, M, F> castOp = spawnFromType(type, cpi);
@@ -1698,7 +1797,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int cpi = code.readCPI(bci);
         Symbol<Type> type = getTypeFromPool(cpi, "Invalid CP constant for ANEWARRAY: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for ANEWARRAY: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for ANEWARRAY: %s", type);
 
         // Pop length
         stack.popInt();
@@ -1713,13 +1812,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private ConstantPool.Tag tagAt(int cpi) {
-        verifyGuarantee(cpi < pool.length() && cpi > 0, "Invalid constant pool access at " + cpi + ", pool length: " + pool.length());
+        verifyGuarantee(cpi < pool.length() && cpi > 0, "Invalid constant pool access at %s, pool length: %s", cpi, pool.length());
         return pool.tagAt(cpi);
     }
 
     private void verifyNewPrimitiveArray(int bci, OperandStack<R, C, M, F> stack) {
         byte jvmType = code.readByte(bci);
-        verifyGuarantee(jvmType >= 4 && jvmType <= 11, "invalid jvmPrimitiveType for NEWARRAY: " + jvmType);
+        verifyGuarantee(jvmType >= 4 && jvmType <= 11, "invalid jvmPrimitiveType for NEWARRAY: %s", jvmType);
         stack.popInt();
         stack.push(fromJVMType(jvmType));
     }
@@ -1727,7 +1826,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void verifyNew(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for NEW: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type) && !TypeSymbols.isArray(type), "use NEWARRAY for creating array or primitive type: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type) && !TypeSymbols.isArray(type), "use NEWARRAY for creating array or primitive type: %s", type);
 
         // push result
         Operand<R, C, M, F> op = new UninitReferenceOperand<>(type, bci);
@@ -1738,7 +1837,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int fieldIndex = code.readCPI(bci);
         ConstantPool.Tag tag = tagAt(fieldIndex);
-        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for PUTFIELD: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for PUTFIELD: %s", tag);
         validateOrFailVerification(fieldIndex, pool);
 
         // Obtain field info
@@ -1754,7 +1853,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             Symbol<Type> fieldHolderType = runtime.getSymbolPool().getTypes().fromClassNameEntry(holderClassName);
             Operand<R, C, M, F> fieldHolder = kindToOperand(fieldHolderType);
             Operand<R, C, M, F> receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
-            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: " + receiver);
+            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: %s", receiver);
             if (!receiver.isUninitThis()) {
                 checkProtectedMember(receiver, fieldHolderType, fieldIndex, false);
             }
@@ -1765,7 +1864,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int fieldIndex = code.readCPI(bci);
         ConstantPool.Tag tag = tagAt(fieldIndex);
-        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for GETFIELD: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for GETFIELD: %s", tag);
         validateOrFailVerification(fieldIndex, pool);
 
         // Obtain field info
@@ -1780,7 +1879,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             Operand<R, C, M, F> fieldHolder = kindToOperand(fieldHolderType);
             Operand<R, C, M, F> receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             checkProtectedMember(receiver, fieldHolderType, fieldIndex, false);
-            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: " + receiver);
+            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: %s", receiver);
         }
 
         // push result
@@ -1874,7 +1973,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void validateMethodRefIndex(int methodIndex) {
         ConstantPool.Tag tag = tagAt(methodIndex);
-        verifyGuarantee(tag == ConstantPool.Tag.METHOD_REF || tag == INTERFACE_METHOD_REF, "Invalid CP constant for a MethodRef: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.METHOD_REF || tag == INTERFACE_METHOD_REF, "Invalid CP constant for a MethodRef: %s", tag);
         validateOrFailVerification(methodIndex, pool);
     }
 
@@ -1925,7 +2024,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Pop arguments
         // Check signature conforms with count argument
         int count = code.readUByte(bci + 3);
-        verifyGuarantee(count > 0, "Invalid count argument for INVOKEINTERFACE: " + count);
+        verifyGuarantee(count > 0, "Invalid count argument for INVOKEINTERFACE: %s", count);
         int descCount = 1; // Has a receiver.
         for (int i = parsedSig.length - 2; i >= 0; i--) {
             descCount++;
@@ -1957,7 +2056,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Checks versioning
         if (version51OrEarlier()) {
-            verifyGuarantee(pool.tagAt(methodIndex) != INTERFACE_METHOD_REF, "invokeStatic refers to an interface method with classfile version " + majorVersion);
+            verifyGuarantee(pool.tagAt(methodIndex) != INTERFACE_METHOD_REF, "invokeStatic refers to an interface method with classfile version %s", majorVersion);
         }
         Symbol<Name> calledMethodName = pool.methodName(methodIndex);
 
@@ -1984,7 +2083,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         boolean isInterfaceMethodTarget = pool.tagAt(methodIndex) == INTERFACE_METHOD_REF;
         // Checks versioning
         if (version51OrEarlier()) {
-            verifyGuarantee(!isInterfaceMethodTarget, "invokeSpecial refers to an interface method with classfile version " + majorVersion);
+            verifyGuarantee(!isInterfaceMethodTarget, "invokeSpecial refers to an interface method with classfile version %s", majorVersion);
         }
         Symbol<Name> calledMethodName = pool.methodName(methodIndex);
 
@@ -2001,7 +2100,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         if (isInstanceInit(calledMethodName)) {
             UninitReferenceOperand<R, C, M, F> toInit = (UninitReferenceOperand<R, C, M, F>) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
-                verifyGuarantee(ParserNames._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: " + toInit);
+                verifyGuarantee(ParserNames._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: %s", toInit);
                 boolean isValidInitThis = toInit.getType() == methodHolder ||
                                 // Here, the superKlass cannot be null, as the j.l.Object case would
                                 // have been handled by the previous check.
@@ -2009,7 +2108,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 verifyGuarantee(isValidInitThis, "<init> method must call this.<init> or super.<init>");
                 calledConstructor = true;
             } else {
-                verifyGuarantee(code.opcode(toInit.newBCI) == NEW, "There is no NEW bytecode at bci: " + toInit.newBCI);
+                verifyGuarantee(code.opcode(toInit.newBCI) == NEW, "There is no NEW bytecode at bci: %s", toInit.newBCI);
                 // according to JCK's "vm/classfmt/ins/instr_03608m1" :
                 //
                 // Calling parent's initializer of uninitialized new object is
@@ -2286,7 +2385,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void doReturn(OperandStack<R, C, M, F> stack, Operand<R, C, M, F> toReturn) {
         Operand<R, C, M, F> op = stack.pop(toReturn);
-        verifyGuarantee(op.compliesWith(returnOperand, this), "Invalid return: " + op + ", expected: " + returnOperand);
+        verifyGuarantee(op.compliesWith(returnOperand, this), "Invalid return: %s, expected: %s", op, returnOperand);
     }
 
     /**
@@ -2371,7 +2470,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void xaload(OperandStack<R, C, M, F> stack, PrimitiveOperand<R, C, M, F> kind) {
         stack.popInt();
         Operand<R, C, M, F> op = stack.popArray();
-        verifyGuarantee(op == nullOp || kind.compliesWith(op.getComponent(), this), "Loading " + kind + " from " + op + " array.");
+        verifyGuarantee(op == nullOp || kind.compliesWith(op.getComponent(), this), "Loading %s from %s array.", kind, op);
         stack.push(kind.toStack());
     }
 
@@ -2379,7 +2478,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.pop(kind);
         stack.popInt();
         Operand<R, C, M, F> array = stack.popArray();
-        verifyGuarantee(array == nullOp || kind.compliesWith(array.getComponent(), this), "got array of type: " + array + ", while storing a " + kind);
+        verifyGuarantee(array == nullOp || kind.compliesWith(array.getComponent(), this), "got array of type: %s, while storing a %s", array, kind);
     }
 
     private static boolean wideOpcodes(int op) {
@@ -2411,7 +2510,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 Operand<R, C, M, F> frameOp = stackMap.stack[i];
                 if (!stackOp.compliesWithInMerge(frameOp, this)) {
                     Operand<R, C, M, F> result = stackOp.mergeWith(frameOp, this);
-                    verifyGuarantee(result != null, "Cannot merge " + stackOp + " with " + frameOp);
+                    verifyGuarantee(result != null, "Cannot merge %s with %s", stackOp, frameOp);
                     mergedStack[i] = result;
                 } else {
                     mergedStack[i] = frameOp;
@@ -2422,7 +2521,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Operand<R, C, M, F>[] mergedLocals = null;
         mergeIndex = locals.mergeInto(stackMap);
         if (mergeIndex != -1) {
-            verifyGuarantee(!useStackMaps, "Wrong local map frames in class file: " + thisKlass + '.' + methodName);
+            verifyGuarantee(!useStackMaps, "Wrong local map frames in class file: %s.%s", thisKlass, methodName);
 
             mergedLocals = new Operand[maxLocals];
             Operand<R, C, M, F>[] frameLocals = stackMap.locals;

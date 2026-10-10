@@ -88,6 +88,23 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso.classfile",
         },
 
+        # JMH benchmarks of the shared verifier and class file parser, run on a JVM
+        "com.oracle.truffle.espresso.shared.jmh": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.shared",
+                "mx:JMH_1_21",
+            ],
+            "annotationProcessors": ["mx:JMH_1_21"],
+            "javaCompliance" : "24+",
+            "checkstyle": "com.oracle.truffle.espresso.classfile",
+            "checkPackagePrefix": False,
+            "testProject": True,
+            "jacoco": "exclude",
+            "workingSets": "Espresso,Bench",
+        },
+
         # Shared code shaded for SVM
         "com.oracle.svm.espresso": {
             "class": "EspressoSVMShared",
@@ -136,6 +153,23 @@ suite = {
             },
             "useModulePath": True,
             "noMavenJavadoc": True,
+        },
+        "ESPRESSO_SHARED_MICRO_BENCHMARKS": {
+            "subDir": "src",
+            # The code under test is bundled instead of depending on ESPRESSO_SHARED: that is a
+            # module which exports its packages only to the Espresso module, and a benchmark on the
+            # class path could not use them.
+            "dependencies": [
+                "com.oracle.truffle.espresso.shared.jmh",
+                "com.oracle.truffle.espresso.classfile",
+                "com.oracle.truffle.espresso.shared",
+            ],
+            "distDependencies": [
+                "sdk:COLLECTIONS",
+                "truffle:TRUFFLE_API",
+            ],
+            "testDistribution": True,
+            "maven": False,
         },
         "ESPRESSO_SVM": {
             "moduleInfo" : {
