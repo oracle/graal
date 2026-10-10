@@ -105,8 +105,8 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(Thread.class, (_, thread, _) -> collectReachableThreads(thread));
-        access.registerObjectReachableCallback(ThreadGroup.class, (_, group, _) -> collectReachableThreadGroups(group));
+        access.registerObjectReachabilityHandler(this::collectReachableThreads, Thread.class);
+        access.registerObjectReachabilityHandler(this::collectReachableThreadGroups, ThreadGroup.class);
 
         /*
          * This currently only means that we don't support setting custom values for

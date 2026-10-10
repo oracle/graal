@@ -126,7 +126,7 @@ public class LoggingFeature implements InternalFeature {
              * cache may disappear and be recreated by name, so only otherwise reachable logger
              * objects need to be reconstructed into the image heap cache.
              */
-            accessImpl.registerObjectReachableCallback(platformLoggerClass, (_, logger, _) -> collectReachablePlatformLogger(platformLoggerGetNameMethod, logger));
+            accessImpl.registerObjectReachabilityHandler(logger -> collectReachablePlatformLogger(platformLoggerGetNameMethod, logger), platformLoggerClass);
         }
     }
 

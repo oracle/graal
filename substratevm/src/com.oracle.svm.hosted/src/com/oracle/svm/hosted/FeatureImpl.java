@@ -603,8 +603,7 @@ public class FeatureImpl {
         @Override
         public <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz) {
             // GR-78928: migrate builder-side clients to JVMCI or guest callbacks.
-            JavaConstant guestCallback = GuestAccess.get().getSnippetReflection().forObject(callback);
-            registerObjectReachabilityHandler(new WrappedObjectReachabilityHandler(guestCallback), getMetaAccess().lookupJavaType(clazz));
+            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(new LegacyObjectReachabilityHandlerAdapter<>(callback, getUniverse().getHostedValuesProvider()));
         }
 
         @Override

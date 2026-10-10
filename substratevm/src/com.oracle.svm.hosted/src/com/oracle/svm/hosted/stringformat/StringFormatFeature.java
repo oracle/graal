@@ -32,7 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.stringformat.StringFormat;
 import com.oracle.svm.core.stringformat.StringFormatPhase;
@@ -60,11 +59,11 @@ final class StringFormatFeature implements InternalFeature {
         }
         ImageSingletons.add(StringFormat.class, new StringFormat());
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(Locale.class, this::collectZeroDigits);
+        access.registerObjectReachabilityHandler(this::collectZeroDigits, Locale.class);
     }
 
     @SuppressWarnings("unused")
-    private void collectZeroDigits(DuringAnalysisAccess access, Locale locale, ObjectScanner.ScanReason reason) {
+    private void collectZeroDigits(Locale locale) {
         /*
          * DecimalFormatSymbols is not thread-safe, so we protect the zero digit computation with a
          * concurrent map.

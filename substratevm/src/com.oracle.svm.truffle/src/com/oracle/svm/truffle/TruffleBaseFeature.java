@@ -341,7 +341,7 @@ public final class TruffleBaseFeature implements InternalFeature {
      * unsafe accessed, which is necessary for correctness of the static analysis.
      */
     @SuppressWarnings("unused")
-    private void processInlinedField(DuringAnalysisAccess access, InlinableField inlinableField, ScanReason reason) {
+    private void processInlinedField(InlinableField inlinableField) {
         if (processedInlinedFields.putIfAbsent(inlinableField, true) == null) {
             VMError.guarantee(markAsUnsafeAccessed != null, "New InlinedField found after static analysis");
             try {
@@ -563,7 +563,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (!ImageSingletons.contains(TruffleFeature.class) && isSubstrateRuntime(Truffle.getRuntime())) {
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
-        access.registerObjectReachableCallback(InlinableField.class, this::processInlinedField);
+        access.registerObjectReachabilityHandler(this::processInlinedField, InlinableField.class);
 
         StaticObjectSupport.duringSetup(a);
 
@@ -636,7 +636,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         libraryFactoryCacheField = access.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
             var classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-            access.registerObjectReachableCallback(TruffleFile.class, (_, file, _) -> checkTruffleFile(classInitializationSupport, file));
+            access.registerObjectReachabilityHandler(file -> checkTruffleFile(classInitializationSupport, file), TruffleFile.class);
         }
 
         if (includeLanguageResources) {

@@ -122,11 +122,11 @@ public class ClassLoaderFeature implements InternalFeature {
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-                accessImpl.registerObjectReachableCallback(ClassLoader.class, (_, classLoader, _) -> {
+                accessImpl.registerObjectReachabilityHandler(classLoader -> {
                     if (HostedClassLoaderPackageManagement.isGeneratedSerializationClassLoader(classLoader)) {
                         registry.registerHeapConstant(HostedClassLoaderPackageManagement.getClassLoaderSerializationLookupKey(classLoader), classLoader);
                     }
-                });
+                }, ClassLoader.class);
             }
         } else {
             var hostedValuesProvider = accessImpl.getUniverse().getHostedValuesProvider();

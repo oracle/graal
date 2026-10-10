@@ -53,7 +53,7 @@ public final class ClassValueFeature implements InternalFeature {
          * hosted environment into the substrate world.
          */
         Map<ClassValue<?>, Map<Class<?>, Object>> values = ClassValueSupport.getValues();
-        ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectReachableCallback(ClassValue.class, (_, obj, _) -> values.computeIfAbsent(obj, _ -> new ConcurrentHashMap<>()));
+        access.registerObjectReachabilityHandler(obj -> values.computeIfAbsent(obj, _ -> new ConcurrentHashMap<>()), ClassValue.class);
     }
 
     private static final java.lang.reflect.Field IDENTITY = ReflectionUtil.lookupField(ClassValue.class, "identity");
