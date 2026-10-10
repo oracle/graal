@@ -382,7 +382,10 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                     } else {
                         switch (minorVersion) {
                             case 0:
-                                if (buildNumber > 20347) {
+                                /* Windows Server 2025 Preview build is 26040; match OpenJDK java_props_md.c */
+                                if (buildNumber > 26039) {
+                                    osName = "Windows Server 2025";
+                                } else if (buildNumber > 20347) {
                                     osName = "Windows Server 2022";
                                 } else if (buildNumber > 17762) {
                                     osName = "Windows Server 2019";
