@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.LibCHelper;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -84,6 +85,9 @@ public final class LogConfiguration {
 
     /// Records whether startup option parsing and logging initialization have completed.
     private static volatile boolean initializationComplete;
+
+    /// Enables JDK JFR threshold publication after all startup logging options are applied.
+    private static boolean jfrLogLevelsPublished;
 
     /// Prevents output teardown from racing synchronous writers that retained an old immutable
     /// routing configuration.
@@ -210,8 +214,9 @@ public final class LogConfiguration {
     }
 
     /// Captures process metadata and installs the baseline logging configuration before runtime
-    /// options are parsed when the `-Xlog` interface is supported.
+    /// options are parsed, including legacy GC logging when `-Xlog` is unavailable.
     public static void initialize() {
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging());
         if (HasXlogSupport.get()) {
             hostname = LoggingSupport.singleton().hostname();
             pid = ProcessProperties.getProcessID();
@@ -222,13 +227,15 @@ public final class LogConfiguration {
             }
             stdout.updateConfigString();
             stderr.updateConfigString();
-
-            LogLevel legacyLevel = legacyGCLogLevel();
-            if (legacyLevel != LogLevel.OFF) {
-                updateGCLoggingLocked(legacyLevel);
-            }
-            writesEnabled = true;
         }
+        LogLevel legacyLevel = legacyGCLogLevel();
+        if (legacyLevel != LogLevel.OFF) {
+            updateGCLoggingLocked(legacyLevel);
+        }
+        if (HasXlogSupport.get() && HasJfrSupport.get() && SubstrateOptions.FlightRecorderLogging.hasBeenSet()) {
+            SubstrateJVM.getLogging().parseConfiguration(SubstrateOptions.FlightRecorderLogging.getValue());
+        }
+        writesEnabled = true;
     }
 
     /// Formats the `%t` filename substitution without consulting JDK locale or time zone defaults.
@@ -337,8 +344,7 @@ public final class LogConfiguration {
         writesEnabled = true;
     }
 
-    /// Completes logging startup once, emits initialization diagnostics, and registers teardown
-    /// when `-Xlog` is supported. Otherwise it installs the legacy GC logging fallback.
+    /// Completes logging startup once and emits initialization diagnostics when `-Xlog` is supported.
     public static synchronized void logInitializationComplete() {
         if (initializationComplete) {
             return;
@@ -361,17 +367,6 @@ public final class LogConfiguration {
                     descriptionIndex++;
                 }
                 logInitializationDetails(outputDescriptions, logging.isDebug());
-            }
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging());
-        } else {
-            /*
-             * Do the equivalent of -Xlog:gc=[debug|info]:vmlog:uptime
-             * if VerboseGC or PrintGC is enabled.
-             */
-            LogLevel level = SubstrateGCOptions.VerboseGC.getValue() ? LogLevel.DEBUG : //
-                            SubstrateGCOptions.PrintGC.getValue() ? LogLevel.INFO : null;
-            if (level != null) {
-                updateGCLogging(level);
             }
         }
         initializationComplete = true;
@@ -463,8 +458,15 @@ public final class LogConfiguration {
         }
     }
 
+    /// Publishes the final startup thresholds before isolate initialization hooks run.
+    public static synchronized void publishJfrLogLevels() {
+        jfrLogLevelsPublished = true;
+        updateJfrLogLevels();
+    }
+
+    /// Refreshes JDK JFR thresholds after startup or subsequent logging reconfiguration.
     private static void updateJfrLogLevels() {
-        if (HasJfrSupport.get()) {
+        if (HasXlogSupport.get() && HasJfrSupport.get() && jfrLogLevelsPublished) {
             SubstrateJVM.getLogging().updateLogLevels();
         }
     }
@@ -476,15 +478,6 @@ public final class LogConfiguration {
         VMOperation.guaranteeNotInProgress("Cannot disable logging within a VM operation.");
         synchronized (LogConfiguration.class) {
             disableLoggingLocked();
-        }
-    }
-
-    /// Releases all logging resources when isolate initialization cannot complete.
-    public static void abortInitialization() {
-        VMOperation.guaranteeNotInProgress("Cannot abort logging initialization within a VM operation.");
-        synchronized (LogConfiguration.class) {
-            disableLoggingLocked();
-            initializationComplete = false;
         }
     }
 

@@ -34,12 +34,14 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
-/// Parses FlightRecorderLogging and configures the legacy JFR logging sink.
+/// Parses FlightRecorderLogging and configures the active JFR logging sink.
 final class JfrLogConfiguration {
     private static final String EMPTY_STRING_DEFAULT_CONFIG = "all=info";
 
@@ -50,36 +52,48 @@ final class JfrLogConfiguration {
     private JfrLogConfiguration() {
     }
 
-    /// Parses `str` and stores the selected legacy thresholds in `logging`.
+    /// Validates `str` before applying its thresholds to `logging` or unified logging.
     static void parse(String str, JfrLogging logging) {
+        Map<LogTag, JfrLogLevel> levels = new EnumMap<>(LogTag.class);
         if (str.equalsIgnoreCase("disable")) {
-            logging.disableLegacyLogging();
-            return;
-        }
-
-        String config = str.isEmpty() ? EMPTY_STRING_DEFAULT_CONFIG : str;
-        String[] splitConfig = config.split(",");
-        JfrLogSelection[] selections = new JfrLogSelection[splitConfig.length];
-
-        int index = 0;
-        for (String selection : splitConfig) {
-            selections[index++] = JfrLogSelection.parse(selection);
-        }
-        applyLegacySelections(selections, logging);
-        verifySelections(selections);
-    }
-
-    /// Applies rightmost matching selections and the legacy warning default.
-    private static void applyLegacySelections(JfrLogSelection[] selections, JfrLogging logging) {
-        for (LogTag logTagSet : LogTag.values()) {
-            JfrLogLevel logLevel = JfrLogLevel.WARNING;
-            for (JfrLogSelection selection : selections) {
-                if ((selection.wildcard && LOG_TAG_SETS.get(logTagSet).containsAll(selection.tags)) || selection.tags.equals(LOG_TAG_SETS.get(logTagSet))) {
-                    logLevel = selection.level;
-                    selection.matchesATagSet = true;
-                }
+            for (LogTag tag : LogTag.values()) {
+                levels.put(tag, JfrLogLevel.OFF);
             }
-            logging.setLegacyLevel(logTagSet, logLevel.level);
+        } else {
+            String config = str.isEmpty() ? EMPTY_STRING_DEFAULT_CONFIG : str;
+            String[] splitConfig = config.split(",");
+            JfrLogSelection[] selections = new JfrLogSelection[splitConfig.length];
+            int index = 0;
+            for (String selection : splitConfig) {
+                selections[index++] = JfrLogSelection.parse(selection);
+            }
+            for (LogTag tag : LogTag.values()) {
+                JfrLogLevel level = JfrLogLevel.WARNING;
+                for (JfrLogSelection selection : selections) {
+                    if ((selection.wildcard && LOG_TAG_SETS.get(tag).containsAll(selection.tags)) || selection.tags.equals(LOG_TAG_SETS.get(tag))) {
+                        level = selection.level;
+                        selection.matchesATagSet = true;
+                    }
+                }
+                levels.put(tag, level);
+            }
+            verifySelections(selections);
+        }
+        if (HasXlogSupport.get()) {
+            /* Exact tag sets keep the compatibility option confined to JFR stdout routes. */
+            StringBuilder argument = new StringBuilder("-Xlog:");
+            for (Map.Entry<LogTag, JfrLogLevel> entry : levels.entrySet()) {
+                if (argument.length() > "-Xlog:".length()) {
+                    argument.append(',');
+                }
+                argument.append(entry.getKey().name().toLowerCase(Locale.ROOT).replace('_', '+'));
+                argument.append('=').append(entry.getValue().name().toLowerCase(Locale.ROOT));
+            }
+            LogConfiguration.parseCommandLineArgument(argument.toString());
+        } else {
+            for (Map.Entry<LogTag, JfrLogLevel> entry : levels.entrySet()) {
+                logging.setLegacyLevel(entry.getKey(), entry.getValue().level);
+            }
         }
     }
 

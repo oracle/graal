@@ -157,11 +157,11 @@ public interface GuestStagingDependencyBridge {
     /// @param arg a value that starts with `-Xlog`
     boolean parseXLogOption(String arg);
 
-    /// Initializes unified logging before command-line properties and runtime options are parsed.
-    void initializeLogging();
+    /// Applies the JFR compatibility option in order with other logging options.
+    boolean parseFlightRecorderLoggingOption(String arg);
 
-    /// Releases logging resources when isolate startup does not complete.
-    void abortLoggingInitialization();
+    /// Releases logging resources before exiting without isolate teardown.
+    void shutdownLogging();
 
     /**
      * Returns whether runtime arguments must be parsed in the current isolate.

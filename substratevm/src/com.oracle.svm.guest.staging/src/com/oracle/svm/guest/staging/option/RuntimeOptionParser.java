@@ -233,94 +233,36 @@ public final class RuntimeOptionParser {
     /// Note that the logic of whether to parse options must be in sync with the isolate argument
     /// parser. [GuestStagingDependencyBridge#shouldParseRuntimeOptions] provides that policy here.
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized, false);
-    }
-
-    /// Parses isolate startup arguments while leaving logging initialization open until the caller
-    /// has completed the remaining isolate initialization steps.
-    public static String[] parseAndConsumeAllOptionsDuringIsolateInitialization(String[] initialArgs, boolean ignoreUnrecognized) {
-        return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized, true);
-    }
-
-    /// Parses options and optionally manages logging initialization as part of isolate startup.
-    private static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized, boolean initializeLogging) {
         GuestStagingDependencyBridge dependencyBridge = GuestStagingDependencyBridge.singleton();
-        boolean parsingCompleted = false;
-        try {
-            if (!dependencyBridge.shouldParseRuntimeOptions(IsolateArgumentParser.isCompilationIsolate())) {
-                if (initializeLogging) {
-                    dependencyBridge.initializeLogging();
-                }
-                parsingCompleted = true;
-                return initialArgs;
-            }
-
-            ParseContext context = new ParseContext();
-            if (initializeLogging) {
-                dependencyBridge.initializeLogging();
-            }
-            String[] args = parseJavaVMOptions(initialArgs, context);
-            args = consumeCompatibilityOptions(args);
-            args = singleton().parse(args, ignoreUnrecognized);
-            if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
-                rejectRecognizedUnimplementedJavaOptions(args);
-            }
-            configureLogFile(context.logFile);
-            parsingCompleted = true;
-            return args;
-        } finally {
-            if (initializeLogging && !parsingCompleted) {
-                dependencyBridge.abortLoggingInitialization();
-            }
+        if (!dependencyBridge.shouldParseRuntimeOptions(IsolateArgumentParser.isCompilationIsolate())) {
+            return initialArgs;
         }
+
+        ParseContext context = new ParseContext();
+        String[] args = parseJavaVMOptions(initialArgs, context);
+        args = consumeCompatibilityOptions(args);
+        args = singleton().parse(args, ignoreUnrecognized);
+        if (dependencyBridge.strictRuntimeJavaOptions()) {
+            rejectRecognizedUnimplementedJavaOptions(args);
+        }
+        configureLogFile(context.logFile);
+        return args;
     }
 
-    /** Parses runtime options for a Java main image and returns the application main arguments. */
+    /// Parses runtime options for a Java main image and returns the application main arguments.
     public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        return parseAndConsumeJavaMainOptions(initialArgs, ignoreUnrecognized, false);
-    }
-
-    /// Parses Java main startup arguments while deferring completion of logging initialization.
-    public static String[] parseAndConsumeJavaMainOptionsDuringIsolateInitialization(String[] initialArgs, boolean ignoreUnrecognized) {
-        return parseAndConsumeJavaMainOptions(initialArgs, ignoreUnrecognized, true);
-    }
-
-    /// Parses Java main options and optionally manages logging initialization during isolate startup.
-    private static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized, boolean initializeLogging) {
-        boolean parsingCompleted = false;
-        try {
-            String[] result;
-            if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
-                result = parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized, initializeLogging);
-            } else {
-                int separatorIndex = ArgsSupport.firstEndOfOptionsMarkerIndex(initialArgs);
-                if (separatorIndex == -1) {
-                    result = parseAndConsumeAllOptions(initialArgs.clone(), ignoreUnrecognized, initializeLogging);
-                } else {
-                    String[] remainingArgs = parseAndConsumeAllOptions(Arrays.copyOf(initialArgs, separatorIndex), ignoreUnrecognized, initializeLogging);
-                    if (!ignoreUnrecognized && remainingArgs.length != 0) {
-                        throw new IllegalArgumentException("Unrecognized option: " + remainingArgs[0]);
-                    }
-                    result = Arrays.copyOfRange(initialArgs, separatorIndex + 1, initialArgs.length);
-                }
-            }
-            parsingCompleted = true;
-            return result;
-        } finally {
-            if (initializeLogging && !parsingCompleted) {
-                abortLoggingInitialization();
-            }
+        if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
+            return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
         }
-    }
-
-    /// Completes logging after the caller has finished the remaining isolate startup work.
-    public static void completeLoggingInitialization() {
-        GuestStagingDependencyBridge.singleton().endOfParsing();
-    }
-
-    /// Releases logging resources after isolate startup fails outside option parsing.
-    public static void abortLoggingInitialization() {
-        GuestStagingDependencyBridge.singleton().abortLoggingInitialization();
+        int separatorIndex = ArgsSupport.firstEndOfOptionsMarkerIndex(initialArgs);
+        if (separatorIndex == -1) {
+            return parseAndConsumeAllOptions(initialArgs.clone(), ignoreUnrecognized);
+        }
+        String[] remainingArgs = parseAndConsumeAllOptions(Arrays.copyOf(initialArgs, separatorIndex), ignoreUnrecognized);
+        if (!ignoreUnrecognized && remainingArgs.length != 0) {
+            throw new IllegalArgumentException("Unrecognized option: " + remainingArgs[0]);
+        }
+        return Arrays.copyOfRange(initialArgs, separatorIndex + 1, initialArgs.length);
     }
 
     /// Configures the low level log file after all runtime options have been parsed.
@@ -416,6 +358,7 @@ public final class RuntimeOptionParser {
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
             SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),
                             options, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
+            GuestStagingDependencyBridge.singleton().shutdownLogging();
             System.exit(0);
         }
         if (!parseResult.isValid()) {
@@ -487,7 +430,7 @@ public final class RuntimeOptionParser {
             if (parseProperty(arg, context)) {
                 continue;
             }
-            if (parseLegacyGCOption(arg)) {
+            if (parseLoggingOption(arg)) {
                 continue;
             }
             if (strictRuntimeJavaOptions && parseStrictJavaVMOption(arg, context)) {
@@ -534,16 +477,19 @@ public final class RuntimeOptionParser {
         return true;
     }
 
-    /// Applies legacy GC options in command-line order with `-Xlog` selections. Generic runtime
+    /// Applies legacy logging options in command-line order with `-Xlog` selections. Generic runtime
     /// options are normally applied after system properties are initialized, but delaying these
     /// options would lose their ordering relative to `-Xlog`.
     ///
     /// This early pass remains correct only while every option that directly or transitively
     /// changes the same logging configuration is handled here. The current setters are `-Xlog`,
-    /// `PrintGC`, and `VerboseGC`, and all three run in this ordered phase. A new interacting option
-    /// must either join this phase together with all options that can update it or motivate a
+    /// `PrintGC`, `VerboseGC`, and `FlightRecorderLogging`, which all run in this ordered phase. A
+    /// new interacting option must either join this phase with all options that can update it or motivate a
     /// redesign that records ordered actions and replays them after property initialization.
-    private static boolean parseLegacyGCOption(String arg) {
+    private static boolean parseLoggingOption(String arg) {
+        if (GuestStagingDependencyBridge.singleton().parseFlightRecorderLoggingOption(arg)) {
+            return true;
+        }
         if (arg.equals("-XX:+PrintGC") || arg.equals("-XX:-PrintGC") || arg.equals("-XX:+VerboseGC") || arg.equals("-XX:-VerboseGC")) {
             String[] remaining = singleton().parse(new String[]{arg}, false);
             assert remaining.length == 0;

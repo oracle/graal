@@ -36,7 +36,7 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_LogTag {
-    /// Most detailed threshold required by either SVM logging sink.
+    /// Threshold selected by the active logging implementation.
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTagSetLevel.class) //
     volatile int tagSetLevel;
 

@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.jfr.JfrArgumentParser.FlightRecorderOptionsArgument;
 import com.oracle.svm.core.jfr.JfrArgumentParser.JfrArgument;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
@@ -179,10 +180,12 @@ public class JfrManager {
         };
     }
 
-    /// Installs the legacy JFR logging configuration independently of unified logging.
+    /// Installs the legacy fallback when unified logging is unavailable.
     private static void parseFlightRecorderLogging() {
-        String option = SubstrateOptions.FlightRecorderLogging.getValue();
-        SubstrateJVM.getLogging().parseConfiguration(option);
+        if (!HasXlogSupport.get()) {
+            String option = SubstrateOptions.FlightRecorderLogging.getValue();
+            SubstrateJVM.getLogging().parseConfiguration(option);
+        }
     }
 
     private static void periodicEventSetup() throws SecurityException {
