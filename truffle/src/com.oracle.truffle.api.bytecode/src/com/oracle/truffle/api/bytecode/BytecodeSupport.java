@@ -142,6 +142,13 @@ public final class BytecodeSupport {
      * again without further allocations. Call {@link #clear()} at the end of using this buffer if
      * you want to release the object references or down-size the backing arrays.
      *
+     * Constants are deduplicated by reference identity: adding the same reference twice returns
+     * the same index, while distinct references receive distinct indices even if they are
+     * {@link Object#equals(Object) equal}. The only exceptions are boxed primitives and the
+     * Bytecode DSL accessor types ({@link LocalAccessor}, {@link MaterializedLocalAccessor},
+     * {@link LocalRangeAccessor}), whose identity is unspecified and which are therefore
+     * deduplicated by value. Floating point values are compared by their raw bits.
+     *
      * <strong>Not thread-safe.</strong>
      *
      * Intended for use in generated code. Do not use directly.
@@ -181,8 +188,9 @@ public final class BytecodeSupport {
         }
 
         /**
-         * Inserts {@code constant} (non-{@code null}) and returns its pool index. If an equal
-         * constant is already present, its existing index is returned.
+         * Inserts {@code constant} (non-{@code null}) and returns its pool index. If the same
+         * constant is already present, its existing index is returned. See the
+         * {@link ConstantsBuffer class documentation} for which constants are considered the same.
          *
          * @throws NullPointerException if {@code constant} is {@code null}
          * @since 25.0
@@ -311,7 +319,7 @@ public final class BytecodeSupport {
                 if (d == null) {
                     continue;
                 }
-                if (d == c || d.equals(c)) {
+                if (sameConstant(d, c)) {
                     return i;
                 }
             }
@@ -342,7 +350,7 @@ public final class BytecodeSupport {
                 if (v == EMPTY) {
                     return EMPTY;
                 }
-                if (this.keys[i].equals(key)) {
+                if (sameConstant(this.keys[i], key)) {
                     return v;  // hit
                 }
                 i = (i + 1) & mask;
@@ -372,8 +380,31 @@ public final class BytecodeSupport {
         }
 
         private static int hash(Object o) {
-            int h = o.hashCode();
+            int h = isValueBased(o.getClass()) ? o.hashCode() : System.identityHashCode(o);
             return (h ^ (h >>> 16));
+        }
+
+        private static boolean sameConstant(Object a, Object b) {
+            if (a == b) {
+                return true;
+            }
+            Class<?> clazz = a.getClass();
+            if (clazz != b.getClass()) {
+                return false;
+            } else if (clazz == Double.class) {
+                return Double.doubleToRawLongBits((Double) a) == Double.doubleToRawLongBits((Double) b);
+            } else if (clazz == Float.class) {
+                return Float.floatToRawIntBits((Float) a) == Float.floatToRawIntBits((Float) b);
+            } else if (isValueBased(clazz)) {
+                return a.equals(b);
+            }
+            return false;
+        }
+
+        private static boolean isValueBased(Class<?> clazz) {
+            return clazz == Integer.class || clazz == Long.class || clazz == Double.class || clazz == Float.class ||
+                            clazz == Short.class || clazz == Byte.class || clazz == Character.class || clazz == Boolean.class ||
+                            clazz == LocalAccessor.class || clazz == MaterializedLocalAccessor.class || clazz == LocalRangeAccessor.class;
         }
 
         private static int[] initIntArray(int n, int val) {
