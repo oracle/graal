@@ -138,8 +138,8 @@ then perform one no-transition raw write in an uninterruptible critical section
 that holds their dedicated `VMMutex`. File outputs also format before entering
 their prebuilt mutex, then perform the no-transition native write, byte
 accounting, rotation, and reopen in the same kind of critical section. A file
-output discards any preexisting active file contents at startup regardless of
-its rotation configuration; only output from the current process is rotated.
+output archives an existing active file at startup when rotation is enabled.
+With `filecount=0`, startup truncates the active file.
 Consequently, synchronous events cannot be interleaved on a destination, file
 rotation cannot occur between their lines, and formatting does not hold an
 output lock.
@@ -157,16 +157,14 @@ output formats only its own decorators. The captured epoch, uptime, and thread
 id are therefore identical on all outputs. Host name and process id are fixed
 at initialization. The local UTC offset is not part of the event record: a
 `time` decorator passes the captured event timestamp to the native
-`LibCHelper.SVM_localUTCOffsetSeconds(millisecondsSince19700101)` helper when
+`LibCHelper.localUTCOffsetSeconds(millisecondsSince19700101)` helper when
 that output is formatted.
 The helper converts that timestamp to local time and follows HotSpot's
 `local_to_UTC` calculation, using `tm_gmtoff` where available and the platform
-timezone value with a daylight-saving adjustment otherwise. On Windows it uses
-`localtime_s` to obtain the local wall-clock fields for that instant and
-`_mkgmtime64` to reinterpret those fields as UTC, with their difference giving
-the local offset. The result has the ISO-8601 local-to-UTC sign and avoids Java
-timezone objects and heap allocation on the event path. Each output uses the
-DST offset associated with the captured event timestamp.
+timezone value with a daylight-saving adjustment otherwise.
+The platform helper uses `localtime_r` on POSIX and `localtime_s` on Windows.
+Windows uses `_get_timezone` and the same one-hour daylight-saving fallback as HotSpot.
+The result has the ISO-8601 local-to-UTC sign and avoids Java timezone objects and heap allocation on the event path.
 
 The thread-local message state is not recursive. A tag set must not be logged
 again from the same carrier thread while any message is open, including through
@@ -217,7 +215,7 @@ The runtime path maintains this contract as follows:
    thread exit if needed.
 2. `LogDecorations` formats event metadata and the explicitly supplied line
    level directly into native memory. Host name and process id are cached
-   during initialization, while `SVM_localUTCOffsetSeconds` computes the local
+   during initialization, while `localUTCOffsetSeconds` computes the local
    UTC offset for the event timestamp with native time APIs and stack storage.
 3. `LogOutput` formats into the thread-local output and decorator buffers.
    Decorator padding is retained per output and updated atomically, so repeated
@@ -233,17 +231,19 @@ The runtime path maintains this contract as follows:
    `RawFileOperationSupport` and do not construct `Path`, filename strings, or
    temporary Java objects.
 
-The allocation restriction applies to successful event processing, including
-decoration, raw writes, and file
-rotation. Configuration, help output, diagnostics, and exceptional Java paths
-may allocate.
+The allocation restriction applies to every event-processing path, including
+decoration, raw writes, file rotation, and failure handling. Core logging must
+not allocate Java heap objects or throw ordinary exceptions. Configuration and
+help output run outside message scopes and may allocate.
 
 ## Configuration and routing
 
 When `-Xlog` is supported, `LogConfiguration.initialize` installs the default
 `all=warning` configuration on `stdout` and caches the host name, process id,
 and local startup timestamp used for filename expansion.
-Without `-Xlog`, no default output table is installed. `VerboseGC`, `PrintGC`,
+Isolate startup initializes logging before option parsing and registers teardown before opening resources.
+Without `-Xlog`, initialization installs the GC fallback if `VerboseGC` or `PrintGC` is enabled as an image default.
+Ordinary parser calls after startup preserve the current logging configuration. `VerboseGC`, `PrintGC`,
 and `MemoryMXBean.setVerbose` update the GC threshold on standard output when
 `-Xlog` is available and on the fallback output otherwise. Changes to the GC
 threshold on standard output are mirrored back to `VerboseGC` and `PrintGC`.
@@ -251,7 +251,7 @@ Shared message buffers and their thread-exit cleanup remain present for fallback
 GC logging.
 The `time` decorator
 obtains the local UTC offset for the event timestamp through the native
-`LibCHelper.SVM_localUTCOffsetSeconds(millisecondsSince19700101)` helper when
+`LibCHelper.localUTCOffsetSeconds(millisecondsSince19700101)` helper when
 the timestamp is formatted.
 
 Mutating configuration methods synchronize on `LogConfiguration.class`. Each
@@ -310,11 +310,12 @@ repeated copies of the same diagnostic. The event path remains non-fatal.
 
 Rotation is performed after `LogOutput` completes a write batch and the byte
 threshold has been reached. The batch is the whole possibly multi-line event.
-The active descriptor is closed, the oldest archive is deleted, existing
-archives are renamed toward the last slot, the active path is renamed to `.0`,
-and the active file is reopened.
+The active descriptor is closed, the next circular archive slot is replaced, and the active file is reopened.
+At startup, the first unused archive slot is selected, or the oldest slot if all slots exist.
+Archive numbers use the width of the largest configured slot, matching HotSpot.
 Active-file rename failures produce an emergency
-diagnostic; archive maintenance failures are best-effort. If reopening fails,
+diagnostic and preserve the active file for subsequent appending.
+Startup archive failures reject the configuration instead of truncating the existing file. If reopening fails,
 the same non-fatal open-file handling applies.
 
 On POSIX systems, an open log file can be unlinked while its descriptor remains
@@ -325,35 +326,18 @@ restricted to POSIX platforms.
 
 ### JFR integration
 
-JFR has two independent logging sinks. The legacy SVM JFR logger remains
-configured by `-XX:FlightRecorderLogging` and writes its established
-`[level][tag set] message` format through the low-level SVM log. Its destination
-therefore remains the low-level log destination, which is normally standard
-error and can be changed with `-XX:LogFile` or an embedding log callback.
+When `-Xlog` is supported, JFR uses unified logging as its only sink.
+`-XX:FlightRecorderLogging` acts as a compatibility option for JFR tag sets on standard output.
+It is applied in command-line order with `-Xlog`, so later selections determine the final configuration.
+The JDK `LogTag.tagSetLevel` thresholds are published once before isolate initialization hooks and refreshed after runtime logging reconfiguration.
 
-JFR records are also offered to unified logging. The
-`com.oracle.svm.core.logging.jfr.JfrUnifiedLogging` bridge maps
-`jdk.jfr.internal.LogTag` values to `LogTagSet` instances. A regular JFR record
-becomes one unified message, while a JFR event containing several lines becomes
-one atomic `LogMessage`. The unified copy is written only when its `jfr` tag set
-is enabled by `-Xlog`. When both configurations enable a record, one copy
-appears in each sink using that sink's format and destination.
+The `com.oracle.svm.core.logging.jfr.JfrUnifiedLogging` bridge maps JDK JFR tag sets to `LogTagSet` instances.
+A regular record becomes one unified message, and a multiline JFR event becomes one atomic `LogMessage`.
+JFR uses the same routing, decorators, and output synchronization as other unified logging records.
 
-The JDK performs a fast enablement check through the volatile `tagSetLevel`
-field on each `jdk.jfr.internal.LogTag`. SVM publishes the most detailed level
-required by either sink into this field. Each sink then checks its own threshold
-again before writing, so a level enabled only by `FlightRecorderLogging` cannot
-leak into unified output and a level enabled only by `-Xlog` cannot leak into
-the legacy output. Configuration changes recompute the combined JDK threshold.
-`FlightRecorderLogging=disable` disables only the legacy sink, and
-`-Xlog:disable` disables only unified logging.
-
-The legacy sink preserves its existing low-level write and synchronization
-behavior. Unified stream and file writes are protected by destination `VMMutex`
-instances. The bridge objects, tag maps,
-and per-sink threshold arrays are created in the image heap when `-Xlog` is
-supported; bridge calls fold to no-ops when it is absent. Routing a successful
-JFR record through either or both sinks does not allocate on the Java heap.
+Without `-Xlog` support, JFR retains its existing `FlightRecorderLogging` configuration and low-level log destination.
+Its destination is normally standard error and can be changed with `-XX:LogFile` or an embedding log callback.
+There is no independent second sink or separate threshold array.
 
 ## Comparison with HotSpot unified logging
 
@@ -374,8 +358,8 @@ SVM uses the same broad configuration model but a smaller runtime design.
 | Configuration | `ConfigurationLock` and reader counts protect updates and delayed reclamation; `jcmd VM.log` supports runtime changes. | Synchronized configuration methods publish replacement arrays. Configuration is startup-oriented except for GC verbosity changes through `MemoryMXBean` and `RuntimeOptions.set` with `PrintGC` or `VerboseGC`. |
 | Synchronous output locking | `FileLocker` protects writes; a rotation semaphore covers file rotation. | Stream outputs use an uninterruptible critical section to serialize no-transition native writes with a dedicated `VMMutex`; file outputs use the same pattern with a prebuilt `VMMutex` across the no-transition write, accounting, rotation, and reopen. VM operations use the same serialized paths. |
 | Decoration state | Event decorations are resolved for each message. | Event metadata lives in fast thread-local state; line levels remain explicit per line. |
-| File rotation | Native C++ file streams and rotation locks. An existing active file is archived at startup when rotation is enabled. | Precomputed native paths, native byte counters, and raw close/delete/rename/reopen operations. An existing active file is truncated at startup regardless of rotation settings. The `%i` filename placeholder separates isolate-local rotation state into distinct operating-system paths. |
-| JFR integration | JFR writes directly through HotSpot unified logging. | SVM preserves its legacy `FlightRecorderLogging` output and optionally emits a second copy through unified logging. |
+| File rotation | Native C++ file streams and rotation locks. An existing active file is archived at startup when rotation is enabled. | Precomputed native paths, native byte counters, and raw close/delete/rename/reopen operations. An existing active file is archived at startup when rotation is enabled; `filecount=0` truncates it. The `%i` filename placeholder separates isolate-local rotation state into distinct operating-system paths. |
+| JFR integration | JFR writes directly through HotSpot unified logging. | `FlightRecorderLogging` configures unified JFR stdout routes when supported; otherwise JFR retains its legacy output. |
 | Allocation contract | Native C++ allocation rules apply. | Successful event processing, including dual JFR routing, is explicitly Java-heap allocation-free; native buffers may grow. |
 
 SVM's design is optimized for a native image whose tag sets and output routing
