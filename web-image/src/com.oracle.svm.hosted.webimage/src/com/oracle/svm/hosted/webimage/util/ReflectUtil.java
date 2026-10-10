@@ -25,6 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.util;
 
+import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -57,11 +58,18 @@ public class ReflectUtil {
     private static synchronized UnmodifiableEconomicSet<String> getObjectMethodDescriptors(MetaAccessProvider metaAccess) {
         if (objectMethodDescriptors == null) {
             EconomicSet<String> descriptors = EconomicSet.create();
-            for (ResolvedJavaMethod declaredMethod : metaAccess.lookupJavaType(Object.class).getDeclaredMethods(false)) {
-                if (declaredMethod.isPublic()) {
-                    descriptors.add(fullDescriptor(declaredMethod));
-                }
+            /*
+             * Reflection on the host java.lang.Object rather than
+             * ResolvedJavaType.getDeclaredMethods, because that returns an empty array for a type
+             * that is not linked yet and is never allowed to force linking. This set is computed
+             * once and cached for the rest of the build, so picking up an empty result would
+             * silently disable the java.lang.Object filter below for every later query, and which
+             * query lands here first depends on the order the parallel analysis happens to run in.
+             */
+            for (Method declaredMethod : Object.class.getMethods()) {
+                descriptors.add(fullDescriptor(metaAccess.lookupJavaMethod(declaredMethod)));
             }
+            GraalError.guarantee(!descriptors.isEmpty(), "Found no public methods on java.lang.Object");
             objectMethodDescriptors = descriptors;
         }
 
