@@ -261,7 +261,8 @@ public class BackgroundCompileQueue {
 
     /**
      * Flushes all compilations, shuts the compilation queue down and awaits its termination with
-     * the given timeout.
+     * the given timeout. Interrupts do not abort the wait; the interrupted status is restored
+     * afterwards.
      */
     public void shutdownAndAwaitTermination(long timeout) {
         flush(null);
@@ -288,10 +289,31 @@ public class BackgroundCompileQueue {
         if (e == null) {
             return;
         }
+        long timeoutNanos = Math.max(0, TimeUnit.MILLISECONDS.toNanos(timeout));
+        long remainingNanos = timeoutNanos;
+        long start = System.nanoTime();
+        boolean interrupted = false;
         try {
-            e.awaitTermination(timeout, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException ex) {
-            throw new RuntimeException("Waiting for compiler threads was interrupted.", ex);
+            while (true) {
+                try {
+                    e.awaitTermination(remainingNanos, TimeUnit.NANOSECONDS);
+                    return;
+                } catch (InterruptedException ex) {
+                    /*
+                     * Isolate teardown interrupts all other threads, including the thread waiting
+                     * for compiler shutdown. Aborting here would skip compiler-isolate teardown.
+                     */
+                    interrupted = true;
+                    remainingNanos = timeoutNanos - (System.nanoTime() - start);
+                    if (remainingNanos <= 0) {
+                        return;
+                    }
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

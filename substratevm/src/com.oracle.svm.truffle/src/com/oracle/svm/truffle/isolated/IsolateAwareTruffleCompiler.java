@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -244,8 +244,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                 shutdownCompilationsAndWaitAction.run();
                 tearDownIsolateOnShutdown();
             });
-            // we ignore uncaught exceptions here. For example
-            // if the waiting thread was interrupted.
+            // Ignore uncaught exceptions during shutdown.
             t.setUncaughtExceptionHandler((_, _) -> {
             });
             /*
@@ -255,6 +254,8 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
              */
             t.setDaemon(true);
             t.start();
+        } else {
+            delegate.teardown(shutdownCompilationsAndWaitAction);
         }
     }
 
