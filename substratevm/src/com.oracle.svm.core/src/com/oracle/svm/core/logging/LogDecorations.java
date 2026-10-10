@@ -78,7 +78,7 @@ public final class LogDecorations {
         switch (decorator) {
             case TIME -> {
                 long value = systemMillis();
-                writeDateTime(target, value, LibCHelper.SVM_localUTCOffsetSeconds(value));
+                writeDateTime(target, value, LibCHelper.localUTCOffsetSeconds(value));
             }
             case UTCTIME -> writeDateTime(target, systemMillis(), 0);
             case UPTIME -> writeRoundedUptime(target, uptimeNanos());

@@ -34,6 +34,7 @@ static HANDLE create_read_only_file_handle(const wchar_t *file) {
 }
 
 int SVM_same_files(const void *raw_file1, const void *raw_file2) {
+    /* RawFilePath already supplies platform paths as UTF-16, so no UTF-8 conversion is needed. */
     const wchar_t *file1 = (const wchar_t *) raw_file1;
     const wchar_t *file2 = (const wchar_t *) raw_file2;
     if (file1 == NULL && file2 == NULL) {
@@ -53,9 +54,12 @@ int SVM_same_files(const void *raw_file1, const void *raw_file2) {
         BY_HANDLE_FILE_INFORMATION file_info1;
         BY_HANDLE_FILE_INFORMATION file_info2;
         if (GetFileInformationByHandle(handle1, &file_info1) && GetFileInformationByHandle(handle2, &file_info2)) {
-            result = file_info1.dwVolumeSerialNumber == file_info2.dwVolumeSerialNumber &&
-                            file_info1.nFileIndexHigh == file_info2.nFileIndexHigh &&
-                            file_info1.nFileIndexLow == file_info2.nFileIndexLow;
+            /* Matching file indices on the same volume identify the same file. */
+            if (file_info1.dwVolumeSerialNumber == file_info2.dwVolumeSerialNumber &&
+                file_info1.nFileIndexHigh == file_info2.nFileIndexHigh &&
+                file_info1.nFileIndexLow == file_info2.nFileIndexLow) {
+                result = 1;
+            }
         }
     }
     if (handle1 != INVALID_HANDLE_VALUE) {
@@ -85,12 +89,23 @@ int SVM_same_files(const void *raw_file1, const void *raw_file2) {
         return 1;
     }
 
-    struct stat stat1;
-    struct stat stat2;
-    if (stat(file1, &stat1) < 0 || stat(file2, &stat2) < 0) {
+    int is_same = 0;
+    struct stat st1;
+    struct stat st2;
+
+    if (stat(file1, &st1) < 0) {
         return 0;
     }
-    return stat1.st_dev == stat2.st_dev && stat1.st_ino == stat2.st_ino;
+
+    if (stat(file2, &st2) < 0) {
+        return 0;
+    }
+
+    if (st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino) {
+        /* Same files. */
+        is_same = 1;
+    }
+    return is_same;
 }
 
 #endif

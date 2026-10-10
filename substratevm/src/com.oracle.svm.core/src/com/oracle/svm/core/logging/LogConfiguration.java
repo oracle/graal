@@ -216,7 +216,7 @@ public final class LogConfiguration {
             hostname = LoggingSupport.singleton().hostname();
             pid = ProcessProperties.getProcessID();
             long systemMillis = TimeUtils.currentTimeMillis();
-            startupTimestamp = formatStartupTimestamp(systemMillis, LibCHelper.SVM_localUTCOffsetSeconds(systemMillis));
+            startupTimestamp = formatStartupTimestamp(systemMillis, LibCHelper.localUTCOffsetSeconds(systemMillis));
             for (LogTagSet tagSet : LogTagSet.values()) {
                 tagSet.outputList().setOutputLevel(stdout.configuration(), LogLevel.WARNING);
             }

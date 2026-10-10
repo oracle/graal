@@ -591,53 +591,56 @@ char *SVM_FindJavaTZmd(const char *tzmappings, int length) {
 }
 #endif // _WIN64
 
+/* Converts an epoch time to local calendar fields using the platform's thread-safe API. */
+static struct tm *SVM_localtime_pd(const time_t *clock, struct tm *res) {
+#ifdef _WIN64
+    /* HotSpot copies localtime's shared result; localtime_s writes directly to caller storage. */
+    return localtime_s(res, clock) == 0 ? res : NULL;
+#else
+    return localtime_r(clock, res);
+#endif
+}
+
 /*
  * Returns the local-to-UTC offset for the supplied epoch time in seconds.
- * Based on logic extracted from os::iso8601_time in HotSpot.
+ * Keeps the offset calculation from HotSpot's os::iso8601_time in the same order.
  */
 int SVM_localUTCOffsetSeconds(int64_t milliseconds_since_19700101) {
     const int milliseconds_per_second = 1000;
-    time_t seconds_since_19700101 = (time_t) (milliseconds_since_19700101 / milliseconds_per_second);
+    const time_t seconds_since_19700101 =
+        (time_t) (milliseconds_since_19700101 / milliseconds_per_second);
     struct tm time_struct;
+    if (SVM_localtime_pd(&seconds_since_19700101, &time_struct) == NULL) {
+        return 0;
+    }
 
-#ifdef _WIN64
-    if (localtime_s(&time_struct, &seconds_since_19700101) != 0) {
-        return 0;
-    }
-#else
-    if (localtime_r(&seconds_since_19700101, &time_struct) == NULL) {
-        return 0;
-    }
+    /* The extracted offset calculation needs these constants only for the fallback. */
+#if !defined(_ALLBSD_SOURCE) && !defined(_GNU_SOURCE)
+    const time_t seconds_per_minute = 60;
+    const time_t minutes_per_hour = 60;
+    const time_t seconds_per_hour = seconds_per_minute * minutes_per_hour;
 #endif
 
-#ifdef _WIN64
-    /* Interpret the selected local wall-clock fields as UTC to recover the actual offset. Unlike
-     * _get_timezone, this includes nonstandard daylight saving adjustments for this instant. */
-    __time64_t local_as_utc = _mkgmtime64(&time_struct);
-    if (local_as_utc == -1) {
-        return 0;
-    }
-    return (int) (local_as_utc - seconds_since_19700101);
-#else
-    time_t UTC_to_local;
+    time_t UTC_to_local = 0;
 #if (defined(_ALLBSD_SOURCE) || defined(_GNU_SOURCE)) && !defined(AIX)
-    /* tm_gmtoff already includes the adjustment for daylight saving time. */
     UTC_to_local = -(time_struct.tm_gmtoff);
+#elif defined(_WIN64)
+    long zone;
+    _get_timezone(&zone);
+    UTC_to_local = (time_t) zone;
 #else
     UTC_to_local = timezone;
 #endif
 
+    /* tm_gmtoff already includes the adjustment for daylight saving time. */
 #if !defined(_ALLBSD_SOURCE) && !defined(_GNU_SOURCE)
-    /* Match HotSpot's os::iso8601_time: when tm_gmtoff is unavailable, daylight saving time
-     * contributes one hour to the standard timezone offset. At the time of writing, Lord Howe
-     * Island is the only known time zone with a different daylight-saving adjustment (30 minutes). */
-    const time_t seconds_per_hour = 60 * 60;
+    /* HotSpot's fallback assumes a one-hour daylight saving adjustment. */
     if (time_struct.tm_isdst > 0) {
-        UTC_to_local -= seconds_per_hour;
+        UTC_to_local = UTC_to_local - seconds_per_hour;
     }
 #endif
 
-    /* Negate UTC_to_local to obtain the local-to-UTC offset. */
-    return (int) (-UTC_to_local);
-#endif
+    /* ISO 8601 uses the difference between local time and UTC. */
+    const time_t local_to_UTC = -(UTC_to_local);
+    return (int) local_to_UTC;
 }

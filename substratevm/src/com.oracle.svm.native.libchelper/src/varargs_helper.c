@@ -58,11 +58,6 @@ int openatISII(int dirfd, const char *pathname, int flags, int mode)
     return openat(dirfd, pathname, flags, mode);
 }
 
-int fcntlIII(int fd, int command, int argument)
-{
-    return fcntl(fd, command, argument);
-}
-
 #ifdef __linux__
 void *mremapP(void *old_address, size_t old_size, size_t new_size, int flags, void *new_address) {
     return mremap(old_address, old_size, new_size, flags, new_address);

@@ -45,16 +45,14 @@ public class LibCHelper {
 
     /// Returns the local-to-UTC offset for `millisecondsSince19700101` in seconds.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L210")
-    @CFunction(transition = Transition.NO_TRANSITION)
-    // Checkstyle: stop
-    public static native int SVM_localUTCOffsetSeconds(long millisecondsSince19700101);
-    // Checkstyle: start
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/posix/os_posix.cpp#L1545-L1547")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/windows/os_windows.cpp#L500-L508")
+    @CFunction(value = "SVM_localUTCOffsetSeconds", transition = Transition.NO_TRANSITION)
+    public static native int localUTCOffsetSeconds(long millisecondsSince19700101);
 
     /// Returns whether `file1` and `file2` identify the same file.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/posix/os_posix.cpp#L1031-L1061")
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/windows/os_windows.cpp#L4800-L4860")
-    @CFunction(transition = Transition.TO_NATIVE)
-    // Checkstyle: stop
-    public static native int SVM_same_files(Pointer file1, Pointer file2);
-    // Checkstyle: start
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/windows/os_windows.cpp#L4783-L4860")
+    @CFunction(value = "SVM_same_files", transition = Transition.TO_NATIVE)
+    public static native int sameFiles(Pointer file1, Pointer file2);
 }

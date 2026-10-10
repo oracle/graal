@@ -66,7 +66,7 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
 
     @Override
     public boolean sameFiles(RawFilePath f1, RawFilePath f2) {
-        return LibCHelper.SVM_same_files((Pointer) f1, (Pointer) f2) != 0;
+        return LibCHelper.sameFiles((Pointer) f1, (Pointer) f2) != 0;
     }
 
     @Override
