@@ -58,7 +58,6 @@ public class G1GC implements GC {
     @Override
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void writeLogPrefix(LogTagSet logTagSet, Log log) {
-        /* Native G1 logging adds any GC-specific prefix before entering Java logging. */
     }
 
     @Override

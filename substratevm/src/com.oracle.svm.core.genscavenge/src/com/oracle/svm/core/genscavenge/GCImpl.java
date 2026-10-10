@@ -86,6 +86,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.core.logging.LogThreadLocal;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -395,11 +396,11 @@ public final class GCImpl implements GC {
         accounting.beforeCollectOnce(completeCollection);
         policy.onCollectionBegin(completeCollection, beginNanoTime);
 
-        LogTagSet.enterGCUnsafeRegion();
+        LogThreadLocal.enterGCUnsafeRegion();
         try {
             doCollectCore();
         } finally {
-            LogTagSet.exitGCUnsafeRegion();
+            LogThreadLocal.exitGCUnsafeRegion();
         }
         if (complete) {
             lastWholeHeapExaminedNanos = System.nanoTime();

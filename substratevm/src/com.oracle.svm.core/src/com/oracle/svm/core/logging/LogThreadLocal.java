@@ -39,14 +39,39 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
 
 /// Holds mutable unified-logging state for the current platform thread.
 public final class LogThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<Data> state = FastThreadLocalFactory.createWord("LogThreadLocal.state");
+
+    /// Marks the current collector thread while Java heap objects are unsafe to access from the
+    /// unified logging implementation.
+    private static final FastThreadLocalInt gcUnsafeRegion = FastThreadLocalFactory.createInt("LogThreadLocal.gcUnsafeRegion");
+
+    /// Marks the current thread as entering a collector region where unified logging cannot safely
+    /// access Java heap objects. No logging message may span the region boundary.
+    public static void enterGCUnsafeRegion() {
+        VMError.guarantee(!hasActiveMessage(), "A unified logging message must not cross into a GC unsafe region.");
+        VMError.guarantee(gcUnsafeRegion.get() == 0, "Nested GC unsafe regions are not allowed.");
+        gcUnsafeRegion.set(1);
+    }
+
+    /// Marks the current thread as leaving the collector region established by
+    /// [#enterGCUnsafeRegion()].
+    public static void exitGCUnsafeRegion() {
+        gcUnsafeRegion.set(0);
+    }
+
+    /// Rejects logging access while the collector cannot safely inspect Java heap objects.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void guaranteeGCLoggingIsSafe() {
+        VMError.guarantee(gcUnsafeRegion.get() == 0, "Unified logging cannot access Java heap objects inside a GC unsafe region.");
+    }
 
     /// Creates a listener for logging state owned by each platform thread.
     public LogThreadLocal() {
