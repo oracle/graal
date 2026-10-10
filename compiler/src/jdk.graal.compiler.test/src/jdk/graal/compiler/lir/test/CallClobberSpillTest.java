@@ -68,6 +68,7 @@ public class CallClobberSpillTest extends GraalCompilerTest {
     private Consumer<Fixture> check;
     private boolean checked;
     private boolean markFastPaths = true;
+    private boolean callClobberAwareSpilling = true;
     private int fastPathBlockLimit = Integer.MAX_VALUE;
     private int callPosition = 26;
 
@@ -87,6 +88,17 @@ public class CallClobberSpillTest extends GraalCompilerTest {
             f.splitAtCall(interval);
             Assert.assertEquals("retain boundary placement", 20, interval.to());
             Assert.assertEquals("rank at the clobber, not the move boundary", 26, f.spillRank(interval));
+        });
+    }
+
+    @Test
+    public void testDisabledCallClobberAwareSpillingUsesBoundary() {
+        callClobberAwareSpilling = false;
+        checkAllocation(f -> {
+            Interval interval = f.interval(2);
+            f.splitAtCall(interval);
+            Assert.assertEquals(20, interval.to());
+            Assert.assertEquals("disabled optimization retains endpoint ranking", 20, f.spillRank(interval));
         });
     }
 
@@ -219,7 +231,7 @@ public class CallClobberSpillTest extends GraalCompilerTest {
         suites.getPreAllocationOptimizationStage().appendPhase(new LIRPhase<PreAllocationOptimizationContext>() {
             @Override
             protected void run(TargetDescription target, LIRGenerationResult result, PreAllocationOptimizationContext context) {
-                check.accept(new Fixture(target, result, context, markFastPaths, fastPathBlockLimit, callPosition));
+                check.accept(new Fixture(target, result, context, markFastPaths, fastPathBlockLimit, callPosition, callClobberAwareSpilling));
                 checked = true;
             }
         });
@@ -254,10 +266,12 @@ public class CallClobberSpillTest extends GraalCompilerTest {
         private final Register register;
         private final LIRKind kind;
 
-        Fixture(TargetDescription target, LIRGenerationResult original, PreAllocationOptimizationContext context, boolean markFastPaths, int fastPathBlockLimit, int callPosition) {
+        Fixture(TargetDescription target, LIRGenerationResult original, PreAllocationOptimizationContext context, boolean markFastPaths, int fastPathBlockLimit, int callPosition,
+                        boolean callClobberAwareSpilling) {
             LIR source = original.getLIR();
             Assert.assertTrue("fixture requires at least two blocks", source.linearScanOrder().length >= 2);
-            OptionValues options = new OptionValues(source.getOptions(), LinearScan.Options.LIROptLSRAMaxFastPathRecoverySplits, 0);
+            OptionValues options = new OptionValues(source.getOptions(), LinearScan.Options.LIROptLSRAMaxFastPathRecoverySplits, 0,
+                            LinearScan.Options.LIROptLSRACallClobberAwareSpilling, callClobberAwareSpilling);
             LIR lir = new LIR(source.getControlFlowGraph(), source.linearScanOrder(), options, source.getDebug());
             kind = LIRKind.value(target.arch.getPlatformKind(JavaKind.Long));
             setField(lir, "numVariables", 1);

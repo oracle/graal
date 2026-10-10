@@ -118,6 +118,7 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.alloc.lsra.LinearScan;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.asm.DataBuilder;
@@ -1330,7 +1331,8 @@ public class CompileQueue {
         OptionValues customizedOptions = debug.getOptions();
         if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method)) {
             // Keep handler reads fixed and branch-local to avoid increasing register pressure.
-            customizedOptions = new OptionValues(customizedOptions, GraalOptions.OptFloatingReads, false, GraalOptions.OptDeduplicateReadsAcrossBranches, false);
+            customizedOptions = new OptionValues(customizedOptions, GraalOptions.OptFloatingReads, false, GraalOptions.OptDeduplicateReadsAcrossBranches, false,
+                            LinearScan.Options.LIROptLSRACallClobberAwareSpilling, true);
         }
         if (omitPriorityInliningTuning()) {
             return customizedOptions;

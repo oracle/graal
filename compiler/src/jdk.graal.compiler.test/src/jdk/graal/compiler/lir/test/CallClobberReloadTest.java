@@ -68,6 +68,7 @@ public class CallClobberReloadTest extends GraalCompilerTest {
     private Consumer<Fixture> check;
     private boolean checked;
     private boolean markFastPaths = true;
+    private boolean callClobberAwareSpilling = true;
     private int callPosition = 26;
 
     public static int snippet(int value) {
@@ -108,6 +109,12 @@ public class CallClobberReloadTest extends GraalCompilerTest {
     @Test
     public void testSpilledChildStaysOnStackUntilCall() {
         checkAllocation(f -> f.checkReload(true, false, 26, true));
+    }
+
+    @Test
+    public void testDisabledCallClobberAwareSpilling() {
+        callClobberAwareSpilling = false;
+        checkAllocation(f -> f.checkReload(true, false, 26, false));
     }
 
     @Test
@@ -287,7 +294,7 @@ public class CallClobberReloadTest extends GraalCompilerTest {
         suites.getPreAllocationOptimizationStage().appendPhase(new LIRPhase<PreAllocationOptimizationContext>() {
             @Override
             protected void run(TargetDescription target, LIRGenerationResult result, PreAllocationOptimizationContext context) {
-                check.accept(new Fixture(target, result, context, markFastPaths, callPosition));
+                check.accept(new Fixture(target, result, context, markFastPaths, callPosition, callClobberAwareSpilling));
                 checked = true;
             }
         });
@@ -322,10 +329,11 @@ public class CallClobberReloadTest extends GraalCompilerTest {
         private final Register register;
         private final LIRKind kind;
 
-        Fixture(TargetDescription target, LIRGenerationResult original, PreAllocationOptimizationContext context, boolean markFastPaths, int callPosition) {
+        Fixture(TargetDescription target, LIRGenerationResult original, PreAllocationOptimizationContext context, boolean markFastPaths, int callPosition, boolean callClobberAwareSpilling) {
             LIR source = original.getLIR();
             Assert.assertTrue("fixture requires at least two blocks", source.linearScanOrder().length >= 2);
-            OptionValues options = new OptionValues(source.getOptions(), LinearScan.Options.LIROptLSRAMaxFastPathRecoverySplits, 0);
+            OptionValues options = new OptionValues(source.getOptions(), LinearScan.Options.LIROptLSRAMaxFastPathRecoverySplits, 0,
+                            LinearScan.Options.LIROptLSRACallClobberAwareSpilling, callClobberAwareSpilling);
             LIR lir = new LIR(source.getControlFlowGraph(), source.linearScanOrder(), options, source.getDebug());
             kind = LIRKind.value(target.arch.getPlatformKind(JavaKind.Long));
             setField(lir, "numVariables", 1);

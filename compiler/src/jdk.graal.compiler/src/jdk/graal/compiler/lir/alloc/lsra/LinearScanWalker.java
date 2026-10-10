@@ -375,7 +375,7 @@ class LinearScanWalker extends IntervalWalker {
                         usePosition = Integer.MAX_VALUE;
                     } else {
                         usePosition = Math.min(nextUsage, interval.to());
-                        if (preferStateOnlyVictim && nextUsage == Integer.MAX_VALUE) {
+                        if (preferStateOnlyVictim && nextUsage == Integer.MAX_VALUE && LinearScan.Options.LIROptLSRACallClobberAwareSpilling.getValue(allocator.getOptions())) {
                             usePosition = Math.min(nextRegisterUsage, nextCallClobberAfterSplit(interval));
                         }
                     }
@@ -1292,7 +1292,8 @@ class LinearScanWalker extends IntervalWalker {
 
     /** Avoid reloading a spilled child solely to spill it again at a call. */
     private boolean keepSpilledUntilCall(Interval interval, Register reg, int splitPos) {
-        if (!allocator.hasFastPathBlocks() || !interval.isSplitChild() || !allocator.isCallerSave(reg.asValue(interval.kind())) ||
+        if (!LinearScan.Options.LIROptLSRACallClobberAwareSpilling.getValue(allocator.getOptions()) || !allocator.hasFastPathBlocks() ||
+                        !interval.isSplitChild() || !allocator.isCallerSave(reg.asValue(interval.kind())) ||
                         (!LIRValueUtil.isStackSlotValue(interval.currentSplitChild().location()) &&
                                         !(allocator.isBlockBegin(interval.from()) && allocator.blockForId(interval.from()).getPredecessorCount() > 1))) {
             return false;
