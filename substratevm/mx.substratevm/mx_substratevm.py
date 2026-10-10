@@ -507,6 +507,14 @@ def truffle_unittest_task(extra_build_args=None):
 
 
 def svm_gate_body(args, tasks):
+    with Task('LogTagSetGenerator', tasks, tags=[GraalTags.build]) as t:
+        if t:
+            source_path = pathlib.Path(suite.dir) / 'src' / 'com.oracle.svm.core' / 'src' / 'com' / 'oracle' / 'svm' / 'core' / 'logging' / 'LogTagSetGenerator.java'
+            exitcode = mx.run([mx.get_jdk().java, '-Xlog:disable', str(source_path)], nonZeroIsFatal=False)
+            if exitcode != 0:
+                git_output = suite.vc.git_command(suite.vc_dir, ["diff", str(source_path.parent.relative_to(suite.vc_dir))])
+                mx.abort(f"{source_path} updated {exitcode} files\n{git_output}")
+
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
             hellomodule(args.extra_image_builder_arguments)
@@ -1518,7 +1526,8 @@ def unmask(args):
     return [arg.replace(_mask_str, '-') for arg in args]
 
 
-def _native_unittest(native_image, cmdline_args, custom_batch=None):
+def _parse_native_unittest_args(cmdline_args):
+    # Parse the same options before feature selection and test execution so option-only calls keep the default SVM tests.
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
     all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--test-classes-per-run', '--all', '--custom-only']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
@@ -1531,7 +1540,11 @@ def _native_unittest(native_image, cmdline_args, custom_batch=None):
     parser.add_argument('--all', help='include tests that require custom @NativeImageBuildArgs and build one image per effective build-arg group', action='store_true')
     parser.add_argument('--custom-only', help='exclude the default test group and include all custom build-argument groups (i.e., implies --all)', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
-    pargs = parser.parse_args(cmdline_args)
+    return parser.parse_args(cmdline_args)
+
+
+def _native_unittest(native_image, cmdline_args, custom_batch=None):
+    pargs = _parse_native_unittest_args(cmdline_args)
 
     if pargs.custom_only:
         pargs.all = True
@@ -1909,7 +1922,9 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         args.append("-D" + key + "=" + value)
 
     # fetch arguments used in all layers
-    testhello_args = testhello_ni_args(cincludepath, sourcepath) + args
+    testhello_args = testhello_ni_args(cincludepath, sourcepath) + svm_experimental_options([
+        '-H:+StrictRuntimeJavaOptions',
+    ]) + args
 
     def build_layer(layer_path, layer_args):
         # clean / create layer output directory
@@ -1941,6 +1956,13 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         f'-H:LayerUse={join(base_layer_path, base_layer_name)}.nil',
         f'-H:LinkerRPath={base_layer_path}'
     ]))
+
+    # Starting asynchronous logging in the application layer verifies that the initial-layer
+    # logging singleton retains its native queue state across layer persistence.
+    logging_output = mx.LinesOutputCapture()
+    mx.run([app_layer, '-Xlog:async', '-Xlog:logging=debug'], cwd=app_layer_path, out=logging_output, err=logging_output)
+    if not any('Log configuration fully initialized.' in line for line in logging_output.lines):
+        mx.abort('Layered image did not initialize asynchronous unified logging.')
 
     # prepare environment
     env = os.environ.copy()
@@ -2699,14 +2721,23 @@ mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 # Only add packages here to work around the fact that libjvm currently splits AOT and dynamically
 # loaded JDK code at class granularity, not at method or field granularity. Packages get added as
 # needed based on partial-class errors such as "Trying to dispatch to compiled code for AOT method
-# ..." or "Cannot load undefined field: ...". This list must not be used for optimization.
-lib_jvm_preserved_packages = [
+# ..." or "Cannot load undefined field: ...". These lists must not be used for optimization.
+# The minimal list contains the packages needed to build libjvm and run a hello-world application;
+# the complete list extends it with packages needed by broader Crema use cases.
+lib_jvm_minimal_preserved_packages = [
+    'java.io',
+    'java.lang',
+    'java.lang.invoke',
+    'java.util',
+    'java.util.concurrent.locks',
+    'java.util.stream',
+]
+
+lib_jvm_complete_preserved_packages = lib_jvm_minimal_preserved_packages + [
     'com.sun.jmx.remote.util',
     'com.sun.jndi.url.rmi',
     'java.awt',
     'java.awt.datatransfer',
-    'java.io',
-    'java.lang',
     'java.lang.annotation',
     'java.lang.classfile',
     'java.lang.classfile.attribute',
@@ -2715,7 +2746,6 @@ lib_jvm_preserved_packages = [
     'java.lang.constant',
     'java.lang.foreign',
     'java.lang.instrument',
-    'java.lang.invoke',
     'java.lang.module',
     'java.lang.ref',
     'java.lang.reflect',
@@ -2738,16 +2768,13 @@ lib_jvm_preserved_packages = [
     'java.time.chrono',
     'java.time.format',
     'java.time.temporal',
-    'java.util',
     'java.util.concurrent',
     'java.util.concurrent.atomic',
-    'java.util.concurrent.locks',
     'java.util.function',
     'java.util.jar',
     'java.util.logging',
     'java.util.regex',
     'java.util.spi',
-    'java.util.stream',
     'java.util.zip',
     'javax.lang.model.element',
     'javax.lang.model.util',
@@ -2774,8 +2801,13 @@ lib_jvm_preserved_packages = [
     'sun.util.locale.provider',
 ]
 
-lib_jvm_preserved_modules = [
+lib_jvm_minimal_preserved_modules = [
     'java.base',
+]
+
+# The minimal module list contains the only module needed by a hello-world libjvm; the complete
+# list extends it with modules needed by broader Crema use cases.
+lib_jvm_complete_preserved_modules = lib_jvm_minimal_preserved_modules + [
     'java.compiler',
     'java.datatransfer',
     'java.desktop',
@@ -2793,6 +2825,15 @@ lib_jvm_preserved_modules = [
     'jdk.charsets',
     'jdk.net',
 ]
+
+# Use the complete lists by default so normal libjvm builds retain the full Crema API surface. A
+# minimal build is useful during local hello-world development where a shorter turnaround matters.
+if os.environ.get('MINIMAL_LIBJVM_BUILD') == 'true':
+    lib_jvm_preserved_packages = lib_jvm_minimal_preserved_packages
+    lib_jvm_preserved_modules = lib_jvm_minimal_preserved_modules
+else:
+    lib_jvm_preserved_packages = lib_jvm_complete_preserved_packages
+    lib_jvm_preserved_modules = lib_jvm_complete_preserved_modules
 
 lib_jvm_experimental_build_args = (['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
                                    ['-H:Preserve=package=' + pkg for pkg in lib_jvm_preserved_packages])
@@ -3978,11 +4019,11 @@ def _debug_args():
 def native_unittest(args):
     """Builds a native image of JUnit tests and runs them."""
     arg_list = list(args)
-    # Decide whether to include the SVM test feature injections based on the selectors provided.
-    # If no selectors were provided, native-unittest will default to SVM tests, so include features.
+    # Decide whether to include SVM test features from parsed selectors rather than wrapper options.
     def _is_svm_selector(a: str) -> bool:
         return a.startswith('com.oracle.svm.test')
-    include_svm_test_features = True if not arg_list else any(_is_svm_selector(a) for a in arg_list)
+    selectors = unmask(_parse_native_unittest_args(arg_list).unittest_args)
+    include_svm_test_features = not selectors or any(_is_svm_selector(a) for a in selectors)
     computed = _compute_native_unittest_args(include_svm_test_features=include_svm_test_features)
     # Merge computed build args into an existing --build-args block if present, otherwise append.
     if '--build-args' in arg_list:

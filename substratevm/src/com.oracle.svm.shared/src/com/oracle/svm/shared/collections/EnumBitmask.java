@@ -46,8 +46,9 @@ public final class EnumBitmask {
         return (bitmask & flagBit(flag)) != 0;
     }
 
+    /// Gets the bit corresponding to `flag`'s ordinal.
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static int flagBit(Enum<?> flag) {
+    public static int flagBit(Enum<?> flag) {
         assert flag.ordinal() < 32;
         return 1 << flag.ordinal();
     }

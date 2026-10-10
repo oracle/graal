@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,6 +109,13 @@ public interface RawFileOperationSupport {
     /** Returns the path to the platform-specific temporary directory. */
     String getTempDirectory();
 
+    /// Returns whether `f1` and `f2` identify the same file.
+    ///
+    /// If either path denotes an existing file, this returns `true` only when both paths denote the
+    /// same operating system file. If neither path denotes an existing file, this returns `true`
+    /// only when their platform-specific raw strings are identical.
+    boolean sameFiles(RawFilePath f1, RawFilePath f2);
+
     /**
      * Opens a file with the specified {@link FileAccessMode access mode}.
      *
@@ -134,11 +141,12 @@ public interface RawFileOperationSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     RawFileDescriptor open(RawFilePath path, FileAccessMode accessMode);
 
-    /**
-     * Checks if a file descriptor is valid or if it represents an error value.
-     *
-     * @return true if the file descriptor is valid, false otherwise.
-     */
+    /// Checks if a file descriptor is valid or if it represents an error value.
+    ///
+    /// On POSIX platforms, `0` is a valid file descriptor that denotes `stdin`; nevertheless, this
+    /// method does not consider `0` valid.
+    ///
+    /// @return true if the file descriptor is valid, false otherwise.
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     boolean isValid(RawFileDescriptor fd);
 

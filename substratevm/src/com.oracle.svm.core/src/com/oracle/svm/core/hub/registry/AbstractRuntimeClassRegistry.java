@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub.registry;
 
+import static com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -42,6 +44,11 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.ModuleNative;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogLevel;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.core.logging.NativeMemoryLog;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
 import com.oracle.svm.espresso.classfile.ParserException;
@@ -53,7 +60,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
-import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -95,6 +102,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         Method method = ReflectionUtil.lookupMethod(ClassLoaders.class, "bootLoader");
         bootLoader = ReflectionUtil.invokeMethod(method, null);
     }
+
     /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
      * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
@@ -347,36 +355,57 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     }
 
     private static void traceDefine(ClassDefinitionInfo info, ClassLoader loader, Class<?> clazz) {
-        if (RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
+        if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
             DynamicHub hub = DynamicHub.fromClass(clazz);
             ResolvedJavaType interpreterType = hub.getInterpreterType();
             String className = interpreterType.toJavaName();
-            String source = info.source;
-            source = source == null ? "<unknown>" : source;
-            Log.log().string(traceMessage(className, loader, source, "load")).newline();
+            String source = info.source == null ? "<unknown>" : info.source;
+            traceMessage(LogTagSet.class_load, className, loader, source, null);
         }
-        if (RuntimeClassLoading.Options.LogClassLoadingCauseFor.getValue() != null) {
+        String pattern = RuntimeClassLoading.Options.LogClassLoadingCauseFor.getValue();
+
+        if (HasXlogSupport.get() && pattern != null && LogTagSet.class_load_cause.isInfo()) {
             String className = DynamicHub.fromClass(clazz).getInterpreterType().toJavaName();
-            String pattern = RuntimeClassLoading.Options.LogClassLoadingCauseFor.getValue();
             if (pattern.equals("*") || className.contains(pattern)) {
-                Log.log().string("[class,load,cause] Java stack when loading ").string(className).newline();
-                StackTraceElement[] stackTrace = getCurrentStackTrace();
-                for (StackTraceElement stackTraceElement : stackTrace) {
-                    Log.log().string("[class,load,cause]   at ").string(stackTraceElement.toString()).newline();
+                /* Stack capture can allocate and must complete before entering the logging scope. */
+                String[] stackTrace = getFormattedCurrentStackTrace();
+                try (LogMessage logMessage = LogTagSet.class_load_cause.message()) {
+                    NativeMemoryLog line = logMessage.line(LogLevel.INFO);
+                    line.string("Java stack when loading ").string(className);
+                    for (String stackTraceElement : stackTrace) {
+                        logMessage.line(LogLevel.INFO).string("  at ").string(stackTraceElement);
+                    }
                 }
             }
         }
     }
 
-    private static StackTraceElement[] getCurrentStackTrace() {
-        return new Throwable().getStackTrace();
+    /// Captures and formats the current stack before entering a unified logging scope.
+    private static String[] getFormattedCurrentStackTrace() {
+        StackTraceElement[] elements = new Throwable().getStackTrace();
+        String[] result = new String[elements.length];
+        for (int index = 0; index < elements.length; index++) {
+            result[index] = elements[index].toString();
+        }
+        return result;
     }
 
-    public static String traceMessage(String className, ClassLoader loader, String source, String... prefixes) {
-        boolean includeSource = source != null && !source.isEmpty();
-        // Note: This already wraps the name in single quotation mark (').
-        String loaderDesc = ClassRegistries.loaderNameAndId(loader);
-        return "[class," + String.join(",", prefixes) + "] " + className + " loader=" + loaderDesc + (includeSource ? " source='" + source + "'" : "");
+    /// Writes a class-loading event without allocating a formatted string.
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Class loading diagnostics must not allocate at run time.")
+    public static void traceMessage(LogTagSet tagSet, String className, ClassLoader loader, String source, String detail) {
+        LogMessage message = tagSet.message();
+        try {
+            NativeMemoryLog line = message.info();
+            line.string(className).string(" loader=").string(ClassRegistries.loaderNameAndId(loader));
+            if (source != null && !source.isEmpty()) {
+                line.string(" source='").string(source).character('\'');
+            }
+            if (detail != null) {
+                line.character(' ').string(detail);
+            }
+        } finally {
+            message.close();
+        }
     }
 
     /**
