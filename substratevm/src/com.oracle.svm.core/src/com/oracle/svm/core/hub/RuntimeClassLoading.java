@@ -131,7 +131,8 @@ public class RuntimeClassLoading {
         private static void validateLogClassLoadingCauseFor(RuntimeOptionKey<String> optionKey) {
             // Hosted option access must stay behind folded predicates because this validator runs in the image.
             if (optionKey.hasBeenSet() && (!isSupported() || !HasXlogSupport.get())) {
-                throw RuntimeOptionValidation.abort("Option '" + optionKey.getName() + "' requires runtime class-loading support and strict runtime Java options to be enabled via '" +
+                throw RuntimeOptionValidation.abort("Option '" + optionKey.getName() +
+                                "' requires runtime class-loading support and strict runtime Java options to be enabled at image build time via '" +
                                 "-H:+RuntimeClassLoading' and '-H:+StrictRuntimeJavaOptions'.");
             }
         }

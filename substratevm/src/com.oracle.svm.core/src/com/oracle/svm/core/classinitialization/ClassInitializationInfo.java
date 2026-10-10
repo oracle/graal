@@ -39,11 +39,12 @@ import org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
@@ -554,29 +555,11 @@ public final class ClassInitializationInfo {
             StackOverflowCheck.singleton().protectYellowZone();
         }
         try {
-            boolean traceVerification = HasXlogSupport.get() && LogTagSet.class_init.isInfo() && RuntimeClassLoading.Options.ClassVerification.getValue().needsVerification(hub.getClassLoader());
-            if (traceVerification) {
-                logClassVerification(true, hub.getName());
-            }
             CremaSupport.singleton().prepareAndVerify(hub);
-            if (traceVerification) {
-                logClassVerification(false, hub.getName());
-            }
         } finally {
             if (Platform.includedIn(NATIVE_ONLY.class)) {
                 StackOverflowCheck.singleton().makeYellowZoneAvailable();
             }
-        }
-    }
-
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
-    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
-    private static void logClassVerification(boolean starting, String className) {
-        LogMessage message = LogTagSet.class_init.message();
-        try {
-            message.info().string(starting ? "Start class verification for: " : "End class verification for: ").string(className);
-        } finally {
-            message.close();
         }
     }
 
@@ -745,30 +728,26 @@ public final class ClassInitializationInfo {
         }
     }
 
-    /// Emits class initialization diagnostics. A logging failure is fatal because unified logging
-    /// is VM-internal infrastructure and must not let ordinary exceptions escape.
-    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    /// Prepares class initialization diagnostics before entering the uninterruptible logging scope.
     private static void traceClassInitialization(DynamicHub hub, boolean hasInitializer) {
-        try {
-            int sequence = TRACE_CLASS_INIT_COUNTER.getAndIncrement();
-            String method = hasInitializer ? "" : " (no method)";
-            char[] name = hub.getName().toCharArray();
-            String threadName = Thread.currentThread().getName();
-            logClassInitialization(sequence, name, method, threadName);
-        } catch (Throwable cause) {
-            throw VMError.shouldNotReachHere("Unified logging must not throw exceptions.", cause);
-        }
+        int sequence = TRACE_CLASS_INIT_COUNTER.getAndIncrement();
+        String method = hasInitializer ? "" : " (no method)";
+        String threadName = Thread.currentThread().getName();
+        logClassInitialization(sequence, hub.getName(), method, threadName);
     }
 
+    /// Formats a class initialization record using HotSpot's class name spelling.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/oops/instanceKlass.cpp#L1698-L1708")
     @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
-    private static void logClassInitialization(int sequence, char[] name, String method, String threadName) {
+    private static void logClassInitialization(int sequence, String name, String method, String threadName) {
         LogMessage message = LogTagSet.class_init.message();
         try {
             NativeMemoryLog line = message.info();
             line.signed(sequence).string(" Initializing '");
             /* Convert the class name without allocating a replacement string. */
-            for (char value : name) {
+            for (int index = 0; index < name.length(); index++) {
+                char value = UninterruptibleUtils.String.charAt(name, index);
                 line.character(value == '.' ? '/' : value);
             }
             line.string("'").string(method).string(" by thread \"").string(threadName).string("\"");

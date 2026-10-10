@@ -65,6 +65,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.misc.Unsafe;
@@ -401,6 +402,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     }
 
     /// Writes a class-loading event without allocating a formatted string.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/oops/instanceKlass.cpp#L3914-L3985")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Class loading diagnostics must not allocate at run time.")
     public static void traceMessage(LogTagSet tagSet, String className, ClassLoader loader, String source, String detail) {
         String loaderName = ClassRegistries.loaderNameAndId(loader);
