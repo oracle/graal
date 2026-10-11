@@ -92,9 +92,9 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     /**
-     * Computes the direction of this basic induction variable for a raw stride stamp. The
-     * raw stride is the right-hand operand of the update operation, so a subtraction requires
-     * negating the raw stride in the native integer width to correctly handle {@code -MIN_VALUE} overflow.
+     * Computes the direction of this basic induction variable for a raw stride stamp. The raw
+     * stride is the right-hand operand of the update operation, so a subtraction requires negating
+     * the raw stride in the native integer width to correctly handle {@code -MIN_VALUE} overflow.
      */
     public Direction directionForRawStride(Stamp rawStrideStamp) {
         if (rawStrideStamp instanceof IntegerStamp integerStamp) {

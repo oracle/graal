@@ -109,6 +109,7 @@ public abstract class InductionVariable {
 
         /**
          * Determines the direction from the stamp of an induction variable's stride.
+         *
          * @return {@link #Up} if the stride is strictly positive, {@link #Down} if it is strictly
          *         negative, or {@code null} otherwise
          */

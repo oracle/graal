@@ -604,8 +604,9 @@ public class CountedLoopTest extends GraalCompilerTest {
     public static void basicIVDirectionOverflowSnippet(int selector, int limit) {
         int stride = selector | Integer.MIN_VALUE;
         /*
-         * stride has strictly negative stamp [MIN_VALUE, -1], and the stamp for -stride includes MIN_VALUE too
-         * Because this negated stamp is not strictly positive, iv direction is not constant, so this can't be a counted loop
+         * stride has strictly negative stamp [MIN_VALUE, -1], and the stamp for -stride includes
+         * MIN_VALUE too Because this negated stamp is not strictly positive, iv direction is not
+         * constant, so this can't be a counted loop
          */
         for (int i = 0; i < limit; i -= stride) {
             GraalDirectives.sideEffect(i);
@@ -620,9 +621,9 @@ public class CountedLoopTest extends GraalCompilerTest {
     public static void offsetIVDirectionOverflowSnippet(int offset, int limit) {
         for (int i = 0; offset - i < limit; i += Integer.MIN_VALUE) {
             /*
-             * basicIV has stride < 0, direction = Down
-             * offsetIV with base as subtrahend negates the basic IV's stride, and because it is MIN_VALUE,
-             * the resulting stride is also < 0, so its direction should also be Down
+             * basicIV has stride < 0, direction = Down offsetIV with base as subtrahend negates the
+             * basic IV's stride, and because it is MIN_VALUE, the resulting stride is also < 0, so
+             * its direction should also be Down
              */
             GraalDirectives.sideEffect(i);
         }

@@ -75,8 +75,8 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     @Override
     public Direction direction() {
         /*
-         * Multiplying baseStride * scale might overflow and flip the expected sign of the effective stride, so use
-         * the stamp of this product to determine the iv direction.
+         * Multiplying baseStride * scale might overflow and flip the expected sign of the effective
+         * stride, so use the stamp of this product to determine the iv direction.
          */
         Stamp stamp = IntegerStamp.OPS.getMul().foldStamp(base.strideNode().stamp(NodeView.DEFAULT), scale.stamp(NodeView.DEFAULT));
         return Direction.fromStrideStamp(stamp);
