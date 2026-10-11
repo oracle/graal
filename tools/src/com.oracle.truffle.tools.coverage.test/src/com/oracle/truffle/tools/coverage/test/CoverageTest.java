@@ -244,6 +244,29 @@ public final class CoverageTest {
         }
     }
 
+    @Test
+    public void testLCOVSourceFileWithoutPath() {
+        // Two sources with the same name but different content and no path.
+        Source first = makeSource("ROOT(STATEMENT)");
+        Source second = makeSource("ROOT(STATEMENT, STATEMENT)");
+        Assert.assertNull(first.getPath());
+        Assert.assertNull(second.getPath());
+        try (Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").option(CoverageInstrument.ID + ".Output", "lcov").build()) {
+            context.eval(first);
+            context.eval(second);
+        }
+        List<String> sourceFiles = new ArrayList<>();
+        for (String line : out.toString().split("\\R")) {
+            if (line.startsWith("SF:")) {
+                sourceFiles.add(line.substring("SF:".length()));
+            }
+        }
+        Assert.assertEquals(out.toString(), 2, sourceFiles.size());
+        Assert.assertTrue(out.toString(), sourceFiles.contains(first.getURI().toString()));
+        Assert.assertTrue(out.toString(), sourceFiles.contains(second.getURI().toString()));
+        Assert.assertNotEquals(sourceFiles.get(0), sourceFiles.get(1));
+    }
+
     @TruffleLanguage.Registration(id = RootAndStatementInDifferentSources.ID, name = "RootAndStatementInDifferentSources", version = "0")
     @ProvidedTags({StandardTags.RootTag.class, StandardTags.StatementTag.class})
     public static class RootAndStatementInDifferentSources extends ProxyLanguage {

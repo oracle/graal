@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.RootCoverage;
 import com.oracle.truffle.tools.coverage.SectionCoverage;
@@ -180,7 +181,16 @@ class LCOVPrinter {
     }
 
     private void printSourceFile(SourceCoverage sourceCoverage) {
-        out.println(SOURCE_FILE + sourceCoverage.getSource().getPath());
+        final Source source = sourceCoverage.getSource();
+        String path = source.getPath();
+        if (path == null) {
+            /*
+             * Sources created from characters have no path. LCOV consumers key records by SF, so
+             * use the URI, which is unique per source, instead of writing "null".
+             */
+            path = source.getURI().toString();
+        }
+        out.println(SOURCE_FILE + path);
     }
 
     private void printTestName() {
