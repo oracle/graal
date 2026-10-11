@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -380,7 +381,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             reflectionData.registerClassLookup(AccessCondition.unconditional(), false, primitiveClass.getName());
         }
 
-        access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
+        HostedValuesProvider hostedValuesProvider = access.getUniverse().getHostedValuesProvider();
+        access.registerObjectReachableCallback((callbackAccess, object, reason) -> {
+            // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
+            SubstrateAccessor accessor = hostedValuesProvider.asObject(SubstrateAccessor.class, object);
+            onAccessorReachable(callbackAccess, accessor, reason);
+        }, GuestAccess.get().lookupType(SubstrateAccessor.class));
     }
 
     private static void onAccessorReachable(DuringAnalysisAccess a, SubstrateAccessor accessor, ObjectScanner.ScanReason reason) {

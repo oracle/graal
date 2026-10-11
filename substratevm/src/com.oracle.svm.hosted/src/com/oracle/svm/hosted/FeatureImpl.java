@@ -74,7 +74,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.JVMCIObjectReachableCallback;
-import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.LinkerInvocation;
@@ -593,11 +592,11 @@ public class FeatureImpl {
          * object based on specific validation rules. This will stop the image build and report how
          * the object was reached.
          *
-         * @since 24.0
+         * @param callback the callback to register
+         * @param type the type whose reachable objects trigger {@code callback}
          */
-        public <T> void registerObjectReachableCallback(Class<T> clazz, ObjectReachableCallback<T> callback) {
-            // GR-78902: migrate all clients to JVMCI or guest callbacks.
-            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(new LegacyObjectReachableCallbackAdapter<>(callback));
+        public void registerObjectReachableCallback(JVMCIObjectReachableCallback callback, ResolvedJavaType type) {
+            asAnalysisType(type).registerObjectReachableCallback(callback);
         }
 
         @Override

@@ -37,7 +37,9 @@ import java.util.function.ToLongFunction;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.JVMCIObjectReachableCallback;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -150,8 +152,15 @@ public class VarHandleFeature implements InternalFeature {
          */
         access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
 
-        access.registerObjectReachableCallback(VarHandle.class, (_, obj, reason) -> registerReachableHandle(obj, reason));
-        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (_, obj, reason) -> registerReachableHandle(obj, reason));
+        HostedValuesProvider hostedValuesProvider = access.getUniverse().getHostedValuesProvider();
+        JVMCIObjectReachableCallback callback = (_, object, reason) -> {
+            // JVMCI migration blocked by GR-72590: Migrate MethodHandleFeature and
+            // VarHandleFeature to terminus
+            Object handle = hostedValuesProvider.asObject(Object.class, object);
+            registerReachableHandle(handle, reason);
+        };
+        access.registerObjectReachableCallback(callback, GuestAccess.elements().java_lang_invoke_VarHandle);
+        access.registerObjectReachableCallback(callback, GuestAccess.elements().java_lang_invoke_DirectMethodHandle);
     }
 
     /**

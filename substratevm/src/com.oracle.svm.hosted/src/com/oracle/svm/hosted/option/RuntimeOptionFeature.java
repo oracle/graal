@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
@@ -64,6 +65,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
@@ -130,7 +132,13 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             access.registerObjectReachabilityHandler(this::collectOptionKeys, OptionKey.class);
         } else {
-            access.registerObjectReachableCallback(OptionKey.class, this::collectOptionKeysExtension);
+            HostedValuesProvider hostedValuesProvider = access.getUniverse().getHostedValuesProvider();
+            access.registerObjectReachableCallback((analysisAccess, object, reason) -> {
+                // JVMCI migration blocked by GR-77528: Move runtime option singleton registration
+                // into the guest context
+                OptionKey<?> optionKey = hostedValuesProvider.asObject(OptionKey.class, object);
+                collectOptionKeysExtension(analysisAccess, optionKey, reason);
+            }, GuestAccess.elements().jdk_graal_compiler_options_OptionKey);
             ImageHeapObjectAdder.singleton().registerObjectAdder(this::addDefaultValuesObject);
         }
     }
@@ -214,7 +222,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
     }
 
     @SuppressWarnings("unused")
-    private void collectOptionKeysExtension(DuringAnalysisAccess access, OptionKey<?> optionKey, ObjectScanner.ScanReason reason) {
+    private static void collectOptionKeysExtension(DuringAnalysisAccess access, OptionKey<?> optionKey, ObjectScanner.ScanReason reason) {
         if (optionKey instanceof HostedOptionKey<?>) {
             /*
              * HostedOptionKey's are reached when building the NativeImage driver executable.
