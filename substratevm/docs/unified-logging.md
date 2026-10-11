@@ -332,7 +332,7 @@ restricted to POSIX platforms.
 
 ### JFR integration
 
-When `-Xlog` is supported, JFR uses unified logging as its only sink.
+When `-Xlog` is supported, ordinary JFR records use unified logging as their only sink.
 `-XX:FlightRecorderLogging` acts as a compatibility option for JFR tag sets on standard output.
 It is applied in command-line order with `-Xlog`, so later selections determine the final configuration.
 The JDK `LogTag.tagSetLevel` thresholds are published once before isolate initialization hooks and refreshed after runtime logging reconfiguration.
@@ -344,6 +344,9 @@ JFR uses the same routing, decorators, and output synchronization as other unifi
 Without `-Xlog` support, JFR retains its existing `FlightRecorderLogging` configuration and low-level log destination.
 Its destination is normally standard error and can be changed with `-XX:LogFile` or an embedding log callback.
 There is no independent second sink or separate threshold array.
+
+The emergency JFR informational, warning, and system error helpers always use the low-level log destination even when `-Xlog` is supported.
+They respect the published JFR thresholds but bypass unified output routing and decorators to avoid allocating native logging buffers during a native memory shortage.
 
 ## Comparison with HotSpot unified logging
 
@@ -366,7 +369,7 @@ SVM uses the same broad configuration model but a smaller runtime design.
 | Decoration state | Event decorations are resolved for each message. | Event metadata lives in fast thread-local state; line levels remain explicit per line. |
 | File rotation | Native C++ file streams and rotation locks. An existing active file is archived at startup when rotation is enabled. | Precomputed native paths, native byte counters, and raw close/delete/rename/reopen operations. An existing active file is archived at startup when rotation is enabled; `filecount=0` truncates it. The `%i` filename placeholder separates isolate-local rotation state into distinct operating-system paths. |
 | JFR integration | JFR writes directly through HotSpot unified logging. | `FlightRecorderLogging` configures unified JFR stdout routes when supported; otherwise JFR retains its legacy output. |
-| Allocation contract | Native C++ allocation rules apply. | Successful event processing, including dual JFR routing, is explicitly Java-heap allocation-free; native buffers may grow. |
+| Allocation contract | Native C++ allocation rules apply. | Event processing, including JFR routing, is Java-heap allocation-free; native buffers may grow except on the emergency JFR fallback path. |
 
 SVM's design is optimized for a native image whose tag sets and output routing
 are known from startup configuration. It avoids dynamic reader reclamation in

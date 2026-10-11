@@ -67,27 +67,6 @@ public final class JfrUnifiedLogging {
         }
     }
 
-    /// Writes a JFR system error when the corresponding unified tag set is enabled.
-    public static void logJfrSystemError(String message) {
-        if (HasXlogSupport.get() && LogTagSet.jfr_system.isError()) {
-            logJfrRecord(LogTagSet.jfr_system, LogLevel.ERROR, message);
-        }
-    }
-
-    /// Writes a JFR informational message when the corresponding unified tag set is enabled.
-    public static void logJfrInfo(String message) {
-        if (HasXlogSupport.get() && LogTagSet.jfr.isInfo()) {
-            logJfrRecord(LogTagSet.jfr, LogLevel.INFO, message);
-        }
-    }
-
-    /// Writes a JFR warning when the corresponding unified tag set is enabled.
-    public static void logJfrWarning(String message) {
-        if (HasXlogSupport.get() && LogTagSet.jfr.isWarning()) {
-            logJfrRecord(LogTagSet.jfr, LogLevel.WARNING, message);
-        }
-    }
-
     /// Writes a JFR setting warning when the corresponding unified tag set is enabled.
     public static void logJfrSettingWarning(String message) {
         if (HasXlogSupport.get() && LogTagSet.jfr_setting.isWarning()) {

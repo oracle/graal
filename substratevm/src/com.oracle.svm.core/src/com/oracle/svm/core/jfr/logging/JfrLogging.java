@@ -44,7 +44,8 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
-/// Routes JFR records through unified logging, with a legacy fallback when `-Xlog` is unavailable.
+/// Routes JFR records through unified logging, with a low-level fallback when `-Xlog` is unavailable
+/// or native allocation is forbidden.
 public class JfrLogging {
 
     /// Legacy level decorations indexed by the JDK numeric level.
@@ -76,61 +77,28 @@ public class JfrLogging {
         JfrLogConfiguration.parse(config, this);
     }
 
-    /// Writes a JFR system error through the active sink.
+    /// Writes a JFR system error through the low-level sink, subject to the published JFR threshold.
+    /// Unified logging is always bypassed because native allocation is forbidden during emergency
+    /// dumps.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrSystemError(String message) {
-        logJfrSystemError(message, true);
+        logLegacyIfEnabled(tagSetId(LogTag.JFR_SYSTEM), JfrLogConfiguration.JfrLogLevel.ERROR.level, message);
     }
 
-    /// Writes a JFR system error, permitting unified logging only when
-    /// `nativeAllocationAllowed` is true.
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
-    public void logJfrSystemError(String message, boolean nativeAllocationAllowed) {
-        if (HasXlogSupport.get()) {
-            if (nativeAllocationAllowed) {
-                JfrUnifiedLogging.logJfrSystemError(message);
-            }
-        } else {
-            logLegacyIfEnabled(tagSetId(LogTag.JFR_SYSTEM), JfrLogConfiguration.JfrLogLevel.ERROR.level, message);
-        }
-    }
-
-    /// Writes a JFR informational message through the active sink.
+    /// Writes a JFR informational message through the low-level sink, subject to the published JFR
+    /// threshold. Unified logging is always bypassed because native allocation is forbidden during
+    /// emergency dumps.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrInfo(String message) {
-        logJfrInfo(message, true);
+        logLegacyIfEnabled(tagSetId(LogTag.JFR), JfrLogConfiguration.JfrLogLevel.INFO.level, message);
     }
 
-    /// Writes a JFR informational message, permitting unified logging only when
-    /// `nativeAllocationAllowed` is true.
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
-    public void logJfrInfo(String message, boolean nativeAllocationAllowed) {
-        if (HasXlogSupport.get()) {
-            if (nativeAllocationAllowed) {
-                JfrUnifiedLogging.logJfrInfo(message);
-            }
-        } else {
-            logLegacyIfEnabled(tagSetId(LogTag.JFR), JfrLogConfiguration.JfrLogLevel.INFO.level, message);
-        }
-    }
-
-    /// Writes a JFR warning through the active sink.
+    /// Writes a JFR warning through the low-level sink, subject to the published JFR threshold.
+    /// Unified logging is always bypassed because native allocation is forbidden during emergency
+    /// dumps.
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
     public void logJfrWarning(String message) {
-        logJfrWarning(message, true);
-    }
-
-    /// Writes a JFR warning, permitting unified logging only when
-    /// `nativeAllocationAllowed` is true.
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "May be used during OOME emergency dump.")
-    public void logJfrWarning(String message, boolean nativeAllocationAllowed) {
-        if (HasXlogSupport.get()) {
-            if (nativeAllocationAllowed) {
-                JfrUnifiedLogging.logJfrWarning(message);
-            }
-        } else {
-            logLegacyIfEnabled(tagSetId(LogTag.JFR), JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
-        }
+        logLegacyIfEnabled(tagSetId(LogTag.JFR), JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
     }
 
     /// Writes a JFR setting warning through the active sink.
