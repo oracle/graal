@@ -43,6 +43,7 @@ The following language implementations exist already (in alphabetical order):
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
 * [PorcE](https://github.com/orc-lang/orc/tree/master/PorcE), an Orc language implementation.
 * [ProloGraal](https://gitlab.forge.hefr.ch/tony.licata/prolog-truffle) a Prolog language implementation supporting interoperability.
+* [Protos](https://github.com/guillermomolina/protos), an experimental prototype-based object-oriented programming language implemented with Truffle.
 * [PureScript](https://github.com/slamdata/truffled-purescript), a small, strongly-typed programming language.
 * [Reactive Ruby](https://github.com/guidosalva/ReactiveRubyTruffle), TruffleRuby meets Reactive Programming.
 * [shen-truffle](https://github.com/ragnard/shen-truffle), a port of the Shen programming language.
