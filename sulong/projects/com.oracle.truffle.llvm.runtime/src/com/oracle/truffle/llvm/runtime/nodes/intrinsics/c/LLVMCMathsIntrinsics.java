@@ -52,6 +52,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFa
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFloorNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFmaNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFmaVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMMaxnumVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog10NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen;
@@ -348,6 +350,70 @@ public abstract class LLVMCMathsIntrinsics {
             float[] result = new float[vectorLength];
             for (int i = 0; i < vectorLength; i++) {
                 result[i] = (float) Math.sqrt(value.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
+        }
+    }
+
+    public static TypedBuiltinFactory getFmaFactory(PrimitiveKind type) {
+        switch (type) {
+            case FLOAT:
+            case DOUBLE:
+                return TypedBuiltinFactory.vector3(LLVMFmaNodeGen::create, LLVMFmaVectorNodeGen::create);
+            default:
+                return null;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMFma extends LLVMBuiltin {
+
+        /*
+         * Unlike llvm.fmuladd, llvm.fma requires the fused single-rounding result; Math.fma is
+         * correctly rounded, a decomposed multiply+add is not.
+         */
+        @Specialization
+        protected float doIntrinsic(float a, float b, float c) {
+            return Math.fma(a, b, c);
+        }
+
+        @Specialization
+        protected double doIntrinsic(double a, double b, double c) {
+            return Math.fma(a, b, c);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMFmaVectorNode extends LLVMBuiltin {
+
+        private final int vectorLength;
+
+        LLVMFmaVectorNode(int vectorLength) {
+            this.vectorLength = vectorLength;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMDoubleVector doVector(LLVMDoubleVector a, LLVMDoubleVector b, LLVMDoubleVector c) {
+            assert a.getLength() == vectorLength && b.getLength() == vectorLength && c.getLength() == vectorLength;
+            double[] result = new double[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Math.fma(a.getValue(i), b.getValue(i), c.getValue(i));
+            }
+            return LLVMDoubleVector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMFloatVector doVector(LLVMFloatVector a, LLVMFloatVector b, LLVMFloatVector c) {
+            assert a.getLength() == vectorLength && b.getLength() == vectorLength && c.getLength() == vectorLength;
+            float[] result = new float[vectorLength];
+            for (int i = 0; i < vectorLength; i++) {
+                result[i] = Math.fma(a.getValue(i), b.getValue(i), c.getValue(i));
             }
             return LLVMFloatVector.create(result);
         }

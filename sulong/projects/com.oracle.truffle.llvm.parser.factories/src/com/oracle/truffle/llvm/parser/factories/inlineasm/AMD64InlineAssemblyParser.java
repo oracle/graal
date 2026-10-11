@@ -46,7 +46,7 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
     public LLVMExpressionNode getInlineAssemblerExpression(NodeFactory nodeFactory, String asmExpression, String asmFlags, LLVMExpressionNode[] args,
                     Type.TypeArrayBuilder argTypes, Type retType) {
         StructureTypeOffsets offsets;
-        String normalizedAsmExpression = normalizeAsmExpression(asmExpression);
+        String normalizedAsmExpression = normalizeAsmExpression(stripAsmComments(asmExpression));
 
         try {
             offsets = nodeFactory.getDataLayout().getStructureTypeOffsets(retType);
@@ -64,6 +64,40 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
         }
 
         return getCallNodeFromAssemblyRoot(assemblyRoot, args, argTypes);
+    }
+
+    /**
+     * gas/AT&T x86 syntax treats '#' up to end-of-line as a comment. Compilers emit
+     * comment-only asm statements (e.g. Eigen's EIGEN_ASM_COMMENT in the gebp micro
+     * kernel) which the instruction grammar rejects; stripping comments reduces them
+     * to the already-supported empty asm statement.
+     */
+    private static String stripAsmComments(String asmExpression) {
+        // the expression arrives wrapped in '"' delimiters (see InlineAsmConstant);
+        // only the content between them may contain comments
+        if (asmExpression.indexOf('#') < 0 || asmExpression.length() < 2 || asmExpression.charAt(0) != '"' || asmExpression.charAt(asmExpression.length() - 1) != '"') {
+            return asmExpression;
+        }
+        String body = asmExpression.substring(1, asmExpression.length() - 1);
+        StringBuilder stripped = new StringBuilder(asmExpression.length());
+        stripped.append('"');
+        boolean first = true;
+        for (String line : body.split("\n", -1)) {
+            int hash = line.indexOf('#');
+            String code = hash < 0 ? line : line.substring(0, hash);
+            if (code.trim().isEmpty()) {
+                // dropping the line entirely keeps the grammar's statement structure
+                // intact (a leading '\n' before the first instruction is a parse error)
+                continue;
+            }
+            if (!first) {
+                stripped.append('\n');
+            }
+            stripped.append(code);
+            first = false;
+        }
+        stripped.append('"');
+        return stripped.toString();
     }
 
     private static String normalizeAsmExpression(String asmExpression) {
