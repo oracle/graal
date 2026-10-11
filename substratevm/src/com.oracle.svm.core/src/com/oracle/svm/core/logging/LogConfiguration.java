@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -218,7 +219,7 @@ public final class LogConfiguration {
     public static void initialize() {
         RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging());
         if (HasXlogSupport.get()) {
-            hostname = LoggingSupport.singleton().hostname();
+            hostname = LibC.hostname();
             pid = ProcessProperties.getProcessID();
             long systemMillis = TimeUtils.currentTimeMillis();
             startupTimestamp = formatStartupTimestamp(systemMillis, LibCHelper.localUTCOffsetSeconds(systemMillis));

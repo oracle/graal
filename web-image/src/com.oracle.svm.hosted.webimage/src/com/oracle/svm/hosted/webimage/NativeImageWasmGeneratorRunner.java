@@ -150,8 +150,8 @@ public class NativeImageWasmGeneratorRunner extends NativeImageGeneratorRunner {
         }
 
         /*
-         * Strict parsing enables -Xlog support. Making it compatible would require Web Image to
-         * register an implementation of LoggingSupport.
+         * Strict parsing enables -Xlog support, which requires native services unavailable in Web
+         * Image.
          */
         UserError.guarantee(!SubstrateOptions.StrictRuntimeJavaOptions.getValue(new OptionValues(optionProvider.getHostedValues())),
                         "Strict runtime Java option parsing is not supported by Web Image.");

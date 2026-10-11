@@ -33,6 +33,9 @@ import java.nio.ByteOrder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
@@ -52,6 +55,9 @@ import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
+import com.oracle.svm.core.windows.headers.FileAPI.WIN32_FIND_DATAW;
+import com.oracle.svm.core.windows.headers.WindowsDirectives;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -82,6 +88,68 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
         }
         filename.writeChar(length * Character.BYTES, (char) 0);
         return (RawFileOperationSupport.RawFilePath) filename;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean exists(RawFilePath path) {
+        return FileAPI.GetFileAttributesW((WCharPointer) path) != FileAPI.INVALID_FILE_ATTRIBUTES();
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isRegularFile(RawFilePath path) {
+        int attributes = FileAPI.GetFileAttributesW((WCharPointer) path);
+        return attributes != FileAPI.INVALID_FILE_ATTRIBUTES() &&
+                        (attributes & (FileAPI.FILE_ATTRIBUTE_DIRECTORY() | FileAPI.FILE_ATTRIBUTE_REPARSE_POINT())) == 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long lastModifiedTime(RawFilePath path) {
+        WIN32_FIND_DATAW data = UnsafeStackValue.get(WIN32_FIND_DATAW.class);
+        HANDLE handle = FileAPI.FindFirstFileW((WCharPointer) path, data);
+        if (handle.equal(WinBase.INVALID_HANDLE_VALUE())) {
+            return -1;
+        }
+        /* FILETIME counts 100-nanosecond intervals since 1601; convert to the Unix epoch. */
+        FILETIME time = data.getLastWriteTime();
+        long ticks = ((long) time.dwHighDateTime() << 32) | (time.dwLowDateTime() & 0xffff_ffffL);
+        FileAPI.FindClose(handle);
+        return ticks / 10_000 - 11_644_473_600_000L;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean delete(RawFilePath path) {
+        return FileNames.delete((WCharPointer) path) != 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int rename(RawFilePath source, RawFilePath target) {
+        int result = FileNames.move((WCharPointer) source, (WCharPointer) target, FileNames.movefileReplaceExisting());
+        return result != 0 ? 0 : WinBase.GetLastError();
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length) {
+        RawFileDescriptor descriptor = (RawFileDescriptor) FileAPI.NoTransition.GetStdHandle(stderr ? FileAPI.STD_ERROR_HANDLE() : FileAPI.STD_OUTPUT_HANDLE());
+        return write(descriptor, (Pointer) bytes, length);
+    }
+
+    /// Declares file operations that do not depend on the Java I/O native library.
+    @CContext(WindowsDirectives.class)
+    private static final class FileNames {
+        @CConstant("MOVEFILE_REPLACE_EXISTING")
+        public static native int movefileReplaceExisting();
+
+        @CFunction(value = "DeleteFileW", transition = CFunction.Transition.NO_TRANSITION)
+        static native int delete(WCharPointer path);
+
+        @CFunction(value = "MoveFileExW", transition = CFunction.Transition.NO_TRANSITION)
+        static native int move(WCharPointer source, WCharPointer target, int flags);
     }
 
     @Override

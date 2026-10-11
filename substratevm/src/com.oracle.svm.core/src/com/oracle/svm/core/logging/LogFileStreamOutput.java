@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -70,18 +71,18 @@ final class LogFileStreamOutput extends LogOutput {
             Log.log().string(bytes, (int) length.rawValue());
             return 0;
         }
-        return writeRawLocked(LoggingSupport.singleton(), bytes, length);
+        return writeRawLocked(bytes, length);
     }
 
     /// Writes a native byte range while serializing access to the stream. The complete critical
     /// section is uninterruptible so that a thread cannot stop at a safepoint while owning the
     /// mutex.
     @Uninterruptible(reason = "The output mutex must not be held across a safepoint.")
-    private int writeRawLocked(LoggingSupport loggingSupport, CCharPointer bytes, UnsignedWord length) {
+    private int writeRawLocked(CCharPointer bytes, UnsignedWord length) {
         mutex.lockNoTransition();
         try {
             /* Synchronous logging intentionally uses a no-transition write, as HotSpot does. */
-            return loggingSupport.write(target == Target.STDERR, bytes, length) ? 0 : WRITE_FAILED;
+            return RawFileOperationSupport.nativeByteOrder().write(target == Target.STDERR, bytes, length) ? 0 : WRITE_FAILED;
         } finally {
             mutex.unlock();
         }
@@ -96,7 +97,7 @@ final class LogFileStreamOutput extends LogOutput {
         try (CTypeConversion.CCharPointerHolder holder = CTypeConversion.toCString(text)) {
             CCharPointer bytes = holder.get();
             /* Configuration diagnostics are best effort and must not reject an otherwise valid option. */
-            writeRawLocked(LoggingSupport.singleton(), bytes, SubstrateUtil.strlen(bytes));
+            writeRawLocked(bytes, SubstrateUtil.strlen(bytes));
         }
     }
 }

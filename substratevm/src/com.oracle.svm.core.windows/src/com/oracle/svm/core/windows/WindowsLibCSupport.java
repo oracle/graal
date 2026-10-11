@@ -26,8 +26,10 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -35,6 +37,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -44,6 +47,23 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 @AutomaticallyRegisteredImageSingleton(LibCSupport.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 class WindowsLibCSupport implements LibCSupport {
+    /// Gets the Windows host name directly so early startup does not depend on Java networking.
+    @Override
+    public String hostname() {
+        int capacity = WindowsLibC.maxComputernameLength() + 1;
+        WCharPointer buffer = StackValue.get(capacity, WCharPointer.class);
+        CIntPointer length = StackValue.get(CIntPointer.class);
+        length.write(capacity);
+        if (WindowsLibC.getComputerName(buffer, length) == 0) {
+            return "localhost";
+        }
+        StringBuilder result = new StringBuilder(length.read());
+        for (int index = 0; index < length.read(); index++) {
+            result.append(buffer.read(index));
+        }
+        return result.toString();
+    }
+
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int errno() {

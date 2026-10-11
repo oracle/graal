@@ -175,6 +175,10 @@ public final class PosixStat {
         @CField
         long st_size();
 
+        /// Gets the file modification time in seconds since the Unix epoch.
+        @CField
+        long st_mtime();
+
         @CField
         @AllowWideningCast
         UnsignedWord st_nlink();

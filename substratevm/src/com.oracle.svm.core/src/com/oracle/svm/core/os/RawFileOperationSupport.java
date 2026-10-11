@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.io.File;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -77,6 +78,37 @@ public interface RawFileOperationSupport {
      * @return If the allocation is successful, a non-null value is returned.
      */
     RawFilePath allocatePath(String path);
+
+    /// Returns whether `path` names an existing filesystem entry without opening it or following
+    /// symbolic links. A failed metadata query returns `false`.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean exists(RawFilePath path);
+
+    /// Returns whether `path` names an existing regular file without following symbolic links.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean isRegularFile(RawFilePath path);
+
+    /// Returns the last modification time in milliseconds since the Unix epoch, or `-1` if the
+    /// metadata query fails. POSIX timestamps have whole-second precision.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    long lastModifiedTime(RawFilePath path);
+
+    /// Deletes a path converted to native memory by [#allocatePath(String)].
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean delete(RawFilePath path);
+
+    /// Renames `source` to `target`.
+    ///
+    /// @return 0 on success, platform-dependent error code on failure
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    int rename(RawFilePath source, RawFilePath target);
+
+    /// Writes a native byte range to standard output or standard error without a thread status
+    /// transition. A blocked synchronous write can therefore delay safepoint progress.
+    ///
+    /// @return true on success
+    @Uninterruptible(reason = "Synchronous logging uses a no-transition platform write.")
+    boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length);
 
     /**
      * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode

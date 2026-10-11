@@ -302,11 +302,17 @@ configured, and does not abort the VM. Each later event whose descriptor is
 still unavailable retries opening the active file before safely skipping its
 write when the retry fails.
 
-Normal writes use the platform-specific `RawFileOperationSupport`
-implementation; `LoggingSupport` supplies the platform-specific archive delete
-and rename operations. If a write operation fails, `LogOutput` emits one
-emergency `Could not write to log` diagnostic for that output and suppresses
-repeated copies of the same diagnostic. The event path remains non-fatal.
+All file operations use the platform-specific `RawFileOperationSupport`
+implementation, including existence and regular file checks, modification time
+queries, archive deletion, and renaming.
+VM options are parsed before the Java I/O native library is initialized, so
+configuration does not use Java filesystem operations.
+`LibC.hostname()` provides native host name lookup without depending on Java
+networking initialization.
+If a write operation fails, `LogOutput` emits one emergency
+`Could not write to log` diagnostic for that output and suppresses repeated
+copies of the same diagnostic.
+The event path remains non-fatal.
 
 Rotation is performed after `LogOutput` completes a write batch and the byte
 threshold has been reached. The batch is the whole possibly multi-line event.

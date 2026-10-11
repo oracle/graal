@@ -84,9 +84,8 @@ public abstract class WebImageJavaMainSupport extends JavaMainSupport {
     protected static int doRun(String[] args, Runner runner) {
         try {
             startMainThread();
-            // Web Image does not support -Xlog support as it require Webs Image to
-            // register an implementation of LoggingSupport. As such, there's no
-            // need to initialize unified logging.
+            // Web Image does not support the native services used by -Xlog, so unified logging
+            // is not initialized here.
             String[] parsedArgs = RuntimeOptionParser.parseAndConsumeAllOptions(args, false);
             if (ImageSingletons.contains(JavaMainSupport.class)) {
                 ImageSingletons.lookup(JavaMainSupport.class).mainArgs = parsedArgs;

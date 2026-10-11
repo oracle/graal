@@ -48,6 +48,12 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /** Platform-independent LibC support. */
 public class LibC {
+    /// Gets the native host name without requiring the initialized Java networking library.
+    /// Returns `"localhost"` if the native lookup fails. Creating the result may allocate.
+    public static String hostname() {
+        return libc().hostname();
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int errno() {
         return libc().errno();

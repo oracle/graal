@@ -26,11 +26,6 @@ package com.oracle.svm.core.logging;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Locale;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -121,20 +116,15 @@ final class LogFileOutput extends LogOutput {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logFileOutput.cpp#L198-L252")
     void initialize() {
         assert !initialized;
-        if (fileCount > 0) {
-            try {
-                BasicFileAttributes active = readAttributes(Path.of(pathName));
-                if (active != null) {
-                    if (!active.isRegularFile()) {
-                        throw new IllegalArgumentException("Unified log file is not a regular file: " + pathName);
-                    }
-                    nextArchive = nextArchiveSlot();
-                    if (!archiveActiveFile()) {
-                        throw new IllegalArgumentException("Could not archive unified log file: " + pathName);
-                    }
-                }
-            } catch (IOException exception) {
-                throw new IllegalArgumentException("Could not inspect unified log file: " + pathName, exception);
+        RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
+        /* VM options are parsed before the Java I/O native library is initialized. */
+        if (fileCount > 0 && files.exists(path)) {
+            if (!files.isRegularFile(path)) {
+                throw new IllegalArgumentException("Unified log file is not a regular file: " + pathName);
+            }
+            nextArchive = nextArchiveSlot();
+            if (!archiveActiveFile()) {
+                throw new IllegalArgumentException("Could not archive unified log file: " + pathName);
             }
         }
         initialized = true;
@@ -233,18 +223,22 @@ final class LogFileOutput extends LogOutput {
 
     /// Selects the first unused archive slot, or the oldest archive when all slots are occupied.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logFileOutput.cpp#L119-L165")
-    private int nextArchiveSlot() throws IOException {
+    private int nextArchiveSlot() {
+        RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
         int oldest = 0;
         long oldestTime = Long.MAX_VALUE;
         for (int index = 0; index < fileCount; index++) {
-            BasicFileAttributes attributes = readAttributes(Path.of(archiveName(index, fileCount)));
-            if (attributes == null) {
+            RawFilePath archive = archivePaths[index];
+            if (!files.exists(archive)) {
                 return index;
             }
-            if (!attributes.isRegularFile()) {
+            if (!files.isRegularFile(archive)) {
                 throw new IllegalArgumentException("Unified log archive is not a regular file: " + archiveName(index, fileCount));
             }
-            long modifiedTime = attributes.lastModifiedTime().toMillis();
+            long modifiedTime = files.lastModifiedTime(archive);
+            if (modifiedTime == -1) {
+                throw new IllegalArgumentException("Could not inspect unified log archive: " + archiveName(index, fileCount));
+            }
             if (modifiedTime < oldestTime) {
                 oldest = index;
                 oldestTime = modifiedTime;
@@ -253,24 +247,16 @@ final class LogFileOutput extends LogOutput {
         return oldest;
     }
 
-    /// Returns file metadata, distinguishing an absent path from other inspection failures.
-    private static BasicFileAttributes readAttributes(Path name) throws IOException {
-        try {
-            return Files.readAttributes(name, BasicFileAttributes.class);
-        } catch (NoSuchFileException exception) {
-            return null;
-        }
-    }
-
     /// Replaces the next archive and advances through the same circular slots as HotSpot.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/logging/logFileOutput.cpp#L324-L352")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private boolean archiveActiveFile() {
         RawFilePath archive = archivePaths[nextArchive];
-        if (LoggingSupport.singleton().isRegularFile(archive) && !LoggingSupport.singleton().delete(archive)) {
+        RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
+        if (files.isRegularFile(archive) && !files.delete(archive)) {
             return false;
         }
-        if (LoggingSupport.singleton().rename(path, archive) != 0) {
+        if (files.rename(path, archive) != 0) {
             return false;
         }
         nextArchive = (nextArchive + 1) % fileCount;
