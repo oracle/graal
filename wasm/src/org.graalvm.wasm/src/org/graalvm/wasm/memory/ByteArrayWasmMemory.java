@@ -49,7 +49,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.Vector128Ops;
@@ -64,7 +63,7 @@ import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 
 @ExportLibrary(WasmMemoryLibrary.class)
-final class ByteArrayWasmMemory extends WasmMemory {
+public final class ByteArrayWasmMemory extends WasmMemory {
     private byte[] dynamicBuffer;
 
     public static final long MAX_ALLOWED_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
@@ -1044,11 +1043,10 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    @TruffleBoundary
     public void fill(Node node, long offset, long length, byte value) {
         validateLength(node, length);
         validateAddress(node, offset, length);
-        Arrays.fill(buffer(), (int) offset, (int) (offset + length), value);
+        ByteArrayMemorySupport.fill(buffer(), (int) offset, (int) length, value);
     }
 
     @ExportMessage
