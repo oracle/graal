@@ -116,7 +116,7 @@ public final class LogDecorations {
 
     /// Writes an ISO timestamp with millisecond precision and a numeric UTC offset.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/time/LocalDate.java#L346-L379")
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L241")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L243")
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void writeDateTime(Log target, long systemMillis, int utcOffsetSeconds) {
         long localSeconds = floorDivide(systemMillis, 1_000) + utcOffsetSeconds;

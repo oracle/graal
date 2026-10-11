@@ -44,7 +44,7 @@ public class LibCHelper {
     // Checkstyle: start
 
     /// Returns the local-to-UTC offset for `millisecondsSince19700101` in seconds.
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L210")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L243")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/posix/os_posix.cpp#L1545-L1547")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/windows/os_windows.cpp#L500-L508")
     @CFunction(value = "SVM_localUTCOffsetSeconds", transition = Transition.NO_TRANSITION)
