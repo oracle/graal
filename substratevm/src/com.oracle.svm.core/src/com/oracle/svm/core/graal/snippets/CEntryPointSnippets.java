@@ -537,9 +537,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                         }
                     }
                 }
-            } else {
-                /* Argument-less and older isolate entry points still require default logging. */
-                RuntimeOptionParser.parseAndConsumeAllOptions(new String[0], false);
             }
         } catch (IllegalArgumentException e) {
             Log.logStream().println("Error: " + e.getMessage());
