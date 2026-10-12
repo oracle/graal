@@ -127,16 +127,28 @@ public class RuntimeCodeInfoMemory {
         peakNativeMetadataSize = Word.zero();
     }
 
+    /**
+     * Brings the counters in line with the current sizes of the code info. The sizes of a
+     * runtime-compiled code info are not final when it is added (the code and data sizes are set
+     * during the installation and the metadata arrays are created even later), so the counters
+     * contain exactly the sizes that were last recorded in the code info and this method replaces
+     * them with the current ones.
+     */
     @Uninterruptible(reason = "Manipulate the counters atomically with regard to GC.")
-    private void addToSizeCounters(CodeInfo codeInfo) {
+    private void recountSizes(CodeInfo codeInfo, boolean codeMemoryInCurrentIsolate) {
         // must be done under this.lock
-        UnsignedWord code = CodeInfoAccess.getCodeSize(codeInfo);
-        UnsignedWord codeAndDataMemory = CodeInfoAccess.getCodeAndDataMemorySize(codeInfo);
+        UnsignedWord code = codeMemoryInCurrentIsolate ? CodeInfoAccess.getCodeSize(codeInfo) : Word.zero();
+        UnsignedWord codeAndDataMemory = codeMemoryInCurrentIsolate ? CodeInfoAccess.getCodeAndDataMemorySize(codeInfo) : Word.zero();
         UnsignedWord nativeMetadata = CodeInfoAccess.getNativeMetadataSize(codeInfo);
+
+        /* Subtract first because the new sizes may be smaller than the recorded sizes. */
+        subtractFromSizeCounters(codeInfo);
         codeSize = codeSize.add(code);
         codeAndDataMemorySize = codeAndDataMemorySize.add(codeAndDataMemory);
         nativeMetadataSize = nativeMetadataSize.add(nativeMetadata);
         totalSize = totalSize.add(codeAndDataMemory).add(nativeMetadata);
+        RuntimeCodeInfoAccess.setAccountedSizes(codeInfo, code, codeAndDataMemory, nativeMetadata);
+
         if (codeSize.aboveThan(peakCodeSize)) {
             peakCodeSize = codeSize;
         }
@@ -152,21 +164,39 @@ public class RuntimeCodeInfoMemory {
     }
 
     @Uninterruptible(reason = "Manipulate the counters atomically with regard to GC.")
-    private void subtractToSizeCounters(CodeInfo codeInfo) {
-        // This is done when the code info is removed the table
-        // code and data might actually have been released earlier in
-        // RuntimeCodeInfoAccess.freePartially
-        UnsignedWord code = CodeInfoAccess.getCodeSize(codeInfo);
-        UnsignedWord codeAndDataMemory = CodeInfoAccess.getCodeAndDataMemorySize(codeInfo);
-        UnsignedWord nativeMetadata = CodeInfoAccess.getNativeMetadataSize(codeInfo);
-        codeSize = codeSize.subtract(code);
-        codeAndDataMemorySize = codeAndDataMemorySize.subtract(codeAndDataMemory);
-        nativeMetadataSize = nativeMetadataSize.subtract(nativeMetadata);
-        totalSize = totalSize.subtract(codeAndDataMemory).subtract(nativeMetadata);
-        assert codeSize.aboveOrEqual(0);
-        assert codeAndDataMemorySize.aboveOrEqual(0);
-        assert nativeMetadataSize.aboveOrEqual(0);
-        assert totalSize.aboveOrEqual(0);
+    private void subtractFromSizeCounters(CodeInfo codeInfo) {
+        // Subtract exactly what was added, including when replacing the recorded sizes.
+        UnsignedWord accountedCode = RuntimeCodeInfoAccess.getAccountedCodeSize(codeInfo);
+        UnsignedWord accountedCodeAndDataMemory = RuntimeCodeInfoAccess.getAccountedCodeAndDataMemorySize(codeInfo);
+        UnsignedWord accountedNativeMetadata = RuntimeCodeInfoAccess.getAccountedNativeMetadataSize(codeInfo);
+        assert codeSize.aboveOrEqual(accountedCode);
+        assert codeAndDataMemorySize.aboveOrEqual(accountedCodeAndDataMemory);
+        assert nativeMetadataSize.aboveOrEqual(accountedNativeMetadata);
+        assert totalSize.aboveOrEqual(accountedCodeAndDataMemory.add(accountedNativeMetadata));
+        codeSize = codeSize.subtract(accountedCode);
+        codeAndDataMemorySize = codeAndDataMemorySize.subtract(accountedCodeAndDataMemory);
+        nativeMetadataSize = nativeMetadataSize.subtract(accountedNativeMetadata);
+        totalSize = totalSize.subtract(accountedCodeAndDataMemory).subtract(accountedNativeMetadata);
+        /* The code info can be added again (client isolate), so it must not be counted anymore. */
+        RuntimeCodeInfoAccess.setAccountedSizes(codeInfo, Word.zero(), Word.zero(), Word.zero());
+    }
+
+    /**
+     * Updates the counters after the sizes of a code info that was already added have changed, i.e.,
+     * after the installation has set the final sizes and created the metadata arrays.
+     *
+     * @param codeMemoryInCurrentIsolate false when preparing code in a compiler isolate: the code
+     *            memory belongs to the client isolate, but the metadata belongs to the compiler
+     *            isolate until it is transferred
+     */
+    public void updateSizeCounters(CodeInfo info, boolean codeMemoryInCurrentIsolate) {
+        assert info.isNonNull();
+        lock.lock();
+        try {
+            recountSizes(info, codeMemoryInCurrentIsolate);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public SizeCounters getSizeCounters() {
@@ -255,7 +285,6 @@ public class RuntimeCodeInfoMemory {
 
     @Uninterruptible(reason = "Manipulate hashtable atomically with regard to GC.")
     private void add0(CodeInfo info) {
-        addToSizeCounters(info);
         if (table.isNull()) {
             table = NonmovableArrays.createWordArray(32, NmtCategory.Code);
         }
@@ -276,6 +305,7 @@ public class RuntimeCodeInfoMemory {
         } while (resized);
         NonmovableArrays.setWord(table, index, info);
         count++;
+        recountSizes(info, true);
 
         assert count > 0 : "invalid counter value";
     }
@@ -320,7 +350,7 @@ public class RuntimeCodeInfoMemory {
                 count--;
                 assert count >= 0 : "invalid counter value";
                 rehashAfterUnregisterAt(index);
-                subtractToSizeCounters(info);
+                subtractFromSizeCounters(info);
                 return true;
             }
             index = nextIndex(index, length);

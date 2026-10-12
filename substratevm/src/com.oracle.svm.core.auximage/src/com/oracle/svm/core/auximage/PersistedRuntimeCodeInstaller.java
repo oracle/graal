@@ -42,6 +42,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 
@@ -137,6 +138,9 @@ final class PersistedRuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                                 fromImageHeap(persisted.stackReferenceMapEncoding));
                 RuntimeCodeInfoAccess.setDeoptimizationMetadata(info, fromImageHeap(persisted.deoptimizationStartOffsets),
                                 fromImageHeap(persisted.deoptimizationEncodings), fromImageHeap(persisted.deoptimizationObjectConstants));
+
+                /* The code info was added with empty sizes and all objects are in the image heap now. */
+                RuntimeCodeInfoMemory.singleton().updateSizeCounters(info, true);
 
                 doInstallPreparedAndTethered(persisted.method, info, persisted.installedCode);
 
