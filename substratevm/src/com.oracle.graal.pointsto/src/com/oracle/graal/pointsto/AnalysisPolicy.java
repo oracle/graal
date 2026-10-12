@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
@@ -184,7 +185,19 @@ public abstract class AnalysisPolicy {
     public abstract AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
 
     /** Wrap a constant into a type state abstraction. */
-    public abstract TypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
+    public final TypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
+        if (constant instanceof ImageHeapRelocatableConstant relocatableConstant) {
+            /*
+             * Relocatable constants are placeholders for unknown non-null objects supplied by a
+             * later layer. Both analysis policies must model them with the type's summary object.
+             */
+            return TypeState.forType(bb, relocatableConstant.getType(), false);
+        }
+        return concreteConstantTypeState(bb, constant, exactType);
+    }
+
+    /** Wrap a non-relocatable constant using the policy-specific representation. */
+    protected abstract TypeState concreteConstantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType);
 
     /** Create type state for dynamic new instance. */
     public abstract TypeState dynamicNewInstanceState(PointsToAnalysis bb, TypeState currentState, TypeState newState, BytecodePosition allocationSite, AnalysisContext allocationContext);
