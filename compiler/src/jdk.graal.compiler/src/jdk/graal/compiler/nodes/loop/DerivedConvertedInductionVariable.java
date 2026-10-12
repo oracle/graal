@@ -64,6 +64,13 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public Direction direction() {
+        if (value instanceof NarrowNode narrow) {
+            /*
+             * Narrowing the stride might wraparound and change the expected sign of the effective
+             * stride, so use the stamp of this conversion to determine the iv direction.
+             */
+            return Direction.fromStrideStamp(narrow.foldStamp(base.strideNode().stamp(NodeView.DEFAULT)));
+        }
         return base.direction();
     }
 
@@ -94,7 +101,9 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public long constantStride() {
-        return base.constantStride();
+        // Sign extending the base stride mirrors strideNode and preserves wraparound semantics for
+        // narrowing conversions
+        return CodeUtil.signExtend(base.constantStride(), IntegerStamp.getBits(stamp));
     }
 
     @Override

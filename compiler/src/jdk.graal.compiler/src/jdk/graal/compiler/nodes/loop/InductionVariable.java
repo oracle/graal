@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -105,6 +106,23 @@ public abstract class InductionVariable {
                     throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
             }
         }
+
+        /**
+         * Determines the direction from the stamp of an induction variable's stride.
+         *
+         * @return {@link #Up} if the stride is strictly positive, {@link #Down} if it is strictly
+         *         negative, or {@code null} otherwise
+         */
+        public static Direction fromStrideStamp(Stamp strideStamp) {
+            GraalError.guarantee(strideStamp instanceof IntegerStamp, "Expected integer stride stamp, %s", strideStamp);
+            IntegerStamp integerStamp = (IntegerStamp) strideStamp;
+            if (integerStamp.isStrictlyPositive()) {
+                return Direction.Up;
+            } else if (integerStamp.isStrictlyNegative()) {
+                return Direction.Down;
+            }
+            return null;
+        }
     }
 
     public abstract StructuredGraph graph();
@@ -120,8 +138,8 @@ public abstract class InductionVariable {
     }
 
     /**
-     * Returns the direction of the induction variable, or {@code null} when it cannot be statically
-     * determined (such as when the stride is a runtime variable).
+     * Returns the direction of the induction variable: {@code Up} if it is strictly increasing,
+     * {@code Down} if it is strictly decreasing, or {@code null} if the stride's sign is not known.
      */
     public abstract Direction direction();
 

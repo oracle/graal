@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.test;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -37,6 +38,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -587,6 +589,51 @@ public class CountedLoopTest extends GraalCompilerTest {
         testCounted("shiftLargeLongSnippet");
     }
 
+    public static void scaledIVDirectionOverflowSnippet(int limit) {
+        for (int i = 0; i * 0x00808081 < limit; i += 255) {
+            // Because of overflow, 255 * 0x00808081 < 0; so limit checked iv is decreasing
+            GraalDirectives.sideEffect(i);
+        }
+    }
+
+    @Test
+    public void testScaledIVDirectionOverflow() {
+        testNotCountedWithDirection("scaledIVDirectionOverflowSnippet", InductionVariable.Direction.Down);
+    }
+
+    public static void basicIVDirectionOverflowSnippet(int selector, int limit) {
+        int stride = selector | Integer.MIN_VALUE;
+        /*
+         * stride has strictly negative stamp [MIN_VALUE, -1], and the stamp for -stride includes
+         * MIN_VALUE too Because this negated stamp is not strictly positive, iv direction is not
+         * constant, so this can't be a counted loop
+         */
+        for (int i = 0; i < limit; i -= stride) {
+            GraalDirectives.sideEffect(i);
+        }
+    }
+
+    @Test
+    public void testBasicIVDirectionOverflow() {
+        testNotCountedWithDirection("basicIVDirectionOverflowSnippet", null);
+    }
+
+    public static void offsetIVDirectionOverflowSnippet(int offset, int limit) {
+        for (int i = 0; offset - i < limit; i += Integer.MIN_VALUE) {
+            /*
+             * basicIV has stride < 0, direction = Down offsetIV with base as subtrahend negates the
+             * basic IV's stride, and because it is MIN_VALUE, the resulting stride is also < 0, so
+             * its direction should also be Down
+             */
+            GraalDirectives.sideEffect(i);
+        }
+    }
+
+    @Test
+    public void testOffsetIVDirectionOverflow() {
+        testNotCountedWithDirection("offsetIVDirectionOverflowSnippet", InductionVariable.Direction.Down);
+    }
+
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     private static class IVPropertyNode extends FloatingNode implements LIRLowerable {
         public static final NodeClass<IVPropertyNode> TYPE = NodeClass.create(IVPropertyNode.class);
@@ -748,5 +795,28 @@ public class CountedLoopTest extends GraalCompilerTest {
         test(snippetName, args);
         this.argsToBind = null;
         this.loopCanBeRemoved = false;
+    }
+
+    private void testNotCountedWithDirection(String snippetName, InductionVariable.Direction expectedDirection) {
+        StructuredGraph graph = parseEager(snippetName, StructuredGraph.AllowAssumptions.YES);
+        createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
+        LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
+        Assert.assertEquals("expected one loop", 1, loops.loops().size());
+        Loop loop = loops.loops().get(0);
+
+        CompareNode compare = graph.getNodes().filter(CompareNode.class).first();
+        Assert.assertNotNull("expected loop comparison", compare);
+        ValueNode checkedValue;
+        if (loop.isOutsideLoop(compare.getX())) {
+            checkedValue = compare.getY();
+        } else {
+            assertTrue("comparison must have loop invariant input", loop.isOutsideLoop(compare.getY()));
+            checkedValue = compare.getX();
+        }
+
+        InductionVariable limitCheckedIV = loop.getInductionVariables().get(checkedValue);
+        Assert.assertNotNull("loop comparison value must be an induction variable", limitCheckedIV);
+        Assert.assertEquals("direction", expectedDirection, limitCheckedIV.direction());
+        assertFalse("loop must not be counted", loop.detectCounted());
     }
 }
