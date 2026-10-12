@@ -47,6 +47,14 @@ public class GuestImageSingletonSupport {
         access.invoke(access.elements.HostedManagement_install, null);
     }
 
+    /**
+     * Clear the singleton registry in guest context.
+     */
+    public static void clear() {
+        GuestAccess access = GuestAccess.get();
+        access.invoke(access.elements.HostedManagement_clear, null);
+    }
+
     public static void add(Class<?> key, JavaConstant value) {
         GuestAccess access = GuestAccess.get();
         add(access.getProviders().getMetaAccess().lookupJavaType(key), value);
