@@ -36,14 +36,16 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.SequencedSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -136,9 +138,8 @@ public final class NativeLibraries {
     private final LinkedHashSet<CLibraryGuestValue> annotated;
     private final List<String> libraries;
     private final DependencyGraph dependencyGraph;
-    private final List<String> jniStaticLibraries;
     private final LinkedHashSet<String> libraryPaths;
-    private final Map<Path, StaticLibraryManifest> staticLibraryManifests;
+    private final ConcurrentMap<Path, StaticLibraryManifest> staticLibraryManifests;
 
     private final List<CInterfaceError> errors;
     private final ConstantReflectionProvider constantReflection;
@@ -201,7 +202,7 @@ public final class NativeLibraries {
 
         public List<String> sort() {
             final EconomicSet<Dependency> discovered = EconomicSet.create();
-            final Set<Dependency> processed = new LinkedHashSet<>();
+            final SequencedSet<Dependency> processed = new LinkedHashSet<>();
 
             for (Dependency dep : allDependencies.values()) {
                 visit(dep, discovered, processed);
@@ -284,7 +285,6 @@ public final class NativeLibraries {
          */
         libraries = Collections.synchronizedList(new ArrayList<>());
         dependencyGraph = new DependencyGraph();
-        jniStaticLibraries = Collections.synchronizedList(new ArrayList<>());
 
         libraryPaths = initCLibraryPath();
         staticLibraryManifests = new ConcurrentHashMap<>();
@@ -345,6 +345,7 @@ public final class NativeLibraries {
 
     private static LinkedHashSet<String> initCLibraryPath() {
         LinkedHashSet<String> libraryPaths = new LinkedHashSet<>();
+        Collection<String> requiredStaticJDKLibraries = PlatformNativeLibrarySupport.singleton().requiredStaticJDKLibraries();
 
         Path staticLibsDir = null;
         String hint = null;
@@ -353,20 +354,19 @@ public final class NativeLibraries {
         try {
             Path jdkLibDir = getPlatformDependentJDKStaticLibraryPath();
 
-            List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.requiredStaticJDKLibraries);
             Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(getStaticLibraryName(s)));
-            if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
+            if (requiredStaticJDKLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;
             } else {
                 String libraryLocationHint = System.lineSeparator() + "(search path: " + jdkLibDir + ")";
-                hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries: ", libraryLocationHint));
+                hint = requiredStaticJDKLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries: ", libraryLocationHint));
             }
 
             /* Probe for static JDK libraries in user-specified CLibraryPath directory */
             if (staticLibsDir == null) {
                 for (Path clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
                     Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(clibPathComponent.resolve(getStaticLibraryName(s)));
-                    if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
+                    if (requiredStaticJDKLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
                         staticLibsDir = clibPathComponent;
                         break;
                     }
@@ -383,7 +383,7 @@ public final class NativeLibraries {
 
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
-        } else {
+        } else if (!requiredStaticJDKLibraries.isEmpty()) {
             if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue() && !CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue() &&
                             !CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue() && !NativeImageOptions.ReturnAfterAnalysis.getValue()) {
                 /* Fail if we will statically link JDK libraries but do not have them available */
@@ -398,12 +398,10 @@ public final class NativeLibraries {
                 String className = ImageSingletons.lookup(Platform.class).getClass().getSimpleName();
                 // Checkstyle: disallow Class.getSimpleName
                 if (isMusl) {
-                    UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                    "Building images on %s%s is not supported on your platform.%nBuild on a different platform or try upgrading to a newer GraalVM release%n%s",
+                    throw UserError.abort("Building images on %s%s is not supported on your platform.%nBuild on a different platform or try upgrading to a newer GraalVM release%n%s",
                                     className, libCMessage, hint);
                 } else {
-                    UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                    "Building images on %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
+                    throw UserError.abort("Building images on %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
                                     className, libCMessage, jdkDownloadURL, hint);
                 }
             }
@@ -487,34 +485,24 @@ public final class NativeLibraries {
         }
     }
 
-    public void registerStaticJniLibrary(String library) {
-        jniStaticLibraries.add(library);
+    public void addStaticLibraryAndDependencies(String library) {
         walkStaticLibraryDependencies(library, dependencyGraph::add);
     }
 
-    public List<String> getStaticLibraryDependenciesIfPresent(String library) {
+    public List<String> getStaticLibraryDependencies(String library) {
         Path libraryPath = getStaticLibraryPath(allStaticLibs, library);
-        if (libraryPath != null) {
-            return getStaticLibraryManifest(libraryPath).dependencies();
-        }
-        return List.of();
+        return libraryPath == null ? null : getStaticLibraryManifest(libraryPath).dependencies();
     }
 
-    private List<String> getStaticLibraryDependencies(String library) {
-        Path libraryPath = getStaticLibraryPath(allStaticLibs, library);
-        VMError.guarantee(libraryPath != null, "Missing static library dependency: %s", library);
-        return getStaticLibraryManifest(libraryPath).dependencies();
-    }
-
-    public Set<String> getTransitiveStaticLibraryDependencies(String library) {
-        Set<String> dependencies = new LinkedHashSet<>();
+    public SequencedSet<String> getTransitiveStaticLibraryDependencies(String library) {
+        SequencedSet<String> dependencies = new LinkedHashSet<>();
         walkStaticLibraryDependencies(library, (_, directDependencies) -> dependencies.addAll(directDependencies));
-        return Collections.unmodifiableSet(dependencies);
+        return dependencies;
     }
 
     private void walkStaticLibraryDependencies(String root, BiConsumer<String, List<String>> visitor) {
         Deque<String> worklist = new ArrayDeque<>();
-        Set<String> visited = new LinkedHashSet<>();
+        Set<String> visited = new HashSet<>();
         worklist.add(root);
         while (!worklist.isEmpty()) {
             String library = worklist.removeFirst();
@@ -522,16 +510,17 @@ public final class NativeLibraries {
                 continue;
             }
             List<String> dependencies = getStaticLibraryDependencies(library);
+            VMError.guarantee(dependencies != null, "Missing static library dependency: %s", library);
             visitor.accept(library, dependencies);
             worklist.addAll(dependencies);
         }
     }
 
-    public void addDynamicNonJniLibrary(String library) {
+    public void addDynamicLibrary(String library) {
         libraries.add(library);
     }
 
-    public void addStaticNonJniLibrary(String library, String... dependencies) {
+    public void addStaticLibrary(String library, String... dependencies) {
         dependencyGraph.add(library, Arrays.asList(dependencies));
     }
 
@@ -565,24 +554,7 @@ public final class NativeLibraries {
         return getStaticLibraryManifest(libraryPath).symbols();
     }
 
-    public List<String> getStaticLibraryShimSymbols(String staticLibraryName) {
-        Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
-        if (libraryPath == null) {
-            return List.of();
-        }
-        return getStaticLibraryManifest(libraryPath).shimSymbols();
-    }
-
-    private static boolean isShimSymbol(String symbol) {
-        return !symbol.startsWith("JNI_OnLoad") && !symbol.startsWith("JNI_OnUnload") && !symbol.startsWith("Java_");
-    }
-
-    private static boolean isAdditionalWindowsShimSymbol(String symbol) {
-        /* Windows nio.dll imports this JNI entry point from java.dll. */
-        return Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && symbol.equals("Java_sun_security_provider_NativeSeedGenerator_nativeGenerateSeed");
-    }
-
-    private record StaticLibraryManifest(List<String> symbols, List<String> shimSymbols, List<String> dependencies) {
+    private record StaticLibraryManifest(List<String> symbols, List<String> dependencies) {
     }
 
     private StaticLibraryManifest getStaticLibraryManifest(Path libraryPath) {
@@ -613,9 +585,7 @@ public final class NativeLibraries {
                 VMError.guarantee(!line.startsWith(STATIC_LIBRARY_DEPENDENCY_PREFIX), "Malformed static library manifest: dependency after symbol in %s", symbolsPath);
                 symbols.add(line);
             }
-            List<String> shimSymbols = symbols.stream().filter(symbol -> isShimSymbol(symbol) || isAdditionalWindowsShimSymbol(symbol)).toList();
-            List<String> lookupSymbols = symbols.stream().filter(symbol -> !isShimSymbol(symbol)).toList();
-            return new StaticLibraryManifest(lookupSymbols, shimSymbols, List.copyOf(dependencies));
+            return new StaticLibraryManifest(List.copyOf(symbols), List.copyOf(dependencies));
         } catch (IOException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -652,7 +622,7 @@ public final class NativeLibraries {
     }
 
     private void collectAllStaticLibs() {
-        allStaticLibs = new LinkedHashMap<>();
+        allStaticLibs = new HashMap<>();
         String libSuffix = Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
@@ -829,15 +799,12 @@ public final class NativeLibraries {
         }
         for (CLibraryGuestValue lib : annotated) {
             if (lib.requireStatic()) {
-                addStaticNonJniLibrary(lib.value(), lib.dependsOn().toArray(String[]::new));
+                addStaticLibrary(lib.value(), lib.dependsOn().toArray(String[]::new));
             } else {
-                addDynamicNonJniLibrary(lib.value());
+                addDynamicLibrary(lib.value());
             }
         }
         annotated.clear();
     }
 
-    public List<String> getJniStaticLibraries() {
-        return jniStaticLibraries;
-    }
 }

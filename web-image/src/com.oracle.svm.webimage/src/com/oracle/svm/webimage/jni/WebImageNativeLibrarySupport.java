@@ -56,7 +56,7 @@ public class WebImageNativeLibrarySupport extends PlatformNativeLibrarySupport {
     }
 
     @Override
-    public boolean initializeJNILibraries() {
+    public boolean initializeLibrariesDuringIsolateInit() {
         return false;
     }
 

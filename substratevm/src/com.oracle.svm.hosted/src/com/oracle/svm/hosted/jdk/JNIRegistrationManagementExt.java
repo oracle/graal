@@ -42,7 +42,7 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
 
     private static void registerWindowsLibrarySupport(String library) {
         if (library.equals("management_ext")) {
-            NativeLibraries.singleton().addDynamicNonJniLibrary("psapi");
+            NativeLibraries.singleton().addDynamicLibrary("psapi");
         }
     }
 }

@@ -25,9 +25,10 @@
 package com.oracle.svm.hosted.jni;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -36,13 +37,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
@@ -67,14 +68,10 @@ public final class JNILibraryLinkagePlan {
     private final SortedMap<String, SortedSet<String>> shimExports = new TreeMap<>();
     private boolean manifestsProcessed;
 
-    private JNILibraryLinkagePlan(NativeLibraries nativeLibraries) {
-        this.nativeLibraries = nativeLibraries;
+    JNILibraryLinkagePlan() {
+        this.nativeLibraries = NativeLibraries.singleton();
 
         getJNILibraryLinkage().forEach((library, linkage) -> libraries.put(library, createLibrary(library, linkage)));
-    }
-
-    public static JNILibraryLinkagePlan create(NativeLibraries nativeLibraries) {
-        return new JNILibraryLinkagePlan(nativeLibraries);
     }
 
     public static JNILibraryLinkagePlan singleton() {
@@ -83,7 +80,7 @@ public final class JNILibraryLinkagePlan {
 
     private static Map<String, JNILibraryLinkage> getJNILibraryLinkage() {
 
-        Map<String, ValueWithOrigin<String>> finalEntries = new LinkedHashMap<>();
+        Map<String, ValueWithOrigin<String>> finalEntries = new HashMap<>();
         JNIRegistrationSupport.Options.JNILibraryLinkage.getValue().getValuesWithOrigins().forEach(entry -> {
             String value = entry.value();
             String[] parts = value.split(":", -1);
@@ -94,7 +91,7 @@ public final class JNILibraryLinkagePlan {
             finalEntries.put(parts[0], entry);
         });
 
-        Map<String, JNILibraryLinkage> result = new LinkedHashMap<>();
+        Map<String, JNILibraryLinkage> result = new HashMap<>();
         finalEntries.forEach((library, entry) -> {
             String value = entry.value();
             String[] parts = value.split(":", -1);
@@ -129,7 +126,7 @@ public final class JNILibraryLinkagePlan {
             case DYNAMIC -> new DynamicJNILibrary(library);
         };
         if (library.equals("java")) {
-            JNIPlatformNativeLibrarySupport.singleton().setJavaLibraryDynamic(linkage == JNILibraryLinkage.DYNAMIC);
+            JNIPlatformNativeLibrarySupport.singleton().setLibjavaDynamic(linkage == JNILibraryLinkage.DYNAMIC);
         }
         if (manifestsProcessed) {
             result.processManifests();
@@ -137,12 +134,12 @@ public final class JNILibraryLinkagePlan {
         return result;
     }
 
-    public void prepareBeforeAnalysis() {
+    void prepareBeforeAnalysis() {
         /*
          * Java code can reference entry points implemented by Native Image's libjvm
          * replacement, which is linked but never loaded explicitly as a JNI library.
          */
-        PlatformNativeLibrarySupport.singleton().addBuiltinNatives(nativeLibraries.getStaticLibrarySymbols("jvm"));
+        JNIPlatformNativeLibrarySupport.singleton().addBuiltinNatives(getBuiltinSymbols("jvm"));
         libraries.values().forEach(JNILibrary::processManifests);
         manifestsProcessed = true;
     }
@@ -172,11 +169,16 @@ public final class JNILibraryLinkagePlan {
         return candidate != null && candidate.isReachable() && !candidate.isStatic();
     }
 
+    public boolean isReachableStaticLibrary(String library) {
+        JNILibrary candidate = libraries.get(library);
+        return candidate != null && candidate.isReachable() && candidate.isStatic();
+    }
+
     /**
      * Freezes analysis reachability into linker inputs and shim requirements. This does not copy
      * dynamic libraries or create shims; those artifacts are emitted after the image is written.
      */
-    public void prepareAfterAnalysis() {
+    void prepareAfterAnalysis() {
         libraries.values().stream()
                         .filter(JNILibrary::isReachable)
                         .forEach(JNILibrary::prepareAfterAnalysis);
@@ -194,9 +196,26 @@ public final class JNILibraryLinkagePlan {
         return shimExports.keySet().stream().filter(this::hasRequiredShim).toList();
     }
 
-    public Collection<String> getShimExports(String library) {
+    public SortedSet<String> getShimExports(String library) {
         assert hasRequiredShim(library);
         return shimExports.get(library);
+    }
+
+    List<String> getBuiltinSymbols(String library) {
+        return nativeLibraries.getStaticLibrarySymbols(library).stream().filter(symbol -> !isShimSymbol(symbol)).toList();
+    }
+
+    private List<String> getShimSymbols(String library) {
+        return nativeLibraries.getStaticLibrarySymbols(library).stream().filter(symbol -> isShimSymbol(symbol) || isAdditionalWindowsShimSymbol(symbol)).toList();
+    }
+
+    private static boolean isShimSymbol(String symbol) {
+        return !symbol.startsWith("JNI_OnLoad") && !symbol.startsWith("JNI_OnUnload") && !symbol.startsWith("Java_");
+    }
+
+    private static boolean isAdditionalWindowsShimSymbol(String symbol) {
+        /* Windows nio.dll imports this JNI entry point from java.dll. */
+        return Platform.includedIn(InternalPlatform.WINDOWS_BASE.class) && symbol.equals("Java_sun_security_provider_NativeSeedGenerator_nativeGenerateSeed");
     }
 
     /** Returns all image symbols that must be preserved for planned shim libraries. */
@@ -209,7 +228,7 @@ public final class JNILibraryLinkagePlan {
     }
 
     private void requireShim(String library) {
-        List<String> symbols = nativeLibraries.getStaticLibraryShimSymbols(library);
+        List<String> symbols = getShimSymbols(library);
         VMError.guarantee(!symbols.isEmpty(), "Missing symbol manifest for shim library '%s'", library);
         addShimExports(library, symbols);
     }
@@ -220,7 +239,7 @@ public final class JNILibraryLinkagePlan {
 
     private abstract class JNILibrary {
         private final String library;
-        private List<String> dependencies = List.of();
+        private List<String> dependencies;
         private boolean manifestsProcessed;
         private boolean reachable;
 
@@ -233,12 +252,13 @@ public final class JNILibraryLinkagePlan {
         }
 
         List<String> getDependencies() {
+            VMError.guarantee(dependencies != null);
             return dependencies;
         }
 
         void processManifests() {
             assert !manifestsProcessed;
-            dependencies = nativeLibraries.getStaticLibraryDependenciesIfPresent(library);
+            dependencies = Optional.ofNullable(nativeLibraries.getStaticLibraryDependencies(library)).orElseGet(List::of);
             registerNativeSymbols();
             manifestsProcessed = true;
         }
@@ -267,7 +287,7 @@ public final class JNILibraryLinkagePlan {
 
         @Override
         void registerNativeSymbols() {
-            PlatformNativeLibrarySupport.singleton().addBuiltinNatives(nativeLibraries.getStaticLibrarySymbols(getLibrary()));
+            JNIPlatformNativeLibrarySupport.singleton().addBuiltinNatives(getBuiltinSymbols(getLibrary()));
         }
 
         @Override
@@ -282,7 +302,7 @@ public final class JNILibraryLinkagePlan {
                 }
             }
             NativeLibrarySupport.singleton().registerUninitializedBuiltinLibrary(getLibrary());
-            nativeLibraries.registerStaticJniLibrary(getLibrary());
+            nativeLibraries.addStaticLibraryAndDependencies(getLibrary());
         }
 
         @Override

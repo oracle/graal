@@ -76,7 +76,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     }
 
     @Override
-    public boolean initializeJNILibraries() {
+    public boolean initializeLibrariesDuringIsolateInit() {
         if (Isolates.isCurrentFirst()) { // raise process fd limit to hard max if possible
             Resource.rlimit rlp = UnsafeStackValue.get(Resource.rlimit.class);
             if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) == 0) {
@@ -97,7 +97,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             try {
-                loadJavaLibrary();
+                loadLibjava();
                 loadNetLibrary();
 
                 String launchMechanism = System.getProperty(PLM_PROPERTY_NAME);
@@ -134,8 +134,8 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     }
 
     @Override
-    protected void loadJavaLibrary() {
-        super.loadJavaLibrary();
+    protected void loadLibjava() {
+        super.loadLibjava();
         Target_java_io_UnixFileSystem_JNI.initIDs();
     }
 

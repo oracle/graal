@@ -404,7 +404,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         return javaHome;
     }
 
-    @NeverInline("Reads the return address.")
     private String sunBootLibraryPathValue() {
         if (!ClassRegistries.respectClassLoader()) {
             return null;
@@ -418,7 +417,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
      * dynamically linked {@code libjava} during isolate startup.
      */
     @NeverInline("Reads the return address.")
-    public String getBootLibraryPath() {
+    String getBootLibraryPath() {
         /*
          * Avoid java.io.File / java.nio.file.Path here. Initializing those classes needs system
          * properties that can recursively query java.home. The path comes from the loaded libjvm

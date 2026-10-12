@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
@@ -96,7 +96,7 @@ public class UserProvidedStaticLibraryTest {
             assertTrue(nativeLibraries.hasStaticLibrary(TEST_LIBRARY_NAME));
             assertEquals(List.of(TEST_SYMBOL), nativeLibraries.getStaticLibrarySymbols(TEST_LIBRARY_NAME));
             assertTrue(nativeLibraries.getLibraryPaths().contains(libraryDirectory.toString()));
-            assertTrue(PlatformNativeLibrarySupport.singleton().isBuiltinNative(TEST_SYMBOL));
+            assertTrue(JNIPlatformNativeLibrarySupport.singleton().isBuiltinNative(TEST_SYMBOL));
             assertEquals(Set.of(DIRECT_DEPENDENCY_NAME, TRANSITIVE_DEPENDENCY_NAME), nativeLibraries.getTransitiveStaticLibraryDependencies(TEST_LIBRARY_NAME));
             assertTrue(JNILibraryLinkagePlan.singleton().getReachableStaticLibraryNames().contains(TEST_LIBRARY_NAME));
         }

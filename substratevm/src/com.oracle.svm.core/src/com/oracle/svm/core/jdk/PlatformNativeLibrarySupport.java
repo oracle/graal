@@ -24,12 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -37,63 +33,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.shared.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
 
-    public static final String[] requiredStaticJDKLibraries = {
-                    "java",
-                    "nio",
-                    "net"
-    };
-
-    /// Names (without platform-specific prefixes or suffixes) of the default built-in libraries.
-    public static final List<String> defaultBuiltinLibraries = Stream.concat(Arrays.stream(requiredStaticJDKLibraries),
-                    Stream.of("extnet", "jaas", "sunmscapi", "zip", "management_agent", "attach", "management_ext", "prefs"))
-                    .toList();
-
     public static PlatformNativeLibrarySupport singleton() {
         return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);
-    }
-
-    protected PlatformNativeLibrarySupport() {
-        builtinNatives = new LinkedHashSet<>();
-    }
-
-    /**
-     * Determines if a library which has <em>not</em> been
-     * {@linkplain NativeLibrarySupport#registerUninitializedBuiltinLibrary pre-registered}
-     * during image generation is a built-in library.
-     */
-    public boolean isBuiltinLibrary(@SuppressWarnings("unused") String name) {
-        return false;
-    }
-
-    /// Stores JNI-mangled symbols that are associated with built-in native libraries.
-    private final Set<String> builtinNatives;
-
-    private boolean builtinNativesSealed;
-
-    /**
-     * Registers built-in JNI symbols that will be statically linked into the image.
-     * @see #isBuiltinNative
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void addBuiltinNatives(Collection<String> jniSymbols) {
-        if (builtinNativesSealed) {
-            throw VMError.shouldNotReachHere("Cannot register any more native built-ins because information has already been used.");
-        }
-        builtinNatives.addAll(jniSymbols);
-    }
-
-    /// Determines whether `jniSymbol` corresponds to a built-in native method.
-    /// The method checks for an exact match with a symbol previously registered with [#addBuiltinNatives].
-    ///
-    /// @param jniSymbol the JNI symbol name to evaluate.
-    /// @return `true` if the symbol corresponds to a built-in native method; `false` otherwise.
-    public boolean isBuiltinNative(String jniSymbol) {
-        builtinNativesSealed = true;
-        return builtinNatives.contains(jniSymbol);
     }
 
     public interface NativeLibrary {
@@ -113,12 +57,17 @@ public abstract class PlatformNativeLibrarySupport {
 
     public abstract NativeLibrary createLibrary(String canonical, boolean builtIn);
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Collection<String> requiredStaticJDKLibraries() {
+        return List.of();
+    }
+
     public abstract PointerBase findBuiltinSymbol(String name);
 
     /**
-     * Initializes JNI libraries during isolate creation.
+     * Initializes platform native-library support during isolate creation.
      *
      * @see Isolates#isCurrentFirst()
      */
-    public abstract boolean initializeJNILibraries();
+    public abstract boolean initializeLibrariesDuringIsolateInit();
 }

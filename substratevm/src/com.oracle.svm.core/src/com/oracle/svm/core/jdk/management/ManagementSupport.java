@@ -56,20 +56,20 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.GCRelatedMXBeans;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
@@ -281,7 +281,7 @@ public final class ManagementSupport implements ThreadListener {
             Object osMXBeanImpl;
             if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
                 /*
-                 * The substituted management path bypasses
+                 * The substituted management code paths bypass
                  * PlatformMBeanProviderImpl.<clinit>, which normally loads this library.
                  */
                 System.loadLibrary("management_ext");

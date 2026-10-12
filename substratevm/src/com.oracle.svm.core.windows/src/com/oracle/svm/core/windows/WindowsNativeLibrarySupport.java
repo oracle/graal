@@ -56,9 +56,9 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
     @Override
-    public boolean initializeJNILibraries() {
+    public boolean initializeLibrariesDuringIsolateInit() {
         try {
-            loadJavaLibrary();
+            loadLibjava();
             loadNetLibrary();
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();
@@ -68,8 +68,8 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     }
 
     @Override
-    protected void loadJavaLibrary() {
-        super.loadJavaLibrary();
+    protected void loadLibjava() {
+        super.loadLibjava();
         Target_java_io_WinNTFileSystem.initIDs();
 
         /* Initialize the handles of standard FileDescriptors. */

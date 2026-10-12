@@ -81,19 +81,41 @@ public final class NativeLibrarySupport extends NativeLibraries {
         knownLibraries.add(PlatformNativeLibrarySupport.singleton().createLibrary(name, true));
     }
 
-    @Platforms(HOSTED_ONLY.class)
-    public boolean isPreregisteredBuiltinLibrary(String name) {
-        return knownLibraries.stream().anyMatch(l -> l.isBuiltin() && l.getCanonicalIdentifier().equals(name));
-    }
-
     @Override
-    protected NativeLibrary addLibrary(String canonical, boolean builtin) {
+    protected boolean addLibrary(String canonical, boolean builtin) {
         return addLibrary(builtin, canonical, true);
     }
 
     @Override
-    protected NativeLibrary addLibrary(String canonical, boolean builtin, boolean initialize) {
+    protected boolean addLibrary(String canonical, boolean builtin, boolean initialize) {
         return addLibrary(builtin, canonical, initialize);
+    }
+
+    /**
+     * Loads the Java library before Java filesystem classes are initialized. Unlike
+     * {@link #loadLibraryRelative(String)}, this method must not use {@link java.io.File},
+     * {@link java.nio.file.Path}, or filesystem canonicalization.
+     */
+    NativeLibrary loadDynamicLibjava() {
+        String libName = System.mapLibraryName("java");
+        String runtimeLibraryPath = SystemPropertiesSupport.singleton().getBootLibraryPath();
+        if (runtimeLibraryPath != null) {
+            String canonical = SystemPropertiesSupport.joinPath(runtimeLibraryPath, libName);
+            if (addLibrary(canonical, false)) {
+                NativeLibrary lib = findLoadedLibrary(canonical);
+                if (lib != null) {
+                    VMError.guarantee(!lib.isBuiltin());
+                    return lib;
+                }
+            }
+        }
+        throw new UnsatisfiedLinkError("Can't load dynamically linked 'java' library, using runtime library path: " + runtimeLibraryPath);
+    }
+
+    void loadBuiltinLibjava() {
+        if (!addLibrary("java", true)) {
+            throw new UnsatisfiedLinkError("Can't load statically linked 'java' library.");
+        }
     }
 
     /**
@@ -108,14 +130,14 @@ public final class NativeLibrarySupport extends NativeLibraries {
         throw VMError.shouldNotReachHere(String.format("Built-in library %s was not found.", name));
     }
 
-    private NativeLibrary addLibrary(boolean asBuiltin, String canonical, boolean initialize) {
+    private boolean addLibrary(boolean asBuiltin, String canonical, boolean initialize) {
         lock.lock();
         try {
             NativeLibrary lib = null;
             for (NativeLibrary known : knownLibraries) {
                 if (canonical.equals(known.getCanonicalIdentifier())) {
                     if (known.isLoaded()) {
-                        return known;
+                        return true;
                     } else {
                         assert known.isBuiltin() : "non-built-in libraries must always have been loaded";
                         assert asBuiltin : "must have tried loading as built-in first";
@@ -125,12 +147,12 @@ public final class NativeLibrarySupport extends NativeLibraries {
                 }
             }
             if (asBuiltin && lib == null && (libraryInitializer == null || !libraryInitializer.isBuiltinLibrary(canonical))) {
-                return null;
+                return false;
             }
             // Libraries can load libraries during initialization, avoid recursion with a stack
             for (NativeLibrary loading : currentLoadContext) {
                 if (canonical.equals(loading.getCanonicalIdentifier())) {
-                    return loading;
+                    return true;
                 }
             }
             boolean created = false;
@@ -141,7 +163,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
             currentLoadContext.push(lib);
             try {
                 if (!lib.load()) {
-                    return null;
+                    return false;
                 }
                 /*
                  * Initialization of a library must be skipped if it can be initialized at most once
@@ -158,7 +180,30 @@ public final class NativeLibrarySupport extends NativeLibraries {
             if (created) {
                 knownLibraries.add(lib);
             }
-            return lib;
+            return true;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Returns the loaded library, or {@code null} if it is unknown, failed to load,
+     * or has not yet completed its load and initialization sequence.
+     */
+    private NativeLibrary findLoadedLibrary(String canonical) {
+        lock.lock();
+        try {
+            for (NativeLibrary loading : currentLoadContext) {
+                if (canonical.equals(loading.getCanonicalIdentifier())) {
+                    return null;
+                }
+            }
+            for (NativeLibrary known : knownLibraries) {
+                if (canonical.equals(known.getCanonicalIdentifier()) && known.isLoaded()) {
+                    return known;
+                }
+            }
+            return null;
         } finally {
             lock.unlock();
         }
@@ -176,7 +221,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
 
     /**
      * Records a process-wide initialized library in this isolate without invoking its initialization
-     * function again. The library may be built into the image or dynamically linked.
+     * function again. The library may have been built into the image or dynamically linked.
      */
     public void registerInitializedLibrary(String name) {
         loadLibraryRelative(name, false);

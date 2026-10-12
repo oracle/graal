@@ -100,13 +100,13 @@ final class LookupNativeLibraries extends NativeLibraries {
     private final List<PlatformNativeLibrarySupport.NativeLibrary> knownLibraries = new ArrayList<>();
 
     @Override
-    protected PlatformNativeLibrarySupport.NativeLibrary addLibrary(String canonical, boolean builtin) {
+    protected boolean addLibrary(String canonical, boolean builtin) {
         PlatformNativeLibrarySupport.NativeLibrary lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, builtin);
         if (!lib.load()) {
-            return null;
+            return false;
         }
         knownLibraries.add(lib);
-        return lib;
+        return true;
     }
 
     @Override

@@ -44,11 +44,11 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaUtil;
@@ -71,7 +71,9 @@ public final class JNINativeLinkage {
     private final CharSequence descriptor;
 
     private CGlobalDataInfo builtInAddress = null;
-    private String builtInSymbol = null;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private String builtInSymbol;
 
     /**
      * Creates an object for linking the address of a native method.
@@ -117,18 +119,20 @@ public final class JNINativeLinkage {
         return (String) descriptor;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public boolean isBuiltInFunction() {
         return getBuiltInSymbol() != null;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private String getBuiltInSymbol() {
         if (builtInSymbol == null) {
             String shortSymbol = getShortSymbol();
-            if (PlatformNativeLibrarySupport.singleton().isBuiltinNative(shortSymbol)) {
+            if (JNIPlatformNativeLibrarySupport.singleton().isBuiltinNative(shortSymbol)) {
                 builtInSymbol = shortSymbol;
             } else {
                 String longSymbol = getLongSymbol();
-                if (PlatformNativeLibrarySupport.singleton().isBuiltinNative(longSymbol)) {
+                if (JNIPlatformNativeLibrarySupport.singleton().isBuiltinNative(longSymbol)) {
                     builtInSymbol = longSymbol;
                 }
             }
@@ -225,7 +229,7 @@ public final class JNINativeLinkage {
         return entryPoint;
     }
 
-    /** Match HotSpot NativeLookup::lookup_style for one JNI-mangled symbol name. */
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.4-b23/src/hotspot/share/prims/nativeLookup.cpp#L252-L306")
     private static PointerBase lookup(Class<?> classObject, ClassLoader classLoader, String symbolName, String methodName) {
         if (classLoader == null) {
             CEntryPointLiteral<?> vmEntryPoint = VM_IMPLEMENTED_NATIVE_METHODS.get(symbolName);

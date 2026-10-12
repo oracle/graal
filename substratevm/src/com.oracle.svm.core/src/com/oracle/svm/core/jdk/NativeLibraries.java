@@ -38,7 +38,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.util.StringUtil;
@@ -85,7 +84,7 @@ public abstract class NativeLibraries {
      * Leaves name resolution to the underlying library loading mechanism (e.g. dlopen)
      */
     public void loadLibraryPlatformSpecific(String name) {
-        if (addLibrary(name, false) != null) {
+        if (addLibrary(name, false)) {
             return;
         }
         throw new UnsatisfiedLinkError("Can't load library: " + name);
@@ -147,30 +146,6 @@ public abstract class NativeLibraries {
         throw new UnsatisfiedLinkError("Can't load library: " + name + " | java.library.path = " + Arrays.toString(usrPaths));
     }
 
-    /**
-     * Loads the Java library before Java filesystem classes are initialized. Unlike
-     * {@link #loadLibraryRelative(String)}, this method must not use {@link File}, {@link Path},
-     * or filesystem canonicalization.
-     */
-    public NativeLibrary loadDynamicJavaLibrary() {
-        String libName = System.mapLibraryName("java");
-        String runtimeLibraryPath = SystemPropertiesSupport.singleton().getBootLibraryPath();
-        if (runtimeLibraryPath != null) {
-            NativeLibrary lib = addLibrary(SystemPropertiesSupport.joinPath(runtimeLibraryPath, libName), false);
-            if (lib != null) {
-                return lib;
-            }
-        }
-        throw new UnsatisfiedLinkError("Can't load dynamically linked java library | runtime library path: " + runtimeLibraryPath);
-    }
-
-    public void loadBuiltinJavaLibrary() {
-        NativeLibrary lib = addLibrary("java", true);
-        if (lib == null) {
-            throw new UnsatisfiedLinkError("Can't load statically linked java library.");
-        }
-    }
-
     private boolean loadLibrary0(File file, boolean builtin) {
         return loadLibrary0(file, builtin, true);
     }
@@ -178,18 +153,17 @@ public abstract class NativeLibraries {
     private boolean loadLibrary0(File file, boolean builtin, boolean initialize) {
         try {
             String canonical = builtin ? file.getName() : file.getCanonicalPath();
-            return addLibrary(canonical, builtin, initialize) != null;
+            return addLibrary(canonical, builtin, initialize);
         } catch (IOException e) {
             return false;
         }
     }
 
-    @SuppressWarnings("unused")
-    protected NativeLibrary addLibrary(String canonical, boolean builtin, boolean initialize) {
+    protected boolean addLibrary(String canonical, boolean builtin, @SuppressWarnings("unused") boolean initialize) {
         return addLibrary(canonical, builtin);
     }
 
-    protected abstract NativeLibrary addLibrary(String canonical, boolean builtin);
+    protected abstract boolean addLibrary(String canonical, boolean builtin);
 
     public abstract PointerBase findSymbol(String name);
 }

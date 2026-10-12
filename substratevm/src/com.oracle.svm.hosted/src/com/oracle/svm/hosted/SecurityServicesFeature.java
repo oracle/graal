@@ -522,8 +522,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* Library sunmscapi depends on ncrypt and crypt32 */
-        nativeLibraries.addDynamicNonJniLibrary("ncrypt");
-        nativeLibraries.addDynamicNonJniLibrary("crypt32");
+        nativeLibraries.addDynamicLibrary("ncrypt");
+        nativeLibraries.addDynamicLibrary("crypt32");
 
         registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",

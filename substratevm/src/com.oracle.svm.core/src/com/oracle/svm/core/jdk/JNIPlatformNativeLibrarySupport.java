@@ -26,8 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
@@ -52,71 +55,113 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
+    public static final List<String> requiredStaticJDKLibraries = List.of("java", "nio", "net");
+
+    /// Names (without platform-specific prefixes or suffixes) of the default built-in JNI libraries.
+    public static final List<String> defaultBuiltinLibraries = Stream.concat(requiredStaticJDKLibraries.stream(),
+                    Stream.of("extnet", "jaas", "sunmscapi", "zip", "management_agent", "attach", "management_ext", "prefs"))
+                    .toList();
+
+    /// Stores JNI-mangled symbols that are associated with built-in native libraries.
+    private final Set<String> builtinNatives = new HashSet<>();
+
+    private boolean builtinNativesSealed;
+
+    private Set<String> libjavaSymbols;
+
+    private Boolean libjavaDynamic;
+
+    private volatile NativeLibrary dynamicLibjava;
+
     public static JNIPlatformNativeLibrarySupport singleton() {
         return (JNIPlatformNativeLibrarySupport) PlatformNativeLibrarySupport.singleton();
     }
 
-    private Set<String> javaLibrarySymbols;
-
-    private boolean javaLibraryDynamic;
-
+    @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setJavaLibrarySymbols(List<String> symbolNames) {
-        javaLibrarySymbols = Set.copyOf(symbolNames);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setJavaLibraryDynamic(boolean dynamic) {
-        javaLibraryDynamic = dynamic;
-    }
-
-    @Fold
-    protected static boolean isJavaLibraryDynamic() {
-        return singleton().javaLibraryDynamic;
+    public Collection<String> requiredStaticJDKLibraries() {
+        return requiredStaticJDKLibraries;
     }
 
     /**
-     * Looks up a symbol in the table generated for statically linked JNI libraries.
+     * Registers built-in JNI symbols that will be statically linked into the image.
+     * @see #isBuiltinNative
      */
-    public static PointerBase svmFindBuiltinSymbol(String name) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addBuiltinNatives(Collection<String> jniSymbols) {
+        if (builtinNativesSealed) {
+            throw VMError.shouldNotReachHere("Cannot register any more native built-ins because information has already been used.");
+        }
+        builtinNatives.addAll(jniSymbols);
+    }
+
+    /// Determines whether `jniSymbol` corresponds to a built-in native method.
+    /// The method checks for an exact match with a symbol previously registered with [#addBuiltinNatives].
+    ///
+    /// @param jniSymbol the JNI symbol name to evaluate.
+    /// @return `true` if the symbol corresponds to a built-in native method; `false` otherwise.
+    public boolean isBuiltinNative(String jniSymbol) {
+        builtinNativesSealed = true;
+        return builtinNatives.contains(jniSymbol);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setLibjavaSymbols(List<String> symbolNames) {
+        libjavaSymbols = Set.copyOf(symbolNames);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setLibjavaDynamic(boolean dynamic) {
+        VMError.guarantee(libjavaDynamic == null);
+        libjavaDynamic = dynamic;
+    }
+
+    @Fold
+    protected static boolean isLibjavaDynamic() {
+        Boolean dynamic = singleton().libjavaDynamic;
+        VMError.guarantee(dynamic != null);
+        return dynamic;
+    }
+
+    static PointerBase findStaticLibrarySymbol(String name) {
         try (CTypeConversion.CCharPointerHolder nameHolder = CTypeConversion.toCString(name)) {
             return svmFindBuiltinSymbol(nameHolder.get());
         }
     }
 
+    /**
+     * Looks up a symbol in the table generated for statically linked JNI libraries.
+     */
     @CFunction(value = "__svm_find_builtin_symbol", transition = NO_TRANSITION)
     private static native Pointer svmFindBuiltinSymbol(CCharPointer name);
 
-    private volatile NativeLibrary dynamicJavaLibrary;
-
-    private NativeLibrary getDynamicJavaLibrary() {
-        VMError.guarantee(isJavaLibraryDynamic(), "The java library is statically linked");
-        VMError.guarantee(dynamicJavaLibrary != null, "The dynamically linked java library has not been loaded");
-        return dynamicJavaLibrary;
+    private NativeLibrary getDynamicLibjava() {
+        VMError.guarantee(isLibjavaDynamic());
+        VMError.guarantee(dynamicLibjava != null, "The dynamically linked java library has not been loaded");
+        return dynamicLibjava;
     }
 
     /** Looks up a symbol in the dynamically or statically linked Java library. */
     public PointerBase findJavaLibrarySymbol(String symbolName) {
-        if (isJavaLibraryDynamic()) {
-            NativeLibrary library = getDynamicJavaLibrary();
-            assert !library.isBuiltin();
+        if (isLibjavaDynamic()) {
+            NativeLibrary library = getDynamicLibjava();
             return library.findSymbol(symbolName);
-        } else if (javaLibrarySymbols.contains(symbolName)) {
-            assert PlatformNativeLibrarySupport.singleton().isBuiltinNative(symbolName);
+        } else if (libjavaSymbols.contains(symbolName)) {
+            assert isBuiltinNative(symbolName);
             VMError.guarantee(RuntimeClassLoading.isSupported(), "Built-in linkage should have been resolved at native image build-time.");
-            return svmFindBuiltinSymbol(symbolName);
+            return findStaticLibrarySymbol(symbolName);
         }
         return Word.nullPointer();
     }
 
     @SuppressWarnings("restricted")
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
-    protected void loadJavaLibrary() {
-        if (isJavaLibraryDynamic()) {
-            VMError.guarantee(dynamicJavaLibrary == null, "The dynamically linked java library has already been loaded");
-            dynamicJavaLibrary = NativeLibrarySupport.singleton().loadDynamicJavaLibrary();
+    protected void loadLibjava() {
+        if (isLibjavaDynamic()) {
+            VMError.guarantee(dynamicLibjava == null);
+            dynamicLibjava = NativeLibrarySupport.singleton().loadDynamicLibjava();
         } else {
-            NativeLibrarySupport.singleton().loadBuiltinJavaLibrary();
+            NativeLibrarySupport.singleton().loadBuiltinLibjava();
         }
 
         Target_java_io_FileDescriptor_JNI.initIDs();
@@ -151,9 +196,9 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
      */
     private void initializeEncoding() {
         try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(System.getProperty("sun.jnu.encoding"))) {
-            if (isJavaLibraryDynamic()) {
-                PointerBase initializeEncoding = getDynamicJavaLibrary().findSymbol("InitializeEncoding");
-                VMError.guarantee(initializeEncoding.isNonNull(), "Missing InitializeEncoding in the java library");
+            if (isLibjavaDynamic()) {
+                PointerBase initializeEncoding = getDynamicLibjava().findSymbol("InitializeEncoding");
+                VMError.guarantee(initializeEncoding.isNonNull());
                 ((InitializeEncodingFunctionPointer) initializeEncoding).invoke(CurrentIsolate.getCurrentThread(), name.get());
             } else {
                 nativeInitializeEncoding(CurrentIsolate.getCurrentThread(), name.get());
