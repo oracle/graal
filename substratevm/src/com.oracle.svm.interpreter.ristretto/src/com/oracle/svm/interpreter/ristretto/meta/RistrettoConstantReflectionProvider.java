@@ -48,16 +48,24 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * instance fields, Crema mirrors the AOT layout used by Native Image. For static fields, however,
  * Crema stores them in a special array within
  * {@link com.oracle.svm.interpreter.metadata.CremaResolvedObjectType}.
+ * During profile replay, uninitialized static storage cannot be read as a constant because its
+ * initialization barrier executes only when the compiled code runs.
  */
 public class RistrettoConstantReflectionProvider extends SubstrateConstantReflectionProvider implements TypeReachedProvider {
 
     private final SnippetReflectionProvider snippetReflectionProvider;
     private final MethodHandleAccessProvider methodHandleAccessProvider;
+    /**
+     * Whether this provider compiles prepared profiles. Replay emits runtime initialization
+     * barriers, so static fields of uninitialized classes must not be folded from default storage.
+     */
+    private final boolean replay;
 
-    public RistrettoConstantReflectionProvider(SubstrateMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider) {
+    public RistrettoConstantReflectionProvider(SubstrateMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider, boolean replay) {
         super(metaAccess);
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.methodHandleAccessProvider = new RistrettoMethodHandleAccessProvider(snippetReflectionProvider);
+        this.replay = replay;
     }
 
     @Override
@@ -71,6 +79,11 @@ public class RistrettoConstantReflectionProvider extends SubstrateConstantReflec
 
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+        // A replay-time initialization barrier has not executed yet; static storage may
+        // still contain default values rather than the class initializer's results.
+        if (replay && field.isStatic() && !field.getDeclaringClass().isInitialized()) {
+            return null;
+        }
         if (field instanceof RistrettoField rField && RistrettoUtils.isRuntimeLoaded(rField.getDeclaringClass())) {
             final InterpreterResolvedJavaField iField = rField.getInterpreterField();
             Object baseObject;

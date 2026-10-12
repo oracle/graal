@@ -60,7 +60,6 @@ import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
-import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.guest.staging.log.Log;
@@ -80,7 +79,6 @@ import com.oracle.svm.interpreter.ristretto.compile.RistrettoNoDeoptPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoOnStackReplacementPhase;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoSpeculationLog;
 import com.oracle.svm.interpreter.ristretto.compile.RistrettoSpeculationLog.CompilationSpeculationLog;
-import com.oracle.svm.interpreter.ristretto.meta.RistrettoConstantReflectionProvider;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoField;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
@@ -100,6 +98,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.GraalCompiler;
+import jdk.graal.compiler.core.ProfileReplaySupport;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
@@ -314,8 +313,16 @@ public class RistrettoUtils {
                     ResolvedJavaMethod doubleLocal, ResolvedJavaMethod objectLocal, ResolvedJavaMethod lockObject) {
     }
 
+    /** Profile capture may resolve class names and requires a thread that permits class loading. */
     public static CompilationResult compile(DebugContext debug, final SubstrateMethod method) {
         return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method);
+    }
+
+    /** Compiles with profiles prepared before entering a compiler thread that cannot load classes. */
+    public static CompilationResult compile(DebugContext debug, RistrettoMethod method, RistrettoProfileReplay profiles) {
+        GraalError.guarantee(profiles != null, "Prepared Ristretto profiles must not be null");
+        return doCompile(debug, RuntimeCompilationSupport.getRuntimeConfig(), RuntimeCompilationSupport.getLIRSuites(), method, INVOCATION_ENTRY_BCI,
+                        method.getSubstrateSpeculationLog(), StructuredGraph.AllowAssumptions.YES, profiles);
     }
 
     /**
@@ -348,7 +355,7 @@ public class RistrettoUtils {
             StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                             .profileProvider(profileProvider).compilationId(compilationId).build();
             assert graph != null;
-            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(INVOCATION_ENTRY_BCI);
+            PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(INVOCATION_ENTRY_BCI, false);
             HighTierContext hc = new HighTierContext(runtimeConfig.getProviders(), null, OptimisticOptimizations.ALL);
             parseFromBytecode(graph, ristrettoGraphBuilderSuite, hc);
             return graph;
@@ -381,11 +388,23 @@ public class RistrettoUtils {
 
     /** Uses the caller's debug context so it remains open through publication. */
     public static SubstrateInstalledCodeImpl compileAndInstall(RistrettoMethod rMethod, int entryBCI, DebugContext debug, Predicate<SubstrateInstalledCodeImpl> publish) {
+        return compileAndInstall(rMethod, entryBCI, debug, null, publish);
+    }
+
+    /** Compiles with prepared profiles and publishes under the runtime-assumption lock. */
+    public static SubstrateInstalledCodeImpl compileAndInstallWithProfiles(RistrettoMethod rMethod, int entryBCI, DebugContext debug, RistrettoProfileReplay profiles,
+                    Predicate<SubstrateInstalledCodeImpl> publish) {
+        GraalError.guarantee(profiles != null, "Prepared Ristretto profiles must not be null");
+        return compileAndInstall(rMethod, entryBCI, debug, profiles, publish);
+    }
+
+    private static SubstrateInstalledCodeImpl compileAndInstall(RistrettoMethod rMethod, int entryBCI, DebugContext debug, RistrettoProfileReplay profiles,
+                    Predicate<SubstrateInstalledCodeImpl> publish) {
         Objects.requireNonNull(publish, "publish");
         if (RistrettoOptions.JITTraceCompilation.getValue()) {
             Log.log().string("[Ristretto Compiler] Starting compilation of ").string(rMethod.format("%H.%n(%p)")).newline();
         }
-        return compileAndInstallIfSpeculationsStillValid(rMethod, RuntimeCompilationSupport.getRuntimeConfig(), debug, entryBCI, publish);
+        return compileAndInstallIfSpeculationsStillValid(rMethod, RuntimeCompilationSupport.getRuntimeConfig(), debug, entryBCI, profiles, publish);
     }
 
     /**
@@ -397,16 +416,16 @@ public class RistrettoUtils {
      * the caller publishes the code through {@link RistrettoMethod#onCompilationSuccess}.
      */
     private static SubstrateInstalledCodeImpl compileAndInstallIfSpeculationsStillValid(RistrettoMethod rMethod, RuntimeConfiguration runtimeConfiguration, DebugContext debug, int entryBCI,
-                    Predicate<SubstrateInstalledCodeImpl> publish) {
+                    RistrettoProfileReplay profiles, Predicate<SubstrateInstalledCodeImpl> publish) {
         RistrettoSpeculationLog methodSpeculationLog = rMethod.getSubstrateSpeculationLog();
         CompilationSpeculationLog compilationSpeculationLog = methodSpeculationLog.createCompilationLog();
         boolean useDeoptimization = RistrettoOptions.useDeoptimization();
         CompilationResult compilationResult = doCompile(debug, runtimeConfiguration, RuntimeCompilationSupport.getLIRSuites(), rMethod, entryBCI, compilationSpeculationLog,
-                        useDeoptimization ? StructuredGraph.AllowAssumptions.YES : StructuredGraph.AllowAssumptions.NO);
+                        useDeoptimization ? StructuredGraph.AllowAssumptions.YES : StructuredGraph.AllowAssumptions.NO, profiles);
         if (useDeoptimization && hasUnsupportedRuntimeAssumption(compilationResult)) {
             compilationSpeculationLog = methodSpeculationLog.createCompilationLog();
             compilationResult = doCompile(debug, runtimeConfiguration, RuntimeCompilationSupport.getLIRSuites(), rMethod, entryBCI, compilationSpeculationLog,
-                            StructuredGraph.AllowAssumptions.NO);
+                            StructuredGraph.AllowAssumptions.NO, profiles);
         }
         SnippetReflectionProvider snippetReflection = runtimeConfiguration.getProviders().getSnippetReflection();
         Assumption[] runtimeAssumptions = useDeoptimization ? copyRuntimeAssumptions(compilationResult, snippetReflection) : new Assumption[0];
@@ -684,6 +703,11 @@ public class RistrettoUtils {
 
     private static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, SubstrateMethod method, int entryBCI,
                     SpeculationLog speculationLog, StructuredGraph.AllowAssumptions allowAssumptions) {
+        return doCompile(initialDebug, runtimeConfig, lirSuites, method, entryBCI, speculationLog, allowAssumptions, null);
+    }
+
+    private static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, SubstrateMethod method, int entryBCI,
+                    SpeculationLog speculationLog, StructuredGraph.AllowAssumptions allowAssumptions, RistrettoProfileReplay profiles) {
         GraalError.guarantee(method instanceof RistrettoMethod, "Ristretto runtime compilation requires a Ristretto method: %s", method);
         RistrettoMethod ristrettoMethod = (RistrettoMethod) method;
         SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(runtimeConfig.lookupBackend(method));
@@ -727,14 +751,15 @@ public class RistrettoUtils {
                      * concurrent deoptimization and compilation.
                      */
                     speculationLog.collectFailedSpeculations();
-                    final ProfileProvider profileProvider = new StableProfileProvider();
+                    final StableProfileProvider profileProvider = RistrettoProfileReplaySupport.createProfileProvider(options, ristrettoMethod, entryBCI, profiles);
+                    ProfileReplaySupport profileReplay = RistrettoProfileReplaySupport.startCapture(debug, entryBCI, ristrettoMethod, profileProvider);
                     graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).speculationLog(speculationLog)
                                     .profileProvider(profileProvider).compilationId(compilationId).entryBCI(entryBCI).build();
                     if (!RistrettoOptions.useDeoptimization()) {
                         graph.getGraphState().configureExplicitExceptionsNoDeopt();
                     }
                     assert graph != null;
-                    PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(entryBCI);
+                    PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite = ristrettoGraphBuilderSuite(entryBCI, profiles != null);
                     suites = preparePrivateSuitesForRistretto(RuntimeCompilationSupport.getMatchingSuitesForGraph(graph), options);
                     if (TestingBackdoor.shouldRememberGraph()) {
                         TestingBackdoor.installLastGraphThieves(suites, graph);
@@ -753,8 +778,7 @@ public class RistrettoUtils {
                     // use our ristretto meta access
                     providers = providers.copyWith(new RistrettoMetaAccess(providers.getMetaAccess()));
 
-                    // and the ristretto constant reflection
-                    providers = providers.copyWith(new RistrettoConstantReflectionProvider((SubstrateMetaAccess) providers.getMetaAccess(), providers.getSnippetReflection()));
+                    providers = RistrettoProfileReplaySupport.configureProviders(providers, profiles != null);
 
                     SubstrateReplacements substrateReplacements = (SubstrateReplacements) providers.getReplacements();
 
@@ -775,6 +799,9 @@ public class RistrettoUtils {
                                     result,
                                     CompilationResultBuilderFactory.Default,
                                     false));
+                    if (profileReplay != null && !hasUnsupportedRuntimeAssumption(result)) {
+                        profileReplay.profileReplayEpilogue(debug, result, graph, profileProvider, compilationId, entryBCI, method);
+                    }
                     return result;
                 }
             }
@@ -902,9 +929,11 @@ public class RistrettoUtils {
         return new OptimisticOptimizations(effectiveProfileProvider.getProfilingInfo(null, method, true, false), options);
     }
 
-    private static PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite(int entryBCI) {
+    private static PhaseSuite<HighTierContext> ristrettoGraphBuilderSuite(int entryBCI, boolean replay) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
-        suite.appendPhase(createRistrettoGraphBuilder(createRistrettoGraphBuilderConfiguration()));
+        GraphBuilderConfiguration configuration = createRistrettoGraphBuilderConfiguration();
+        RistrettoProfileReplaySupport.configureGraphBuilder(configuration, replay);
+        suite.appendPhase(createRistrettoGraphBuilder(configuration));
         if (entryBCI != INVOCATION_ENTRY_BCI) {
             suite.appendPhase(new RistrettoOnStackReplacementPhase());
         }

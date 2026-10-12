@@ -35,6 +35,11 @@ public final class MethodHandleInterpreterUtils {
     private MethodHandleInterpreterUtils() {
     }
 
+    /// Returns the existing VM entry, possibly null, without preparing the handle's form.
+    public static Target_java_lang_invoke_MemberName peekVMEntry(MethodHandle handle) {
+        return SubstrateUtil.cast(handle, Target_java_lang_invoke_MethodHandle.class).internalForm().vmentry;
+    }
+
     public static Target_java_lang_invoke_MemberName extractVMEntry(MethodHandle handle) {
         return extractVMEntry(SubstrateUtil.cast(handle, Target_java_lang_invoke_MethodHandle.class));
     }

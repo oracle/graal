@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot;
+package jdk.graal.compiler.core;
 
-import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.LoadProfiles;
-import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.ProfileMethodFilter;
-import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.SaveProfiles;
-import static jdk.graal.compiler.hotspot.ProfileReplaySupport.Options.StrictProfiles;
+import static jdk.graal.compiler.core.ProfileReplaySupport.Options.LoadProfiles;
+import static jdk.graal.compiler.core.ProfileReplaySupport.Options.ProfileMethodFilter;
+import static jdk.graal.compiler.core.ProfileReplaySupport.Options.SaveProfiles;
+import static jdk.graal.compiler.core.ProfileReplaySupport.Options.StrictProfiles;
 
 import java.io.File;
 import java.io.FileReader;

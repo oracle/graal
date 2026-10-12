@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
+import jdk.graal.compiler.core.ProfileReplaySupport;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
@@ -58,7 +59,6 @@ import jdk.graal.compiler.hotspot.HotSpotCompilationIdentifier;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
-import jdk.graal.compiler.hotspot.ProfileReplaySupport;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replaycomp.HardwarePerformanceCounters;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
