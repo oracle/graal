@@ -84,9 +84,9 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * enable lazy binding.
  *
  * Native Image constructs the GOT during the image build by assigning each eligible method an entry
- * into the GOT. At runtime, the GOT is represented as an array of pointers mapped right before the
- * image heap. Multiple isolates all see the same GOT. Direct calls of eligible methods are replaced
- * with indirect calls that load the method's address from the GOT.
+ * into the GOT. At runtime, the GOT is represented as an array of pointers mapped before the heap
+ * base. Multiple isolates all see the same GOT. Direct calls of eligible methods are replaced with
+ * indirect calls that load the method's address from the GOT.
  *
  * For each eligible method, Native Image constructs a PLT stub. Initially, each GOT entry points to
  * the PLT stub of the method assigned to that GOT entry. Vtable entries of eligible methods also
@@ -99,7 +99,7 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * </ol>
  * Native image emits direct calls as IP relative calls. If a method is directly called and requires
  * the PLT/GOT, these calls are instead emitted as indirect calls where the address of the method to
- * call is located at HEAP_BASE_REGISTER - (METHOD_GOT_ENTRY_NO * WORD_SIZE). Indirect calls, used
+ * call is located at HEAP_BASE_REGISTER - ((METHOD_GOT_ENTRY_NO + 1) * WORD_SIZE). Indirect calls, used
  * for virtual calls, are unchanged. For virtual calls, each vtable entry is rewritten to point to
  * the PLT stub associated with the method we are calling, and it will never change during program
  * execution. As a consequence, virtual calls for methods that are resolved with the PLT/GOT
@@ -247,7 +247,7 @@ public class PLTGOTFeature implements InternalFeature {
 
         if (PLTGOTOptions.PrintGOT.getValue()) {
             ReportUtils.report("GOT Section contents", SubstrateOptions.reportsPath(), "got", "txt", writer -> {
-                writer.println("GOT Entry No | GOT Entry Offset From Image Heap Register | Method Name");
+                writer.println("GOT Entry No | GOT Entry Offset From Heap Base Register | Method Name");
                 for (int i = 0; i < got.length; ++i) {
                     writer.printf("%5X %5X %s%n", i, -GOTAccess.getGOTEntryOffsetFromHeapRegister(i), got[i].toString());
                 }

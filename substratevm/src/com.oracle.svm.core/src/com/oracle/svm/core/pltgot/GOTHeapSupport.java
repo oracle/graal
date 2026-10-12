@@ -37,6 +37,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -102,8 +103,8 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected static UnsignedWord getPageAlignedGOTSize() {
         UnsignedWord gotSectionSize = getGOTSectionSize();
-        UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        return PointerUtils.roundUp((PointerBase) gotSectionSize, pageSize);
+        UnsignedWord imagePageSize = Word.unsigned(SubstrateOptions.getPageSize());
+        return PointerUtils.roundUp((PointerBase) gotSectionSize, imagePageSize);
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -166,6 +167,7 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
         if (writable) {
             access |= Access.WRITE;
         }
+        // GR-79030: coordinate protection of the process-wide GOT mapping across isolates.
         int ret = VirtualMemoryProvider.get().protect(gotMappingStartAddress, getPageAlignedGOTSize(), access);
         VMError.guarantee(ret == 0, "Failed to change GOT protection.");
     }
