@@ -566,7 +566,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    String rewriteBundleHostedOptionArgument(String builderArgument, Function<String, String> pathRewriter) {
+    String rewriteBundleHostedOptionArgument(String builderArgument, BiFunction<String, BundleMember.Role, String> pathRewriter) {
         BuilderArgumentParts argumentParts = BuilderArgumentParts.from(builderArgument);
         if (argumentParts.optionValue == null) {
             return builderArgument;
@@ -587,7 +587,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
      * or the original option head plus a rewritten following value.
      * </p>
      */
-    List<String> rewriteBundleAPIOptionArgument(ArrayDeque<String> args, Function<String, String> pathRewriter) {
+    List<String> rewriteBundleAPIOptionArgument(ArrayDeque<String> args, BiFunction<String, BundleMember.Role, String> pathRewriter) {
         // Inspect the current head argument without consuming it so non-matches leave the queue
         // untouched.
         String headArg = args.peek();
@@ -666,8 +666,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return builderOption.endsWith("=") ? builderOption.substring(0, builderOption.length() - 1) : builderOption;
     }
 
-    private static String rewritePathAggregate(String value, PathsOptionInfo info, Function<String, String> pathRewriter) {
-        return rewritePathAggregate(value, info.delimiter::isEmpty, info.delimiter, info.delimiter, entry -> info.rewriteEntry(entry, pathRewriter));
+    private static String rewritePathAggregate(String value, PathsOptionInfo info, BiFunction<String, BundleMember.Role, String> pathRewriter) {
+        return rewritePathAggregate(value, info.delimiter::isEmpty, info.delimiter, info.delimiter, entry -> info.rewriteEntry(entry, path -> pathRewriter.apply(path, info.role)));
     }
 
     static String rewritePathAggregate(String value, BooleanSupplier isSingleValue, String splitDelimiter, String joinDelimiter, Function<String, String> pathRewriter) {

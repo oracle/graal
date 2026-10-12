@@ -422,7 +422,7 @@ public class BundleLauncher {
                 Enumeration<JarEntry> jarEntries = archive.entries();
                 while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
                     JarEntry jarEntry = jarEntries.nextElement();
-                    Path bundleEntry = rootDir.resolve(jarEntry.getName()).toAbsolutePath().normalize();
+                    Path bundleEntry = rootDir.resolve(BundleLauncherUtil.materializePortablePath(jarEntry.getName())).toAbsolutePath().normalize();
                     try {
                         if (!bundleEntry.startsWith(normalizedRootDir)) {
                             throw new Error("Bundle entry '" + jarEntry.getName() + "' resolves outside of " + normalizedRootDir);

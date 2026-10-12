@@ -63,6 +63,7 @@ import com.oracle.svm.driver.BundlePathMap.PathStyle;
 import com.oracle.svm.driver.BundlePathMap.PortablePath;
 import com.oracle.svm.driver.BundlePathMap.RootKind;
 import com.oracle.svm.driver.launcher.BundleLauncher;
+import com.oracle.svm.driver.launcher.BundleLauncherUtil;
 import com.oracle.svm.driver.launcher.ContainerSupport;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser.ArgumentGroup;
@@ -92,8 +93,9 @@ final class BundleSupport {
     final Path imagePathOutputDir;
     final Path auxiliaryOutputDir;
 
-    private final Map<PortablePath, PortablePath> pathCanonicalizations = new HashMap<>();
-    private final Map<PortablePath, PortablePath> pathSubstitutions = new HashMap<>();
+    final Map<PortablePath, PortablePath> pathCanonicalizations = new HashMap<>();
+    final Map<PortablePath, PortablePath> pathSubstitutions = new HashMap<>();
+    private final Map<Path, PortablePath> outputReservations = new HashMap<>();
     private final Map<Path, PortablePath> nativeToPortablePath = new HashMap<>();
     private Path unavailablePathRoot;
 
@@ -105,7 +107,7 @@ final class BundleSupport {
     boolean loadBundle;
     boolean writeBundle;
 
-    private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 2;
+    private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 3;
     private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 0;
 
     static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
@@ -347,7 +349,7 @@ final class BundleSupport {
         outputDir = rootDir.resolve("output");
 
         Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
-        nativeImage.archiveSupport().expandJarToDir(e -> relativizeBundleEntry(getOriginalOutputDirName(), e), bundleFilePath, rootDir, deleteBundleRoot::get);
+        nativeImage.archiveSupport().expandJarToDir(this::resolveBundleEntry, bundleFilePath, rootDir, deleteBundleRoot::get);
 
         if (deleteBundleRoot.get()) {
             /* Abort image build request without error message and exit with 0 */
@@ -384,6 +386,18 @@ final class BundleSupport {
             loadPathMap(pathCanonicalizations, stageDir.resolve(pathCanonicalizationsFileName));
             loadPathMap(pathSubstitutions, stageDir.resolve(pathSubstitutionsFileName));
         }
+        if (bundleProperties.usesLegacyOutputSubstitutions()) {
+            // Older bundles also recorded outputs here. They must never satisfy an input lookup.
+            pathSubstitutions.entrySet().removeIf(entry -> {
+                if (entry.getValue().kind() == RootKind.Unavailable) {
+                    return false;
+                }
+                return BundlePathMap.resolveBundlePath(rootDir, entry.getValue()).startsWith(outputDir);
+            });
+        }
+        // Derived bundles must record the filenames actually materialized on this filesystem.
+        pathSubstitutions.replaceAll((_, destination) -> destination.kind() == RootKind.Unavailable ? destination
+                        : BundlePathMap.bundlePath(rootDir.relativize(BundlePathMap.resolveBundlePath(rootDir, destination))));
         pathSubstitutions.forEach(this::indexPathSubstitution);
         Path environmentFile = stageDir.resolve("environment.json");
         if (Files.isReadable(environmentFile)) {
@@ -399,8 +413,7 @@ final class BundleSupport {
             bundleFileArgumentGroups = BundleArgsParser.parseBuildArgumentGroups(reader, bundleProperties.bundlePlatform(), bundleProperties.usesLegacyBuildArgsFormat());
             ArrayList<String> rewrittenBuildArgs = new ArrayList<>();
             for (ArgumentGroup group : bundleFileArgumentGroups) {
-                BundleSupportArgumentRewriter argumentRewriter = new BundleSupportArgumentRewriter(nativeImage.apiOptionHandler, PathStyle.fromBundlePlatform(group.platform()), pathCanonicalizations,
-                                pathSubstitutions, this::lowerToNativePath);
+                BundleSupportArgumentRewriter argumentRewriter = new BundleSupportArgumentRewriter(this, nativeImage.apiOptionHandler, PathStyle.fromBundlePlatform(group.platform()));
                 rewrittenBuildArgs.addAll(argumentRewriter.rewrite(group.arguments()));
             }
             nativeImageArgs = Collections.unmodifiableList(rewrittenBuildArgs);
@@ -448,10 +461,11 @@ final class BundleSupport {
         }
     }
 
-    private Path relativizeBundleEntry(String originalOutputDirName, Path bundleEntry) {
+    private Path resolveBundleEntry(Path root, String name) {
+        Path bundleEntry = root.resolve(BundleLauncherUtil.materializePortablePath(name));
         if (bundleEntry.startsWith(outputDir)) {
             /* Extract original output to different path */
-            return rootDir.resolve(originalOutputDirName).resolve(outputDir.relativize(bundleEntry));
+            return rootDir.resolve(getOriginalOutputDirName()).resolve(outputDir.relativize(bundleEntry));
         }
         return bundleEntry;
     }
@@ -519,15 +533,65 @@ final class BundleSupport {
     Path substituteAuxiliaryPath(Path origPath, BundleMember.Role bundleMemberRole) {
         return switch (bundleMemberRole) {
             case Input -> substitutePath(origPath, auxiliaryDir);
-            case Output -> substitutePath(origPath, auxiliaryOutputDir);
+            case Output -> substituteOutputPath(origPath);
             case InputReference -> Objects.requireNonNullElse(resolveSubstitutedPath(portableSourcePath(origPath)), origPath);
             case Ignore -> origPath;
         };
     }
 
-    Path substituteImagePath(Path origPath) {
-        recordPathSubstitution(portableSourcePath(origPath), BundlePathMap.bundlePath(rootDir.relativize(imagePathOutputDir)));
-        return imagePathOutputDir;
+    private Path substituteOutputPath(Path origPath) {
+        // Preserve output paths already rewritten for this build, for example during bundle replay.
+        if (origPath.startsWith(outputDir)) {
+            return origPath;
+        }
+        // If canonicalization returned a captured input path, recover its original portable identity.
+        PortablePath source = portableSourcePath(origPath);
+        // Reuse a recorded canonicalization without requiring the original source location to exist.
+        PortablePath canonical = pathCanonicalizations.get(source);
+        if (canonical == null) {
+            // Resolve relative output paths against the driver's working directory.
+            Path absolute = origPath.isAbsolute() ? origPath : nativeImage.config.getWorkingDirectory().resolve(origPath);
+            try {
+                // Resolve existing paths through symlinks so aliases share an output reservation.
+                absolute = absolute.toRealPath();
+            } catch (IOException ignored) {
+                // Outputs may not exist yet; fall back to the normalized absolute path.
+                absolute = absolute.normalize();
+            }
+            // Record the source canonicalization for subsequent lookups and bundle replay.
+            canonical = portableSourcePath(recordCanonicalization(origPath, absolute));
+        }
+        // Allocate from the original source identity, independently of captured input substitutions.
+        return substituteOutputPath(canonical);
+    }
+
+    /// Allocates outputs from source-platform names without consulting captured input locations.
+    /// Reservations are rebuilt from the active output options on each build.
+    Path substituteOutputPath(PortablePath source) {
+        PortablePath fileName = source.getFileName();
+        if (fileName == null) {
+            throw NativeImage.showError("Bundle output path must contain a filename: " + source.sourcePathText());
+        }
+        Path name = Path.of(fileName.platformRelativePathText());
+        if (name.getNameCount() != 1 || name.toString().isEmpty() || name.toString().equals(".") || name.toString().equals("..")) {
+            throw NativeImage.showError("Invalid bundle output filename: " + source.sourcePathText());
+        }
+        for (var entry : outputReservations.entrySet()) {
+            if (entry.getValue().equals(source)) {
+                return entry.getKey();
+            }
+        }
+        Path output = auxiliaryOutputDir.resolve(name);
+        String filename = name.toString();
+        int extensionStart = filename.lastIndexOf('.');
+        String stem = extensionStart > 0 ? filename.substring(0, extensionStart) : filename;
+        String extension = extensionStart > 0 ? filename.substring(extensionStart) : "";
+        int index = 0;
+        while (outputReservations.containsKey(output)) {
+            output = auxiliaryOutputDir.resolve(stem + "_" + ++index + extension);
+        }
+        outputReservations.put(output, source);
+        return output;
     }
 
     Path substituteClassPath(Path origPath) {
@@ -556,8 +620,19 @@ final class BundleSupport {
         }
     }
 
+    /// Resolves an input path, reusing its recorded substitution when available.
+    /// When writing a bundle, new readable inputs are copied into numbered slots under
+    /// `destinationDir` and their bundle-relative locations are recorded for replay.
+    /// Paths already inside the bundle or the JDK are not copied.
+    ///
+    /// Applying a bundle without deriving a new one does not capture additional inputs.
+    /// Missing inputs are recorded as unavailable so replay cannot pick up files that appear later.
+    ///
+    /// @param origPath the input path to capture or restore
+    /// @param destinationDir an input capture directory for classpath, module-path, or auxiliary inputs
+    /// @return the native path to use: the captured input, an unavailable placeholder, or the original path
     private Path substitutePath(Path origPath, Path destinationDir) {
-        assert destinationDir.startsWith(rootDir);
+        assert destinationDir.startsWith(inputDir);
 
         if (origPath.startsWith(rootDir)) {
             NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution/RestoreSubstitution Skip: " + origPath);
@@ -570,7 +645,7 @@ final class BundleSupport {
             return lowerToNativePath(portableOrigPath, previousRelativeSubstitutedPath);
         }
 
-        if (!this.writeBundle && destinationDir != auxiliaryOutputDir) {
+        if (!this.writeBundle) {
             /* Do not capture new inputs on apply, but retain absence if derivation is enabled later. */
             return Files.isReadable(origPath) ? origPath : recordUnavailablePath(portableOrigPath);
         }
@@ -606,40 +681,24 @@ final class BundleSupport {
             throw new BundlePathSubstitutionError("Bundles do not allow inclusion of directory " + origPath, origPath);
         }
 
-        boolean isOutputPath = destinationDir.startsWith(outputDir);
-
-        if (!isOutputPath && !Files.isReadable(origPath)) {
+        if (!Files.isReadable(origPath)) {
             return recordUnavailablePath(portableOrigPath);
         }
 
         // TODO: Report error if overlapping dir-trees are passed in
 
-        Path substitutedPath;
-        if (isOutputPath) {
-            substitutedPath = destinationDir.resolve(origPath.getFileName());
-            for (var entry : pathSubstitutions.entrySet()) {
-                if (entry.getValue().kind() != RootKind.Unavailable) {
-                    Path existingPath = BundlePathMap.resolveBundlePath(rootDir, entry.getValue());
-                    if (existingPath.startsWith(substitutedPath) || substitutedPath.startsWith(existingPath)) {
-                        throw NativeImage.showError("Bundle output paths '" + entry.getKey().sourcePathText() + "' and '" + origPath +
-                                        "' conflict at '" + rootDir.relativize(substitutedPath) + "'.");
-                    }
-                }
-            }
-        } else {
-            int index = 0;
-            Path entryDir = destinationDir.resolve(Integer.toString(index));
-            while (Files.exists(entryDir) || isBundlePathReserved(entryDir)) {
-                entryDir = destinationDir.resolve(Integer.toString(++index));
-            }
-            try {
-                Files.createDirectory(entryDir);
-            } catch (IOException e) {
-                throw NativeImage.showError("Failed to create bundle path " + entryDir, e);
-            }
-            substitutedPath = entryDir.resolve(origPath.getFileName());
-            copyFiles(origPath, substitutedPath, false);
+        int index = 0;
+        Path entryDir = destinationDir.resolve(Integer.toString(index));
+        while (Files.exists(entryDir) || isBundlePathReserved(entryDir)) {
+            entryDir = destinationDir.resolve(Integer.toString(++index));
         }
+        try {
+            Files.createDirectory(entryDir);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to create bundle path " + entryDir, e);
+        }
+        Path substitutedPath = entryDir.resolve(origPath.getFileName());
+        copyFiles(origPath, substitutedPath, false);
 
         Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
         NativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
@@ -690,7 +749,7 @@ final class BundleSupport {
     /// platform's separators. Foreign rooted paths have no equivalent local location and remain
     /// unavailable. All returned native paths retain their original portable identity.
     Path resolveUnsubstitutedPath(PortablePath sourcePath) {
-        if (sourcePath.style() == PathStyle.currentSourceStyle()) {
+        if (sourcePath.style().isCurrent()) {
             return materializeSourcePath(sourcePath);
         }
         if (sourcePath.kind() == RootKind.Relative) {
@@ -731,7 +790,7 @@ final class BundleSupport {
     /// without encoding it as a new `PortablePath`. Returns null when the source path belongs to
     /// another platform.
     Path materializeSourcePath(PortablePath sourcePath) {
-        if (sourcePath.style() != PathStyle.currentSourceStyle()) {
+        if (!sourcePath.style().isCurrent()) {
             return null;
         }
         PortablePath normalizedSourcePath = sourcePath.normalize();
@@ -1200,6 +1259,11 @@ final class BundleSupport {
         private boolean usesLegacyBuildArgsFormat() {
             assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
             return bundleFileFormatVersionMajor < 2;
+        }
+
+        private boolean usesLegacyOutputSubstitutions() {
+            assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
+            return bundleFileFormatVersionMajor < 3;
         }
 
         private void write() {

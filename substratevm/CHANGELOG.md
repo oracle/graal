@@ -12,6 +12,10 @@ This changelog summarizes major changes to GraalVM Native Image.
   Output normally goes to standard error and respects Native Image log-file and callback routing.
 * (GR-80731) Added runtime support for `IgnoreUnrecognizedVMOptions`, `UnlockDiagnosticVMOptions`.
 * (GR-80621) Added runtime support for `AbortVMOnCompilationFailure` through the Graal compiler's `CompilationFailureAction` option when runtime compilation is available.
+## Unreleased
+
+* (GR-80603) Bundle format version is now 3.0, with numbered directories for captured inputs and output destinations allocated independently of input substitutions.
+  Older bundle formats remain readable.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
 
