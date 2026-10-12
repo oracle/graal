@@ -1458,6 +1458,8 @@ public class Graph implements EventCounter {
                 try {
                     try {
                         assert node.verify(verifyInputs);
+                    } catch (CancellationBailoutException e) {
+                        throw e;
                     } catch (AssertionError | RuntimeException t) {
                         throw new GraalError(t);
                     }

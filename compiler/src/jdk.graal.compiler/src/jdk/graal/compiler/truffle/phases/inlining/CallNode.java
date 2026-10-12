@@ -36,6 +36,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
+import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.GraalBailoutException;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
@@ -410,6 +411,8 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         GraphManager manager = getCallTree().getGraphManager();
         try {
             entry = manager.pe(directCallTarget);
+        } catch (CancellationBailoutException e) {
+            throw e;
         } catch (GraalBailoutException e) {
             state = State.BailedOut;
             return;

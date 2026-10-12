@@ -24,25 +24,50 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.CancellationBailoutException;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.debug.BlackholeNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
+import jdk.graal.compiler.virtual.phases.ea.GraphEffectList;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CompilationCancellationTest extends GraalCompilerTest {
 
@@ -120,6 +145,111 @@ public class CompilationCancellationTest extends GraalCompilerTest {
             assertFalse(bailout.isPermanent());
             cancelled.set(false);
         }
+    }
+
+    @NodeInfo
+    static final class VerificationNode extends Node {
+        static final NodeClass<VerificationNode> TYPE = NodeClass.create(VerificationNode.class);
+
+        private final Runnable onVerify;
+
+        protected VerificationNode(Runnable onVerify) {
+            super(TYPE);
+            this.onVerify = onVerify;
+        }
+
+        @Override
+        protected boolean verifyNode() {
+            onVerify.run();
+            return true;
+        }
+    }
+
+    @Test
+    public void cancelledDuringGraphVerification() {
+        Graph graph = new Graph(null, getInitialOptions(), getDebugContext(), false, () -> true);
+        graph.add(new VerificationNode(graph::checkCancellation));
+        CancellationBailoutException bailout = assertThrows(CancellationBailoutException.class, graph::verify);
+        assertFalse(bailout.isPermanent());
+    }
+
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+    public static final class CancellingNode extends FloatingNode implements Canonicalizable {
+        public static final NodeClass<CancellingNode> TYPE = NodeClass.create(CancellingNode.class);
+
+        public CancellingNode() {
+            super(TYPE, StampFactory.forKind(JavaKind.Int));
+        }
+
+        @Override
+        public Node canonical(CanonicalizerTool tool) {
+            // Model a cancellation check reached inside a node's canonicalization.
+            CancellationBailoutException.cancelCompilation();
+            return this;
+        }
+    }
+
+    @Test
+    public void cancelledDuringCanonicalization() {
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext(), AllowAssumptions.YES).build();
+        CancellingNode node = graph.addWithoutUnique(new CancellingNode());
+        graph.start().setNext(graph.add(new ReturnNode(node)));
+        CancellationBailoutException bailout = assertThrows(CancellationBailoutException.class, () -> CanonicalizerPhase.create().apply(graph, getProviders()));
+        assertFalse(bailout.isPermanent());
+    }
+
+    @Test
+    public void cancelledDuringDecodedGraphVerification() {
+        StructuredGraph original = parseEager("loopSnippet", AllowAssumptions.YES);
+        GraphEncoder encoder = new GraphEncoder(getTarget().arch);
+        encoder.prepare(original);
+        encoder.finishPrepare();
+        int offset = encoder.encode(original);
+        EncodedGraph encoded = new EncodedGraph(encoder.getEncoding(), offset, encoder.getObjects(), encoder.getNodeClasses(), original);
+        AtomicBoolean cancelledInCFG = new AtomicBoolean();
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext(), AllowAssumptions.YES).method(original.method()).cancellable(() -> {
+            // Keep decoding and graph verification running; cancel only inside CFG construction.
+            boolean inCFG = StackWalker.getInstance().walk(frames -> frames.anyMatch(frame -> frame.getClassName().equals(ControlFlowGraph.class.getName())));
+            cancelledInCFG.set(inCFG);
+            return inCFG;
+        }).build();
+        PEGraphDecoder decoder = new PEGraphDecoder(getTarget().arch, graph, getProviders(), null, new InvocationPlugins(), new InlineInvokePlugin[0], null,
+                        new NodePlugin[0], null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), false, false) {
+            @Override
+            protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+                return encoded;
+            }
+
+            @Override
+            protected void cleanupGraph(MethodScope methodScope) {
+                super.cleanupGraph(methodScope);
+                // Ensure CFG traversal crosses a cancellation polling boundary.
+                ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
+                for (int i = 0; i < CompilationAlarm.CHECK_BAILOUT_COUNTER + 2; i++) {
+                    graph.addBeforeFixed(ret, graph.add(new BlackholeNode(ret.result())));
+                }
+            }
+        };
+        CancellationBailoutException bailout = assertThrows(CancellationBailoutException.class, () -> decoder.decode(original.method()));
+        assertTrue("Cancellation must be observed in CFG construction", cancelledInCFG.get());
+        assertFalse(bailout.isPermanent());
+    }
+
+    @Test
+    public void cancelledDuringEscapeAnalysisEffects() {
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext(), AllowAssumptions.YES).cancellable(() -> true).build();
+        BlackholeNode blackhole = graph.add(new BlackholeNode(ConstantNode.forInt(42, graph)));
+        ReturnNode returnNode = graph.add(new ReturnNode(null));
+        graph.start().setNext(blackhole);
+        blackhole.setNext(returnNode);
+        GraphEffectList effects = new GraphEffectList(graph.getDebug());
+        effects.replaceWithSink(blackhole, new ReturnNode(null));
+        // Arm the next graph progress check without polling cancellation during setup.
+        for (int i = 0; i <= CompilationAlarm.CHECK_BAILOUT_COUNTER; i++) {
+            graph.eventCounterOverflows(Integer.MAX_VALUE);
+        }
+        CancellationBailoutException bailout = assertThrows(CancellationBailoutException.class, () -> effects.apply(graph, new ArrayList<>(), true));
+        assertFalse(bailout.isPermanent());
     }
 
     public static int loopSnippet(int count) {

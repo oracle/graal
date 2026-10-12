@@ -48,6 +48,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
+import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -985,6 +986,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             /* Check that the control flow graph can be computed, to catch problems early. */
             assert CFGVerifier.verify(
                             ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build());
+        } catch (CancellationBailoutException ex) {
+            throw ex;
         } catch (Throwable ex) {
             throw GraalError.shouldNotReachHere(ex, "Control flow graph not valid after partial evaluation"); // ExcludeFromJacocoGeneratedReport
         }
