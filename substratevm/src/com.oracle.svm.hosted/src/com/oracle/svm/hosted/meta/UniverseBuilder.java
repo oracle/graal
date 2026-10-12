@@ -75,6 +75,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SmallestPossibleObject;
@@ -91,6 +92,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -957,7 +959,11 @@ public class UniverseBuilder {
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
                 } else {
-                    layoutHelper = LayoutEncoding.forPureInstance(type, ObjectLayout.singleton().alignUp(instanceClass.getInstanceSize()));
+                    int instanceSize = instanceClass.getInstanceSize();
+                    long sizeWithIdentityHash = LayoutEncoding.getPureInstanceSize(instanceSize, instanceClass.getIdentityHashOffset(), true);
+                    UserError.guarantee(instanceSize > 0 && sizeWithIdentityHash <= Heap.getHeap().getMaxInstanceSize(),
+                                    "Size of %s exceeds the maximum supported by the garbage collector.", type.toJavaName());
+                    layoutHelper = LayoutEncoding.forPureInstance(type, instanceSize);
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
                 identityHashOffset = instanceClass.getIdentityHashOffset();

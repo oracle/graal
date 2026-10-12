@@ -67,9 +67,8 @@ public class SerialGCPerfData implements PerfDataHolder {
         }
         youngGen = new PerfDataGeneration(0, youngGenSpaces);
 
-        int oldSpaceIndex = youngSpaceCount;
         SpacePerfData[] oldGenSpaces = new SpacePerfData[]{
-                        new SpacePerfData(1, oldSpaceIndex)
+                        new SpacePerfData(1, 0)
         };
         oldGen = new PerfDataGeneration(1, oldGenSpaces);
     }

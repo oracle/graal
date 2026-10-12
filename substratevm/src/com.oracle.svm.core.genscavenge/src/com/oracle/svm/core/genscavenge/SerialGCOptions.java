@@ -36,6 +36,9 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Kind;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Severity;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -97,9 +100,11 @@ public final class SerialGCOptions {
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         @Option(help = "Collect old generation by compacting in-place instead of copying. Serial GC only.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(true, SerialGCOptions::validateCompactingOldGen);
 
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently. Serial GC only.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 

@@ -242,10 +242,6 @@ public final class HeapImpl extends Heap {
         oldGeneration.tearDown();
         chunkProvider.tearDown();
         gcImpl.tearDown();
-
-        if (Metaspace.isSupported()) {
-            MetaspaceImpl.singleton().tearDown();
-        }
         return true;
     }
 
@@ -522,6 +518,12 @@ public final class HeapImpl extends Heap {
     @Override
     public int getHeapBaseAlignment() {
         return getImageHeapAlignment();
+    }
+
+    @Fold
+    @Override
+    public int getMaxInstanceSize() {
+        return NumUtil.safeToInt(AlignedHeapChunk.getUsableSizeForObjects().rawValue());
     }
 
     @Fold

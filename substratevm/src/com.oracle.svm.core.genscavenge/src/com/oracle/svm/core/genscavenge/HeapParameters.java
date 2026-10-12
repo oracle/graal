@@ -32,7 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.Uninterruptible;
@@ -57,19 +57,21 @@ public final class HeapParameters {
     static void initialize() {
         long alignedChunkSize = getAlignedHeapChunkSize().rawValue();
         if (!SubstrateUtil.isPowerOf2(alignedChunkSize)) {
-            throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", alignedChunkSize);
+            throw UserError.abort("%s (%d) should be a power of 2.", SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getName(), alignedChunkSize);
         }
 
-        long maxLargeArrayThreshold = alignedChunkSize - RememberedSet.get().getHeaderSizeOfAlignedChunk().rawValue() + 1;
+        ObjectLayout layout = ObjectLayout.singleton();
+        long alignedChunkCapacity = AlignedHeapChunk.getUsableSizeForObjects().rawValue();
+        int maxIdentityHashGrowth = layout.isIdentityHashFieldOptional() ? layout.getAlignment() : 0;
+        long maxLargeArrayThreshold = alignedChunkCapacity - maxIdentityHashGrowth + 1;
         if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.hasBeenSet() && !SerialAndEpsilonGCOptions.LargeArrayThreshold.hasBeenSet()) {
-            throw UserError.abort("When setting AlignedHeapChunkSize, LargeArrayThreshold should be explicitly set to a value between 1 " +
-                            "and the usable size of an aligned chunk + 1 (currently %d).", maxLargeArrayThreshold);
+            throw UserError.abort("When setting %s, explicitly set %s to a value between 1 and %d.", SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getName(),
+                            SerialAndEpsilonGCOptions.LargeArrayThreshold.getName(), maxLargeArrayThreshold);
         }
 
         long largeArrayThreshold = getLargeArrayThreshold().rawValue();
         if (largeArrayThreshold <= 0 || largeArrayThreshold > maxLargeArrayThreshold) {
-            throw UserError.abort("LargeArrayThreshold (set to %d) should be between 1 and the usable size of an aligned chunk + 1 (currently %d).",
-                            largeArrayThreshold, maxLargeArrayThreshold);
+            throw UserError.abort("%s (set to %d) must be between 1 and %d.", SerialAndEpsilonGCOptions.LargeArrayThreshold.getName(), largeArrayThreshold, maxLargeArrayThreshold);
         }
 
         SubstrateGCOptions.validateMaxMetaspaceSize(alignedChunkSize, HeapImpl.getNullRegionSize());

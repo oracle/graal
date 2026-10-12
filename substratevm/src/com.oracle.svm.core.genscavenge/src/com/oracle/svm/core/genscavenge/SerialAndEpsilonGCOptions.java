@@ -37,6 +37,9 @@ import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Kind;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Severity;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
@@ -54,6 +57,7 @@ public final class SerialAndEpsilonGCOptions {
     @Option(help = "The maximum size of the young generation as a percentage of the maximum heap size. Serial and epsilon GC only.", type = OptionType.User) //
     public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new NotifyGCRuntimeOptionKey<>(10, PERCENTAGE, SERIAL_OR_EPSILON_GC_ONLY);
 
+    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
     @Option(help = "The size of an aligned chunk. Serial and epsilon GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(512 * 1024L, SerialAndEpsilonGCOptions::validateSerialOrEpsilonHostedOption);
 
