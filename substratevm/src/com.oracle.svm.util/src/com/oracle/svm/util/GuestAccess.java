@@ -472,6 +472,18 @@ public final class GuestAccess implements VMAccess {
      * {@code expectedComponentClass}.
      */
     public Stream<JavaConstant> asGuestArrayElements(JavaConstant array, ResolvedJavaType expectedComponentClass) {
+        return readGuestArrayElements(array, expectedComponentClass, false);
+    }
+
+    /**
+     * Decodes the elements of a guest array while preserving null entries as guest null constants.
+     */
+    Stream<JavaConstant> asGuestArrayElementsAllowingNull(JavaConstant array, ResolvedJavaType expectedComponentClass) {
+        return readGuestArrayElements(array, expectedComponentClass, true);
+    }
+
+    /** Shared guest-array decoder with an explicit null-element policy. */
+    private Stream<JavaConstant> readGuestArrayElements(JavaConstant array, ResolvedJavaType expectedComponentClass, boolean allowNullElements) {
         if (array == null || array.isNull()) {
             throw new IllegalArgumentException("Guest array must not be null.");
         }
@@ -489,7 +501,10 @@ public final class GuestAccess implements VMAccess {
         }
         return IntStream.range(0, length).mapToObj(i -> {
             JavaConstant element = constantReflection.readArrayElement(array, i);
-            if (element == null || element.isNull()) {
+            if (element == null) {
+                throw new IllegalArgumentException("Could not read guest array element at index " + i + ".");
+            }
+            if (!allowNullElements && element.isNull()) {
                 throw new IllegalArgumentException("Guest array element at index " + i + " must not be null.");
             }
             return element;
