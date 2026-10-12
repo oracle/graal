@@ -61,6 +61,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.hosted.SubstrateBytecodeHandlerStub;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.common.meta.MethodVariant;
@@ -463,6 +464,11 @@ public final class HostedMethod extends HostedElement implements SharedMethod, I
     @Override
     public boolean hasCalleeSavedRegisters() {
         return StubCallingConvention.Utils.hasStubCallingConvention(this);
+    }
+
+    @Override
+    public boolean isBytecodeHandlerStub() {
+        return wrapped.getWrapped() instanceof SubstrateBytecodeHandlerStub;
     }
 
     @Override
