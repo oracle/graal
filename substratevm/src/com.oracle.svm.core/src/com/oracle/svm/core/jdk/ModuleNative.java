@@ -32,12 +32,12 @@ import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.SourceVersion;
-
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
+
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 public final class ModuleNative {

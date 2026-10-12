@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.hub.registry;
 
-import static com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -59,7 +57,6 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -362,7 +359,7 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
             ResolvedJavaType interpreterType = hub.getInterpreterType();
             String className = interpreterType.toJavaName();
             String source = info.source == null ? "<unknown>" : info.source;
-            traceMessage(LogTagSet.class_load, className, loader, source, null);
+            logClassLoadingMessage(LogTagSet.class_load, className, loader, source, null);
         }
         String pattern = RuntimeClassLoading.Options.LogClassLoadingCauseFor.getValue();
 
@@ -403,15 +400,10 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
 
     /// Writes a class-loading event without allocating a formatted string.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/oops/instanceKlass.cpp#L3914-L3985")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Class loading diagnostics must not allocate at run time.")
-    public static void traceMessage(LogTagSet tagSet, String className, ClassLoader loader, String source, String detail) {
-        String loaderName = ClassRegistries.loaderNameAndId(loader);
-        logClassLoadingMessage(tagSet, className, loaderName, source, detail);
-    }
-
     @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
-    private static void logClassLoadingMessage(LogTagSet tagSet, String className, String loaderName, String source, String detail) {
+    public static void logClassLoadingMessage(LogTagSet tagSet, String className, ClassLoader loader, String source, String detail) {
+        String loaderName = ClassRegistries.loaderNameAndId(loader);
         LogMessage message = tagSet.message();
         try {
             NativeMemoryLog line = message.info();

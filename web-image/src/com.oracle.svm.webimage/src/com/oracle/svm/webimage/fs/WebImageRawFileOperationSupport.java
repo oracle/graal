@@ -28,8 +28,8 @@ package com.oracle.svm.webimage.fs;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.File;
-
 import org.graalvm.nativeimage.c.type.CCharPointer;
+
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 

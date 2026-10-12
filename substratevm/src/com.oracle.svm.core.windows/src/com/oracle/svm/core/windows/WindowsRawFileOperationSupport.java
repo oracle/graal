@@ -70,6 +70,14 @@ import com.oracle.svm.shared.util.VMError;
  * uninterruptible callers can open files without allocating or converting path data.
  */
 public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupport {
+    /// Number of FILETIME ticks in a millisecond; each tick represents 100 nanoseconds.
+    private static final long FILETIME_TICKS_PER_MILLISECOND = 10_000;
+
+    /// Milliseconds between the FILETIME epoch in 1601 and the Unix epoch in 1970.
+    private static final long FILETIME_UNIX_EPOCH_OFFSET_MILLIS = 11_644_473_600_000L;
+
+    /// Mask for treating the low FILETIME DWORD as an unsigned value.
+    private static final long UNSIGNED_DWORD_MASK = 0xffff_ffffL;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public WindowsRawFileOperationSupport(boolean useNativeByteOrder) {
@@ -114,9 +122,9 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
         }
         /* FILETIME counts 100-nanosecond intervals since 1601; convert to the Unix epoch. */
         FILETIME time = data.getLastWriteTime();
-        long ticks = ((long) time.dwHighDateTime() << 32) | (time.dwLowDateTime() & 0xffff_ffffL);
+        long ticks = ((long) time.dwHighDateTime() << Integer.SIZE) | (time.dwLowDateTime() & UNSIGNED_DWORD_MASK);
         FileAPI.FindClose(handle);
-        return ticks / 10_000 - 11_644_473_600_000L;
+        return ticks / FILETIME_TICKS_PER_MILLISECOND - FILETIME_UNIX_EPOCH_OFFSET_MILLIS;
     }
 
     @Override

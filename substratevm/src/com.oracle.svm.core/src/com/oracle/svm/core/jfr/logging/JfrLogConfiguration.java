@@ -33,9 +33,9 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogConfiguration;
+
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.jfr.internal.LogLevel;

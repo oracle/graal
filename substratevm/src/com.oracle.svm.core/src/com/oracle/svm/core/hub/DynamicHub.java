@@ -1436,7 +1436,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     void setClassLoaderAtRuntime(ClassLoader loader) {
         VMError.guarantee(companion.classLoader == NO_CLASS_LOADER && loader != NO_CLASS_LOADER);
         if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
-            AbstractRuntimeClassRegistry.traceMessage(LogTagSet.class_load, getName(), loader, null, "predefine");
+            AbstractRuntimeClassRegistry.logClassLoadingMessage(LogTagSet.class_load, getName(), loader, null, "predefine");
         }
         companion.classLoader = loader;
     }

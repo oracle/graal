@@ -25,11 +25,11 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
-
 import org.graalvm.collections.EconomicSet;
+
+import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AssertionsSupport;
@@ -37,9 +37,9 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
@@ -64,7 +64,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-
 import jdk.graal.compiler.options.OptionValues;
 
 /**
@@ -287,7 +286,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
                 if (!hub.isArray() && !hub.isPrimitive()) {
                     if (logClassLoad) {
                         ClassLoader loader = hub.getClassLoader();
-                        AbstractRuntimeClassRegistry.traceMessage(LogTagSet.class_load_image, hub.getName(), loader, null, "image");
+                        AbstractRuntimeClassRegistry.logClassLoadingMessage(LogTagSet.class_load_image, hub.getName(), loader, null, "image");
                     }
                     if (logModuleLoad) {
                         reportImageModule(hub.getModule(), reportedModules);

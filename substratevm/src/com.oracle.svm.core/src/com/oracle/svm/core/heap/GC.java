@@ -26,7 +26,6 @@ package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;

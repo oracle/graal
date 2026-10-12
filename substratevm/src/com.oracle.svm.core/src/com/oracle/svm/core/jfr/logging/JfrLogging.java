@@ -33,13 +33,13 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.jfr.JfrUnifiedLogging;
+
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.ReflectionUtil;
-import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;

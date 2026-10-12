@@ -34,9 +34,9 @@ import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInp
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.util.Map;
-
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;

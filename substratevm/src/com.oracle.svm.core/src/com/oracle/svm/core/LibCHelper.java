@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.Pointer;
-
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 @CLibrary(value = "libchelper", requireStatic = true, dependsOn = "java")
