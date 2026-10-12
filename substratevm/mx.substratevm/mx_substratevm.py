@@ -1957,7 +1957,7 @@ def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
         f'-H:LinkerRPath={base_layer_path}'
     ]))
 
-    # Verify that logging initialized in the application layer uses the persisted configuration.
+    # Verify that unified logging initializes when the application layer starts.
     logging_output = mx.LinesOutputCapture()
     mx.run([app_layer, '-Xlog:logging=debug'], cwd=app_layer_path, out=logging_output, err=logging_output)
     if not any('Log configuration fully initialized.' in line for line in logging_output.lines):

@@ -62,8 +62,8 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
 
 /// Owns the configuration for `-Xlog` and the GC logging fallback used when that command line
-/// interface is unavailable. Runtime changes publish immutable copies so active records retain
-/// the routing and formatting state with which they started.
+/// interface is unavailable. Closing a message scope selects one immutable routing and formatting
+/// snapshot for its complete delivery. Runtime changes do not alter that retained snapshot.
 public final class LogConfiguration {
     /// Preserves configuration insertion order for deterministic teardown and diagnostics.
     private static final List<LogFileOutput> OUTPUTS = new ArrayList<>();
@@ -589,11 +589,6 @@ public final class LogConfiguration {
             throw new IllegalArgumentException("Could not allocate native path for unified log file '" + expandedFilename + "'.");
         }
         for (LogFileOutput output : OUTPUTS) {
-            /*
-             * After a successful open, output.path() is guaranteed to denote an existing file, so
-             * sameFiles can recognize aliases. If opening failed, an identical raw path still
-             * finds the output.
-             */
             if (fileSupport.sameFiles(output.path(), path)) {
                 UntrackedNullableNativeMemory.free(path);
                 return output;

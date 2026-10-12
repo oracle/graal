@@ -114,7 +114,7 @@ public final class LogDecorations {
         return LogThreadLocal.threadId();
     }
 
-    /// Writes an ISO timestamp with millisecond precision and a numeric UTC offset.
+    /// Writes a timestamp with millisecond precision and a numeric UTC offset.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/time/LocalDate.java#L346-L379")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L243")
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -201,7 +201,8 @@ public final class LogDecorations {
         target.unsigned(value);
     }
 
-    /// Writes a proleptic Gregorian year using the ISO minimum width and sign rules.
+    /// Writes a proleptic Gregorian year with at least four magnitude digits and a minus sign only
+    /// when negative.
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void writeYear(Log target, long year) {
         if (year < 0) {

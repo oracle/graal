@@ -53,9 +53,9 @@ import com.oracle.svm.shared.Uninterruptible;
 /// individual lines, without retaining a separate output-to-threshold map or scanning disabled
 /// destinations during logging.
 ///
-/// Readers retain one immutable configuration without locking. Runtime configuration publishes a
-/// replacement configuration, while readers that already started continue to use the routing and
-/// formatting state that they observed.
+/// Closing a message scope selects one immutable configuration without locking and retains it
+/// throughout delivery. Runtime configuration publishes a replacement without changing the
+/// retained routing and formatting state. Opening a scope does not capture a configuration.
 ///
 /// For example, consider the following message inside an annotated `log*` method as described
 /// in [LogMessage]:

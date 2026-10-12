@@ -130,8 +130,7 @@ public enum LogTagSet {
     /// Decoration spelling used when the `tags` decorator is enabled.
     private final String commaSeparatedLabel;
 
-    /// Ordered tags preserve the instantiated `LogTagSetMapping` template arguments, or are null
-    /// for the no-tag set.
+    /// Component tags in the order of the selector spelling, or `null` for an empty tag set.
     private final LogTag[] tags;
 
     /// Bitmask form supports compact order-independent selector matching.
@@ -145,7 +144,6 @@ public enum LogTagSet {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     LogTagSet() {
-        /* A builder can create multiple images with different unified logging option values. */
         outputList = new LogOutputList();
         logMessage = new LogMessage(this);
         String enumName = name();

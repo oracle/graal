@@ -102,7 +102,6 @@ int SVM_same_files(const void *raw_file1, const void *raw_file2) {
     }
 
     if (st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino) {
-        /* Same files. */
         is_same = 1;
     }
     return is_same;

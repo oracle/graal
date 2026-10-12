@@ -259,6 +259,8 @@ tag set's `LogOutputList` also synchronizes updates and publishes a replacement
 `outputsByLevel` table through a volatile field. The arrays in a published table
 are immutable, so a logging thread reads one stable routing snapshot without
 taking the configuration monitor.
+Delivery selects this snapshot when the message scope closes, not when it opens.
+The snapshot remains unchanged throughout delivery, even if another thread reconfigures logging.
 
 For example, after the default configuration and
 

@@ -132,7 +132,7 @@ final class JfrLogConfiguration {
         for (LogTag logTag : LogTag.values()) {
             EnumSet<JfrLogTag> logTagSet = EnumSet.noneOf(JfrLogTag.class);
             for (String tag : logTag.name().split("_")) {
-                /* This fails if a new JDK version adds entries to jdk.jfr.internal.LogTag. */
+                /* Unknown JDK component tags must fail image building rather than be omitted. */
                 logTagSet.add(JfrLogTag.valueOf(tag));
             }
             VMError.guarantee(!logTagSet.isEmpty());

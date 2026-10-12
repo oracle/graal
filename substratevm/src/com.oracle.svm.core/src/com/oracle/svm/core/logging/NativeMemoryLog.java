@@ -53,7 +53,6 @@ public final class NativeMemoryLog extends RealLog {
     private static final int INITIAL_CAPACITY = 1024;
 
     /// Uses LF because [LogMessage#writeLineTo] expands it into the platform line separator.
-    /// Storing CRLF would preserve the CR as message content before adding that separator.
     private static final byte[] MESSAGE_LINE_SEPARATOR = {'\n'};
 
     /// Identifies the fast thread-local buffer used by a stateless log facade.
