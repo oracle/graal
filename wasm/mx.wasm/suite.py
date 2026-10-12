@@ -452,6 +452,7 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_RUNTIME",
         "truffle:TRUFFLE_TCK",
         "WASM",
         "WASM_TESTS",
@@ -470,6 +471,7 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_RUNTIME",
         "truffle:TRUFFLE_TCK",
         "WASM",
         "WASM_TESTS",
