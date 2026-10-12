@@ -169,10 +169,15 @@ public class InterpreterUtil {
     public static Log traceInterpreter() {
         if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
             if (InterpreterOptions.InterpreterTrace.getValue()) {
-                return Log.log().string(" ".repeat(Interpreter.logIndent.get()));
+                return forceTraceInterpreter();
             }
         }
         return Log.noopLog();
+    }
+
+    /** Appends the current interpreter log indent without checking whether tracing is enabled. */
+    public static Log forceTraceInterpreter() {
+        return Log.log().string(" ".repeat(Interpreter.logIndent.get()));
     }
 
     /**

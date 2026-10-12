@@ -637,10 +637,9 @@ public final class Interpreter {
                     InterpreterUnresolvedSignature signature = method.getSignature();
                     Object[] calleeArgs = rebasic(frame.getArguments(), signature, !method.isStatic());
                     // This should integrate with the debugger GR-70801
-                    boolean preferStayInInterpreter = forceStayInInterpreter;
                     traceInvokeBasic(target, indent);
                     try {
-                        Object result = InterpreterToVM.dispatchInvocation(target, calleeArgs, CallKind.DIRECT, forceStayInInterpreter, preferStayInInterpreter, false);
+                        Object result = InterpreterToVM.dispatchInvocation(target, calleeArgs, CallKind.DIRECT, forceStayInInterpreter, false);
                         yield unbasic(result, signature.getReturnKind());
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
@@ -654,10 +653,9 @@ public final class Interpreter {
                     boolean hasReceiver = intrinsic != SignaturePolymorphicIntrinsic.LinkToStatic;
                     Object[] basicArgs = unbasic(arguments, signature, hasReceiver);
                     // This should integrate with the debugger GR-70801
-                    boolean preferStayInInterpreter = forceStayInInterpreter;
                     traceLinkTo(resolutionSeed, intrinsic, indent);
                     try {
-                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, intrinsic.getCallKind(), forceStayInInterpreter, preferStayInInterpreter, false);
+                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, intrinsic.getCallKind(), forceStayInInterpreter, false);
                         yield rebasic(result, signature.getReturnKind());
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
@@ -3319,8 +3317,8 @@ public final class Interpreter {
                 }
             }
 
-            Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind,
-                            callerFrame.forceStayInInterpreter(), callerFrame.forceStayInInterpreter() | preferStayInInterpreter, false);
+            boolean stayInInterpreter = callerFrame.forceStayInInterpreter() | preferStayInInterpreter;
+            Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, stayInInterpreter, false);
             virtualStack.pushBasicType(callerFrame, retObj, linkedInvoke.returnKind);
         }
 
@@ -3408,7 +3406,7 @@ public final class Interpreter {
             Object indyEntry = frame.constantPoolResolvedAt(indyCPI);
             if (indyEntry instanceof ResolvedInvokeDynamicConstant invokeDynamicConstant) {
                 // runtime-loaded case
-                SuccessfulCallSiteLink link = getOrLinkInvokeDynamic(invokeDynamicConstant, frame.method, frame.code, (int) curBCI, indyCPI, extraCPI);
+                SuccessfulCallSiteLink link = getOrLinkInvokeDynamic(invokeDynamicConstant, frame, (int) curBCI, fullCPI);
                 appendix = link.getUnboxedAppendix();
                 seedMethod = link.getInvoker();
             } else if (indyEntry instanceof InterpreterResolvedJavaMethod entryMethod) {
@@ -3439,8 +3437,8 @@ public final class Interpreter {
                 profileAndCheckReceiver(frame, curBCI, calleeArgs, virtualStack.getState());
             }
 
-            Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, CallKind.DIRECT, frame.forceStayInInterpreter(), frame.forceStayInInterpreter() | preferStayInInterpreter,
-                            false);
+            boolean stayInInterpreter = frame.forceStayInInterpreter() | preferStayInInterpreter;
+            Object retObj = InterpreterToVM.dispatchInvocation(seedMethod, calleeArgs, CallKind.DIRECT, stayInInterpreter, false);
             virtualStack.pushKind(frame, retObj, seedSignature.getReturnKind());
         }
 
@@ -3983,24 +3981,26 @@ public final class Interpreter {
     }
 
     @AlwaysInline("Keep cached INVOKEDYNAMIC linkage lookup in bytecode-handler stubs")
-    private static SuccessfulCallSiteLink getOrLinkInvokeDynamic(ResolvedInvokeDynamicConstant constant, InterpreterResolvedJavaMethod method, byte[] code,
-                    int curBCI, int indyCPI, int extraCPI) {
+    private static SuccessfulCallSiteLink getOrLinkInvokeDynamic(ResolvedInvokeDynamicConstant constant, InterpreterFrame frame, int curBCI, int fullCPI) {
+        int extraCPI = fullCPI & 0xFFFF;
         if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, extraCPI != 0)) {
             CallSiteLink link = constant.getCallSiteLink(extraCPI);
             if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, link instanceof SuccessfulCallSiteLink)) {
                 SuccessfulCallSiteLink successfulLink = (SuccessfulCallSiteLink) link;
-                if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, successfulLink.matchesCallSite(method, curBCI))) {
+                if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, successfulLink.matchesCallSite(frame.method, curBCI))) {
                     return successfulLink;
                 }
             }
         }
-        return linkInvokeDynamic(constant, method, code, curBCI, indyCPI, extraCPI);
+        return linkInvokeDynamic(constant, frame, curBCI, fullCPI);
     }
 
     @NeverInline("Keep INVOKEDYNAMIC linkage, patching retries, and failures out of bytecode-handler stubs")
-    private static SuccessfulCallSiteLink linkInvokeDynamic(ResolvedInvokeDynamicConstant constant, InterpreterResolvedJavaMethod method, byte[] code,
-                    int curBCI, int indyCPI, int extraCPI) {
-        int linkedExtraCPI = extraCPI;
+    private static SuccessfulCallSiteLink linkInvokeDynamic(ResolvedInvokeDynamicConstant constant, InterpreterFrame frame, int curBCI, int fullCPI) {
+        InterpreterResolvedJavaMethod method = frame.method;
+        byte[] code = frame.code;
+        int indyCPI = fullCPI >>> 16;
+        int linkedExtraCPI = fullCPI & 0xFFFF;
         if (linkedExtraCPI == 0) {
             linkedExtraCPI = linkInvokeDynamicCallSite(constant, method, code, curBCI, indyCPI);
         }

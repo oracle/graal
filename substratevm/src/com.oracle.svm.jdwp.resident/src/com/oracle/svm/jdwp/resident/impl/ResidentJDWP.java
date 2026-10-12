@@ -2023,7 +2023,7 @@ public final class ResidentJDWP implements JDWP {
                 if (forceNonVirtual && callKind.hasLookup()) {
                     callKind = CallKind.DIRECT;
                 }
-                return fromValue(InterpreterToVM.dispatchInvocation(method, args, callKind, false, false, false));
+                return fromValue(InterpreterToVM.dispatchInvocation(method, args, callKind, false, false));
             } catch (SemanticJavaException e) {
                 return fromThrowable(e.getCause());
             } catch (StackOverflowError | OutOfMemoryError error) {
