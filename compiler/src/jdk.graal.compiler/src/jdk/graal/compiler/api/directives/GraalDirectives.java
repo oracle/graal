@@ -254,6 +254,23 @@ public final class GraalDirectives {
     }
 
     /**
+     * Declares an impossible execution path. The compiler may discard preceding operations on
+     * that path. This is not a runtime error check. An uncompiled invocation throws an error.
+     */
+    public static void unreachable() {
+        throw new AssertionError("Unreachable execution path");
+    }
+
+    /**
+     * Returns a {@code long} whose value must not be observed. When used as an additional return
+     * value, the compiler may leave the corresponding fixed return register unchanged. The
+     * result has no input dependency. In interpreted execution this method returns zero.
+     */
+    public static long unconstrainedValue() {
+        return 0;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
