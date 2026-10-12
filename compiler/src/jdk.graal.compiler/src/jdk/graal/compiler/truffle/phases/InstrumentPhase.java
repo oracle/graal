@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.MethodFilter;
@@ -103,6 +104,8 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
         JavaConstant tableConstant = context.getSnippetReflection().forObject(instrumentation.getAccessTable());
         try {
             instrumentGraph(graph, context, tableConstant);
+        } catch (CancellationBailoutException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

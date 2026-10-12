@@ -28,6 +28,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
@@ -85,6 +86,24 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                         new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(callTarget), false));
         agnosticInliningPhase.apply(context.graph, context);
         return task;
+    }
+
+    @Test
+    public void testCancellationDuringCallExpansion() {
+        OptimizedCallTarget leaf = createDummyNode();
+        OptimizedCallTarget target = callTarget(new BranchCallRootNode(leaf, 0.2D));
+        warm(target, true);
+        TruffleCompilerImpl compiler = getTruffleCompiler(target);
+        RecordingCompilationTask task = new RecordingCompilationTask();
+        try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
+            TruffleTierContext context = TruffleTierContext.createInitialContext(compiler.getPartialEvaluator(), compiler.getOrCreateCompilerOptions(target),
+                            getDebugContext(), target, compilation.getCompilationId(), getSpeculationLog(), task, null);
+            CallTree tree = new CallTree(new PostPartialEvaluationSuite(compiler.getOrCreateCompilerOptions(target), false), context, new InliningPolicy() {
+            });
+            task.cancelled = true;
+            CancellationBailoutException bailout = Assert.assertThrows(CancellationBailoutException.class, onlyChild(tree.getRoot())::expand);
+            Assert.assertFalse(bailout.isPermanent());
+        }
     }
 
     @Test
@@ -509,10 +528,11 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     private static final class RecordingCompilationTask implements TruffleCompilationTask {
 
         private final EconomicSet<TruffleCompilable> inlinedTargets = EconomicSet.create(Equivalence.IDENTITY);
+        private boolean cancelled;
 
         @Override
         public boolean isCancelled() {
-            return false;
+            return cancelled;
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,18 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.CancellationBailoutException;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.TruffleCompilation;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
+import jdk.graal.compiler.truffle.TruffleTierContext;
+import jdk.graal.compiler.truffle.phases.InstrumentBranchesPhase;
+import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
-import jdk.graal.compiler.truffle.PartialEvaluator;
-import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -90,6 +98,31 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
     @Before
     public void setUp() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("compiler.InstrumentBranches", "true").build());
+    }
+
+    @Test
+    public void cancellationDuringInstrumentation() {
+        OptimizedCallTarget target = getInitCallTarget();
+        target.call();
+        TruffleCompilerImpl compiler = getTruffleCompiler(target);
+        var task = newTask();
+        try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
+            TruffleTierContext context = TruffleTierContext.createInitialContext(compiler.getPartialEvaluator(), compiler.getOrCreateCompilerOptions(target),
+                            getDebugContext(), target, compilation.getCompilationId(), getSpeculationLog(), task, null);
+            var phase = new InstrumentBranchesPhase(new InstrumentPhase.Instrumentation(getTypes(), new long[2]), false) {
+                @Override
+                public void run(StructuredGraph graph, TruffleTierContext truffleContext) {
+                    super.run(graph, truffleContext);
+                }
+            };
+            StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext(), AllowAssumptions.YES).cancellable(() -> true).build();
+            // Arm cancellation inside the instrumentation traversal, not during phase setup.
+            for (int i = 0; i <= CompilationAlarm.CHECK_BAILOUT_COUNTER; i++) {
+                graph.eventCounterOverflows(Integer.MAX_VALUE);
+            }
+            CancellationBailoutException bailout = Assert.assertThrows(CancellationBailoutException.class, () -> phase.run(graph, context));
+            Assert.assertFalse(bailout.isPermanent());
+        }
     }
 
     @Test

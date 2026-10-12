@@ -38,6 +38,7 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 
+import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -703,6 +704,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     if (canonical == node && nodeClass.isCommutative()) {
                         canonical = ((BinaryCommutative<?>) node).maybeCommuteInputs();
                     }
+                } catch (CancellationBailoutException e) {
+                    throw e;
                 } catch (Throwable e) {
                     throw new GraalGraphError(e).addContext(node);
                 }
