@@ -1,0 +1,5 @@
+# mx environment file
+# goal: build and test the Terminus configuration without building native images
+# use: mx --env terminus gate --tags build,terminus
+DYNAMIC_IMPORTS=/espresso-compiler-stub
+NATIVE_IMAGES=false
