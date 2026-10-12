@@ -686,17 +686,8 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(0L);
 
-    /**
-     * Cached value of {@link ConcealedOptions#MaxJavaStackTraceDepth}. Also used as default value.
-     */
-    private static int maxJavaStackTraceDepth = 1024;
-
-    /**
-     * Cached accessor for {@link ConcealedOptions#MaxJavaStackTraceDepth}.
-     */
-    public static int maxJavaStackTraceDepth() {
-        return maxJavaStackTraceDepth;
-    }
+    @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
+    public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(1024);
 
     /* Same option name and specification as the Java HotSpot VM. */
     @Option(help = "Maximum total size of NIO direct-buffer allocations", type = OptionType.Expert)//
@@ -1343,15 +1334,6 @@ public class SubstrateOptions {
         @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
         public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, RegisterForIsolateArgumentParser);
 
-        /** Use {@link SubstrateOptions#maxJavaStackTraceDepth()} instead. */
-        @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
-        public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(maxJavaStackTraceDepth) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-                super.onValueUpdate(values, oldValue, newValue);
-                maxJavaStackTraceDepth = newValue;
-            }
-        };
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
         @Option(help = "Enable FramePointerPhase for methods that modify the stack pointer. Enabled by default for Windows on AMD64.")//
         public static final HostedOptionKey<Boolean> UseFramePointerPhase = new HostedOptionKey<>(null, SubstrateOptions::validateUseFramePointerPhase);

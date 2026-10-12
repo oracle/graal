@@ -70,11 +70,11 @@ public class StackTraceUtils {
      * Captures the stack trace of the current thread. In almost any context, calling
      * {@link JavaThreads#getStackTrace} for {@link Thread#currentThread()} is preferable.
      * <p>
-     * Captures at most {@link SubstrateOptions#maxJavaStackTraceDepth()} stack trace elements if
+     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if
      * max depth > 0, or all if max depth <= 0.
      */
     public static StackTraceElement[] getCurrentThreadStackTrace(boolean filterExceptions, Pointer startSP, Pointer endSP) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.maxJavaStackTraceDepth());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         visitCurrentThreadStackFrames(startSP, endSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
@@ -87,7 +87,7 @@ public class StackTraceUtils {
      * Captures the stack trace of a thread (potentially the current thread) while stopped at a
      * safepoint. Used by {@link Thread#getStackTrace()} and {@link Thread#getAllStackTraces()}.
      * <p>
-     * Captures at most {@link SubstrateOptions#maxJavaStackTraceDepth()} stack trace elements if
+     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if
      * max depth > 0, or all if max depth <= 0.
      */
     @NeverInline("Potentially starting a stack walk in the caller frame")
@@ -108,14 +108,14 @@ public class StackTraceUtils {
         if (isolateThread.isNull()) { // recently launched thread
             return NO_ELEMENTS;
         }
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         JavaStackWalker.walkThread(isolateThread, endSP, visitor, null);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread, Pointer startSP, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         JavaStackWalker.walkThread(isolateThread, startSP, endSP, Word.nullPointer(), visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
@@ -327,7 +327,7 @@ final class StackTraceBuilder extends BacktraceDecoder {
 
     static StackTraceElement[] build(Object x) {
         var stackTraceBuilder = new StackTraceBuilder();
-        stackTraceBuilder.visitBacktrace(x, Integer.MAX_VALUE, SubstrateOptions.maxJavaStackTraceDepth());
+        stackTraceBuilder.visitBacktrace(x, Integer.MAX_VALUE, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         return stackTraceBuilder.trace.toArray(new StackTraceElement[0]);
     }
 

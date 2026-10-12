@@ -428,7 +428,7 @@ public class RealLog extends AbstractLog {
 
     private final class BacktracePrinter extends BacktraceDecoder {
         int printBacktrace(Object backtrace, int maxFramesProcessed) {
-            return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.maxJavaStackTraceDepth());
+            return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         }
 
         @Override

@@ -89,13 +89,13 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
      * skipped because they represent a {@link Throwable} constructor, or are otherwise special
      * ({@link StackTraceUtils#shouldShowFrame}). To mitigate this, we always decode
      * {@linkplain #NATIVE_FRAME_LIMIT_MARGIN a few more} native frames than the
-     * {@linkplain SubstrateOptions#maxJavaStackTraceDepth() Java frame limit} and hope that we can
+     * {@linkplain SubstrateOptions#MaxJavaStackTraceDepth Java frame limit} and hope that we can
      * decode enough Java frames later on.
      *
-     * @see SubstrateOptions#maxJavaStackTraceDepth()
+     * @see SubstrateOptions#MaxJavaStackTraceDepth
      */
     private static int computeNativeLimit() {
-        int maxJavaStackTraceDepth = SubstrateOptions.maxJavaStackTraceDepth();
+        int maxJavaStackTraceDepth = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
         if (maxJavaStackTraceDepth <= 0) {
             /* Unlimited backtrace. */
             return Integer.MAX_VALUE;
