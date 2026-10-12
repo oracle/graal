@@ -264,12 +264,29 @@ public final class GuestAnnotationAccess {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static List<AnnotationValue> getAnnotationValuesByType(Annotated element, Class<? extends Annotation> annotationClass,
                     Class<? extends Annotation> containerClass) {
+        GuestAccess guestAccess = GuestAccess.get();
+        return getAnnotationValuesByType(element, guestAccess.lookupType(annotationClass), guestAccess.lookupType(containerClass));
+    }
+
+    /**
+     * Retrieves annotation values of type {@code annotationType} from {@code element}, including
+     * both a direct annotation and annotations nested in the {@code value} member of an annotation
+     * of type {@code containerType}.
+     *
+     * @param element the annotated element to retrieve annotation values from
+     * @param annotationType the JVMCI type of the annotation to retrieve
+     * @param containerType the JVMCI type of the container annotation that may contain the
+     *            requested annotations
+     * @return the matching annotation values in direct-first, container-second order
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static List<AnnotationValue> getAnnotationValuesByType(Annotated element, ResolvedJavaType annotationType, ResolvedJavaType containerType) {
         List<AnnotationValue> result = new ArrayList<>();
-        AnnotationValue direct = getAnnotationValue(element, annotationClass);
+        AnnotationValue direct = getAnnotationValue(element, annotationType, false);
         if (direct != null) {
             result.add(direct);
         }
-        AnnotationValue container = getAnnotationValue(element, containerClass);
+        AnnotationValue container = getAnnotationValue(element, containerType, false);
         if (container != null) {
             result.addAll(container.getList("value", AnnotationValue.class));
         }

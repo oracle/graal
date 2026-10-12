@@ -48,7 +48,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -76,7 +75,6 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.shared.option.LocatableMultiOptionValue;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl;
 import com.oracle.svm.shared.util.ClassUtil;
@@ -88,7 +86,6 @@ import com.oracle.svm.util.HostedModuleSupport;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.graal.compiler.vmaccess.VMAccess;
@@ -315,8 +312,8 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    private static VMAccess getVmAccess(VMAccess.Builder builder, String[] classpath, String[] originalModulePath, HostedOptionParser parser) {
-        boolean jvmciGuestEnabled = SubstrateOptions.EnableJVMCIGuest.getValue(new OptionValues(parser.getHostedValues()));
+    private static VMAccess getVmAccess(VMAccess.Builder builder, String[] classpath, String[] originalModulePath, OptionValues options) {
+        boolean jvmciGuestEnabled = SubstrateOptions.EnableJVMCIGuest.getValue(options);
 
         final String[] modulepath = filterModulePath(originalModulePath, jvmciGuestEnabled, builder.isFullyIsolated());
 
@@ -339,9 +336,7 @@ public class NativeImageGeneratorRunner {
 
             // Propagate --add-exports into the Espresso guest.
             // GR-73131 will make this non-Espresso specific.
-            EconomicMap<OptionKey<?>, Object> options = parser.getHostedValues();
-            @SuppressWarnings("unchecked")
-            List<String> addExports = new ArrayList<>(((LocatableMultiOptionValue<String>) options.get(NativeImageClassLoaderOptions.AddExports)).values());
+            List<String> addExports = NativeImageClassLoaderOptions.AddExports.getValue(options).values();
             addExports.add("java.base/jdk.internal.module=org.graalvm.nativeimage.shared");
             builder.vmOption("java.AddExports=" + String.join(File.pathSeparator, addExports));
 
@@ -412,8 +407,8 @@ public class NativeImageGeneratorRunner {
             builderOptionFilter = null;
         }
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, guestModulePath);
-        HostedOptionParser parser = nativeImageClassLoaderSupport.setupHostedOptionParser(arguments, builderOptionFilter);
-        VMAccess vmAccess = getVmAccess(vmAccessBuilder, classpath, modulepath, parser);
+        nativeImageClassLoaderSupport.setupHostedOptionParser(arguments, builderOptionFilter);
+        VMAccess vmAccess = getVmAccess(vmAccessBuilder, classpath, modulepath, nativeImageClassLoaderSupport.getParsedHostedOptions());
         GuestAccess.plantConfiguration(vmAccess);
         nativeImageClassLoaderSupport.setAnnotationExtractor(GuestAnnotationAccess.initializeBackends());
         nativeImageClassLoaderSupport.setupLibGraalClassLoader();

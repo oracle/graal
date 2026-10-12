@@ -192,7 +192,7 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     @Override
-    public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
+    public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath);
 
     protected final void write(DebugContext context, Path outputFile) {
         try {
