@@ -108,6 +108,7 @@ import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.SharedIntrinsics;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
 import com.oracle.svm.shared.singletons.traits.LayeredInstallationKindSingletonTrait;
@@ -176,6 +177,7 @@ import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.IntegerPolyno
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.IntegerPolynomialP256MontgomeryMultPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.Poly1305ProcessBlocksPlugin;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
@@ -216,6 +218,7 @@ public class SubstrateGraphBuilderPlugins {
         registerImageInfoPlugins(plugins);
         registerProxyPlugins(annotationSubstitutions, plugins, parsingReason);
         registerSerializationPlugins(loader, plugins, parsingReason);
+        registerSharedIntrinsicsPlugins(plugins);
         registerAtomicUpdaterPlugins(plugins);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
@@ -1659,5 +1662,29 @@ public class SubstrateGraphBuilderPlugins {
         }
 
         throw UserError.abort("%s: parameter %s of call to %s in %s", message, parameterName, targetMethod, b.getMethod().asStackTraceElement(b.bci()));
+    }
+
+    private static void registerSharedIntrinsicsPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, new TypeSymbol(GuestAccess.get().lookupType(SharedIntrinsics.class)));
+        r.register(new RequiredInlineOnlyInvocationPlugin("inIntrinsic") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(b.parsingIntrinsic()));
+                return true;
+            }
+        });
+
+        r.register(new RequiredInlineOnlyInvocationPlugin("dynamicAssert", boolean.class, String.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode condition, ValueNode message) {
+                if (!b.parsingIntrinsic()) {
+                    return false;
+                }
+                ResolvedJavaMethod dynamicAssertMethod = b.getMetaAccess().lookupJavaMethod(
+                                ReflectionUtil.lookupMethod(ReplacementsUtil.class, "dynamicAssert", boolean.class, String.class));
+                b.handleReplacedInvoke(InvokeKind.Static, dynamicAssertMethod, new ValueNode[]{condition, message}, true);
+                return true;
+            }
+        });
     }
 }
