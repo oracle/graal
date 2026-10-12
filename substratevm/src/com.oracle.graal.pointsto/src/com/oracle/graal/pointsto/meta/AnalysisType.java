@@ -1028,7 +1028,18 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * It is possible that we see unresolved types here. If the permitted subclasses are
              * queried during analysis, we need to resolve them.
              */
-            ResolvedJavaType resolvedPermittedSubclass = permittedSubclass.resolve(wrapped);
+            ResolvedJavaType resolvedPermittedSubclass;
+            try {
+                resolvedPermittedSubclass = permittedSubclass.resolve(wrapped);
+            } catch (LinkageError e) {
+                /*
+                 * Like Class.getPermittedSubclasses(), omit subclasses that cannot be loaded. A
+                 * permitted subclass may be absent from the application class path, for example
+                 * after removing unused classes. Such a subclass cannot be instantiated and must
+                 * not prevent analysis of the remaining sealed hierarchy.
+                 */
+                continue;
+            }
             /*
              * The permitted subclasses of the wrapped type may contain types that are unsupported
              * on the target platform (e.g. hosted-only types). We therefore need to filter the list
