@@ -148,7 +148,7 @@ public final class WriteSinkingBlockState
             if (conditional) {
                 toAdd = createConditionalWrite(cacheData, entry);
             } else {
-                toAdd = new WriteNode(entry.address, id, cacheData.value, cacheData.barrier, MemoryOrderMode.PLAIN);
+                toAdd = new WriteNode(cacheData.address, id, cacheData.value, cacheData.barrier, MemoryOrderMode.PLAIN);
             }
         }
         HIRBlock commitBlock = cfg.blockFor(fixedCommitPoint);
@@ -173,7 +173,7 @@ public final class WriteSinkingBlockState
                         localLoopFrequencyData.get(loopBegin).getProfileSource());
 
         // Create the conditional write itself.
-        return new ConditionalWriteNode(logicNode, entry.address, cacheData.value, entry.identity, cacheData.barrier, profile);
+        return new ConditionalWriteNode(logicNode, cacheData.address, cacheData.value, entry.identity, cacheData.barrier, profile);
     }
 
     /**

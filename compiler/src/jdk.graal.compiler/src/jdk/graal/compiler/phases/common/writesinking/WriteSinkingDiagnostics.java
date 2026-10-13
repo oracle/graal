@@ -709,7 +709,7 @@ public final class WriteSinkingDiagnostics {
                 return;
             }
             WriteNode write = representativeWrites.get(key);
-            Node source = write == null ? key.address : write;
+            Node source = write == null ? key.base : write;
             detailRows.add(DetailRow.create(compiledMethod, eventName(reason), category(reason), reason.name(), defaultNote(reason), loop, write,
                             key.identity == null ? UNKNOWN : key.identity.toString(), source));
         }

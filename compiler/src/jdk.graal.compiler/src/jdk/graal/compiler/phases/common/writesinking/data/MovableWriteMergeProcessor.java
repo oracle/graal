@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.vector.nodes.simd.SimdConstant;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
@@ -178,6 +179,9 @@ public abstract class MovableWriteMergeProcessor<State extends MovableWriteMerge
      * different compatible values.
      */
     public CacheData getMergedData(List<State> states, CacheEntry key, AbstractMergeNode merge) {
+        // Use the same predecessor that supplies the candidate keys in forgeNewState. When
+        // sinking conditionally, the loop entry may not contain the write; use a backedge.
+        AddressNode address = states.get(conditionalSinks.isEmpty() ? 0 : 1).getCacheData(key).address;
         int conditionalMergeCount = 0;
         boolean conditional = conditionalSinks.contains(key);
         CacheData cacheData = states.get(0).getCacheData(key);
@@ -232,10 +236,10 @@ public abstract class MovableWriteMergeProcessor<State extends MovableWriteMerge
                     v = dup;
                 }
             }
-            return new CacheData(v, cacheData.barrier, conditional ? (LoopBeginNode) merge : conditionalMerge);
+            return new CacheData(address, v, cacheData.barrier, conditional ? (LoopBeginNode) merge : conditionalMerge);
         } else {
             // case that there is the same value on all branches
-            return new CacheData(value, cacheData.barrier, conditionalMerge);
+            return new CacheData(address, value, cacheData.barrier, conditionalMerge);
         }
     }
 
@@ -254,7 +258,7 @@ public abstract class MovableWriteMergeProcessor<State extends MovableWriteMerge
         if (defaultConstant == null) {
             return null;
         }
-        return new CacheData(defaultConstant, representative.barrier);
+        return new CacheData(representative.address, defaultConstant, representative.barrier);
     }
 
     private ConstantNode getDefaultConstant(ValueNode value) {
