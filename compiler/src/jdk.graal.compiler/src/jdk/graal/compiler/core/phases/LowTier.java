@@ -56,6 +56,7 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.vector.phases.VectorLoweringPhaseSuite;
+import jdk.graal.compiler.vector.phases.RemoveEmptyLoopsPhase;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.graal.compiler.virtual.phases.ea.LowTierReadEliminationPhase;
 
@@ -120,6 +121,8 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new WriteBarrierAdditionPhase(GraphState.StageFlag.LOW_TIER_BARRIER_ADDITION));
 
         appendPhase(canonicalizerWithoutGVN);
+
+        appendPhase(new RemoveEmptyLoopsPhase(canonicalizerWithoutGVN));
 
         /*
          * This placeholder should be replaced by an instance of {@link AddressLoweringPhase}
