@@ -534,7 +534,7 @@ public abstract class NativeImageCodeCache {
         configurationExecutables.forEach((_, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
-                Object accessor = reflectionSupport.getAccessor(analysisMethod);
+                JavaConstant accessor = reflectionSupport.getAccessor(analysisMethod);
                 runtimeMetadataEncoder.addReflectionExecutableMetadata(method, reflectMethod, accessor);
             }
         }));
@@ -969,7 +969,7 @@ public abstract class NativeImageCodeCache {
 
         void addReflectionFieldMetadata(HostedField sharedField, ConditionalRuntimeValue<Field> reflectField);
 
-        void addReflectionExecutableMetadata(HostedMethod sharedMethod, ConditionalRuntimeValue<Executable> reflectMethod, Object accessor);
+        void addReflectionExecutableMetadata(HostedMethod sharedMethod, ConditionalRuntimeValue<Executable> reflectMethod, JavaConstant accessor);
 
         void addHeapAccessibleObjectMetadata(WrappedElement hostedElement, AccessibleObject object, boolean registered);
 

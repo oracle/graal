@@ -95,7 +95,6 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -1015,8 +1014,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerMethodAccessor(AnalysisMethod method) {
-        SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method);
-        universe.getHeapScanner().rescanObject(accessor, scanReason);
+        JavaConstant accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method);
+        universe.getHeapScanner().rescanConstant(accessor, scanReason);
     }
 
     private void registerTypesForGenericSignature(Type[] genericTypes) {
@@ -1406,10 +1405,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public Object getAccessor(AnalysisMethod method) {
+    public JavaConstant getAccessor(AnalysisMethod method) {
         guaranteeAnalysisFinishedAndRuntimeMetadataEncodingNotComplete();
         if (!methods.containsKey(method) || !methods.get(method).isRegisteredAs(ACCESSED)) {
-            return null;
+            return JavaConstant.NULL_POINTER;
         }
         return ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method);
     }

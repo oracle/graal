@@ -52,7 +52,6 @@ public final class ExecutableAccessorComputer implements JVMCIFieldValueTransfor
              */
             return originalValue;
         }
-        SubstrateAccessor accessor = ReflectionSubstitutionSupport.singleton().getOrCreateAccessor(access.asResolvedJavaMethod(receiver));
-        return access.getSnippetReflection().forObject(accessor);
+        return ReflectionSubstitutionSupport.singleton().getOrCreateAccessor(access.asResolvedJavaMethod(receiver));
     }
 }

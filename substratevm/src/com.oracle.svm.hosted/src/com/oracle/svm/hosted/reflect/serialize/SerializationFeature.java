@@ -106,6 +106,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -637,8 +638,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     private static ConstructorAccessor getConstructorAccessor(Class<?> serializationTargetClass, Constructor<?> constructorToCall) {
-        return (SubstrateConstructorAccessor) ReflectionSubstitutionSupport.singleton().getOrCreateAccessor(GuestAccess.get().lookupType(serializationTargetClass),
+        JavaConstant accessor = ReflectionSubstitutionSupport.singleton().getOrCreateAccessor(
+                        GuestAccess.get().lookupType(serializationTargetClass),
                         GuestAccess.get().lookupMethod(constructorToCall));
+        // GR-71897: pass the accessor constant through serialization registration without materializing it.
+        return GuestAccess.get().asHostObject(SubstrateConstructorAccessor.class, accessor);
     }
 
     /**

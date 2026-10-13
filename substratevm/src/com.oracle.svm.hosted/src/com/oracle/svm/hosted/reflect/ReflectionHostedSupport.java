@@ -58,7 +58,8 @@ public interface ReflectionHostedSupport {
 
     Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables();
 
-    Object getAccessor(AnalysisMethod method);
+    /** Returns the original guest accessor constant, or {@link JavaConstant#NULL_POINTER} if absent. */
+    JavaConstant getAccessor(AnalysisMethod method);
 
     /**
      * Returns the fields that shadow a superclass element registered for reflection, to be excluded

@@ -144,7 +144,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private record AccessorKey(ResolvedJavaMethod member, ResolvedJavaType targetClass) {
     }
 
-    final Map<AccessorKey, SubstrateAccessor> accessors = new ConcurrentHashMap<>();
+    final Map<AccessorKey, JavaConstant> accessors = new ConcurrentHashMap<>();
     private final Map<SignatureKey, MethodRef> expandSignatureMethods = new ConcurrentHashMap<>();
 
     private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype",
@@ -164,17 +164,17 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public SubstrateAccessor getOrCreateAccessor(ResolvedJavaMethod member) {
+    public JavaConstant getOrCreateAccessor(ResolvedJavaMethod member) {
         ResolvedJavaMethod originalMember = Objects.requireNonNull(OriginalMethodProvider.getOriginalMethod(member));
         return getOrCreateAccessor(originalMember.getDeclaringClass(), originalMember);
     }
 
     @Override
-    public SubstrateAccessor getOrCreateAccessor(ResolvedJavaType targetClass, ResolvedJavaMethod member) {
+    public JavaConstant getOrCreateAccessor(ResolvedJavaType targetClass, ResolvedJavaMethod member) {
         ResolvedJavaMethod originalMember = Objects.requireNonNull(OriginalMethodProvider.getOriginalMethod(member));
         ResolvedJavaType originalTargetClass = OriginalClassProvider.getOriginalType(targetClass);
         AccessorKey key = new AccessorKey(originalMember, originalTargetClass);
-        SubstrateAccessor existing = accessors.get(key);
+        JavaConstant existing = accessors.get(key);
         if (existing != null) {
             return existing;
         }
@@ -210,9 +210,14 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      * {@link ConcurrentHashMap#computeIfAbsent} guarantees that this method is called only once per
      * member, so no further synchronization is necessary.
      */
-    private SubstrateAccessor createAccessor(AccessorKey key) {
+    private JavaConstant createAccessor(AccessorKey key) {
+        // GR-71897: replace this reflection-based factory adapter with guest accessor construction.
         Executable member = Objects.requireNonNull(OriginalMethodProvider.getJavaMethod(key.member), "No original Java method for " + key.member);
         Class<?> targetClass = OriginalClassProvider.getJavaClass(key.targetClass);
+        return GuestAccess.get().getSnippetReflection().forObject(createAccessor(member, targetClass));
+    }
+
+    private SubstrateAccessor createAccessor(Executable member, Class<?> targetClass) {
         MethodRef expandSignature;
         MethodRef directTarget = null;
         AnalysisMethod targetMethod = null;

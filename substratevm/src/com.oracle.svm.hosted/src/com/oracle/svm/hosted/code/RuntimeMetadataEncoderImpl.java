@@ -457,7 +457,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     @Override
-    public void addReflectionExecutableMetadata(HostedMethod hostedMethod, ConditionalRuntimeValue<Executable> conditionalMethod, Object accessor) {
+    public void addReflectionExecutableMetadata(HostedMethod hostedMethod, ConditionalRuntimeValue<Executable> conditionalMethod, JavaConstant accessor) {
         boolean isMethod = !hostedMethod.isConstructor();
         HostedType declaringType = hostedMethod.getDeclaringClass();
         String name = isMethod ? hostedMethod.getReflectionName() : null;
@@ -493,8 +493,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisMethod);
         Object reflectParameters = registerReflectParameters(reflectMethod);
         JavaConstant accessorConstant = null;
-        if (accessor != null) {
-            accessorConstant = snippetReflection.forObject(accessor);
+        if (accessor.isNonNull()) {
+            AnalysisUniverse analysisUniverse = ((AnalysisMetaAccess) metaAccess.getWrapped()).getUniverse();
+            accessorConstant = analysisUniverse.lookup(accessor);
             addConstantObject(accessorConstant);
         }
 

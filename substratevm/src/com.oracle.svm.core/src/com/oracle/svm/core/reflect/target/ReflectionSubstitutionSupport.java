@@ -27,25 +27,23 @@ package com.oracle.svm.core.reflect.target;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.reflect.SubstrateAccessor;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/**
- * Should be migrated to JVMCI (GR-71897).
- */
 public interface ReflectionSubstitutionSupport {
 
     static ReflectionSubstitutionSupport singleton() {
         return ImageSingletons.lookup(ReflectionSubstitutionSupport.class);
     }
 
-    SubstrateAccessor getOrCreateAccessor(ResolvedJavaMethod member);
+    /** Returns the original guest constant for the accessor created for {@code member}. */
+    JavaConstant getOrCreateAccessor(ResolvedJavaMethod member);
 
-    SubstrateAccessor getOrCreateAccessor(ResolvedJavaType targetClass, ResolvedJavaMethod member);
+    /** Returns the original guest constant for the accessor created for {@code member}. */
+    JavaConstant getOrCreateAccessor(ResolvedJavaType targetClass, ResolvedJavaMethod member);
 
     /** Offset of the field or -1 if the field was not registered for unsafe access. */
     int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed);
