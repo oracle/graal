@@ -54,7 +54,7 @@ public interface ReflectionSubstitutionSupport {
     /** Offset of the field or -1 if the field was not registered for unsafe access. */
     int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed);
 
-    int getInstalledLayerNumber(Field field);
+    int getInstalledLayerNumber(ResolvedJavaField field);
 
     /**
      * Returns the {@link Delete#value reason} why a field was deleted, or null if the field is not

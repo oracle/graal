@@ -101,7 +101,6 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.OriginalFieldProvider;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.options.Option;
@@ -441,13 +440,18 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public int getFieldOffset(Field field, boolean checkUnsafeAccessed) {
+        return getFieldOffset(GuestAccess.get().lookupField(field), checkUnsafeAccessed);
+    }
+
+    @Override
+    public int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed) {
         VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
 
         /*
-         * We have to use `optionalLookupJavaField` as fields are omitted when there is no
+         * We have to use `optionalLookup` as fields are omitted when there is no
          * reflective access in an image.
          */
-        HostedField hostedField = hostedMetaAccess().optionalLookupJavaField(field);
+        HostedField hostedField = hostedMetaAccess().getUniverse().optionalLookup(aUniverse.lookup(field));
         if (hostedField == null || (checkUnsafeAccessed && !hostedField.wrapped.isUnsafeAccessed())) {
             return -1;
         }
@@ -455,13 +459,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed) {
-        // GR-71897: convert to JVMCI
-        return getFieldOffset(OriginalFieldProvider.getJavaField(field), checkUnsafeAccessed);
-    }
-
-    @Override
-    public int getInstalledLayerNumber(Field field) {
+    public int getInstalledLayerNumber(ResolvedJavaField field) {
         VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
 
         /*
@@ -469,10 +467,10 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * their declaring type or a full substitution. Their accesses fail at runtime using the
          * deletion reason, so they do not need an installed storage layer.
          */
-        if (annotationSubstitutions.isDeleted(GuestAccess.get().lookupField(field))) {
+        if (annotationSubstitutions.isDeleted(field)) {
             return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
-        HostedField hostedField = hostedMetaAccess().lookupJavaField(field);
+        HostedField hostedField = hostedMetaAccess().getUniverse().lookup(aUniverse.lookup(field));
         return hostedField.getInstalledLayerNum();
     }
 

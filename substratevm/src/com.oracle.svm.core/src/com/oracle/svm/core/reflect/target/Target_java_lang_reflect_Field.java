@@ -29,7 +29,6 @@ import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,9 +44,14 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 import sun.reflect.generics.repository.FieldRepository;
 
@@ -165,37 +169,32 @@ public final class Target_java_lang_reflect_Field {
         }
     }
 
-    static class FieldOffsetComputer implements FieldValueTransformerWithAvailability {
-        // JVMCI migration blocked by GR-72441: Equivalents of
-        // ConstantReflectionProvider.asJavaType() for fields and methods
+    static class FieldOffsetComputer implements JVMCIFieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override
-        public Object transform(Object receiver, Object originalValue) {
-            return ReflectionSubstitutionSupport.singleton().getFieldOffset((Field) receiver, true);
+        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+            ResolvedJavaField field = GuestAccess.get().asResolvedJavaField(receiver);
+            return JavaConstant.forInt(ReflectionSubstitutionSupport.singleton().getFieldOffset(field, true));
         }
     }
 
-    static class LayerNumberComputer implements FieldValueTransformerWithAvailability {
-        // JVMCI migration blocked by GR-72441: Equivalents of
-        // ConstantReflectionProvider.asJavaType() for fields and methods
+    static class LayerNumberComputer implements JVMCIFieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override
-        public Object transform(Object receiver, Object originalValue) {
-            if (ImageLayerBuildingSupport.buildingImageLayer()) {
-                Field field = (Field) receiver;
-                if (Modifier.isStatic(field.getModifiers())) {
-                    return ReflectionSubstitutionSupport.singleton().getInstalledLayerNumber((Field) receiver);
-                }
+        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+            ResolvedJavaField field = GuestAccess.get().asResolvedJavaField(receiver);
+            if (ImageLayerBuildingSupport.buildingImageLayer() && field.isStatic()) {
+                return JavaConstant.forInt(ReflectionSubstitutionSupport.singleton().getInstalledLayerNumber(field));
             }
-            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+            return JavaConstant.forInt(MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER);
         }
     }
 }
