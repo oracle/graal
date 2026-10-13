@@ -90,6 +90,8 @@ ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-
 ce_python_components = ['antlr4', 'sllvmvm', 'cmp', 'cov', 'dap', 'dis', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'pyn', 'pynl', 'rgx', 'sdk',
                         'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_no_native_components = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'tflllm', 'truffle-json']
+ce_graalos_components = ['bnative-image-utils', 'cmp', 'gos', 'gossup', 'gvm', 'lg', 'ni', 'nic', 'nil', 'nr_lib_jvmcicompiler', 'sbjdk', 'sbllvm', 'sbsvm', 'sdkc', 'sdkni', 'ssvmjdwp', 'svm', 'svmjdwp', 'svmsl', 'svmt', 'tflc', 'tflsm']
+ce_graalos_rust_components = ce_graalos_components + ['sbrust']
 
 # Main GraalVMs
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-win')
@@ -106,6 +108,10 @@ mx_sdk_vm.register_vm_config('libgraal-bash', llvm_components + ['cmp', 'gvm', '
 
 # GraalVM variant with NI-based libjvm as default
 mx_sdk_vm.register_vm_config('community-next', ce_unchained_components_next, _suite, env_file='ce-next')
+
+# GraalOS variants
+mx_sdk_vm.register_vm_config('ce-graalos', ce_graalos_components, _suite, env_file='ce-graalos')
+mx_sdk_vm.register_vm_config('ce-graalos-rust', ce_graalos_rust_components, _suite, env_file='ce-graalos-rust')
 
 if mx.get_os() == 'windows':
     mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-utils', 'cmp', 'gvm', 'nfi-libffi', 'nfi', 'ni', 'nil', 'nju', 'nic', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)

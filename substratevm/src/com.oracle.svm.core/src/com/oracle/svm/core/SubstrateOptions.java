@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.SubstrateControlFlowIntegrity.Options.CFI;
 import static com.oracle.svm.core.SubstrateOptions.OptimizationLevel.O2;
 import static com.oracle.svm.core.SubstrateOptions.OptimizationLevel.O3;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
@@ -39,11 +40,15 @@ import static jdk.graal.compiler.options.OptionType.User;
 import static org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 import static org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageInfo;
@@ -560,6 +565,10 @@ public class SubstrateOptions {
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+
+    @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.", //
+                    stability = OptionStability.STABLE)//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
@@ -1302,6 +1311,120 @@ public class SubstrateOptions {
     @Option(help = "Support runtime compilation in separate isolates (enable at runtime with option CompileInIsolates).") //
     public static final HostedOptionKey<Boolean> SupportCompileInIsolates = new HostedOptionKey<>(true);
 
+    @Option(help = "Compile the application for GraalOS.", type = OptionType.User) //
+    public static final HostedOptionKey<Boolean> GraalOS = new HostedOptionKey<>(false, SubstrateOptions::validateGraalOSOption) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            if (newValue) {
+                // in GraalOS mode, we default to a maximum of 16GB of reserved address space
+                if (!values.containsKey(ConcealedOptions.MaxReservedAddressSpaceSize)) {
+                    ConcealedOptions.MaxReservedAddressSpaceSize.update(values, 16L << 30);
+                }
+                // GraalOS treats non-null mmap addresses as explicit placements, so disable runtime code cache randomization.
+                if (!values.containsKey(SubstrateOptions.RandomizeRuntimeCodeCache)) {
+                    SubstrateOptions.RandomizeRuntimeCodeCache.update(values, false);
+                }
+                // compiling in Isolates would reserve too much additional address space
+                if (!values.containsKey(SubstrateOptions.SupportCompileInIsolates)) {
+                    SubstrateOptions.SupportCompileInIsolates.update(values, false);
+                }
+                // in GraalOS mode, we default to full software CFI
+                if (!values.containsKey(CFI)) {
+                    CFI.update(values, SubstrateControlFlowIntegrity.CFIOptions.SW);
+                }
+                // static linking of JDK libs, but dynamic linking against musl
+                if (!values.containsKey(SubstrateOptions.StaticExecutableWithDynamicLibC)) {
+                    SubstrateOptions.StaticExecutableWithDynamicLibC.update(values, true);
+                }
+                // position-independent executable (retain relocation info)
+                // needed because -pie is not the default with StaticExecutableWithDynamicLibC
+                NativeLinkerOption.update(values, "-pie");
+
+                boolean cfiEnabled = values.get(CFI, CFI.getDefaultValue()) == SubstrateControlFlowIntegrity.CFIOptions.SW;
+
+                if (!values.containsKey(SubstrateOptions.UseLibC)) {
+                    // change default libc (both in option and system property)
+                    String libc = cfiEnabled ? "musl-swcfi" : "musl";
+                    SubstrateOptions.UseLibC.update(values, libc);
+                    System.setProperty("substratevm.HostLibC", libc);
+
+                    /*
+                     * Unfortunately, CLibraryPath is initialized based on the libc option in an
+                     * earlier phase, so we need to patch it from "glibc" to the actual libc we want
+                     * to use.
+                     */
+                    AccumulatingLocatableMultiOptionValue<?> cLibPath = (AccumulatingLocatableMultiOptionValue<?>) values.get(SubstrateOptions.CLibraryPath);
+                    if (cLibPath == null) {
+                        throw UserError.abort("'%s' must be set when building with '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.CLibraryPath, ""),
+                                        SubstrateOptionsParser.commandArgument(GraalOS, "+"));
+                    }
+                    List<?> cLibPaths = cLibPath.values();
+                    if (cLibPaths == null) {
+                        throw UserError.abort("'%s' must be set when building with '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.CLibraryPath, ""),
+                                        SubstrateOptionsParser.commandArgument(GraalOS, "+"));
+                    }
+                    AccumulatingLocatableMultiOptionValue<Path> newCLibPaths = AccumulatingLocatableMultiOptionValue.Paths.buildWithCustomDelimiter(cLibPath.getDelimiter());
+                    for (Object pathObj : cLibPaths) {
+                        Path path = (Path) pathObj;
+                        if (path.endsWith("glibc")) {
+                            Path parent = path.getParent();
+                            if (parent == null) {
+                                throw UserError.abort("Invalid top-level directory for '%s' in '%s'.", path, SubstrateOptionsParser.commandArgument(SubstrateOptions.CLibraryPath,
+                                                cLibPaths.stream().map(Object::toString).collect(Collectors.joining(cLibPath.getDelimiter()))));
+                            }
+                            Path newPath = parent.resolve(libc);
+                            newCLibPaths.valueUpdate(newPath);
+                        } else {
+                            newCLibPaths.valueUpdate(path);
+                        }
+                    }
+                    values.put(SubstrateOptions.CLibraryPath, newCLibPaths);
+                }
+                // for SW-CFI, we know the path to the compiler toolchain
+                if (cfiEnabled && !values.containsKey(SubstrateOptions.CCompilerPath)) {
+                    String toolchain = "musl-swcfi";
+                    Path path = Paths.get(System.getProperty("java.home")).resolve(Paths.get("lib", "toolchains", toolchain, "bin", "clang"));
+                    if (path == null || !Files.exists(path)) {
+                        throw VMError.shouldNotReachHere("Toolchain compiler \"%s\" not found in %s", toolchain, path);
+                    }
+                    try {
+                        path = path.toRealPath();
+                    } catch (IOException e) {
+                        throw VMError.shouldNotReachHere("Toolchain compiler \"%s\" not found in %s", toolchain, path);
+                    }
+                    SubstrateOptions.CCompilerPath.update(values, path.toString());
+                }
+                // disable container support in GraalOS [GR-64318]
+                SubstrateOptions.UseContainerSupport.update(values, false);
+            }
+        }
+    };
+
+    private static void validateGraalOSOption(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue()) {
+            if (!Platform.includedIn(Platform.LINUX_AMD64.class)) {
+                throw UserError.invalidOptionValue(optionKey, optionKey.getValue(), "The option is only supported on Linux/amd64.");
+            }
+
+            if (SubstrateOptions.StaticExecutable.getValue()) {
+                throw UserError.invalidOptionValue(SubstrateOptions.StaticExecutable, true,
+                                "Fully static executables are not supported for GraalOS; use '--static-nolibc' instead");
+            }
+
+            /*
+             * Ensure that these options are enabled for GraalOS, even if the default changes to
+             * "false".
+             */
+            if (!SubstrateOptions.NoDirectRelocationsInText.getValue()) {
+                throw UserError.invalidOptionValue(SubstrateOptions.NoDirectRelocationsInText, false, "Needs to be enabled for GraalOS");
+            }
+            if (!SubstrateOptions.StaticExecutableWithDynamicLibC.getValue()) {
+                throw UserError.invalidOptionValue(SubstrateOptions.StaticExecutableWithDynamicLibC, false, "Needs to be enabled for GraalOS");
+            }
+        }
+    }
+
     public static boolean shouldCompileInIsolates() {
         /*
          * If SupportCompileInIsolates is disabled, CompileInIsolates becomes unreachable because
@@ -1318,6 +1441,10 @@ public class SubstrateOptions {
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
+
+        /** Use {@link com.oracle.svm.core.heap.ReferenceAccess#getMaxAddressSpaceSize()} instead. */
+        @Option(help = "Maximum allowed address space size for the Java heap (0: no limit).", type = OptionType.Expert) //
+        public static final HostedOptionKey<Long> MaxReservedAddressSpaceSize = new HostedOptionKey<>(0L);
 
         @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
         public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);

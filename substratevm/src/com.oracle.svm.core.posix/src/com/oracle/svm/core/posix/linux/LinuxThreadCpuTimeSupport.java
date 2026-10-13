@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
@@ -52,7 +53,7 @@ public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
-        if (!includeSystemTime) {
+        if (!includeSystemTime && !SubstrateOptions.GraalOS.getValue()) {
             int tid = (int) VMThreads.getOSThreadId(CurrentIsolate.getCurrentThread()).rawValue();
             assert tid != 0 : "OS thread id must be initialized before querying thread CPU time";
             return LinuxLibCHelper.getThreadUserTimeSlow(tid);
@@ -63,7 +64,7 @@ public class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
-        if (!includeSystemTime) {
+        if (!includeSystemTime && !SubstrateOptions.GraalOS.getValue()) {
             int tid = (int) VMThreads.getOSThreadId(isolateThread).rawValue();
             assert tid != 0 : "OS thread id must be initialized before querying thread CPU time";
             return LinuxLibCHelper.getThreadUserTimeSlow(tid);
