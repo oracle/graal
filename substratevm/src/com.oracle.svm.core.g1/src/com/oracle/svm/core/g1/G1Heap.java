@@ -59,6 +59,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1InitState;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1InternalState;
@@ -470,7 +471,7 @@ public final class G1Heap extends Heap {
 
     @Fold
     static int getByteArrayBaseOffset() {
-        return ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
     }
 
     @Override

@@ -52,6 +52,7 @@ import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.code.SharedCompilationResult;
@@ -1302,12 +1303,12 @@ class CodeInfoVerifier {
             int expectedLength = 0;
             for (int i = 0; i < expectedObject.getValues().length; i++) {
                 JavaValue expectedValue = expectedObject.getValues()[i];
-                UnsignedWord expectedOffset = Word.unsigned(objectLayout.getArrayElementOffset(kind, expectedLength));
+                UnsignedWord expectedOffset = Word.unsigned(ObjectLayoutCompilerSupport.getArrayElementOffset(objectLayout, kind, expectedLength));
                 ValueInfo actualValue = findActualArrayElement(actualObject, expectedOffset);
                 verifyValue(compilation, expectedValue, actualValue, actualFrame, visitedVirtualObjects);
 
                 JavaKind valueKind = expectedObject.getSlotKind(i);
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind) == 4 && ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, valueKind) == 8) {
                     /*
                      * Truffle uses arrays in a non-standard way: it declares an int[] array and
                      * uses it to also store long and double values. These values span two array
@@ -1333,7 +1334,7 @@ class CodeInfoVerifier {
                 valueIdx += 1;
 
                 JavaKind kind = expectedField.getStorageKind();
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind) == 4 && ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, valueKind) == 8) {
                     /*
                      * Truffle uses fields in a non-standard way: it declares a couple of
                      * (consecutive) int fields, and uses them to also store long and double values.
@@ -1368,7 +1369,7 @@ class CodeInfoVerifier {
         int curIdx = startIdx;
         while (curOffset.belowThan(expectedOffset)) {
             ValueInfo value = actualObject[curIdx];
-            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind()));
+            curOffset = curOffset.add(ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, value.getKind()));
             curIdx++;
         }
         if (curOffset.equal(expectedOffset)) {

@@ -28,6 +28,7 @@ import static com.oracle.svm.core.config.ObjectLayout.singleton;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -39,11 +40,11 @@ public class SVMAnalysisMetaAccess extends AnalysisMetaAccess {
 
     @Override
     public int getArrayBaseOffset(JavaKind elementKind) {
-        return singleton().getArrayBaseOffset(elementKind);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(singleton(), elementKind);
     }
 
     @Override
     public int getArrayIndexScale(JavaKind elementKind) {
-        return singleton().getArrayIndexScale(elementKind);
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(singleton(), elementKind);
     }
 }

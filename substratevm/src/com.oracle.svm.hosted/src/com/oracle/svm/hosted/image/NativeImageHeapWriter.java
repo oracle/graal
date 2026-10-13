@@ -46,6 +46,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -512,7 +513,7 @@ public final class NativeImageHeapWriter {
                 writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
             } else {
                 constantReflection.forEachArrayElement(constant, (element, index) -> {
-                    long elementOffset = objectLayout.getArrayElementOffset(kind, index);
+                    long elementOffset = ObjectLayoutCompilerSupport.getArrayElementOffset(objectLayout, kind, index);
                     final int elementIndex = getIndexInBuffer(info, elementOffset);
                     writeConstant(buffer, elementIndex, kind, element, info, info);
                 });
@@ -523,7 +524,7 @@ public final class NativeImageHeapWriter {
     }
 
     private HostedByteBufferPointer getHashCodePtr(ObjectInfo info, ByteBuffer bufferBytes, ObjectLayout objectLayout, JavaKind kind, int length) {
-        return new HostedByteBufferPointer(bufferBytes, getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)));
+        return new HostedByteBufferPointer(bufferBytes, getIndexInBuffer(info, ObjectLayoutCompilerSupport.getArrayIdentityHashOffset(objectLayout, kind, length)));
     }
 
     private int getIndexInBuffer(ObjectInfo objInfo, long offset) {
@@ -540,7 +541,7 @@ public final class NativeImageHeapWriter {
      * Writes primitive-array payload bytes into the image heap buffer.
      */
     private void writePrimitiveArray(ObjectInfo info, RelocatableBuffer buffer, ObjectLayout objectLayout, JavaKind kind, JavaConstant array, int length) {
-        int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, 0));
+        int elementIndex = getIndexInBuffer(info, ObjectLayoutCompilerSupport.getArrayElementOffset(objectLayout, kind, 0));
         GuestAccess.get().copyMemory(array, 0, length * kind.getByteCount(), buffer.getBackingArray(), elementIndex);
     }
 

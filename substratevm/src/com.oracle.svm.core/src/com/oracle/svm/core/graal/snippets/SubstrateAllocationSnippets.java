@@ -47,6 +47,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.SubstrateGCOptions.TLABPolicy;
 import com.oracle.svm.core.SubstrateOptions;
@@ -469,7 +470,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         Object result = formatArray(objectHeader, allocationSize, arrayLength, memory, fillContents, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
                         snippetCounters);
 
-        int fromOffset = ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        int fromOffset = ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
         int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding()) + arrayLength - referenceMap.length;
         for (int i = 0; probability(LIKELY_PROBABILITY, i < referenceMap.length); i++) {
             byte b = ObjectAccess.readByte(referenceMap, fromOffset + i, byteArrayIdentity());
@@ -515,7 +516,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Fold
     static int afterArrayLengthOffset() {
-        return ObjectLayout.singleton().getArrayLengthOffset() + ObjectLayout.singleton().sizeInBytes(JavaKind.Int);
+        return ObjectLayout.singleton().getArrayLengthOffset() + ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), JavaKind.Int);
     }
 
     @Override

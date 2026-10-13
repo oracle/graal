@@ -37,6 +37,7 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -102,11 +103,11 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
         for (int i = 0; i < numInterfaceTypes * 2; i += 2) {
             // int checkedInterfaceId = checkedTypeIds[numClassTypes + i];
-            int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, numClassTypes + i);
+            int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, numClassTypes + i);
             // GR-51603 can make a floating read
             int checkedInterfaceId = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
             if (checkedInterfaceId == interfaceID) {
-                offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, numClassTypes + i + 1);
+                offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, numClassTypes + i + 1);
                 long result = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
                 return result;
             }
@@ -136,7 +137,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         // No need to mask hashParam to get "p". interfaceID fits in a short -> the two upper
         // bytes are 0.
         int hash = (interfaceID >>> shift) & hashParam;
-        int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, hash);
+        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, hash);
         int hashTableEntry = ObjectAccess.readInt(hashTable, offset, NamedLocationIdentity.FINAL_LOCATION);
 
         // Hashtable entries contain integers which hold the iTableOffset and the interfaceID:
@@ -175,7 +176,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         // No need to mask hashParam to get "p". interfaceID fits in a short -> the two upper
         // bytes are 0.
         int hash = (interfaceID >>> shift) & hashParam;
-        int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, hash);
+        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, hash);
         int hashTableEntry = ObjectAccess.readInt(hashTable, offset, NamedLocationIdentity.FINAL_LOCATION);
 
         // Hashtable entries contain integers which hold the iTableOffset and the interfaceID:

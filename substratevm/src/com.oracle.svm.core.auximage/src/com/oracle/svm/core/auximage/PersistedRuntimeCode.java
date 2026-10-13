@@ -44,6 +44,7 @@ import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -362,7 +363,7 @@ final class RuntimeCodeReferenceWalker implements ObjectReferencesWalker {
 
     @Fold
     protected static int getByteArrayBaseOffset() {
-        return ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
     }
 }
 

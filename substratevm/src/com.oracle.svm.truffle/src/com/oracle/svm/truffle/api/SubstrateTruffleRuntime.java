@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.options.OptionDescriptors;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
@@ -413,12 +414,12 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     protected int getArrayBaseOffset(Class<?> componentType) {
-        return ObjectLayout.singleton().getArrayBaseOffset(JavaKind.fromJavaClass(componentType));
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.fromJavaClass(componentType));
     }
 
     @Override
     protected int getArrayIndexScale(Class<?> componentType) {
-        return ObjectLayout.singleton().getArrayIndexScale(JavaKind.fromJavaClass(componentType));
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), JavaKind.fromJavaClass(componentType));
     }
 
     @Override

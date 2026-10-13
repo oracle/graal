@@ -35,6 +35,7 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -362,12 +363,12 @@ public class WasmGCUnalignedUnsafeSupport {
 
     @AlwaysInline("kind is a constant")
     private static int getArrayBaseOffset(JavaKind kind) {
-        return ImageSingletons.lookup(ObjectLayout.class).getArrayBaseOffset(kind);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ImageSingletons.lookup(ObjectLayout.class), kind);
     }
 
     @AlwaysInline("kind is a constant")
     private static int getArrayIndexScale(JavaKind kind) {
-        return ImageSingletons.lookup(ObjectLayout.class).getArrayIndexScale(kind);
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(ImageSingletons.lookup(ObjectLayout.class), kind);
     }
 
     /**

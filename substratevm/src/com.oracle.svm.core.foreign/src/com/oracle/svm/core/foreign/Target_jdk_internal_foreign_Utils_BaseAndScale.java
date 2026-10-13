@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.internal.foreign.Utils;
@@ -64,7 +65,7 @@ final class BaseFieldRecomputer implements FieldValueTransformer {
         } else {
             throw VMError.shouldNotReachHere("Unexpected BaseAndScale instance: " + receiver);
         }
-        int offset = ObjectLayout.singleton().getArrayBaseOffset(kind);
+        int offset = ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), kind);
         return (long) offset;
     }
 }

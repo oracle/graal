@@ -33,6 +33,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
@@ -140,7 +141,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
      */
     @Override
     public int getArrayBaseOffset(JavaKind kind) {
-        return ObjectLayout.singleton().getArrayBaseOffset(kind);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), kind);
     }
 
     /**
@@ -150,7 +151,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
      */
     @Override
     public int getArrayIndexScale(JavaKind elementKind) {
-        return ObjectLayout.singleton().getArrayIndexScale(elementKind);
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), elementKind);
     }
 
     @Override

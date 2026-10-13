@@ -34,6 +34,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.util.PointerUtils;
@@ -94,6 +95,6 @@ public final class CIsolateDataStorage {
 
     @Fold
     static int arrayBaseOffset() {
-        return ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Long);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Long);
     }
 }

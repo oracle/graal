@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
@@ -96,7 +97,7 @@ final class DigestBaseSubstitutionSupport {
 
     @Fold
     static int arrayBaseOffset(JavaKind kind) {
-        return ObjectLayout.singleton().getArrayBaseOffset(kind);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), kind);
     }
 
     @Uninterruptible(reason = "Digest stubs access array storage through raw pointers.")

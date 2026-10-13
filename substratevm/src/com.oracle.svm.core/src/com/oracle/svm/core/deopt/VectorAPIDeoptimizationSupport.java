@@ -33,6 +33,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -70,12 +71,12 @@ public class VectorAPIDeoptimizationSupport {
         JavaKind elementKind = JavaKind.fromJavaClass(layout.elementType);
         Object array = Array.newInstance(layout.elementType, layout.vectorLength);
         ObjectLayout objectLayout = ObjectLayout.singleton();
-        UnsignedWord curOffset = Word.unsigned(objectLayout.getArrayBaseOffset(elementKind));
+        UnsignedWord curOffset = Word.unsigned(ObjectLayoutCompilerSupport.getArrayBaseOffset(objectLayout, elementKind));
         for (int i = 0; i < layout.vectorLength; i++) {
             FrameInfoQueryResult.ValueInfo elementEncoding = vectorEncoding.copyForElement(elementKind, i * elementKind.getByteCount());
             JavaConstant con = readValue(deoptState, elementEncoding, sourceFrame);
             writeValueInMaterializedObj(array, curOffset, con, sourceFrame);
-            curOffset = curOffset.add(objectLayout.sizeInBytes(elementKind));
+            curOffset = curOffset.add(ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, elementKind));
         }
         return array;
     }

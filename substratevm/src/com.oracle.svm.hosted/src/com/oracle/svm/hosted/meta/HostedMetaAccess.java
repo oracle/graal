@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -126,12 +127,12 @@ public class HostedMetaAccess extends UniverseMetaAccess {
 
     @Override
     public int getArrayBaseOffset(JavaKind elementKind) {
-        return singleton().getArrayBaseOffset(elementKind);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(singleton(), elementKind);
     }
 
     @Override
     public int getArrayIndexScale(JavaKind elementKind) {
-        return singleton().getArrayIndexScale(elementKind);
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(singleton(), elementKind);
     }
 
     @Override

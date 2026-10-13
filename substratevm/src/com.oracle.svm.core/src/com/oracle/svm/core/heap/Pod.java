@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -174,7 +175,7 @@ public final class Pod<T> {
             }
 
             JavaKind kind = JavaKind.fromJavaClass(type);
-            int size = ObjectLayout.singleton().sizeInBytes(kind);
+            int size = ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), kind);
             Field f = new Field(size, kind.isObject());
             fields.add(f);
             return f;

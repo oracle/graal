@@ -113,6 +113,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.core.heap.Heap;
@@ -582,7 +583,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             // array
             JavaKind componentKind = JavaKind.fromJavaClass(DynamicHub.toClass(componentHub));
             boolean isObject = (componentKind == JavaKind.Object);
-            layoutEncoding = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(componentKind), ol.getArrayIndexShift(componentKind));
+            layoutEncoding = LayoutEncoding.forArray(isObject, ObjectLayoutCompilerSupport.getArrayBaseOffset(ol, componentKind), ObjectLayoutCompilerSupport.getArrayIndexShift(ol, componentKind));
             if (ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset()) {
                 identityHashOffset = NumUtil.safeToInt(ol.getObjectHeaderIdentityHashOffset());
             }

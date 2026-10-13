@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -726,7 +727,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         var objectLayout = ImageSingletons.lookup(ObjectLayout.class);
         long allocationSize = objectLayout.getFirstFieldOffset();
         for (var field : type.getInstanceFields(true)) {
-            allocationSize += objectLayout.sizeInBytes(((AnalysisField) field).getStorageKind());
+            allocationSize += ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, ((AnalysisField) field).getStorageKind());
         }
         return accumulatedNewObjectSize(countersScope, allocationSize, reason);
     }
@@ -736,7 +737,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             return false;
         }
         var objectLayout = ImageSingletons.lookup(ObjectLayout.class);
-        long allocationSize = objectLayout.getArraySize(arrayType.getComponentType().getStorageKind(), (int) length, true);
+        long allocationSize = ObjectLayoutCompilerSupport.getArraySize(objectLayout, arrayType.getComponentType().getStorageKind(), (int) length, true);
         return accumulatedNewObjectSize(countersScope, allocationSize, reason);
     }
 

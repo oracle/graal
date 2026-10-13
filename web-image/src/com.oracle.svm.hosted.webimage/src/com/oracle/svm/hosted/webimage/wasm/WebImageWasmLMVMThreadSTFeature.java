@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
@@ -222,11 +223,11 @@ public class WebImageWasmLMVMThreadSTFeature implements InternalFeature {
             int nextPrimitive = 0;
             for (VMThreadLocalInfo info : threadLocals) {
                 if (info.isObject) {
-                    info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObject));
+                    info.offset = NumUtil.safeToInt(ObjectLayoutCompilerSupport.getArrayElementOffset(layout, JavaKind.Object, nextObject));
                     nextObject += 1;
                 } else {
                     nextPrimitive = NumUtil.roundUp(nextPrimitive, Math.min(8, info.sizeInBytes));
-                    info.offset = NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, nextPrimitive));
+                    info.offset = NumUtil.safeToInt(ObjectLayoutCompilerSupport.getArrayElementOffset(layout, JavaKind.Byte, nextPrimitive));
                     nextPrimitive += info.sizeInBytes;
                 }
             }

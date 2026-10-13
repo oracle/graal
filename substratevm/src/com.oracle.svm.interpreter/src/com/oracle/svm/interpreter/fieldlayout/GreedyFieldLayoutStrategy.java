@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.fieldlayout;
 
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.shared.util.VMError;
@@ -46,9 +47,9 @@ final class GreedyFieldLayoutStrategy {
     static FieldLayout build(ParserField[] declaredParsedFields, long startOffset) {
         FieldLayoutImpl.ForInstanceFields forInstance = new FieldLayoutImpl.ForInstanceFields(declaredParsedFields, startOffset);
         FieldLayoutImpl.ForStaticReferenceFields forStaticReferences = new FieldLayoutImpl.ForStaticReferenceFields(declaredParsedFields,
-                        ObjectLayout.singleton().getArrayBaseOffset(jdk.vm.ci.meta.JavaKind.Object));
+                        ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), jdk.vm.ci.meta.JavaKind.Object));
         FieldLayoutImpl.ForStaticPrimitiveFields forStaticPrimitives = new FieldLayoutImpl.ForStaticPrimitiveFields(declaredParsedFields,
-                        ObjectLayout.singleton().getArrayBaseOffset(jdk.vm.ci.meta.JavaKind.Byte));
+                        ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), jdk.vm.ci.meta.JavaKind.Byte));
 
         int[] offsets = new int[declaredParsedFields.length];
         int[] referenceOffsets = new int[forInstance.getCountFor(JavaKind.Object)];
@@ -107,7 +108,7 @@ final class GreedyFieldLayoutStrategy {
      * the largest field kind that will be stored.
      * <p>
      * The array header length is obtained through
-     * {@code ObjectLayout.singleton().getArrayBaseOffset(jdk.vm.ci.meta.JavaKind.Byte)}.
+     * {@code ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), jdk.vm.ci.meta.JavaKind.Byte)}.
      */
     private abstract static class FieldLayoutImpl {
         private static final int[] SIZES_IN_BYTES = new int[]{

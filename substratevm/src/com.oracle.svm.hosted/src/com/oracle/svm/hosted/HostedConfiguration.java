@@ -51,6 +51,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -220,7 +221,7 @@ public class HostedConfiguration {
         ObjectLayout layout = ObjectLayout.singleton();
         var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
         JavaKind vTableSlotStorageKind = vtableField.getType().getComponentType().getStorageKind();
-        int vTableSlotSize = layout.sizeInBytes(vTableSlotStorageKind);
+        int vTableSlotSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, vTableSlotStorageKind);
 
         var closedTypeWorldTypeCheckSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "closedTypeWorldTypeCheckSlots"));
         int closedTypeWorldTypeCheckSlotsOffset;
@@ -228,8 +229,8 @@ public class HostedConfiguration {
 
         Set<HostedField> ignoredFields;
         if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
-            closedTypeWorldTypeCheckSlotSize = layout.sizeInBytes(closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
+            closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + ObjectLayoutCompilerSupport.sizeInBytes(layout, JavaKind.Int);
+            closedTypeWorldTypeCheckSlotSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
 
             ignoredFields = Set.of(
                             closedTypeWorldTypeCheckSlotsField,

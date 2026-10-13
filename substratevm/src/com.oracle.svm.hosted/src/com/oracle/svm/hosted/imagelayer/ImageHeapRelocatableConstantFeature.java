@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
@@ -121,7 +122,7 @@ public class ImageHeapRelocatableConstantFeature extends ImageHeapRelocatableCon
          * We need to load the appropriate spot from the array storing all image heap relocatable
          * constants referenced from the text section.
          */
-        long arrayOffset = ObjectLayout.singleton().getArrayElementOffset(JavaKind.Object, getAssignedIndex(constant));
+        long arrayOffset = ObjectLayoutCompilerSupport.getArrayElementOffset(ObjectLayout.singleton(), JavaKind.Object, getAssignedIndex(constant));
         var array = getImageHeapRelocatableConstantsArray();
         MetaAccessProvider metaAccess = tool.getMetaAccess();
         var address = new OffsetAddressNode(ConstantNode.forConstant(array, metaAccess, graph), ConstantNode.forLong(arrayOffset));
