@@ -3313,7 +3313,7 @@ final class BuilderElement extends AbstractElement {
         b.declaration(type(int.class), "handlerSp", "state.currentStackHeight + 1 /* reserve space for the exception */");
         b.statement("state.updateMaxStackHeight(handlerSp)");
         b.declaration(type(int.class), "exHandlerIndex", UNINIT);
-        String exceptionHandlerKind = op.kind == OperationKind.TRY_FINALLY ? "HANDLER_FINALLY" : "HANDLER_CUSTOM";
+        String exceptionHandlerKind = op.kind == OperationKind.TRY_FINALLY ? "HANDLER_FINALLY" : "HANDLER_CATCH";
 
         b.startIf().string(operationStack.read(op, operationFields.operationReachable)).end().startBlock();
         b.lineComment("register exception table entry");
@@ -4450,11 +4450,11 @@ final class BuilderElement extends AbstractElement {
                     b.string(operationStack.read(op, operationFields.extraTableEntriesStart));
                     b.string(operationStack.read(op, operationFields.extraTableEntriesEnd));
                     b.string(operationStack.read(op, operationFields.handlerId));
-                    b.string("HANDLER_CUSTOM");
+                    b.string("HANDLER_CATCH");
                     b.string("handlerBci");
                     b.string("handlerSp");
                     b.end(2);
-                    b.statement(doCreateExceptionHandler(operationStack.read(op, operationFields.tryStartBci), "tryEndBci", "HANDLER_CUSTOM", "handlerBci", "handlerSp"));
+                    b.statement(doCreateExceptionHandler(operationStack.read(op, operationFields.tryStartBci), "tryEndBci", "HANDLER_CATCH", "handlerBci", "handlerSp"));
 
                     b.end(); // if operationReachable
                     b.end();
@@ -5453,7 +5453,7 @@ final class BuilderElement extends AbstractElement {
     }
 
     private void emitExtraExceptionTableEntry(CodeTreeBuilder b, OperationModel op) {
-        String exceptionHandlerKind = op.kind == OperationKind.TRY_FINALLY ? "HANDLER_FINALLY" : "HANDLER_CUSTOM";
+        String exceptionHandlerKind = op.kind == OperationKind.TRY_FINALLY ? "HANDLER_FINALLY" : "HANDLER_CATCH";
         b.startDeclaration(type(int.class), "handlerTableIndex");
         b.string("state.doCreateExceptionHandler(", operationStack.read(op, operationFields.tryStartBci), ", state.bci, ", exceptionHandlerKind, ", -",
                         operationStack.read(op, operationFields.handlerId), ", ", UNINIT, " /* stack height */)");
@@ -6496,7 +6496,7 @@ final class BuilderElement extends AbstractElement {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "finalizeExceptionHandlerLocalCounts");
             CodeTreeBuilder b = ex.createBuilder();
             b.startFor().string("int handlerIndex = 0; handlerIndex < handlerTableSize; handlerIndex += EXCEPTION_HANDLER_LENGTH").end().startBlock();
-            b.startIf().string("handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM && ",
+            b.startIf().string("handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CATCH && ",
                             "handlerTable[handlerIndex + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_FINALLY").end().startBlock();
             b.statement("continue");
             b.end();

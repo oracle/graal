@@ -145,6 +145,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             add(createFindInstrumentableCallNode());
         }
 
+        if (!parent.model.unwindExceptions.isEmpty()) {
+            add(createIsUnwindException());
+        }
+
         add(createFindBytecodeIndex2());
         add(createReadValidBytecode());
 
@@ -995,7 +999,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         }
 
         b.caseDefault().startCaseBlock();
-        b.startIf().string("handlerKind != HANDLER_CUSTOM && handlerKind != HANDLER_FINALLY").end().startBlock();
+        b.startIf().string("handlerKind != HANDLER_CATCH && handlerKind != HANDLER_FINALLY").end().startBlock();
         b.tree(createValidationError("unexpected handler kind"));
         b.end();
 
@@ -2091,6 +2095,29 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.string("SourceInformationTreeImpl.parse(this)");
         b.end();
         return ex;
+    }
+
+    private CodeExecutableElement createIsUnwindException() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(STATIC), type(boolean.class), "isUnwindException",
+                        new CodeVariableElement(type(Throwable.class), "throwable"));
+        CodeTreeBuilder b = method.createBuilder();
+        b.startIf().string("throwable instanceof ").type(type(ThreadDeath.class)).end().startBlock();
+        b.returnFalse();
+        b.end();
+        b.startReturn();
+        for (int i = 0; i < parent.model.unwindExceptions.size(); i++) {
+            if (i != 0) {
+                b.string(" || ");
+            }
+            TypeMirror exceptionType = parent.model.unwindExceptions.get(i);
+            if (ElementUtils.typeEquals(exceptionType, type(Throwable.class))) {
+                b.string("throwable != null");
+            } else {
+                b.string("throwable instanceof ").type(exceptionType);
+            }
+        }
+        b.end();
+        return method;
     }
 
     private CodeExecutableElement createGetExceptionHandlers() {

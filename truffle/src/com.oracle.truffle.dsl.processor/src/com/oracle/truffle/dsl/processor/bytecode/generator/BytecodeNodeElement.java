@@ -100,9 +100,6 @@ final class BytecodeNodeElement extends AbstractElement {
         super(parent, Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, className);
         this.tier = tier;
         this.handlerLayout = handlerLayout;
-        if (!tier.isUninitialized() && !parent.model.unwindExceptions.isEmpty()) {
-            this.add(createIsUnwindException());
-        }
         this.resolveThrowable = tier.isUninitialized() ? null : this.add(createResolveThrowable());
         this.doTagExceptional = (tier.isUninitialized() || !parent.model.enableTagInstrumentation) ? null : this.add(createDoTagExceptional());
         this.setSuperClass(parent.abstractBytecodeNode.asType());
@@ -2113,6 +2110,10 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private CodeExecutableElement createHandleException() {
         CodeExecutableElement method = createInstructionHandler(type(long.class), "handleException");
+        if (!parent.model.unwindExceptions.isEmpty()) {
+            // Catch handlers deliberately fall through to the shared finally dispatch.
+            GeneratorUtils.mergeSuppressWarnings(method, "fallthrough");
+        }
         method.findParameter("bci").setSimpleName(CodeNames.of("originalBci"));
         method.addParameter(new CodeVariableElement(getStackPointerType(), "originalSp"));
         method.addParameter(new CodeVariableElement(type(Throwable.class), "originalThrowable"));
@@ -2148,7 +2149,7 @@ final class BytecodeNodeElement extends AbstractElement {
         /*
          * Three kinds of exceptions are supported: AbstractTruffleException, ControlFlowException,
          * and internal error (anything else). All of these can be intercepted by user-provided
-         * hooks.
+         * hooks, unless they are unwind exceptions.
          *
          * The interception order is ControlFlowException -> internal error ->
          * AbstractTruffleException. An intercept method can produce a new exception that can be
@@ -2342,13 +2343,12 @@ final class BytecodeNodeElement extends AbstractElement {
             }
 
             if (!parent.model.unwindExceptions.isEmpty()) {
-                b.startCase().string("HANDLER_CUSTOM").end().startCaseBlock();
+                b.startCase().string("HANDLER_CATCH").end().startCaseBlock();
                 b.startIf().string("unwind").end().startBlock();
                 b.statement("continue");
                 b.end();
-                b.end(); // case custom
+                b.end(); // case catch
                 b.lineComment("fall through");
-                b.startCase().string("HANDLER_FINALLY").end();
             }
             b.caseDefault().startCaseBlock();
         }
@@ -2516,29 +2516,6 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private static boolean isInstructionReachable(InstructionModel model) {
         return !model.isEpilogExceptional();
-    }
-
-    private CodeExecutableElement createIsUnwindException() {
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(boolean.class), "isUnwindException",
-                        new CodeVariableElement(type(Throwable.class), "throwable"));
-        CodeTreeBuilder b = method.createBuilder();
-        b.startIf().string("throwable instanceof ").type(type(ThreadDeath.class)).end().startBlock();
-        b.returnFalse();
-        b.end();
-        b.startReturn();
-        for (int i = 0; i < parent.model.unwindExceptions.size(); i++) {
-            if (i != 0) {
-                b.string(" || ");
-            }
-            TypeMirror exceptionType = parent.model.unwindExceptions.get(i);
-            if (ElementUtils.typeEquals(exceptionType, type(Throwable.class))) {
-                b.string("throwable != null");
-            } else {
-                b.string("throwable instanceof ").type(exceptionType);
-            }
-        }
-        b.end();
-        return method;
     }
 
     private CodeExecutableElement createResolveThrowable() {
