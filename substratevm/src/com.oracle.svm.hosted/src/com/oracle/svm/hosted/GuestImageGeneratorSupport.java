@@ -47,7 +47,6 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -192,23 +191,13 @@ final class GuestImageGeneratorSupport {
     /** Creates and registers the target description in the guest context. */
     static void setupTargetDescription(SubstrateTarget target) {
         GuestAccess access = GuestAccess.get();
-        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), SubstrateGuestTarget.class, JavaKind.class, int.class, ByteOrder.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), SubstrateGuestTarget.class, int.class, ByteOrder.class);
 
-        JavaConstant wordKind = asGuestEnum(target.wordJavaKind);
         JavaConstant wordSize = JavaConstant.forInt(target.wordSize);
         JavaConstant byteOrder = JVMCIReflectionUtil.readStaticField(access.elements.java_nio_ByteOrder, target.arch.getByteOrder().toString());
-        JavaConstant guestTargetDescription = access.invoke(ctor, null, wordKind, wordSize, byteOrder);
+        JavaConstant guestTargetDescription = access.invoke(ctor, null, wordSize, byteOrder);
 
         GuestImageSingletonSupport.add(SubstrateGuestTarget.class, guestTargetDescription);
     }
 
-    /** Converts a builder enum constant to its corresponding guest enum constant. */
-    private static JavaConstant asGuestEnum(Enum<?> kind) {
-        GuestAccess access = GuestAccess.get();
-        ResolvedJavaType enumType = access.getProviders().getMetaAccess().lookupJavaType(kind.getDeclaringClass());
-        JavaConstant enumName = access.asGuestString(kind.name());
-        ResolvedJavaMethod valueOf = JVMCIReflectionUtil.getUniqueDeclaredMethod(access.getProviders().getMetaAccess(), enumType, "valueOf", String.class);
-        JavaKind.valueOf(kind.name());
-        return access.invoke(valueOf, null, enumName);
-    }
 }
