@@ -31,22 +31,19 @@ import jdk.graal.compiler.lir.StandardOp.DeadEndOp;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
-import jdk.graal.compiler.nodes.java.AccessArrayNode;
-import jdk.graal.compiler.nodes.java.AccessFieldNode;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
-import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 
 /**
  * Declares an impossible execution path, rather than a runtime error at a particular program
- * point. Like deoptimization propagation, simplification may discard preceding side effects on
- * that path, but must preserve operations that can exit exceptionally. Unlike deoptimization, no
- * execution state needs to be reconstructed. A surviving marker emits a hardware halt, without
- * calling runtime error machinery.
+ * point. Simplification may propagate the marker backward and discard preceding operations,
+ * including operations that could throw or deoptimize. Their exceptions and side effects are not
+ * guaranteed to occur. Unlike deoptimization, this node neither resumes Java execution nor
+ * reconstructs execution state. A surviving marker emits a hardware halt, without calling runtime
+ * error machinery.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public final class UnreachablePathNode extends ControlSinkNode implements Simplifiable, LIRLowerable {
@@ -66,18 +63,11 @@ public final class UnreachablePathNode extends ControlSinkNode implements Simpli
     }
 
     /**
-     * Truncates the path leading to {@code from}, stopping at exception boundaries and loop exits.
+     * Truncates the path leading to {@code from}, stopping at loop exits.
      * Propagates through merge predecessors and through splits whose successors all reject execution.
      */
     private static void propagate(FixedNode from, SimplifierTool tool) {
         AbstractBeginNode begin = AbstractBeginNode.prevBegin(from);
-        for (Node predecessor = from; predecessor != begin;) {
-            predecessor = predecessor.predecessor();
-            if (predecessor instanceof FixedWithNextNode fixed && isExceptionBoundary(fixed)) {
-                moveAfter(fixed, tool);
-                return;
-            }
-        }
         if (begin instanceof MergeNode merge) {
             FixedNode next = merge.next();
             while (merge.isAlive()) {
@@ -103,18 +93,8 @@ public final class UnreachablePathNode extends ControlSinkNode implements Simpli
     }
 
     /**
-     * Preserves implicit exceptional exits as well as checks introduced during lowering. Treat
-     * deoptimizing nodes conservatively: deoptimization may resume execution that throws instead of
-     * reaching this marker.
-     */
-    private static boolean isExceptionBoundary(FixedWithNextNode node) {
-        return node instanceof DeoptimizingNode || node instanceof AccessArrayNode || node instanceof ArrayLengthNode ||
-                        (node instanceof AccessFieldNode field && !field.isStatic() && !StampTool.isPointerNonNull(field.object()));
-    }
-
-    /**
      * Places a marker immediately after {@code position} and removes the displaced control flow.
-     * The caller must ensure that the removed region contains no exceptional exit to preserve.
+     * Exceptions and side effects of operations in the removed region need not be preserved.
      */
     private static void moveAfter(FixedWithNextNode position, SimplifierTool tool) {
         FixedNode next = position.next();

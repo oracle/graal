@@ -254,11 +254,24 @@ public final class GraalDirectives {
     }
 
     /**
-     * Declares an impossible execution path. The compiler may discard preceding operations on
-     * that path, but preserves preceding operations that can exit exceptionally. This is not a
-     * runtime error check. When executed without intrinsification, this
-     * method throws an {@link AssertionError} to diagnose the unreachable path. An intrinsified
-     * invocation emits a hardware halt if it survives compilation.
+     * Declares an impossible execution path. The compiler may propagate this marker backward and
+     * discard preceding operations, including operations that could throw or deoptimize. Exceptions
+     * and side effects from discarded operations are not guaranteed to occur. Unlike deoptimization,
+     * this directive does not resume Java execution or reconstruct execution state.
+     * For example:
+     *
+     * <pre>{@code
+     * possiblyThrowingCall();
+     * GraalDirectives.unreachable();
+     * }</pre>
+     *
+     * The compiler may eliminate {@code possiblyThrowingCall()}, including any exception it would
+     * have thrown and any side effects it would have performed.
+     * <p>
+     * This is not a runtime error check. It must not be used to express a normal continuation that
+     * is unreachable only because a preceding operation always throws. When executed without
+     * intrinsification, this method throws an {@link AssertionError} to diagnose the unreachable
+     * path. An intrinsified invocation emits a hardware halt if it survives compilation.
      */
     public static void unreachable() {
         throw new AssertionError("Unreachable execution path");
