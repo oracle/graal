@@ -3798,6 +3798,11 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
             return mx.TimeStampFile(join(self.subject.get_output_root(), 'empty'))
         return mx.TimeStampFile.newest(results)
 
+    def buildForbidden(self):
+        if isinstance(self.subject, SVMStaticLibrarySymbolsBuilder) and not self.args.native:
+            return True
+        return super().buildForbidden()
+
     def needsBuild(self, newestInput):
         static_libs = self.subject._static_libs()
         if not static_libs:
