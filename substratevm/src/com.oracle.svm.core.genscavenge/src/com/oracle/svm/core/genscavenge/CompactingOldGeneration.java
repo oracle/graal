@@ -80,19 +80,22 @@ import com.oracle.svm.shared.util.VMError;
  *
  * <li>Begin {@linkplain #sweepAndCompact compaction and sweeping,} first
  * {@linkplain ReferenceObjectProcessing#updateForwardedRefs() updating reference objects} before
- * the memory of their referent objects can be repurposed.
+ * the memory of their referent objects can be repurposed. Aligned chunks that
+ * {@linkplain AlignedHeapChunk#mustSweep contain pinned objects} are swept, other aligned chunks
+ * are compacted.
  *
  * <li>{@linkplain #planCompaction() Plan the compaction} by computing the new locations for entire
  * sequences of surviving objects and storing them in {@linkplain ObjectMoveInfo structures} in gaps
- * between them (made up of dead objects) which form a linked list. This phase also un-marks the
- * object headers and builds {@linkplain BrickTable brick tables} in the memory of the chunks' card
- * tables which can be used to find the structure that corresponds to an object with fewer accesses.
+ * between them (made up of dead objects) which form a linked list. This phase builds
+ * {@linkplain BrickTable brick tables} in the memory of the chunks' card tables which can be used
+ * to find the structure that corresponds to an object with fewer accesses.
  *
  * <li>{@linkplain #fixupReferencesBeforeCompaction Update each object reference} to point to the
- * new location of the referenced object, using the prepared structures and brick tables.
+ * new location of the referenced object, using the prepared structures and brick tables. This phase
+ * also unmarks object headers and rebuilds first object tables.
  *
  * <li>{@linkplain #compact Move each sequence of objects to its new location} (or overwrite dead
- * objects in swept chunks) and clear the chunks' card tables and rebuild their first object tables.
+ * objects in swept chunks) and clear the chunks' card tables (which stored brick tables).
  * </ul>
  *
  * While updating references using lookups in the brick table and structures seems expensive, it
@@ -205,7 +208,7 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     @Uninterruptible(reason = CORE_GC_CODE)
     protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
-        assert !GCImpl.getGCImpl().isCompleteCollection() : "for full collections, must mark individual pinned objects";
+        assert !GCImpl.getGCImpl().isCompleteCollection() : "full collection must have already tenured all chunks";
         assert originalSpace != space && originalSpace.isFromSpace();
         ObjectPromoter.promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace, space);
         return true;
