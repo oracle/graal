@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ public final class ThreadsHandler implements ThreadsListener {
 
     private int lastThreadId = 0;
     private int lastRefId = 0;
+    private boolean disposed;
 
     public ThreadsHandler(ExecutionContext context, DebuggerSession debuggerSession) {
         this.context = context;
@@ -106,6 +107,9 @@ public final class ThreadsHandler implements ThreadsListener {
     public void threadSuspended(Thread thread, SuspendedEvent event) {
         SuspendedThreadInfo info = null;
         synchronized (thread2Ids) {
+            if (disposed) {
+                return;
+            }
             Integer id = thread2Ids.get(thread);
             if (id != null) {
                 info = new SuspendedThreadInfo(id, event);
@@ -226,6 +230,7 @@ public final class ThreadsHandler implements ThreadsListener {
 
     void dispose() {
         synchronized (thread2Ids) {
+            disposed = true;
             // We need to resume all suspended threads
             for (SuspendedThreadInfo info : suspendedThreads.values()) {
                 info.resume();

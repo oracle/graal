@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -244,13 +245,18 @@ public class DebugProtocolServer {
         private final InputStream in;
         private final OutputStream out;
         private final Map<Integer, CompletableFuture<Response>> pendingSentRequests = new ConcurrentHashMap<>();
+        private final Set<CompletableFuture<?>> pendingReceivedRequests = ConcurrentHashMap.newKeySet();
+        private final Runnable closeConnection;
+        private final Runnable dispose;
         private AtomicInteger sequenceNum = new AtomicInteger(1);
-        private boolean closed = false;
+        private volatile boolean closed = false;
 
-        private Session(DebugProtocolServer server, InputStream in, OutputStream out) {
+        private Session(DebugProtocolServer server, InputStream in, OutputStream out, Runnable closeConnection, Runnable dispose) {
             this.server = server;
             this.in = in;
             this.out = out;
+            this.closeConnection = closeConnection;
+            this.dispose = dispose;
             this.server.connect(new DebugProtocolClient() {
                 @Override
                 public void initialized() {
@@ -346,6 +352,18 @@ public class DebugProtocolServer {
                     }
                 }
             } catch (IOException ioe) {
+                server.getLogger().log(Level.FINE, "DAP connection closed", ioe);
+            } finally {
+                closed = true;
+                closeConnection.run();
+                // Resume suspended guest threads before awaiting their pending requests.
+                dispose.run();
+                synchronized (out) {
+                    for (CompletableFuture<Response> request : pendingSentRequests.values()) {
+                        request.completeExceptionally(new IOException("DAP connection closed"));
+                    }
+                }
+                CompletableFuture.allOf(pendingReceivedRequests.toArray(new CompletableFuture<?>[0])).handle((result, error) -> null).join();
             }
         }
 
@@ -465,6 +483,8 @@ public class DebugProtocolServer {
                     case "disconnect":
                         future = server.disconnect(new DisconnectArguments(args), body -> {
                             sendResponse(DisconnectResponse.create(seq, true, command, sequenceNum.getAndIncrement()).setBody(body));
+                            closed = true;
+                            closeConnection.run();
                         });
                         break;
                     case "terminate":
@@ -638,7 +658,11 @@ public class DebugProtocolServer {
                                         seq, false, command, sequenceNum.getAndIncrement()).setMessage(format("Unrecognized command: `%s`", command)));
                 }
                 if (future != null) {
-                    future.exceptionally(throwable -> {
+                    CompletableFuture<?> pending = future.exceptionally(throwable -> {
+                        if (closed) {
+                            server.getLogger().log(Level.FINE, "DAP request failed after disconnect", throwable);
+                            return null;
+                        }
                         if (isCancellationException(throwable)) {
                             sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create(), seq, false, command, sequenceNum.getAndIncrement()).setMessage("cancelled"));
                         } else if (isExceptionWithMessage(throwable)) {
@@ -653,6 +677,8 @@ public class DebugProtocolServer {
                         }
                         return null;
                     });
+                    pendingReceivedRequests.add(pending);
+                    pending.whenComplete((result, error) -> pendingReceivedRequests.remove(pending));
                 }
             } catch (ExceptionWithMessage ewm) {
                 sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create().setError(
@@ -691,8 +717,13 @@ public class DebugProtocolServer {
                 String format = "[Trace - %s] Sending request '%s - (%d)'\nArgs: %s";
                 server.getLogger().log(Level.FINER, format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments())));
             }
-            writeMessage(getJSONData(request).toString());
-            pendingSentRequests.put(request.getSeq(), future);
+            synchronized (out) {
+                if (closed) {
+                    return CompletableFuture.failedFuture(new IOException("DAP connection closed"));
+                }
+                pendingSentRequests.put(request.getSeq(), future);
+                writeMessage(getJSONData(request).toString());
+            }
             return future;
         }
 
@@ -722,12 +753,19 @@ public class DebugProtocolServer {
         }
 
         private void writeMessage(String message) {
-            try {
-                byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
-                writeMessageBytes(out, messageBytes);
-            } catch (IOException ex) {
-                server.getLogger().log(Level.SEVERE, ex.getMessage(), ex);
-                throw new RuntimeException(ex);
+            synchronized (out) {
+                if (closed) {
+                    return;
+                }
+                try {
+                    byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
+                    writeMessageBytes(out, messageBytes);
+                } catch (IOException ex) {
+                    if (!closed) {
+                        server.getLogger().log(Level.SEVERE, ex.getMessage(), ex);
+                        throw new RuntimeException(ex);
+                    }
+                }
             }
         }
 
@@ -768,7 +806,24 @@ public class DebugProtocolServer {
         }
 
         public static Future<?> connect(DebugProtocolServer server, InputStream in, OutputStream out, Executor executor) {
-            Session s = new Session(server, in, out);
+            return connect(server, in, out, executor, () -> {
+            }, () -> {
+            });
+        }
+
+        /**
+         * Connects a client and completes only after its requests and cleanup have finished.
+         *
+         * @param server the per-client server
+         * @param in the client input
+         * @param out the client output
+         * @param executor the request-reader executor
+         * @param closeConnection closes the transport on disconnect or EOF, waking blocked reads
+         * @param dispose releases debugger state and resumes suspended guest threads
+         * @return completion of the client session, including outstanding requests
+         */
+        public static Future<?> connect(DebugProtocolServer server, InputStream in, OutputStream out, Executor executor, Runnable closeConnection, Runnable dispose) {
+            Session s = new Session(server, in, out, closeConnection, dispose);
             RunnableFuture<?> future = new FutureTask<>(s, null);
             executor.execute(future);
             return future;

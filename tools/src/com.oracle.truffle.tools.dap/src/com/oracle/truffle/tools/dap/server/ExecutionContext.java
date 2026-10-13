@@ -216,6 +216,7 @@ public final class ExecutionContext {
     }
 
     public void dispose() {
+        client = null; // Do not call the client after dispose.
         disposeBinding(srcBinding);
         disposeBinding(thrBinding);
         if (threadsHandler != null) {
@@ -223,7 +224,6 @@ public final class ExecutionContext {
         }
         disposeBinding(contextsBinding);
         doRunIfWaitingForDebugger();
-        client = null; // Do not call the client after dispose.
     }
 
     private static void disposeBinding(EventBinding<?> binding) {

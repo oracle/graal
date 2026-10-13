@@ -160,7 +160,7 @@ public final class DAPTester {
         return new String(readMessageBytes(handler.getInputStream()));
     }
 
-    private static byte[] readMessageBytes(InputStream in) throws IOException {
+    static byte[] readMessageBytes(InputStream in) throws IOException {
         StringBuilder line = new StringBuilder();
         int contentLength = -1;
         while (true) {
