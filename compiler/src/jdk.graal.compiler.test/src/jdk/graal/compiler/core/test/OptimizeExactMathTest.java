@@ -138,16 +138,16 @@ public class OptimizeExactMathTest extends GraalCompilerTest {
         StructuredGraph g = getAfterMidTier("snippet03");
         Assert.assertEquals(0, g.getNodes().filter(IntegerAddExactSplitNode.class).count());
         Assert.assertEquals(5, g.getNodes().filter(AddNode.class).count());
-        test("snippet02", 0, 0);
-        test("snippet02", 0, 1);
-        test("snippet02", 1, 0);
-        test("snippet02", -1, 1);
-        test("snippet02", 0, 10);
-        test("snippet02", 0, -10);
-        test("snippet02", 0, Integer.MAX_VALUE);
-        test("snippet02", Integer.MAX_VALUE, 0);
-        test("snippet02", Integer.MIN_VALUE, Integer.MIN_VALUE);
-        test("snippet02", Integer.MAX_VALUE - 1, Integer.MAX_VALUE);
+        test("snippet03", 0, 0);
+        test("snippet03", 0, 1);
+        test("snippet03", 1, 0);
+        test("snippet03", -1, 1);
+        test("snippet03", 0, 10);
+        test("snippet03", 0, -10);
+        test("snippet03", 0, Integer.MAX_VALUE);
+        test("snippet03", Integer.MAX_VALUE, 0);
+        test("snippet03", Integer.MIN_VALUE, Integer.MIN_VALUE);
+        test("snippet03", Integer.MAX_VALUE - 1, Integer.MAX_VALUE);
     }
 
     public static int snippet04(int a) {
