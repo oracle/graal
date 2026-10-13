@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.fieldfolding;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -38,10 +39,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.AssertionsSupport;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -50,6 +52,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader.JavaConstantSupplier;
@@ -75,6 +78,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
@@ -131,6 +135,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public final class StaticFinalFieldFoldingFeature implements InternalFeature {
+
+    private static final String FIELD_INITIALIZATION_STATUS_KEY = "StaticFinalFieldFolding.Status#";
 
     public static class Options {
         @Option(help = "Optimize static final fields that get a constant assigned in the class initializer.")//
@@ -224,7 +230,8 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
          */
         foldedFields.sort(Comparator.comparing(AnalysisField::getId));
 
-        int fieldCheckIndex = singleton.baseLayerFieldFoldingInfos.size();
+        int priorFieldCount = singleton.baseLayerFieldFoldingInfos.size();
+        int fieldCheckIndex = priorFieldCount;
         for (AnalysisField field : foldedFields) {
             if (!singleton.baseLayerFieldFoldingInfos.containsKey(field.getId())) {
                 singleton.fieldCheckIndexMap.put(field, fieldCheckIndex);
@@ -238,6 +245,17 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
         }
 
         singleton.fieldInitializationStatus = new boolean[fieldCheckIndex];
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            singleton.initializePriorLayerStatusArrays();
+        }
+        if (ImageLayerBuildingSupport.buildingSharedLayer() && fieldCheckIndex > priorFieldCount) {
+            /* All fields added in this layer use this array and have indices starting here. */
+            CrossLayerConstantRegistry.singletonOrNull().registerHeapConstant(fieldInitializationStatusKey(priorFieldCount), singleton.fieldInitializationStatus);
+        }
+    }
+
+    static String fieldInitializationStatusKey(int firstFieldCheckIndex) {
+        return FIELD_INITIALIZATION_STATUS_KEY + firstFieldCheckIndex;
     }
 
     /**
@@ -446,6 +464,28 @@ class StaticFinalFieldFoldingSingleton {
     final Map<Integer, PriorLayerFinalFieldFoldingInfo> baseLayerFieldFoldingInfos;
     final Map<AnalysisField, Integer> fieldCheckIndexMap = new HashMap<>();
     boolean[] fieldInitializationStatus;
+    JavaConstant[] priorLayerStatusArrays;
+
+    void initializePriorLayerStatusArrays() {
+        int priorFieldCount = baseLayerFieldFoldingInfos.size();
+        priorLayerStatusArrays = new JavaConstant[priorFieldCount];
+        CrossLayerConstantRegistry registry = CrossLayerConstantRegistry.singletonOrNull();
+        for (int index = 0; index < priorFieldCount;) {
+            ImageHeapArray array = (ImageHeapArray) registry.getConstant(StaticFinalFieldFoldingFeature.fieldInitializationStatusKey(index));
+            /* Each array's length is the cumulative field count at the end of its owning layer. */
+            int endIndex = array.getLength();
+            VMError.guarantee(index < endIndex && endIndex <= priorFieldCount, "Invalid status array range [%s, %s) for %s prior folded fields", index, endIndex, priorFieldCount);
+            Arrays.fill(priorLayerStatusArrays, index, endIndex, array);
+            index = endIndex;
+        }
+    }
+
+    JavaConstant fieldInitializationStatusConstant(int fieldCheckIndex, SimplifierTool tool) {
+        if (fieldCheckIndex < baseLayerFieldFoldingInfos.size()) {
+            return priorLayerStatusArrays[fieldCheckIndex];
+        }
+        return tool.getSnippetReflection().forObject(fieldInitializationStatus);
+    }
 
     record PriorLayerFinalFieldFoldingInfo(JavaConstantSupplier bytecodeParsedFoldedFieldValue, JavaConstantSupplier afterParsingHooksDoneFoldedFieldValue,
                     int fieldCheckIndex, boolean initializationStatus) {
