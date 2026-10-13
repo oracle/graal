@@ -375,9 +375,13 @@ public class NativeImageGenerator {
     protected MainEntryPoint mainEntryPoint;
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, MainEntryPoint mainEntryPoint, ProgressReporter reporter) {
+        this(loader, optionProvider, mainEntryPoint, reporter, new FeatureHandler());
+    }
+
+    protected NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, MainEntryPoint mainEntryPoint, ProgressReporter reporter, FeatureHandler featureHandler) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
-        this.featureHandler = new FeatureHandler();
+        this.featureHandler = featureHandler;
         this.optionProvider = optionProvider;
         this.reporter = reporter;
         optionProvider.getHostedValues().put(CompilationAlarm.Options.CompilationNoProgressPeriod, 0D);

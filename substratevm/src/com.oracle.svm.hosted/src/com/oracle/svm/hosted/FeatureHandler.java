@@ -140,6 +140,7 @@ public class FeatureHandler extends FeatureHandlerBase {
         for (Class<?> featureClass : automaticFeatures) {
             registerFeature(featureClass, specificClassProvider, access, onRegistrationAccess, false, printFeatures);
         }
+        afterAutomaticFeaturesRegistered(specificClassProvider, access, onRegistrationAccess, printFeatures);
         VMError.guarantee(!containsFeature(GuestFeatureDispatchFeature.class), "GuestFeatureDispatchFeature must not be registered transitively.");
         registerFeature(GuestFeatureDispatchFeature.class, specificClassProvider, access, onRegistrationAccess, false, printFeatures);
 
@@ -182,6 +183,12 @@ public class FeatureHandler extends FeatureHandlerBase {
                 dumpAllFeatures(out);
             });
         }
+    }
+
+    /** Hook invoked after automatic feature registration and before guest feature dispatch. */
+    @SuppressWarnings("unused")
+    protected void afterAutomaticFeaturesRegistered(Function<Class<?>, Class<?>> specificClassProvider, Feature.IsInConfigurationAccess access,
+                    Feature.OnRegistrationAccess onRegistrationAccess, boolean printFeatures) {
     }
 
     @Override
