@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.nio.ByteOrder;
@@ -171,6 +172,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaType java_lang_reflect_Array = lookupType(Array.class);
     public final ResolvedJavaMethod java_lang_reflect_Array_newInstance = lookupMethod(java_lang_reflect_Array, "newInstance", Class.class, int.class);
     public final ResolvedJavaMethod java_lang_reflect_Array_newArray = lookupMethod(java_lang_reflect_Array, "newArray", Class.class, int.class);
+
+    public final ResolvedJavaType java_lang_reflect_Executable = lookupType(Executable.class);
 
     public final ResolvedJavaType java_lang_reflect_Field = lookupType(Field.class);
     public final ResolvedJavaMethod java_lang_reflect_Field_setAccessible = lookupMethod(java_lang_reflect_Field, "setAccessible", boolean.class);

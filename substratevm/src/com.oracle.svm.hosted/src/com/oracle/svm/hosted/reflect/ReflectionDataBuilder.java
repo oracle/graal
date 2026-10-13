@@ -43,7 +43,6 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FL
 import static org.graalvm.nativeimage.dynamicaccess.AccessCondition.unconditional;
 
 import java.lang.annotation.AnnotationFormatError;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -132,6 +131,7 @@ import jdk.graal.compiler.annotation.EnumElement;
 import jdk.graal.compiler.annotation.MissingType;
 import jdk.graal.compiler.annotation.TypeAnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -170,7 +170,7 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 ///   In this case, we have to be able to reconstruct the queried object at run-time, and therefore need to make sure
 ///   that every field value of the element is seen as reachable by the analysis.
 /// * `ACCESSED`: The element can be reflectively accessed at runtime, through [Field#get(Object)],
-///   [Field#set(Object, Object)], [Method#invoke(Object, Object...)] or [Constructor#newInstance(Object...)]. For
+///   [Field#set(Object, Object)], [Method#invoke(Object, Object...)] or [java.lang.reflect.Constructor#newInstance(Object...)]. For
 ///   types, this means that class queries such as [Class#getMethods()] are allowed. In this case, we need to register
 ///   the actual field or method represented by the element as reachable, and trigger the creation of the necessary
 ///   accessors (e.g. SubstrateMethodAccessor).
@@ -1479,16 +1479,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
+    public void registerHeapReflectionField(JavaConstant reflectField, ScanReason reason) {
         guaranteeRuntimeMetadataEncodingNotComplete();
-        registerField(unconditional(), NONE, false, GuestAccess.get().lookupField(reflectField));
+        registerField(unconditional(), NONE, false, GuestAccess.get().asResolvedJavaField(reflectField));
     }
 
     @Override
-    public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
+    public void registerHeapReflectionExecutable(JavaConstant reflectExecutable, ScanReason reason) {
         guaranteeRuntimeMetadataEncodingNotComplete();
-        if (reflectExecutable instanceof Constructor<?> reflectConstructor &&
-                        ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(GuestAccess.get().getSnippetReflection().forObject(reflectConstructor))) {
+        ResolvedJavaMethod method = GuestAccess.get().asResolvedJavaMethod(reflectExecutable);
+        if (method.isConstructor() &&
+                        ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(reflectExecutable)) {
             /*
              * Constructors created by Constructor.newWithAccessor are indistinguishable from an
              * equivalent constructor with a "correct" accessor, and as such could hide this
@@ -1497,7 +1498,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              */
             return;
         }
-        registerMethod(unconditional(), NONE, false, GuestAccess.get().lookupMethod(reflectExecutable));
+        registerMethod(unconditional(), NONE, false, method);
     }
 
     @Override
