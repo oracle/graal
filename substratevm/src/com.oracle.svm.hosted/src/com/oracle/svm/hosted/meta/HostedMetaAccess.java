@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.config.ObjectLayout.singleton;
+import static com.oracle.svm.shared.config.ObjectLayout.singleton;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;

@@ -29,7 +29,7 @@ import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;

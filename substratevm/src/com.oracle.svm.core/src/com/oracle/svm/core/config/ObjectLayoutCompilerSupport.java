@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.config;
 
+import com.oracle.svm.shared.config.ObjectLayout;
+
 import java.util.Objects;
 
 import org.graalvm.nativeimage.c.constant.CEnum;

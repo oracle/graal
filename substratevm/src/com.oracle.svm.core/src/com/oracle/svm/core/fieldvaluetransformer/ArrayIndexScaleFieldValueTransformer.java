@@ -25,7 +25,7 @@
 package com.oracle.svm.core.fieldvaluetransformer;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 

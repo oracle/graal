@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.util;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;

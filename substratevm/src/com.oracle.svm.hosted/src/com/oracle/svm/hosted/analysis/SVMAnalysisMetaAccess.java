@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import static com.oracle.svm.core.config.ObjectLayout.singleton;
+import static com.oracle.svm.shared.config.ObjectLayout.singleton;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;

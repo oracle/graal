@@ -29,7 +29,7 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Array;
 import java.util.Objects;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
