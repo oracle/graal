@@ -1182,9 +1182,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 var singletons = LayeredReflectionMetadataSingleton.singletons();
                 for (int i = 0; i < singletons.length; ++i) {
-                    var reflectionMetadata = singletons[i];
-                    if (reflectionMetadata.getReflectionMetadata(this).unsafeAllocatedIndex != NO_DATA) {
-                        unsafeAllocationMetadata = reflectionMetadata.getReflectionMetadata(this).getUnsafeAllocationMetadata(this, i);
+                    ImageReflectionMetadata reflectionMetadata = singletons[i].getReflectionMetadata(this);
+                    if (reflectionMetadata != null && reflectionMetadata.unsafeAllocatedIndex != NO_DATA) {
+                        unsafeAllocationMetadata = reflectionMetadata.getUnsafeAllocationMetadata(this, i);
                         break;
                     }
                 }
