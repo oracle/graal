@@ -322,7 +322,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.truffle.PolyglotIsolateCreateSupport"),
                     clazz("com.oracle.svm.truffle.PolyglotIsolateGuestFeature"),
                     clazz("com.oracle.svm.truffle.StaticPropertyOffsetTransformer"),
-                    clazz("com.oracle.svm.truffle.Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField$OffsetComputer"),
                     clazz("com.oracle.svm.truffle.tck.AbstractMethodListParser"),
                     clazz("com.oracle.svm.truffle.tck.AbstractMethodListParser$UnsupportedPlatformException"),
                     clazz("com.oracle.svm.truffle.tck.PermissionsFeature"),

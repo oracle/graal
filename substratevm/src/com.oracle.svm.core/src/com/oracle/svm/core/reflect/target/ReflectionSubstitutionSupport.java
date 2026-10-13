@@ -26,7 +26,6 @@ package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -49,9 +48,6 @@ public interface ReflectionSubstitutionSupport {
     SubstrateAccessor getOrCreateAccessor(Class<?> targetClass, Executable member);
 
     /** Offset of the field or -1 if the field was not registered for unsafe access. */
-    int getFieldOffset(Field field, boolean checkUnsafeAccessed);
-
-    /** Offset of the field or -1 if the field was not registered for unsafe access. */
     int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed);
 
     int getInstalledLayerNumber(ResolvedJavaField field);
@@ -60,7 +56,7 @@ public interface ReflectionSubstitutionSupport {
      * Returns the {@link Delete#value reason} why a field was deleted, or null if the field is not
      * deleted.
      */
-    String getDeletionReason(Field field);
+    String getDeletionReason(ResolvedJavaField field);
 
     boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor);
 }

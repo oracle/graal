@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.reflect;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -439,11 +438,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public int getFieldOffset(Field field, boolean checkUnsafeAccessed) {
-        return getFieldOffset(GuestAccess.get().lookupField(field), checkUnsafeAccessed);
-    }
-
-    @Override
     public int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed) {
         VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
 
@@ -475,9 +469,8 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public String getDeletionReason(Field reflectionField) {
-        ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
-        DeleteGuestValue annotation = DeleteGuestValue.get(field);
+    public String getDeletionReason(ResolvedJavaField field) {
+        DeleteGuestValue annotation = DeleteGuestValue.get(aUniverse.lookup(field));
         return annotation != null ? annotation.value() : null;
     }
 

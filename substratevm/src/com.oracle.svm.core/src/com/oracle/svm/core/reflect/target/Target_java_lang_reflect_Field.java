@@ -43,7 +43,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -148,17 +147,17 @@ public final class Target_java_lang_reflect_Field {
         return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
     }
 
-    public static final class FieldDeletionReasonComputer implements FieldValueTransformerWithAvailability {
-        // JVMCI migration blocked by GR-72441: Equivalents of
-        // ConstantReflectionProvider.asJavaType() for fields and methods
+    public static final class FieldDeletionReasonComputer implements JVMCIFieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
         }
 
         @Override
-        public Object transform(Object receiver, Object originalValue) {
-            return ReflectionSubstitutionSupport.singleton().getDeletionReason((Field) receiver);
+        public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+            ResolvedJavaField field = GuestAccess.get().asResolvedJavaField(receiver);
+            String deletionReason = ReflectionSubstitutionSupport.singleton().getDeletionReason(field);
+            return deletionReason == null ? JavaConstant.NULL_POINTER : GuestAccess.get().asGuestString(deletionReason);
         }
     }
 
