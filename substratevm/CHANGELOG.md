@@ -4,6 +4,9 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
 
+* (GR-77774) Added the experimental `-H:JNILibraryLinkage=<library>:{static|dynamic}[,...]` option to select static or dynamic linkage for individual Java Native Interface (JNI) libraries.
+  Built-in JNI method resolution now links the exact short or signature-suffixed long JNI symbol exported by a static library, enabling overloaded native methods that export only long names.
+  With class-loader-aware loading, Native Image generates a no-op `JNI_OnLoad_<library>` symbol for a registered static JNI library without an initialization entry point, allowing the JDK to recognize the library as built-in.
 * (GR-80597) Added the `org.graalvm.nativeimage.graalos` Java system property to identify images built for GraalOS at build time and runtime.
 * (GR-79971) Unrecognized Native Image options starting with `-` or `--` now produce an error instead of being interpreted as a main class or output filename.
   This also rejects positional output names beginning with a dash.
