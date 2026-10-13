@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,11 +42,13 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
-import com.oracle.svm.truffle.api.SubstrateOptimizedCallTargetInstalledCode;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompilerImpl;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.truffle.api.SubstrateTypedOptimizedCallTarget;
+import com.oracle.svm.truffle.api.SubstrateTypedPartialEvaluator;
+import com.oracle.svm.truffle.api.SubstrateTypedTruffleCompilerImpl;
 import com.oracle.svm.truffle.isolated.IsolateAwareTruffleCompiler;
 import com.oracle.svm.truffle.isolated.IsolatedTruffleRuntimeSupport;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -79,27 +81,27 @@ public class TruffleSupport {
      * @return the concrete subclass of {@link OptimizedCallTarget}.
      */
     public Class<?> getOptimizedCallTargetClass() {
-        return SubstrateOptimizedCallTarget.class;
+        return SubstrateTypedOptimizedCallTarget.class;
     }
 
     public SubstrateOptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
-        return new SubstrateOptimizedCallTarget(sourceCallTarget, rootNode);
+        return new SubstrateTypedOptimizedCallTarget(sourceCallTarget, rootNode);
     }
 
     public SubstrateOptimizedCallTarget createOptimizedCallTarget(EngineData engine) {
-        return new SubstrateOptimizedCallTarget(engine);
+        return new SubstrateTypedOptimizedCallTarget(engine);
     }
 
-    private static Method getOptimizedCallTargetInvokeMethod() {
-        return ReflectionUtil.lookupMethod(SubstrateOptimizedCallTargetInstalledCode.class, "doInvoke", SubstrateOptimizedCallTarget.class, Object[].class);
+    protected static Method getOptimizedCallTargetInvokeMethod() {
+        return ReflectionUtil.lookupMethod(SubstrateTypedOptimizedCallTarget.class, "doInvoke", Object[].class);
     }
 
     public SubstratePartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration graphBuilderConfigForRoot) {
-        return new SubstratePartialEvaluator(config, graphBuilderConfigForRoot);
+        return new SubstrateTypedPartialEvaluator(config, graphBuilderConfigForRoot);
     }
 
     public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
-        SubstrateTruffleCompiler compiler = new SubstrateTruffleCompilerImpl(createSubstrateTruffleCompilerConfig(runtime, "community", getOptimizedCallTargetInvokeMethod()));
+        SubstrateTruffleCompiler compiler = new SubstrateTypedTruffleCompilerImpl(createSubstrateTruffleCompilerConfig(runtime, "community", getOptimizedCallTargetInvokeMethod()));
         if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
             compiler = new IsolateAwareTruffleCompiler((SubstrateTruffleCompilerImpl) compiler);
         }

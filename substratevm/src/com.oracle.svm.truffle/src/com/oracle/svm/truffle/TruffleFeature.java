@@ -163,6 +163,7 @@ import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.truffle.api.TypedEntrySupport;
 import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -408,6 +409,9 @@ public class TruffleFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
         registerTruffleBytecodeInterpreterAnnotations(config.getMetaAccess());
+        TypedEntrySupport.initialize(config.getMetaAccess());
+        TypedEntrySupport.singleton().initializeBeforeAnalysis(config);
+        TypedEntrySupport.singleton().registerInterpreterEntryMethodsAsCompiled(config);
         /*
          * Both methods are needed in HostInliningPhase to not be optimized / strengthened. By
          * specifying them as opaque we make sure that the original dominator tree is preserved. If
@@ -469,6 +473,9 @@ public class TruffleFeature implements InternalFeature {
 
         runtimeCompilationFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::allowRuntimeCompilation, this::deoptimizeOnException, this::checkBlockList);
         for (ResolvedJavaMethod method : partialEvaluator.getCompilationRootMethods()) {
+            runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, config);
+        }
+        for (ResolvedJavaMethod method : TypedEntrySupport.singleton().compiledEntryMethods.values()) {
             runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, config);
         }
         runtimeCompilationFeature.initializeAnalysisProviders(config.getBigBang(), HostedTruffleConstantFieldProvider::new);
@@ -1055,6 +1062,9 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
+        TypedEntrySupport typedEntrySupport = TypedEntrySupport.singleton();
+        typedEntrySupport.initializeBeforeCompilation(config);
+        config.registerAsImmutable(typedEntrySupport);
 
         if (Options.TruffleCheckFrameImplementation.getValue()) {
             /*

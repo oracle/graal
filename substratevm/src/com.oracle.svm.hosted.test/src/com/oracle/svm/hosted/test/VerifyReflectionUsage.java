@@ -316,6 +316,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.polyglot.groovy.GroovyIndyInterfaceFeature"),
                     clazz("com.oracle.svm.shared.singletons.ImageSingletonsSupportImpl$HostedManagement"),
                     clazz("com.oracle.svm.truffle.api.SubstrateTruffleRuntime"),
+                    clazz("com.oracle.svm.truffle.api.TypedEntrySupport"),
                     clazz("com.oracle.svm.truffle.HasStackSpaceCheck"),
                     clazz("com.oracle.svm.truffle.nfi.NativeObjectReplacer"),
                     clazz("com.oracle.svm.truffle.OptionalTrufflePolyglotGuestFeatureEnabled"),
