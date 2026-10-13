@@ -41,6 +41,8 @@ import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -198,6 +200,60 @@ final class GuestImageGeneratorSupport {
         JavaConstant guestTargetDescription = access.invoke(ctor, null, wordSize, byteOrder);
 
         GuestImageSingletonSupport.add(SubstrateGuestTarget.class, guestTargetDescription);
+    }
+
+    /**
+     * Installs a guest copy of the builder-selected object layout for fully isolated builds.
+     * Non-isolated builds already share the builder's singleton registry.
+     */
+    static void setupObjectLayout() {
+        GuestAccess access = GuestAccess.get();
+        if (!access.isFullyIsolated()) {
+            return;
+        }
+        ObjectLayout layout = ObjectLayout.singleton();
+        ResolvedJavaType guestLayoutType = access.lookupType(ObjectLayout.class);
+        ResolvedJavaType guestIdentityHashModeType = access.lookupType(IdentityHashMode.class);
+        ResolvedJavaType guestIntType = access.lookupType(int.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(guestLayoutType,
+                        guestIntType, guestIntType, guestIntType, guestIntType,
+                        guestIntType, guestIntType, guestIntType, guestIntType,
+                        guestIdentityHashModeType, guestIntType, guestIntType);
+        IdentityHashMode identityHashMode;
+        if (layout.isIdentityHashFieldInObjectHeader()) {
+            identityHashMode = IdentityHashMode.OBJECT_HEADER;
+        } else if (layout.isIdentityHashFieldAtTypeSpecificOffset()) {
+            identityHashMode = IdentityHashMode.TYPE_SPECIFIC;
+        } else {
+            VMError.guarantee(layout.isIdentityHashFieldOptional());
+            identityHashMode = IdentityHashMode.OPTIONAL;
+        }
+        int headerIdentityHashOffset = layout.isIdentityHashFieldOptional()
+                        ? -1
+                        : layout.getObjectHeaderIdentityHashOffset();
+        ResolvedJavaMethod valueOf = JVMCIReflectionUtil.getUniqueDeclaredMethod(
+                        access.getProviders().getMetaAccess(), guestIdentityHashModeType,
+                        "valueOf", String.class);
+        JavaConstant guestLayout;
+        try {
+            JavaConstant guestIdentityHashMode = access.invoke(valueOf, null,
+                            access.asGuestString(identityHashMode.name()));
+            guestLayout = access.invoke(ctor, null,
+                            JavaConstant.forInt(layout.getReferenceSize()),
+                            JavaConstant.forInt(layout.getAlignment()),
+                            JavaConstant.forInt(layout.getHubSize()),
+                            JavaConstant.forInt(layout.getHubOffset()),
+                            JavaConstant.forInt(layout.getFirstFieldOffset()),
+                            JavaConstant.forInt(layout.getArrayLengthOffset()),
+                            JavaConstant.forInt(layout.getArrayBaseOffset(Byte.BYTES)),
+                            JavaConstant.forInt(headerIdentityHashOffset),
+                            guestIdentityHashMode,
+                            JavaConstant.forInt(layout.getIdentityHashCodeNumBits()),
+                            JavaConstant.forInt(layout.getIdentityHashCodeShift()));
+        } catch (InvocationException ex) {
+            throw VMError.shouldNotReachHere("Error creating the object layout in the guest context", ex);
+        }
+        GuestImageSingletonSupport.add(guestLayoutType, guestLayout);
     }
 
 }

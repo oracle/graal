@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.config;
+package com.oracle.svm.shared.config;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -50,7 +50,7 @@ import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.shared.meta.GuestFold;
 
 /**
  * Immutable class that holds all sizes and offsets that contribute to the object layout.
@@ -73,7 +73,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = ObjectLayout.LayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 public final class ObjectLayout {
 
-    @Fold
+    @GuestFold
     public static ObjectLayout singleton() {
         return ImageSingletons.lookup(ObjectLayout.class);
     }
@@ -307,7 +307,7 @@ public final class ObjectLayout {
         return NumUtil.safeToInt(getArraySize(Byte.BYTES, 0, true));
     }
 
-    @Fold
+    @GuestFold
     public int getMinImageHeapObjectSize() {
         return Math.min(getMinImageHeapArraySize(), getMinImageHeapInstanceSize());
     }
