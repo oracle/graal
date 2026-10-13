@@ -55,22 +55,24 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Assume that methods return stale values because internal state can change at any safepoint (see
  * {@link SubstrateInstalledCode}).
  */
-public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
-    protected final WeakCallTargetRef<SubstrateOptimizedCallTarget> callTargetRef;
+public final class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
+    private final WeakCallTargetRef<SubstrateOptimizedCallTarget> callTargetRef;
     private String nameSuffix = "";
+    private TypedEntryMethod method;
 
     /**
      * Final subclass to ensure <code>{@link #callTargetRef}.get()</code> can be statically bound in
      * open type world. This also works around the native image build breaking with allocating
      * implementations of {@link java.lang.ref.Reference#get()}.
      */
-    protected static final class WeakCallTargetRef<T> extends WeakReference<T> {
-        protected WeakCallTargetRef(T referent) {
+    private static final class WeakCallTargetRef<T> extends WeakReference<T> {
+        // Avoid nest-host resolution before JVMCI module exports are established.
+        WeakCallTargetRef(T referent) {
             super(referent);
         }
     }
 
-    protected SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
+    SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
         super(null);
         this.callTargetRef = new WeakCallTargetRef<>(callTarget);
     }
@@ -94,7 +96,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
-    public final void invalidate() {
+    public void invalidate() {
         CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
         SubstrateOptimizedCallTarget callTarget = callTargetRef.get();
         if (callTarget != null) {
@@ -172,13 +174,14 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
-    public ResolvedJavaMethod getMethod() {
-        return null;
+    public TypedEntryMethod getMethod() {
+        return method;
     }
 
     @Override
     public void setAddress(long address, long entryPoint, ResolvedJavaMethod method) {
-        assert VMOperation.isInProgressAtSafepoint();
+        VMOperation.guaranteeInProgressAtSafepoint("Must be at a safepoint");
+        this.method = (TypedEntryMethod) method;
         this.address = address;
         this.entryPoint = entryPoint;
 
@@ -201,6 +204,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     @Override
     public void clearAddress() {
         assert VMOperation.isInProgressAtSafepoint();
+        this.method = null;
         this.entryPoint = 0;
         this.address = 0;
 
@@ -240,21 +244,9 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);
     }
 
-    @Uninterruptible(reason = "Must be safepoint free")
-    static Object doInvoke(SubstrateOptimizedCallTarget callTarget, Object[] args) {
-        /*
-         * The calling code must be uninterruptible, i.e., must not have a safepoint between the
-         * read of the entry point address and the indirect call to this address. Otherwise, the
-         * code can be invalidated concurrently and we invoke an address that no longer contains
-         * executable code.
-         */
-        long start = callTarget.installedCode.entryPoint;
-        if (start != 0) {
-            SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = Word.pointer(start);
-            return target.invoke(callTarget, args);
-        } else {
-            return callTarget.invokeCallBoundary(args);
-        }
+    @Uninterruptible(reason = "Prevent safepoint.", callerMustBe = true)
+    long getEntryPointUninterruptible() {
+        return entryPoint;
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")

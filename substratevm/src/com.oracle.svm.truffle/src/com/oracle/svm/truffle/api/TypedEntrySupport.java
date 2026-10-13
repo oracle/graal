@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,6 +76,7 @@ import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.isolated.ImageHeapObjects;
 import com.oracle.svm.graal.isolated.ImageHeapRef;
@@ -211,9 +212,9 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  *
  * The unboxed signature is injected into the root method used for partial evaluation by wrapping
  * the normal root method in a {@link TypedEntryMethod}. The partial evaluation root methods are the
- * different {@link SubstrateTypedOptimizedCallTarget#compiledEntryReturnObject
+ * different {@link SubstrateOptimizedCallTarget#compiledEntryReturnObject
  * compiledEntryReturnObject*} methods. They all first call
- * {@link SubstrateTypedOptimizedCallTarget#specializeArguments} that reconstructs the
+ * {@link SubstrateOptimizedCallTarget#specializeArguments} that reconstructs the
  * arguments Object[] array from the unboxed parameters. So the first high-level Graal graph after
  * parsing has {@link ParameterNode}s for the unboxed signature, a {@link NewArrayNode}, and
  * {@link StoreIndexedNode}s to fill the arguments Object[] array. Escape analysis virtualizes the
@@ -225,7 +226,7 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
  * {@link TypedEntryMethod} because deoptimization would then change the return type. In other
  * words, we need the compiled code and the interpreter Java method to have the same return type.
  * Therefore, every supported unboxed return type needs a separate compilation root method
- * {@link SubstrateTypedOptimizedCallTarget#compiledEntryReturnObject
+ * {@link SubstrateOptimizedCallTarget#compiledEntryReturnObject
  * compiledEntryReturnObject*}. When a return type specialization fails, then, e.g., a method with
  * the return type int needs to return an object. We wrap the object in a
  * {@link DeoptimizedResultException}. Note that a failed return type specialization leads to both
@@ -235,11 +236,26 @@ import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 public final class TypedEntrySupport {
 
-    public static void initialize(MetaAccessProvider metaAccess) {
-        ImageSingletons.add(TypedEntrySupport.class, new TypedEntrySupport(metaAccess));
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void beforeAnalysis(BeforeAnalysisAccessImpl access) {
+        TypedEntrySupport support = new TypedEntrySupport(access.getMetaAccess());
+        ImageSingletons.add(TypedEntrySupport.class, support);
+        support.initializeBeforeAnalysis(access);
+        support.registerInterpreterEntryMethodsAsCompiled(access);
+        RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
+        for (ResolvedJavaMethod method : support.compiledEntryMethods.values()) {
+            runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, access);
+        }
     }
 
-    public static TypedEntrySupport singleton() {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void beforeCompilation(Feature.BeforeCompilationAccess access) {
+        TypedEntrySupport support = singleton();
+        support.initializeBeforeCompilation(access);
+        access.registerAsImmutable(support);
+    }
+
+    static TypedEntrySupport singleton() {
         return Lazy.singleton();
     }
 
@@ -265,14 +281,14 @@ public final class TypedEntrySupport {
 
     /**
      * All signatures contain one additional parameter: the
-     * {@link SubstrateTypedOptimizedCallTarget}. For simplicity, we only use static methods in
+     * {@link SubstrateOptimizedCallTarget}. For simplicity, we only use static methods in
      * the Java code where the "receiver" call target is explicitly passed as the first parameter.
      */
     private static final int PREFIX_PARAMETER_COUNT = 1;
 
     /**
      * The primitive types for which return type specialization is supported. Adding a type here
-     * also requires additions in many places in {@link SubstrateTypedOptimizedCallTarget}.
+     * also requires additions in many places in {@link SubstrateOptimizedCallTarget}.
      */
     private static final EnumSet<JavaKind> TYPED_RETURN_KINDS = EnumSet.of(JavaKind.Int, JavaKind.Long, JavaKind.Double, JavaKind.Boolean, JavaKind.Object);
 
@@ -280,8 +296,8 @@ public final class TypedEntrySupport {
     private ResolvedJavaField fromCompiledUnspecializedEntryPointField;
     private ResolvedJavaField compiledIndirectEntryAddressField;
 
-    public final Map<JavaKind, ResolvedJavaMethod> compiledEntryMethods;
-    final Map<JavaKind, ResolvedJavaMethod> interpreterEntryMethods;
+    private final Map<JavaKind, ResolvedJavaMethod> compiledEntryMethods;
+    private final Map<JavaKind, ResolvedJavaMethod> interpreterEntryMethods;
 
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     @ReflectivelyAccessed //
@@ -306,7 +322,7 @@ public final class TypedEntrySupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Method compiledEntryMethod(JavaKind returnKind) {
         try {
-            return SubstrateTypedOptimizedCallTarget.class.getDeclaredMethod("compiledEntryReturn" + returnKind.name(), SubstrateTypedOptimizedCallTarget.class, Object[].class);
+            return SubstrateOptimizedCallTarget.class.getDeclaredMethod("compiledEntryReturn" + returnKind.name(), SubstrateOptimizedCallTarget.class, Object[].class);
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -315,7 +331,7 @@ public final class TypedEntrySupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Method interpreterEntryMethod(JavaKind returnKind) {
         try {
-            return SubstrateTypedOptimizedCallTarget.class.getDeclaredMethod("interpreterEntryReturn" + returnKind.name(), SubstrateTypedOptimizedCallTarget.class, Object[].class);
+            return SubstrateOptimizedCallTarget.class.getDeclaredMethod("interpreterEntryReturn" + returnKind.name(), SubstrateOptimizedCallTarget.class, Object[].class);
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -324,14 +340,14 @@ public final class TypedEntrySupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Method compiledIndirectEntryMethod() {
         try {
-            return SubstrateTypedOptimizedCallTarget.class.getDeclaredMethod("compiledIndirectEntryReturnObject", SubstrateTypedOptimizedCallTarget.class, Object[].class);
+            return SubstrateOptimizedCallTarget.class.getDeclaredMethod("compiledIndirectEntryReturnObject", SubstrateOptimizedCallTarget.class, Object[].class);
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerInterpreterEntryMethodsAsCompiled(Feature.BeforeAnalysisAccess a) {
+    private void registerInterpreterEntryMethodsAsCompiled(Feature.BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
         for (ResolvedJavaMethod interpreterEntryMethod : interpreterEntryMethods.values()) {
@@ -342,10 +358,10 @@ public final class TypedEntrySupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void initializeBeforeAnalysis(BeforeAnalysisAccessImpl access) {
+    private void initializeBeforeAnalysis(BeforeAnalysisAccessImpl access) {
         /* Fields accessed by the address computation of a ComputedIndirectCallTargetNode. */
-        fromCompiledSpecializedEntryPointField = registerAsAccessed(access, SubstrateTypedOptimizedCallTarget.class, "fromCompiledSpecializedEntryPoint");
-        fromCompiledUnspecializedEntryPointField = registerAsAccessed(access, SubstrateTypedOptimizedCallTarget.class, "fromCompiledUnspecializedEntryPoint");
+        fromCompiledSpecializedEntryPointField = registerAsAccessed(access, SubstrateOptimizedCallTarget.class, "fromCompiledSpecializedEntryPoint");
+        fromCompiledUnspecializedEntryPointField = registerAsAccessed(access, SubstrateOptimizedCallTarget.class, "fromCompiledUnspecializedEntryPoint");
         compiledIndirectEntryAddressField = registerAsAccessed(access, TypedEntrySupport.class, "compiledIndirectEntryAddress");
     }
 
@@ -356,7 +372,7 @@ public final class TypedEntrySupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void initializeBeforeCompilation(Feature.CompilationAccess a) {
+    private void initializeBeforeCompilation(Feature.CompilationAccess a) {
         CompilationAccessImpl access = (CompilationAccessImpl) a;
 
         unspecializedInterpreterEntryAddress = new MethodPointer(access.getMetaAccess().lookupJavaMethod(interpreterEntryMethod(JavaKind.Object)));
@@ -365,9 +381,9 @@ public final class TypedEntrySupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerRuntimePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification) {
-        Registration r = new Registration(plugins, SubstrateTypedOptimizedCallTarget.class);
+        Registration r = new Registration(plugins, SubstrateOptimizedCallTarget.class);
         for (JavaKind returnKind : TYPED_RETURN_KINDS) {
-            r.register(new RequiredInvocationPlugin("invokeFromCompiledReturn" + returnKind.name(), SubstrateTypedOptimizedCallTarget.class, Object[].class) {
+            r.register(new RequiredInvocationPlugin("invokeFromCompiledReturn" + returnKind.name(), SubstrateOptimizedCallTarget.class, Object[].class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode callTargetNode, ValueNode boxedParametersNode) {
                     if (canDelayIntrinsification) {
@@ -379,7 +395,7 @@ public final class TypedEntrySupport {
                 }
             });
         }
-        r.register(new RequiredInvocationPlugin("specializeArguments", SubstrateTypedOptimizedCallTarget.class, Object[].class) {
+        r.register(new RequiredInvocationPlugin("specializeArguments", SubstrateOptimizedCallTarget.class, Object[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode callTargetNode, ValueNode originalArgumentsNode) {
                 if (canDelayIntrinsification) {
@@ -402,13 +418,13 @@ public final class TypedEntrySupport {
     }
 
     private Object typedEntryMethodForCallTarget(TruffleCompilable ast) {
-        SubstrateTypedOptimizedCallTarget callTarget = (SubstrateTypedOptimizedCallTarget) ast;
+        SubstrateOptimizedCallTarget callTarget = (SubstrateOptimizedCallTarget) ast;
 
         ArgumentsProfile argumentsProfile = callTarget.getArgumentsProfile();
         ReturnProfile returnProfile = callTarget.getReturnProfile();
 
         List<OptimizedAssumption> assumptionsList = new ArrayList<>();
-        Class<?>[] argumentClasses = SubstrateTypedOptimizedCallTarget.specializedArgumentClasses(argumentsProfile);
+        Class<?>[] argumentClasses = SubstrateOptimizedCallTarget.specializedArgumentClasses(argumentsProfile);
         if (argumentClasses != null) {
             assumptionsList.add(argumentsProfile.getAssumption());
         }
@@ -527,7 +543,7 @@ public final class TypedEntrySupport {
     }
 
     private static Class<?> getSpecializedReturnClass(ArgumentsProfile argumentsProfile, ReturnProfile returnProfile) {
-        return filterSpecializedReturnClass(SubstrateTypedOptimizedCallTarget.specializedReturnClass(argumentsProfile, returnProfile));
+        return filterSpecializedReturnClass(SubstrateOptimizedCallTarget.specializedReturnClass(argumentsProfile, returnProfile));
     }
 
     static JavaKind getSpecializedReturnKind(ArgumentsProfile argumentsProfile, ReturnProfile returnProfile) {
@@ -626,7 +642,7 @@ public final class TypedEntrySupport {
                                 IsolatedCompileContext.get().getClient(), callTargetHandle);
                 compiledSignature = IsolatedCompileContext.get().unhand(signatureHandle);
             } else {
-                SubstrateTypedOptimizedCallTarget callTarget = (SubstrateTypedOptimizedCallTarget) SubstrateObjectConstant.asObject(callTargetNode.asJavaConstant());
+                SubstrateOptimizedCallTarget callTarget = (SubstrateOptimizedCallTarget) SubstrateObjectConstant.asObject(callTargetNode.asJavaConstant());
                 compiledSignature = (SubstrateSignature) trySpecializeInvoke(callTarget);
             }
         }
@@ -676,9 +692,9 @@ public final class TypedEntrySupport {
         b.handleReplacedInvoke(indirectCallTargetNode, returnKind);
     }
 
-    private Object trySpecializeInvoke(SubstrateTypedOptimizedCallTarget callTarget) {
+    private Object trySpecializeInvoke(SubstrateOptimizedCallTarget callTarget) {
         ArgumentsProfile argumentsProfile = callTarget.getArgumentsProfile();
-        Class<?>[] argumentClasses = SubstrateTypedOptimizedCallTarget.specializedArgumentClasses(argumentsProfile);
+        Class<?>[] argumentClasses = SubstrateOptimizedCallTarget.specializedArgumentClasses(argumentsProfile);
         ReturnProfile returnProfile = callTarget.getReturnProfile();
         Class<?> returnClass = getSpecializedReturnClass(argumentsProfile, returnProfile);
 
@@ -703,7 +719,7 @@ public final class TypedEntrySupport {
     private static CompilerHandle<SubstrateSignature> trySpecializeInvokeInClient(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<?> callTargetHandle) {
 
-        SubstrateTypedOptimizedCallTarget callTarget = (SubstrateTypedOptimizedCallTarget) IsolatedCompileClient.get().unhand(callTargetHandle);
+        SubstrateOptimizedCallTarget callTarget = (SubstrateOptimizedCallTarget) IsolatedCompileClient.get().unhand(callTargetHandle);
         long specializedSignatureHandleValue = (long) singleton().trySpecializeInvoke(callTarget);
         return Word.signed(specializedSignatureHandleValue);
     }
@@ -827,7 +843,7 @@ public final class TypedEntrySupport {
 
     private static SubstrateSignature createI2CAdapterSignature() {
         SubstrateMetaAccess metaAccess = SubstrateMetaAccess.singleton();
-        SubstrateType[] parameterTypes = {metaAccess.lookupJavaType(SubstrateTypedOptimizedCallTarget.class), metaAccess.lookupJavaType(long.class), metaAccess.lookupJavaType(Object[].class)};
+        SubstrateType[] parameterTypes = {metaAccess.lookupJavaType(SubstrateOptimizedCallTarget.class), metaAccess.lookupJavaType(long.class), metaAccess.lookupJavaType(Object[].class)};
         return new SubstrateSignature(parameterTypes, metaAccess.lookupJavaType(Object.class));
     }
 
@@ -838,7 +854,7 @@ public final class TypedEntrySupport {
      *
      * Deoptimization can invalidate a function pointer to compiled code at any safeoint. Therefore,
      * the code path from the read of the function pointer in
-     * {@link SubstrateTypedOptimizedCallTarget#doInvoke} through the I2C adapter to the actual
+     * {@link SubstrateOptimizedCallTarget#doInvoke} through the I2C adapter to the actual
      * compiled code must be uninterruptible, i.e., the I2C adapter must never block. For example,
      * the I2C adapter must not allocate before the invocation.
      *
@@ -954,7 +970,7 @@ public final class TypedEntrySupport {
 
     private static SubstrateSignature specializedSignature(SubstrateMetaAccess metaAccess, Class<?>[] argumentClasses, SubstrateType returnType) {
         List<SubstrateType> argumentTypes = new ArrayList<>(argumentClasses.length);
-        argumentTypes.add(metaAccess.lookupJavaType(SubstrateTypedOptimizedCallTarget.class));
+        argumentTypes.add(metaAccess.lookupJavaType(SubstrateOptimizedCallTarget.class));
         for (Class<?> argumentClass : argumentClasses) {
             argumentTypes.add(toUnboxedType(metaAccess, argumentClass));
         }
@@ -969,7 +985,7 @@ public final class TypedEntrySupport {
 
     private static SubstrateSignature unspecializedSignature(SubstrateMetaAccess metaAccess) {
         return new SubstrateSignature(
-                        new SubstrateType[]{metaAccess.lookupJavaType(SubstrateTypedOptimizedCallTarget.class), metaAccess.lookupJavaType(Object[].class)},
+                        new SubstrateType[]{metaAccess.lookupJavaType(SubstrateOptimizedCallTarget.class), metaAccess.lookupJavaType(Object[].class)},
                         metaAccess.lookupJavaType(Object.class));
     }
 
@@ -1080,7 +1096,7 @@ class TypedAdapterMethod extends AbstractAnnotated implements SharedRuntimeMetho
         this.name = name;
         this.signature = signature;
         MetaAccessProvider metaAccess = RuntimeCompilationSupport.getRuntimeConfig().getProviders().getMetaAccess();
-        this.declaringClass = metaAccess.lookupJavaType(SubstrateTypedOptimizedCallTarget.class);
+        this.declaringClass = metaAccess.lookupJavaType(SubstrateOptimizedCallTarget.class);
     }
 
     @Override

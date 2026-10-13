@@ -243,14 +243,14 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         if (profilingEnabled == null) {
             profilingEnabled = getEngineData(rootNode).profilingEnabled;
         }
-        OptimizedCallTarget callTarget = TruffleSupport.singleton().createOptimizedCallTarget(source, rootNode);
+        OptimizedCallTarget callTarget = new SubstrateOptimizedCallTarget(source, rootNode);
         ensureInitializedAtRuntime(callTarget);
         return callTarget;
     }
 
     @Override
     protected OptimizedCallTarget createInitializationCallTarget(EngineData engine) {
-        return TruffleSupport.singleton().createOptimizedCallTarget(engine);
+        return new SubstrateOptimizedCallTarget(engine);
     }
 
     private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {

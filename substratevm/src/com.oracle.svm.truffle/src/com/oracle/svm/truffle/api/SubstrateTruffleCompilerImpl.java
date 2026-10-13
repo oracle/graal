@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.shared.option.CommonOptionParser;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
-import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
@@ -48,8 +47,10 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.truffle.PartialEvaluator;
@@ -58,6 +59,7 @@ import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleTierConfiguration;
+import jdk.graal.compiler.truffle.TruffleTierContext;
 import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
 import jdk.vm.ci.code.InstalledCode;
@@ -72,7 +74,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration) {
-        return TruffleSupport.singleton().createPartialEvaluator(configuration, builderConfig);
+        return new SubstratePartialEvaluator(configuration, builderConfig);
     }
 
     @Override
@@ -85,8 +87,15 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Override
     protected TruffleTier newTruffleTier(OptionValues options) {
+        InstrumentationSuite instrumentationSuite = new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation());
+        instrumentationSuite.appendPhase(new BasePhase<TruffleTierContext>() {
+            @Override
+            protected void run(StructuredGraph graph, TruffleTierContext context) {
+                TypedEntrySupport.afterTruffleTier(graph);
+            }
+        });
         return new TruffleTier(options,
-                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation()),
+                        instrumentationSuite,
                         new SubstratePostPartialEvaluationSuite(getGraalOptions(), TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }
 

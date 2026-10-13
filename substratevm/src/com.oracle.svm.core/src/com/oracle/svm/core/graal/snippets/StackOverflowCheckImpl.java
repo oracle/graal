@@ -373,15 +373,18 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
              * Deoptimization must not lead to stack overflow errors, i.e., the deoptimization
              * source must check for a stack frame size large enough to cover all possible
              * deoptimization points (with all the methods inlined at that point). We do not know
-             * which frame states are used for deoptimization, so we simply look at all frame states
-             * and use the largest.
+             * which frame states are used for deoptimization, so we simply look at all valid frame
+             * states and use the largest.
              *
              * Many frame states can share the same outer frame states. To avoid recomputing the
              * same information multiple times, we cache all values that we already computed.
              */
             NodeMap<Long> deoptFrameSizeCache = new NodeMap<>(graph);
             for (FrameState state : graph.getNodes(FrameState.TYPE)) {
-                deoptFrameSize = Math.max(deoptFrameSize, computeDeoptFrameSize(state, deoptFrameSizeCache));
+                // Artificial adapter frame states cannot deoptimize and may have no method.
+                if (state.isValidForDeoptimization()) {
+                    deoptFrameSize = Math.max(deoptFrameSize, computeDeoptFrameSize(state, deoptFrameSizeCache));
+                }
             }
         }
         return deoptFrameSize;
