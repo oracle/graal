@@ -532,7 +532,7 @@ public final class Interpreter {
      */
     @AlwaysInline("Keep the operand-stack overlay virtual across interpreter returns")
     private static void returnFromInterpreter(InterpreterResolvedJavaMethod method, int indent, long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack, Object returnValue) {
-        if (InterpreterTraceSupport.getValue() && InterpreterOptions.InterpreterTrace.getValue()) {
+        if (InterpreterTraceSupport.getValue()) {
             virtualStack.flushCache(frame);
             traceInterpreterReturn(method, indent, curBCI, virtualStack.topForFrameStackOperation());
         }
@@ -1188,7 +1188,7 @@ public final class Interpreter {
                         prepareOpcodeForDispatch(curBCI, frame, virtualStack);
                         continue;
                     } else {
-                        if (InterpreterTraceSupport.getValue() && InterpreterOptions.InterpreterTrace.getValue()) {
+                        if (InterpreterTraceSupport.getValue()) {
                             virtualStack.flushCache(frame);
                             traceInterpreterException(method, indent, curBCI, virtualStack.topForFrameStackOperation());
                         }
