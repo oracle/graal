@@ -41,7 +41,6 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.UnsignedUtils;

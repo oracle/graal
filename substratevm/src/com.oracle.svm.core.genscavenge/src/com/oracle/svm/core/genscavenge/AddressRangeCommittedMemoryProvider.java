@@ -53,7 +53,6 @@ import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;
@@ -61,7 +60,6 @@ import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.AuxiliaryImageProvider;
-import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -123,12 +121,14 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     protected static final String UNCOMMIT_FAILED_ERROR_MSG = "Failed while uncommitting memory. " +
                     "This error may occur if the operating system's memory mapping limit is too low (see vm.max_map_count on Linux). Please increase this limit and try again.";
     private static final OutOfMemoryError NODE_ALLOCATION_FAILED = new OutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
-    private static final OutOfMemoryError ALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
-                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
-                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
-    private static final OutOfMemoryError UNALIGNED_OUT_OF_ADDRESS_SPACE = new OutOfMemoryError("Could not allocate an unaligned heap chunk because the heap address space is exhausted. " +
-                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
-                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
+    private static final HeapChunkAllocationException ALIGNED_OUT_OF_ADDRESS_SPACE = new HeapChunkAllocationException(
+                    "Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
+                                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
+                                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
+    private static final HeapChunkAllocationException UNALIGNED_OUT_OF_ADDRESS_SPACE = new HeapChunkAllocationException(
+                    "Could not allocate an unaligned heap chunk because the heap address space is exhausted. " +
+                                    "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
+                                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
 
     /**
      * This mutex is used by the GC and the application. The application may hold this mutex only in
@@ -435,15 +435,15 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
             }
             return allocOut.read();
         }
-        throw reportAlignedChunkAllocationFailed(error);
+        throw alignedChunkAllocationFailed(error);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static OutOfMemoryError reportAlignedChunkAllocationFailed(int error) {
+    private static HeapChunkAllocationException alignedChunkAllocationFailed(int error) {
         if (error == OUT_OF_ADDRESS_SPACE) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_ADDRESS_SPACE);
+            throw ALIGNED_OUT_OF_ADDRESS_SPACE;
         } else if (error == COMMIT_FAILED) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_CHUNK_COMMIT_FAILED);
+            throw ALIGNED_CHUNK_COMMIT_FAILED;
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
@@ -460,15 +460,15 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
             }
             return allocOut.read();
         }
-        throw reportUnalignedChunkAllocationFailed(error);
+        throw unalignedChunkAllocationFailed(error);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static OutOfMemoryError reportUnalignedChunkAllocationFailed(int error) {
+    private static HeapChunkAllocationException unalignedChunkAllocationFailed(int error) {
         if (error == OUT_OF_ADDRESS_SPACE) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_ADDRESS_SPACE);
+            throw UNALIGNED_OUT_OF_ADDRESS_SPACE;
         } else if (error == COMMIT_FAILED) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_CHUNK_COMMIT_FAILED);
+            throw UNALIGNED_CHUNK_COMMIT_FAILED;
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
