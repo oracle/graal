@@ -26,10 +26,12 @@ package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Executable;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIFieldValueTransformer;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Computes new values for the accessor fields of {@link Executable} subclasses, to be used instead
@@ -37,10 +39,12 @@ import com.oracle.svm.core.reflect.SubstrateAccessor;
  *
  * @see RecomputeFieldValue
  */
-public final class ExecutableAccessorComputer implements FieldValueTransformer {
+public final class ExecutableAccessorComputer implements JVMCIFieldValueTransformer {
     @Override
-    public Object transform(Object receiver, Object originalValue) {
-        if (originalValue instanceof SubstrateAccessor) {
+    public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
+        GuestAccess access = GuestAccess.get();
+        if (!originalValue.isNull() &&
+                        access.lookupType(SubstrateAccessor.class).isAssignableFrom(access.getProviders().getMetaAccess().lookupJavaType(originalValue))) {
             /*
              * We do not want to replace existing SubstrateAccessors, since they might be more
              * specialized (e.g., an explicit target class for a constructor accessor) than what
@@ -48,6 +52,7 @@ public final class ExecutableAccessorComputer implements FieldValueTransformer {
              */
             return originalValue;
         }
-        return ReflectionSubstitutionSupport.singleton().getOrCreateAccessor((Executable) receiver);
+        SubstrateAccessor accessor = ReflectionSubstitutionSupport.singleton().getOrCreateAccessor(access.asResolvedJavaMethod(receiver));
+        return access.getSnippetReflection().forObject(accessor);
     }
 }

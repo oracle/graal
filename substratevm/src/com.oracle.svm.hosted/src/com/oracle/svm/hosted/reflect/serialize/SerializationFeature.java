@@ -637,7 +637,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     private static ConstructorAccessor getConstructorAccessor(Class<?> serializationTargetClass, Constructor<?> constructorToCall) {
-        return (SubstrateConstructorAccessor) ReflectionSubstitutionSupport.singleton().getOrCreateAccessor(serializationTargetClass, constructorToCall);
+        return (SubstrateConstructorAccessor) ReflectionSubstitutionSupport.singleton().getOrCreateAccessor(GuestAccess.get().lookupType(serializationTargetClass),
+                        GuestAccess.get().lookupMethod(constructorToCall));
     }
 
     /**

@@ -100,6 +100,8 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.options.Option;
@@ -139,7 +141,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private UniverseMetaAccess metaAccess;
     private Boolean relativeCodePointers;
 
-    private record AccessorKey(Executable member, Class<?> targetClass) {
+    private record AccessorKey(ResolvedJavaMethod member, ResolvedJavaType targetClass) {
     }
 
     final Map<AccessorKey, SubstrateAccessor> accessors = new ConcurrentHashMap<>();
@@ -162,20 +164,23 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public SubstrateAccessor getOrCreateAccessor(Executable member) {
-        return getOrCreateAccessor(member.getDeclaringClass(), member);
+    public SubstrateAccessor getOrCreateAccessor(ResolvedJavaMethod member) {
+        ResolvedJavaMethod originalMember = Objects.requireNonNull(OriginalMethodProvider.getOriginalMethod(member));
+        return getOrCreateAccessor(originalMember.getDeclaringClass(), originalMember);
     }
 
     @Override
-    public SubstrateAccessor getOrCreateAccessor(Class<?> targetClass, Executable member) {
-        AccessorKey key = new AccessorKey(member, targetClass);
+    public SubstrateAccessor getOrCreateAccessor(ResolvedJavaType targetClass, ResolvedJavaMethod member) {
+        ResolvedJavaMethod originalMember = Objects.requireNonNull(OriginalMethodProvider.getOriginalMethod(member));
+        ResolvedJavaType originalTargetClass = OriginalClassProvider.getOriginalType(targetClass);
+        AccessorKey key = new AccessorKey(originalMember, originalTargetClass);
         SubstrateAccessor existing = accessors.get(key);
         if (existing != null) {
             return existing;
         }
 
         if (analysisAccess == null) {
-            throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
+            throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + originalMember);
         }
         return accessors.computeIfAbsent(key, this::createAccessor);
     }
@@ -206,8 +211,8 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      * member, so no further synchronization is necessary.
      */
     private SubstrateAccessor createAccessor(AccessorKey key) {
-        Executable member = key.member;
-        Class<?> targetClass = key.targetClass;
+        Executable member = Objects.requireNonNull(OriginalMethodProvider.getJavaMethod(key.member), "No original Java method for " + key.member);
+        Class<?> targetClass = OriginalClassProvider.getJavaClass(key.targetClass);
         MethodRef expandSignature;
         MethodRef directTarget = null;
         AnalysisMethod targetMethod = null;

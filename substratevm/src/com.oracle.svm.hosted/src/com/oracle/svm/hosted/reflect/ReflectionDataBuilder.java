@@ -1015,7 +1015,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerMethodAccessor(AnalysisMethod method) {
-        SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method.getJavaMethod());
+        SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method);
         universe.getHeapScanner().rescanObject(accessor, scanReason);
     }
 
@@ -1411,7 +1411,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (!methods.containsKey(method) || !methods.get(method).isRegisteredAs(ACCESSED)) {
             return null;
         }
-        return ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method.getJavaMethod());
+        return ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method);
     }
 
     @Override
