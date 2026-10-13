@@ -56,8 +56,14 @@ import jdk.vm.ci.meta.JavaKind;
 class InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    /**
+     * Normal execution with all operands in the frame. {@link CachedInterpreterOperandStack} adds
+     * states for normal execution with cached primitive slots.
+     */
     static final int STATE_NORMAL = 0;
+    /** Profiling execution with all operands in the frame and caching disabled. */
     static final int STATE_PROFILING = 1;
+    /** Debugging execution with all operands in the frame and caching disabled. */
     static final int STATE_DEBUGGING = 2;
 
     /** First stack slot above the operand stack. */
@@ -65,7 +71,7 @@ class InterpreterOperandStack {
     /** Execution mode used to select the bytecode handler variant. */
     int state = STATE_NORMAL;
 
-    @AlwaysInline("Keep the operand-stack overlay virtual in interpreter entry")
+    @AlwaysInline("Expose the operand-stack overlay to escape analysis in interpreter entry")
     InterpreterOperandStack(long top) {
         this.top = top;
     }

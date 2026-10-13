@@ -30,6 +30,7 @@ import org.junit.Test;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -93,6 +94,16 @@ public class UnreachablePathNodeTest extends GraalCompilerTest {
 
     @BytecodeParserNeverInline(invokeWithException = true)
     public static int throwingCall(Object value) {
+        return value.hashCode();
+    }
+
+    public static void afterImplicitThrowingCall(Object value) {
+        effect = implicitThrowingCall(value);
+        GraalDirectives.unreachable();
+    }
+
+    @BytecodeParserNeverInline(invokeWithException = false)
+    public static int implicitThrowingCall(Object value) {
         return value.hashCode();
     }
 
@@ -163,5 +174,23 @@ public class UnreachablePathNodeTest extends GraalCompilerTest {
         Assert.assertTrue(graph.getInvokes().iterator().hasNext());
         Assert.assertEquals(1, graph.getNodes().filter(ReturnNode.class).count());
         Assert.assertEquals(1, graph.getNodes().filter(UnreachablePathNode.class).count());
+    }
+
+    @Test
+    public void testImplicitExceptionBoundary() throws Exception {
+        StructuredGraph graph = simplify("afterImplicitThrowingCall");
+        Assert.assertEquals(1, graph.getNodes().filter(InvokeNode.class).count());
+        InvokeNode invoke = graph.getNodes().filter(InvokeNode.class).first();
+        Assert.assertTrue(invoke.next() instanceof UnreachablePathNode);
+        Assert.assertEquals(0, graph.getNodes().filter(StoreFieldNode.class).count());
+        Assert.assertEquals(1, graph.getNodes().filter(UnreachablePathNode.class).count());
+
+        var code = getCode(getResolvedJavaMethod("afterImplicitThrowingCall"), graph);
+        try {
+            code.executeVarargs((Object) null);
+            Assert.fail("Expected the call's exception to escape the compiled method");
+        } catch (NullPointerException expected) {
+            // The exceptional path does not reach the unreachable marker.
+        }
     }
 }

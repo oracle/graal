@@ -47,6 +47,10 @@ import jdk.vm.ci.meta.JavaKind;
  * materialized so that reference-map and stack-walking semantics remain unchanged. Profiling and
  * debugging use the materialized stack without caching primitives.
  *
+ * The following diagram shows the slot layout and the state machine for one-slot primitive pushes
+ * and pops. The inherited execution modes are defined in {@link InterpreterOperandStack}; this class
+ * adds {@link #STATE_TOS_1} and {@link #STATE_TOS_2} for cached execution.
+ *
  * <pre>{@code
  * Slots from bottom to top (top is the first slot not stored in the frame):
  *
@@ -86,13 +90,23 @@ import jdk.vm.ci.meta.JavaKind;
 final class CachedInterpreterOperandStack extends InterpreterOperandStack {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
+    /** Normal execution with one cached primitive slot in {@link #tosPrimitive0}. */
     static final int STATE_TOS_1 = 3;
+    /** Normal execution with two cached primitive slots, ordered from bottom to top. */
     static final int STATE_TOS_2 = 4;
 
+    /**
+     * Primitive bits for slot {@code top}, used in both cached states. This is the unused lower
+     * slot when a complete long or double is cached.
+     */
     private long tosPrimitive0;
+    /**
+     * Primitive bits for slot {@code top + 1}, used only in {@link #STATE_TOS_2}. Holds the payload
+     * when a complete long or double is cached. Inactive cache fields must not be observed.
+     */
     private long tosPrimitive1;
 
-    @AlwaysInline("Keep the operand-stack overlay virtual in interpreter entry")
+    @AlwaysInline("Expose the operand-stack overlay to escape analysis in interpreter entry")
     CachedInterpreterOperandStack(long top) {
         super(top);
     }

@@ -255,7 +255,10 @@ public final class GraalDirectives {
 
     /**
      * Declares an impossible execution path. The compiler may discard preceding operations on
-     * that path. This is not a runtime error check. An uncompiled invocation throws an error.
+     * that path, but preserves preceding operations that can exit exceptionally. This is not a
+     * runtime error check. When executed without intrinsification, this
+     * method throws an {@link AssertionError} to diagnose the unreachable path. An intrinsified
+     * invocation emits a hardware halt if it survives compilation.
      */
     public static void unreachable() {
         throw new AssertionError("Unreachable execution path");
