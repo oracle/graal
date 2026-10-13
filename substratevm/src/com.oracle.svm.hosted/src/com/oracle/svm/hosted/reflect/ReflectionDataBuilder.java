@@ -1487,7 +1487,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
         guaranteeRuntimeMetadataEncodingNotComplete();
-        if (reflectExecutable instanceof Constructor<?> reflectConstructor && ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(reflectConstructor)) {
+        if (reflectExecutable instanceof Constructor<?> reflectConstructor &&
+                        ReflectionSubstitutionSupport.singleton().isCustomSerializationConstructor(GuestAccess.get().getSnippetReflection().forObject(reflectConstructor))) {
             /*
              * Constructors created by Constructor.newWithAccessor are indistinguishable from an
              * equivalent constructor with a "correct" accessor, and as such could hide this

@@ -108,6 +108,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.util.Digest;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -304,10 +305,13 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor) {
-        if (ReflectionUtil.readField(Constructor.class, "constructorAccessor", reflectConstructor) instanceof SubstrateConstructorAccessor accessor) {
+    public boolean isCustomSerializationConstructor(JavaConstant reflectConstructor) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant accessorConstant = JVMCIReflectionUtil.readInstanceField(reflectConstructor, access.lookupType(Constructor.class), "constructorAccessor");
+        // GR-71897: read factory metadata without materializing the accessor in the builder.
+        if (access.asHostObject(Object.class, accessorConstant) instanceof SubstrateConstructorAccessor accessor) {
             AnalysisMetaAccess analysisMetaAccess = analysisAccess.getMetaAccess();
-            AnalysisMethod analysisConstructor = analysisMetaAccess.lookupJavaMethod(reflectConstructor);
+            AnalysisMethod analysisConstructor = analysisAccess.getUniverse().lookup(access.asResolvedJavaMethod(reflectConstructor));
             return !accessor.getFactoryMethod().equals(FactoryMethodSupport.singleton().lookup(analysisMetaAccess, analysisConstructor, analysisConstructor.getDeclaringClass(), false));
         }
         return false;

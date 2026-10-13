@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.reflect.target;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -32,6 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -58,5 +58,10 @@ public interface ReflectionSubstitutionSupport {
      */
     String getDeletionReason(ResolvedJavaField field);
 
-    boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor);
+    /**
+     * Returns whether the supplied constructor object uses a custom serialization accessor. The
+     * object must be preserved because constructors with different accessors can resolve to the
+     * same Java method.
+     */
+    boolean isCustomSerializationConstructor(JavaConstant reflectConstructor);
 }
