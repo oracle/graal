@@ -37,6 +37,8 @@ import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Int;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Long;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Object;
 import static com.oracle.svm.espresso.classfile.Constants.JVM_ArrayType_Short;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_1;
+import static com.oracle.svm.interpreter.CachedInterpreterOperandStack.STATE_TOS_2;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_DEBUGGING;
 import static com.oracle.svm.interpreter.InterpreterOperandStack.STATE_PROFILING;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
@@ -503,6 +505,7 @@ public final class Interpreter {
                         .string("/top=").unsigned(top).newline();
     }
 
+    @NeverInline("Keep return tracing out of the interpreter")
     private static void traceInterpreterReturn(InterpreterResolvedJavaMethod method, int indent, long curBCI, long top) {
         /* arguments to Log methods might have side-effects */
         if (!InterpreterTraceSupport.getValue()) {
@@ -527,10 +530,14 @@ public final class Interpreter {
      * Ristretto OSR returns bypass this helper because the OSR continuation has already left the
      * interpreter and returns as runtime-compiled code.
      */
-    private static void returnFromInterpreter(InterpreterResolvedJavaMethod method, int indent, long curBCI, long top, Object returnValue, int state) {
-        traceInterpreterReturn(method, indent, curBCI, top);
+    @AlwaysInline("Keep the operand-stack overlay virtual across interpreter returns")
+    private static void returnFromInterpreter(InterpreterResolvedJavaMethod method, int indent, long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack, Object returnValue) {
+        if (InterpreterTraceSupport.getValue()) {
+            virtualStack.flushCache(frame);
+            traceInterpreterReturn(method, indent, curBCI, virtualStack.topForFrameStackOperation());
+        }
         Thread currentThread = Thread.currentThread();
-        if (state == STATE_DEBUGGING && DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.METHOD_EXIT)) {
+        if (virtualStack.getState() == STATE_DEBUGGING && DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.METHOD_EXIT)) {
             if (method.getDeclaringClass().isMethodExitEvent()) {
                 int flags = EventKind.METHOD_EXIT.getFlag() | EventKind.METHOD_EXIT_WITH_RETURN_VALUE.getFlag();
                 DebuggerEvents.singleton().getEventHandler().onEventAt(currentThread, method, (int) curBCI, returnValue, flags);
@@ -538,6 +545,7 @@ public final class Interpreter {
         }
     }
 
+    @NeverInline("Keep instruction tracing out of bytecode-handler stubs")
     private static void traceInterpreterInstruction(InterpreterFrame frame, int indent, long curBCI, long top, int curOpcode) {
         /* arguments to Log methods might have side-effects */
         if (!InterpreterTraceSupport.getValue()) {
@@ -553,6 +561,7 @@ public final class Interpreter {
         traceInterpreter("").newline();
     }
 
+    @NeverInline("Keep exception tracing out of the interpreter")
     private static void traceInterpreterException(InterpreterResolvedJavaMethod method, int indent, long curBCI, long top) {
         /* arguments to Log methods might have side-effects */
         if (!InterpreterTraceSupport.getValue()) {
@@ -767,8 +776,14 @@ public final class Interpreter {
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "primitives"),
                                         @BytecodeInterpreterHandlerConfig.Argument.Field(name = "references")
                         }),
-                        @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.VIRTUAL, fields = {
-                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "state", templateVariable = 3)
+                        @BytecodeInterpreterHandlerConfig.Argument(expand = BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.VIRTUAL, expandedType = CachedInterpreterOperandStack.class, fields = {
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "state", templateVariable = STATE_TOS_2 + 1),
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "tosPrimitive0", validWhen = "state", valid = {
+                                                        STATE_TOS_1, STATE_TOS_2
+                                        }),
+                                        @BytecodeInterpreterHandlerConfig.Argument.Field(name = "tosPrimitive1", validWhen = "state", valid = {
+                                                        STATE_TOS_2
+                                        })
                         })
         })
         private static Object executeBodyFromBCI(InterpreterFrame frame, InterpreterResolvedJavaMethod method, int startBCI, int startTop,
@@ -778,7 +793,7 @@ public final class Interpreter {
              * precedence so events enabled during this invocation are still observed. Both
              * capability checks fold at image build time.
              */
-            InterpreterOperandStack virtualStack = new InterpreterOperandStack(startTop);
+            InterpreterOperandStack virtualStack = new CachedInterpreterOperandStack(startTop);
             final MethodProfile methodProfile;
             if (debuggerEventsSupported()) {
                 methodProfile = null;
@@ -1094,7 +1109,7 @@ public final class Interpreter {
                         case ARETURN: // fall through
                         case RETURN: {
                             Object returnValue = virtualStack.peekKindAsObject(frame, method.getSignature().getReturnKind());
-                            returnFromInterpreter(method, indent, curBCI, virtualStack.topForFrameStackOperation(), returnValue, virtualStack.getState());
+                            returnFromInterpreter(method, indent, curBCI, frame, virtualStack, returnValue);
                             return returnValue;
                         }
                         // @formatter:off
@@ -1169,11 +1184,14 @@ public final class Interpreter {
                         virtualStack.clearOperandStack(frame);
                         virtualStack.pushObject(frame, exception);
                         // The completed stack update marks the transition to the exception-handler entry BCI.
-                        curBCI = beforeJumpChecks(frame, curBCI, handler.getHandlerBCI(), virtualStack.topForFrameStackOperation(), virtualStack.getState());
+                        curBCI = beforeJumpChecks(frame, curBCI, handler.getHandlerBCI(), virtualStack);
                         prepareOpcodeForDispatch(curBCI, frame, virtualStack);
                         continue;
                     } else {
-                        traceInterpreterException(method, indent, curBCI, virtualStack.topForFrameStackOperation());
+                        if (InterpreterTraceSupport.getValue()) {
+                            virtualStack.flushCache(frame);
+                            traceInterpreterException(method, indent, curBCI, virtualStack.topForFrameStackOperation());
+                        }
                         throw uncheckedThrow(exception);
                     }
                 } catch (Throwable e) {
@@ -1223,6 +1241,7 @@ public final class Interpreter {
          */
         @AlwaysInline("Keep the interpreter fast path call-free")
         private static void prepareOpcodeForDispatch(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
+            virtualStack.beforeDispatch();
             boolean debuggerEventsSupported = virtualStack.getState() == STATE_DEBUGGING;
             if (!debuggerEventsSupported && !InterpreterOptions.InterpreterTraceSupport.getValue()) {
                 return;
@@ -1248,7 +1267,8 @@ public final class Interpreter {
                     frame.debugState.debuggerEventFlags = 0;
                 }
             }
-            if (InterpreterOptions.InterpreterTraceSupport.getValue()) {
+            if (InterpreterOptions.InterpreterTraceSupport.getValue() && InterpreterOptions.InterpreterTrace.getValue()) {
+                virtualStack.flushCache(frame);
                 traceInterpreterInstruction(frame, frame.debugState.indent, curBCI, virtualStack.topForFrameStackOperation(), opcode);
             }
             if (debuggerEventsSupported) {
@@ -3236,6 +3256,7 @@ public final class Interpreter {
         @BytecodeInterpreterHandler(value = QUICK_GETSTATIC)
         private static long quickGetstaticHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
             StaticStorage staticStorage = quickGetStaticStorage(curBCI, frame);
+            InterpreterUtil.guarantee(staticStorage.storage != null);
             getField(frame, staticStorage.field, virtualStack, staticStorage.type, true, staticStorage.storage);
             return advanceToNextBytecode(curBCI, QUICK_GETSTATIC, frame, virtualStack);
         }
@@ -3291,6 +3312,7 @@ public final class Interpreter {
             LinkedInvoke linkedInvoke = getOrLinkInvoke(callerFrame, callerFrame.code, curBCI, opcode);
             Object[] calleeArgs;
             if (opcode == INVOKESTATIC && linkedInvoke.argumentCount == 0) {
+                virtualStack.flushCache(callerFrame);
                 calleeArgs = InterpreterFrame.EMPTY;
             } else {
                 calleeArgs = new Object[linkedInvoke.argumentCount];
@@ -3310,7 +3332,7 @@ public final class Interpreter {
                     if (linkedInvoke.symbolicHolder != null) {
                         DynamicHub typeHub = linkedInvoke.symbolicHolder.getHub();
                         boolean assignable = InterpreterToVM.isAssignableFrom(typeHub, instanceHub, opcode != INVOKEINTERFACE);
-                        if (!assignable) {
+                        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !assignable)) {
                             throw incompatibleInvokeReceiver(instanceHub.getInterpreterType(), linkedInvoke.symbolicHolder);
                         }
                     }
@@ -3377,6 +3399,7 @@ public final class Interpreter {
         @NeverInlineTrivial(reason = "BytecodeInterpreterHandler")
         @BytecodeInterpreterHandler(value = INVOKEDYNAMIC)
         private static long invokedynamicHandler(long curBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
+            virtualStack.flushCache(frame);
             if (virtualStack.getState() == STATE_DEBUGGING) {
                 boolean preferStayInInterpreter = frame.debugState.beforeInvoke();
                 try {
@@ -3469,6 +3492,7 @@ public final class Interpreter {
             int length = virtualStack.peekInt(frame, -1);
             long cpi = BytecodeStream.uncheckedReadCPI2(frame.code, curBCI);
             InterpreterResolvedJavaType componentType = resolveType(frame, ANEWARRAY, cpi);
+            virtualStack.flushCache(frame);
             Object array = InterpreterToVM.createNewReferenceArray(componentType, length);
             virtualStack.pop1(frame, false);
             virtualStack.pushObject(frame, array);
@@ -3642,12 +3666,8 @@ public final class Interpreter {
             InterpreterResolvedJavaType multiArrayType = resolveType(frame, MULTIANEWARRAY, cpi);
             int allocatedDimensions = BytecodeStream.uncheckedReadUByte(frame.code, curBCI + 3);
             int[] dimensions = new int[allocatedDimensions];
-            // Keep the guest stack intact until allocation succeeds.
-            for (int i = allocatedDimensions - 1; i >= 0; --i) {
-                dimensions[i] = virtualStack.peekInt(frame, i - allocatedDimensions);
-            }
+            virtualStack.popInts(frame, dimensions);
             Object value = allocateMultiArray(multiArrayType, dimensions);
-            virtualStack.applyFrameStackOperationDelta(-allocatedDimensions);
             virtualStack.pushObject(frame, value);
             return advanceToNextBytecode(curBCI, MULTIANEWARRAY, frame, virtualStack);
         }
@@ -3662,7 +3682,7 @@ public final class Interpreter {
          */
         @AlwaysInline("Keep branch completion on the fast path")
         private static long finishJump(long curBCI, long targetBCI, InterpreterFrame frame, InterpreterOperandStack virtualStack) {
-            long nextBCI = beforeJumpChecks(frame, curBCI, targetBCI, virtualStack.topForFrameStackOperation(), virtualStack.getState());
+            long nextBCI = beforeJumpChecks(frame, curBCI, targetBCI, virtualStack);
             prepareOpcodeForDispatch(nextBCI, frame, virtualStack);
             return nextBCI;
         }
@@ -3722,10 +3742,12 @@ public final class Interpreter {
      * must stay in the interpreter.
      */
     @SuppressWarnings("unused")
-    private static long beforeJumpChecks(InterpreterFrame frame, long curBCI, long targetBCI, long stackTop, int state) {
+    @AlwaysInline("Keep the operand-stack overlay virtual across interpreter backedges")
+    private static long beforeJumpChecks(InterpreterFrame frame, long curBCI, long targetBCI, InterpreterOperandStack virtualStack) {
         if (targetBCI <= curBCI) {
             GraalDirectives.safepoint();
-            if (state == STATE_PROFILING && SubstrateOptions.useRistretto() && frame.useOSR()) {
+            if (virtualStack.getState() == STATE_PROFILING && SubstrateOptions.useRistretto() && frame.useOSR()) {
+                long stackTop = virtualStack.topForFrameStackOperation();
                 RistrettoInterpreterSupport.singleton().tryOSR(frame.method, frame.methodProfile, frame, (int) targetBCI, (int) stackTop);
             }
         }
