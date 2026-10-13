@@ -138,6 +138,7 @@ import com.oracle.truffle.api.test.polyglot.PolyglotCachingTest;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import com.sun.management.OperatingSystemMXBean;
 
 public class PolyglotIsolateTest {
 
@@ -212,6 +213,43 @@ public class PolyglotIsolateTest {
         } catch (PolyglotException pe) {
             assertTrue(pe.isResourceExhausted());
         }
+    }
+
+    @Test
+    public void testCompilationIsolateTornDown() throws IOException, InterruptedException {
+        assumeFalse("SubprocessTestUtils is not supported in native-image", ImageInfo.inImageRuntimeCode());
+        assumeFalse("Not applicable to external isolates", TruffleTestAssumptions.isExternalIsolate());
+        assumeFalse("Virtual memory reservation differs on Windows", OSUtils.isWindows());
+        SubprocessTestUtils.newBuilder(PolyglotIsolateTest.class, () -> {
+            runCompiledSLIsolate(); // Warm up JVM initialization and library loading
+
+            long before = getProcessVirtualMemorySize();
+            for (int i = 0; i < 3; i++) {
+                runCompiledSLIsolate();
+            }
+            long after = getProcessVirtualMemorySize();
+
+            long growth = after - before;
+            long maxExpectedGrowth = 2L * 1024 * 1024 * 1024;  // 2GB
+            assertTrue(String.format("Virtual memory grew by %d bytes, expected less than %d bytes.", growth, maxExpectedGrowth), growth < maxExpectedGrowth);
+        }).run();
+    }
+
+    private static void runCompiledSLIsolate() {
+        Context.Builder builder = Context.newBuilder("sl").//
+                        allowExperimentalOptions(true).//
+                        option("engine.SpawnIsolate", "true").//
+                        option("engine.CompileImmediately", "true").//
+                        option("engine.IsolateOption.CompilationIsolateAddressSpaceSize", "4g");
+        try (Context context = builder.build()) {
+            context.eval("sl", "function main() { return 42; }");
+        }
+    }
+
+    private static long getProcessVirtualMemorySize() {
+        long size = ((OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getCommittedVirtualMemorySize();
+        assumeTrue("Process virtual memory size is unavailable", size >= 0);
+        return size;
     }
 
     @HostReflection
