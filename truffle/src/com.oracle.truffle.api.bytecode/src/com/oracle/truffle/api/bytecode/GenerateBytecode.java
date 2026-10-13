@@ -126,10 +126,10 @@ public @interface GenerateBytecode {
      * <p>
      * It is recommended to use {@link ControlFlowException} subtypes
      * for unwind exceptions, but any {@link Throwable} subtype is permitted. {@link ThreadDeath}
-     * and its subtypes remain reserved for instrumentation unwinds and are not affected by this
-     * configuration.
+     * and its subtypes are reserved for instrumentation unwinds and cannot be specified explicitly.
+     * They retain their existing behavior even when a configured supertype would match them.
      *
-     * @since 25.4
+     * @since 25.5
      */
     Class<? extends Throwable>[] unwindExceptions() default {};
 
