@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -290,6 +290,14 @@ final class ThrowableStackTraceFieldValueTransformer implements FieldValueTransf
 @TargetClass(java.lang.StackTraceElement.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StackTraceElement {
+    /// JDK marker for suppressing built-in class loader names.
+    @Alias @TargetElement(name = "BUILTIN_CLASS_LOADER") //
+    static byte builtinClassLoader;
+
+    /// Formatting bits consumed by the JDK's string representation.
+    @Alias //
+    byte format;
+
     @AnnotateOriginal
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public native String getMethodName();

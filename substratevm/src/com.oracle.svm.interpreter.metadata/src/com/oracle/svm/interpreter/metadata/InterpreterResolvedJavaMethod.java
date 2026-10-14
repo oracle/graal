@@ -52,6 +52,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -61,6 +62,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -1167,6 +1169,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         throw VMError.intentionallyUnimplemented();
     }
 
+    /// Creates a source location for runtime, hosted, and opaque metadata.
     @Override
     public final StackTraceElement asStackTraceElement(int bci) {
         int lineNumber;
@@ -1184,7 +1187,13 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
                 lineNumber = methodLineNumberTable.getLineNumber(bci);
             }
         }
-        return new StackTraceElement(getDeclaringClass().toJavaName(), getName(), getDeclaringClass().getSourceFileName(), lineNumber);
+        InterpreterResolvedJavaType declaringType = getDeclaringClass();
+        if (ImageInfo.inImageRuntimeCode() && declaringType.clazz != null) {
+            // Runtime classes carry the same loader and module information as compiled frames.
+            return FrameSourceInfo.getSourceReference(declaringType.getJavaClass(), getName(), lineNumber);
+        }
+        // Hosted classes are not DynamicHubs, and opaque metadata has no local Class at all.
+        return new StackTraceElement(declaringType.toJavaName(), getName(), declaringType.getSourceFileName(), lineNumber);
     }
 
     @Override
