@@ -1,0 +1,216 @@
+#
+# Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# The Universal Permissive License (UPL), Version 1.0
+#
+# Subject to the condition set forth below, permission is hereby granted to any
+# person obtaining a copy of this software, associated documentation and/or
+# data (collectively the "Software"), free of charge and under any and all
+# copyright rights in the Software, and any and all patent rights owned or
+# freely licensable by each licensor hereunder covering either (i) the
+# unmodified Software as contributed to or provided by such licensor, or (ii)
+# the Larger Works (as defined below), to deal in both
+#
+# (a) the Software, and
+#
+# (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+# one is included with the Software each a "Larger Work" to which the Software
+# is contributed by such licensors),
+#
+# without restriction, including without limitation the rights to copy, create
+# derivative works of, display, perform, and distribute the Software and make,
+# use, sell, offer for sale, import, export, have made, and have sold the
+# Software and the Larger Work(s), and to sublicense the foregoing rights on
+# either these or other terms.
+#
+# This license is subject to the following condition:
+#
+# The above copyright notice and either this complete permission notice or at a
+# minimum a reference to the UPL must be included in all copies or substantial
+# portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# ---------------------------------------------------------------------------
+# Truffle NFI native-library tests, run on Windows *and* Linux.
+#
+# The point of running both is that the Windows behaviour is supposed to match
+# the POSIX behaviour. The `default` library (the NFI equivalent of
+# dlopen(NULL)/RTLD_DEFAULT) previously resolved only symbols exported by the
+# launcher executable on Windows, and the test suite worked around that by
+# redirecting to re-exported copies in the test library rather than covering the
+# real path. With that workaround removed, the same tests have to pass on both
+# platforms or the mirror is broken.
+#
+# See truffle/src/com.oracle.truffle.nfi.native/src/lookup_win32.c for the
+# lookup itself, and DefaultLibraryNFITest / LoadNFILibraryTest for the tests.
+# ---------------------------------------------------------------------------
+name: Truffle NFI native library
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'sulong-windows-native-dll'
+    paths:
+      - 'truffle/src/com.oracle.truffle.nfi.native/**'
+      - 'truffle/src/com.oracle.truffle.nfi.backend.libffi/**'
+      - 'truffle/src/com.oracle.truffle.nfi.test/**'
+      - 'sulong/projects/com.oracle.truffle.llvm.nativemode/**'
+      - 'sulong/projects/com.oracle.truffle.llvm.runtime/src/com/oracle/truffle/llvm/runtime/NativeContextExtension.java'
+      - '.github/workflows/nfi-native-library-tests.yml'
+  pull_request:
+    branches:
+      - 'master'
+    paths:
+      - 'truffle/src/com.oracle.truffle.nfi.native/**'
+      - 'truffle/src/com.oracle.truffle.nfi.backend.libffi/**'
+      - 'truffle/src/com.oracle.truffle.nfi.test/**'
+      - 'sulong/projects/com.oracle.truffle.llvm.nativemode/**'
+      - 'sulong/projects/com.oracle.truffle.llvm.runtime/src/com/oracle/truffle/llvm/runtime/NativeContextExtension.java'
+      - '.github/workflows/nfi-native-library-tests.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'oracle/graal' }}
+
+env:
+  MX_PATH: ${{ github.workspace }}/mx
+  # mx refuses to run when Python's stdout is not unicode, which is the default
+  # on the Windows runners.
+  PYTHONIOENCODING: utf-8
+  LANG: en_US.UTF-8
+
+permissions:
+  contents: read
+
+jobs:
+  nfi-tests:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
+    name: NFI native library (${{ matrix.os-name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            os-name: windows
+          - os: ubuntu-22.04
+            os-name: linux
+    steps:
+      - name: Checkout graal
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Determine mx version
+        shell: bash
+        run: echo "MX_VERSION=$(python -c "import json;print(json.load(open('common.json'))['mx_version'])")" >> ${GITHUB_ENV}
+
+      - name: Checkout graalvm/mx
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: graalvm/mx.git
+          ref: ${{ env.MX_VERSION }}
+          path: ${{ env.MX_PATH }}
+
+      # Deliberately no `--alias`: that symlinks to a path built from
+      # github.workspace, which on the Windows runner contains backslashes that
+      # bash eats as escapes before mx ever sees them ("D:\a\graal\graal/jdk"
+      # arrives as "D:agraalgraal/jdk"). Derive the install directory instead and
+      # hand it over in a form Python accepts on both platforms.
+      - name: Fetch LabsJDK
+        shell: bash
+        run: |
+          mkdir -p jdk-dl
+          ${MX_PATH}/mx -y --java-home= fetch-jdk --jdk-id labsjdk-ce-latest --to jdk-dl
+          jdk=$(ls -d jdk-dl/labsjdk-*/ | head -1)
+          jdk_abs=$(cd "$jdk" && { pwd -W 2>/dev/null || pwd; })
+          echo "JAVA_HOME=$jdk_abs" >> ${GITHUB_ENV}
+          "$jdk_abs/bin/java" -version
+
+      # The javac daemon binds a local socket and the Windows runner does not
+      # reliably let it connect, which hangs the build with no output. Building
+      # without it costs a little time and removes the failure mode.
+      # mx generates ninja files that invoke `cl` directly and expects it on
+      # PATH. The runners ship MSVC but do not put it there, so without this the
+      # native build dies with "CreateProcess failed: The system cannot find the
+      # file specified". Export just the variables vcvars sets that matter.
+      - name: Set up MSVC environment
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "no MSVC toolset found on this runner" }
+          $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvars64.bat'
+          $keep = @('PATH','INCLUDE','LIB','LIBPATH','VCINSTALLDIR','VCToolsInstallDir','WindowsSdkDir','WindowsSDKVersion','UCRTVersion','UniversalCRTSdkDir')
+          cmd /c "`"$vcvars`" >nul 2>&1 && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$' -and $keep -contains $matches[1]) {
+              "$($matches[1])=$($matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            }
+          }
+
+      # The build and test steps are split by OS purely because of the shell.
+      # Under Git Bash, /usr/bin precedes the MSVC directory on PATH, so `link`
+      # resolves to GNU coreutils link(1) and the native link step dies with
+      # "link: unknown option -- n". pwsh has no MSYS bin directory to shadow it.
+
+      - name: Build Truffle NFI and its native library
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: truffle
+        run: ${MX_PATH}/mx -y --no-download-progress build --no-daemon --dependencies TRUFFLE_NFI_TEST,TRUFFLE_TEST_NATIVE,TRUFFLE_RUNTIME
+
+      - name: Build Truffle NFI and its native library
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: truffle
+        run: |
+          & "$env:MX_PATH/mx.cmd" -y --no-download-progress build --no-daemon --dependencies TRUFFLE_NFI_TEST,TRUFFLE_TEST_NATIVE,TRUFFLE_RUNTIME
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run NFI native library tests
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: truffle
+        run: ${MX_PATH}/mx -y --no-download-progress unittest --verbose com.oracle.truffle.nfi.test
+
+      - name: Run NFI native library tests
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: truffle
+        run: |
+          & "$env:MX_PATH/mx.cmd" -y --no-download-progress unittest --verbose com.oracle.truffle.nfi.test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Sulong consumes the NFI lookup fixed above; make sure the pieces that
+      # decide *how* a native library is loaded still compile.
+      - name: Build Sulong native mode
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: sulong
+        run: ${MX_PATH}/mx -y --no-download-progress build --no-daemon --dependencies com.oracle.truffle.llvm.nativemode
+
+      - name: Build Sulong native mode
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: sulong
+        run: |
+          & "$env:MX_PATH/mx.cmd" -y --no-download-progress build --no-daemon --dependencies com.oracle.truffle.llvm.nativemode
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

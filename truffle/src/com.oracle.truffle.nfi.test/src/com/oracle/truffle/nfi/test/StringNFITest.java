@@ -86,7 +86,9 @@ public class StringNFITest extends NFITest {
     public static class NativeStringArgNode extends NFITestRootNode {
 
         final Object function = lookupAndBind("string_arg", "(string):sint32");
-        final Object strdup = lookupAndBindDefault("strdup", "(string):string");
+        // The C runtime on Windows spells this _strdup; the POSIX name is deprecated
+        // there and is not exported by ucrtbase.dll. free() is spelled the same on both.
+        final Object strdup = lookupAndBindDefault(IS_WINDOWS ? "_strdup" : "strdup", "(string):string");
         final Object free = lookupAndBindDefault("free", "(pointer):void");
 
         @Child InteropLibrary functionInterop = getInterop(function);
