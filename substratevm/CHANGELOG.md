@@ -3,6 +3,7 @@
 This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
+* Added the experimental `-H:+StaticVCRuntime` option. On Windows, it links executables with the Visual C++ runtime statically and the Universal CRT dynamically, so they run without the Visual C++ Redistributable. Images that load JDK AWT libraries still require it. For more details, see [issue #14683](https://github.com/oracle/graal/issues/14683).
 * (GR-79971) Unrecognized Native Image options starting with `-` or `--` now produce an error instead of being interpreted as a main class or output filename.
   This also rejects positional output names beginning with a dash.
   To keep using such a name, specify it with `-o`, for example `native-image -jar hello.jar -o --my-image`, or prefix the positional name with `./`.
