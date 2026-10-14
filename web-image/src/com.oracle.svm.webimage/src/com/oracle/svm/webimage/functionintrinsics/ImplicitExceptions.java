@@ -104,6 +104,11 @@ public class ImplicitExceptions {
     }
 
     @NeverInline("outlining for smaller code size")
+    public static IllegalMonitorStateException createNewIllegalMonitorStateException() {
+        return new IllegalMonitorStateException("Unstructured locking encountered. Native Image enforces structured locking (JVMS 2.11.10)");
+    }
+
+    @NeverInline("outlining for smaller code size")
     public static ArithmeticException createNewArithmeticException() {
         return new ArithmeticException();
     }
