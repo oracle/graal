@@ -7,6 +7,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-80597) Added the `org.graalvm.nativeimage.graalos` Java system property to identify images built for GraalOS at build time and runtime.
 * (GR-80328) Native Images built with `--enable-monitoring=jvmstat` can attach to file-backed JVMStat performance data from other HotSpot and Native Image processes on Linux and macOS. JDK tools such as `jstack`, `jinfo`, `jps`, and `jstat` can run on Crema to inspect other JVM processes.
 * (GR-80571) Added an unboxed calling convention for compiled Truffle-to-Truffle calls.
+* Added the experimental `-H:+StaticVCRuntime` option. On Windows, it links executables with the Visual C++ runtime statically and the Universal CRT dynamically, so they run without the Visual C++ Redistributable. Images that load JDK AWT libraries still require it. For more details, see [issue #14683](https://github.com/oracle/graal/issues/14683).
 * (GR-79971) Unrecognized Native Image options starting with `-` or `--` now produce an error instead of being interpreted as a main class or output filename.
   This also rejects positional output names beginning with a dash.
   To keep using such a name, specify it with `-o`, for example `native-image -jar hello.jar -o --my-image`, or prefix the positional name with `./`.
