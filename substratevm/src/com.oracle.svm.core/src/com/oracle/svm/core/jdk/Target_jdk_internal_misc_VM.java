@@ -40,6 +40,10 @@ import com.oracle.svm.guest.staging.ArgsSupport;
 
 @TargetClass(className = "jdk.internal.misc.VM")
 public final class Target_jdk_internal_misc_VM {
+    /// Preserves the JDK startup state used to guard custom system loader construction.
+    @Alias //
+    static volatile int initLevel;
+
     /** Ensure that we do not leak the full set of properties from the image generator. */
     @Delete //
     private static Map<String, String> savedProps;

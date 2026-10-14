@@ -110,6 +110,7 @@ final class RuntimeBootModuleLayerStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
         RuntimeBootModuleLayerSupport.boot2();
+        ClassLoaderHelper.initializeSystemClassLoader();
     }
 }
 
