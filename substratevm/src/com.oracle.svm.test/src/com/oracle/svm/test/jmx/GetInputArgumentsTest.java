@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -46,11 +47,7 @@ public class GetInputArgumentsTest {
 
         if (PROPERTY_VALUE.equals(System.getProperty(PROPERTY_KEY))) {
             // This code will only be executed in the spawned child process (see below).
-            List<String> args = ManagementFactory.getRuntimeMXBean().getInputArguments();
-            Assert.assertTrue("Must have three arguments", args.size() == 3);
-            Assert.assertTrue("First argument != " + MIN_HEAP_SIZE, MIN_HEAP_SIZE.equals(args.get(0)));
-            Assert.assertTrue("Second argument != " + PROPERTY_ARGUMENT, PROPERTY_ARGUMENT.equals(args.get(1)));
-            Assert.assertTrue("Third argument != " + MAX_HEAP_SIZE, MAX_HEAP_SIZE.equals(args.get(2)));
+            Assert.assertEquals(List.of(MIN_HEAP_SIZE, PROPERTY_ARGUMENT, MAX_HEAP_SIZE), ManagementFactory.getRuntimeMXBean().getInputArguments());
             return;
         }
 
