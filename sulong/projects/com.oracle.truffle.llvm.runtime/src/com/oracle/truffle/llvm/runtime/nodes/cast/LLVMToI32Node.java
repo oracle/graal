@@ -218,7 +218,7 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
 
         @Specialization
         protected int doI32(float from) {
-            return Float.floatToIntBits(from);
+            return Float.floatToRawIntBits(from);
         }
 
         @Specialization
@@ -245,7 +245,7 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         @Specialization
         protected int doFloatVector(LLVMFloatVector from) {
             assert from.getLength() == 1 : "invalid vector size!";
-            return Float.floatToIntBits(from.getValue(0));
+            return Float.floatToRawIntBits(from.getValue(0));
         }
     }
 }

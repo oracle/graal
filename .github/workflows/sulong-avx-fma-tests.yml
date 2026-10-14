@@ -1,0 +1,177 @@
+#
+# Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# The Universal Permissive License (UPL), Version 1.0
+#
+# Subject to the condition set forth below, permission is hereby granted to any
+# person obtaining a copy of this software, associated documentation and/or
+# data (collectively the "Software"), free of charge and under any and all
+# copyright rights in the Software, and any and all patent rights owned or
+# freely licensable by each licensor hereunder covering either (i) the
+# unmodified Software as contributed to or provided by such licensor, or (ii)
+# the Larger Works (as defined below), to deal in both
+#
+# (a) the Software, and
+#
+# (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+# one is included with the Software each a "Larger Work" to which the Software
+# is contributed by such licensors),
+#
+# without restriction, including without limitation the rights to copy, create
+# derivative works of, display, perform, and distribute the Software and make,
+# use, sell, offer for sale, import, export, have made, and have sold the
+# Software and the Larger Work(s), and to sublicense the foregoing rights on
+# either these or other terms.
+#
+# This license is subject to the following condition:
+#
+# The above copyright notice and either this complete permission notice or at a
+# minimum a reference to the UPL must be included in all copies or substantial
+# portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# ---------------------------------------------------------------------------
+# Sulong AVX/AVX2/FMA validation: builds Sulong, then runs the Eigen 3.4.0 and
+# Ceres 2.2.0 unit test suites under `lli` (both pure-bitcode and MKL-backed
+# variants). The bitcode pass exercises the 256-bit AVX2/FMA SIMD packet paths
+# added on this branch (Eigen's packetmath / vectorization_logic) and Ceres'
+# dense LA via Eigen. The MKL pass binds Intel MKL's libmkl_rt.so from bitcode
+# via Sulong's native interface, validating native-library interop end-to-end.
+#
+# See sulong/tests/avx-fma-eigen-ceres/CMakeLists.txt for the superbuild design
+# and sulong/tests/avx-fma-eigen-ceres/run-tests.sh for the driver.
+# ---------------------------------------------------------------------------
+name: Sulong AVX/FMA Eigen+Ceres
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'avx-fma'
+    paths:
+      - 'sulong/**'
+      - '.github/workflows/sulong-avx-fma-tests.yml'
+  pull_request:
+    branches:
+      - 'master'
+    paths:
+      - 'sulong/**'
+      - '.github/workflows/sulong-avx-fma-tests.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'oracle/graal' }}
+
+env:
+  JAVA_HOME: ${{ github.workspace }}/jdk
+  MX_PATH: ${{ github.workspace }}/mx
+  MX_PYTHON: python3.8
+  LANG: en_US.UTF-8
+
+permissions:
+  contents: read
+
+jobs:
+  eigen-ceres:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository }}
+    name: Eigen + Ceres under Sulong (bitcode + MKL)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout graal
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+
+      - name: Determine mx version
+        run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
+
+      - name: Checkout graalvm/mx
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: graalvm/mx.git
+          ref: ${{ env.MX_VERSION }}
+          path: ${{ env.MX_PATH }}
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.8'
+
+      - name: Fetch LabsJDK
+        run: |
+          mkdir jdk-dl
+          ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-latest --to jdk-dl --alias ${JAVA_HOME}
+
+      # Install the native toolchain Sulong needs, plus ccache and CMake/Ninja.
+      # ubuntu-22.04 already ships gcc, python3, git, curl, unzip, xz-utils, maven,
+      # cmake and ninja-build; add the LLVM/Clang toolchain and ccache.
+      - name: Install native toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yqq --no-install-recommends \
+            clang llvm lld \
+            libz-dev libffi-dev libxml2-dev libgmp-dev \
+            pkg-config
+
+      # Persist ~/.ccache across runs. `hendrikmuhs/ccache-action` sets up ccache,
+      # backs its dir with actions/cache, and re-uses the cache across the two
+      # variant passes below (which share compiled TUs) and across pipeline runs.
+      # GitHub does not expose a hosted ccache *server*; actions/cache is the
+      # closest cross-run persistence they provide.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@a1209f81afb8c005c13b4296c32e363431bffea5  # v1.2.17
+        with:
+          key: sulong-avx-fma-${{ runner.os }}
+          max-size: 2G
+
+      # Intel oneAPI MKL from Intel's public apt repo. Best-effort: if the repo
+      # is unreachable, run-tests.sh detects the missing libmkl_rt.so and skips
+      # the MKL-backed variant cleanly (the bitcode variant still runs and gates).
+      - name: Install Intel MKL
+        run: |
+          set -e
+          curl -fsSL https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+            | sudo gpg --dearmor -o /usr/share/keyrings/intel-sw-products.gpg
+          echo "deb [signed-by=/usr/share/keyrings/intel-sw-products.gpg] https://apt.repos.intel.com/oneapi all main" \
+            | sudo tee /etc/apt/sources.list.d/intel-oneapi.list
+          sudo apt-get update
+          sudo apt-get install -yqq --no-install-recommends \
+            intel-oneapi-mkl intel-oneapi-mkl-devel
+        continue-on-error: true
+
+      # Builds Sulong: the assembled GraalVM home (with bin/lli) and the
+      # SULONG_BOOTSTRAP_TOOLCHAIN (graalvm-clang / graalvm-clang++ wrappers).
+      # `--primary-suite-path sulong` scopes the build to the sulong suite.
+      - name: Build Sulong
+        run: |
+          ${MX_PATH}/mx --primary-suite-path sulong --java-home=${JAVA_HOME} build
+
+      # Runs the Eigen + Ceres superbuild for the bitcode variant, then (if MKL
+      # is present) for the mkl variant. Any red ctest fails the step.
+      - name: Run Eigen + Ceres tests under lli
+        run: |
+          export PATH="${MX_PATH}:${PATH}"
+          ./sulong/tests/avx-fma-eigen-ceres/run-tests.sh
+
+      # ctest --output-junit writes one XML per suite/variant under
+      # build-<variant>/test-reports/. Uploaded so per-case results are browsable
+      # from the run page even when a suite passes.
+      - name: Upload ctest JUnit reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: eigen-ceres-junit
+          path: sulong/tests/avx-fma-eigen-ceres/build-*/test-reports/*.xml
+          if-no-files-found: warn
+          retention-days: 30
