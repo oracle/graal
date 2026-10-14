@@ -957,4 +957,21 @@ public final class GraalDirectives {
     public static int markThreadedSwitch(int input) {
         return input;
     }
+
+    /**
+     * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     *
+     * Deoptimizes and invalidates the compiled code at this bytecode location only while the
+     * associated speculation has not failed. The first deoptimization records a failed speculation
+     * in the compiled method's speculation log; subsequent compilations using that log omit the
+     * deoptimization at this location. The speculation identifies the method and bytecode position,
+     * so distinct bytecode locations fail independently. Inline copies of the same location share
+     * failures within the compilation root's speculation log. In interpreted code, this directive has
+     * no effect.
+     *
+     * Unlike {@link #deoptimizeAndInvalidate()}, this directive requires a speculation log during
+     * compilation.
+     */
+    public static void speculativeDeoptimizeAndInvalidate() {
+    }
 }
