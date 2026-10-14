@@ -90,6 +90,26 @@ public class ErrorTests {
     private static final String INVALID_OPERATION_NAME = "Operation name must be a valid Java identifier and must not contain '_' or '$'.";
     private static final String INVALID_PROXYABLE_OPERATION_NAME = INVALID_OPERATION_NAME + " Specify an explicit operation name using @OperationProxy(name = \"...\").";
 
+    @ExpectError("ThreadDeath and its subtypes are reserved for instrumentation unwinds and cannot be configured as unwind exceptions.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, unwindExceptions = ThreadDeath.class)
+    public abstract static class ReservedThreadDeath extends RootNode implements BytecodeRootNode {
+        protected ReservedThreadDeath(ErrorLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
+
+    public static final class CustomThreadDeath extends ThreadDeath {
+        private static final long serialVersionUID = 1L;
+    }
+
+    @ExpectError("ThreadDeath and its subtypes are reserved for instrumentation unwinds and cannot be configured as unwind exceptions.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, unwindExceptions = CustomThreadDeath.class)
+    public abstract static class ReservedThreadDeathSubtype extends RootNode implements BytecodeRootNode {
+        protected ReservedThreadDeathSubtype(ErrorLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
+
     @ExpectError("Bytecode DSL class must be declared abstract.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     public static class MustBeDeclaredAbstract extends RootNode implements BytecodeRootNode {

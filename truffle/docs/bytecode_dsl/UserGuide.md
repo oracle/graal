@@ -24,6 +24,7 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
 - [Control flow](#control-flow)
   - [Unstructured control flow](#unstructured-control-flow)
 - [Exception handling](#exception-handling)
+  - [Unwind Exceptions](#unwind-exceptions)
   - [Intercepting exceptions](#intercepting-exceptions)
 - [Advanced features](#advanced-features)
   - [Cached and uncached execution](#cached-and-uncached-execution)
@@ -499,12 +500,28 @@ b.endTryCatch();
 
 The `LoadException` operation can be used within the `catch` operation of a `TryCatch` or `TryCatchOtherwise` to read the current exception.
 
+### Unwind Exceptions
+
+Use `@GenerateBytecode(unwindExceptions = {NonLocalReturn.class, Cancellation.class})` to select exception types that execute active `TryFinally` cleanup without entering guest catch handlers.
+The selection includes subclasses of the configured types.
+Prefer `ControlFlowException` subclasses for language-internal transfers, but other `Throwable` subclasses are also supported.
+`ThreadDeath` and its subclasses retain their existing behavior, including the tool-controlled unwind protocol, even if a configured type would match them.
+
+Unwind exceptions bypass `TryCatch` and both exceptional and otherwise handling in `TryCatchOtherwise`.
+They also bypass the exception interception hooks and `@EpilogExceptional`.
+After cleanup, the interpreter rethrows the same exception object so that a language-internal boundary outside the interpreter can consume it.
+If cleanup suspends, the continuation preserves the pending exception and resumes unwinding after cleanup completes.
+A return or replacement exception from cleanup supersedes the pending exception.
+
+Instrumentation retains its existing exceptional-exit notifications.
+With the default empty configuration, exception handling is unchanged.
+
 ### Intercepting exceptions
 
 Before an exception handler executes, you may wish to intercept the exception for a variety of reasons, like handling control flow exceptions, converting internal host exceptions (e.g., stack overflows) to guest exceptions, or adding metadata to exceptions.
 
 [`BytecodeRootNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) defines `interceptControlFlowException`, `interceptInternalException`, and `interceptTruffleException` hooks that can be overridden.
-When an exception is thrown, the interpreter will invoke the appropriate hook(s) before dispatching to a bytecode exception handler.
+When an exception is thrown, the interpreter invokes the appropriate hooks before dispatching to a bytecode exception handler, unless it matches `GenerateBytecode.unwindExceptions`.
 The hooks are invoked at most once for each throw, and may be invoked sequentially (in the order listed above); for example a control flow exception gets intercepted by `interceptControlFlowException`, which could produce an internal exception that gets intercepted by `interceptInternalException`, which could  produce a Truffle exception that gets intercepted by `interceptTruffleException`.
 
 ## Advanced features

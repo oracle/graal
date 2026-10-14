@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -481,6 +482,13 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.RETURN_VALUE, enter2, leave2, 42, StatementTag.class));
 
         assertStable(counts, node);
+    }
+
+    private static void assertEventKinds(List<Event> events, EventKind... expectedKinds) {
+        assertEquals(expectedKinds.length, events.size());
+        for (int i = 0; i < expectedKinds.length; i++) {
+            assertEquals("event kind at index " + i, expectedKinds[i], events.get(i).kind());
+        }
     }
 
     private static void assertEvents(BytecodeRootNode node, List<Event> actualEvents, Event... expectedEvents) {
@@ -2187,6 +2195,47 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testSelectedUnwindExceptionInYieldingFinallyIsExceptional() {
+        SelectedUnwindException exception = new SelectedUnwindException();
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot();
+            b.beginTag(StatementTag.class);
+            b.beginTryFinally(() -> {
+                b.beginTag(StatementTag.class);
+                b.beginYield();
+                b.emitLoadConstant(123L);
+                b.endYield();
+                b.endTag(StatementTag.class);
+            });
+            b.beginTag(ExpressionTag.class);
+            b.beginThrowSelectedUnwind();
+            b.emitLoadConstant(exception);
+            b.endThrowSelectedUnwind();
+            b.endTag(ExpressionTag.class);
+            b.endTryFinally();
+            b.endTag(StatementTag.class);
+            b.endRoot();
+        });
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class,
+                        StatementTag.class).build());
+
+        ContinuationResult continuation = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(123L, continuation.getResult());
+        assertEventKinds(events, EventKind.ENTER, EventKind.ENTER, EventKind.EXCEPTIONAL, EventKind.ENTER, EventKind.YIELD, EventKind.YIELD);
+        assertSame(exception, events.get(2).value());
+
+        events.clear();
+        try {
+            continuation.continueWith(456L);
+            fail("exception expected");
+        } catch (SelectedUnwindException actual) {
+            assertSame(exception, actual);
+        }
+        assertEventKinds(events, EventKind.RESUME, EventKind.RESUME, EventKind.RETURN_VALUE, EventKind.EXCEPTIONAL);
+        assertSame(exception, events.get(3).value());
+    }
+
+    @Test
     public void testYieldWithNestedRoots() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot();
@@ -3048,7 +3097,12 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
+    @SuppressWarnings("serial")
+    static final class SelectedUnwindException extends ControlFlowException {
+    }
+
     @GenerateBytecode(languageClass = TagTestLanguage.class, //
+                    unwindExceptions = SelectedUnwindException.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
                     enableTagInstrumentation = true, //
@@ -3152,6 +3206,14 @@ public class TagTest extends AbstractInstructionTest {
             @Specialization
             public static void doInt(@Bind Node node) {
                 throw new TestException(node);
+            }
+        }
+
+        @Operation
+        static final class ThrowSelectedUnwind {
+            @Specialization
+            public static void perform(SelectedUnwindException exception) {
+                throw exception;
             }
         }
 

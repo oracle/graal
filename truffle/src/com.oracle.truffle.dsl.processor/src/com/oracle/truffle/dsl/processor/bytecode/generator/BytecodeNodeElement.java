@@ -2110,6 +2110,10 @@ final class BytecodeNodeElement extends AbstractElement {
 
     private CodeExecutableElement createHandleException() {
         CodeExecutableElement method = createInstructionHandler(type(long.class), "handleException");
+        if (!parent.model.unwindExceptions.isEmpty()) {
+            // Catch handlers deliberately fall through to the shared finally dispatch.
+            GeneratorUtils.mergeSuppressWarnings(method, "fallthrough");
+        }
         method.findParameter("bci").setSimpleName(CodeNames.of("originalBci"));
         method.addParameter(new CodeVariableElement(getStackPointerType(), "originalSp"));
         method.addParameter(new CodeVariableElement(type(Throwable.class), "originalThrowable"));
@@ -2145,15 +2149,22 @@ final class BytecodeNodeElement extends AbstractElement {
         /*
          * Three kinds of exceptions are supported: AbstractTruffleException, ControlFlowException,
          * and internal error (anything else). All of these can be intercepted by user-provided
-         * hooks.
+         * hooks, unless they are unwind exceptions.
          *
          * The interception order is ControlFlowException -> internal error ->
          * AbstractTruffleException. An intercept method can produce a new exception that can be
          * intercepted by a subsequent intercept method.
          */
         b.declaration(type(Throwable.class), "throwable", "originalThrowable");
+        if (!parent.model.unwindExceptions.isEmpty()) {
+            b.declaration(type(boolean.class), "unwind", "isUnwindException(throwable)");
+        }
         if (parent.model.interceptControlFlowException != null) {
-            b.startIf().string("throwable instanceof ").type(types.ControlFlowException).string(" cfe").end().startBlock();
+            b.startIf();
+            if (!parent.model.unwindExceptions.isEmpty()) {
+                b.string("!unwind && ");
+            }
+            b.string("throwable instanceof ").type(types.ControlFlowException).string(" cfe").end().startBlock();
             b.startTryBlock();
             b.startDeclaration(type(long.class), "target");
             BytecodeRootNodeElement.emitCallDefault(b, this.add(createHandleControlFlowException()));
@@ -2163,7 +2174,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.statement("return target");
 
             b.end().startCatchBlock(types.ControlFlowException, "rethrownCfe");
-            b.startThrow().string("rethrownCfe").end();
+            b.statement("throwable = rethrownCfe");
             b.end().startCatchBlock(types.AbstractTruffleException, "t");
             b.statement("throwable = t");
             b.end().startCatchBlock(type(Throwable.class), "t");
@@ -2175,6 +2186,9 @@ final class BytecodeNodeElement extends AbstractElement {
         b.startAssign("throwable");
         BytecodeRootNodeElement.emitCallDefault(b, this.resolveThrowable);
         b.end();
+        if (!parent.model.unwindExceptions.isEmpty()) {
+            b.statement("unwind = isUnwindException(throwable)");
+        }
 
         b.startDeclaration(type(int[].class), "handlerTable").string("this.handlers").end();
         b.startDeclaration(type(int.class), "handler").string("-EXCEPTION_HANDLER_LENGTH").end();
@@ -2185,12 +2199,20 @@ final class BytecodeNodeElement extends AbstractElement {
         b.startWhile().string("(handler = resolveHandler(bci, handler + EXCEPTION_HANDLER_LENGTH, handlerTable)) != -1").end().startBlock();
 
         boolean hasSpecialHandler = parent.model.enableTagInstrumentation || parent.model.epilogExceptional != null;
+        boolean hasHandlerSwitch = hasSpecialHandler || !parent.model.unwindExceptions.isEmpty();
 
         if (hasSpecialHandler) {
             b.startTryBlock();
+        }
+        if (hasHandlerSwitch) {
             b.startSwitch().string("handlerTable[handler + EXCEPTION_HANDLER_OFFSET_KIND]").end().startBlock();
             if (parent.model.epilogExceptional != null) {
                 b.startCase().string("HANDLER_EPILOG_EXCEPTIONAL").end().startCaseBlock();
+                if (!parent.model.unwindExceptions.isEmpty()) {
+                    b.startIf().string("unwind").end().startBlock();
+                    b.statement("continue");
+                    b.end();
+                }
                 b.startIf().string("throwable instanceof ").type(type(ThreadDeath.class)).end().startBlock();
                 b.statement("continue");
                 b.end();
@@ -2320,12 +2342,24 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end();
             }
 
+            if (!parent.model.unwindExceptions.isEmpty()) {
+                b.startCase().string("HANDLER_CATCH").end().startCaseBlock();
+                b.startIf().string("unwind").end().startBlock();
+                b.statement("continue");
+                b.end();
+                b.end(); // case catch
+                b.lineComment("fall through");
+            }
             b.caseDefault().startCaseBlock();
         }
         b.startIf().string("throwable instanceof ").type(type(ThreadDeath.class)).end().startBlock();
         b.statement("continue");
         b.end();
-        b.startAssert().string("throwable instanceof ").type(types.AbstractTruffleException).end();
+        b.startAssert();
+        if (!parent.model.unwindExceptions.isEmpty()) {
+            b.string("unwind || ");
+        }
+        b.string("throwable instanceof ").type(types.AbstractTruffleException).end();
         b.statement("bci = handlerTable[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
         b.statement("targetSp = handlerTable[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] + root.stackBase");
         if (parent.model.enableBlockScoping) {
@@ -2333,10 +2367,12 @@ final class BytecodeNodeElement extends AbstractElement {
         }
         b.statement(BytecodeRootNodeElement.setFrameObject("targetSp - 1", "throwable"));
 
-        if (hasSpecialHandler) {
+        if (hasHandlerSwitch) {
             b.statement("break");
             b.end(); // case block
             b.end(); // switch
+        }
+        if (hasSpecialHandler) {
             b.end(); // try
             b.startCatchBlock(type(Throwable.class), "t");
             b.startIf().string("t != throwable").end().startBlock();
@@ -2349,6 +2385,9 @@ final class BytecodeNodeElement extends AbstractElement {
                 }
             });
             b.end();
+            if (!parent.model.unwindExceptions.isEmpty()) {
+                b.statement("unwind = isUnwindException(throwable)");
+            }
             b.end();
             b.statement("continue");
             b.end();
@@ -2492,6 +2531,12 @@ final class BytecodeNodeElement extends AbstractElement {
 
         CodeTreeBuilder b = method.createBuilder();
 
+        if (!parent.model.unwindExceptions.isEmpty()) {
+            b.startIf().string("isUnwindException(throwable)").end().startBlock();
+            b.startReturn().string("throwable").end();
+            b.end();
+        }
+
         if (parent.model.interceptTruffleException == null) {
             b.startIf().startGroup().string("throwable instanceof ").type(types.AbstractTruffleException).string(" ate").end(2).startBlock();
             b.startReturn().string("ate").end();
@@ -2535,16 +2580,32 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startThrow().startCall("sneakyThrow").string("throwable").end(2);
             }
             b.end().startCatchBlock(types.AbstractTruffleException, "ate");
+            if (!parent.model.unwindExceptions.isEmpty()) {
+                b.startIf().string("isUnwindException(ate)").end().startBlock();
+                b.startReturn().string("ate").end();
+                b.end();
+            }
             if (parent.model.interceptTruffleException == null) {
                 b.startReturn().string("ate").end();
             } else {
                 b.startAssign("ex").string("ate").end();
             }
             b.end();
+            if (!parent.model.unwindExceptions.isEmpty()) {
+                b.startCatchBlock(type(Throwable.class), "t");
+                b.startIf().string("isUnwindException(t)").end().startBlock();
+                b.startReturn().string("t").end();
+                b.end();
+                b.startThrow().string("sneakyThrow(t)").end();
+                b.end();
+            }
             b.end();
         }
 
         if (parent.model.interceptTruffleException != null) {
+            if (!parent.model.unwindExceptions.isEmpty()) {
+                b.startTryBlock();
+            }
             if (mayWrapLocalFrame()) {
                 startIfHasSeparateLocalFrame(b, false, true);
                 b.startReturn().startCall("root", parent.model.interceptTruffleException).string("ex").tree(readContinuationFrame("frame", types.FrameWithoutBoxing)).string("this").string(
@@ -2552,6 +2613,14 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end();
             }
             b.startReturn().startCall("root", parent.model.interceptTruffleException).string("ex").string("frame").string("this").string(parent.castBytecodeIndexToInt("bci")).end(2);
+            if (!parent.model.unwindExceptions.isEmpty()) {
+                b.end().startCatchBlock(type(Throwable.class), "t");
+                b.startIf().string("isUnwindException(t)").end().startBlock();
+                b.startReturn().string("t").end();
+                b.end();
+                b.startThrow().string("sneakyThrow(t)").end();
+                b.end();
+            }
         }
 
         return method;
