@@ -135,7 +135,7 @@ final class Target_java_lang_Enum {
         if (name == null) {
             throw new NullPointerException("Name is null");
         } else {
-            throw new IllegalArgumentException("No enum constant " + enumType.getName() + "." + name);
+            throw new IllegalArgumentException("No enum constant " + enumType.getCanonicalName() + "." + name);
         }
     }
 
