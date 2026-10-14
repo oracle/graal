@@ -43,7 +43,7 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
+import com.oracle.svm.core.jdk.LayeredSecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
@@ -208,8 +208,9 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            if (serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class)) && !SecurityProvidersSupport.singleton().isUserRequestedSecurityProvider(provider)) {
-                SecurityProvidersSupport.singleton().markSecurityProviderAsNotLoaded(provider);
+            if (serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class)) &&
+                            !LayeredSecurityProvidersSupport.currentLayer().isUserRequestedSecurityProvider(provider)) {
+                LayeredSecurityProvidersSupport.currentLayer().markSecurityProviderAsNotLoaded(provider);
             } else {
                 registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
             }
@@ -289,6 +290,9 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     public static void registerProviderForRuntimeResourceAccess(Module module, String serviceProviderName, Set<String> registeredProviders) {
         if (!registeredProviders.isEmpty()) {
+            if (serviceProviderName.equals(java.security.Provider.class.getName()) && FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+                LayeredSecurityProvidersSupport.currentLayer().registerServiceProviders(registeredProviders);
+            }
             String serviceResourceLocation = "META-INF/services/" + serviceProviderName;
             byte[] serviceFileData = String.join("\n", registeredProviders).getBytes(StandardCharsets.UTF_8);
             RuntimeResourceAccess.addResource(module, serviceResourceLocation, serviceFileData);

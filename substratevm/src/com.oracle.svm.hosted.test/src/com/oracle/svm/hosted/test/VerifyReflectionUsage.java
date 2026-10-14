@@ -156,7 +156,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.core.jdk.Resources$ModuleInstanceResourceKey"),
                     clazz("com.oracle.svm.core.jdk.Resources$ModuleNameResourceKey"),
                     clazz("com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils"),
-                    clazz("com.oracle.svm.core.jdk.SecurityProvidersSupport"),
+                    clazz("com.oracle.svm.core.jdk.RuntimeSecurityProvidersSupport"),
                     clazz("com.oracle.svm.core.jdk.StackAccessControlContextVisitor"),
                     clazz("com.oracle.svm.core.jfr.events.ThreadParkEvent"),
                     clazz("com.oracle.svm.core.jfr.traceid.JfrTraceId"),

@@ -96,8 +96,10 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
+import com.oracle.svm.core.jdk.LayeredSecurityProvidersSupport;
+import com.oracle.svm.core.jdk.RuntimeSecurityProvidersSupport;
 import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -261,10 +263,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
-            ImageSingletons.add(SecurityProvidersSupport.class, new SecurityProvidersSupport(Options.AdditionalSecurityProviders.getValue().values()));
-        }
-
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
@@ -284,13 +282,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             classCacheField = access.findField(Service.class, "classCache");
             constructorCacheField = access.findField(Service.class, "constructorCache");
         } else {
-            SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
-            ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
-            support.setSunECConstructor((Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor));
-
             Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
-            support.setSavedInitialSecurityProperties(securityProperties);
+            ImageSingletons.add(LayeredSecurityProvidersSupport.class, new LayeredSecurityProvidersSupport(Options.AdditionalSecurityProviders.getValue().values(), securityProperties));
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
+            if (ImageLayerBuildingSupport.lastImageBuild()) {
+                ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
+                Constructor<?> javaSunECConstructor = (Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor);
+                javaSunECConstructor.setAccessible(true);
+                ImageSingletons.add(RuntimeSecurityProvidersSupport.class, new RuntimeSecurityProvidersSupport(javaSunECConstructor, securityProperties));
+            }
 
             /*
              * For the three providers below, their packages are explicitly initialized at build
@@ -832,7 +832,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                      * runtime, signifying successful verification.
                      */
                     String providerName = provider.getName();
-                    SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
+                    LayeredSecurityProvidersSupport support = LayeredSecurityProvidersSupport.currentLayer();
                     support.addVerifiedSecurityProvider(providerName, result instanceof Exception ? result : Boolean.TRUE);
 
                     /*
