@@ -28,7 +28,10 @@ from collections import OrderedDict
 from os.path import join, exists, relpath
 
 import mx
+import mx_benchmark
 import mx_util
+
+_suite = mx.suite('espresso-shared')
 
 
 class EspressoSVMShared(mx.JavaProject):
@@ -193,3 +196,25 @@ class EspressoSVMSharedBuildTask(mx.JavaBuildTask):
         super().build()
         with open(self.saved_config_path(), 'w', encoding='utf-8') as f:
             f.write(self.config())
+
+
+class EspressoSharedJMHBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
+    """
+    Runs the JMH benchmarks of the ESPRESSO_SHARED_MICRO_BENCHMARKS distribution, for example
+    mx benchmark espresso-shared:* -- -- -f 1
+    """
+
+    def name(self):
+        return "espresso-shared"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "espresso-shared"
+
+    def filter_distribution(self, dist):
+        return dist.suite is _suite and super().filter_distribution(dist)
+
+
+mx_benchmark.add_bm_suite(EspressoSharedJMHBenchmarkSuite())
