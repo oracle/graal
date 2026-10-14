@@ -36,6 +36,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.posix.PosixLibCHelper;
+
 // Checkstyle: stop
 
 /**
@@ -59,11 +61,25 @@ public class Unistd {
     @CFunction
     public static native CCharPointer getcwd(CCharPointer buf, UnsignedWord size);
 
-    @CFunction
-    public static native int execv(CCharPointer path, CCharPointerPointer argv);
+    /**
+     * Calls {@code execv} and captures {@code errno} before the return transition to Java can
+     * overwrite it. A successful call replaces the process and does not return.
+     *
+     * @return the captured {@code errno} value on failure
+     */
+    public static int execv(CCharPointer path, CCharPointerPointer argv) {
+        return PosixLibCHelper.execv(path, argv);
+    }
 
-    @CFunction
-    public static native int execve(CCharPointer path, CCharPointerPointer argv, CCharPointerPointer envp);
+    /**
+     * Calls {@code execve} and captures {@code errno} before the return transition to Java can
+     * overwrite it. A successful call replaces the process and does not return.
+     *
+     * @return the captured {@code errno} value on failure
+     */
+    public static int execve(CCharPointer path, CCharPointerPointer argv, CCharPointerPointer envp) {
+        return PosixLibCHelper.execve(path, argv, envp);
+    }
 
     @CConstant
     public static native int _SC_CLK_TCK();

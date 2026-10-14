@@ -80,11 +80,6 @@ public class PosixUtils {
         SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
-    public static String strerrorErrno() {
-        int errno = LibC.errno();
-        return strerror(errno);
-    }
-
     public static String strerror(int errno) {
         UnsignedWord size = Word.unsigned(1024);
         CCharPointer buf = NullableNativeMemory.malloc(size, NmtCategory.Internal);
