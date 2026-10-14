@@ -717,7 +717,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void registerHybridProviderServices(DuringAnalysisAccess access) {
-        optionalClazz(access, "sun.security.ssl.HybridProvider").ifPresent(hybridProviderClass -> {
+        Optional.ofNullable(access.findClassByName("sun.security.ssl.HybridProvider")).ifPresent(hybridProviderClass -> {
             Provider provider = ReflectionUtil.readStaticField(hybridProviderClass, "PROVIDER");
             for (Service service : provider.getServices()) {
                 registerService(access, service);
