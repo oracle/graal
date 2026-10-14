@@ -213,6 +213,11 @@ public class SubstrateOptions {
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
 
+    @Option(help = "Builds Windows executables with the Visual C++ runtime (vcruntime) statically linked and the Universal CRT dynamically linked, " +
+                    "so the executable does not require the Visual C++ Redistributable. Shared libraries are linked as before. " +
+                    "Images that load JDK AWT libraries still require the redistributable.", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> StaticVCRuntime = new HostedOptionKey<>(false);
+
     @Option(help = "Enable JVMCI in the guest", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> EnableJVMCIGuest = new HostedOptionKey<>(false);
 
