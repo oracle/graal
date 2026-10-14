@@ -660,11 +660,19 @@ public final class Interpreter {
                     InterpreterResolvedJavaMethod resolutionSeed = InterpreterResolvedJavaMethod.fromMemberName(memberName);
                     InterpreterUnresolvedSignature signature = resolutionSeed.getSignature();
                     boolean hasReceiver = intrinsic != SignaturePolymorphicIntrinsic.LinkToStatic;
-                    Object[] basicArgs = unbasic(arguments, signature, hasReceiver);
+                    /*
+                     * Frame arguments are boxed according to the linkTo call-site signature, which
+                     * can contain sub-word types and need not match the target signature. Convert
+                     * through basic kinds to adapt between them: an int call-site parameter can
+                     * correspond to a byte target parameter, or vice versa. For matching sub-word
+                     * kinds, the conversions cancel each other out.
+                     */
+                    Object[] basicArgs = rebasic(arguments, method.getSignature(), !method.isStatic());
+                    Object[] calleeArgs = unbasic(basicArgs, signature, hasReceiver);
                     // This should integrate with the debugger GR-70801
                     traceLinkTo(resolutionSeed, intrinsic, indent);
                     try {
-                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, intrinsic.getCallKind(), forceStayInInterpreter, false);
+                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, calleeArgs, intrinsic.getCallKind(), forceStayInInterpreter, false);
                         yield rebasic(result, signature.getReturnKind());
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
