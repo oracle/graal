@@ -199,16 +199,16 @@ public interface CremaSupport {
 
     CFunctionPointer getEnterDirectInterpreterStubEntryPoint();
 
-    /** Gets the JNI method-call wrapper entry point for {@code variant} and {@code nonVirtual}. */
+    /** Gets the JNI upcall wrapper entry point for {@code variant} and {@code nonVirtual}. */
     @Platforms(Platform.HOSTED_ONLY.class)
-    CFunctionPointer getCremaJNIMethodCallWrapperEntryPoint(CallVariant variant, boolean nonVirtual);
+    CFunctionPointer getCremaJNIUpcallWrapperEntryPoint(CallVariant variant, boolean nonVirtual);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint);
 
-    /** Sets the JNI method-call wrapper entry points for all JNI call variants to perform a JNI upcall on a runtime-loaded method. */
+    /** Sets the JNI upcall wrapper entry points for all JNI call variants to perform a JNI upcall on a runtime-loaded method. */
     @Platforms(Platform.HOSTED_ONLY.class)
-    void setCremaJNIMethodCallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
+    void setCremaJNIUpcallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
                     CFunctionPointer arrayNonVirtual,
                     CFunctionPointer vaListNonVirtual);
 
