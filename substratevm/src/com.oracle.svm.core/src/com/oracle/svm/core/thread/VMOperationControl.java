@@ -535,10 +535,11 @@ public final class VMOperationControl {
                 boolean startedSafepoint = false;
                 boolean acquiredThreadsLock = false;
 
+                String safepointReason = null;
                 Safepoint safepoint = Safepoint.singleton();
                 if (!safepoint.isInProgress()) {
                     startedSafepoint = true;
-                    String safepointReason = getSafepointReason(nativeSafepointOperations, javaSafepointOperations);
+                    safepointReason = getSafepointReason(nativeSafepointOperations, javaSafepointOperations);
                     acquiredThreadsLock = safepoint.startSafepoint(safepointReason);
                 }
 
@@ -547,7 +548,7 @@ public final class VMOperationControl {
                     drain(javaSafepointOperations);
                 } finally {
                     if (startedSafepoint) {
-                        safepoint.endSafepoint(acquiredThreadsLock);
+                        safepoint.endSafepoint(acquiredThreadsLock, safepointReason);
                     }
                 }
             }

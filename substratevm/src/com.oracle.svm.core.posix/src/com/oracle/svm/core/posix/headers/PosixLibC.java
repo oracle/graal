@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -36,6 +38,7 @@ import org.graalvm.word.UnsignedWord;
 /**
  * Basic functions from the standard C library that we require to be present on all Posix platforms.
  */
+@CContext(PosixDirectives.class)
 public class PosixLibC {
 
     /**
@@ -73,6 +76,14 @@ public class PosixLibC {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native void abort();
+
+    /// Gets the portable host name limit available on both Linux and macOS.
+    @CConstant("_POSIX_HOST_NAME_MAX")
+    public static native int hostNameMax();
+
+    /// Writes the host name into `buffer`, returning zero on success.
+    @CFunction(value = "gethostname", transition = CFunction.Transition.NO_TRANSITION)
+    public static native int gethostname(CCharPointer buffer, UnsignedWord length);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native UnsignedWord strlen(CCharPointer str);

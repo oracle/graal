@@ -25,18 +25,32 @@
 package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import org.graalvm.nativeimage.StackValue;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.posix.headers.PosixLibC;
 
 public abstract class PosixLibCSupport implements LibCSupport {
+    /// Gets the POSIX host name directly so early startup does not depend on Java networking.
+    @Override
+    public String hostname() {
+        int capacity = PosixLibC.hostNameMax() + 1;
+        CCharPointer buffer = StackValue.get(capacity);
+        if (PosixLibC.gethostname(buffer, Word.unsigned(capacity)) == 0) {
+            return CTypeConversion.toJavaString(buffer);
+        }
+        return "localhost";
+    }
+
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T memcpy(T dest, PointerBase src, UnsignedWord n) {

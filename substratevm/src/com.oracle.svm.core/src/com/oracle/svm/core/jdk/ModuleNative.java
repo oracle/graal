@@ -32,6 +32,11 @@ import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.SourceVersion;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.Uninterruptible;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
 
@@ -48,7 +53,7 @@ public final class ModuleNative {
     /**
      * {@code Modules::define_module}.
      */
-    public static void defineModule(Module module, boolean isOpen, Object[] pns) {
+    public static void defineModule(Module module, String location, boolean isOpen, Object[] pns) {
         SubstrateUtil.guaranteeRuntimeOnly();
         if (Objects.isNull(module)) {
             throw new NullPointerException("Null module object");
@@ -126,6 +131,20 @@ public final class ModuleNative {
 
         synchronized (moduleLock) {
             addDefinedModule(loader, module);
+        }
+        if (HasXlogSupport.get() && module.isNamed() && LogTagSet.module_load.isInfo()) {
+            logModuleLoad(module.getName(), location);
+        }
+    }
+
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
+    private static void logModuleLoad(String moduleName, String location) {
+        LogMessage message = LogTagSet.module_load.message();
+        try {
+            message.info().string(moduleName).string(" location: ").string(location);
+        } finally {
+            message.close();
         }
     }
 
@@ -271,7 +290,7 @@ public final class ModuleNative {
         return ModuleLayer.boot().modules().stream().anyMatch(m -> getName(m).equals(name));
     }
 
-    private static String getName(Module module) {
+    static String getName(Module module) {
         SubstrateUtil.guaranteeRuntimeOnly();
         return module.getName();
     }

@@ -152,6 +152,17 @@ public interface GuestStagingDependencyBridge {
      */
     void configureLogFile(String optionPrefix, String logFile);
 
+    /// Parses and applies one unified logging option.
+    ///
+    /// @param arg a value that starts with `-Xlog`
+    boolean parseXLogOption(String arg);
+
+    /// Applies the JFR compatibility option in order with other logging options.
+    boolean parseFlightRecorderLoggingOption(String arg);
+
+    /// Releases logging resources before exiting without isolate teardown.
+    void shutdownLogging();
+
     /**
      * Returns whether runtime arguments must be parsed in the current isolate.
      * <p>
@@ -241,13 +252,6 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when Ristretto options move to guest/staging.
      */
     boolean useRistretto();
-
-    /**
-     * Enables tracing of class loading. Enabled through {@code --verbose} or {@code --verbose:class}.
-     * <p>
-     * Remove this method when runtime class loading (aka Crema) options move to guest/staging.
-     */
-    void enableTraceClassLoading();
 
     /// Applies a runtime assertion directive to a class, package, or the application default.
     ///

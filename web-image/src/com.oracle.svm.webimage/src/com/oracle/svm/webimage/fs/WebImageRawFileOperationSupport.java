@@ -28,6 +28,7 @@ package com.oracle.svm.webimage.fs;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.File;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -41,6 +42,42 @@ public class WebImageRawFileOperationSupport implements RawFileOperationSupport 
 
     @Override
     public RawFilePath allocatePath(String path) {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean exists(RawFilePath path) {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isRegularFile(RawFilePath path) {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long lastModifiedTime(RawFilePath path) {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean delete(RawFilePath path) {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int rename(RawFilePath source, RawFilePath target) {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length) {
         throw UNSUPPORTED_OPERATION;
     }
 
@@ -62,6 +99,11 @@ public class WebImageRawFileOperationSupport implements RawFileOperationSupport 
 
     @Override
     public String getTempDirectory() {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    public boolean sameFiles(RawFilePath f1, RawFilePath f2) {
         throw UNSUPPORTED_OPERATION;
     }
 

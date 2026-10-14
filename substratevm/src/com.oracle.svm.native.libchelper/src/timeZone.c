@@ -23,6 +23,8 @@
  * questions.
  */
 
+#include <stdint.h>
+#include <time.h>
 
 #ifdef _WIN64
 /*
@@ -588,3 +590,57 @@ char *SVM_FindJavaTZmd(const char *tzmappings, int length) {
     return findJavaTZ_md((void *) 0);
 }
 #endif // _WIN64
+
+/* Converts an epoch time to local calendar fields using the platform's thread-safe API. */
+static struct tm *SVM_localtime_pd(const time_t *clock, struct tm *res) {
+#ifdef _WIN64
+    /* HotSpot copies localtime's shared result; localtime_s writes directly to caller storage. */
+    return localtime_s(res, clock) == 0 ? res : NULL;
+#else
+    return localtime_r(clock, res);
+#endif
+}
+
+/*
+ * Returns the local-to-UTC offset for the supplied epoch time in seconds.
+ * Keeps the offset calculation from HotSpot's os::iso8601_time in the same order.
+ */
+int SVM_localUTCOffsetSeconds(int64_t milliseconds_since_19700101) {
+    const int milliseconds_per_second = 1000;
+    const time_t seconds_since_19700101 =
+        (time_t) (milliseconds_since_19700101 / milliseconds_per_second);
+    struct tm time_struct;
+    if (SVM_localtime_pd(&seconds_since_19700101, &time_struct) == NULL) {
+        return 0;
+    }
+
+    /* The extracted offset calculation needs these constants only for the fallback. */
+#if !defined(_ALLBSD_SOURCE) && !defined(_GNU_SOURCE)
+    const time_t seconds_per_minute = 60;
+    const time_t minutes_per_hour = 60;
+    const time_t seconds_per_hour = seconds_per_minute * minutes_per_hour;
+#endif
+
+    time_t UTC_to_local = 0;
+#if (defined(_ALLBSD_SOURCE) || defined(_GNU_SOURCE)) && !defined(AIX)
+    UTC_to_local = -(time_struct.tm_gmtoff);
+#elif defined(_WIN64)
+    long zone;
+    _get_timezone(&zone);
+    UTC_to_local = (time_t) zone;
+#else
+    UTC_to_local = timezone;
+#endif
+
+    /* tm_gmtoff already includes the adjustment for daylight saving time. */
+#if !defined(_ALLBSD_SOURCE) && !defined(_GNU_SOURCE)
+    /* HotSpot's fallback assumes a one-hour daylight saving adjustment. */
+    if (time_struct.tm_isdst > 0) {
+        UTC_to_local = UTC_to_local - seconds_per_hour;
+    }
+#endif
+
+    /* ISO 8601 uses the difference between local time and UTC. */
+    const time_t local_to_UTC = -(UTC_to_local);
+    return (int) local_to_UTC;
+}

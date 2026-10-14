@@ -61,6 +61,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
@@ -219,6 +220,11 @@ public class WasmLMGC implements GC {
     @Override
     public String getName() {
         return "Wasm GC";
+    }
+
+    @Override
+    public void writeLogPrefix(LogTagSet logTagSet, Log log) {
+        /* Web Image does not emit a collector-specific prefix. */
     }
 
     @Override

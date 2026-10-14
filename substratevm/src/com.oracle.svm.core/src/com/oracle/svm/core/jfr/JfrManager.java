@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrArgumentParser.FlightRecorderOptionsArgument;
 import com.oracle.svm.core.jfr.JfrArgumentParser.JfrArgument;
@@ -80,8 +81,8 @@ public class JfrManager {
         return ImageSingletons.lookup(JfrManager.class);
     }
 
+    /// Parses JFR options before startup so failed parsing can tear down the isolate cleanly.
     public static RuntimeSupport.Hook initializationHook() {
-        /* Parse arguments early on so that we can tear down the isolate more easily if it fails. */
         return _ -> {
             parseFlightRecorderLogging();
             parseFlightRecorderOptions();
@@ -179,9 +180,12 @@ public class JfrManager {
         };
     }
 
+    /// Installs the legacy fallback when unified logging is unavailable.
     private static void parseFlightRecorderLogging() {
-        String option = SubstrateOptions.FlightRecorderLogging.getValue();
-        SubstrateJVM.getLogging().parseConfiguration(option);
+        if (!HasXlogSupport.get()) {
+            String option = SubstrateOptions.FlightRecorderLogging.getValue();
+            SubstrateJVM.getLogging().parseConfiguration(option);
+        }
     }
 
     private static void periodicEventSetup() throws SecurityException {

@@ -37,6 +37,10 @@ import com.oracle.svm.core.memory.NativeMemory;
 
 /** Platform-independent LibC support. Don't use this class directly, use {@link LibC} instead. */
 public interface LibCSupport {
+    /// Gets the native host name, or `"localhost"` if the lookup fails, without requiring the
+    /// initialized Java networking library. Creating the result may allocate.
+    String hostname();
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int errno();
 

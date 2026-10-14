@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 // Checkstyle: stop
@@ -161,6 +162,10 @@ public class FileAPI {
 
         @CFieldAddress("cFileName")
         WCharPointer getFileName();
+
+        /// Gets the modification timestamp without opening the file.
+        @CFieldAddress("ftLastWriteTime")
+        FILETIME getLastWriteTime();
     }
 
     public static class NoTransition {

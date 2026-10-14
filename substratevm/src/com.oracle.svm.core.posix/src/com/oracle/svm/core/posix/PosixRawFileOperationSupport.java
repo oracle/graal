@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.File;
 import java.nio.ByteOrder;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -39,6 +43,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
@@ -46,11 +51,20 @@ import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.PosixStat.stat;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
 public class PosixRawFileOperationSupport extends AbstractRawFileOperationSupport {
+    /// Standard output descriptor, usable before Java I/O initialization.
+    private static final int STDOUT_FILENO = 1;
+
+    /// Standard error descriptor, usable before Java I/O initialization.
+    private static final int STDERR_FILENO = 2;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public PosixRawFileOperationSupport(boolean useNativeByteOrder) {
         super(useNativeByteOrder);
@@ -58,6 +72,8 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 
     @Override
     public RawFileOperationSupport.RawFilePath allocatePath(String path) {
+        // Use the image's default charset to match other Java-to-C path conversions. This charset
+        // is fixed at image build time and does not read startup system properties.
         byte[] data = path.getBytes();
         CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
@@ -69,6 +85,54 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
         }
         filename.write(data.length, (byte) 0);
         return (RawFileOperationSupport.RawFilePath) filename;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean exists(RawFilePath path) {
+        stat status = UnsafeStackValue.get(stat.class);
+        return PosixStat.NoTransitions.lstat((CCharPointer) path, status) == 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isRegularFile(RawFilePath path) {
+        stat status = UnsafeStackValue.get(stat.class);
+        return PosixStat.NoTransitions.lstat((CCharPointer) path, status) == 0 && PosixStat.S_ISREG(status);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long lastModifiedTime(RawFilePath path) {
+        stat status = UnsafeStackValue.get(stat.class);
+        return PosixStat.NoTransitions.lstat((CCharPointer) path, status) == 0 ? status.st_mtime() * 1_000 : -1;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean delete(RawFilePath path) {
+        return Fcntl.NoTransitions.unlink((CCharPointer) path) == 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int rename(RawFilePath source, RawFilePath target) {
+        int result = FileNames.rename((CCharPointer) source, (CCharPointer) target);
+        /* Capture errno immediately before another native call can overwrite it. */
+        return result == 0 ? 0 : LibC.errno();
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length) {
+        return write(Word.signed(stderr ? STDERR_FILENO : STDOUT_FILENO), (Pointer) bytes, length);
+    }
+
+    /// Declares the no-transition rename used before Java I/O initialization and during rotation.
+    @CContext(PosixDirectives.class)
+    private static final class FileNames {
+        @CFunction(value = "rename", transition = CFunction.Transition.NO_TRANSITION)
+        static native int rename(CCharPointer source, CCharPointer target);
     }
 
     @Override
@@ -120,7 +184,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public boolean isValid(RawFileDescriptor fd) {
         int posixFd = getPosixFileDescriptor(fd);
-        // > 0 to ensure the default value 0 is invalid on all platforms
+        // GR-79635 tracks support for descriptor zero, which this API currently reserves as invalid.
         return posixFd > 0;
     }
 

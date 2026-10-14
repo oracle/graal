@@ -999,10 +999,10 @@ suite = {
                     "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
                 },
                 "linux": {
-                    "cflags": ["-g", "-gdwarf-5", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                    "cflags": ["-g", "-gdwarf-5", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
                 },
                 "<others>": {
-                    "cflags": ["-g", "-gdwarf-5", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                    "cflags": ["-g", "-gdwarf-5", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_ALLBSD_SOURCE"],
                 },
             },
             "jacoco" : "exclude",
@@ -1309,6 +1309,9 @@ suite = {
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
                     "sun.security.jca",
+                ],
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
                 ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",

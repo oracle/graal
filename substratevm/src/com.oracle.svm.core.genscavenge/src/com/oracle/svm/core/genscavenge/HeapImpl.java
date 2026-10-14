@@ -308,6 +308,10 @@ public final class HeapImpl extends Heap {
         oldGeneration.logUsage(log);
     }
 
+    void logChunks(Log log) {
+        logChunks(log, false);
+    }
+
     void logChunks(Log log, boolean allowUnsafe) {
         if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().logChunks(log);

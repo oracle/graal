@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
+import com.oracle.svm.core.LibCHelper;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -61,6 +62,11 @@ public abstract class AbstractRawFileOperationSupport implements RawFileOperatio
     @Override
     public RawFileDescriptor open(String filename, FileAccessMode accessMode) {
         return open(new File(filename), accessMode);
+    }
+
+    @Override
+    public boolean sameFiles(RawFilePath f1, RawFilePath f2) {
+        return LibCHelper.sameFiles((Pointer) f1, (Pointer) f2) != 0;
     }
 
     @Override

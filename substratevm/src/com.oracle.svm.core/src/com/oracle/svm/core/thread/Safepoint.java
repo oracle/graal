@@ -35,15 +35,20 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
+import com.oracle.svm.core.Isolates;
 
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
 import com.oracle.svm.core.jfr.events.SafepointEndEvent;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
@@ -55,6 +60,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -103,6 +109,21 @@ public final class Safepoint {
     private volatile UnsignedWord safepointId;
     private volatile IsolateThread requestingThread;
 
+    /// Number of threads on VM thread list for current safepoint.
+    private int numAllThreads;
+
+    /// Number of running threads on VM thread list for current safepoint.
+    private int numRunningThreads;
+
+    // Time at which current safepoint began.
+    private long safepointBeginTimeNs;
+
+    // Time at which all threads were stopped by current safepoint.
+    private long safepointSyncTimeNs;
+
+    // Time at which current safepoint ended.
+    private long safepointEndTimeNs;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     Safepoint() {
         this.safepointState = NOT_AT_SAFEPOINT;
@@ -135,17 +156,20 @@ public final class Safepoint {
         return requestingThread == CurrentIsolate.getCurrentThread();
     }
 
-    /**
-     * Initiates a safepoint.
-     *
-     * May only be called by the VM operation thread and must not allocate any Java heap objects.
-     * Those invariants and some extra logic in the code for safepoint checks makes the locking in
-     * this method safe.
-     */
+    /// Initiates a safepoint for `reason`.
+    ///
+    /// May only be called by the VM operation thread and must not allocate any Java heap objects.
+    /// Those invariants and the safepoint check logic make the locking in this method safe.
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
     boolean startSafepoint(String reason) {
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
+
+        /* Keep timing available even when logging is enabled only after this safepoint. */
+        safepointBeginTimeNs = System.nanoTime();
+        if (safepointEndTimeNs == 0) {
+            safepointEndTimeNs = Isolates.getStartTimeNanos();
+        }
 
         /*
          * Acquire the ThreadsLock before the safepoint mutex. This is necessary to prevent
@@ -163,6 +187,8 @@ public final class Safepoint {
 
         safepointState = SYNCHRONIZING;
         int numJavaThreads = requestThreadsEnterSafepoint(reason);
+        numAllThreads = numJavaThreads;
+        safepointSyncTimeNs = System.nanoTime();
 
         safepointState = AT_SAFEPOINT;
         safepointId = safepointId.add(1);
@@ -170,9 +196,12 @@ public final class Safepoint {
         return acquiredThreadsLock;
     }
 
-    /** Let all threads proceed from their safepoint. */
+    /// Lets all threads proceed from their safepoint and logs the supplied `reason`.
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
-    void endSafepoint(boolean acquiredThreadsLock) {
+    void endSafepoint(boolean acquiredThreadsLock, String reason) {
+        long safepointLeaveTimeNs = System.nanoTime();
+        long appTimeNs = safepointBeginTimeNs - safepointEndTimeNs;
+
         assert VMOperationControl.mayExecuteVmOperations();
         long startTicks = JfrTicks.elapsedTicks();
 
@@ -199,8 +228,37 @@ public final class Safepoint {
          * proceed.
          */
         ImageSingletons.lookup(Heap.class).endSafepoint();
+        /* Preserve the interval start for the next safepoint. */
+        safepointEndTimeNs = System.nanoTime();
+
         SafepointEndEvent.emit(getSafepointId(), startTicks);
         VMThreads.singleton().cleanupExitedOsThreads();
+
+        if (HasXlogSupport.get() && LogTagSet.safepoint.isInfo()) {
+            logSafepointSummary(reason, appTimeNs, safepointLeaveTimeNs);
+        }
+    }
+
+    /// Formats the completed safepoint's timing and thread counts.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/safepoint.cpp#L984-L1000")
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
+    private void logSafepointSummary(String reason, long appTimeNs, long safepointLeaveTimeNs) {
+        LogMessage message = LogTagSet.safepoint.message();
+        try {
+            message.info().string("Safepoint ").unsigned(this.safepointId) //
+                            .string(" \"").string(reason) //
+                            .string("\", Time since last: ").signed(appTimeNs) //
+                            .string(" ns, Reaching safepoint: ").signed(safepointSyncTimeNs - safepointBeginTimeNs) //
+                            .string(" ns, At safepoint: ").signed(safepointLeaveTimeNs - safepointSyncTimeNs) //
+                            .string(" ns, Leaving safepoint: ").signed(safepointEndTimeNs - safepointLeaveTimeNs) //
+                            .string(" ns, Total: ").signed(safepointEndTimeNs - safepointBeginTimeNs) //
+                            .string(" ns, Threads: ") //
+                            .signed(numRunningThreads).string(" runnable, ") //
+                            .signed(numAllThreads).string(" total");
+        } finally {
+            message.close();
+        }
     }
 
     /**
@@ -230,8 +288,8 @@ public final class Safepoint {
         ThreadsLock.unlockWriteNonExclusive();
     }
 
-    /** Blocks until all threads (other than the current thread) have entered the safepoint. */
-    private static int requestThreadsEnterSafepoint(String reason) {
+    /// Blocks until all threads other than the current thread have entered the safepoint.
+    private int requestThreadsEnterSafepoint(String reason) {
         assert ThreadsLock.hasNonExclusiveWriteAccess() : "prevents threads from attaching/detaching";
 
         long startNanos = System.nanoTime();
@@ -298,6 +356,9 @@ public final class Safepoint {
                 }
             }
 
+            if (loopCount == 1) {
+                numRunningThreads = notAtSafepoint;
+            }
             if (notAtSafepoint == 0) {
                 /* All relevant threads entered the safepoint. */
                 return numThreads;

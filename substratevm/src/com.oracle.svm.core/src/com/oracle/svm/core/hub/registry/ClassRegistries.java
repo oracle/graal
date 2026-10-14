@@ -25,6 +25,7 @@
 package com.oracle.svm.core.hub.registry;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
 import java.lang.ref.ReferenceQueue;
@@ -61,6 +62,7 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.perf.TimerCollection;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.LayerVerifiedOption;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
@@ -441,11 +443,13 @@ public final class ClassRegistries implements ParsingContext {
         throw (T) ex;
     }
 
+    /// Gets the loader's cached name and identifier, or `"bootstrap"` for the boot loader.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static String loaderNameAndId(ClassLoader loader) {
         if (loader == null) {
             return "bootstrap";
         }
-        return SubstrateUtil.cast(loader, Target_java_lang_ClassLoader.class).nameAndId();
+        return SubstrateUtil.cast(loader, Target_java_lang_ClassLoader.class).nameAndId;
     }
 
     public AbstractClassRegistry getRegistry(ClassLoader loader) {

@@ -93,6 +93,9 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias public String name;
 
+    /// Cached loader display name, read directly so diagnostics need not call interruptible JDK code.
+    @Alias public String nameAndId;
+
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
      * of ClassLoader, so we just reset it. The original javadoc mentions: "The classes loaded by
@@ -189,9 +192,6 @@ public final class Target_java_lang_ClassLoader {
 
     @Alias
     public static native long findNative(ClassLoader loader, Class<?> clazz, String entryName, String javaName);
-
-    @Alias
-    public native String nameAndId();
 
     @Alias
     protected native Class<?> findLoadedClass(String className);

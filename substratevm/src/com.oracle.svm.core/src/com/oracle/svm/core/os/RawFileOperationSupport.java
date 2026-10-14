@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.io.File;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -78,6 +79,37 @@ public interface RawFileOperationSupport {
      */
     RawFilePath allocatePath(String path);
 
+    /// Returns whether `path` names an existing filesystem entry without opening it or following
+    /// symbolic links. A failed metadata query returns `false`.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean exists(RawFilePath path);
+
+    /// Returns whether `path` names an existing regular file without following symbolic links.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean isRegularFile(RawFilePath path);
+
+    /// Returns the last modification time in milliseconds since the Unix epoch, or `-1` if the
+    /// metadata query fails. POSIX timestamps have whole-second precision.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    long lastModifiedTime(RawFilePath path);
+
+    /// Deletes a path converted to native memory by [#allocatePath(String)].
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean delete(RawFilePath path);
+
+    /// Renames `source` to `target`.
+    ///
+    /// @return 0 on success, platform-dependent error code on failure
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    int rename(RawFilePath source, RawFilePath target);
+
+    /// Writes a native byte range to standard output or standard error without a thread status
+    /// transition. A blocked synchronous write can therefore delay safepoint progress.
+    ///
+    /// @return true on success
+    @Uninterruptible(reason = "Synchronous logging uses a no-transition platform write.")
+    boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length);
+
     /**
      * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
      * access modes}.
@@ -109,6 +141,13 @@ public interface RawFileOperationSupport {
     /** Returns the path to the platform-specific temporary directory. */
     String getTempDirectory();
 
+    /// Returns whether `f1` and `f2` identify the same file.
+    ///
+    /// If either path denotes an existing file, this returns `true` only when both paths denote the
+    /// same operating system file. If neither path denotes an existing file, this returns `true`
+    /// only when their platform-specific raw strings are identical.
+    boolean sameFiles(RawFilePath f1, RawFilePath f2);
+
     /**
      * Opens a file with the specified {@link FileAccessMode access mode}.
      *
@@ -134,11 +173,12 @@ public interface RawFileOperationSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     RawFileDescriptor open(RawFilePath path, FileAccessMode accessMode);
 
-    /**
-     * Checks if a file descriptor is valid or if it represents an error value.
-     *
-     * @return true if the file descriptor is valid, false otherwise.
-     */
+    /// Checks if a file descriptor is valid or if it represents an error value.
+    ///
+    /// On POSIX platforms, `0` is a valid file descriptor that denotes `stdin`; nevertheless, this
+    /// method does not consider `0` valid.
+    ///
+    /// @return true if the file descriptor is valid, false otherwise.
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     boolean isValid(RawFileDescriptor fd);
 

@@ -84,6 +84,9 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
+import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.logging.LogTagSet;
+import com.oracle.svm.core.logging.LogThreadLocal;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrame;
@@ -170,6 +173,17 @@ public final class GCImpl implements GC {
         } else {
             return "Serial GC";
         }
+    }
+
+    @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void writeLogPrefix(LogTagSet logTagSet, Log log) {
+        UnsignedWord epoch = collectionEpoch;
+        if (!VMOperation.isGCInProgress() && epoch.notEqual(0)) {
+            // Reference handling and other GC epilogue work pertains to the previous collection.
+            epoch = epoch.subtract(1);
+        }
+        log.string("GC(").unsigned(epoch).string(") ");
     }
 
     @Override
@@ -281,7 +295,9 @@ public final class GCImpl implements GC {
 
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.BEFORE_GC);
         GCCause cause = GCCause.fromId(data.getCauseId());
-        printGCBefore(cause);
+        if (LogTagSet.gc.isInfo()) {
+            logGCBefore(cause);
+        }
 
         Timer collectionTimer = timers.collection.start();
         try {
@@ -306,7 +322,7 @@ public final class GCImpl implements GC {
         GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
         ChunkBasedCommittedMemoryProvider.get().afterGarbageCollection();
 
-        printGCAfter(cause);
+        logGCAfter(cause);
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);
 
         collectionEpoch = collectionEpoch.add(1);
@@ -379,7 +395,12 @@ public final class GCImpl implements GC {
         accounting.beforeCollectOnce(completeCollection);
         policy.onCollectionBegin(completeCollection, beginNanoTime);
 
-        doCollectCore();
+        LogThreadLocal.enterGCUnsafeRegion();
+        try {
+            doCollectCore();
+        } finally {
+            LogThreadLocal.exitGCUnsafeRegion();
+        }
         if (complete) {
             lastWholeHeapExaminedNanos = System.nanoTime();
         }
@@ -412,8 +433,8 @@ public final class GCImpl implements GC {
 
     private void verifyHeap(HeapVerifier.Occasion occasion) {
         if (SubstrateGCOptions.VerifyHeap.getValue() && shouldVerify(occasion)) {
-            if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ").newline();
+            if (LogTagSet.gc.isDebug()) {
+                logHeapVerification(occasion.name(), 0, false);
             }
 
             long start = System.nanoTime();
@@ -428,10 +449,23 @@ public final class GCImpl implements GC {
                 throw VMError.shouldNotReachHere("Heap verification failed");
             }
 
-            if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ")
-                                .rational(TimeUtils.nanoSecondsSince(start), TimeUtils.nanosPerMilli, 3).string("ms").newline();
+            if (LogTagSet.gc.isDebug()) {
+                logHeapVerification(occasion.name(), TimeUtils.nanoSecondsSince(start), true);
             }
+        }
+    }
+
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
+    private static void logHeapVerification(String occasionName, long elapsedNanos, boolean finished) {
+        LogMessage message = LogTagSet.gc.message();
+        try {
+            var line = message.debug().string("Verifying ").string(occasionName).string(" GC ");
+            if (finished) {
+                line.rational(elapsedNanos, TimeUtils.nanosPerMilli, 3).string("ms");
+            }
+        } finally {
+            message.close();
         }
     }
 
@@ -475,60 +509,78 @@ public final class GCImpl implements GC {
         }
     }
 
-    private void printGCBefore(GCCause cause) {
-        if (!SubstrateGCOptions.VerboseGC.getValue()) {
-            return;
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC, calleeMustBe = false)
+    private void logGCBefore(GCCause cause) {
+        LogMessage message = LogTagSet.gc.message();
+        try {
+            if (collectionEpoch.equal(0)) {
+                message.info().string("Using ").string(getName());
+                if (LogTagSet.gc.isDebug()) {
+                    CollectionPolicy currentPolicy = getPolicy();
+                    message.debug().spaces(2).string("Memory: ").rational(PhysicalMemory.size(), M, 0).string("M");
+                    message.debug().spaces(2).string("GC policy: ").string(currentPolicy.getName());
+                    message.debug().spaces(2).string("Maximum young generation size: ").rational(currentPolicy.getMaximumYoungGenerationSize(), M, 0).string("M");
+                    message.debug().spaces(2).string("Maximum heap size: ").rational(currentPolicy.getMaximumHeapSize(), M, 0).string("M");
+                    message.debug().spaces(2).string("Minimum heap size: ").rational(currentPolicy.getMinimumHeapSize(), M, 0).string("M");
+                    message.debug().spaces(2).string("Aligned chunk size: ").rational(HeapParameters.getAlignedHeapChunkSize(), K, 0).string("K");
+                    message.debug().spaces(2).string("Large array threshold: ").rational(HeapParameters.getLargeArrayThreshold(), K, 0).string("K");
+                }
+            }
+            if (LogTagSet.gc.isDebug()) {
+                message.debug().string(cause.getName());
+            }
+        } finally {
+            message.close();
         }
-
-        if (getCollectionEpoch().equal(0)) {
-            printGCPrefixAndTime().string("Using ").string(getName()).newline();
-            Log log = printGCPrefixAndTime().spaces(2).string("Memory: ");
-            log.rational(PhysicalMemory.size(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("GC policy: ").string(getPolicy().getName()).newline();
-            printGCPrefixAndTime().spaces(2).string("Maximum young generation size: ").rational(getPolicy().getMaximumYoungGenerationSize(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("Maximum heap size: ").rational(getPolicy().getMaximumHeapSize(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("Minimum heap size: ").rational(getPolicy().getMinimumHeapSize(), M, 0).string("M").newline();
-            printGCPrefixAndTime().spaces(2).string("Aligned chunk size: ").rational(HeapParameters.getAlignedHeapChunkSize(), K, 0).string("K").newline();
-            printGCPrefixAndTime().spaces(2).string("Large array threshold: ").rational(HeapParameters.getLargeArrayThreshold(), K, 0).string("K").newline();
-        }
-
-        printGCPrefixAndTime().string(cause.getName()).newline();
     }
 
-    private void printGCAfter(GCCause cause) {
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC, calleeMustBe = false)
+    private void logGCAfter(GCCause cause) {
         HeapAccounting heapAccounting = HeapImpl.getAccounting();
         HeapSizes beforeGc = heapAccounting.getHeapSizesBeforeGc();
 
-        if (SubstrateGCOptions.VerboseGC.getValue()) {
-            printHeapSizeChange("Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
-            printHeapSizeChange("Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
-            printHeapSizeChange("Old", beforeGc.old, heapAccounting.getOldUsedBytes());
-            printHeapSizeChange("Free", beforeGc.free, heapAccounting.getBytesInUnusedChunks());
+        if (LogTagSet.gc.isDebug()) {
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                logHeapSizeChange(message, "Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
+                logHeapSizeChange(message, "Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
+                logHeapSizeChange(message, "Old", beforeGc.old, heapAccounting.getOldUsedBytes());
+                logHeapSizeChange(message, "Free", beforeGc.free, heapAccounting.getBytesInUnusedChunks());
 
-            if (SerialGCOptions.PrintGCTimes.getValue()) {
-                timers.logAfterCollection(Log.log());
-            }
+                if (SerialGCOptions.PrintGCTimes.getValue()) {
+                    timers.logAfterCollection(message.debug());
+                }
 
-            if (SerialGCOptions.TraceHeapChunks.getValue()) {
-                HeapImpl.getHeapImpl().logChunks(Log.log(), false);
+                if (SerialGCOptions.TraceHeapChunks.getValue()) {
+                    HeapImpl.getHeapImpl().logChunks(message.debug());
+                }
+            } finally {
+                message.close();
             }
         }
 
-        if (SubstrateGCOptions.PrintGC.getValue() || SubstrateGCOptions.VerboseGC.getValue()) {
-            String collectionType = completeCollection ? "Full GC" : "Incremental GC";
-            printGCPrefixAndTime().string("Pause ").string(collectionType).string(" (").string(cause.getName()).string(") ")
-                            .rational(beforeGc.totalUsed(), M, 2).string("M->").rational(heapAccounting.getUsedBytes(), M, 2).string("M ")
-                            .rational(timers.collection.totalNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
+        if (LogTagSet.gc.isInfo()) {
+            LogMessage message = LogTagSet.gc.message();
+            try {
+                String collectionType = completeCollection ? "Full GC" : "Incremental GC";
+                String causeName = cause.getName();
+                UnsignedWord before = beforeGc.totalUsed();
+                UnsignedWord after = heapAccounting.getUsedBytes();
+                long elapsedNanos = timers.collection.totalNanos();
+                message.info().string("Pause ").string(collectionType).string(" (").string(causeName).string(") ")
+                                .rational(before, M, 2).string("M->").rational(after, M, 2).string("M ")
+                                .rational(elapsedNanos, TimeUtils.nanosPerMilli, 3).string("ms");
+            } finally {
+                message.close();
+            }
         }
     }
 
-    private void printHeapSizeChange(String text, UnsignedWord before, UnsignedWord after) {
-        printGCPrefixAndTime().string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M").newline();
-    }
-
-    private Log printGCPrefixAndTime() {
-        long uptimeMs = Isolates.getUptimeMillis();
-        return Log.log().string("[").rational(uptimeMs, TimeUtils.millisPerSecond, 3).string("s").string("] GC(").unsigned(collectionEpoch).string(") ");
+    /// Appends a heap size change to the caller's debug message.
+    private static void logHeapSizeChange(LogMessage message, String text, UnsignedWord before, UnsignedWord after) {
+        message.debug().string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M");
     }
 
     private static void checkSanityBeforeCollection() {
@@ -1213,13 +1265,25 @@ public final class GCImpl implements GC {
         assert PlatformThreads.isCurrentAssigned() : "thread is not fully initialized yet";
         /* Most of the time, we won't have a pending reference list. So, we do that check first. */
         if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe()) {
-            long startTime = System.nanoTime();
+            boolean logTiming = LogTagSet.gc.isDebug() && SerialGCOptions.PrintGCTimes.getValue();
+            long startTime = logTiming ? System.nanoTime() : 0;
             ReferenceHandler.processPendingReferencesInRegularThread();
 
-            if (SubstrateGCOptions.VerboseGC.getValue() && SerialGCOptions.PrintGCTimes.getValue()) {
-                long executionTime = System.nanoTime() - startTime;
-                Log.log().string("[GC epilogue reference processing and cleaners: ").signed(executionTime).string("]").newline();
+            if (logTiming) {
+                logReferenceHandling(startTime);
             }
+        }
+    }
+
+    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
+    private static void logReferenceHandling(long startTime) {
+        long executionTime = System.nanoTime() - startTime;
+        LogMessage message = LogTagSet.gc.message();
+        try {
+            message.debug().string("GC epilogue reference processing and cleaners: ").signed(executionTime).string(" ns");
+        } finally {
+            message.close();
         }
     }
 

@@ -34,6 +34,8 @@ import static com.oracle.svm.shared.util.VMError.shouldNotReachHereUnexpectedInp
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.util.Map;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -59,6 +61,8 @@ import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.core.logging.LogConfiguration;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -496,17 +500,21 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         RuntimeOptionValues.singleton().copyBuildTimeValuesToCache();
         IsolateArgumentParser.singleton().copyToRuntimeOptions();
 
-        if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
-            boolean forJavaMainCall = false;
-            boolean ignoreUnrecognized = false;
-            if (parameters.version() >= 4) {
-                ignoreUnrecognized = parameters.getIgnoreUnrecognizedArgs();
-                forJavaMainCall = parameters.getForJavaMainCall();
-            }
+        /* Teardown owns logging resources even when option parsing or initialization fails. */
+        LogConfiguration.initialize();
 
-            String[] initialArgs = ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
-            ArgsSupport.singleton().setInitialArgs(initialArgs);
-            try {
+        boolean hasRuntimeArguments = parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull();
+        boolean forJavaMainCall = false;
+        boolean ignoreUnrecognized = false;
+        try {
+            if (hasRuntimeArguments) {
+                if (parameters.version() >= 4) {
+                    ignoreUnrecognized = parameters.getIgnoreUnrecognizedArgs();
+                    forJavaMainCall = parameters.getForJavaMainCall();
+                }
+
+                String[] initialArgs = ArgsSupport.convertCToJavaArgs(parameters.getArgc(), parameters.getArgv());
+                ArgsSupport.singleton().setInitialArgs(initialArgs);
                 if (forJavaMainCall) {
                     if (ImageSingletons.contains(JavaMainSupport.class)) {
                         JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
@@ -529,13 +537,20 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                         }
                     }
                 }
-            } catch (IllegalArgumentException e) {
-                Log.logStream().println("Error: " + e.getMessage());
-                if (forJavaMainCall) {
-                    System.exit(1);
-                } else {
-                    return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
-                }
+            }
+        } catch (IllegalArgumentException e) {
+            Log.logStream().println("Error: " + e.getMessage());
+            /* Throwable cause graphs are not guaranteed to be acyclic. */
+            EconomicSet<Throwable> reported = EconomicSet.create(Equivalence.IDENTITY);
+            reported.add(e);
+            for (Throwable cause = e.getCause(); cause != null && reported.add(cause); cause = cause.getCause()) {
+                Log.logStream().println("Caused by: " + cause.getMessage());
+            }
+            if (forJavaMainCall) {
+                LogConfiguration.disableLogging();
+                System.exit(1);
+            } else {
+                return CEntryPointErrors.ARGUMENT_PARSING_FAILED;
             }
         }
 
@@ -556,6 +571,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         assert !isolateInitialized;
         isolateInitialized = true;
 
+        LogConfiguration.publishJfrLogLevels();
+
         /* Run isolate initialization hooks. */
         try {
             RuntimeSupport.executeInitializationHooks();
@@ -573,6 +590,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         } catch (Throwable t) {
             // Checkstyle: allow System.err (run time code expected to print to stderr)
             System.err.println("Uncaught exception in beforeThreadRun():");
+            t.printStackTrace(System.err);
+            // Checkstyle: disallow System.err
+            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+        }
+
+        try {
+            GuestStagingDependencyBridge.singleton().endOfParsing();
+        } catch (Throwable t) {
+            // Checkstyle: allow System.err (run time code expected to print to stderr)
+            System.err.println("Uncaught exception while completing logging initialization:");
             t.printStackTrace(System.err);
             // Checkstyle: disallow System.err
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;

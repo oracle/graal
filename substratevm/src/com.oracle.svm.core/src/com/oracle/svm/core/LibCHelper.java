@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.word.Pointer;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 @CLibrary(value = "libchelper", requireStatic = true, dependsOn = "java")
 public class LibCHelper {
@@ -39,4 +41,17 @@ public class LibCHelper {
     // Checkstyle: stop
     public static native CCharPointer SVM_FindJavaTZmd(CCharPointer tzMappings, int length);
     // Checkstyle: start
+
+    /// Returns the local-to-UTC offset for `millisecondsSince19700101` in seconds.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L243")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/posix/os_posix.cpp#L1545-L1547")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/windows/os_windows.cpp#L500-L508")
+    @CFunction(value = "SVM_localUTCOffsetSeconds", transition = Transition.NO_TRANSITION)
+    public static native int localUTCOffsetSeconds(long millisecondsSince19700101);
+
+    /// Returns whether `file1` and `file2` identify the same file.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/posix/os_posix.cpp#L1031-L1061")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/os/windows/os_windows.cpp#L4783-L4860")
+    @CFunction(value = "SVM_same_files", transition = Transition.TO_NATIVE)
+    public static native int sameFiles(Pointer file1, Pointer file2);
 }
