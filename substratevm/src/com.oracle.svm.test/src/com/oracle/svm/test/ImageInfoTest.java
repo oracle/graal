@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,22 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.core.SubstrateOptions;
+
 public class ImageInfoTest {
     public static class TestFeature implements Feature {
         @Override
-        public void beforeAnalysis(BeforeAnalysisAccess access) {
+        public void duringSetup(DuringSetupAccess access) {
+            /* The same phase as Truffle language resource inclusion, before beforeAnalysis. */
+            boolean expected = SubstrateOptions.GraalOS.getValue();
+            Assert.assertEquals(Boolean.toString(expected), System.getProperty(GRAALOS_PROPERTY));
             RuntimeClassInitialization.initializeAtBuildTime(ImageInfoTest.class);
+            Assert.assertEquals(expected, BUILT_FOR_GRAALOS);
         }
     }
+
+    private static final String GRAALOS_PROPERTY = "org.graalvm.nativeimage.graalos";
+    private static final boolean BUILT_FOR_GRAALOS = Boolean.getBoolean(GRAALOS_PROPERTY);
 
     static {
         Assert.assertTrue(ImageInfo.inImageCode());
@@ -49,5 +58,10 @@ public class ImageInfoTest {
         Assert.assertTrue(ImageInfo.inImageCode());
         Assert.assertTrue(ImageInfo.inImageRuntimeCode());
         Assert.assertFalse(ImageInfo.inImageBuildtimeCode());
+    }
+
+    @Test
+    public void testGraalOSImageProperty() {
+        Assert.assertEquals(Boolean.toString(BUILT_FOR_GRAALOS), System.getProperty(GRAALOS_PROPERTY));
     }
 }
