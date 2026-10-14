@@ -115,10 +115,9 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
 
         try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
                         CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
-            if (Unistd.execv(pathHolder.get(), argvHolder.get()) != 0) {
-                String errnoString = PosixUtils.strerrorErrno();
-                throw new RuntimeException(String.format("Executing %s with arguments %s failed: %s", executable, String.join(" ", args), errnoString));
-            }
+            int errno = Unistd.execv(pathHolder.get(), argvHolder.get());
+            String errnoString = PosixUtils.strerror(errno);
+            throw new RuntimeException(String.format("Executing %s with arguments %s failed: %s", executable, String.join(" ", args), errnoString));
         }
     }
 
@@ -137,11 +136,10 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
                         CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args);
                         CTypeConversion.CCharPointerPointerHolder envpHolder = CTypeConversion.toCStrings(envArray)) {
-            if (Unistd.execve(pathHolder.get(), argvHolder.get(), envpHolder.get()) != 0) {
-                String errnoString = PosixUtils.strerrorErrno();
-                String envString = env.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(" "));
-                throw new RuntimeException(String.format("Executing %s with arguments %s and environment %s failed: %s", executable, String.join(" ", args), envString, errnoString));
-            }
+            int errno = Unistd.execve(pathHolder.get(), argvHolder.get(), envpHolder.get());
+            String errnoString = PosixUtils.strerror(errno);
+            String envString = env.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).collect(Collectors.joining(" "));
+            throw new RuntimeException(String.format("Executing %s with arguments %s and environment %s failed: %s", executable, String.join(" ", args), envString, errnoString));
         }
     }
 
