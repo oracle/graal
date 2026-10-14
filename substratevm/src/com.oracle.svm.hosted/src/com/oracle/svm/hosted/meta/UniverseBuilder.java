@@ -41,9 +41,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinTask;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -592,20 +591,24 @@ public class UniverseBuilder {
          */
         Object uncontendedSentinel = new Object();
         Object unannotatedGroup = GuestAnnotationAccess.isAnnotationPresent(clazz, Contended.class) ? new Object() : uncontendedSentinel;
-        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(ContendedGuestValue.get(field))
-                        .map(a -> "".equals(a.value()) ? new Object() : a.value())
-                        .orElse(unannotatedGroup);
-        Map<Object, ArrayList<HostedField>> contentionGroups = rawFields.stream()
-                        .sorted(HostedUniverse.FIELD_COMPARATOR_RELAXED)
-                        .collect(Collectors.groupingBy(getAnnotationGroup, Collectors.toCollection(ArrayList::new)));
+        /* Preserve insertion order because identity hashes of unnamed groups can differ between image builds. */
+        EconomicMap<Object, ArrayList<HostedField>> contentionGroups = EconomicMap.create();
+        rawFields.sort(HostedUniverse.FIELD_COMPARATOR_RELAXED);
+        for (HostedField field : rawFields) {
+            Object group = Optional.ofNullable(ContendedGuestValue.get(field))
+                            .map(a -> "".equals(a.value()) ? new Object() : a.value())
+                            .orElse(unannotatedGroup);
+            contentionGroups.computeIfAbsent(group, _ -> new ArrayList<>()).add(field);
+        }
 
-        ArrayList<HostedField> uncontendedFields = contentionGroups.remove(uncontendedSentinel);
+        /* Place uncontended fields first so they can fill available gaps before adding padded groups. */
+        ArrayList<HostedField> uncontendedFields = contentionGroups.removeKey(uncontendedSentinel);
         if (uncontendedFields != null) {
             assert !uncontendedFields.isEmpty();
             placeFields(uncontendedFields, usedBytes, 0, layout);
         }
 
-        for (ArrayList<HostedField> groupFields : contentionGroups.values()) {
+        for (ArrayList<HostedField> groupFields : contentionGroups.getValues()) {
             reserveAtEnd(usedBytes, getContendedPadding());
             int firstOffset = usedBytes.length();
             placeFields(groupFields, usedBytes, firstOffset, layout);
