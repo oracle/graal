@@ -19,6 +19,7 @@ permalink: /reference-manual/embed-languages/
 * [Polyglot Isolates](#polyglot-isolates)
 * [Managing Internal Resources](#managing-internal-resources)
 * [Build Native Executables from Polyglot Applications](#build-native-executables-from-polyglot-applications)
+* [Manage the Lifecycle of Contexts and Engines](#manage-the-lifecycle-of-contexts-and-engines)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
 * [Embed Guest Languages in Java](#embed-guest-languages-in-java)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
@@ -844,6 +845,33 @@ Copy the following code into `reachability-metadata.json`:
 
 
 Now, you can add `reachability-metadata.json` to `META-INF/native-image/<group-id>/` of your project.
+
+## Manage the Lifecycle of Contexts and Engines
+
+A polyglot [`Context`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) or [`Engine`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html) can hold resources that are released when it is closed.
+Explicitly close contexts and engines as soon as they are no longer needed, preferably by using a try-with-resources statement.
+Explicit closure provides timely and predictable resource cleanup instead of relying on garbage collection.
+
+An exception to this recommendation applies when the host process is exiting.
+For performance reasons, embedders should not explicitly close contexts or engines in this case.
+Closing an engine can wait for compiler threads to shut down and delay process termination.
+
+Since Polyglot version 24.2.0, a context that is no longer strongly reachable is automatically closed as a fallback.
+A `Context` is eligible for automatic closure when all of the following conditions are satisfied:
+
+* No strong references to the `Context` or to context-bound objects such as `Value` and `PolyglotException` remain.
+* The `Context` has no active polyglot threads and is not explicitly entered by a host thread.
+* No reachable inner contexts prevent their parent context from being closed.
+* Guest state does not retain a host object that directly or indirectly refers to the `Context` or to a context-bound object such as `Value`.
+
+A guest-to-host reference cycle can prevent automatic closure even after the embedder drops all of its direct references to the context.
+Guest-invoked host callbacks should therefore avoid capturing `Context`, `Value`, or other context-bound objects.
+A synchronous callback can obtain the currently entered context by calling `Context.getCurrent()` during each invocation.
+If a callback can tolerate the context becoming unavailable, it can instead retain a `WeakReference<Context>` and handle the reference being cleared.
+
+An `Engine` is automatically closed when it is no longer strongly reachable through the public `Engine` or associated `Language`, `Instrument`, or `ExecutionListener` objects, and it has no active or reachable contexts.
+
+Because garbage collection is nondeterministic, automatic closure should not replace explicit close in a running process.
 
 ## Code Caching Across Multiple Contexts
 
