@@ -46,6 +46,7 @@ import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_RE
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_SIGNERS_FLAG;
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.CLASS_ACCESS_FLAGS_MASK;
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.util.NumUtil.safeToByte;
@@ -1395,11 +1396,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     private boolean isAnnotation() {
-        /*
-         * We do not do the check "this.getModifiers() & ANNOTATION) != 0" because we do not have
-         * the full modifier bits.
-         */
-        return isInterface() && getInterfaces().length == 1 && DynamicHub.toClass(getInterfaces()[0]) == Annotation.class;
+        // Extending Annotation alone does not make an interface an annotation type.
+        return (getModifiers() & ACC_ANNOTATION) != 0;
     }
 
     @Substitute
