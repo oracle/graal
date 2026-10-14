@@ -131,6 +131,9 @@ public final class RuntimeOptionParser {
                     "-dsa",
                     "-enablesystemassertions",
                     "-disablesystemassertions");
+
+    /// Lists HotSpot boolean `-XX` options ignored with a warning when
+    /// `CREMA_HOTSPOT_OPTION_COMPATIBILITY` is enabled.
     @GuaranteeFolded private static final Set<String> RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
                     "UnlockExperimentalVMOptions",
                     "UnlockDiagnosticVMOptions",
@@ -139,15 +142,22 @@ public final class RuntimeOptionParser {
                     "TieredCompilation",
                     "UseCompressedOops",
                     "VerifyDependencies",
+                    "CreateCoredumpOnCrash",
                     "DisplayVMOutput",
                     "LogVMOutput",
                     "PrintFlagsFinal");
+
+    /// Lists HotSpot value `-XX` options ignored with a warning when
+    /// `CREMA_HOTSPOT_OPTION_COMPATIBILITY` is enabled.
     @GuaranteeFolded private static final Set<String> RECOGNIZED_VALUE_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
                     "TieredStopAtLevel",
                     "MaxRAMPercentage",
                     "DisableIntrinsic",
                     "CompileThresholdScaling");
+
+    /// Lists exact options ignored with a warning in `CREMA_HOTSPOT_OPTION_COMPATIBILITY` mode if
+    /// strict Java option parsing or Ristretto compilation mode parsing has not consumed them first.
     private static final Set<String> IGNORED_COMPATIBILITY_OPTIONS = Set.of(
                     "-ea",
                     "-esa",
@@ -156,11 +166,17 @@ public final class RuntimeOptionParser {
                     "-Xint",
                     "-Xmixed",
                     "-Xverify:all");
+
+    /// Lists compilation mode options retained when Ristretto is available, including when
+    /// `CREMA_HOTSPOT_OPTION_COMPATIBILITY` is enabled. Ristretto maps them to its runtime options.
     private static final Set<String> RISTRETTO_COMPILATION_MODE_OPTIONS = Set.of(
                     "-Xint",
                     "-Xmixed",
                     "-Xbatch",
                     "-Xcomp");
+
+    /// Lists exact `-X` options rejected when `StrictRuntimeJavaOptions` is enabled and no earlier
+    /// parser has implemented them. Ristretto consumes its compilation modes before this check.
     private static final Set<String> EXACT_RECOGNIZED_X_OPTIONS = Set.of(
                     "-Xnoclassgc",
                     "-Xbatch",
@@ -175,6 +191,9 @@ public final class RuntimeOptionParser {
                     "-Xshare:off",
                     "-Xdebug",
                     "-Xcheck:jni");
+
+    /// Lists `-verbose:` components rejected when `StrictRuntimeJavaOptions` is enabled because
+    /// their behavior is not implemented. The `class` component is handled separately.
     private static final Set<String> UNIMPLEMENTED_VERBOSE_OPTIONS = Set.of(
                     "gc",
                     "jni",

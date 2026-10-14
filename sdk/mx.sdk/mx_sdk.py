@@ -49,6 +49,7 @@ import mx_sdk_vm_ng
 import pathlib
 import mx_sdk_benchmark # pylint: disable=unused-import
 import mx_sdk_clangformat # pylint: disable=unused-import
+import mx_run_jdk_test # pylint: disable=unused-import
 import argparse
 import datetime
 import re
