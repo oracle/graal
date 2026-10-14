@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.test;
 
 import org.graalvm.home.Version;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -101,6 +102,20 @@ public class ExceptionNFITest extends NFITest {
     @Test(expected = MyException.class)
     public void testExceptionPropagation(@Inject(NativeJustCall.class) CallTarget target) {
         target.call(MyException.THROW);
+    }
+
+    /**
+     * Checks that a stack overflow while entering a native closure is propagated and does not leave
+     * the thread in a state that prevents later NFI calls.
+     */
+    @Test
+    public void testStackOverflowDuringCallback(@Inject(NativeJustCall.class) CallTarget target) {
+        Assume.assumeFalse("Panama upcalls can terminate the VM on stack overflow", "panama".equals(TEST_BACKEND));
+        Object[] callback = new Object[1];
+        callback[0] = new TestCallback(0, (args) -> target.call(callback[0]));
+
+        Assert.assertThrows(StackOverflowError.class, () -> target.call(callback[0]));
+        target.call(NOOP);
     }
 
     /**
