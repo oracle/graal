@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.image;
 
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -37,6 +38,7 @@ class ImageHeapFillerObjectsFeature implements InternalFeature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         access.registerAsAccessed(ReflectionUtil.lookupField(FillerObject.class, "CLASS_OBJECT"));
         access.registerAsInHeap(FillerObject.class, "Registered by ImageHeapFillerObjectsFeature.");
+        access.registerAsInHeap(FillerArray.class, "Registered by ImageHeapFillerObjectsFeature.");
         access.registerAsInHeap(int[].class, "Registered by ImageHeapFillerObjectsFeature.");
     }
 }
