@@ -808,9 +808,18 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         return localVariableTable;
     }
 
+    /// Gets the modifiers of the executing method implementation.
+    /// For substitutions, these may differ from the reflection view.
+    ///
+    /// @see #getOriginalModifiers()
     @Override
     public final int getModifiers() {
         return flags & JVM_RECOGNIZED_METHOD_MODIFIERS;
+    }
+
+    /// Gets the Java modifiers, retaining the native flag of methods implemented by substitutions.
+    public final int getOriginalModifiers() {
+        return getOriginalModifiers(getModifiers(), (flags & ACC_SUBSTITUTED_NATIVE) != 0);
     }
 
     public final int getFlags() {
