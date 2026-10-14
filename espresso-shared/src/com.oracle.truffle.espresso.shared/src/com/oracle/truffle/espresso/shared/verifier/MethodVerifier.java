@@ -485,49 +485,44 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     // Declaring Klass of the method (already loaded)
     private final Operand<R, C, M, F> thisOperand;
 
-    // Regular BCI states
-
-    // Indicates that a particular BCI should never be reached by normal control flow (e.g.: the
-    // bytecode of a WIDE instruction, or any BCI between two successive instructions)
-    private static final int UNREACHABLE = 0;
-    // Indicates a BCI that has not yet been reached by control flow. After verification, if such a
-    // BCI still exists, it means that this BCI will never be reached during execution.
-    private static final int UNSEEN = 1;
-    // Indicates previous iteration of a verification successfully verified this particular BCI.
-    // Further verification can therefore stop their execution if merging its state into the state
-    // of this BCI is successful.
-    private static final int DONE = 2;
-    // Indicates that a particular BCI is the target of a jump, therefore requiring a stack map to
-    // be provided fo this BCI.
-    private static final int JUMP_TARGET = 4;
-
-    // Exception handler target states
-    private static final byte UNENCOUNTERED = 1;
-    private static final byte NONVERIFIED = 2;
-    private static final byte VERIFIED = 4;
-    private static final byte CALLEDCONSTRUCTOR = 8;
-    private static final byte NOCONSTRUCTORCALLED = 16;
-
-    // JSR BCI states
-    // This state is accompanied by the BCI of the RET instruction that caused it.
-    // It is of the form (ret_bci << 16) | RETURNED_TO
-    private static final byte RETURNED_TO = 64;
-
-    private static final int RETURN_MASK = 0xFFFF0000;
-
-    private static boolean checkStatus(int status, int toCheck) {
-        return (status & toCheck) != 0;
+    private boolean checkBciStatus(int bci, BCIState status) {
+        return status.check(bciStates[bci]);
     }
 
-    private static int setStatus(int status, int toSet) {
-        return (status & RETURN_MASK) | toSet;
+    private boolean checkHandlerStatus(int handler, HandlerState status) {
+        return status.check(handlerStatus[handler]);
     }
 
-    private void checkAndSetReturnedTo(int target, int retBCI) {
-        if ((bciStates[target] & RETURNED_TO) == RETURNED_TO) {
-            verifyGuarantee((bciStates[target] >>> 16) == retBCI, "Multiple returns to single jsr ");
+    private boolean isValid(int bci) {
+        return bciStates[bci] != BCIState.DEFAULT_STATE;
+    }
+
+    private int getRetBCI(int bci) {
+        return (bciStates[bci] >>> 16);
+    }
+
+    private void setBciStatus(int bci, BCIState status) {
+        bciStates[bci] = status.set(bciStates[bci]);
+    }
+
+    private void setHandlerStatus(int handler, HandlerState status) {
+        handlerStatus[handler] = (byte) status.set(handlerStatus[handler]);
+    }
+
+    private void checkAndSetRetTarget(int targetBCI, int retBCI) {
+        if (checkBciStatus(targetBCI, BCIState.IS_RET_TARGET)) {
+            verifyGuarantee(getRetBCI(targetBCI) == retBCI, "Multiple returns to single jsr ");
         }
-        bciStates[target] = RETURNED_TO | (retBCI << 16);
+        bciStates[targetBCI] = StateConstants.cat(retBCI, BCIState.IS_RET_TARGET.set(bciStates[targetBCI]));
+    }
+
+    private void setConstructorStatus(int handler, HandlerState constructorStatus) {
+        // If there is a path to the handler that has not called a constructor, consider the handler
+        // to have an uninitialized this.
+        if (checkHandlerStatus(handler, HandlerState.NO_CONSTRUCTOR_CALLED)) {
+            return;
+        }
+        setHandlerStatus(handler, constructorStatus);
     }
 
     /**
@@ -566,7 +561,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         this.exceptionHandlers = m.getSymbolicExceptionHandlers();
 
         this.handlerStatus = new byte[exceptionHandlers.length];
-        Arrays.fill(handlerStatus, UNENCOUNTERED);
+        Arrays.fill(handlerStatus, HandlerState.DEFAULT_STATE);
         this.exceptionHandlerChecks = Arrays.asList(new HandlerCheck[exceptionHandlers.length]);
 
         booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
@@ -727,7 +722,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private void initVerifier() {
-        Arrays.fill(bciStates, UNREACHABLE);
+        Arrays.fill(bciStates, BCIState.DEFAULT_STATE);
         // Mark all reachable code
         int bci = 0;
         int opcode;
@@ -735,7 +730,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             opcode = code.currentBC(bci);
             verifyGuarantee(opcode < QUICK, "invalid bytecode: %s", opcode);
             verifyEnoughBytecodes(opcode, bci);
-            bciStates[bci] = setStatus(bciStates[bci], UNSEEN);
+            setBciStatus(bci, BCIState.TO_VERIFY);
             bci = code.nextBCI(bci);
             // Check instruction has enough bytes after it
             verifyGuarantee(bci <= code.endBCI(), "Incomplete bytecode");
@@ -753,14 +748,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 if (Bytecodes.isBranch(opcode)) {
                     int target = code.readBranchDest(bci);
                     validateBCI(target);
-                    bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+                    setBciStatus(target, BCIState.MERGE_TARGET);
                 }
                 if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
                     initSwitch(bci, opcode);
                 }
                 bci = code.nextBCI(bci);
                 if (opcode == JSR || opcode == JSR_W) {
-                    bciStates[bci] = JUMP_TARGET;
+                    setBciStatus(bci, BCIState.MERGE_TARGET);
                 }
             }
         }
@@ -810,11 +805,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 oldKey = newKey;
                 target = switchHelper.targetAt(code, bci, i - low);
                 validateBCI(target);
-                bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+                setBciStatus(target, BCIState.MERGE_TARGET);
             }
             target = switchHelper.defaultTarget(code, bci);
             validateBCI(target);
-            bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+            setBciStatus(target, BCIState.MERGE_TARGET);
         } else if (opCode == TABLESWITCH) {
             BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
             int low = switchHelper.lowKey(code, bci);
@@ -827,10 +822,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             for (int i = low; i != high + 1; i++) {
                 target = switchHelper.targetAt(code, bci, i - low);
                 validateBCI(target);
-                bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+                setBciStatus(target, BCIState.MERGE_TARGET);
             }
             target = switchHelper.defaultTarget(code, bci);
             validateBCI(target);
+            setBciStatus(target, BCIState.MERGE_TARGET);
         } else {
             throw VerifierError.fatal("Unrecognized switch bytecode: " + opCode);
         }
@@ -872,6 +868,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      */
     public void registerStackMapFrame(int bci, StackFrame<R, C, M, F> frame) {
         validateFrameBCI(bci);
+        setBciStatus(bci, BCIState.MERGE_TARGET);
         stackFrames[bci] = frame;
     }
 
@@ -1074,7 +1071,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             }
 
             if (endBCI != code.endBCI()) {
-                formatGuarantee(bciStates[endBCI] != UNREACHABLE, "Jump to the middle of an instruction: %s", endBCI);
+                formatGuarantee(isValid(endBCI), "Jump to the middle of an instruction: %s", endBCI);
             }
         }
     }
@@ -1102,8 +1099,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private void verifyUnreachableStackMaps() {
+        if (!useStackMaps) {
+            return;
+        }
         for (int stackBCI = 0; stackBCI < stackFrames.length; stackBCI++) {
-            if (stackFrames[stackBCI] != null && checkStatus(bciStates[stackBCI], UNSEEN)) {
+            if (checkBciStatus(stackBCI, BCIState.MERGE_TARGET) && checkBciStatus(stackBCI, BCIState.TO_VERIFY)) {
                 queue.push(stackBCI, new QueueElement<>(stackBCI, stackFrames[stackBCI], true));
             }
         }
@@ -1111,28 +1111,6 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             processQueue();
             verifyExceptionHandlers();
         }
-    }
-
-    // Exception handler status management
-    private static byte setStatus(byte oldStatus, byte newStatus) {
-        return (byte) (newStatus | (oldStatus & (CALLEDCONSTRUCTOR | NOCONSTRUCTORCALLED)));
-    }
-
-    private static boolean isStatus(byte status, byte toCheck) {
-        return (status & toCheck) != 0;
-    }
-
-    private static byte setConstructorStatus(byte oldStatus, byte constructorStatus) {
-        // If there is a path to the handler that has not called a constructor, consider the handler
-        // to have an uninitialized this.
-        if ((oldStatus & NOCONSTRUCTORCALLED) > 0) {
-            return oldStatus;
-        }
-        return (byte) (oldStatus | constructorStatus);
-    }
-
-    private static boolean isCalledConstructor(byte status) {
-        return (status & CALLEDCONSTRUCTOR) > 0;
     }
 
     /**
@@ -1150,16 +1128,16 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             updated = false;
             for (int i = 0; i < exceptionHandlers.length; i++) {
                 ExceptionHandler handler = exceptionHandlers[i];
-                if (isStatus(handlerStatus[i], NONVERIFIED)) {
+                if (checkHandlerStatus(i, HandlerState.TO_VERIFY)) {
                     updated = redo;
                     boolean constructorStatus = calledConstructor;
-                    if (isCalledConstructor(handlerStatus[i])) {
+                    if (checkHandlerStatus(i, HandlerState.CONSTRUCTOR_CALLED)) {
                         calledConstructor = true;
                     }
                     verifyHandler(handler);
                     calledConstructor = constructorStatus;
-                    handlerStatus[i] = setStatus(handlerStatus[i], VERIFIED);
-                } else if (isStatus(handlerStatus[i], UNENCOUNTERED)) {
+                    setHandlerStatus(i, HandlerState.VERIFIED);
+                } else if (checkHandlerStatus(i, HandlerState.UNPROCESSED)) {
                     redo = true;
                 }
             }
@@ -1188,13 +1166,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private void branch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+        assert checkBciStatus(bci, BCIState.MERGE_TARGET);
         validateBCI(bci);
         // Try merge
         StackFrame<R, C, M, F> frame = mergeFrames(stack, locals, stackFrames[bci]);
-        if (frame != stackFrames[bci] || !checkStatus(bciStates[bci], DONE)) {
+        if (frame != stackFrames[bci] || !checkBciStatus(bci, BCIState.VERIFIED)) {
             // merge failed or not yet verified bci. mark the bci as not yet verified since
             // state can change.
-            bciStates[bci] = setStatus(bciStates[bci], JUMP_TARGET);
+            setBciStatus(bci, BCIState.TO_VERIFY);
             stackFrames[bci] = frame;
             QueueElement<R, C, M, F> toPush = new QueueElement<>(bci, frame, calledConstructor);
             queue.push(bci, toPush);
@@ -1204,19 +1183,19 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void validateBCI(int bci) {
         verifyGuarantee(bci < code.endBCI(), "Control flow falls through code end");
         verifyGuarantee(bci >= 0, "negative branch target: %s", bci);
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: %s", bci);
+        verifyGuarantee(isValid(bci), "Jump to the middle of an instruction: %s", bci);
     }
 
     private void validateFormatBCI(int bci) {
         formatGuarantee(bci < code.endBCI(), "Control flow falls through code end");
         formatGuarantee(bci >= 0, "negative branch target: %s", bci);
-        formatGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: %s", bci);
+        formatGuarantee(isValid(bci), "Jump to the middle of an instruction: %s", bci);
     }
 
     private void validateFrameBCI(int bci) {
         verifyGuarantee(bci < code.endBCI(), "StackFrame offset falls outside of method");
         verifyGuarantee(bci >= 0, "negative stack frame offset: %s", bci);
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "StackFrame offset falls to the middle of an instruction: %s", bci);
+        verifyGuarantee(isValid(bci), "StackFrame offset falls to the middle of an instruction: %s", bci);
     }
 
     /**
@@ -1245,12 +1224,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         boolean constructorCalledStatus = calledConstructor;
         do {
             previousBCI = nextBCI;
-            if (stackFrames[nextBCI] != null || checkStatus(bciStates[nextBCI], JUMP_TARGET)) {
+            if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET)) {
                 // Try merge
                 StackFrame<R, C, M, F> frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
                 if (!(frame == stackFrames[nextBCI])) {
                     // merge failed, mark the bci as not yet verified as state changed
-                    bciStates[nextBCI] = setStatus(bciStates[bci], JUMP_TARGET);
+                    setBciStatus(nextBCI, BCIState.TO_VERIFY);
                     stackFrames[nextBCI] = frame;
                 }
                 // Always use the stack frame state
@@ -1260,7 +1239,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 locals.subRoutineModifications = seedLocals.subRoutineModifications;
             }
             // Return condition: a successful merge into an already verified branch target.
-            if (stackFrames[nextBCI] != null && checkStatus(bciStates[nextBCI], DONE)) {
+            if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET) && checkBciStatus(nextBCI, BCIState.VERIFIED)) {
                 // Reset constructor status.
                 calledConstructor = constructorCalledStatus;
                 return;
@@ -1310,13 +1289,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType, handler.catchTypeCPI()));
                 StackFrame<R, C, M, F> oldFrame = stackFrames[handler.getHandlerBCI()];
                 StackFrame<R, C, M, F> newFrame = mergeFrames(stack, locals, oldFrame);
-                if (isStatus(handlerStatus[i], UNENCOUNTERED) || oldFrame != newFrame) {
-                    handlerStatus[i] = setStatus(handlerStatus[i], NONVERIFIED);
+                if (checkHandlerStatus(i, HandlerState.UNPROCESSED) || oldFrame != newFrame) {
+                    setHandlerStatus(i, HandlerState.TO_VERIFY);
                 }
                 if (calledConstructor) {
-                    handlerStatus[i] = setConstructorStatus(handlerStatus[i], CALLEDCONSTRUCTOR);
+                    setConstructorStatus(i, HandlerState.CONSTRUCTOR_CALLED);
                 } else {
-                    handlerStatus[i] = setConstructorStatus(handlerStatus[i], NOCONSTRUCTORCALLED);
+                    setConstructorStatus(i, HandlerState.NO_CONSTRUCTOR_CALLED);
                 }
                 stackFrames[handler.getHandlerBCI()] = newFrame;
                 exceptionHandlerChecks.set(i, new HandlerCheck<>(locals, locals.modCount, calledConstructor, newFrame));
@@ -1371,8 +1350,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      *         (in case of a return bytecode, for example).
      */
     private int verify(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: %s", bci);
-        bciStates[bci] = setStatus(bciStates[bci], DONE);
+        verifyGuarantee(isValid(bci), "Jump to the middle of an instruction: %s", bci);
+        setBciStatus(bci, BCIState.VERIFIED);
         int curOpcode;
         curOpcode = code.opcode(bci);
         if (curOpcode >= SLIM_QUICK) {
@@ -1956,7 +1935,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.push(new ReturnAddressOperand<>(bci, targetBCI));
         locals.subRoutineModifications = new SubroutineModificationStack(locals.subRoutineModifications, new boolean[maxLocals], bci);
         branch(targetBCI, stack, locals);
-        bciStates[bci] = setStatus(bciStates[bci], DONE);
+        setBciStatus(bci, BCIState.VERIFIED);
     }
 
     private void verifyRET(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
@@ -1967,7 +1946,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         while (pos < ra.targetBCIs.size()) {
             prev = ra;
             int target = ra.targetBCIs.get(pos++);
-            checkAndSetReturnedTo(target, bci);
+            checkAndSetRetTarget(target, bci);
             Locals<R, C, M, F> toMerge = getSubroutineReturnLocals(target, locals);
             branch(code.nextBCI(target), stack, toMerge);
             // Sanity check: branching did not overwrite the return address being
@@ -2574,5 +2553,112 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private SignatureSymbols getSignatures() {
         return runtime.getSymbolPool().getSignatures();
+    }
+
+    private enum BCIState {
+        /**
+         * Indicates that a particular BCI should never be reached by normal control flow (e.g.: the
+         * bytecode of a WIDE instruction, or any BCI between two successive instructions).
+         */
+        INVALID(0, 0xFFFF_FFFF),
+        /**
+         * Indicates a BCI that has not yet been reached by control flow. After verification, if such a
+         * BCI still exists, it means that this BCI will never be reached during execution.
+         */
+        TO_VERIFY(StateConstants.TO_VERIFY_BIT, StateConstants.VERIFICATION_STATUS_MASK),
+        /**
+         * Indicates previous iteration of a verification successfully verified this particular BCI.
+         * Further verification can therefore stop their execution if merging its state into the state
+         * of this BCI is successful.
+         */
+        VERIFIED(StateConstants.VERIFIED_BIT, StateConstants.VERIFICATION_STATUS_MASK),
+        /**
+         * Indicates that a particular BCI is the target of a jump, therefore requiring a stack map to
+         * be provided fo this BCI.
+         */
+        MERGE_TARGET(StateConstants.MERGE_TARGET, StateConstants.MERGE_TARGET),
+        /**
+         * JSR BCI states
+         * This state is accompanied by the BCI of the RET instruction that caused it.
+         * It is of the form (ret_bci << 16) | RETURNED_TO
+         */
+        IS_RET_TARGET(StateConstants.IS_RET_TARGET_BIT, StateConstants.IS_RET_TARGET_BIT),
+        ;
+
+        private static final int DEFAULT_STATE = 0;
+
+        // Regular BCI states
+
+        private final int bit;
+        private final int clearBits;
+
+        BCIState(int bit, int exclusiveMask) {
+            this.bit = bit;
+            this.clearBits = ~exclusiveMask;
+        }
+
+        public int set(int value) {
+            return (value & clearBits) | bit;
+        }
+
+        public boolean check(int value) {
+            return (value & bit) != 0;
+        }
+    }
+
+    private enum HandlerState {
+        INVALID(0, 0xFFFF_FFFF),
+        UNPROCESSED(StateConstants.HANDLER_UNPROCESSED_BIT, StateConstants.HANDLER_STATUS_MASK),
+        TO_VERIFY(StateConstants.HANDLER_TO_VERIFY_BIT, StateConstants.HANDLER_STATUS_MASK),
+        VERIFIED(StateConstants.HANDLER_VERIFIED_BIT, StateConstants.HANDLER_STATUS_MASK),
+        CONSTRUCTOR_CALLED(StateConstants.HANDLER_CONSTRUCTOR_CALLED_BIT, StateConstants.HANDLER_CONSTRUCTOR_STATUS_MASK),
+        NO_CONSTRUCTOR_CALLED(StateConstants.HANDLER_NO_CONSTRUCTOR_CALLED_BIT, StateConstants.HANDLER_CONSTRUCTOR_STATUS_MASK),
+        ;
+
+        private static final byte DEFAULT_STATE = (byte) UNPROCESSED.bit;
+
+        // Regular BCI states
+
+        private final int bit;
+        private final int clearBits;
+
+        HandlerState(int bit, int exclusiveMask) {
+            this.bit = bit;
+            this.clearBits = ~exclusiveMask;
+        }
+
+        public int set(int value) {
+            return (value & clearBits) | bit;
+        }
+
+        public boolean check(int value) {
+            return (value & bit) != 0;
+        }
+    }
+
+    private static final class StateConstants {
+        private static final int VERIFICATION_STATUS_MASK = 0b0000_0011;
+        private static final int TO_VERIFY_BIT = 0b0000_0001;
+        private static final int VERIFIED_BIT = 0b0000_0010;
+
+        private static final int MERGE_TARGET = 0b0000_0100;
+
+        private static final byte IS_RET_TARGET_BIT = 0b0000_1000;
+
+        // Exception handler target states
+        private static final byte HANDLER_STATUS_MASK = 0b0000_0111;
+        private static final byte HANDLER_UNPROCESSED_BIT = 0b0000_0001;
+        private static final byte HANDLER_TO_VERIFY_BIT = 0b0000_0010;
+        private static final byte HANDLER_VERIFIED_BIT = 0b0000_0100;
+
+        private static final byte HANDLER_CONSTRUCTOR_STATUS_MASK = 0b0011_0000;
+        private static final byte HANDLER_CONSTRUCTOR_CALLED_BIT = 0b0001_0000;
+        private static final byte HANDLER_NO_CONSTRUCTOR_CALLED_BIT = 0b0010_0000;
+
+        static int cat(int hi, int lo) {
+            assert hi == (char) hi;
+            assert lo == (char) lo;
+            return ((hi << 16) | lo);
+        }
     }
 }
