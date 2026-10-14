@@ -26,9 +26,11 @@ package com.oracle.svm.hosted.jni;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -42,6 +44,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
@@ -65,34 +68,46 @@ public final class JNILibraryLinkagePlan {
 
     private final NativeLibraries nativeLibraries;
     private final Map<String, JNILibrary> libraries = new ConcurrentHashMap<>();
+    private final Set<String> explicitlyConfiguredLibraries;
     private final SortedMap<String, SortedSet<String>> shimExports = new TreeMap<>();
     private boolean manifestsProcessed;
 
     JNILibraryLinkagePlan() {
         this.nativeLibraries = NativeLibraries.singleton();
-
-        getJNILibraryLinkage().forEach((library, linkage) -> libraries.put(library, createLibrary(library, linkage)));
+        JNILibraryLinkageConfiguration configuration = getJNILibraryLinkage();
+        explicitlyConfiguredLibraries = configuration.explicitlyConfiguredLibraries();
+        configuration.linkages().forEach((library, linkage) -> libraries.put(library, createLibrary(library, linkage)));
     }
 
     public static JNILibraryLinkagePlan singleton() {
         return ImageSingletons.lookup(JNILibraryLinkagePlan.class);
     }
 
-    private static Map<String, JNILibraryLinkage> getJNILibraryLinkage() {
+    private record JNILibraryLinkageConfiguration(Map<String, JNILibraryLinkage> linkages, Set<String> explicitlyConfiguredLibraries) {
+    }
 
-        Map<String, ValueWithOrigin<String>> finalEntries = new HashMap<>();
-        JNIRegistrationSupport.Options.JNILibraryLinkage.getValue().getValuesWithOrigins().forEach(entry -> {
+    private record JNILibraryLinkageEntry(ValueWithOrigin<String> entry, boolean explicitlyConfigured) {
+    }
+
+    private static JNILibraryLinkageConfiguration getJNILibraryLinkage() {
+        Map<String, JNILibraryLinkageEntry> finalEntries = new HashMap<>();
+        List<ValueWithOrigin<String>> entries = JNIRegistrationSupport.Options.JNILibraryLinkage.getValue().getValuesWithOrigins().toList();
+        int defaultEntryCount = JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.size();
+        for (int index = 0; index < entries.size(); index++) {
+            ValueWithOrigin<String> entry = entries.get(index);
             String value = entry.value();
             String[] parts = value.split(":", -1);
             if (parts.length != 2 || parts[0].isEmpty()) {
                 throw UserError.abort("Invalid option %s provided by %s. Expected `<library>:{static|dynamic}`.",
                                 SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin());
             }
-            finalEntries.put(parts[0], entry);
-        });
+            finalEntries.put(parts[0], new JNILibraryLinkageEntry(entry, index >= defaultEntryCount));
+        }
 
         Map<String, JNILibraryLinkage> result = new HashMap<>();
-        finalEntries.forEach((library, entry) -> {
+        Set<String> explicitlyConfiguredLibraries = new HashSet<>();
+        finalEntries.forEach((library, configuration) -> {
+            ValueWithOrigin<String> entry = configuration.entry();
             String value = entry.value();
             String[] parts = value.split(":", -1);
             JNILibraryLinkage linkage = switch (parts[1]) {
@@ -111,8 +126,11 @@ public final class JNILibraryLinkagePlan {
             }
 
             result.put(library, linkage);
+            if (configuration.explicitlyConfigured()) {
+                explicitlyConfiguredLibraries.add(library);
+            }
         });
-        return result;
+        return new JNILibraryLinkageConfiguration(result, explicitlyConfiguredLibraries);
     }
 
     private enum JNILibraryLinkage {
@@ -148,6 +166,10 @@ public final class JNILibraryLinkagePlan {
         return library.equals("awt");
     }
 
+    public Set<String> getExplicitlyConfiguredLibraries() {
+        return explicitlyConfiguredLibraries;
+    }
+
     public void markReachable(String library) {
         JNILibrary jniLibrary = libraries.computeIfAbsent(library, name -> {
             assert !JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.contains(name);
@@ -179,6 +201,20 @@ public final class JNILibraryLinkagePlan {
      * dynamic libraries or create shims; those artifacts are emitted after the image is written.
      */
     void prepareAfterAnalysis() {
+        if (!RuntimeClassLoading.isSupported()) {
+            List<String> unreachableExplicitLibraries = libraries.values().stream()
+                            .filter(library -> explicitlyConfiguredLibraries.contains(library.getLibrary()) && !library.isReachable())
+                            .map(library -> library.getLibrary() + ":" + (library.isStatic() ? "static" : "dynamic"))
+                            .sorted()
+                            .toList();
+            if (!unreachableExplicitLibraries.isEmpty()) {
+                throw UserError.abort("JNI library linkage was explicitly configured for libraries that are not reachable: %s. " +
+                                "When runtime class loading is disabled, explicitly configured JNI libraries must be reachable during image generation. " +
+                                "A JNI library is reachable when analysis encounters a corresponding `System.loadLibrary(\"<library>\")` call.",
+                                String.join(", ", unreachableExplicitLibraries));
+            }
+        }
+
         libraries.values().stream()
                         .filter(JNILibrary::isReachable)
                         .forEach(JNILibrary::prepareAfterAnalysis);

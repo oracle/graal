@@ -52,6 +52,7 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -156,6 +157,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerJNILibrary("java");
+        if (RuntimeClassLoading.isSupported()) {
+            getLinkagePlan().getExplicitlyConfiguredLibraries().forEach(JNIRegistrationSupport.singleton()::registerJNILibrary);
+        }
     }
 
     @Override

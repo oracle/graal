@@ -31,12 +31,21 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:JNILibraryLinkage=java:dynamic,nio:dynamic,net:dynamic,extnet:dynamic,jaas:dynamic",
-                "-H:JNILibraryLinkage=sunmscapi:dynamic,zip:dynamic,management_agent:dynamic,management_ext:dynamic,attach:dynamic,prefs:dynamic",
+                "-H:JNILibraryLinkage=zip:dynamic,management_agent:dynamic,management_ext:dynamic,attach:dynamic,prefs:dynamic",
                 "-H:-UnlockExperimentalVMOptions"
 })
 public class DynamicJavaLibraryLinkageTest {
     @Test
-    public void startsWithDynamicJavaLibrary() {
-        /* The dynamically linked java library is loaded and initialized before this test runs. */
+    @SuppressWarnings("restricted")
+    public void loadDynamicJavaLibraries() {
+        System.loadLibrary("nio");
+        System.loadLibrary("net");
+        System.loadLibrary("extnet");
+        System.loadLibrary("jaas");
+        System.loadLibrary("zip");
+        System.loadLibrary("management_agent");
+        System.loadLibrary("management_ext");
+        System.loadLibrary("attach");
+        System.loadLibrary("prefs");
     }
 }
