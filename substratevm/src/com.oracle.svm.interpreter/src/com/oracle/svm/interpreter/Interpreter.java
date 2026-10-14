@@ -3330,10 +3330,13 @@ public final class Interpreter {
                 if (linkedInvoke.requiresSymbolicTypeCheck(opcode)) {
                     DynamicHub instanceHub = DynamicHubIntrinsics.readHub(receiver);
                     if (linkedInvoke.symbolicHolder != null) {
-                        DynamicHub typeHub = linkedInvoke.symbolicHolder.getHub();
+                        // JVMS 4.9.2, Structural Constraints (the non-constructor invokespecial
+                        // target-reference paragraph), requires compatibility with the calling type.
+                        // https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html#jvms-4.9.2
+                        DynamicHub typeHub = opcode == INVOKESPECIAL ? callerFrame.method.getDeclaringClass().getHub() : linkedInvoke.symbolicHolder.getHub();
                         boolean assignable = InterpreterToVM.isAssignableFrom(typeHub, instanceHub, opcode != INVOKEINTERFACE);
                         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !assignable)) {
-                            throw incompatibleInvokeReceiver(instanceHub.getInterpreterType(), linkedInvoke.symbolicHolder);
+                            throw incompatibleInvokeReceiver(instanceHub.getInterpreterType(), typeHub.getInterpreterType(), opcode);
                         }
                     }
                 }
@@ -3909,8 +3912,13 @@ public final class Interpreter {
         throw SemanticJavaException.raiseInlined(new NoSuchMethodError(message));
     }
 
+    /// Reports an invalid interface receiver with the exception required by `opcode`.
     @NeverInline("Keep incompatible-receiver exception construction out of bytecode-handler stubs")
-    private static SemanticJavaException incompatibleInvokeReceiver(ResolvedJavaType receiverType, InterpreterResolvedJavaType symbolicHolder) {
+    private static SemanticJavaException incompatibleInvokeReceiver(ResolvedJavaType receiverType, ResolvedJavaType symbolicHolder, int opcode) {
+        if (opcode == INVOKESPECIAL) {
+            throw SemanticJavaException.raiseInlined(new IllegalAccessError(MetadataUtil.fmt("Receiver class %s must be the current class or a subtype of interface %s",
+                            receiverType.toJavaName(), symbolicHolder.toJavaName())));
+        }
         String message = MetadataUtil.fmt("Class %s does not implement the requested interface %s",
                         receiverType.toJavaName(),
                         symbolicHolder.toJavaName());
@@ -4089,11 +4097,22 @@ public final class Interpreter {
         InterpreterResolvedJavaMethod seedMethod;
         CallKind callKind;
 
-        // Ensure receivers of an interface method call actually implement the declared
-        // interface. This is not checked by the verifier, so we need to dynamically
-        // check that property. Note: this condition covers both INVOKEINTERFACE, and
-        // INVOKESPECIAL of an interface method.
-        boolean requiresSymbolicTypeCheck = frame.constantPoolTagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF;
+        /*
+         * JVMS 6.5, invokeinterface, Run-time Exceptions (the resolved-interface implementation
+         * check), requires the receiver to implement the symbolic interface:
+         * https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-6.html#jvms-6.5.invokeinterface
+         *
+         * The verifier does not check interface assignability, so this property is checked
+         * dynamically. The INTERFACE_METHOD_REF condition covers both INVOKEINTERFACE and
+         * INVOKESPECIAL of an interface method. A non-constructor INVOKESPECIAL from an interface
+         * can also target an Object method through a METHOD_REF entry.
+         *
+         * For INVOKESPECIAL, JVMS 4.9.2, Structural Constraints (the non-constructor invokespecial
+         * target-reference paragraph), requires compatibility with the calling type:
+         * https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html#jvms-4.9.2
+         */
+        boolean requiresSymbolicTypeCheck = frame.constantPoolTagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF ||
+                        (opcode == INVOKESPECIAL && method.getDeclaringClass().isInterface() && !symbolicResolution.isConstructor());
 
         try {
             ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
