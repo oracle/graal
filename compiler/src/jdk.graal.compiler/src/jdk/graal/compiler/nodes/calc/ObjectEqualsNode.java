@@ -41,11 +41,13 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
+import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualBoxingNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
@@ -105,14 +107,22 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
         protected LogicNode canonicalizeSymmetricConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
                         CanonicalCondition condition, Constant constant, ValueNode nonConstant, boolean mirrored, boolean unorderedIsTrue, NodeView view) {
             ResolvedJavaType type = constantReflection.asJavaType(constant);
-            if (type != null && nonConstant instanceof GetClassNode) {
-                GetClassNode getClassNode = (GetClassNode) nonConstant;
-                ValueNode object = getClassNode.getObject();
-                assert ((ObjectStamp) object.stamp(view)).nonNull() : "getClassNode %s object %s should have a non-null stamp, got: %s".formatted(getClassNode, object, object.stamp(view));
-                if (!type.isPrimitive() && (type.isConcrete() || type.isArray())) {
-                    return InstanceOfNode.create(TypeReference.createExactTrusted(type), object);
+            if (type != null) {
+                ValueNode object = null;
+                if (nonConstant instanceof GetClassNode getClassNode) {
+                    object = getClassNode.getObject();
+                    assert ((ObjectStamp) object.stamp(view)).nonNull() : "getClassNode %s object %s should have a non-null stamp, got: %s".formatted(getClassNode, object, object.stamp(view));
+                } else if (nonConstant instanceof LoadHubNode loadHubNode && loadHubNode.isAlive() && loadHubNode.graph().getGuardsStage().allowsFloatingGuards() &&
+                                StampTool.isPointerNonNull(loadHubNode.getValue())) {
+                    /* Type check lowering creates hub comparisons, so do not reverse it after guard lowering. */
+                    object = loadHubNode.getValue();
                 }
-                return LogicConstantNode.forBoolean(false);
+                if (object != null) {
+                    if (!type.isPrimitive() && (type.isConcrete() || type.isArray())) {
+                        return InstanceOfNode.create(TypeReference.createExactTrusted(type), object);
+                    }
+                    return LogicConstantNode.forBoolean(false);
+                }
             }
             if (nonConstant instanceof AbstractNewObjectNode || nonConstant instanceof AllocatedObjectNode) {
                 // guard against class hierarchy changes
