@@ -176,7 +176,13 @@ public final class JNIInvocationInterface {
 
                 if (code == CEntryPointErrors.NO_ERROR) {
                     // The isolate was created successfully, so we can finish the initialization.
-                    return Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
+                    int result = Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
+                    if (result != JNIErrors.JNI_OK()) {
+                        // A failed prologue skips the epilogue, so it must release its own isolate.
+                        CEntryPointActions.leaveTearDownIsolate();
+                        return result;
+                    }
+                    return result;
                 }
 
                 if (errorstr.isNonNull()) {

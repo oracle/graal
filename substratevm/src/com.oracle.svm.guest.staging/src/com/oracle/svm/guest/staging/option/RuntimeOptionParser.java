@@ -93,6 +93,8 @@ public final class RuntimeOptionParser {
     public static final String X_OPTION_PREFIX = "-X";
 
     private static final String PROPERTY_PREFIX = "-D";
+    private static final String JAVA_ENDORSED_DIRS_PROPERTY = "java.endorsed.dirs";
+    private static final String JAVA_EXT_DIRS_PROPERTY = "java.ext.dirs";
     private static final String BOOT_CLASS_PATH_APPEND_PROPERTY = "jdk.boot.class.path.append";
     private static final String MODULE_PROPERTY_PREFIX = "jdk.module.";
     private static final String[] RESERVED_INTERNAL_MODULE_PROPERTY_SUFFIXES = {
@@ -482,12 +484,30 @@ public final class RuntimeOptionParser {
             newIdx++;
         }
         /*
-         * Later runtime option parsing can execute non-trivial Java code via option value updates.
-         * Initialize all system properties first so JDK code cannot cache stale values.
+         * In strict mode, validate obsolete directory properties before installing them during
+         * launcher or JNI startup. Initialize all system properties before later option value
+         * updates can execute JDK code and cache stale values.
          */
+        if (strictRuntimeJavaOptions()) {
+            rejectUnsupportedObsoleteDirectoryProperties(context.properties);
+        }
         initializeProperties(context.properties);
 
         return newIdx == args.length ? args : Arrays.copyOf(args, newIdx);
+    }
+
+    private static void rejectUnsupportedObsoleteDirectoryProperties(EconomicMap<String, String> properties) {
+        rejectUnsupportedObsoleteDirectoryProperty(properties, JAVA_ENDORSED_DIRS_PROPERTY,
+                        "Endorsed standards and standalone APIs" + System.lineSeparator() +
+                                        "in modular form will be supported via the concept of upgradeable modules.");
+        rejectUnsupportedObsoleteDirectoryProperty(properties, JAVA_EXT_DIRS_PROPERTY, "Use -classpath instead.");
+    }
+
+    private static void rejectUnsupportedObsoleteDirectoryProperty(EconomicMap<String, String> properties, String property, String explanation) {
+        String value = properties.get(property);
+        if (value != null && !value.isEmpty() && !value.equals("\"\"")) {
+            throw new IllegalArgumentException("-D" + property + "=" + value + " is not supported. " + explanation);
+        }
     }
 
     private static boolean parseVerifyOption(String arg) {
