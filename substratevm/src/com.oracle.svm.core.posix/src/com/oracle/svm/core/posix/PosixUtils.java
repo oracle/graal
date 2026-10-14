@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,8 +92,11 @@ public class PosixUtils {
             return "[could not allocate memory for error string]";
         }
         try {
-            CCharPointer cstr = Errno.strerror_r(errno, buf, size);
-            return CTypeConversion.toJavaString(cstr);
+            int status = Errno.strerror_r(errno, buf, size);
+            if (status != 0) {
+                return "Unknown error " + errno;
+            }
+            return CTypeConversion.toJavaString(buf);
         } finally {
             NullableNativeMemory.free(buf);
         }
