@@ -47,6 +47,12 @@ import com.oracle.svm.shared.util.VMError;
 
 public class LayerArchiveSupport {
 
+    public static final String CLASS_IDENTITY_HASH_CODES_FILE_NAME = "class-identity-hash-codes.bin";
+    public static final String LAYER_FILE_EXTENSION = ".nil";
+
+    protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot_";
+    protected static final String SHARED_LIB_NAME_PREFIX = "lib";
+
     private static final int LAYER_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int LAYER_FILE_FORMAT_VERSION_MINOR = 1;
 
@@ -56,10 +62,6 @@ public class LayerArchiveSupport {
     private static final String SNAPSHOT_GRAPHS_FILE_NAME = "layer-snapshot-graphs.big";
     private static final String BUILD_PATH_DIGESTS_FILE_NAME = "build-path-digests.txt";
     private static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
-    protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot_";
-    protected static final String SHARED_LIB_NAME_PREFIX = "lib";
-
-    public static final String LAYER_FILE_EXTENSION = ".nil";
 
     protected final LayerProperties layerProperties;
     protected final Path layerFile;

@@ -78,8 +78,8 @@ import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -117,6 +117,11 @@ final class ImageLayerConstantLoader {
 
     void prepareConstantRelinking() {
         SnapshotAdapters.forEach(snapshot.getConstantsToRelink(), id -> prepareConstantRelinking(findConstant(id)));
+    }
+
+    Integer getClassIdentityHashCode(int typeId) {
+        Integer constantId = typeToConstant.get(typeId);
+        return constantId == null ? null : findConstant(constantId).getIdentityHashCode();
     }
 
     /**

@@ -274,6 +274,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         dispatchTableSingleton.releaseHostedMethodArray();
 
         constantSnapshotWriter.writeConstants(snapshotWriter);
+        HostedImageLayerBuildingSupport.singleton().getWriteLayerArchiveSupport().setClassIdentityHashCodes(constantSnapshotWriter.getClassIdentityHashCodes());
     }
 
     private void persistType(AnalysisType type, Supplier<PersistedAnalysisTypeData.Writer> builderSupplier) {

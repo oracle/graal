@@ -33,6 +33,7 @@ import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initInts;
 import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initSortedArray;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -74,6 +75,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snapshot.c.CEntryPointLiteralReferenceData;
 import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.constant.PersistedConstantData;
@@ -85,7 +87,9 @@ import com.oracle.svm.hosted.snapshot.constant.RelinkingData.StringConstant;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -98,11 +102,19 @@ final class SVMImageConstantSnapshotWriter {
     private final NativeImageHeap nativeImageHeap;
     private final AnalysisUniverse aUniverse;
     private final IdentityHashMap<String, String> internedStringsIdentityMap;
+    private final GuestAccess guestAccess;
+    private final ResolvedJavaMethod classGetClassLoader;
+    private final ResolvedJavaMethod classLoaderGetName;
+    private final Map<ClassIdentity, Integer> classIdentityHashCodes = new HashMap<>();
     private Map<ImageHeapConstant, ConstantParent> constantsMap;
+    private boolean constantsWritten;
 
     private record ConstantParent(int constantId, int index) {
         static final ConstantParent NONE = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
         static final ConstantParent UNMATERIALIZED = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
+    }
+
+    private record ClassIdentity(String loaderName, String className) {
     }
 
     SVMImageConstantSnapshotWriter(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, NativeImageHeap nativeImageHeap, AnalysisUniverse aUniverse,
@@ -111,6 +123,9 @@ final class SVMImageConstantSnapshotWriter {
         this.nativeImageHeap = nativeImageHeap;
         this.aUniverse = aUniverse;
         this.internedStringsIdentityMap = internedStringsIdentityMap;
+        this.guestAccess = GuestAccess.get();
+        this.classGetClassLoader = guestAccess.lookupMethod(guestAccess.elements.java_lang_Class, "getClassLoader");
+        this.classLoaderGetName = guestAccess.lookupMethod(guestAccess.lookupBootClassLoaderType("java.lang.ClassLoader"), "getName");
     }
 
     void collectConstants(ImageHeap imageHeap, Collection<ImageHeapConstant> constantsToPersist) {
@@ -140,6 +155,15 @@ final class SVMImageConstantSnapshotWriter {
         initSortedArray(snapshotWriter::initConstants, constantsToPersist,
                         (entry, builderSupplier) -> persistConstant(entry.getKey(), entry.getValue(), builderSupplier.get(), constantsToRelink));
         initInts(snapshotWriter::initConstantsToRelink, constantsToRelink.stream().mapToInt(i -> i).sorted());
+        constantsWritten = true;
+    }
+
+    List<WriteLayerArchiveSupport.ClassIdentityHashCode> getClassIdentityHashCodes() {
+        assert constantsWritten : "Class identity hash codes are collected while writing constants";
+        return classIdentityHashCodes.entrySet().stream()
+                        .sorted(Map.Entry.comparingByKey(Comparator.comparing(ClassIdentity::loaderName).thenComparing(ClassIdentity::className)))
+                        .map(entry -> new WriteLayerArchiveSupport.ClassIdentityHashCode(entry.getValue(), entry.getKey().loaderName(), entry.getKey().className()))
+                        .toList();
     }
 
     void writeConstant(JavaConstant constant, ConstantReferenceData.Writer builder) {
@@ -174,7 +198,7 @@ final class SVMImageConstantSnapshotWriter {
                 } else {
                     persistConstantObjectData(builder.getObject(), imageHeapInstance::getFieldValue, imageHeapInstance.getFieldValuesSize());
                 }
-                persistConstantRelinkingInfo(builder, imageHeapConstant, constantsToRelink, aUniverse.getBigbang());
+                persistConstantRelinkingInfo(builder, imageHeapConstant, constantsToRelink, aUniverse.getBigbang(), identityHashCode);
             }
             case ImageHeapObjectArray imageHeapObjectArray -> {
                 builder.initObject().setObjectArray();
@@ -205,7 +229,7 @@ final class SVMImageConstantSnapshotWriter {
         }
     }
 
-    private void persistConstantRelinkingInfo(PersistedConstantData.Writer builder, ImageHeapConstant imageHeapConstant, Set<Integer> constantsToRelink, BigBang bb) {
+    private void persistConstantRelinkingInfo(PersistedConstantData.Writer builder, ImageHeapConstant imageHeapConstant, Set<Integer> constantsToRelink, BigBang bb, int identityHashCode) {
         AnalysisType type = imageHeapConstant.getType();
         JavaConstant hostedObject = imageHeapConstant.getHostedObject();
         boolean simulated = hostedObject == null;
@@ -217,6 +241,7 @@ final class SVMImageConstantSnapshotWriter {
             if (aUniverse.lookup(DYNAMIC_HUB).equals(type)) {
                 AnalysisType constantType = (AnalysisType) bb.getConstantReflectionProvider().asJavaType(hostedObject);
                 relinkingBuilder.initClassConstant().setTypeId(constantType.getId());
+                recordClassIdentityHashCode(constantType, identityHashCode);
                 constantsToRelink.add(id);
                 tryStaticFinalFieldRelink = false;
             } else if (aUniverse.lookup(STRING).equals(type)) {
@@ -247,6 +272,50 @@ final class SVMImageConstantSnapshotWriter {
                 }
             }
         }
+    }
+
+    private void recordClassIdentityHashCode(AnalysisType type, int identityHashCode) {
+        if (type.toJavaName(true).contains(SVMImageLayerSnapshotUtil.GENERATED_SERIALIZATION)) {
+            return;
+        }
+        AnalysisType componentType = type;
+        int arrayRank = 0;
+        while (componentType.isArray()) {
+            componentType = componentType.getComponentType();
+            arrayRank++;
+        }
+        if (componentType.isHidden()) {
+            /* The JVM computes stable hashes for hidden classes and their arrays. */
+            return;
+        }
+        String loaderName = classIdentityHashCodeLoaderName(type);
+        String className;
+        if (ProxyRenamingSubstitutionProcessor.isProxyType(componentType)) {
+            className = interfaceKey(componentType);
+            if (arrayRank != 0) {
+                className += "@array:" + arrayRank;
+            }
+        } else {
+            className = type.toClassName().replace('.', '/');
+        }
+        ClassIdentity key = new ClassIdentity(loaderName, className);
+        Integer previous = classIdentityHashCodes.putIfAbsent(key, identityHashCode);
+        VMError.guarantee(previous == null || previous == identityHashCode, "Classes with the same name and class-loader name have different identity hash codes: %s", key);
+    }
+
+    private String classIdentityHashCodeLoaderName(AnalysisType type) {
+        JavaConstant classConstant = guestAccess.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+        JavaConstant classLoader = guestAccess.invoke(classGetClassLoader, classConstant);
+        if (classLoader.isNull()) {
+            return "bootstrap";
+        }
+        /* Match HotSpot's ClassLoaderData::loader_name(), including whitespace-only names. */
+        String name = guestAccess.asHostString(guestAccess.invoke(classLoaderGetName, classLoader));
+        return name == null || name.isEmpty() ? guestAccess.getProviders().getMetaAccess().lookupJavaType(classLoader).toClassName() : name;
+    }
+
+    private static String interfaceKey(AnalysisType type) {
+        return "@interfaces:" + String.join(";", Arrays.stream(type.getInterfaces()).map(AnalysisType::toJavaName).map(name -> name.replace('.', '/')).toList());
     }
 
     private boolean shouldRelinkConstant(ImageHeapConstant heapConstant) {

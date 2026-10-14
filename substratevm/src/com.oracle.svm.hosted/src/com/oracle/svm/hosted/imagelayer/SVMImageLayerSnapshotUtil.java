@@ -286,6 +286,10 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     public String getTypeDescriptor(AnalysisType type) {
+        if (type.isArray()) {
+            /* Array names can contain an unstable generated name instead of its substitution. */
+            return getTypeDescriptor(type.getComponentType()) + "[]";
+        }
         String javaName = type.toJavaName(true);
         if (javaName.contains(GENERATED_SERIALIZATION)) {
             return getGeneratedSerializationName(type);

@@ -305,7 +305,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     /**
      * Load the host VM type corresponding to the serialized type data.
      * <p>
-     * First, find the corresponding host VM {@link Class} object by name using
+     * First, recreate generated types and arrays through their persisted metadata, or find the
+     * corresponding host VM {@link Class} object by name using
      * {@link #lookupBaseLayerTypeInHostVM(String)}.
      * <p>
      * Then, lookup the hosted {@link Class} in the {@link AnalysisMetaAccess} which will trigger
@@ -323,7 +324,19 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             return;
         }
 
-        ResolvedJavaType clazz = lookupBaseLayerTypeInHostVM(typeData.getClassJavaName());
+        ResolvedJavaType clazz;
+        if (typeData.getComponentTypeId() != 0) {
+            /*
+             * Recreate arrays through their persisted component type. In particular, generated
+             * component types may have a different name in this VM and cannot be looked up by
+             * their saved name. Falling back to an incomplete array type in that case would
+             * create a second array type for the same component when its real array is reached.
+             */
+            ResolvedJavaType componentType = getResolvedJavaTypeForBaseLayerId(typeData.getComponentTypeId());
+            clazz = componentType instanceof BaseLayerType ? null : componentType.getArrayClass();
+        } else {
+            clazz = lookupBaseLayerTypeInHostVM(typeData.getClassJavaName());
+        }
 
         ResolvedJavaType superClass = getResolvedJavaTypeForBaseLayerId(typeData.getSuperClassTypeId());
         ResolvedJavaType[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), this::getResolvedJavaTypeForBaseLayerId, ResolvedJavaType[]::new);
@@ -367,6 +380,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             DynamicHub rawTargetConstructorHub = typeToHub(rawTargetConstructorType);
             SerializationSupport.currentLayer().addConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub, SerializationFeature.getConstructorAccessor(constructor));
             Class<?> constructorAccessor = SerializationSupport.getHostedSerializationConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub).getClass();
+            verifyClassIdentityHashCode(constructorAccessor, typeData);
             metaAccess.lookupJavaType(constructorAccessor);
             return true;
         } else if (wrappedType.isLambda()) {
@@ -382,15 +396,27 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             if (lambdaClass == null) {
                 return false;
             }
+            verifyClassIdentityHashCode(lambdaClass, typeData);
             metaAccess.lookupJavaType(lambdaClass);
             return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
             Class<?>[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), tid -> OriginalClassProvider.getJavaClass(getAnalysisTypeForBaseLayerId(tid)), Class[]::new);
             Class<?> proxy = DynamicProxySupport.singleton().getProxyClassHosted(interfaces);
+            verifyClassIdentityHashCode(proxy, typeData);
             metaAccess.lookupJavaType(proxy);
             return true;
         }
         return false;
+    }
+
+    private void verifyClassIdentityHashCode(Class<?> clazz, PersistedAnalysisTypeData.Loader typeData) {
+        Integer identityHashCode = constantLoader.getClassIdentityHashCode(typeData.getId());
+        if (identityHashCode == null) {
+            /* A type tracked through analysis need not have a persisted Class constant. */
+            return;
+        }
+        int actualHashCode = clazz.hashCode();
+        VMError.guarantee(actualHashCode == identityHashCode, "The identity hash code of generated class %s was already set to %d instead of %d", clazz, actualHashCode, identityHashCode);
     }
 
     private void loadMethodHandleTargets(ResolvedJavaMethod m, BigBang bigBang) {

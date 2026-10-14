@@ -102,6 +102,7 @@ import com.oracle.svm.hosted.CommonPoolUncaughtExceptionHandler;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
 import com.oracle.svm.hosted.util.JDKArgsUtils;
 import com.oracle.svm.shared.option.BundleMember;
 import com.oracle.svm.shared.option.CommonOptionNames;
@@ -151,6 +152,7 @@ public class NativeImage {
      */
     private final Path driverTempDir;
     private static final String DRIVER_TEMP_DIR_PREFIX = "driverRoot-";
+    private Path layerClassIdentityHashCodesFile;
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -1136,6 +1138,7 @@ public class NativeImage {
         }
 
         completeOptionArgs();
+        configureLayerClassIdentityHashCodes();
         addTargetArguments();
 
         String defaultLibC = OS.getCurrent() == OS.LINUX ? "glibc" : null;
@@ -1398,6 +1401,50 @@ public class NativeImage {
             if (useColorfulOutput) {
                 performANSIReset();
             }
+        }
+    }
+
+    /**
+     * Configures the builder JVM to preserve {@link Class} identity hash codes across image layers.
+     * Must run after {@link #completeOptionArgs()} has finalized the layer options and before the
+     * builder JVM starts: HotSpot installs these hashes during class mirror creation, before any
+     * code can observe the mirrors or compute their hashes.
+     * <p>
+     * Every layered build enables deterministic hashes for eligible hidden classes and their array
+     * types, including the initial layer build that has no input mapping yet. This changes their
+     * identity hash codes, not their names. When using a previous layer, its archived mapping supplies
+     * hashes for named classes, primitives, and proxies matched by their ordered interface lists.
+     * Layers without a mapping are accepted for compatibility, but cannot restore those hashes.
+     * <p>
+     * Extracts the mapping to a temporary file before launching the builder. The file is also mounted
+     * when running the builder in a container. Extraction is skipped for dry runs because a bundle
+     * may contain a placeholder layer path that is replaced when applying the bundle.
+     */
+    private void configureLayerClassIdentityHashCodes() {
+        Optional<ArgumentEntry> layerUse = getHostedOptionArgument(imageBuilderArgs, oH(LayeredImageOptions.LayerUse)).filter(entry -> !entry.value().isEmpty());
+        if (!layerCreate() && layerUse.isEmpty()) {
+            return;
+        }
+        addImageBuilderJavaArgs("-XX:+JVMCIUseStableGeneratedClassIdentityHashCodes");
+        // A dry-run bundle may use a placeholder layer path that is replaced when applying it.
+        if (layerUse.isEmpty() || dryRun) {
+            return;
+        }
+
+        Path layerFile = canonicalize(Path.of(layerUse.get().value()));
+        try (JarFile jarFile = new JarFile(layerFile.toFile())) {
+            var entry = jarFile.getJarEntry(LayerArchiveSupport.CLASS_IDENTITY_HASH_CODES_FILE_NAME);
+            if (entry == null) {
+                return;
+            }
+            Path hashCodesFile = createFileInTempDir(LayerArchiveSupport.CLASS_IDENTITY_HASH_CODES_FILE_NAME);
+            try (InputStream input = jarFile.getInputStream(entry); var output = Files.newOutputStream(hashCodesFile)) {
+                input.transferTo(output);
+            }
+            layerClassIdentityHashCodesFile = hashCodesFile;
+            addImageBuilderJavaArgs("-XX:JVMCIClassIdentityHashCodeFile=" + hashCodesFile);
+        } catch (IOException e) {
+            throw showError("Unable to read class identity hash codes from Native Image layer " + layerFile, e);
         }
     }
 
@@ -1806,6 +1853,9 @@ public class NativeImage {
             mountMapping.put(argFile, ContainerSupport.TargetPath.readonly(argFile));
             mountMapping.put(builderArgFile, ContainerSupport.TargetPath.readonly(builderArgFile));
             mountMapping.put(keepAliveFile, ContainerSupport.TargetPath.readonly(keepAliveFileInContainer));
+            if (layerClassIdentityHashCodesFile != null) {
+                mountMapping.put(layerClassIdentityHashCodesFile, ContainerSupport.TargetPath.readonly(layerClassIdentityHashCodesFile));
+            }
 
             List<String> containerCommand = bundleSupport.containerSupport.createCommand(imageBuilderEnvironment, mountMapping);
             command.addAll(containerCommand);
