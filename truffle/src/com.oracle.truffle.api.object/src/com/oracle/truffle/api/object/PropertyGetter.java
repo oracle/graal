@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  *
  * @since 22.2
  * @see Shape#makePropertyGetter(Object)
- * @see DynamicObjectLibrary
+ * @see DynamicObject
  */
 public final class PropertyGetter {
 
@@ -183,6 +183,34 @@ public final class PropertyGetter {
      */
     public int getFlags() {
         return property.getFlags();
+    }
+
+    // @formatter:off
+    /**
+     * Returns the shape this property getter was created with. Only objects of this exact shape are
+     * {@linkplain #accepts(DynamicObject) accepted} by this property getter.
+     * <p>
+     * This allows the property getter's shape to be used in a specialization without occupying
+     * another cached field, for example, to perform its own shape-based guards:
+     *
+     * {@snippet :
+     * @Specialization(guards = {"getter != null",
+     *                 "getter.accepts(receiver)",
+     *                 "!hasDict(getter.getShape())"}, limit = "3")
+     * static Object doGet(Object key, DynamicObject receiver,
+     *                 @Cached("receiver.getShape().makePropertyGetter(key)") PropertyGetter getter) {
+     *     return getter.get(receiver);
+     * }
+     * }
+     *
+     * @return the accepted shape
+     * @since 25.5
+     * @see #accepts(DynamicObject)
+     * @see Shape#makePropertyGetter(Object)
+     */
+    // @formatter:on
+    public Shape getShape() {
+        return expectedShape;
     }
 
     private static IllegalArgumentException illegalArgumentException() {
