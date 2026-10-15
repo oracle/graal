@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.sboutlining.concat;
 
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -146,6 +147,7 @@ public final class SubstrateStringConcatHelper {
      * @param value       value to mix in
      * @return            new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L174-L176")
     static long mix(long lengthCoder, boolean value) {
         return checkOverflow(lengthCoder + (value ? 4 : 5));
@@ -158,6 +160,7 @@ public final class SubstrateStringConcatHelper {
      * @param value       value to mix in
      * @return            new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L185-L187")
     static long mix(long lengthCoder, char value) {
         return checkOverflow(lengthCoder + 1) | coder(value);
@@ -170,6 +173,7 @@ public final class SubstrateStringConcatHelper {
      * @param value       value to mix in
      * @return            new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L196-L198")
     static long mix(long lengthCoder, int value) {
         return checkOverflow(lengthCoder + DecimalDigits.stringSize(value));
@@ -182,6 +186,7 @@ public final class SubstrateStringConcatHelper {
      * @param value       value to mix in
      * @return            new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L207-L209")
     static long mix(long lengthCoder, long value) {
         return checkOverflow(lengthCoder + DecimalDigits.stringSize(value));
@@ -194,6 +199,7 @@ public final class SubstrateStringConcatHelper {
      * @param value       value to mix in
      * @return            new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L218-L224")
     public static long mix(long lengthCoder, String value) {
         lengthCoder += value.length();
@@ -214,6 +220,7 @@ public final class SubstrateStringConcatHelper {
      * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L237-L276")
     static long prepend(long indexCoder, byte[] buf, boolean value, String prefix) {
         int index = (int)indexCoder;
@@ -267,6 +274,7 @@ public final class SubstrateStringConcatHelper {
      * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L289-L302")
     static long prepend(long indexCoder, byte[] buf, char value, String prefix) {
         int index = (int)indexCoder;
@@ -294,6 +302,7 @@ public final class SubstrateStringConcatHelper {
      * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L315-L328")
     static long prepend(long indexCoder, byte[] buf, int value, String prefix) {
         int index = (int)indexCoder;
@@ -321,6 +330,7 @@ public final class SubstrateStringConcatHelper {
      * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L341-L354")
     static long prepend(long indexCoder, byte[] buf, long value, String prefix) {
         int index = (int)indexCoder;
@@ -348,6 +358,7 @@ public final class SubstrateStringConcatHelper {
      * @param prefix     a constant to prepend before value
      * @return           updated index (coder value retained)
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L367-L380")
     static long prepend(long indexCoder, byte[] buf, String value, String prefix) {
         int index = ((int)indexCoder) - value.length();
@@ -370,6 +381,7 @@ public final class SubstrateStringConcatHelper {
      * @param indexCoder    remaining index (should be zero) and coder
      * @return String       resulting string
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L388-L398")
     static String newString(byte[] buf, long indexCoder) {
         // Use the private, non-copying constructor (unsafe!)
@@ -392,6 +404,7 @@ public final class SubstrateStringConcatHelper {
      * @param second        second argument
      * @return String       resulting string
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L410-L423")
     static String simpleConcat(Object first, Object second) {
         String s1 = stringOf(first);
@@ -436,6 +449,7 @@ public final class SubstrateStringConcatHelper {
      * @param arg           the only argument
      * @return String       resulting string
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L453-L456")
     static String newStringOf(Object arg) {
         return new String(stringOf(arg));
@@ -447,6 +461,7 @@ public final class SubstrateStringConcatHelper {
      * in Java state we need to produce "null" String in this case, so we
      * provide a customized version that deals with this problematic corner case.
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L464-L467")
     static String stringOf(Object value) {
         String s;
@@ -472,6 +487,7 @@ public final class SubstrateStringConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L544-L553")
     static byte[] newArrayWithSuffix(String suffix, long indexCoder) {
         byte[] buf = newArray(indexCoder + suffix.length());
@@ -489,6 +505,7 @@ public final class SubstrateStringConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L561-L566")
     static byte[] newArray(long indexCoder) {
         byte coder = (byte)(indexCoder >> 32);

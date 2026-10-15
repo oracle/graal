@@ -36,6 +36,7 @@ import java.util.Locale;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
@@ -134,10 +135,12 @@ public final class StringFormat {
         return ImageSingletons.lookup(StringFormat.class);
     }
 
+    @ReflectivelyAccessed
     static String format(String conversions, Object[] args) {
         return format(true, null, conversions, args);
     }
 
+    @ReflectivelyAccessed
     static String format(Locale locale, String conversions, Object[] args) {
         return format(false, locale, conversions, args);
     }

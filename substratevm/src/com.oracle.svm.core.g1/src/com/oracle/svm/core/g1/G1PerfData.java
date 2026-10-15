@@ -37,6 +37,7 @@ import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfStringConstant;
 import com.oracle.svm.core.jvmstat.PerfStringVariable;
 import com.oracle.svm.core.jvmstat.PerfUnit;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 
 /**
  * Groups all performance data entries supported by G1. The G1 C++ code directly writes new values
@@ -53,13 +54,13 @@ import com.oracle.svm.core.jvmstat.PerfUnit;
  * be adapted as well.
  */
 public class G1PerfData implements PerfDataHolder {
-    private final G1TLABPerfData tlab;
-    private final G1GCPolicyPerfData gcPolicy;
-    private final G1GCCausesPerfData gcCauses;
-    private final G1CollectorPerfData[] collectors;
-    private final G1GenerationPerfData[] generations;
-    private final G1AgeTablePerfData ageTable;
-    private final G1CpuTimePerfData cpuTime;
+    @ReflectivelyAccessed private final G1TLABPerfData tlab;
+    @ReflectivelyAccessed private final G1GCPolicyPerfData gcPolicy;
+    @ReflectivelyAccessed private final G1GCCausesPerfData gcCauses;
+    @ReflectivelyAccessed private final G1CollectorPerfData[] collectors;
+    @ReflectivelyAccessed private final G1GenerationPerfData[] generations;
+    @ReflectivelyAccessed private final G1AgeTablePerfData ageTable;
+    @ReflectivelyAccessed private final G1CpuTimePerfData cpuTime;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("this-escape")
@@ -128,16 +129,16 @@ public class G1PerfData implements PerfDataHolder {
     }
 
     public static class G1TLABPerfData {
-        private final PerfLongVariable allocThreads;
-        private final PerfLongVariable fills;
-        private final PerfLongVariable maxFills;
-        private final PerfLongVariable alloc;
-        private final PerfLongVariable gcWaste;
-        private final PerfLongVariable maxGcWaste;
-        private final PerfLongVariable refillWaste;
-        private final PerfLongVariable maxRefillWaste;
-        private final PerfLongVariable slowAlloc;
-        private final PerfLongVariable maxSlowAlloc;
+        @ReflectivelyAccessed private final PerfLongVariable allocThreads;
+        @ReflectivelyAccessed private final PerfLongVariable fills;
+        @ReflectivelyAccessed private final PerfLongVariable maxFills;
+        @ReflectivelyAccessed private final PerfLongVariable alloc;
+        @ReflectivelyAccessed private final PerfLongVariable gcWaste;
+        @ReflectivelyAccessed private final PerfLongVariable maxGcWaste;
+        @ReflectivelyAccessed private final PerfLongVariable refillWaste;
+        @ReflectivelyAccessed private final PerfLongVariable maxRefillWaste;
+        @ReflectivelyAccessed private final PerfLongVariable slowAlloc;
+        @ReflectivelyAccessed private final PerfLongVariable maxSlowAlloc;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         G1TLABPerfData() {
@@ -173,10 +174,10 @@ public class G1PerfData implements PerfDataHolder {
         private final PerfLongConstant collectors;
         private final PerfLongConstant generations;
 
-        private final PerfLongVariable desiredSurvivorSize;
-        private final PerfLongVariable gcTimeLimitExceeded;
-        private final PerfLongVariable maxTenuringThreshold;
-        private final PerfLongVariable tenuringThreshold;
+        @ReflectivelyAccessed private final PerfLongVariable desiredSurvivorSize;
+        @ReflectivelyAccessed private final PerfLongVariable gcTimeLimitExceeded;
+        @ReflectivelyAccessed private final PerfLongVariable maxTenuringThreshold;
+        @ReflectivelyAccessed private final PerfLongVariable tenuringThreshold;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         G1GCPolicyPerfData() {
@@ -204,8 +205,8 @@ public class G1PerfData implements PerfDataHolder {
     }
 
     public static class G1GCCausesPerfData {
-        private final PerfStringVariable cause;
-        private final PerfStringVariable lastCause;
+        @ReflectivelyAccessed private final PerfStringVariable cause;
+        @ReflectivelyAccessed private final PerfStringVariable lastCause;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         G1GCCausesPerfData() {
@@ -223,10 +224,10 @@ public class G1PerfData implements PerfDataHolder {
     public static class G1CollectorPerfData {
         private final PerfStringConstant name;
 
-        private final PerfLongCounter invocations;
-        private final PerfLongVariable lastEntryTime;
-        private final PerfLongVariable lastExitTime;
-        private final PerfLongCounter time;
+        @ReflectivelyAccessed private final PerfLongCounter invocations;
+        @ReflectivelyAccessed private final PerfLongVariable lastEntryTime;
+        @ReflectivelyAccessed private final PerfLongVariable lastExitTime;
+        @ReflectivelyAccessed private final PerfLongCounter time;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         G1CollectorPerfData(int index) {
@@ -252,10 +253,10 @@ public class G1PerfData implements PerfDataHolder {
     public static class G1SpacePerfData {
         private final PerfStringConstant name;
 
-        private final PerfLongVariable capacity;
-        private final PerfLongVariable initCapacity;
-        private final PerfLongVariable maxCapacity;
-        private final PerfLongVariable used;
+        @ReflectivelyAccessed private final PerfLongVariable capacity;
+        @ReflectivelyAccessed private final PerfLongVariable initCapacity;
+        @ReflectivelyAccessed private final PerfLongVariable maxCapacity;
+        @ReflectivelyAccessed private final PerfLongVariable used;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         G1SpacePerfData(int generationIndex, int spaceIndex) {
@@ -282,10 +283,10 @@ public class G1PerfData implements PerfDataHolder {
         private final PerfStringConstant name;
         private final PerfLongConstant numSpaces;
 
-        private final PerfLongVariable capacity;
-        private final PerfLongVariable maxCapacity;
-        private final PerfLongVariable minCapacity;
-        private final G1SpacePerfData[] spaces;
+        @ReflectivelyAccessed private final PerfLongVariable capacity;
+        @ReflectivelyAccessed private final PerfLongVariable maxCapacity;
+        @ReflectivelyAccessed private final PerfLongVariable minCapacity;
+        @ReflectivelyAccessed private final G1SpacePerfData[] spaces;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         G1GenerationPerfData(int generationIndex, G1SpacePerfData[] spaces) {
@@ -312,7 +313,7 @@ public class G1PerfData implements PerfDataHolder {
     public static class G1AgeTablePerfData {
         private final PerfLongConstant size;
 
-        private final PerfLongVariable[] table;
+        @ReflectivelyAccessed private final PerfLongVariable[] table;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         G1AgeTablePerfData(int length) {
@@ -335,11 +336,11 @@ public class G1PerfData implements PerfDataHolder {
     }
 
     public static class G1CpuTimePerfData {
-        private final PerfLongCounter gcTotal;
-        private final PerfLongCounter gcParallelWorkers;
-        private final PerfLongCounter gcConcMark;
-        private final PerfLongCounter gcConcRefine;
-        private final PerfLongCounter gcService;
+        @ReflectivelyAccessed private final PerfLongCounter gcTotal;
+        @ReflectivelyAccessed private final PerfLongCounter gcParallelWorkers;
+        @ReflectivelyAccessed private final PerfLongCounter gcConcMark;
+        @ReflectivelyAccessed private final PerfLongCounter gcConcRefine;
+        @ReflectivelyAccessed private final PerfLongCounter gcService;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public G1CpuTimePerfData() {

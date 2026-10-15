@@ -28,10 +28,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * Marks elements that are accessed by reflection for various purposes during image construction.
- *
- * One reason for this annotation is to track elements whose names must not be changed during jar
- * stripping.
+ * Marks elements that are accessed by name (and possibly signature). Renaming or moving such elements
+ * generally requires further changes elsewhere.
+ * <p>
+ * However, this is a best-effort approach, and not all such elements might be annotated.
  */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ReflectivelyAccessed {
