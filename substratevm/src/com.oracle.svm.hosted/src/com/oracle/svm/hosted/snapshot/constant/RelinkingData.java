@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.snapshot.constant;
 
+import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
+
 /**
  * Relinking metadata for persisted object constants.
  * <p>
@@ -39,6 +41,8 @@ public interface RelinkingData {
         EnumConstant.Writer initEnumConstant();
 
         FieldConstant.Writer initFieldConstant();
+
+        MethodTypeConstant.Writer initMethodTypeConstant();
     }
 
     interface Loader {
@@ -59,6 +63,10 @@ public interface RelinkingData {
         boolean isFieldConstant();
 
         FieldConstant.Loader getFieldConstant();
+
+        boolean isMethodTypeConstant();
+
+        MethodTypeConstant.Loader getMethodTypeConstant();
     }
 
     interface ClassConstant {
@@ -108,6 +116,20 @@ public interface RelinkingData {
             int getOriginFieldId();
 
             boolean getRequiresLateLoading();
+        }
+    }
+
+    interface MethodTypeConstant {
+        interface Writer {
+            void setReturnTypeId(int value);
+
+            SnapshotPrimitiveList.Int.Writer initParameterTypeIds(int size);
+        }
+
+        interface Loader {
+            int getReturnTypeId();
+
+            SnapshotPrimitiveList.Int.Loader getParameterTypeIds();
         }
     }
 }
