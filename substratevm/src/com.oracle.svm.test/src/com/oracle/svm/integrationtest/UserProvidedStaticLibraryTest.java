@@ -49,7 +49,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
-                "-H:JNILibraryLinkage=user_provided:static",
+                "-H:JNILibraryLinkage=user_provided:static,user_missing:static?",
                 "--features=com.oracle.svm.integrationtest.UserProvidedStaticLibraryTest$TestFeature",
                 "-H:-UnlockExperimentalVMOptions"
 })

@@ -30,7 +30,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
-                "-H:JNILibraryLinkage=java:static,attach:dynamic,nio:dynamic,net:dynamic,extnet:dynamic,zip:dynamic,management_ext:dynamic",
+                "-H:JNILibraryLinkage=java:static,attach:dynamic,nio:dynamic,net:dynamic,extnet:dynamic,zip:dynamic,management_ext:dynamic,jaas:static?",
                 "-H:-UnlockExperimentalVMOptions"
 })
 public class DynamicJDKLibraryLinkageTest {

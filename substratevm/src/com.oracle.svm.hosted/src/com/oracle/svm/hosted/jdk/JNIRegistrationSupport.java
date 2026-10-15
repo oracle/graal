@@ -116,7 +116,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         });
 
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-        @Option(help = "Configure JNI library linkage as a comma-separated list of `<library>:{static|dynamic}` entries. Built-in JDK JNI libraries are statically linked by default. Later entries override earlier entries.")//
+        @Option(help = "Configure JNI library linkage as a comma-separated list of `<library>:{static|dynamic}[?]` entries. " +
+                        "Append `?` to apply the linkage only if the library is reachable." +
+                        "Some JDK JNI libraries use static linkage by default when reachable, while other JNI libraries use dynamic linkage by default. " +
+                        "Later entries override earlier entries.")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> JNILibraryLinkage = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }
@@ -153,7 +156,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerJNILibrary("java");
         if (RuntimeClassLoading.isSupported()) {
-            getLinkagePlan().getExplicitlyConfiguredLibraries().forEach(JNIRegistrationSupport.singleton()::registerJNILibrary);
+            getLinkagePlan().getLibrariesRequiringReachability().forEach(JNIRegistrationSupport.singleton()::registerJNILibrary);
         }
     }
 

@@ -68,14 +68,14 @@ public final class JNILibraryLinkagePlan {
 
     private final NativeLibraries nativeLibraries;
     private final Map<String, JNILibrary> libraries = new ConcurrentHashMap<>();
-    private final Set<String> explicitlyConfiguredLibraries;
+    private final Set<String> librariesRequiringReachability;
     private final SortedMap<String, SortedSet<String>> shimExports = new TreeMap<>();
     private boolean manifestsProcessed;
 
     JNILibraryLinkagePlan() {
         this.nativeLibraries = NativeLibraries.singleton();
         JNILibraryLinkageConfiguration configuration = getJNILibraryLinkage();
-        explicitlyConfiguredLibraries = configuration.explicitlyConfiguredLibraries();
+        librariesRequiringReachability = configuration.librariesRequiringReachability();
         configuration.linkages().forEach((library, linkage) -> libraries.put(library, createLibrary(library, linkage)));
     }
 
@@ -83,7 +83,7 @@ public final class JNILibraryLinkagePlan {
         return ImageSingletons.lookup(JNILibraryLinkagePlan.class);
     }
 
-    private record JNILibraryLinkageConfiguration(Map<String, JNILibraryLinkage> linkages, Set<String> explicitlyConfiguredLibraries) {
+    private record JNILibraryLinkageConfiguration(Map<String, JNILibraryLinkage> linkages, Set<String> librariesRequiringReachability) {
     }
 
     private static JNILibraryLinkageConfiguration getJNILibraryLinkage() {
@@ -100,14 +100,17 @@ public final class JNILibraryLinkagePlan {
 
         Map<String, JNILibraryLinkage> result = new HashMap<>();
         JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.forEach(library -> result.put(library, JNILibraryLinkage.STATIC));
-        Set<String> explicitlyConfiguredLibraries = new HashSet<>();
+        Set<String> librariesRequiringReachability = new HashSet<>();
         finalEntries.forEach((library, entry) -> {
             String value = entry.value();
             String[] parts = value.split(":", -1);
-            JNILibraryLinkage linkage = switch (parts[1]) {
+            String secondPart = parts[1];
+            boolean reachabilityRequired = !secondPart.endsWith("?");
+            String linkageValue = reachabilityRequired ? secondPart : secondPart.substring(0, secondPart.length() - 1);
+            JNILibraryLinkage linkage = switch (linkageValue) {
                 case "static" -> JNILibraryLinkage.STATIC;
                 case "dynamic" -> JNILibraryLinkage.DYNAMIC;
-                default -> throw UserError.abort("Invalid option %s provided by %s. Linkage must be either `static` or `dynamic`.",
+                default -> throw UserError.abort("Invalid option %s provided by %s. Linkage must be `static`, `dynamic`, `static?`, or `dynamic?`.",
                                 SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin());
             };
             if (linkage == JNILibraryLinkage.DYNAMIC && SubstrateOptions.StaticExecutable.getValue()) {
@@ -120,9 +123,11 @@ public final class JNILibraryLinkagePlan {
             }
 
             result.put(library, linkage);
-            explicitlyConfiguredLibraries.add(library);
+            if (reachabilityRequired) {
+                librariesRequiringReachability.add(library);
+            }
         });
-        return new JNILibraryLinkageConfiguration(result, explicitlyConfiguredLibraries);
+        return new JNILibraryLinkageConfiguration(result, librariesRequiringReachability);
     }
 
     private enum JNILibraryLinkage {
@@ -158,8 +163,8 @@ public final class JNILibraryLinkagePlan {
         return library.equals("awt");
     }
 
-    public Set<String> getExplicitlyConfiguredLibraries() {
-        return explicitlyConfiguredLibraries;
+    public Set<String> getLibrariesRequiringReachability() {
+        return librariesRequiringReachability;
     }
 
     public void markReachable(String library) {
@@ -194,16 +199,16 @@ public final class JNILibraryLinkagePlan {
      */
     void prepareAfterAnalysis() {
         if (!RuntimeClassLoading.isSupported()) {
-            List<String> unreachableExplicitLibraries = libraries.values().stream()
-                            .filter(library -> explicitlyConfiguredLibraries.contains(library.getLibrary()) && !library.isReachable())
+            List<String> unreachableRequiredLibraries = libraries.values().stream()
+                            .filter(library -> librariesRequiringReachability.contains(library.getLibrary()) && !library.isReachable())
                             .map(library -> library.getLibrary() + ":" + (library.isStatic() ? "static" : "dynamic"))
                             .sorted()
                             .toList();
-            if (!unreachableExplicitLibraries.isEmpty()) {
-                throw UserError.abort("JNI library linkage was explicitly configured for libraries that are not reachable: %s. " +
-                                "When runtime class loading is disabled, explicitly configured JNI libraries must be reachable during image generation. " +
+            if (!unreachableRequiredLibraries.isEmpty()) {
+                throw UserError.abort("The following JNI libraries were configured without a trailing `?` but are not reachable: %s. " +
+                                "When runtime class loading is disabled, JNI libraries configured without a trailing `?` must be reachable during image generation. " +
                                 "A JNI library is reachable when analysis encounters a corresponding `System.loadLibrary(\"<library>\")` call.",
-                                String.join(", ", unreachableExplicitLibraries));
+                                String.join(", ", unreachableRequiredLibraries));
             }
         }
 
