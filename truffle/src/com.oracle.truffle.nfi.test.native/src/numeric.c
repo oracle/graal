@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <trufflenfi.h>
 
 #include "common.h"
@@ -59,6 +61,13 @@
                                                                                                                                                      \
     EXPORT type call_closure_noarg_##name(type (*fn)(void)) {                                                                                        \
         return fn();                                                                                                                                 \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    EXPORT void check_closure_zero_##name(type (*fn)(void)) {                                                                                        \
+        if (fn() != 0) {                                                                                                                             \
+            fprintf(stderr, "Nonzero callback return for " #name "\n");                                                                              \
+            abort();                                                                                                                                 \
+        }                                                                                                                                            \
     }                                                                                                                                                \
                                                                                                                                                      \
     EXPORT type callback_##name(type (*fn)(type), type arg) {                                                                                        \

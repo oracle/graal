@@ -54,6 +54,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.shared.NeverInline;
@@ -240,7 +241,7 @@ final class NativeClosure {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
-    static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
+    static void invokeClosureBufferRet(ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = getErrno();
 
@@ -258,7 +259,7 @@ final class NativeClosure {
             }
         }
 
-        errno = invokeClosureBufferRet0(ret, args, user, errno);
+        errno = invokeClosureBufferRet0(cif, ret, args, user, errno);
 
         CEntryPointActions.leave();
         /* Restore the C error number after being back in the Native state. */
@@ -271,12 +272,13 @@ final class NativeClosure {
      */
     @NeverInline("Boundary must exist after isolate setup.")
     @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
-    private static int invokeClosureBufferRet0(Pointer ret, WordPointer args, ClosureData user, int errno) {
+    private static int invokeClosureBufferRet0(ffi_cif cif, Pointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
-            doInvokeClosureBufferRet(ret, args, user);
+            doInvokeClosureBufferRet(cif, ret, args, user);
         } catch (Throwable t) {
+            zeroReturnValue(cif, ret);
             handleException(user, t);
         }
 
@@ -284,12 +286,16 @@ final class NativeClosure {
     }
 
     @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
-    private static void doInvokeClosureBufferRet(Pointer ret, WordPointer args, ClosureData user) {
+    private static void doInvokeClosureBufferRet(ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         NativeClosure closure = lookup(user);
         Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer retBuffer = new Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer(ret.rawValue());
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
 
         if (patches != null) {
+            if (patches.count < 0) {
+                zeroReturnValue(cif, ret);
+                return;
+            }
             for (int i = 0; i < patches.count; i++) {
                 Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag tag = getTag(patches.patches[i]);
                 int offset = getOffset(patches.patches[i]);
@@ -398,6 +404,7 @@ final class NativeClosure {
         try {
             doInvokeClosureStringRet(ret, args, user);
         } catch (Throwable t) {
+            ret.write(Word.zero());
             handleException(user, t);
         }
 
@@ -450,6 +457,7 @@ final class NativeClosure {
         try {
             doInvokeClosureObjectRet(ret, args, user);
         } catch (Throwable t) {
+            ret.write(Word.zero());
             handleException(user, t);
         }
 
@@ -481,6 +489,11 @@ final class NativeClosure {
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
+    }
+
+    @Uninterruptible(reason = "Initialize the native return value while handling an exception.")
+    private static void zeroReturnValue(ffi_cif cif, Pointer ret) {
+        UnmanagedMemoryUtil.fill(ret, cif.rtype().size(), (byte) 0);
     }
 
     static final CEntryPointLiteral<ffi_closure_callback> INVOKE_CLOSURE_BUFFER_RET = CEntryPointLiteral.create(NativeClosure.class, "invokeClosureBufferRet",

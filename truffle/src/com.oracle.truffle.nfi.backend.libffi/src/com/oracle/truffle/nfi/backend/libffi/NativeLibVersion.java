@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ package com.oracle.truffle.nfi.backend.libffi;
  * <li>0 "old" versions, before this version check was introduced
  * <li>1 first version with this version check
  * <li>2 introduced thread-local NFIState and cross-backend exception propagation
+ * <li>3 supports negative RetPatches counts to zero callback return values on exceptions
  * </ul>
  */
 final class NativeLibVersion {

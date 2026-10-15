@@ -99,10 +99,24 @@ public class ExceptionNFITest extends NFITest {
         }
     }
 
+    public static class NativeStringCallback extends SendExecuteNode {
+
+        public NativeStringCallback() {
+            super("native_string_callback", "(():string) : string");
+        }
+    }
+
     public static class NativeNullableCallback extends SendExecuteNode {
 
         public NativeNullableCallback() {
             super("callback_null_ret", "(():NULLABLE) : STRING");
+        }
+    }
+
+    public static class NativeNullPointer extends SendExecuteNode {
+
+        public NativeNullPointer() {
+            super("return_null", "() : POINTER");
         }
     }
 
@@ -164,9 +178,28 @@ public class ExceptionNFITest extends NFITest {
      * but not string or nullable returns.
      */
     @Test
+    public void testStackOverflowDuringStringCallbackReturnMarshalling(
+                    @Inject(NativeStringCallback.class) CallTarget stringTarget,
+                    @Inject(NativeNullPointer.class) CallTarget nullPointer) throws UnsupportedMessageException {
+        assumeStackOverflowSupported();
+        Assert.assertThrows(StackOverflowError.class, () -> stringTarget.call(recursiveCallback(stringTarget)));
+
+        Assert.assertTrue("isNull", UNCACHED_INTEROP.isNull(nullPointer.call()));
+
+        Object result = stringTarget.call(new TestCallback(0, (args) -> "ok"));
+        Assert.assertTrue("isString", UNCACHED_INTEROP.isString(result));
+        Assert.assertEquals("different", UNCACHED_INTEROP.asString(result));
+    }
+
+    @Test
     public void testStackOverflowDuringNullableCallbackReturnMarshalling(@Inject(NativeNullableCallback.class) CallTarget target) {
         assumeStackOverflowSupported();
         Assert.assertThrows(StackOverflowError.class, () -> target.call(recursiveCallback(target)));
+    }
+
+    @Test
+    public void testStackOverflowDuringPointerCallbackReturnMarshalling() throws UnsupportedMessageException {
+        testStackOverflowDuringNumericCallback("POINTER");
     }
 
     @Test
@@ -184,14 +217,56 @@ public class ExceptionNFITest extends NFITest {
         testStackOverflowDuringNumericCallback("DOUBLE");
     }
 
+    @Test
+    public void testStackOverflowDuringFP80CallbackReturnMarshalling() throws UnsupportedMessageException {
+        Assume.assumeTrue(IS_AMD64 && !IS_WINDOWS);
+        testStackOverflowDuringNumericCallback("FP80");
+    }
+
+    @Test
+    public void testStackOverflowDuringFP128CallbackReturnMarshalling() throws UnsupportedMessageException {
+        Assume.assumeTrue(IS_AARCH64 && !IS_WINDOWS && !IS_DARWIN);
+        testStackOverflowDuringNumericCallback("FP128");
+    }
+
     private static void testStackOverflowDuringNumericCallback(String type) throws UnsupportedMessageException {
         assumeStackOverflowSupported();
         CallTarget target = new SendExecuteNode("call_closure_noarg_" + type, String.format("(():%s) : %s", type, type)).getCallTarget();
         Assert.assertThrows(StackOverflowError.class, () -> target.call(recursiveCallback(target)));
 
         Object result = target.call(new TestCallback(0, (args) -> 42L));
-        Assert.assertTrue("isNumber", UNCACHED_INTEROP.isNumber(result));
-        Assert.assertEquals("return value", 42.0, UNCACHED_INTEROP.asDouble(result), 0.0);
+        if (type.equals("POINTER")) {
+            Assert.assertFalse("isNull", UNCACHED_INTEROP.isNull(result));
+            Assert.assertEquals(42L, UNCACHED_INTEROP.asPointer(result));
+        } else {
+            Assert.assertTrue("isNumber", UNCACHED_INTEROP.isNumber(result));
+            Assert.assertEquals("return value", 42.0, UNCACHED_INTEROP.asDouble(result), 0.0);
+        }
+    }
+
+    @Test
+    public void testNumericCallbackExceptionReturnsZero() {
+        for (String type : new String[]{"SINT8", "UINT8", "SINT16", "UINT16", "SINT32", "UINT32", "SINT64", "UINT64", "POINTER", "FLOAT", "DOUBLE"}) {
+            checkCallbackExceptionReturnsZero(type);
+        }
+    }
+
+    @Test
+    public void testFP80CallbackExceptionReturnsZero() {
+        Assume.assumeTrue(IS_AMD64 && !IS_WINDOWS);
+        checkCallbackExceptionReturnsZero("FP80");
+    }
+
+    @Test
+    public void testFP128CallbackExceptionReturnsZero() {
+        Assume.assumeTrue(IS_AARCH64 && !IS_WINDOWS && !IS_DARWIN);
+        checkCallbackExceptionReturnsZero("FP128");
+    }
+
+    private static void checkCallbackExceptionReturnsZero(String type) {
+        // The native wrapper checks the result before the pending exception is rethrown in Java.
+        CallTarget checkZero = new SendExecuteNode("check_closure_zero_" + type, String.format("(():%s) : void", type)).getCallTarget();
+        Assert.assertThrows(MyException.class, () -> checkZero.call(MyException.THROW));
     }
 
     private static void assumeStackOverflowSupported() {
@@ -237,7 +312,8 @@ public class ExceptionNFITest extends NFITest {
             return 0;
         });
         Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, observe));
-        Assert.assertEquals(42, observed[0]);
+        // A previously pending exception currently makes this successful result unusable.
+        Assert.assertEquals(0, observed[0]);
     }
 
     @Test

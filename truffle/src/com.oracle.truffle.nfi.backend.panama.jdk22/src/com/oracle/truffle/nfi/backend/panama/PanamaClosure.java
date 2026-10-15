@@ -56,7 +56,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -281,8 +280,8 @@ final class PanamaClosure implements TruffleObject {
 
                 try {
                     Object ret = callClosure.execute(frame);
-                    if (interopLibrary.isNull(ret)) {
-                        return null;
+                    if (nfiState.getPendingException() != null || interopLibrary.isNull(ret)) {
+                        return MemorySegment.NULL;
                     }
                     return toJavaRet.execute(arena, ret);
                 } catch (Throwable t) {
@@ -302,11 +301,7 @@ final class PanamaClosure implements TruffleObject {
                     } catch (Throwable ignored) {
                         // Trace filling is best effort; preserve the original pending exception.
                     }
-                    try {
-                        return toJavaRet.execute(arena, "");
-                    } catch (UnsupportedTypeException ex) {
-                        throw CompilerDirectives.shouldNotReachHere(ex);
-                    }
+                    return MemorySegment.NULL;
                 } finally {
                     ctx.setNativeErrno(nfiState.getNFIErrno());
                 }
@@ -411,6 +406,9 @@ final class PanamaClosure implements TruffleObject {
             nfiState.setNFIErrno(ctx.getNativeErrno());
             try {
                 Object ret = callClosure.execute(frame);
+                if (nfiState.getPendingException() != null) {
+                    return defaultReturn;
+                }
                 if (interopLibrary.isNull(ret)) {
                     return defaultReturn;
                 }
