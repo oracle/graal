@@ -268,10 +268,14 @@ public final class RuntimeOptionParser {
         return args;
     }
 
-    /** Parses runtime options for a Java main image and returns the application main arguments. */
+    /**
+     * Parses runtime options for a Java main image and returns the application main arguments.
+     * The {@code initialArgs} array must not be modified because management APIs and
+     * {@code VM.getRuntimeArguments()} use it to report the original arguments.
+     */
     public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
-            return parseAndConsumeAllOptions(initialArgs, ignoreUnrecognized);
+            return parseAndConsumeAllOptions(initialArgs.clone(), ignoreUnrecognized);
         }
 
         int separatorIndex = ArgsSupport.firstEndOfOptionsMarkerIndex(initialArgs);
