@@ -62,8 +62,10 @@ public final class RuntimeStateTrimConfig {
      * Selects the overall trim goal.
      *
      * <p>
-     * {@link #LATENCY} minimizes the amount of work performed at the safepoint. {@link #BALANCED}
-     * performs a moderate amount of memory reduction. {@link #SIZE} minimizes the memory usage.
+     * {@link #LATENCY} minimizes the amount of work performed at the safepoint.
+     * {@link #CONSERVATIVE} limits heap cleanup while reclaiming unused memory.
+     * {@link #BALANCED} performs a moderate amount of memory reduction.
+     * {@link #SIZE} minimizes the memory usage.
      */
     public enum Mode {
 
@@ -74,6 +76,14 @@ public final class RuntimeStateTrimConfig {
          * still release unused heap memory.
          */
         LATENCY,
+
+        /**
+         * Reclaim unused memory while limiting heap changes.
+         *
+         * Performs a young collection, releases unused heap chunks, and avoids the full retained-heap cleanup
+         * performed by {@link #BALANCED} and {@link #SIZE}.
+         */
+        CONSERVATIVE,
 
         /**
          * Balance safepoint latency and memory reduction.

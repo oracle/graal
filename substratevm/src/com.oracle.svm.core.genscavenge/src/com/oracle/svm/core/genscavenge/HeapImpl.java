@@ -160,16 +160,19 @@ public final class HeapImpl extends Heap {
         VMOperation.guaranteeInProgressAtSafepoint("HeapImpl.trimRuntimeState");
         VMError.guarantee(NoAllocationVerifier.isActive(), "A NoAllocationVerifier must be active.");
 
-        GCCause gcCause = mode == Mode.LATENCY ? GCCause.RuntimeStateTrimYoungGC : GCCause.RuntimeStateTrimFullGC;
+        GCCause gcCause = mode == Mode.LATENCY || mode == Mode.CONSERVATIVE
+                        ? GCCause.RuntimeStateTrimYoungGC
+                        : GCCause.RuntimeStateTrimFullGC;
         gcImpl.collect(gcCause);
 
-        if (mode == Mode.SIZE) {
+        if (mode == Mode.CONSERVATIVE || mode == Mode.SIZE) {
             getChunkProvider().freeUnusedAlignedChunks();
             ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
         }
 
-        boolean cleanUnusedMemory = mode == Mode.BALANCED || mode == Mode.SIZE;
-        if (cleanUnusedMemory) {
+        if (mode == Mode.CONSERVATIVE) {
+            getChunkProvider().cleanUnusedAlignedChunks();
+        } else if (mode == Mode.BALANCED || mode == Mode.SIZE) {
             boolean cleanFillerObjectMemory = mode == Mode.SIZE;
             getHeapImpl().makeParseable();
             getYoungGeneration().clean(true, cleanFillerObjectMemory);
