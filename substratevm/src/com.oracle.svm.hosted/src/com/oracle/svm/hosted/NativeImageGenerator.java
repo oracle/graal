@@ -1259,6 +1259,7 @@ public class NativeImageGenerator {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
                 }
+                nativeLibraries.collectAllStaticLibs();
                 BuildPhaseProviderImpl.markSetupFinished();
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,

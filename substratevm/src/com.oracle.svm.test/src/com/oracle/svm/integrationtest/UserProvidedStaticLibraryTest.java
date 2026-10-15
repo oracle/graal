@@ -25,7 +25,6 @@
 package com.oracle.svm.integrationtest;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -40,7 +39,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.jni.JNILibraryLinkagePlan;
@@ -71,18 +69,11 @@ public class UserProvidedStaticLibraryTest {
             NativeLibraries nativeLibraries = NativeLibraries.singleton();
             Path directory = nativeLibraries.tempDirectory.resolve("user-provided-static-library");
             libraryDirectory = directory.toAbsolutePath();
-            Path conflictingDirectory = nativeLibraries.tempDirectory.resolve("conflicting-user-provided-static-library");
             try {
-                Path library = createLibrary(directory, TEST_LIBRARY_NAME, List.of(DIRECT_DEPENDENCY_NAME), TEST_SYMBOL);
-                nativeLibraries.addStaticLibraryPath(createLibrary(directory, DIRECT_DEPENDENCY_NAME, List.of(TRANSITIVE_DEPENDENCY_NAME), null));
-                nativeLibraries.addStaticLibraryPath(createLibrary(directory, TRANSITIVE_DEPENDENCY_NAME, List.of(), null));
-                nativeLibraries.addStaticLibraryPath(library);
-
-                /* Registering the same path is idempotent, but a different archive with the same name is ambiguous. */
-                nativeLibraries.addStaticLibraryPath(library);
-                Path conflictingLibrary = createLibrary(conflictingDirectory, TEST_LIBRARY_NAME, List.of(), TEST_SYMBOL);
-                UserError.UserException error = assertThrows(UserError.UserException.class, () -> nativeLibraries.addStaticLibraryPath(conflictingLibrary));
-                assertTrue(error.getMessage().contains("is already registered"));
+                createLibrary(directory, TEST_LIBRARY_NAME, List.of(DIRECT_DEPENDENCY_NAME), TEST_SYMBOL);
+                createLibrary(directory, DIRECT_DEPENDENCY_NAME, List.of(TRANSITIVE_DEPENDENCY_NAME), null);
+                createLibrary(directory, TRANSITIVE_DEPENDENCY_NAME, List.of(), null);
+                nativeLibraries.getLibraryPaths().add(libraryDirectory.toString());
             } catch (IOException e) {
                 throw new AssertionError(e);
             }
