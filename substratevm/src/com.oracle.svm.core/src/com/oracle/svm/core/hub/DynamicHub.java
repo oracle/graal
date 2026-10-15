@@ -1057,6 +1057,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return monitorOffset;
     }
 
+    /** Returns the stored offset for hosted layout checks, or zero when no field exists. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int getIdentityHashOffsetOrZero() {
+        return identityHashOffset;
+    }
+
     /**
      * If possible, use {@link LayoutEncoding#getIdentityHashOffset(Object)} instead. If the hash
      * code field is optional, note that this method may return an offset that is outside the bounds

@@ -990,6 +990,9 @@ public class UniverseBuilder {
 
             DynamicHub hub = type.getHub();
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
+            if (HostedImageLayerBuildingSupport.buildingExtensionLayer()) {
+                HostedImageLayerBuildingSupport.singleton().getLoader().verifyObjectLayoutCompatibility(type);
+            }
 
             if (closedTypeWorldHubLayout) {
                 MethodRef[] vtable = createVTable(type.closedTypeWorldVTable, useOffsets);
