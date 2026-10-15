@@ -87,8 +87,11 @@ public class PosixUtils {
             return "[could not allocate memory for error string]";
         }
         try {
-            CCharPointer cstr = Errno.strerror_r(errno, buf, size);
-            return CTypeConversion.toJavaString(cstr);
+            int status = Errno.strerror_r(errno, buf, size);
+            if (status != 0) {
+                return "Unknown error " + errno;
+            }
+            return CTypeConversion.toJavaString(buf);
         } finally {
             NullableNativeMemory.free(buf);
         }
