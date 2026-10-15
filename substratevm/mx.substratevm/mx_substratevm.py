@@ -2768,6 +2768,16 @@ lib_jvm_preserved_packages = [
     'jdk.jfr',
     'org.ietf.jgss',
     'sun.invoke.util',
+    'sun.jvmstat',
+    'sun.jvmstat.monitor',
+    'sun.jvmstat.monitor.event',
+    'sun.jvmstat.monitor.remote',
+    'sun.jvmstat.perfdata.monitor',
+    'sun.jvmstat.perfdata.monitor.protocol.file',
+    'sun.jvmstat.perfdata.monitor.protocol.local',
+    'sun.jvmstat.perfdata.monitor.protocol.rmi',
+    'sun.jvmstat.perfdata.monitor.v1_0',
+    'sun.jvmstat.perfdata.monitor.v2_0',
     'sun.nio.cs.ext',
     'sun.security.util',
     'sun.util',
@@ -2802,7 +2812,11 @@ if mx.is_linux():
         '-H:ExportedSymbolsVersion=SUNWprivate_1.1',
     ]
 
-lib_jvm_build_args = ['--add-modules=jdk.net'] + svm_experimental_options(lib_jvm_experimental_build_args)
+# Resolve JVMStat provider modules so their preserved protocol packages are available for runtime loading.
+lib_jvm_build_args = (
+    ['--add-modules=jdk.net,jdk.internal.jvmstat,jdk.jstatd'] +
+    svm_experimental_options(lib_jvm_experimental_build_args)
+)
 if mx.is_linux():
     lib_jvm_build_args += [
         '-H:NativeLinkerOption=-Wl,-soname=libjvm.so'

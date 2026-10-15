@@ -1,6 +1,54 @@
 {
   "reflection": [
     {
+      "type": "com.sun.tools.attach.VirtualMachine",
+      "methods": [
+        {
+          "name": "attach",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.tools.attach.HotSpotVirtualMachine",
+      "methods": [
+        {
+          "name": "executeJCmd",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "remoteDataDump",
+          "parameterTypes": [
+            "java.lang.Object[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.tools.attach.VirtualMachineImpl",
+      "methods": [
+        {
+          "name": "detach",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.jvmstat.monitor.HostIdentifier",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
       "type": "javax.tools.JavaCompiler$CompilationTask"
     },
     {

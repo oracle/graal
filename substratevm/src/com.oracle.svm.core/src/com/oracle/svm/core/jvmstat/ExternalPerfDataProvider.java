@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jvmstat;
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-package com.oracle.svm.core.posix.jvmstat;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+/// Attaches to performance data owned by another process.
+public interface ExternalPerfDataProvider {
+    /// Maps the performance data of the process identified by `vmId`.
+    ByteBuffer attach(int vmId) throws IOException;
+}

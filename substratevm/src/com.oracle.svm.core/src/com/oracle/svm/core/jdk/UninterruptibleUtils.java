@@ -412,6 +412,9 @@ public class UninterruptibleUtils {
 
     /** Utilities for null-terminated {@link CCharPointer} strings encoded as ASCII. */
     public static class ASCII {
+        /// Tests whether the native, null-terminated `string` starts with the ASCII `prefix`.
+        /// Checks at most `prefix.length()` bytes and allocates no Java string or byte array.
+        /// This allows callers to reject native names before converting matching names to Java.
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static boolean startsWith(CCharPointer string, java.lang.String prefix) {
             for (int i = 0; i < prefix.length(); i++) {

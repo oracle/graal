@@ -29,6 +29,8 @@ Do not run `mx` commands concurrently; parallel runs can produce misleading fail
 
 ## Change Hygiene
 
+- Avoid regular expressions in core runtime code when straightforward parsing suffices; regex support increases image code size.
+- When porting HotSpot code, preserve its names and structure where practical so reviewers and maintainers can compare the implementations.
 - If you touch documented behavior, update `docs/`.
 - When adding or changing substitutions, include durable comments that explain when and why
   the substitution intentionally deviates from the original JDK implementation.

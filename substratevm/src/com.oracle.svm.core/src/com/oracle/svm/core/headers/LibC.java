@@ -48,6 +48,11 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /** Platform-independent LibC support. */
 public class LibC {
+    /// Gets the current thread's native error number.
+    ///
+    /// A native operation and the read of its `errno` must be in the same uninterruptible region.
+    /// A safepoint or a Java-to-native transition between them can run code that overwrites `errno`.
+    /// Callers that need to allocate or throw must capture the error before leaving that region.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int errno() {
         return libc().errno();

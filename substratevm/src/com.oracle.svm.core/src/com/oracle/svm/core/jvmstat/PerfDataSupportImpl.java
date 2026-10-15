@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jvmstat;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -36,6 +37,9 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
+
+import sun.nio.ch.DirectBuffer;
 
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class PerfDataSupportImpl implements PerfDataSupport {
@@ -43,19 +47,38 @@ public class PerfDataSupportImpl implements PerfDataSupport {
     PerfDataSupportImpl() {
     }
 
+    /// Attaches to local performance data or maps an external process's backing file.
     @Override
-    public ByteBuffer attach(int lvmid) {
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L1303-L1312")
+    public ByteBuffer attach(int lvmid) throws IOException {
         if (lvmid != 0 && lvmid != ProcessProperties.getProcessID()) {
-            throw new IllegalArgumentException("Attaching to the performance data of another Java virtual machine is not supported at the moment.");
+            return attachToOtherProcess(lvmid);
         }
 
         waitForPerformanceDataInitialization();
         return ImageSingletons.lookup(PerfMemory.class).createByteBuffer();
     }
 
+    /// Maps another JVM's file-backed performance data through the platform provider.
+    /// HotSpot and Native Images that export file-backed data use the same JVMStat format.
+    private static ByteBuffer attachToOtherProcess(int lvmid) throws IOException {
+        if (!ImageSingletons.contains(ExternalPerfDataProvider.class)) {
+            throw new IllegalArgumentException("Attaching to the performance data of another Java virtual machine is not supported on this platform.");
+        }
+        return ImageSingletons.lookup(ExternalPerfDataProvider.class).attach(lvmid);
+    }
+
+    /// Releases an external mapping while leaving the local performance data memory attached.
+    /// Local buffers must not acquire an unmapping cleaner: their memory belongs to `PerfMemory`.
+    /// External mappings have a cleaner that unmaps once, even when detach is called repeatedly.
     @Override
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L1330-L1341")
     public void detach(ByteBuffer bb) {
-        // Nothing to do as we only support attaching to the current process.
+        // The cleaner also releases external mappings whose callers omit detach.
+        var cleaner = ((DirectBuffer) bb).cleaner();
+        if (cleaner != null) {
+            cleaner.clean();
+        }
     }
 
     @Override

@@ -57,8 +57,15 @@ public final class PosixStat {
     @CConstant
     public static native int S_IFLNK();
 
+    /// Masks all file-type bits; the `S_IF*` values overlap and are not independent flags.
+    @CConstant
+    public static native int S_IFMT();
+
     @CConstant
     public static native int S_IFDIR();
+
+    @CConstant
+    public static native int S_IFREG();
 
     @CConstant
     public static native int S_IRUSR();
@@ -124,12 +131,17 @@ public final class PosixStat {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean S_ISLNK(stat buf) {
-        return st_mode(buf).and(S_IFLNK()).equal(S_IFLNK());
+        return st_mode(buf).and(S_IFMT()).equal(S_IFLNK());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean S_ISDIR(stat buf) {
-        return st_mode(buf).and(S_IFDIR()).equal(S_IFDIR());
+        return st_mode(buf).and(S_IFMT()).equal(S_IFDIR());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean S_ISREG(stat buf) {
+        return st_mode(buf).and(S_IFMT()).equal(S_IFREG());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -141,6 +153,7 @@ public final class PosixStat {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord st_nlink(stat buf) {
         if (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) {
             return buf.st_nlink();
@@ -163,6 +176,9 @@ public final class PosixStat {
 
         @CField
         long st_size();
+
+        @CField("st_ctime")
+        long st_ctime();
 
         @CField
         @AllowWideningCast
