@@ -75,7 +75,6 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.AllocationFeature;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
@@ -207,9 +206,6 @@ public class G1Feature implements InternalFeature {
         ResolvedJavaType g1HeapType = accessImpl.getMetaAccess().lookupJavaType(G1Heap.class);
         accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "barrierAndAllocationDataTL"), "its offset is used by G1 native code");
         accessImpl.registerAsRead((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(g1HeapType, "javaThreadTL"), "its offset is used by G1 native code");
-
-        /* G1 needs a custom filler array class that does not match int[].class. */
-        accessImpl.registerAsUsed(FillerArray.class);
 
         /* Needed for the barrier set. */
         accessImpl.registerAsUsed(Object[].class);
