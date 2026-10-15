@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,6 +80,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -564,7 +565,7 @@ public class DebuggerFeature implements InternalFeature {
                     interpreterMethod.setEnterStubOffset(estOffset++);
                 }
 
-                interpreterMethod.setNativeEntryPoint(InterpreterResolvedJavaMethod.createMethodRef(interpreterMethod.getOriginalMethod()));
+                interpreterMethod.setNativeEntryPoint(MethodRefUtils.create(interpreterMethod.getOriginalMethod()));
             }
 
             if (!interpreterMethod.isStatic() && !interpreterMethod.isConstructor()) {

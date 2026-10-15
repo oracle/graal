@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
-import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * Only sets the {@linkplain ReservedRegisters reserved registers}, but does not do any thread
@@ -40,7 +38,6 @@ import com.oracle.svm.core.thread.VMThreads;
 public class InitializeReservedRegistersPrologue implements CEntryPointOptions.Prologue {
     @Uninterruptible(reason = "prologue")
     public static void enter(IsolateThread thread) {
-        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
-        CEntryPointSnippets.initBaseRegisters(VMThreads.IsolateTL.get());
+        CEntryPointSnippets.initReservedRegisters(thread);
     }
 }

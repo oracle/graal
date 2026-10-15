@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,11 @@ public class InitializeReservedRegistersForPossiblyUnattachedThread implements P
     @Uninterruptible(reason = "prologue")
     @SuppressWarnings("unused")
     public static void enter(Isolate heapBase, IsolateThread thread) {
-        CEntryPointSnippets.initBaseRegisters(heapBase);
-        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        if (thread.isNonNull()) {
+            CEntryPointSnippets.initReservedRegisters(thread);
+        } else {
+            CEntryPointSnippets.initBaseRegisters(heapBase);
+            WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        }
     }
 }

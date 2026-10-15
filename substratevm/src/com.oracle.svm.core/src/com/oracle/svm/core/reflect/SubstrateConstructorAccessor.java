@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 
 import jdk.internal.reflect.ConstructorAccessor;
@@ -65,7 +66,7 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
         if (initializeBeforeInvoke != null) {
             EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
         }
-        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(null, args, getCodePointer(factoryMethodTarget));
+        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(null, args, MethodRefUtils.asCodePointer(factoryMethodTarget));
     }
 
     /**
@@ -78,7 +79,7 @@ public final class SubstrateConstructorAccessor extends SubstrateAccessor implem
         if (initializeBeforeInvoke != null) {
             EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
         }
-        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(null, args, getCodePointer(factoryMethodTarget));
+        return ((MethodInvokeFunctionPointer) getExpandSignature()).invoke(null, args, MethodRefUtils.asCodePointer(factoryMethodTarget));
     }
 
     public static void checkReceiver(Class<?> declaringClass, Object obj) {

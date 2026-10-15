@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,13 +29,11 @@ import java.lang.reflect.Executable;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.meta.MethodRefSupport;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 
 import jdk.internal.vm.annotation.Hidden;
@@ -100,21 +98,12 @@ public abstract class SubstrateAccessor {
         return targetMethod;
     }
 
-    @SuppressWarnings("unchecked")
-    protected static <T extends CFunctionPointer> T getCodePointer(MethodRef ref) {
-        Pointer p = (Pointer) ref;
-        if (SubstrateOptions.useRelativeCodePointers() && p.notEqual(0)) {
-            p = p.add(KnownIntrinsics.codeBase());
-        }
-        return (T) p;
-    }
-
     protected final <T extends CFunctionPointer> T getDirectTarget() {
-        return getCodePointer(directTarget);
+        return MethodRefUtils.asCodePointer(directTarget);
     }
 
     protected final <T extends CFunctionPointer> T getExpandSignature() {
-        return getCodePointer(expandSignature);
+        return MethodRefUtils.asCodePointer(expandSignature);
     }
 
     /*
