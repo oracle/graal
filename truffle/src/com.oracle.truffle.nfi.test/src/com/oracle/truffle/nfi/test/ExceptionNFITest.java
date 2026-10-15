@@ -47,7 +47,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
+import com.oracle.truffle.nfi.test.parser.backend.TestClosure;
+import com.oracle.truffle.nfi.test.parser.backend.TestSignature.TestFunction;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
@@ -88,6 +93,19 @@ public class ExceptionNFITest extends NFITest {
         }
     }
 
+    public static class NativeNullableCallback extends SendExecuteNode {
+
+        public NativeNullableCallback() {
+            super("callback_null_ret", "(():NULLABLE) : STRING");
+        }
+    }
+
+    private static Object recursiveCallback(CallTarget target) {
+        Object[] callback = new Object[1];
+        callback[0] = new TestCallback(0, (args) -> target.call(callback[0]));
+        return callback[0];
+    }
+
     public class NativeCheckException extends SendExecuteNode {
 
         public NativeCheckException() {
@@ -104,18 +122,116 @@ public class ExceptionNFITest extends NFITest {
         target.call(MyException.THROW);
     }
 
+    @Test
+    public void testPendingExceptionDoesNotLeak(@Inject(NativeJustCall.class) CallTarget target) {
+        RuntimeException first = new MyException();
+        RuntimeException second = new SuccessException();
+        Assert.assertSame(first, Assert.assertThrows(RuntimeException.class, () -> target.call(new TestCallback(0, args -> {
+            throw first;
+        }))));
+        int[] calls = {0};
+        target.call(new TestCallback(0, args -> {
+            calls[0]++;
+            return 0;
+        }));
+        Assert.assertEquals(1, calls[0]);
+        Assert.assertSame(second, Assert.assertThrows(RuntimeException.class, () -> target.call(new TestCallback(0, args -> {
+            throw second;
+        }))));
+        target.call(NOOP);
+    }
+
     /**
      * Checks that a stack overflow while entering a native closure is propagated and does not leave
      * the thread in a state that prevents later NFI calls.
      */
     @Test
     public void testStackOverflowDuringCallback(@Inject(NativeJustCall.class) CallTarget target) {
-        Assume.assumeFalse("Panama upcalls can terminate the VM on stack overflow", "panama".equals(TEST_BACKEND));
-        Object[] callback = new Object[1];
-        callback[0] = new TestCallback(0, (args) -> target.call(callback[0]));
-
-        Assert.assertThrows(StackOverflowError.class, () -> target.call(callback[0]));
+        assumeStackOverflowSupported();
+        Assert.assertThrows(StackOverflowError.class, () -> target.call(recursiveCallback(target)));
         target.call(NOOP);
+    }
+
+    /*
+     * Keep different return types in separate tests: unsupported signatures skip the entire test,
+     * including during target injection. For example, Panama supports numeric and pointer returns
+     * but not string or nullable returns.
+     */
+    @Test
+    public void testStackOverflowDuringNullableCallbackReturnMarshalling(@Inject(NativeNullableCallback.class) CallTarget target) {
+        assumeStackOverflowSupported();
+        Assert.assertThrows(StackOverflowError.class, () -> target.call(recursiveCallback(target)));
+    }
+
+    @Test
+    public void testStackOverflowDuringIntCallbackReturnMarshalling() throws UnsupportedMessageException {
+        testStackOverflowDuringNumericCallback("SINT32");
+    }
+
+    @Test
+    public void testStackOverflowDuringFloatCallbackReturnMarshalling() throws UnsupportedMessageException {
+        testStackOverflowDuringNumericCallback("FLOAT");
+    }
+
+    @Test
+    public void testStackOverflowDuringDoubleCallbackReturnMarshalling() throws UnsupportedMessageException {
+        testStackOverflowDuringNumericCallback("DOUBLE");
+    }
+
+    private static void testStackOverflowDuringNumericCallback(String type) throws UnsupportedMessageException {
+        assumeStackOverflowSupported();
+        CallTarget target = new SendExecuteNode("call_closure_noarg_" + type, String.format("(():%s) : %s", type, type)).getCallTarget();
+        Assert.assertThrows(StackOverflowError.class, () -> target.call(recursiveCallback(target)));
+
+        Object result = target.call(new TestCallback(0, (args) -> 42L));
+        Assert.assertTrue("isNumber", UNCACHED_INTEROP.isNumber(result));
+        Assert.assertEquals("return value", 42.0, UNCACHED_INTEROP.asDouble(result), 0.0);
+    }
+
+    private static void assumeStackOverflowSupported() {
+        Assume.assumeFalse("Panama upcalls can terminate the VM on stack overflow", "panama".equals(TEST_BACKEND));
+    }
+
+    @Test
+    public void testBackendExceptionPrecedenceAndCleanup() throws Exception {
+        Source source = Source.newBuilder("nfi", "with test (():sint32):sint32", "exceptionPrecedence").internal(true).build();
+        Object signature = runWithPolyglot.getTruffleTestEnv().parseInternal(source).call();
+        RuntimeException callbackFailure = new RuntimeException("callback");
+        RuntimeException backendFailure = new RuntimeException("backend");
+        TestFunction failingBackend = args -> {
+            UNCACHED_INTEROP.execute(((TestClosure) args[0]).executable);
+            throw backendFailure;
+        };
+        TestCallback throwing = new TestCallback(0, args -> {
+            throw callbackFailure;
+        });
+        Assert.assertSame(callbackFailure, Assert.assertThrows(RuntimeException.class,
+                        () -> SignatureLibrary.getUncached().call(signature, failingBackend, throwing)));
+        int[] calls = {0};
+        TestCallback successful = new TestCallback(0, args -> {
+            calls[0]++;
+            return 42;
+        });
+        TestFunction successfulBackend = args -> UNCACHED_INTEROP.execute(((TestClosure) args[0]).executable);
+        Assert.assertEquals(42, SignatureLibrary.getUncached().call(signature, successfulBackend, successful));
+        Assert.assertEquals(1, calls[0]);
+        Assert.assertSame(backendFailure, Assert.assertThrows(RuntimeException.class,
+                        () -> SignatureLibrary.getUncached().call(signature, failingBackend, successful)));
+        Assert.assertEquals(42, SignatureLibrary.getUncached().call(signature, successfulBackend, successful));
+        Assert.assertEquals(3, calls[0]);
+    }
+
+    @Test
+    public void testSuccessfulCallbackWithPendingException() {
+        CallTarget target = new SendExecuteNode("native_call_after_exception", "(():void, ():sint32, (sint32):void):void").getCallTarget();
+        int[] observed = {-1};
+        TestCallback success = new TestCallback(0, args -> 42);
+        TestCallback observe = new TestCallback(1, args -> {
+            observed[0] = (int) args[0];
+            return 0;
+        });
+        Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, observe));
+        Assert.assertEquals(42, observed[0]);
     }
 
     /**

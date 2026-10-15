@@ -50,6 +50,11 @@ EXPORT void native_just_call_2(void (*callback1)(), void (*callback2)()) {
     callback2();
 }
 
+EXPORT void native_call_after_exception(void (*fail)(), int (*success)(), void (*observe)(int)) {
+    fail();
+    observe(success());
+}
+
 EXPORT void native_check_exception(TruffleEnv *env, void (*callback)(), void (*onSuccess)()) {
     callback();
     if ((*env)->exceptionCheck(env)) {

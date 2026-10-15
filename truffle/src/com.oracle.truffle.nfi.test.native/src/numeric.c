@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,10 @@
                                                                                                                                                      \
     EXPORT type call_closure_##name(type (*fn)(type), type arg) {                                                                                    \
         return fn(arg);                                                                                                                              \
+    }                                                                                                                                                \
+                                                                                                                                                     \
+    EXPORT type call_closure_noarg_##name(type (*fn)(void)) {                                                                                        \
+        return fn();                                                                                                                                 \
     }                                                                                                                                                \
                                                                                                                                                      \
     EXPORT type callback_##name(type (*fn)(type), type arg) {                                                                                        \

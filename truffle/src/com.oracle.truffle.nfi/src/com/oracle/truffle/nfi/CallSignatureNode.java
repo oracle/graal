@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,31 +84,15 @@ abstract class CallSignatureNode extends Node {
         Object doOptimizedDirect(NFISignature signature, Object function, Object[] args,
                         @Cached("signature.cachedState") SignatureCachedState cachedState,
                         @Cached("cachedState.createOptimizedSignatureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-            try {
-                assert cachedState == signature.cachedState;
-                return call.execute(signature, function, args);
-            } finally {
-                /*
-                 * Rethrow pending exceptions from upcalls. This might swallow other pending
-                 * exceptions at this point. But all exceptions that might be pending here come the
-                 * marshalling of the return value. If there is a pending exception, we essentially
-                 * pretend that the return value handling never happened, since the return value is
-                 * usused anyway.
-                 */
-                NFILanguage.get(this).rethrowPendingException();
-            }
+            assert cachedState == signature.cachedState;
+            return call.execute(signature, function, args);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "doOptimizedDirect", guards = "signature.cachedState != null")
         Object doOptimizedIndirect(NFISignature signature, Object function, Object[] args,
                         @Cached IndirectCallNode call) {
-            try {
-                return call.call(signature.cachedState.getPolymorphicSignatureCall(), signature, function, args);
-            } finally {
-                // rethrow pending exceptions from upcalls (see also comment in doOptimizedDirect)
-                NFILanguage.get(this).rethrowPendingException();
-            }
+            return call.call(signature.cachedState.getPolymorphicSignatureCall(), signature, function, args);
         }
 
         @ReportPolymorphism.Megamorphic
@@ -120,28 +104,36 @@ abstract class CallSignatureNode extends Node {
                         @Cached ConvertFromNativeNode convertRet,
                         @CachedLibrary(limit = "3") NFIBackendSignatureLibrary nativeLibrary,
                         @Cached BackendSymbolUnwrapNode backendSymbolUnwrapNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+            if (args.length != signature.managedArgCount) {
+                exception.enter(node);
+                throw ArityException.create(signature.managedArgCount, signature.managedArgCount, args.length);
+            }
+
+            Object[] preparedArgs = new Object[signature.nativeArgCount];
+            int argIdx = 0;
+            for (int i = 0; i < preparedArgs.length; i++) {
+                Object input = null;
+                if (signature.argTypes[i].cachedState.managedArgCount == 1) {
+                    input = args[argIdx++];
+                }
+                preparedArgs[i] = convertArg.executeInlined(node, signature.argTypes[i], input);
+            }
+            Object ret;
             try {
-                if (args.length != signature.managedArgCount) {
-                    exception.enter(node);
-                    throw ArityException.create(signature.managedArgCount, signature.managedArgCount, args.length);
-                }
-
-                Object[] preparedArgs = new Object[signature.nativeArgCount];
-                int argIdx = 0;
-                for (int i = 0; i < preparedArgs.length; i++) {
-                    Object input = null;
-                    if (signature.argTypes[i].cachedState.managedArgCount == 1) {
-                        input = args[argIdx++];
-                    }
-                    preparedArgs[i] = convertArg.executeInlined(node, signature.argTypes[i], input);
-                }
-
-                Object ret = nativeLibrary.call(signature.nativeSignature, backendSymbolUnwrapNode.execute(node, function), preparedArgs);
-                return convertRet.executeInlined(node, signature.retType, ret);
+                ret = nativeLibrary.call(signature.nativeSignature, backendSymbolUnwrapNode.execute(node, function), preparedArgs);
             } finally {
-                // rethrow pending exceptions from upcalls
+                /*
+                 * Rethrow before return conversion: the return is unused when an exception must be
+                 * thrown. We should do as little work as possible in case the runtime is close to heap
+                 * or stack limits and throwing StackOverflow- or OutOfMemoryError.
+                 * This is done in a finally to cover cases where an exception happens after returning
+                 * from native in the backend signature library. Such exceptions are silently dropped in
+                 * favor of the saved pending exception. Throwable.addSuppressed is not used to keep
+                 * work minimal and non-allocating in this path.
+                 */
                 NFILanguage.get(node).rethrowPendingException();
             }
+            return convertRet.executeInlined(node, signature.retType, ret);
         }
 
     }
@@ -205,7 +197,13 @@ abstract class CallSignatureNode extends Node {
                 throw ArityException.create(managedArgCount, managedArgCount, args.length);
             }
             Object[] preparedArgs = prepareArgs(signature, args);
-            Object ret = backendLibrary.call(signature.nativeSignature, backendSymbolUnwrapNode.execute(this, function), preparedArgs);
+            Object ret;
+            try {
+                ret = backendLibrary.call(signature.nativeSignature, backendSymbolUnwrapNode.execute(this, function), preparedArgs);
+            } finally {
+                // Rethrow before return conversion (see CachedCallSignatureNode.doSlowPath).
+                NFILanguage.get(this).rethrowPendingException();
+            }
             return convertRet.execute(signature.retType, ret);
         }
     }
