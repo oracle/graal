@@ -107,6 +107,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -138,7 +139,7 @@ public final class G1Heap extends Heap {
     public static final FastThreadLocalBytes<Word> javaThreadTL = FastThreadLocalFactory.createBytes(G1Constants::javaThreadSize, "G1Heap.javaThread");
     private static final FastThreadLocalWord<Word> cardTableAddressTL = FastThreadLocalFactory.createWord("G1Heap.cardTableAddress").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
-    private static long gcTotalCollectionsAddress;
+    @ReflectivelyAccessed private static long gcTotalCollectionsAddress;
 
     private final G1GC gc = new G1GC();
     private final G1ImageHeapInfo imageHeapInfo = new G1ImageHeapInfo();

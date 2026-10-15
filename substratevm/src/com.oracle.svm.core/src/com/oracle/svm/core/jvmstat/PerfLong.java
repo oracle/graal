@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,14 @@ import static jdk.vm.ci.meta.JavaKind.Long;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.ReflectivelyAccessed;
+
 import jdk.internal.misc.Unsafe;
 
 public abstract class PerfLong extends AbstractPerfDataEntry {
     public static final long VALUE_OFFSET = Unsafe.getUnsafe().objectFieldOffset(PerfLong.class, "value");
 
-    protected long value;
+    @ReflectivelyAccessed protected long value;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     PerfLong(String name, PerfUnit unit) {

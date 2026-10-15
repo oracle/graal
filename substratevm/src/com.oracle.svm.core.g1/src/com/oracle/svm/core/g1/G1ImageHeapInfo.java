@@ -34,6 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
@@ -51,8 +52,8 @@ public class G1ImageHeapInfo {
      */
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) int closedImageHeapRegions;
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) int openImageHeapRegions;
-    @UnknownObjectField(availability = AfterHeapLayout.class) byte[] regionTypes;
-    @UnknownObjectField(availability = AfterHeapLayout.class) int[] regionFreeSpaces;
+    @ReflectivelyAccessed @UnknownObjectField(availability = AfterHeapLayout.class) byte[] regionTypes;
+    @ReflectivelyAccessed @UnknownObjectField(availability = AfterHeapLayout.class) int[] regionFreeSpaces;
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) int dynamicHubCount;
 
     @Platforms(value = Platform.HOSTED_ONLY.class)

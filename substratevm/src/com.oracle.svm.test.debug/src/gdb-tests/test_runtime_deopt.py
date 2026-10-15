@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -89,23 +89,14 @@ class TestRuntimeDeopt(unittest.TestCase):
             self.assertIn('deoptFrameValues=2', backtrace)
 
             # check if values are printed correctly and backtrace is not corrupted
-            if 'SubstrateEnterpriseOptimizedCallTarget' in backtrace:
-                self.assertIn('SubstrateEnterpriseOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...}', backtrace)
-                self.assertIn('SubstrateEnterpriseOptimizedCallTarget::doInvoke', backtrace)
-            else:
-                self.assertIn('SubstrateOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...})', backtrace)
-                self.assertIn('SubstrateOptimizedCallTargetInstalledCode::doInvoke', backtrace)
+            self.assertIn('SubstrateOptimizedCallTarget = {...}, __1=java.lang.Object[5] = {...}', backtrace)
+            self.assertIn('SubstrateOptimizedCallTarget::doInvoke', backtrace)
         else:
             # must be lazy deopt frame
             self.assertIn('[LAZY DEOPT FRAME]', backtrace)
 
-            if 'SubstrateEnterpriseOptimizedCallTarget' in backtrace:
-                # check if we still see the parameters of the lazily deoptimized method on the backtrace
-                self.assertRegex(backtrace, re.compile(rf'0x{hex_pattern} in \[LAZY DEOPT FRAME\] .* \(callTarget={value_pattern}, args={value_pattern}, __Object2={value_pattern}, __int3={value_pattern}, __int4={value_pattern}, __boolean5={value_pattern}\)'))
-            else:
-                # must be a SubstrateOptimizedCallTarget
-                self.assertIn('SubstrateOptimizedCallTarget', backtrace)
-                self.assertRegex(backtrace, re.compile(rf'0x{hex_pattern} in \[LAZY DEOPT FRAME\] .* \(this={value_pattern}, originalArguments={value_pattern}\)'))
+            # check if we still see the parameters of the lazily deoptimized method on the backtrace
+            self.assertRegex(backtrace, re.compile(rf'0x{hex_pattern} in \[LAZY DEOPT FRAME\] .* \(callTarget={value_pattern}, args={value_pattern}, __Object2={value_pattern}, __int3={value_pattern}, __int4={value_pattern}, __boolean5={value_pattern}\)'))
 
         # the backtrace should contain no unknown frames
         self.assertNotIn('??', backtrace)
@@ -120,13 +111,8 @@ class TestRuntimeDeopt(unittest.TestCase):
 
         # check backtrace
         backtrace = gdb_execute('backtrace 5')
-        if 'SubstrateEnterpriseOptimizedCallTarget' in backtrace:
-            self.assertIn('SubstrateEnterpriseOptimizedCallTarget::add_I_AAIIZ', backtrace)
-            self.assertNotIn('<unknown type in <in-memory@', backtrace)
-        else:
-            self.assertIn('com.oracle.truffle.runtime.OptimizedCallTarget::profiledPERoot', backtrace)
-            self.assertIn('(this=<optimized out>, originalArguments=', backtrace)
-            self.assertNotIn('this=<unknown type in <in-memory@', backtrace)
+        self.assertIn('SubstrateOptimizedCallTarget::add_I_AAIIZ', backtrace)
+        self.assertNotIn('<unknown type in <in-memory@', backtrace)
 
 
 # redirect unittest output to terminal

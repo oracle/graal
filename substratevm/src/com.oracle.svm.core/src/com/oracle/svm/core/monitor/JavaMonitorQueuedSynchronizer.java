@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -43,6 +43,7 @@ import com.oracle.svm.core.jfr.traceid.JfrEpoch;
 import com.oracle.svm.core.monitor.JavaMonitor.FastMonitorExitStatus;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
@@ -86,7 +87,7 @@ public abstract class JavaMonitorQueuedSynchronizer {
     protected static final int SPIN_SUCCESS = -1;
 
     @SuppressWarnings("unused") // used via Unsafe
-    private int spinDuration = SPIN_LIMIT;
+    @ReflectivelyAccessed private int spinDuration = SPIN_LIMIT;
 
     // see AbstractQueuedLongSynchronizer.Node
     @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "Node")

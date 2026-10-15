@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,10 @@ import static jdk.vm.ci.meta.JavaKind.Byte;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.ReflectivelyAccessed;
+
 public class PerfStringVariable extends PerfString implements MutablePerfDataEntry {
-    private final byte[] nullTerminatedValue;
+    @ReflectivelyAccessed private final byte[] nullTerminatedValue;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     PerfStringVariable(String name, int lengthInBytes) {

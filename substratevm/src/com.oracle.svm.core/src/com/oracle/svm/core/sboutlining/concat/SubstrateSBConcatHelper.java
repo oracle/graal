@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -115,6 +116,7 @@ public final class SubstrateSBConcatHelper {
      * @param value value to mix in
      * @return new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L174-L176")
     static LengthCoderAndCapacityStruct mix(LengthCoderAndCapacityStruct lengthCoderAndCapacity, boolean value) {
         int addend = (value ? 4 : 5);
@@ -133,6 +135,7 @@ public final class SubstrateSBConcatHelper {
      * @param value value to mix in
      * @return new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L185-L187")
     static LengthCoderAndCapacityStruct mix(LengthCoderAndCapacityStruct lengthCoderAndCapacity, char value) {
         long addend = 1;
@@ -151,6 +154,7 @@ public final class SubstrateSBConcatHelper {
      * @param value value to mix in
      * @return new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L196-L198")
     static LengthCoderAndCapacityStruct mix(LengthCoderAndCapacityStruct lengthCoderAndCapacity, int value) {
         long addend = DecimalDigits.stringSize(value);
@@ -169,6 +173,7 @@ public final class SubstrateSBConcatHelper {
      * @param value value to mix in
      * @return new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L207-L209")
     static LengthCoderAndCapacityStruct mix(LengthCoderAndCapacityStruct lengthCoderAndCapacity, long value) {
         long addend = DecimalDigits.stringSize(value);
@@ -187,6 +192,7 @@ public final class SubstrateSBConcatHelper {
      * @param value value to mix in
      * @return new length and coder
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L218-L224")
     static LengthCoderAndCapacityStruct mix(LengthCoderAndCapacityStruct lengthCoderAndCapacity, String value) {
         long addend = value.length();
@@ -210,6 +216,7 @@ public final class SubstrateSBConcatHelper {
      * @param indexCoder
      * @return the newly allocated byte array
      */
+    @ReflectivelyAccessed
     @AlwaysInline("@ForceInline in JDK")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L561-L566")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringConcatHelper.java#L573-L579")
@@ -234,6 +241,7 @@ public final class SubstrateSBConcatHelper {
         }
     }
 
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringBuilder.java#L117-L120")
     static StringBuilder newStringBuilder(byte[] buf, long indexCoder, long count) {
         Target_java_lang_AbstractStringBuilder sb;
@@ -248,6 +256,7 @@ public final class SubstrateSBConcatHelper {
         return SubstrateUtil.cast(sb, StringBuilder.class);
     }
 
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/StringBuffer.java#L117-L147")
     static StringBuffer newStringBuffer(byte[] buf, long indexCoder, long count) {
         Target_java_lang_AbstractStringBuilder sb;
@@ -262,14 +271,17 @@ public final class SubstrateSBConcatHelper {
         return SubstrateUtil.cast(sb, StringBuffer.class);
     }
 
+    @ReflectivelyAccessed
     static long getIndexCoder(LengthCoderAndCapacityStruct struct) {
         return struct.getLengthCoder();
     }
 
+    @ReflectivelyAccessed
     static long getCount(LengthCoderAndCapacityStruct struct) {
         return struct.getLengthCoder() & NumUtil.getNbitNumberLong(32);
     }
 
+    @ReflectivelyAccessed
     static LengthCoderAndCapacityStruct initializeCoderAndCapacity(LengthCoderAndCapacityStruct struct, int initialCapacity) {
         long indexCoder = SubstrateStringConcatHelper.initialCoder();
         struct.setLengthCoder(indexCoder);
@@ -284,6 +296,7 @@ public final class SubstrateSBConcatHelper {
      * capacity at the same point. A valid capacity is returned unchanged for subsequent outlining
      * operations.
      */
+    @ReflectivelyAccessed
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/AbstractStringBuilder.java#L99-L107")
     public static int validateCapacity(int capacity) {
         if (capacity < 0) {
@@ -304,6 +317,7 @@ public final class SubstrateSBConcatHelper {
          * Note that this method can throw a {@link NullPointerException} if {@code str} is null.
          * This is the same behavior as in AbstractStringBuilder.
          */
+        @ReflectivelyAccessed
         @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/AbstractStringBuilder.java#L117-L125")
         public static int initialCapacityFor(String str) {
             int length = str.length();

@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.sboutlining.concat.SubstrateSBConcatHelper;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -125,16 +126,19 @@ public class SubstrateSBConcatGraphBuilder {
         }
     }
 
+    @ReflectivelyAccessed
     public static ValueNode create1ArgInvoke(Method method, HostedGraphKit kit, ValueNode x) {
         ResolvedJavaMethod target = kit.getMetaAccess().lookupJavaMethod(method);
         return kit.createInvokeWithExceptionAndUnwind(target, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), x);
     }
 
+    @ReflectivelyAccessed
     public static ValueNode create2ArgInvoke(Method method, HostedGraphKit kit, ValueNode x, ValueNode y) {
         ResolvedJavaMethod target = kit.getMetaAccess().lookupJavaMethod(method);
         return kit.createInvokeWithExceptionAndUnwind(target, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), x, y);
     }
 
+    @ReflectivelyAccessed
     public static ValueNode create3ArgInvoke(Method method, HostedGraphKit kit, ValueNode x, ValueNode y, ValueNode z) {
         ResolvedJavaMethod target = kit.getMetaAccess().lookupJavaMethod(method);
         return kit.createInvokeWithExceptionAndUnwind(target, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), x, y, z);
@@ -150,6 +154,7 @@ public class SubstrateSBConcatGraphBuilder {
         return mixInvokeMH.bindTo(primitiveClass);
     }
 
+    @ReflectivelyAccessed
     static ValueNode createMixInvoke(Class<?> argType, HostedGraphKit kit, ValueNode lengthCoder, ValueNode value) {
         Method mixMethod = ReflectionUtil.lookupMethod(SubstrateSBConcatHelper.class, "mix", SubstrateSBConcatHelper.LengthCoderAndCapacityStruct.class, argType);
         ResolvedJavaMethod mix = kit.getMetaAccess().lookupJavaMethod(mixMethod);
@@ -166,6 +171,7 @@ public class SubstrateSBConcatGraphBuilder {
         }
     }
 
+    @ReflectivelyAccessed
     static ValueNode stackAllocateCodeCapacityStruct(HostedGraphKit kit) {
         int structSize = SizeOf.get(SubstrateSBConcatHelper.LengthCoderAndCapacityStruct.class);
         StackValueNode node = kit.append(StackValueNode.create(structSize, kit.getGraph().method(), kit.bci(), true));

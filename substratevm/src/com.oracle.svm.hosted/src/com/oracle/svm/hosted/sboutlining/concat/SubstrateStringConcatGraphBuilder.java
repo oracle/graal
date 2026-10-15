@@ -38,6 +38,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.svm.core.sboutlining.concat.SubstrateStringConcatHelper;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -141,11 +142,13 @@ public class SubstrateStringConcatGraphBuilder {
         }
     }
 
+    @ReflectivelyAccessed
     public static ValueNode create1ArgInvoke(Method method, HostedGraphKit kit, ValueNode x) {
         ResolvedJavaMethod target = kit.getMetaAccess().lookupJavaMethod(method);
         return kit.createInvokeWithExceptionAndUnwind(target, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), x);
     }
 
+    @ReflectivelyAccessed
     public static ValueNode create2ArgInvoke(Method method, HostedGraphKit kit, ValueNode x, ValueNode y) {
         ResolvedJavaMethod target = kit.getMetaAccess().lookupJavaMethod(method);
         return kit.createInvokeWithExceptionAndUnwind(target, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), x, y);
@@ -161,6 +164,7 @@ public class SubstrateStringConcatGraphBuilder {
         return mixInvokeMH.bindTo(primitiveClass);
     }
 
+    @ReflectivelyAccessed
     static ValueNode createMixInvoke(Class<?> argType, HostedGraphKit kit, ValueNode lengthCoder, ValueNode value) {
         Method mixMethod = ReflectionUtil.lookupMethod(SubstrateStringConcatHelper.class, "mix", long.class, argType);
         ResolvedJavaMethod mix = kit.getMetaAccess().lookupJavaMethod(mixMethod);
@@ -177,6 +181,7 @@ public class SubstrateStringConcatGraphBuilder {
         return prependInvokeMH.bindTo(primitiveClass);
     }
 
+    @ReflectivelyAccessed
     static ValueNode createPrependInvoke(Class<?> argType, HostedGraphKit kit, ValueNode indexCoder, ValueNode buf, ValueNode value, ValueNode prefix) {
         Method prependMethod = ReflectionUtil.lookupMethod(SubstrateStringConcatHelper.class, "prepend", long.class, byte[].class, argType, String.class);
         ResolvedJavaMethod mix = kit.getMetaAccess().lookupJavaMethod(prependMethod);

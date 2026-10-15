@@ -2331,7 +2331,7 @@ suite = {
                     """com.oracle.svm.jvmci.shared.code to
                             jdk.graal.compiler,
                             com.oracle.svm.svm_enterprise,
-                            com.oracle.truffle.enterprise.svm,
+                            org.graalvm.truffle.runtime.svm,
                             org.graalvm.extraimage.builder,
                             org.graalvm.nativeimage.builder,
                             org.graalvm.nativeimage.foreign,
@@ -2340,7 +2340,7 @@ suite = {
                             org.graalvm.nativeimage.llvm""",
                     """com.oracle.svm.jvmci.shared.meta to
                             com.oracle.svm.svm_enterprise,
-                            com.oracle.truffle.enterprise.svm,
+                            org.graalvm.truffle.runtime.svm,
                             org.graalvm.extraimage.builder,
                             org.graalvm.nativeimage.builder,
                             org.graalvm.nativeimage.jvmci.guest,

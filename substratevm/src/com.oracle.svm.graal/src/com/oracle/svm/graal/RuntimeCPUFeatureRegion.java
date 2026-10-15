@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.graal.aarch64.AArch64CPUFeatureRegionOp;
 import com.oracle.svm.graal.amd64.AMD64CPUFeatureRegionOp;
+import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
 import jdk.graal.compiler.core.common.LIRKind;
@@ -269,17 +270,21 @@ public final class RuntimeCPUFeatureRegion {
     /**
      * @see #enterSet(EnumSet)
      */
+    @ReflectivelyAccessed
     public static native RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<?> arg0);
 
     /**
      * @see #enterSet(EnumSet)
      */
+    @ReflectivelyAccessed
     public static native <T extends Enum<T>> RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<T> arg0, @ConstantNodeParameter Enum<T> arg1);
 
     /**
      * @see #enterSet(EnumSet)
      */
+    @ReflectivelyAccessed
     public static native <T extends Enum<T>> RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<T> arg0, @ConstantNodeParameter Enum<T> arg1, @ConstantNodeParameter Enum<T> arg2);
 
+    @ReflectivelyAccessed
     public native void leave();
 }

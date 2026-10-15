@@ -27,10 +27,11 @@ package com.oracle.svm.truffle.api;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
@@ -56,6 +57,7 @@ import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstratePartialEvaluator extends PartialEvaluator {
 
@@ -111,6 +113,7 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
     protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         SubstrateTruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, (SubstrateKnownTruffleTypes) getTypes());
+        TypedEntrySupport.registerRuntimePlugins(invocationPlugins, canDelayIntrinsification);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -122,6 +125,11 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, config.lastTier().providers(), config.architecture());
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
+    }
+
+    @Override
+    public ResolvedJavaMethod rootForCallTarget(TruffleCompilable callTarget) {
+        return TypedEntrySupport.singleton().rootForCallTarget(callTarget);
     }
 
     @Override
