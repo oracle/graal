@@ -34,12 +34,15 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.jni.JNILibraryLinkagePlan;
 import com.oracle.svm.test.NativeImageBuildArgs;
@@ -60,11 +63,6 @@ public class UserProvidedStaticLibraryTest {
         private Path libraryDirectory;
 
         @Override
-        public boolean isInConfiguration(IsInConfigurationAccess access) {
-            return isSupportedPlatform();
-        }
-
-        @Override
         public void duringSetup(DuringSetupAccess access) {
             NativeLibraries nativeLibraries = NativeLibraries.singleton();
             Path directory = nativeLibraries.tempDirectory.resolve("user-provided-static-library");
@@ -74,7 +72,7 @@ public class UserProvidedStaticLibraryTest {
                 createLibrary(directory, DIRECT_DEPENDENCY_NAME, List.of(TRANSITIVE_DEPENDENCY_NAME), null);
                 createLibrary(directory, TRANSITIVE_DEPENDENCY_NAME, List.of(), null);
                 nativeLibraries.getLibraryPaths().add(libraryDirectory.toString());
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
                 throw new AssertionError(e);
             }
         }
@@ -104,12 +102,16 @@ public class UserProvidedStaticLibraryTest {
             assertTrue(linkedLibraries.contains(prefix + TRANSITIVE_DEPENDENCY_NAME + suffix));
         }
 
-        private static Path createLibrary(Path directory, String libraryName, List<String> dependencies, String symbol) throws IOException {
+        private static Path createLibrary(Path directory, String libraryName, List<String> dependencies, String symbol) throws IOException, InterruptedException {
             Files.createDirectories(directory);
             String prefix = Platform.includedIn(Platform.WINDOWS.class) ? "" : "lib";
             String suffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
             Path library = directory.resolve(prefix + libraryName + suffix).toAbsolutePath();
-            Files.write(library, "!<arch>\n".getBytes(StandardCharsets.US_ASCII));
+            if (Platform.includedIn(Platform.WINDOWS.class)) {
+                createWindowsLibrary(directory, libraryName, library);
+            } else {
+                Files.write(library, "!<arch>\n".getBytes(StandardCharsets.US_ASCII));
+            }
             StringBuilder manifest = new StringBuilder();
             dependencies.forEach(dependency -> manifest.append("dependency:").append(dependency).append(System.lineSeparator()));
             if (symbol != null) {
@@ -118,14 +120,28 @@ public class UserProvidedStaticLibraryTest {
             Files.writeString(Path.of(library + ".symbols"), manifest);
             return library;
         }
+
+        private static void createWindowsLibrary(Path directory, String libraryName, Path library) throws IOException, InterruptedException {
+            Path source = directory.resolve(libraryName + ".c");
+            Path object = directory.resolve(libraryName + ".obj");
+            Files.writeString(source, "void " + libraryName + "_dummy(void) {}" + System.lineSeparator());
+
+            CCompilerInvoker compiler = ImageSingletons.lookup(CCompilerInvoker.class);
+            compiler.compileAndParseError(false, List.of("/c", "/Fo" + object), source, object,
+                            (command, _, line) -> {
+                                throw new AssertionError("Unable to compile " + source + " with " + command.command() + ": " + line);
+                            });
+
+            Path librarian = compiler.compilerInfo.compilerPath.resolveSibling("lib.exe");
+            int status = FileUtils.executeCommand(librarian.toString(), "/NOLOGO", "/OUT:" + library, object.toString());
+            if (status != 0) {
+                throw new AssertionError("Unable to create " + library + ": lib.exe exited with status " + status);
+            }
+        }
     }
 
     @Test
     public void staticLibraryWithoutOnLoadCanBeLinked() {
         /* The feature performs the assertions while the native image is being built. */
-    }
-
-    private static boolean isSupportedPlatform() {
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 }
