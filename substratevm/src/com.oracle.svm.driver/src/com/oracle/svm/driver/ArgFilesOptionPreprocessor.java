@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 import com.oracle.svm.hosted.util.JDKArgsUtils;
+import com.oracle.svm.shared.option.OptionOrigin;
 
 public class ArgFilesOptionPreprocessor {
 
@@ -43,6 +44,10 @@ public class ArgFilesOptionPreprocessor {
     private boolean disableAtFiles = false;
 
     public List<String> process(String currentArg) {
+        return process(currentArg, null);
+    }
+
+    public List<String> process(String currentArg, OptionOrigin origin) {
         String argWithoutQuotes = currentArg.replaceAll("['\"]*", "");
         if (DISABLE_AT_FILES_OPTION.equals(argWithoutQuotes)) {
             disableAtFiles = true;
@@ -57,7 +62,17 @@ public class ArgFilesOptionPreprocessor {
             }
             boolean expandOptionValues = argWithoutAt.startsWith("=");
             Path argFile = Paths.get(expandOptionValues ? argWithoutAt.substring(1) : argWithoutAt);
-            List<String> arguments = readArgFile(argFile, expandOptionValues);
+            if (origin != null) {
+                if (argFile.isAbsolute()) {
+                    NativeImage.showError("Argument file '" + argFile + "' must be relative to " + origin);
+                }
+                // Check before JAR filesystem resolution, which would discard leading '..' components.
+                Path relativeToContainer = origin.resolveRedirectionPath(argFile);
+                if (relativeToContainer.getRoot() != null || relativeToContainer.startsWith("..")) {
+                    NativeImage.showError("Argument file '" + argFile + "' referenced by " + origin + " escapes its containing directory or JAR");
+                }
+            }
+            List<String> arguments = readArgFile(argFile, expandOptionValues, origin);
             if (expandOptionValues) {
                 arguments = expandOptionValueContinuations(arguments);
             }
@@ -91,14 +106,14 @@ public class ArgFilesOptionPreprocessor {
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
-    private static List<String> readArgFile(Path file, boolean markBlankLines) {
+    private static List<String> readArgFile(Path file, boolean markBlankLines, OptionOrigin origin) {
         List<String> arguments = new ArrayList<>();
 
         String options = null;
         try {
-            options = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+            options = origin == null ? new String(Files.readAllBytes(file), StandardCharsets.UTF_8) : origin.readRedirectionFile(file);
         } catch (IOException e) {
-            NativeImage.showError("Cannot read argument file '" + file + "'");
+            NativeImage.showError("Cannot read argument file '" + file + "'", e);
         }
 
         CTX_ARGS ctx = new CTX_ARGS();

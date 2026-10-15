@@ -2305,6 +2305,7 @@ public class NativeImage {
     class NativeImageArgsProcessor implements Consumer<String> {
 
         private final ArgumentQueue args;
+        private final ArgFilesOptionPreprocessor argFilesPreprocessor = new ArgFilesOptionPreprocessor();
 
         NativeImageArgsProcessor(String argumentOrigin) {
             args = new ArgumentQueue(argumentOrigin);
@@ -2312,7 +2313,12 @@ public class NativeImage {
 
         @Override
         public void accept(String arg) {
-            args.add(arg);
+            if (OptionOrigin.originUser.equals(args.argumentOrigin)) {
+                // Command-line argument files have already been expanded.
+                args.add(arg);
+            } else {
+                argFilesPreprocessor.process(arg, OptionOrigin.from(args.argumentOrigin)).forEach(args::add);
+            }
         }
 
         void apply(boolean strict) {

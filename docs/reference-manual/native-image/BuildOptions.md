@@ -148,6 +148,12 @@ Running `native-image @=preserve.args -cp classes Main` expands the file into:
 -H:IncludeResources=my/library/.*,my/application/.*
 ```
 
+You can also use `@file` and `@=file` in the `Args` property of _native-image.properties_.
+File paths must be relative to the directory containing the properties file; for properties embedded in a JAR, the referenced file is read from the same JAR.
+For macro options, paths are relative to the macro option directory.
+References must stay within the containing class-path or module-path entry, or macro option directory; references that escape it are rejected.
+Expanded options retain the origin of the properties file and its restrictions.
+
 ## List of Useful Options
 
 There are some expert level options that a user may find useful or needed. For example, the option to dump graphs of the `native-image` builder, or to print various statistics during the build process.
