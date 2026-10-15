@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,12 @@ import java.nio.ByteBuffer;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 public class DirectByteBufferUtil {
+    /// Creates a buffer whose cleaner invokes `unmapper` to release the mapping at `addr`.
+    /// The cleaner runs at most once, either explicitly or after the buffer becomes unreachable.
+    public static ByteBuffer allocateMapped(int cap, long addr, Runnable unmapper) {
+        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(cap, addr, null, unmapper, false, null), ByteBuffer.class);
+    }
+
     public static ByteBuffer allocate(long addr, long cap) {
         return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(addr, cap), ByteBuffer.class);
     }

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.jvmstat;
+package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
 import static com.oracle.svm.core.posix.PosixStat.S_IRGRP;
@@ -30,15 +30,24 @@ import static com.oracle.svm.core.posix.PosixStat.S_IROTH;
 import static com.oracle.svm.core.posix.PosixStat.S_IRWXU;
 import static com.oracle.svm.core.posix.PosixStat.S_IXGRP;
 import static com.oracle.svm.core.posix.PosixStat.S_IXOTH;
+import static com.oracle.svm.core.posix.headers.Errno.EACCES;
 import static com.oracle.svm.core.posix.headers.Errno.EEXIST;
+import static com.oracle.svm.core.posix.headers.Errno.EISDIR;
+import static com.oracle.svm.core.posix.headers.Errno.ENOENT;
 import static com.oracle.svm.core.posix.headers.Errno.EPERM;
 import static com.oracle.svm.core.posix.headers.Errno.ESRCH;
+import static com.oracle.svm.core.posix.headers.Fcntl.O_CLOEXEC;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_CREAT;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_NOFOLLOW;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -56,15 +65,15 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.ASCII;
 import com.oracle.svm.core.jdk.management.Target_jdk_internal_vm_VMSupport;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
+import com.oracle.svm.core.jvmstat.ExternalPerfDataProvider;
 import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.posix.PosixStat;
-import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -83,19 +92,293 @@ import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.NumUtil;
 
-/**
- * This class uses high-level JDK features at the moment. In the future, we will need to rewrite
- * this code so that it can be executed during the isolate startup (i.e., in uninterruptible code),
- * see GR-40601.
- */
+/// Local perfdata creation still uses JDK services; running that path during uninterruptible
+/// isolate startup requires a rewrite (GR-40601).
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-class PosixPerfMemoryProvider implements PerfMemoryProvider {
+class PosixPerfMemoryProvider implements PerfMemoryProvider, ExternalPerfDataProvider {
+    /// Prefix shared by perfdata directory lookup and creation.
     private static final String PERFDATA_NAME = "hsperfdata";
 
     private String backingFilePath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     PosixPerfMemoryProvider() {
+    }
+
+    /// Attaches to another process through the POSIX shared-memory implementation.
+    @Override
+    public ByteBuffer attach(int vmId) throws IOException {
+        return mmapAttachShared(vmId);
+    }
+
+    /// Attaches through the secure directory and file checks used by HotSpot perfMemory.
+    /// The file is opened with `O_NOFOLLOW`, validated and mapped through the same descriptor.
+    /// Reopening the pathname after validation would allow a replacement file to bypass the checks.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.4-b23/src/hotspot/os/posix/perfMemory_posix.cpp#L1162-L1236")
+    private static ByteBuffer mmapAttachShared(int vmId) throws IOException {
+        int[] namespacePid = {Platform.includedIn(LINUX.class) ? getNamespacePid(vmId) : -1};
+        String user = getUserName(vmId, namespacePid);
+        if (user == null) {
+            throw new IllegalArgumentException("Could not map vmid to user Name");
+        }
+        String directory = getUserTmpDir(user, vmId, namespacePid[0]);
+        try (CTypeConversion.CCharPointerHolder dir = CTypeConversion.toCString(directory)) {
+            if (!isDirectorySecure(dir.get())) {
+                throw new IllegalArgumentException("Process not found");
+            }
+        }
+        String filename = directory + "/" + getSharedMemFileName(vmId, namespacePid[0]);
+        return mapSharedMemFile(filename);
+    }
+
+    /// Finds the owner of the JVM identified by `vmId`, updating `namespacePid[0]` for the Linux fallback.
+    /// The namespace PID is kept in Java memory because the directory search can unmount a virtual thread.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L637-L650")
+    private static String getUserName(int vmId, int[] namespacePid) throws IOException {
+        String result = getUserNameSlow(vmId, namespacePid[0]);
+        if (result == null && Platform.includedIn(LINUX.class)) {
+            result = getUserNameSlow(vmId, vmId);
+            if (result != null) {
+                namespacePid[0] = vmId;
+            }
+        }
+        return result;
+    }
+
+    /// Captures the liveness check's error before any safepoint or native transition can overwrite it.
+    @Uninterruptible(reason = "The native call and errno read must be in the same uninterruptible region.")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L500-L508")
+    private static int checkProcessExists(int vmId) {
+        return Signal.NoTransitions.kill(vmId, 0) == -1 ? LibC.errno() : 0;
+    }
+
+    /// Finds the user directory containing the newest matching perfdata file.
+    /// Matching directory names must contain an underscore before extracting the username.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L497-L633")
+    private static String getUserNameSlow(int vmId, int namespaceVmId) throws IOException {
+        // Repeat this check for the namespace fallback, as get_user_name_slow does in HotSpot.
+        int errno = checkProcessExists(vmId);
+        if (errno == ESRCH()) {
+            throw new IllegalArgumentException("Process not found");
+        } else if (errno != 0) {
+            throw new IOException(PosixUtils.strerror(errno));
+        }
+        String tmpDirName = Target_jdk_internal_vm_VMSupport.getVMTemporaryDirectory();
+        if (Platform.includedIn(LINUX.class) && namespaceVmId != -1) {
+            tmpDirName = "/proc/" + vmId + "/root" + tmpDirName;
+        }
+        int searchPid = namespaceVmId == -1 ? vmId : namespaceVmId;
+        int tmpDirFd;
+        try (CTypeConversion.CCharPointerHolder path = CTypeConversion.toCString(tmpDirName)) {
+            tmpDirFd = Fcntl.NoTransitions.restartableOpen(path.get(), O_RDONLY() | O_CLOEXEC(), 0);
+        }
+        if (tmpDirFd == -1) {
+            return null;
+        }
+        DIR tmpDir = Dirent.fdopendir(tmpDirFd);
+        if (tmpDir.isNull()) {
+            Unistd.NoTransitions.close(tmpDirFd);
+            return null;
+        }
+
+        String newestUser = null;
+        long newestCreation = 0;
+        try {
+            dirent entry;
+            while ((entry = Dirent.readdir(tmpDir)).isNonNull()) {
+                // Filter native names before allocating Java strings for matching directories.
+                if (!ASCII.startsWith(entry.d_name(), PERFDATA_NAME)) {
+                    continue;
+                }
+                String name = CTypeConversion.toJavaString(entry.d_name());
+                int separator = name.indexOf('_');
+                if (separator == -1) {
+                    continue;
+                }
+                String userDirectory = tmpDirName + "/" + name;
+                try (CTypeConversion.CCharPointerHolder path = CTypeConversion.toCString(userDirectory);
+                                SecureDirectory directory = openDirectorySecure(path.get())) {
+                    if (directory == null || !isDirectorySecure(path.get())) {
+                        continue;
+                    }
+                    dirent fileEntry;
+                    while ((fileEntry = Dirent.readdir(directory.dir)).isNonNull()) {
+                        if (filenameToPid(CTypeConversion.toJavaString(fileEntry.d_name())) != searchPid) {
+                            continue;
+                        }
+                        Path file = Paths.get(userDirectory, CTypeConversion.toJavaString(fileEntry.d_name()));
+                        try (CTypeConversion.CCharPointerHolder filePath = CTypeConversion.toCString(file.toString())) {
+                            long creationTime = getPerfDataFileCreationTime(filePath.get());
+                            if (creationTime > newestCreation) {
+                                newestCreation = creationTime;
+                                newestUser = name.substring(separator + 1);
+                            }
+                        }
+                    }
+                }
+            }
+        } finally {
+            Dirent.closedir(tmpDir);
+        }
+        return newestUser;
+    }
+
+    /// Gets the change time of a nonempty regular perfdata file, or zero if it is not a candidate.
+    /// The stat buffer and all reads from it must stay in one uninterruptible region so a virtual
+    /// thread cannot unmount and invalidate the native stack address.
+    @Uninterruptible(reason = "Keep the stack-allocated stat buffer valid when called from a virtual thread.")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L497-L633")
+    private static long getPerfDataFileCreationTime(CCharPointer filename) {
+        PosixStat.stat stat = StackValue.get(PosixStat.sizeOfStatStruct());
+        if (PosixStat.restartableLstat(filename, stat) == -1 || !PosixStat.S_ISREG(stat) || stat.st_size() <= 0) {
+            return 0;
+        }
+        return stat.st_ctime();
+    }
+
+    /// Maps the checked descriptor read-only, with HotSpot's single attempt and failure exception.
+    /// The cleaner owns the mapping only after buffer construction succeeds; until then this method
+    /// must unmap it on failure. The descriptor is closed on every exit, including invalid sizes.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.4-b23/src/hotspot/os/posix/perfMemory_posix.cpp#L1162-L1236")
+    private static ByteBuffer mapSharedMemFile(String filename) throws IOException {
+        int fd;
+        try (CTypeConversion.CCharPointerHolder path = CTypeConversion.toCString(filename)) {
+            fd = openSharedMemFile(path.get());
+        }
+        if (fd < 0) {
+            int error = -fd;
+            if (error == ENOENT()) {
+                throw new IllegalArgumentException("Process not found");
+            } else if (error == EACCES()) {
+                throw new IllegalArgumentException("Permission denied");
+            }
+            throw new IOException(PosixUtils.strerror(error));
+        }
+        try {
+            if (!isFileSecure(fd)) {
+                // HotSpot returns no mapping, without an exception, for an insecure file.
+                return DirectByteBufferUtil.allocate(0, 0);
+            }
+            long size = sharedMemFileSize(fd);
+            if (size == -1) {
+                throw new IOException("Could not determine PerfMemory size");
+            }
+            if (size == 0 || size % Unistd.getpagesize() != 0) {
+                throw new IOException("Invalid PerfMemory size");
+            }
+            Pointer address = Mman.mmap(Word.nullPointer(), Word.unsigned(size), Mman.PROT_READ(), Mman.MAP_SHARED(), fd, 0);
+            if (address == Mman.MAP_FAILED()) {
+                throw new OutOfMemoryError("Could not map PerfMemory");
+            }
+            try {
+                if (size > Integer.MAX_VALUE) {
+                    throw new IllegalArgumentException("PerfMemory size exceeds ByteBuffer capacity");
+                }
+                return DirectByteBufferUtil.allocateMapped((int) size, address.rawValue(), new CleanerAction(address.rawValue(), size));
+            } catch (Throwable t) {
+                Mman.munmap(address, Word.unsigned(size));
+                throw t;
+            }
+        } finally {
+            Unistd.NoTransitions.close(fd);
+        }
+    }
+
+    /// Opens an attachment file, returning its descriptor or the negated native error number.
+    /// Native calls and error reads must stay uninterruptible, including error capture before close.
+    /// `O_CLOEXEC` prevents inheritance across exec; directories are rejected as in HotSpot's `os::open`.
+    @Uninterruptible(reason = "The native call and errno read must be in the same uninterruptible region.")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L973-L1001")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/linux/os_linux.cpp#L4971-L5044")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/bsd/os_bsd.cpp#L2343-L2393")
+    private static int openSharedMemFile(CCharPointer filename) {
+        int fd = Fcntl.NoTransitions.restartableOpen(filename, O_RDONLY() | O_NOFOLLOW() | O_CLOEXEC(), 0);
+        if (fd == -1) {
+            return -LibC.errno();
+        }
+        PosixStat.stat stat = StackValue.get(PosixStat.sizeOfStatStruct());
+        int result = PosixStat.restartableFstat(fd, stat);
+        int error = result == -1 ? LibC.errno() : PosixStat.S_ISDIR(stat) ? EISDIR() : 0;
+        if (error != 0) {
+            Unistd.NoTransitions.close(fd);
+            return -error;
+        }
+        return fd;
+    }
+
+    /// Reads the size from the same descriptor that was checked and will be mapped.
+    @Uninterruptible(reason = "Keep the stack-allocated stat buffer valid when called from a virtual thread.")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L1133-L1154")
+    private static long sharedMemFileSize(int fd) {
+        PosixStat.stat stat = StackValue.get(PosixStat.sizeOfStatStruct());
+        return PosixStat.restartableFstat(fd, stat) == -1 ? -1 : stat.st_size();
+    }
+
+    /// Unmaps an external shared region whose lifetime has ended.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.4-b23/src/hotspot/os/posix/perfMemory_posix.cpp#L1090-L1104")
+    private static void unmapShared(long address, long size) {
+        Mman.munmap(Word.pointer(address), Word.unsigned(size));
+    }
+
+    /// Releases an external mapping without retaining the buffer watched by its cleaner.
+    /// Only the native address and size are retained: keeping the buffer or one of its views here
+    /// would prevent the cleaner's referent from becoming phantom reachable.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.4-b23/src/java.base/share/classes/jdk/internal/perf/Perf.java#L144-L160")
+    private static final class CleanerAction implements Runnable {
+        /// Address of the mapping owned by this cleaner.
+        private final long address;
+
+        /// Size of the mapping owned by this cleaner.
+        private final long size;
+
+        /// Records the mapping whose lifetime is controlled by the buffer cleaner.
+        CleanerAction(long address, long size) {
+            this.address = address;
+            this.size = size;
+        }
+
+        /// Unmaps once and contains unexpected exceptions, as the JDK's CleanerAction does.
+        @Override
+        public void run() {
+            try {
+                unmapShared(address, size);
+            } catch (Throwable th) {
+                assert false : th.toString();
+            }
+        }
+    }
+
+    /// Gets the PID in the first nested namespace, or indicates that no such namespace exists.
+    @Platforms(LINUX.class)
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+3/src/hotspot/os/linux/os_linux.cpp#L4331-L4361")
+    private static int getNamespacePid(int vmId) {
+        Path status = Paths.get("/proc", Integer.toString(vmId), "status");
+        try (BufferedReader reader = Files.newBufferedReader(status)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("NSpid:")) {
+                    int index = "NSpid:".length();
+                    for (int column = 0; column < 2; column++) {
+                        while (index < line.length() && (line.charAt(index) == ' ' || line.charAt(index) == '\t')) {
+                            index++;
+                        }
+                        int start = index;
+                        while (index < line.length() && line.charAt(index) >= '0' && line.charAt(index) <= '9') {
+                            index++;
+                        }
+                        if (index == start) {
+                            return -1;
+                        }
+                        if (column == 1) {
+                            return Integer.parseInt(line, start, index, 10);
+                        }
+                    }
+                    return -1;
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+        }
+        return -1;
     }
 
     /**
@@ -327,12 +610,21 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
     }
 
-    /**
-     * Convert the given file name into a process id. If the file does not meet the file naming
-     * constraints, return 0.
-     */
+    /// Converts an ASCII decimal file name to a positive process ID, or returns zero for a different name.
+    /// Rejects overflow rather than truncating a native `long` to `pid_t`, which could produce a
+    /// negative ID and make a later liveness check target a process group instead of one process.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L162-L191")
     private static int filenameToPid(String filename) {
+        if (filename.isEmpty()) {
+            return 0;
+        }
+        // Integer.parseInt accepts Unicode digits, unlike HotSpot's PID file-name parser.
+        for (int i = 0; i < filename.length(); i++) {
+            char digit = filename.charAt(i);
+            if (digit < '0' || digit > '9') {
+                return 0;
+            }
+        }
         try {
             return Integer.parseInt(filename);
         } catch (NumberFormatException ex) {
@@ -362,9 +654,12 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return true;
     }
 
+    /// Opens and checks a directory without following its final symlink.
+    /// `fdopendir` must consume the checked descriptor so a pathname replacement cannot redirect
+    /// the scan. This avoids HotSpot's second open and the comparison of the two descriptors.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L291-L341")
     private static SecureDirectory openDirectorySecure(CCharPointer directory) {
-        int fd = Fcntl.NoTransitions.restartableOpen(directory, O_RDONLY() | O_NOFOLLOW(), 0);
+        int fd = Fcntl.NoTransitions.restartableOpen(directory, O_RDONLY() | O_NOFOLLOW() | O_CLOEXEC(), 0);
         if (fd == -1) {
             return null;
         }
@@ -399,12 +694,12 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return isStatBufSecure(buf);
     }
 
-    /**
-     * Check if the given directory file descriptor is considered a secure directory for the backing
-     * store files. Returns true if the directory exists and is considered a secure location.
-     * Returns false if the path is a symbolic link or if an error occurred.
-     */
+    /// Checks the type, permissions and owner of an already opened directory.
+    /// The caller must open with `O_NOFOLLOW`: `fstat` cannot detect a symlink followed during open.
+    /// The stack buffer must remain in one uninterruptible region so virtual-thread unmounts cannot
+    /// invalidate its native address.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L249-L260")
+    @Uninterruptible(reason = "Keep the stack-allocated stat buffer valid when called from a virtual thread.")
     private static boolean isDirFdSecure(int dirFd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
         int result = PosixStat.restartableFstat(dirFd, buf);
@@ -414,7 +709,12 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return isStatBufSecure(buf);
     }
 
+    /// Rejects files with multiple hard links, as HotSpot's `is_file_secure` does.
+    /// The caller must reject directories and open with `O_NOFOLLOW` before using this check.
+    /// The stack buffer must remain in one uninterruptible region so virtual-thread unmounts cannot
+    /// invalidate its native address.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L408-L429")
+    @Uninterruptible(reason = "Keep the stack-allocated stat buffer valid when called from a virtual thread.")
     private static boolean isFileSecure(int fd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
         int result = PosixStat.restartableFstat(fd, buf);
@@ -516,9 +816,12 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
     }
 
-    private static class SecureDirectory implements AutoCloseable {
-        private final int fd;
-        private final DIR dir;
+    private static final class SecureDirectory implements AutoCloseable {
+        /// Descriptor validated before it is passed to fdopendir.
+        final int fd;
+
+        /// Directory stream owning the validated descriptor.
+        final DIR dir;
 
         SecureDirectory(int fd, DIR dir) {
             this.fd = fd;
@@ -540,11 +843,16 @@ class PosixPerfMemoryFeature implements InternalFeature {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             return false;
         }
-        return VMInspectionOptions.hasJvmstatSupport() && PerfDataMemoryMappedFile.getValue();
+        return VMInspectionOptions.hasJvmstatSupport();
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PerfMemoryProvider.class, new PosixPerfMemoryProvider());
+        PosixPerfMemoryProvider provider = new PosixPerfMemoryProvider();
+        // External attachment is independent of whether this process exports a mapped perfdata file.
+        ImageSingletons.add(ExternalPerfDataProvider.class, provider);
+        if (PerfDataMemoryMappedFile.getValue()) {
+            ImageSingletons.add(PerfMemoryProvider.class, provider);
+        }
     }
 }

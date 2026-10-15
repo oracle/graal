@@ -480,6 +480,7 @@ public final class RuntimeBootModuleLayerSupport {
     /// manually here so the existing boot-layer object can be preserved and patched in place
     /// afterwards.
     private static Map<String, Module> createRuntimeModules(ModuleLayer bootLayer, Set<ResolvedModule> runtimeModules, Function<String, ClassLoader> clf) {
+        SubstrateUtil.guaranteeRuntimeOnly();
         Target_jdk_internal_access_JavaLangAccess jla = javaLangAccess();
         LinkedHashMap<String, Module> nameToModule = new LinkedHashMap<>();
 
@@ -512,10 +513,18 @@ public final class RuntimeBootModuleLayerSupport {
                 initializeExportsAndOpens(jla, bootLayer, module, descriptor, nameToModule);
             }
         }
+
+        // Qualified targets absent at image build time can now receive exports and opens.
+        for (Module module : bootLayer.modules()) {
+            ModuleDescriptor descriptor = module.getDescriptor();
+            if (!descriptor.isOpen() && !descriptor.isAutomatic()) {
+                initializeExportsAndOpens(jla, bootLayer, module, descriptor, nameToModule);
+            }
+        }
         return nameToModule;
     }
 
-    /// Initializes descriptor-defined exports and opens for a runtime-created module.
+    /// Initializes descriptor-defined exports and opens against the augmented boot layer.
     private static void initializeExportsAndOpens(Target_jdk_internal_access_JavaLangAccess javaLangAccess, ModuleLayer bootLayer, Module module, ModuleDescriptor descriptor,
                     Map<String, Module> nameToModule) {
         Module everyoneModule = Target_java_lang_Module.EVERYONE_MODULE;

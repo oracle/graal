@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jvmstat;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,7 +46,8 @@ public interface PerfDataSupport {
         return ImageSingletons.lookup(PerfDataSupport.class);
     }
 
-    ByteBuffer attach(int lvmid);
+    /// Attaches to local or external performance data.
+    ByteBuffer attach(int lvmid) throws IOException;
 
     void detach(ByteBuffer bb);
 
