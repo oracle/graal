@@ -17,6 +17,11 @@ The usage of Debug Adapter Protocol is similar to the existing [Chrome DevTools 
 * `--dap.WaitAttached`: do not execute any source code until debugger client is attached. The default is false.
 * `--dap=<[[host:]port]>`: start the debugger on a different port than default (`<host>:4711`).
 
+The DAP server supports successive debugger connections to the same polyglot engine, with one active session at a time.
+Disconnecting an attached debugger leaves the application running and releases the session's breakpoints and debugger state.
+Another debugger can attach without restarting the application or replacing its engine.
+The `--dap.Suspend` and `--dap.WaitAttached` options apply to startup, not to subsequent sessions.
+
 Then you need a DAP client to connect to the open DAP port. VS Code will be used as an example.
 
 1&#46; Save this Node.js application in a file named _App.js_:

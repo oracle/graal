@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.tools.dap.server.DebugProtocolServerImpl;
+import com.oracle.truffle.tools.dap.server.DebugProtocolServerListener;
 import com.oracle.truffle.tools.dap.server.ExecutionContext;
 
 @Registration(id = DAPInstrument.ID, name = "Debug Protocol Server", version = "0.1", website = "https://www.graalvm.org/tools/dap/")
@@ -155,7 +155,7 @@ public final class DAPInstrument extends TruffleInstrument {
     @Option(help = "Requested maximum length of the Socket queue of incoming connections (default: unspecified).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
-    private DebugProtocolServerImpl dapServer;
+    private DebugProtocolServerListener dapServer;
 
     @Override
     protected void onCreate(Env env) {
@@ -218,7 +218,7 @@ public final class DAPInstrument extends TruffleInstrument {
             final ExecutionContext context = new ExecutionContext(env, info, err, options.get(Internal), options.get(Initialization));
             final ServerSocket serverSocket = new ServerSocket(port, options.get(SocketBacklogSize), socketAddress.getAddress());
             serverSocket.setReuseAddress(true);
-            dapServer = DebugProtocolServerImpl.create(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization), options.get(SourcePath));
+            dapServer = new DebugProtocolServerListener(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization), options.get(SourcePath));
             dapServer.start(serverSocket).exceptionally(throwable -> {
                 throwable.printStackTrace(err);
                 return null;
