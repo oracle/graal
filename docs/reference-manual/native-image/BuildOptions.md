@@ -208,11 +208,20 @@ The following system properties are automatically copied into the generated exec
 | java.vm.specification.version | Java Virtual Machine specification version                        |
 | line.separator                | Line separator                                                    |
 | native.encoding               | Specifies the host environment's character encoding               |
+| org.graalvm.nativeimage.graalos | Specifies whether the image is built for GraalOS                   |
 | org.graalvm.nativeimage.kind  | Specifies if the image is built as a shared library or executable |
 | path.separator                | Path separator                                                    |
 | stdin.encoding                | Specifies the encoding for `System.in`                            |
 | stdout.encoding               | Specifies the encoding for `System.out` and `System.err`          |
 | sun.jnu.encoding              | Specifies encoding when parsing values passed via the commandline |
+
+### Identify Images Built for GraalOS
+
+Read the `org.graalvm.nativeimage.graalos` Java system property to determine whether an image was built for GraalOS, for example with `Boolean.getBoolean("org.graalvm.nativeimage.graalos")`.
+The `native-image` builder initializes it to `true` when you build with `-H:+GraalOS`, or `false` otherwise; you do not need to set an additional system property.
+The property is available during language resource inclusion and polyglot context preinitialization, and is preserved in the generated image at runtime.
+It describes the image build target, not the current execution environment, so a GraalOS-targeted image retains `true` even when you execute it outside GraalOS.
+Like other Java system properties, you can override it at runtime.
 
 ## Related Documentation
 
