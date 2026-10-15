@@ -459,6 +459,7 @@ hfds flags,key,location
 
 CLSS public final com.oracle.truffle.api.object.PropertyGetter
 meth public boolean accepts(com.oracle.truffle.api.object.DynamicObject)
+meth public com.oracle.truffle.api.object.Shape getShape()
 meth public double getDouble(com.oracle.truffle.api.object.DynamicObject) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth public int getFlags()
 meth public int getInt(com.oracle.truffle.api.object.DynamicObject) throws com.oracle.truffle.api.nodes.UnexpectedResultException

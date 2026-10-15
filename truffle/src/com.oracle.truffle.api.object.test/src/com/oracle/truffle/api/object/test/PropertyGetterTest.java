@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,9 @@ public class PropertyGetterTest extends ParametrizedDynamicObjectTest {
 
         assertSame("expected same shape", o1.getShape(), o2.getShape());
 
-        PropertyGetter getter = o1.getShape().makePropertyGetter(key);
+        Shape getterShape = o1.getShape();
+        PropertyGetter getter = getterShape.makePropertyGetter(key);
+        assertSame(getterShape, getter.getShape());
         assertTrue(getter.accepts(o1));
         assertEquals(val, getter.get(o1));
         assertTrue(getter.accepts(o2));
@@ -102,6 +104,10 @@ public class PropertyGetterTest extends ParametrizedDynamicObjectTest {
         lib.put(o1, intKey, intVal);
         lib.put(o1, longKey, longVal);
         lib.put(o1, doubleKey, doubleVal);
+
+        assertSame(getterShape, getter.getShape());
+        assertFalse(getter.accepts(o1));
+        assertTrue(getter.accepts(o2));
 
         PropertyGetter intGetter = o1.getShape().makePropertyGetter(intKey);
         PropertyGetter longGetter = o1.getShape().makePropertyGetter(longKey);

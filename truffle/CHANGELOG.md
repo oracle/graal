@@ -13,6 +13,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-79950: Added `DynamicObject.SetAllPropertyFlagsNode` for updating flags of multiple existing properties without assigning their values. It supports uniform flags, per-key flags, and remove/add masks.
 * GR-80293: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.expandedType()` to select an exact concrete class for virtual argument expansion. Added `Argument.Field.validWhen()` and `valid()` to control incoming field validity by template state.
 * GR-79562: Bytecode DSL: Added `GenerateBytecode.unwindExceptions` to select exceptions that run finally cleanup while bypassing guest catches and exception interception, preserving exception identity across suspension and resumption.
+* GR-80124: Added `PropertyGetter.getShape()` to expose the shape accepted by a property getter.
 
 ## Version 25.4
 * GR-77721: Removed Truffle Object APIs deprecated in 22.2 and no longer in use.
