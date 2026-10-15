@@ -139,7 +139,6 @@ public final class RuntimeOptionParser {
     /// `CREMA_HOTSPOT_OPTION_COMPATIBILITY` is enabled.
     @GuaranteeFolded private static final Set<String> RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
                     "UnlockExperimentalVMOptions",
-                    "AbortVMOnCompilationFailure",
                     "TieredCompilation",
                     "UseCompressedOops",
                     "VerifyDependencies",
@@ -222,6 +221,12 @@ public final class RuntimeOptionParser {
         return ImageSingletons.lookup(RuntimeOptionParser.class);
     }
 
+    /// Folds the strict Java option policy so unsupported parsing paths are omitted from the image.
+    @GuestFold
+    private static boolean strictRuntimeJavaOptions() {
+        return GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions();
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addDescriptor(OptionDescriptor optionDescriptor) {
         if (options.putIfAbsent(optionDescriptor.getName(), optionDescriptor) == null &&
@@ -261,7 +266,7 @@ public final class RuntimeOptionParser {
         String[] args = parseJavaVMOptions(initialArgs, context);
         args = consumeCompatibilityOptions(args);
         args = singleton().parse(args, ignoreUnrecognized || shouldIgnoreUnrecognizedJavaOptions(args));
-        if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
+        if (strictRuntimeJavaOptions()) {
             rejectRecognizedUnimplementedJavaOptions(args);
         }
         configureLogFile(context.logFile);
@@ -275,7 +280,7 @@ public final class RuntimeOptionParser {
      * {@code VM.getRuntimeArguments()} use it to report the original arguments.
      */
     public static String[] parseAndConsumeJavaMainOptions(String[] initialArgs, boolean ignoreUnrecognized) {
-        if (!GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
+        if (!strictRuntimeJavaOptions()) {
             return parseAndConsumeAllOptions(initialArgs.clone(), ignoreUnrecognized);
         }
 
@@ -326,8 +331,26 @@ public final class RuntimeOptionParser {
     private String[] parse(String[] args, boolean ignoreUnrecognized) {
         int newIdx = 0;
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
+        boolean compilationFailureActionAvailable = options.containsKey("CompilationFailureAction");
+        // A negative flag only reverses an active positive flag from this argument list.
+        boolean abortOptionActive = false;
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
             String arg = args[oldIdx];
+            // Images without the compiler use the normal unrecognized-option policy for aliases.
+            if (compilationFailureActionAvailable && arg.equals("-XX:+AbortVMOnCompilationFailure")) {
+                abortOptionActive = true;
+                arg = "-Djdk.graal.CompilationFailureAction=ExitVM";
+            } else if (compilationFailureActionAvailable && arg.equals("-XX:-AbortVMOnCompilationFailure")) {
+                if (!abortOptionActive) {
+                    continue;
+                }
+                abortOptionActive = false;
+                arg = "-Djdk.graal.CompilationFailureAction=Silent";
+            } else if (arg.startsWith("-Djdk.graal.CompilationFailureAction=") ||
+                            arg.startsWith("-Dgraal.CompilationFailureAction=") ||
+                            arg.startsWith("-XX:CompilationFailureAction=")) {
+                abortOptionActive = false;
+            }
             if (arg.startsWith(NORMAL_OPTION_PREFIX)) {
                 parseOptionAtRuntime(arg, NORMAL_OPTION_PREFIX, BooleanOptionFormat.PLUS_MINUS, values, ignoreUnrecognized);
             } else if (arg.startsWith(GRAAL_OPTION_PREFIX)) {
@@ -473,7 +496,7 @@ public final class RuntimeOptionParser {
                 continue;
             }
             if (parseProperty(arg, context) ||
-                            (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
+                            (strictRuntimeJavaOptions() && (parseModuleOption(arg, context) ||
                                             parsePreviewOption(arg) ||
                                             parseVerifyOption(arg) ||
                                             parseXBootClasspathAppendOption(arg, context) ||
@@ -542,7 +565,7 @@ public final class RuntimeOptionParser {
         if (!arg.startsWith(PROPERTY_PREFIX) || hasPrefix(arg, GRAAL_OPTION_PREFIX) || hasPrefix(arg, LEGACY_GRAAL_OPTION_PREFIX)) {
             return false;
         }
-        if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions() && isReservedInternalModuleProperty(arg)) {
+        if (strictRuntimeJavaOptions() && isReservedInternalModuleProperty(arg)) {
             if (!context.warnedInternalModuleProperty) {
                 Log.log().string("Substrate VM warning: ").string(RESERVED_INTERNAL_MODULE_PROPERTY_WARNING).newline();
                 context.warnedInternalModuleProperty = true;
