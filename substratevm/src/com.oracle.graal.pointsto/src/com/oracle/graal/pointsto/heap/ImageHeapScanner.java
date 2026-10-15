@@ -784,15 +784,18 @@ public abstract class ImageHeapScanner {
                         return;
                     }
 
-                    if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
+                    boolean constantEqual = Objects.equals(unwrappedSnapshot, fieldValue);
+                    if (constantEqual) {
+                        ScanningObserver.patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue);
+                    }
+                    boolean unreachableHeapConstant = fieldSnapshot instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isReachable();
+                    if (!constantEqual || unreachableHeapConstant) {
                         AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, analysisField, fieldValue, reason, null);
                         if (analysisField.isRead() || analysisField.isFolded()) {
                             JavaConstant constant = fieldTask.ensureDone();
                             ensureReaderInstalled(constant);
                             rescanCollectionElements(constant, reason);
                         }
-                    } else {
-                        ScanningObserver.patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue);
                     }
                 }
             }

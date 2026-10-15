@@ -97,15 +97,16 @@ public class HeapSnapshotVerifier {
      * <p>
      * Verification can materialize and traverse an {@link ImageHeapConstant} that has not been
      * marked reachable by {@link ImageHeapScanner}. Calling
-     * {@link ImageHeapConstant#ensureReaderInstalled()}, or finding that a field snapshot already
-     * equals its hosted value, does not call
-     * {@link ImageHeapScanner#markReachable} and does not guarantee that object validation and
-     * reachability callbacks are executed. A field whose delayed value requires that processing
-     * must be explicitly rescanned through
-     * {@link ImageHeapScanner}, for example with {@link ImageHeapScanner#rescanField} or
-     * {@link ImageHeapScanner#rescanRoot} after the value becomes available.
+     * {@link ImageHeapConstant#ensureReaderInstalled()} or traversing a snapshot does not by itself
+     * call {@link ImageHeapScanner#markReachable}. When verification observes such a snapshot as a
+     * static or instance field value, it processes the field edge through {@link ImageHeapScanner}
+     * even if the snapshot already equals the hosted value. This performs normal object validation
+     * and reachability callbacks.
      * <p>
-     * The verifier intentionally does not mark every object that it traverses as reachable.
+     * The verifier intentionally does not mark every object that it traverses as reachable. Equal
+     * object-array elements are only traversed: a reachable array already marks its elements
+     * reachable, while marking elements of an unreachable array here would retain a speculative
+     * graph.
      */
     protected boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants,
                     boolean skipReachableCheck) {
@@ -212,12 +213,16 @@ public class HeapSnapshotVerifier {
         private void verifyStaticFieldValue(TypeData typeData, AnalysisField field, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
             JavaConstant result = fieldSnapshot;
             JavaConstant unwrappedSnapshot = maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
-            if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
-                String format = "Value mismatch for static field %s %n snapshot:  %s %n new value: %s %n";
+            boolean constantEqual = Objects.equals(unwrappedSnapshot, fieldValue);
+            if (constantEqual && patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue)) {
+                heapPatched = true;
+            }
+            boolean unreachableHeapConstant = fieldSnapshot instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isReachable();
+            if (!constantEqual || unreachableHeapConstant) {
+                String format = constantEqual ? "Reachability mismatch for static field %s %n snapshot:  %s %n new value: %s %n"
+                                : "Value mismatch for static field %s %n snapshot:  %s %n new value: %s %n";
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, unwrappedSnapshot, fieldValue);
                 result = scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
-                heapPatched = true;
-            } else if (patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue)) {
                 heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
@@ -234,12 +239,16 @@ public class HeapSnapshotVerifier {
             }
             JavaConstant result = fieldSnapshot;
             JavaConstant unwrappedSnapshot = maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant);
-            if (!Objects.equals(unwrappedSnapshot, fieldValue)) {
-                String format = "Value mismatch for instance field %s of %s %n snapshot:  %s %n new value: %s %n";
+            boolean constantEqual = Objects.equals(unwrappedSnapshot, fieldValue);
+            if (constantEqual && patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue)) {
+                heapPatched = true;
+            }
+            boolean unreachableHeapConstant = fieldSnapshot instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isReachable();
+            if (!constantEqual || unreachableHeapConstant) {
+                String format = constantEqual ? "Reachability mismatch for instance field %s of %s %n snapshot:  %s %n new value: %s %n"
+                                : "Value mismatch for instance field %s of %s %n snapshot:  %s %n new value: %s %n";
                 Consumer<ScanReason> onAnalysisModified = analysisModified(reason, format, field, asString(receiver), unwrappedSnapshot, fieldValue);
                 result = scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
-                heapPatched = true;
-            } else if (patchPrimitiveArrayValue(bb, fieldSnapshot, fieldValue)) {
                 heapPatched = true;
             }
             scanner.ensureReaderInstalled(result);
