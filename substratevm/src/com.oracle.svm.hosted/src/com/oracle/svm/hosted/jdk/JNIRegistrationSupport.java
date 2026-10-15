@@ -54,7 +54,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -117,13 +116,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         });
 
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
-        @Option(help = "Configure JNI library linkage as a comma-separated list of `<library>:{static|dynamic}` entries. Later entries override earlier entries.")//
+        @Option(help = "Configure JNI library linkage as a comma-separated list of `<library>:{static|dynamic}` entries. Built-in JDK JNI libraries are statically linked by default. Later entries override earlier entries.")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> JNILibraryLinkage = new HostedOptionKey<>(
-                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter(defaultJNILibraryLinkage()));
-
-        private static String[] defaultJNILibraryLinkage() {
-            return JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.stream().map(library -> library + ":static").toArray(String[]::new);
-        }
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }
 
     private JNIRegistrationSupportSingleton jniRegistrationSupportSingleton = null;

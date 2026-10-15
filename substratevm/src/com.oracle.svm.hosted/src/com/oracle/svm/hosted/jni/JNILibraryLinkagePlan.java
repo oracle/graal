@@ -86,28 +86,22 @@ public final class JNILibraryLinkagePlan {
     private record JNILibraryLinkageConfiguration(Map<String, JNILibraryLinkage> linkages, Set<String> explicitlyConfiguredLibraries) {
     }
 
-    private record JNILibraryLinkageEntry(ValueWithOrigin<String> entry, boolean explicitlyConfigured) {
-    }
-
     private static JNILibraryLinkageConfiguration getJNILibraryLinkage() {
-        Map<String, JNILibraryLinkageEntry> finalEntries = new HashMap<>();
-        List<ValueWithOrigin<String>> entries = JNIRegistrationSupport.Options.JNILibraryLinkage.getValue().getValuesWithOrigins().toList();
-        int defaultEntryCount = JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.size();
-        for (int index = 0; index < entries.size(); index++) {
-            ValueWithOrigin<String> entry = entries.get(index);
+        Map<String, ValueWithOrigin<String>> finalEntries = new HashMap<>();
+        JNIRegistrationSupport.Options.JNILibraryLinkage.getValue().getValuesWithOrigins().forEach(entry -> {
             String value = entry.value();
             String[] parts = value.split(":", -1);
             if (parts.length != 2 || parts[0].isEmpty()) {
                 throw UserError.abort("Invalid option %s provided by %s. Expected `<library>:{static|dynamic}`.",
                                 SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin());
             }
-            finalEntries.put(parts[0], new JNILibraryLinkageEntry(entry, index >= defaultEntryCount));
-        }
+            finalEntries.put(parts[0], entry);
+        });
 
         Map<String, JNILibraryLinkage> result = new HashMap<>();
+        JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.forEach(library -> result.put(library, JNILibraryLinkage.STATIC));
         Set<String> explicitlyConfiguredLibraries = new HashSet<>();
-        finalEntries.forEach((library, configuration) -> {
-            ValueWithOrigin<String> entry = configuration.entry();
+        finalEntries.forEach((library, entry) -> {
             String value = entry.value();
             String[] parts = value.split(":", -1);
             JNILibraryLinkage linkage = switch (parts[1]) {
@@ -126,9 +120,7 @@ public final class JNILibraryLinkagePlan {
             }
 
             result.put(library, linkage);
-            if (configuration.explicitlyConfigured()) {
-                explicitlyConfiguredLibraries.add(library);
-            }
+            explicitlyConfiguredLibraries.add(library);
         });
         return new JNILibraryLinkageConfiguration(result, explicitlyConfiguredLibraries);
     }
