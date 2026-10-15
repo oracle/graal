@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.interpreter.ristretto.meta;
 
+import com.oracle.svm.core.classinitialization.TypeReachedProvider;
 import com.oracle.svm.graal.meta.SubstrateConstantReflectionProvider;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateType;
@@ -47,7 +48,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Crema stores them in a special array within
  * {@link com.oracle.svm.interpreter.metadata.CremaResolvedObjectType}.
  */
-public class RistrettoConstantReflectionProvider extends SubstrateConstantReflectionProvider {
+public class RistrettoConstantReflectionProvider extends SubstrateConstantReflectionProvider implements TypeReachedProvider {
 
     private final SnippetReflectionProvider snippetReflectionProvider;
     private final MethodHandleAccessProvider methodHandleAccessProvider;
@@ -97,6 +98,12 @@ public class RistrettoConstantReflectionProvider extends SubstrateConstantReflec
             case Object -> snippetReflectionProvider.forObject(InterpreterToVM.getFieldObject(receiver, iField));
             default -> throw GraalError.shouldNotReachHere("Unknown kind: " + kind);
         };
+    }
+
+    @Override
+    public boolean initializationCheckRequired(ResolvedJavaType type) {
+        // Keep the check until both initialization and type-reached tracking need no slow path.
+        return ((SubstrateType) type).getHub().getClassInitializationInfo().isSlowPathRequired();
     }
 
     @Override

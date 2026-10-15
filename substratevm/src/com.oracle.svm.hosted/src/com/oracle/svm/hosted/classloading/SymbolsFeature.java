@@ -35,10 +35,12 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceFieldValueTransformer;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeHeapLayoutAccessImpl;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class SymbolsFeature implements InternalFeature {
@@ -65,10 +67,16 @@ public class SymbolsFeature implements InternalFeature {
     }
 
     @Override
-    public void afterCompilation(AfterCompilationAccess a) {
+    public void beforeHeapLayout(BeforeHeapLayoutAccess a) {
         if (symbolsSupportReachable) {
+            /* Constant-pool hydration may still intern symbols during afterCompilation. */
             SymbolsSupport.prepareSymbolsForImageHeap();
-            ((AfterCompilationAccessImpl) a).getHeapScanner().rescanObject(SymbolsSupport.hostedLookup(), scanReason);
+            /*
+             * Post-compilation heap verification may already have captured imageSymbols as null.
+             * Rescanning the singleton does not refresh its fields.
+             */
+            var imageSymbolsField = JVMCIReflectionUtil.getUniqueDeclaredField(GuestAccess.get().lookupType(SymbolsSupport.class), "imageSymbols");
+            ((BeforeHeapLayoutAccessImpl) a).getHeapScanner().rescanField(SymbolsSupport.hostedLookup(), imageSymbolsField, scanReason);
         }
     }
 }

@@ -93,6 +93,21 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         return calleeToCallerMap.get(methodToKey(method));
     }
 
+    /**
+     * Returns the effective restriction once the hosted call graph has been aggregated, or the
+     * explicit annotation during analysis. UNRESTRICTED also represents an unannotated method.
+     */
+    public static Access heapAccessRestriction(AnalysisMethod method) {
+        var restrictions = (RestrictHeapAccessCalleesImpl) ImageSingletons.lookup(RestrictHeapAccessCallees.class);
+        var info = restrictions.getRestrictionInfo(method);
+        if (info != null) {
+            return info.getAccess();
+        }
+        return GuestAnnotationAccess.isAnnotationPresent(method, RestrictHeapAccess.class)
+                        ? RestrictHeapAccessGuestValue.get(method).access()
+                        : Access.UNRESTRICTED;
+    }
+
     @Override
     public boolean mustNotAllocate(ResolvedJavaMethod method) {
         return isRestricted(method) || UninterruptibleAnnotationUtils.isUninterruptible(method);

@@ -284,6 +284,7 @@ def register_crema_java_vm():
 
     crema_configs = [
         ('default-' + edition, ['-svm']),
+        ('default-' + edition + '-preserve-java-base', ['-svm']),
         ('no-profiling-' + edition, ['-svm']),
         ('xint-' + edition, ['-svm', '-XX:-JITEnableCompilation']),
         # Keep profiling, including backedge counting, enabled while delaying compilation.

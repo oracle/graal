@@ -326,6 +326,20 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         return RistrettoInterpreterSupport.singleton().isInterpreterDeoptReturnValueObject(frameInfo);
     }
 
+    /**
+     * Bridges the generic deoptimization stub ABI into the Ristretto-specific interpreter handoff.
+     *
+     * <p>
+     * When this hook runs, the raw GP/FP return registers still carry the compiled top-frame
+     * result, or the pending exception object if the deopt was taken on an exceptional edge. The
+     * Ristretto frame must snapshot that state before the stub tears down the compiled frame and
+     * tail-jumps into the typed interpreter entry point.
+     *
+     * <p>
+     * {@code gpReturnValueObject} is a best-effort decoded object value. It can be null even when the
+     * raw GP return value denotes an object, so the Ristretto frame keeps the raw register value as
+     * the fallback source of truth.
+     */
     @Override
     @Uninterruptible(reason = "Invoked from deoptimization stubs while transitioning to interpreter execution.")
     public UnsignedWord continueInterpreterDeoptimization(DeoptimizedFrame frame, Pointer originalStackPointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue,

@@ -115,6 +115,7 @@ public class InterpreterDeoptEntryPoints {
         assert deoptFrame != null;
         RistrettoVirtualInterpreterFrame bottomFrame = deoptFrame.getBottomFrame();
         VMError.guarantee(bottomFrame != null, "Deoptimized interpreter frame must keep a bottom frame");
+        deoptFrame.registerHeldMonitors();
 
         final boolean hasPendingException = deoptFrame.hasPendingException();
         Object pendingExceptionObject = null;
@@ -276,6 +277,7 @@ public class InterpreterDeoptEntryPoints {
         }
 
         Object returnValue = null;
+        JavaKind actualReturnKind = JavaKind.Illegal;
         Throwable pendingException = null;
         boolean inject = false;
 
@@ -293,6 +295,7 @@ public class InterpreterDeoptEntryPoints {
                  * would.
                  */
                 returnValue = executeInterpreterFrames(deoptFrame, current.getCallee(), pendingExceptionObject, hasPendingException);
+                actualReturnKind = current.getCallee().getMethod().getSignature().getReturnKind();
                 /* if we return properly, the pending exception got handled */
                 pendingException = null;
                 inject = true;
@@ -364,10 +367,11 @@ public class InterpreterDeoptEntryPoints {
                  */
                 VMError.guarantee(current.isAfterPop(), "Saved machine return values require an AfterPop top frame");
                 returnValue = deoptFrame.consumePendingReturnValue();
+                actualReturnKind = current.getCompiledReturnKind();
                 inject = true;
             }
             if (inject) {
-                startTop += injectReturnValue(current, startTop, returnValue);
+                startTop += injectReturnValue(current, startTop, returnValue, actualReturnKind);
             }
         }
 
@@ -408,10 +412,11 @@ public class InterpreterDeoptEntryPoints {
      * <p>
      * The slot calculation intentionally reuses
      * {@link RistrettoDeoptimizationSupport#computeDeoptInvokeSiteLayout(RistrettoMethod, int)}
-     * so the deopt resume path keeps one local source of truth for invoke layout, return-kind
-     * selection, and result placement.
+     * for the bytecode argument layout. Results are boxed according to the physical call or the
+     * executed interpreter callee, which can differ from a MethodHandle's symbolic narrow-primitive
+     * return kind.
      */
-    private static int injectReturnValue(RistrettoVirtualInterpreterFrame chainedFrame, int callerTop, Object returnValue) {
+    private static int injectReturnValue(RistrettoVirtualInterpreterFrame chainedFrame, int callerTop, Object returnValue, JavaKind actualReturnKind) {
         InterpreterFrame interpreterFrame = chainedFrame.getFrame();
         InterpreterResolvedJavaMethod interpreterMethod = chainedFrame.getMethod();
 
@@ -425,7 +430,12 @@ public class InterpreterDeoptEntryPoints {
             throw VMError.shouldNotReachHere("Return-value injection expects an invoke bytecode at BCI " + callsiteBci);
         }
         RistrettoDeoptimizationSupport.CallSiteLayout invokeLayout = RistrettoDeoptimizationSupport.computeDeoptInvokeSiteLayout(chainedFrame.getRistrettoMethod(), callsiteBci);
+        VMError.guarantee(!chainedFrame.isRethrowException(), "Cannot inject a return value into a rethrow frame");
         JavaKind returnKind = invokeLayout.getReturnKind();
+        if (returnKind != JavaKind.Void) {
+            VMError.guarantee(returnKind.getStackKind() == actualReturnKind.getStackKind(), "Callee result must match the reconstructed stack kind");
+            returnKind = actualReturnKind;
+        }
         /*
          * AfterPop frames already reflect the post-invoke stack shape, so the result belongs at the
          * current top. BeforePop frames still contain the invoke arguments, so we must place the
@@ -433,7 +443,6 @@ public class InterpreterDeoptEntryPoints {
          * operand-stack range so stale object references do not linger above the new top. Rethrow
          * frames do not consume normal return values at all.
          */
-        VMError.guarantee(!chainedFrame.isRethrowException(), "Cannot inject a return value into a rethrow frame");
         int calleeReturnValueSlot = chainedFrame.isAfterPop() ? callerTop : callerTop - invokeLayout.getArgumentSlotCount();
         int newTop = calleeReturnValueSlot + returnKind.getSlotCount();
         if (!chainedFrame.isAfterPop()) {

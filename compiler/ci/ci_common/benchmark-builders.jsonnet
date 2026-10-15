@@ -119,6 +119,7 @@
   local crema_builds = std.flattenArrays([
     [
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy_template(capture_crema_libjvm_size=true) + cc.crema + PR_bench_crema_awfy,
+    c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy_template(capture_crema_libjvm_size=true) + cc.crema_preserve_java_base + PR_bench_crema_awfy,
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_xint + PR_bench_crema_awfy,
     c.daily + c.opt_post_merge + hw.x52 + jdk + bench.awfy + cc.crema_xint_with_profiles + PR_bench_crema_awfy,
     ] + (if config.graalvm_edition == "ee" then [
@@ -130,8 +131,21 @@
   for jdk in cc.product_jdks
   ]),
 
+  // Required PR gate for the same AWFY configuration that preserves java.base bytecodes.
+  // This is functional coverage, not a performance measurement: run the same workload on an
+  // ordinary gate host and do not register it as a PR benchmark or upload benchmark results.
+  local crema_preserve_java_base_gate_builds = [
+    c.gate + c.linux_amd64 + jdk + bench.awfy_template(capture_crema_libjvm_size=true) + cc.crema_preserve_java_base + {
+      job_prefix:: "ristretto-gate",
+      should_upload_results:: false,
+      // TODO GR-79973
+      extra_vm_args+: if config.graalvm_edition == "ce" then ["-XX:-JITUseOnStackReplacement"] else [],
+    },
+  for jdk in cc.product_jdks
+  ],
+
   local all_builds = gate_builds + main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds +
-                     shenandoah_builds + aarch64_builds + metrics_builds + crema_builds,
+                     shenandoah_builds + aarch64_builds + metrics_builds + crema_builds + crema_preserve_java_base_gate_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: utils.add_defined_in(filtered_builds, std.thisFile),

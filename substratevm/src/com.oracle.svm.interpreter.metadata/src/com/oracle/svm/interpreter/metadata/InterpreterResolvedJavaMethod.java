@@ -181,6 +181,15 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     private LineNumberTable lineNumberTable;
 
+    /**
+     * JVMCI exception handlers for image-built methods.
+     *
+     * Runtime-loaded Crema methods override {@link #getExceptionHandlers()} and derive their handlers
+     * lazily from parsed classfile metadata. Image-built AOT methods whose bytecodes are preserved for
+     * Ristretto runtime compilation have no such runtime classfile source, so
+     * BuildTimeConstantPool.hydrate fills this field after analysis.
+     */
+    @UnknownObjectField(availability = BuildPhaseProvider.AfterCompilation.class) //
     protected ExceptionHandler[] exceptionHandlers;
 
     private LocalVariableTable localVariableTable;
@@ -231,6 +240,18 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     public boolean needMethodBody;
+
+    /*
+     * Method-body retention is layered. needMethodBody means the method may execute in the
+     * interpreter. methodBodyClosureRetained additionally means invoked method bodies were retained.
+     * runtimeCompilationBytecodesPreserved is narrower: it keeps only this AOT method's bytecodes so
+     * Ristretto can parse them at run time for compilation or deoptimization metadata.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private boolean methodBodyClosureRetained;
+
+    // The runtime compiler distinguishes preservation from ordinary interpreter-body retention.
+    private boolean runtimeCompilationBytecodesPreserved;
 
     private final SignaturePolymorphicIntrinsic intrinsic;
 
@@ -562,6 +583,16 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public final boolean hasMethodBodyClosureRetained() {
+        return methodBodyClosureRetained;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final void setMethodBodyClosureRetained(boolean methodBodyClosureRetained) {
+        this.methodBodyClosureRetained = methodBodyClosureRetained;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public final AnalysisMethod getOriginalMethod() {
         return originalMethod;
     }
@@ -584,6 +615,15 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
     public final void patchInvokeDynamicExtraCPI(int bci, int extraCPI) {
         VMError.guarantee(interpretedCode != null);
         BytecodeStream.patchIndyExtraCPI(interpretedCode, bci, extraCPI);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final void preserveRuntimeCompilationBytecodes() {
+        runtimeCompilationBytecodesPreserved = true;
+    }
+
+    public final boolean hasRuntimeCompilationBytecodesPreserved() {
+        return runtimeCompilationBytecodesPreserved;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

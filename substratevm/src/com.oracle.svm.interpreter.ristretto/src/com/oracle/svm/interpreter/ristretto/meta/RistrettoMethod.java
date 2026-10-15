@@ -66,14 +66,17 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * JVMCI representation of a {@link jdk.vm.ci.meta.ResolvedJavaMethod} used by Ristretto for
@@ -228,7 +231,8 @@ public final class RistrettoMethod extends SubstrateMethod {
     private RistrettoMethod(InterpreterResolvedJavaMethod interpreterMethod) {
         super(0, null, 0, null, 0, null);
         this.interpreterMethod = interpreterMethod;
-        this.deoptInvokeLayouts = RistrettoOptions.useDeoptimization() ? createDeoptInvokeLayouts(interpreterMethod) : NO_INVOKE_LAYOUTS;
+        byte[] code = interpreterMethod.getCode();
+        this.deoptInvokeLayouts = RistrettoOptions.useDeoptimization() ? createDeoptInvokeLayouts(interpreterMethod, code) : NO_INVOKE_LAYOUTS;
         this.declaringClass = RistrettoType.getOrCreate(interpreterMethod.getDeclaringClass());
         this.signature = new RistrettoUnresolvedSignature(interpreterMethod.getSignature());
         /*
@@ -236,7 +240,7 @@ public final class RistrettoMethod extends SubstrateMethod {
          */
         this.indirectCallTarget = this;
         this.vTableIndex = interpreterMethod.getVTableIndex();
-        this.osrBackedges = RistrettoOSRBackedgeTable.create(interpreterMethod.getCode());
+        this.osrBackedges = RistrettoOSRBackedgeTable.create(code);
     }
 
     @Override
@@ -414,8 +418,7 @@ public final class RistrettoMethod extends SubstrateMethod {
      * adapter: virtual, special, and interface calls consume a receiver, whereas static and dynamic
      * calls do not.
      */
-    private static InvokeLayoutTable createDeoptInvokeLayouts(InterpreterResolvedJavaMethod method) {
-        byte[] code = method.getCode();
+    private static InvokeLayoutTable createDeoptInvokeLayouts(InterpreterResolvedJavaMethod method, byte[] code) {
         if (code == null || code.length == 0) {
             return NO_INVOKE_LAYOUTS;
         }
@@ -457,14 +460,59 @@ public final class RistrettoMethod extends SubstrateMethod {
             }
 
             VMError.guarantee(cpi != 0, "Ristretto invoke bytecode must have a symbolic CPI");
-            InterpreterUnresolvedSignature signature = CremaMethodAccess.toJVMCI(
-                            opcode == Bytecodes.INVOKEDYNAMIC ? constantPool.invokeDynamicSignature(cpi) : constantPool.methodSignature(cpi), SymbolsSupport.getTypes());
+            InvokeLayout layout;
+            if (opcode != Bytecodes.INVOKEDYNAMIC) {
+                Signature signature;
+                if (constantPool.hasSymbolicMemberNameAndType(cpi)) {
+                    signature = CremaMethodAccess.toJVMCI(constantPool.methodSignature(cpi), SymbolsSupport.getTypes());
+                } else {
+                    JavaMethod cachedMethod = constantPool.peekCachedMethod(cpi);
+                    VMError.guarantee(cachedMethod != null, "Ristretto member invoke without symbolic name-and-type or cached method");
+                    /*
+                     * Method-body-only AOT metadata can retain either a resolved target or an
+                     * unresolved JVMCI method while omitting the symbolic MemberRef payload.
+                     * Reuse its published signature without initiating resolution or linkage.
+                     */
+                    signature = cachedMethod.getSignature();
+                }
+                layout = new InvokeLayout(signature.getReturnKind(), parameterSlots(signature, hasReceiver));
+            } else {
+                JavaMethod cachedInvoker = constantPool.peekCachedMethod(cpi);
+                if (cachedInvoker instanceof InterpreterResolvedJavaMethod hostedInvoker) {
+                    /*
+                     * A hosted preserved call site stores its pre-linked invoker as a METHOD_REF,
+                     * not a structural INVOKEDYNAMIC entry. Interpreter execution appends the
+                     * separately hydrated appendix before invoking this static adapter, so recover
+                     * the original bytecode layout by removing exactly that trailing object slot.
+                     */
+                    Signature invokerSignature = hostedInvoker.getSignature();
+                    int parameterCount = invokerSignature.getParameterCount(false);
+                    VMError.guarantee(hostedInvoker.isStatic() && parameterCount > 0 && invokerSignature.getParameterKind(parameterCount - 1) == JavaKind.Object,
+                                    "Hosted invokedynamic invoker must be static and end with its object appendix");
+                    layout = new InvokeLayout(invokerSignature.getReturnKind(), parameterSlots(invokerSignature, false) - JavaKind.Object.getSlotCount());
+                } else {
+                    InterpreterUnresolvedSignature signature = CremaMethodAccess.toJVMCI(constantPool.invokeDynamicSignature(cpi), SymbolsSupport.getTypes());
+                    layout = new InvokeLayout(signature.getReturnKind(), signature.slotsForParameters(false));
+                }
+            }
             invokeBCIs[invokeIndex] = bci;
-            layouts[invokeIndex] = new InvokeLayout(signature.getReturnKind(), signature.slotsForParameters(hasReceiver));
+            layouts[invokeIndex] = layout;
             invokeIndex++;
         }
         VMError.guarantee(invokeIndex == invokeCount, "Ristretto invoke metadata count must remain stable while scanning bytecodes");
         return new InvokeLayoutTable(invokeBCIs, layouts);
+    }
+
+    /**
+     * Computes the JVM stack slots consumed by one invocation, including the receiver when the
+     * invocation is not static.
+     */
+    private static int parameterSlots(Signature signature, boolean hasReceiver) {
+        int slots = hasReceiver ? 1 : 0;
+        for (int parameterIndex = 0; parameterIndex < signature.getParameterCount(false); parameterIndex++) {
+            slots += signature.getParameterKind(parameterIndex).getSlotCount();
+        }
+        return slots;
     }
 
     /**
@@ -779,7 +827,7 @@ public final class RistrettoMethod extends SubstrateMethod {
             invalidatedInvocationCode = INSTALLED_CODE_UPDATER.compareAndSet(this, expectedInstalledCode, null);
             if (invalidatedInvocationCode) {
                 RistrettoDiagnostics.InvalidatedCode.getAndIncrement();
-                if (reprofile) {
+                if (reprofile && usesInterpreterProfile()) {
                     RistrettoDiagnostics.ReprofileRequested.getAndIncrement();
                     getProfile().reprofile();
                 }
@@ -830,6 +878,10 @@ public final class RistrettoMethod extends SubstrateMethod {
     @Override
     public void reprofile() {
         RistrettoDiagnostics.ReprofileRequested.getAndIncrement();
+        if (!usesInterpreterProfile()) {
+            transitionToInterpreted();
+            return;
+        }
         // first overwrite profile and then transition back to interpreted
         getProfile().reprofile();
         transitionToInterpreted();
@@ -844,6 +896,13 @@ public final class RistrettoMethod extends SubstrateMethod {
 
     @Override
     public ProfilingInfo getProfilingInfo() {
+        if (!usesInterpreterProfile()) {
+            /*
+             * TODO GR-74222: use image PGO profiles for Ristretto bytecodes preserved for runtime
+             * inlining when the image was built with PGO.
+             */
+            return DefaultProfilingInfo.get(TriState.UNKNOWN);
+        }
         return new RistrettoProfilingInfo(getProfile());
     }
 
@@ -893,6 +952,14 @@ public final class RistrettoMethod extends SubstrateMethod {
         osrBackedges.resetCompilationStateForTesting();
     }
 
+    /**
+     * Returns whether this method can use execution counters collected by the interpreter rather
+     * than an AOT compilation profile.
+     */
+    private boolean usesInterpreterProfile() {
+        return !RistrettoUtils.wasAOTCompiled(this) && RistrettoUtils.runtimeBytecodesAvailable(this);
+    }
+
     @Override
     public boolean shouldBeInlined() {
         // TODO GR-74452: preserve AOT ForceInline-annotated methods.
@@ -903,11 +970,12 @@ public final class RistrettoMethod extends SubstrateMethod {
     @Override
     public boolean canBeInlined() {
         InterpreterResolvedJavaMethod interpreter = this.getInterpreterMethod();
-        if (!RistrettoUtils.wasAOTCompiled(interpreter)) {
-            // until GR-71589 is fixed we assume every other method can be inlined
-            return RistrettoUtils.runtimeBytecodesAvailable(interpreter);
+        boolean bytecodesAvailable = RistrettoUtils.runtimeBytecodesAvailable(interpreter);
+        if (RistrettoUtils.wasAOTCompiled(interpreter)) {
+            return RistrettoUtils.canInlineAOT(interpreter) || bytecodesAvailable && interpreter.hasRuntimeCompilationBytecodesPreserved();
         }
-        return RistrettoUtils.canInlineAOT(interpreter);
+        // until GR-71589 is fixed we assume every other method can be inlined
+        return bytecodesAvailable;
     }
 
     @Override
@@ -1107,7 +1175,7 @@ public final class RistrettoMethod extends SubstrateMethod {
     }
 
     public void setOriginalRuntimeMethod(SubstrateMethod sMethod) {
-        assert originalRuntimeMethod == null;
+        assert originalRuntimeMethod == null || originalRuntimeMethod == sMethod;
         if (originalRuntimeMethod == null) {
             synchronized (this) {
                 if (originalRuntimeMethod == null) {
@@ -1118,14 +1186,13 @@ public final class RistrettoMethod extends SubstrateMethod {
     }
 
     /**
-     * AOT-compiled Ristretto methods can deoptimize to baseline-style target code because they
-     * already have the necessary AOT metadata, while runtime-compiled-only methods must resume in
-     * the interpreter.
+     * Methods with runtime bytecodes can resume in the interpreter. AOT methods without retained
+     * bytecodes keep the normal baseline-style deopt target.
      */
     @Override
     public DeoptTargetTier getDeoptTargetTier() {
         assert !SubstrateUtil.HOSTED && SubstrateOptions.useRistretto();
-        return RistrettoUtils.wasAOTCompiled(this) ? DeoptTargetTier.BaselineCompiledCode : DeoptTargetTier.Interpreter;
+        return RistrettoOptions.useDeoptimization() && RistrettoUtils.runtimeBytecodesAvailable(this) ? DeoptTargetTier.Interpreter : DeoptTargetTier.BaselineCompiledCode;
     }
 
 }

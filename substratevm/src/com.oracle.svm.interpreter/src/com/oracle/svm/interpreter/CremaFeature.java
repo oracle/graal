@@ -224,6 +224,7 @@ public class CremaFeature implements InternalFeature {
     public void afterCompilation(AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
         BuildTimeInterpreterUniverse iUniverse = BuildTimeInterpreterUniverse.singleton();
+
         for (HostedType type : accessImpl.getUniverse().getTypes()) {
             if (type.isPrimitive() || type.isArray()) {
                 continue;
@@ -251,6 +252,10 @@ public class CremaFeature implements InternalFeature {
             InterpreterResolvedJavaField iField = iUniverse.getField(hostedField.getWrapped());
             if (iField == null) {
                 assert !hostedField.isAccessed() : "No interpreter field for " + hostedField;
+                continue;
+            }
+            if (iField.isArtificiallyReachable()) {
+                VMError.guarantee(iField.isUnmaterializedConstant());
                 continue;
             }
             iUniverse.initializeJavaFieldFromHosted(hostedField, iField);

@@ -53,6 +53,8 @@ public final class RistrettoVirtualInterpreterFrame extends VirtualFrame {
     private final InterpreterFrame frame;
     /** Ristretto method and its interpreter method represented by this frame. */
     private final RistrettoMethod method;
+    /** Monitor objects already held at the deoptimization point and owned by this frame. */
+    private Object[] heldMonitorObjects;
     /** BCI reported by the compiled frame state that triggered deoptimization. */
     private final int currentBci;
     /**
@@ -73,11 +75,12 @@ public final class RistrettoVirtualInterpreterFrame extends VirtualFrame {
     /** Next outer virtual frame, linked after reconstruction. */
     private RistrettoVirtualInterpreterFrame caller;
 
-    RistrettoVirtualInterpreterFrame(FrameInfoQueryResult frameInfo, InterpreterFrame frame, RistrettoMethod method,
+    RistrettoVirtualInterpreterFrame(FrameInfoQueryResult frameInfo, InterpreterFrame frame, RistrettoMethod method, Object[] heldMonitorObjects,
                     int currentBci, int targetBci, StackState stackState, int numStack, JavaKind compiledReturnKind, RistrettoVirtualInterpreterFrame callee) {
         super(frameInfo);
         this.frame = frame;
         this.method = method;
+        this.heldMonitorObjects = heldMonitorObjects;
         this.currentBci = currentBci;
         this.targetBci = targetBci;
         this.stackState = stackState;
@@ -98,6 +101,11 @@ public final class RistrettoVirtualInterpreterFrame extends VirtualFrame {
 
     public InterpreterFrame getFrame() {
         return frame;
+    }
+
+    void registerHeldMonitors() {
+        RistrettoDeoptimizationSupport.registerDeoptimizedHeldMonitors(getMethod(), getFrameInfo(), targetBci, heldMonitorObjects, frame);
+        heldMonitorObjects = null;
     }
 
     public InterpreterResolvedJavaMethod getMethod() {

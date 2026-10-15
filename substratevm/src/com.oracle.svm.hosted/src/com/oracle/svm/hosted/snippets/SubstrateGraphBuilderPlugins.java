@@ -160,7 +160,6 @@ import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
-import jdk.graal.compiler.nodes.java.ValidateNewInstanceClassNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.nodes.type.StampTool;
@@ -858,28 +857,7 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-        r.register(new RequiredInvocationPlugin("allocateInstance", Receiver.class, Class.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
-                /* Emits a null-check for the otherwise unused receiver. */
-                unsafe.get(true);
-                /*
-                 * The allocated class must be null-checked already before the class initialization
-                 * check.
-                 */
-                ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
-                EnsureClassInitializedNode ensureInitialized = b.append(new EnsureClassInitializedNode(clazzNonNull));
-                ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
-
-                ValidateNewInstanceClassNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazzNonNull));
-                if (b.currentBlockCatchesOOME()) {
-                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true, true));
-                } else {
-                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true, true));
-                }
-                return true;
-            }
-        });
+        SubstrateSharedGraphBuilderPlugins.registerUnsafeAllocateInstancePlugin(r);
     }
 
     private static boolean processFieldOffset(GraphBuilderContext b, Receiver receiver, boolean isSunMiscUnsafe, ResolvedJavaField resolvedJavaField) {

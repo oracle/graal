@@ -3963,7 +3963,10 @@ public final class Interpreter {
                 // workaround for the JDWP debugger until proper INVOKEDYNAMIC resolution is
                 // implemented.
                 Object appendix = frame.constantPoolResolvedAt(cpi, null);
-                if (appendix instanceof ReferenceConstant<?> referenceConstant) {
+                if (JavaConstant.NULL_POINTER.equals(appendix)) {
+                    // Hydrated Java null is distinct from an unavailable image-heap reference.
+                    yield ReferenceConstant.createFromReference(null);
+                } else if (appendix instanceof ReferenceConstant<?> referenceConstant) {
                     VMError.guarantee(referenceConstant.isNonNull(), FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP);
                     Object constantValue = referenceConstant.getReferent();
                     yield ReferenceConstant.createFromReference(constantValue);
