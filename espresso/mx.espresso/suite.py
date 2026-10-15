@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -973,6 +973,7 @@ suite = {
         },
 
         "ESPRESSO_IO": {
+            "class": "EspressoIODistribution",
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.io"

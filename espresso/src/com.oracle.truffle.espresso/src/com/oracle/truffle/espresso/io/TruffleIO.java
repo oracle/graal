@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,9 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.OpenOption;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
@@ -70,6 +72,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.jar.JarFile;
+import java.util.logging.Level;
+import java.util.zip.ZipFile;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -120,6 +125,27 @@ import com.oracle.truffle.espresso.threads.Transition;
  */
 public final class TruffleIO implements ContextAccess {
     public static final String JAR_NAME = "espresso-io.jar";
+
+    /** Warns about missing overlays in externally built distributions without preventing startup. */
+    public static void checkOverlay(EspressoContext context) {
+        Path jarPath = context.getEspressoLibs().resolve(JAR_NAME);
+        if (!Files.isReadable(jarPath)) {
+            // EspressoProperties already warns about a missing I/O jar.
+            return;
+        }
+        int overlayVersion = context.getJavaVersion().java25OrLater() ? 25 : 21;
+        String prefix = "META-INF/versions/" + overlayVersion + "/";
+        // Inspect physical entries: multi-release lookup could fall back to an older overlay.
+        try (JarFile jar = new JarFile(jarPath.toFile(), false, ZipFile.OPEN_READ, context.getJavaVersion().toRunTimeVersion())) {
+            boolean present = jar.isMultiRelease() && jar.stream().anyMatch(entry -> !entry.isDirectory() && entry.getName().startsWith(prefix) && entry.getName().endsWith(".class"));
+            if (!present) {
+                context.getLogger().warning(() -> jarPath + " is missing the Java " + overlayVersion + " I/O overlay required by guest JDK " + context.getJavaVersion() +
+                                ". EspressoLibs I/O may fail. Register a JDK " + overlayVersion + " compiler through EXTRA_JAVA_HOMES and rebuild Espresso.");
+            }
+        } catch (IOException e) {
+            context.getLogger().log(Level.WARNING, e, () -> "Could not verify the guest JDK I/O overlay in " + jarPath + ": " + e.getMessage());
+        }
+    }
 
     private static final int DRAIN_SEGMENT_COUNT = 16;
 
