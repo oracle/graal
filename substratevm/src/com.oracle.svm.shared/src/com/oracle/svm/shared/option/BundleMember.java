@@ -43,7 +43,9 @@ public @interface BundleMember {
 
     enum Role {
         Input,
-        /// A reference to an input captured by another option; does not capture new files.
+        /**
+         * A reference to an input captured by another option; does not capture new files.
+         */
         InputReference,
         Output,
         Ignore
