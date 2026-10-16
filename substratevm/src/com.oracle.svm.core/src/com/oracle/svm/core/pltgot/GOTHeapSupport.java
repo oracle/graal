@@ -39,16 +39,12 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;
@@ -95,7 +91,7 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
      * Runtime code must use this logical flag, not section allocation size, to decide whether GOT initialization is needed.
      */
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean hasGOTEntries() {
+    static boolean hasGOTEntries() {
         Word numberOfEntries = NUMBER_OF_GOT_ENTRIES.get().readWord(0);
         return numberOfEntries.aboveThan(0);
     }
@@ -124,20 +120,6 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void makeGOTWritable() {
-        if (hasGOTEntries()) {
-            changeGOTMappingProtection(true);
-        }
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void makeGOTReadOnly() {
-        if (hasGOTEntries()) {
-            changeGOTMappingProtection(false);
-        }
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected abstract int mapGOT(Pointer address);
 
     @Override
@@ -150,30 +132,12 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected Pointer getPreHeapMappingStartAddress() {
-        return getPreHeapMappingStartAddress(KnownIntrinsics.heapBase());
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected Pointer getPreHeapMappingStartAddress(PointerBase heapBase) {
         return ((Pointer) heapBase).subtract(getRequiredPreHeapMemoryInBytes());
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void changeGOTMappingProtection(boolean writable) {
-        Pointer gotMappingStartAddress = GOT_START_ADDRESS.get().read();
-        VMError.guarantee(gotMappingStartAddress.isNonNull());
-        int access = Access.READ;
-        if (writable) {
-            access |= Access.WRITE;
-        }
-        // GR-79030: coordinate protection of the process-wide GOT mapping across isolates.
-        int ret = VirtualMemoryProvider.get().protect(gotMappingStartAddress, getPageAlignedGOTSize(), access);
-        VMError.guarantee(ret == 0, "Failed to change GOT protection.");
-    }
-
     @Override
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize() {
         if (!hasGOTEntries()) {
             return CEntryPointErrors.NO_ERROR;
@@ -195,8 +159,9 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
         // Only the first isolate can reach here.
         int ret = initialize(GOT_START_ADDRESS.get());
         if (ret == CEntryPointErrors.NO_ERROR) {
-            makeGOTReadOnly();
+            ret = GOTAccess.initializeInFirstIsolate();
         }
+
         GOT_STATUS.get().writeWordVolatile(0, Word.signed(ret));
         return ret;
     }
