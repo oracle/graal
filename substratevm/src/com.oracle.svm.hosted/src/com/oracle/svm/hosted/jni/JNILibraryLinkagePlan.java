@@ -50,7 +50,6 @@ import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
-import com.oracle.svm.shared.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -87,7 +86,9 @@ public final class JNILibraryLinkagePlan {
     }
 
     private static JNILibraryLinkageConfiguration getJNILibraryLinkage() {
-        Map<String, ValueWithOrigin<String>> finalEntries = new HashMap<>();
+        Map<String, JNILibraryLinkage> result = new HashMap<>();
+        JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.forEach(library -> result.put(library, JNILibraryLinkage.STATIC));
+        Set<String> librariesRequiringReachability = new HashSet<>();
         JNIRegistrationSupport.Options.JNILibraryLinkage.getValue().getValuesWithOrigins().forEach(entry -> {
             String value = entry.value();
             String[] parts = value.split(":", -1);
@@ -95,15 +96,7 @@ public final class JNILibraryLinkagePlan {
                 throw UserError.abort("Invalid option %s provided by %s. Expected `<library>:{static|dynamic}[?]`.",
                                 SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin());
             }
-            finalEntries.put(parts[0], entry);
-        });
-
-        Map<String, JNILibraryLinkage> result = new HashMap<>();
-        JNIPlatformNativeLibrarySupport.defaultBuiltinLibraries.forEach(library -> result.put(library, JNILibraryLinkage.STATIC));
-        Set<String> librariesRequiringReachability = new HashSet<>();
-        finalEntries.forEach((library, entry) -> {
-            String value = entry.value();
-            String[] parts = value.split(":", -1);
+            String library = parts[0];
             String secondPart = parts[1];
             boolean reachabilityRequired = !secondPart.endsWith("?");
             String linkageValue = reachabilityRequired ? secondPart : secondPart.substring(0, secondPart.length() - 1);
@@ -125,6 +118,8 @@ public final class JNILibraryLinkagePlan {
             result.put(library, linkage);
             if (reachabilityRequired || RuntimeClassLoading.isSupported()) {
                 librariesRequiringReachability.add(library);
+            } else {
+                librariesRequiringReachability.remove(library);
             }
         });
         return new JNILibraryLinkageConfiguration(result, librariesRequiringReachability);
