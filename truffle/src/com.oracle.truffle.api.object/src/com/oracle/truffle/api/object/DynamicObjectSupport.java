@@ -201,6 +201,14 @@ final class DynamicObjectSupport {
         return archive;
     }
 
+    private static boolean isImplicitlyCastInt(Location location, Object before, Object after) {
+        if (!(before instanceof Integer value) || !location.canStore(before)) {
+            return false;
+        }
+        return (after instanceof Double doubleValue && Double.doubleToRawLongBits(doubleValue) == Double.doubleToRawLongBits(value.doubleValue())) ||
+                        (after instanceof Long longValue && longValue == (long) value);
+    }
+
     @SuppressWarnings("deprecation")
     static boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
         Property[] properties = (object.getShape()).getPropertyArray();
@@ -208,7 +216,7 @@ final class DynamicObjectSupport {
             Object key = property.getKey();
             Object before = archive.get(key);
             Object after = property.getLocation().get(object, false);
-            assert Objects.equals(after, before) : "before != after for key: " + key;
+            assert Objects.equals(after, before) || isImplicitlyCastInt(property.getLocation(), before, after) : "before != after for key: " + key;
         }
         return true;
     }

@@ -367,7 +367,7 @@ abstract class DynamicObjectLibraryImpl {
                 int fromOrd = fromLoc.getOrdinal();
                 int toOrd = toLoc.getOrdinal();
                 Move move = new Move(fromLoc, toLoc, fromOrd, toOrd);
-                canMoveInPlace &= fromOrd > toOrd;
+                canMoveInPlace &= canMoveWithoutTemporary(fromLoc, toLoc, fromOrd, toOrd);
                 moves.add(move);
             }
         }
@@ -386,7 +386,7 @@ abstract class DynamicObjectLibraryImpl {
                 int fromOrd = fromLoc.getOrdinal();
                 int toOrd = toLoc.getOrdinal();
                 Move move = new Move(fromLoc, toLoc, fromOrd, toOrd);
-                canMoveInPlace &= fromOrd > toOrd;
+                canMoveInPlace &= canMoveWithoutTemporary(fromLoc, toLoc, fromOrd, toOrd);
                 moves.add(move);
             }
         }
@@ -401,6 +401,11 @@ abstract class DynamicObjectLibraryImpl {
             }
         }
         return new RemovePlan(moves.toArray(Move.EMPTY_ARRAY), canMoveInPlace, shapeBefore, shapeAfter);
+    }
+
+    private static boolean canMoveWithoutTemporary(Location fromLoc, Location toLoc, int fromOrd, int toOrd) {
+        // Different location types can overlap in primitive storage even if ordinals decrease.
+        return fromOrd > toOrd && fromLoc.getType() == toLoc.getType();
     }
 
     private static boolean isSorted(List<Move> moves) {
