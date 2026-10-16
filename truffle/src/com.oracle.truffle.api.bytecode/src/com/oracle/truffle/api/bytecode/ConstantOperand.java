@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,6 +79,10 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
  * When parsing the operation, a constant must be supplied as an additional parameter to the
  * {@code begin} or {@code emit} method of the {@link BytecodeBuilder}. Constant operands to the
  * {@link Prolog} should be supplied to the {@code beginRoot} method.
+ * <p>
+ * A reference constant operand may be {@code null}. Every {@code null} value in a root shares one
+ * constant-pool entry. {@code LoadConstant} does not accept {@code null}; use {@code LoadNull} to
+ * push a null dynamic value.
  * <p>
  * Except for {@link RootNode}s, a constant operand cannot be a subclass of {@link Node}. If an
  * operation needs a compilation-final node operand, it can declare a {@link NodeFactory} constant
