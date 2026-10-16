@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,12 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -244,6 +246,23 @@ public class ReadBytecodeLocationTest {
         contResult.continueWith(null);
         assertEquals("return bar", result.getSourceCharacters());
     }
+
+    @Test
+    public void testReadBeforeStore() {
+        // No bci has been stored in the frame yet, so the bci is unknown.
+        BytecodeNodeWithStoredBci root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitReadLocationsWithoutStore();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        Object[] result = (Object[]) root.getCallTarget().call();
+        assertEquals(-1, result[0]);
+        assertNull(result[1]);
+        assertNull(result[2]);
+    }
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableYield = true)
@@ -321,6 +340,22 @@ abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRoo
         @Specialization
         public static String perform(@SuppressWarnings("unused") VirtualFrame frame, BytecodeAndFrame rootAndFrame) {
             return rootAndFrame.getSourceCharacters();
+        }
+    }
+
+    @Operation(storeBytecodeIndex = false)
+    public static final class ReadLocationsWithoutStore {
+        @Specialization
+        public static Object[] perform(VirtualFrame frame,
+                        @Bind BytecodeNode bytecode,
+                        @Bind Node node) {
+            Frame materialized = frame.materialize();
+            Object[] frameInstanceLocation = Truffle.getRuntime().iterateFrames(f -> new Object[]{bytecode.getBytecodeLocation(f)});
+            return new Object[]{
+                            bytecode.getBytecodeIndex(materialized),
+                            bytecode.getBytecodeLocation(materialized, node),
+                            frameInstanceLocation[0]
+            };
         }
     }
 
