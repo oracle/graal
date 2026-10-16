@@ -1835,6 +1835,28 @@ final class FileSystems {
             return fileSystemInfo.fileSystem.isFileStoreReadOnly(fileSystemInfo.path);
         }
 
+        @Override
+        public void move(Path source, Path target, CopyOption... options) throws IOException {
+            FileSystemInfo sourceFileSystemInfo = selectFileSystem(source);
+            FileSystemInfo targetFileSystemInfo = selectFileSystem(target);
+            if (sourceFileSystemInfo.fileSystem == targetFileSystemInfo.fileSystem) {
+                sourceFileSystemInfo.fileSystem.move(sourceFileSystemInfo.path, targetFileSystemInfo.path, options);
+            } else {
+                PolyglotFileSystem.super.move(source, target, options);
+            }
+        }
+
+        @Override
+        public void copy(Path source, Path target, CopyOption... options) throws IOException {
+            FileSystemInfo sourceFileSystemInfo = selectFileSystem(source);
+            FileSystemInfo targetFileSystemInfo = selectFileSystem(target);
+            if (sourceFileSystemInfo.fileSystem == targetFileSystemInfo.fileSystem) {
+                sourceFileSystemInfo.fileSystem.copy(sourceFileSystemInfo.path, targetFileSystemInfo.path, options);
+            } else {
+                PolyglotFileSystem.super.copy(source, target, options);
+            }
+        }
+
         private FileSystemInfo selectFileSystem(Path path) {
             changeDirLock.readLock().lock();
             try {
