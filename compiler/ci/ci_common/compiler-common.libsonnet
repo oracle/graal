@@ -251,6 +251,16 @@
     },
   },
 
+  crema_preserve_java_base:: self.crema + {
+    local edition = config.graalvm_edition,
+    local mx_env_path = if edition == "ce" then "ce-next-preserve-java-base" else "crema-" + edition + "-preserve-java-base",
+    platform+:: "-preserve-java-base",
+    environment+: {
+      "JVM_CONFIG": "default-" + edition + "-preserve-java-base",
+      "MX_ENV_PATH": mx_env_path,
+    },
+  },
+
   economy_mode:: {
     platform+:: "-economy",
     environment+: {

@@ -1,0 +1,7 @@
+# Based on ce-next, preserving reachable java.base package families for Ristretto runtime inlining.
+DYNAMIC_IMPORTS=/sdk,/truffle,/compiler,/substratevm
+COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmjdwp,svmt,svmsl,tflc,tflsm,svmjava,svmjavad
+NATIVE_IMAGES=lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,native-image,lib:jvm
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
+LIBJVM_IMAGE_AS_DEFAULT=true
+EXTRA_IMAGE_BUILDER_ARGUMENTS=jvm:-H:+UnlockExperimentalVMOptions jvm:-H:+GraalJITCompileAtRuntime jvm:-H:JITPreserveBytecodesForRuntime=java.io.*.*,java.lang.*.*,java.math.*.*,java.net.*.*,java.nio.*.*,java.security.*.*,java.text.*.*,java.time.*.*,java.util.*.*,javax.crypto.*.*,javax.net.*.*,javax.security.*.*,jdk.internal.*.*,sun.invoke.*.*,sun.launcher.*.*,sun.net.*.*,sun.nio.*.*,sun.reflect.*.*,sun.security.*.*,sun.text.*.*,sun.util.*.*,com.sun.crypto.provider.*.*,com.sun.security.ntlm.*.* jvm:-H:-UnlockExperimentalVMOptions

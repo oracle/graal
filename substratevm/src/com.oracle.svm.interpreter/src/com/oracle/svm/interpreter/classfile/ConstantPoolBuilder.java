@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
@@ -172,9 +173,33 @@ public final class ConstantPoolBuilder {
         return appendCachedEntry(ConstantPool.Tag.FIELD_REF, field);
     }
 
+    public int appendCachedField(JavaField field, JavaType symbolicHolder) {
+        assert field instanceof UnresolvedJavaField || field instanceof InterpreterResolvedJavaField;
+        return appendCachedMember(ConstantPool.Tag.FIELD_REF, field, symbolicHolder);
+    }
+
     public int appendCachedMethod(boolean interfaceMethod, JavaMethod method) {
         assert method instanceof UnresolvedJavaMethod || method instanceof InterpreterResolvedJavaMethod;
         return appendCachedEntry(interfaceMethod ? ConstantPool.Tag.INTERFACE_METHOD_REF : ConstantPool.Tag.METHOD_REF, method);
+    }
+
+    public int appendCachedMethod(boolean interfaceMethod, JavaMethod method, JavaType symbolicHolder, String symbolicName, String symbolicSignature) {
+        assert method == null || method instanceof UnresolvedJavaMethod || method instanceof InterpreterResolvedJavaMethod;
+        ConstantPool.Tag tag = interfaceMethod ? ConstantPool.Tag.INTERFACE_METHOD_REF : ConstantPool.Tag.METHOD_REF;
+        Symbol<Name> name = SymbolsSupport.getNames().getOrCreate(symbolicName);
+        Symbol<Signature> signature = SymbolsSupport.getSignatures().getOrCreateValidSignature(symbolicSignature);
+        return appendCachedMember(tag, method, symbolicHolder, name, signature);
+    }
+
+    private int appendCachedMember(ConstantPool.Tag tag, Object member, JavaType symbolicHolder) {
+        int symbolicHolderIndex = appendCachedType(symbolicHolder);
+        return appendEntry(tag, cat(symbolicHolderIndex, 0), member);
+    }
+
+    private int appendCachedMember(ConstantPool.Tag tag, Object member, JavaType symbolicHolder, Symbol<Name> symbolicName, Symbol<Signature> symbolicSignature) {
+        int symbolicHolderIndex = appendCachedType(symbolicHolder);
+        int nameAndTypeIndex = appendSymbolicNameAndType(symbolicName, symbolicSignature);
+        return appendEntry(tag, cat(symbolicHolderIndex, nameAndTypeIndex), member);
     }
 
     public int appendCachedType(JavaType type) {
@@ -321,8 +346,8 @@ public final class ConstantPoolBuilder {
     }
 
     private static int cat(int hi, int lo) {
-        assert (short) hi == hi;
-        assert (short) lo == lo;
+        assert (char) hi == hi;
+        assert (char) lo == lo;
         return (hi << 16) | (lo & 0xFFFF);
     }
 

@@ -63,7 +63,6 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * <pre>
  * deopt stub sees source stack frame + gp/fp return registers
- *   -> relock eliminated monitors on the deoptimized thread
  *   -> snapshot pending exception or pending top-frame result into this object
  *   -> tear down the compiled frame and jump to InterpreterDeoptEntryPoints
  *   -> Java resume code consumes the one-shot payload and continues in the interpreter
@@ -74,7 +73,9 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
     private final PinnedObject pin;
     private final RistrettoVirtualInterpreterFrame bottomFrame;
     private final RistrettoInstalledCode rCode;
-    private RelockObjectData[] objectsToRelock;
+    // The uninterruptible deopt stub needs direct access to the relock data.
+    private final Object[] relockedObjects;
+    private final Object[] relockData;
 
     /* Carries the pending exception object across the deopt handoff. */
     private Object pendingExceptionObject;
@@ -105,14 +106,24 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
     private final char[] completedMessage;
 
     @SuppressWarnings("this-escape")
-    public RistrettoDeoptimizedInterpreterFrame(long frameSize, RistrettoVirtualInterpreterFrame bottomFrame, RistrettoInstalledCode rCode, CodePointer sourcePC, boolean pinFrame,
-                    RelockObjectData[] objectsToRelock) {
+    public RistrettoDeoptimizedInterpreterFrame(long frameSize, RistrettoVirtualInterpreterFrame bottomFrame, RistrettoInstalledCode rCode,
+                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean pinFrame) {
         this.frameSize = frameSize;
         this.pin = pinFrame ? PinnedObject.create(this) : null;
         this.bottomFrame = bottomFrame;
+        if (relockedObjects == null) {
+            this.relockedObjects = null;
+            this.relockData = null;
+        } else {
+            this.relockedObjects = new Object[relockedObjects.length];
+            this.relockData = new Object[relockedObjects.length];
+            for (int i = 0; i < relockedObjects.length; i++) {
+                this.relockedObjects[i] = relockedObjects[i].getObject();
+                this.relockData[i] = relockedObjects[i].getLockData();
+            }
+        }
         this.rCode = rCode;
         this.sourcePC = sourcePC;
-        this.objectsToRelock = objectsToRelock;
         StringBuilderLog sbl = new StringBuilderLog();
         sbl.string("deoptStub: completed ").string(pinFrame ? "eagerly" : "lazily").string(" for DeoptimizedFrame at ").hex(Word.objectToUntrackedPointer(this)).newline();
         this.completedMessage = sbl.getResult().toCharArray();
@@ -296,12 +307,6 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
     public UnsignedWord continueInterpreterDeoptimization(Pointer originalStackPointer, UnsignedWord gpResult, UnsignedWord fpResult, boolean hasException, Object gpResultObject) {
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
 
-        /* Frame construction may run on another thread. Restore ownership only on this thread. */
-        for (RelockObjectData objectToRelock : objectsToRelock) {
-            MonitorSupport.singleton().doRelockObject(objectToRelock.getObject(), objectToRelock.getLockData());
-        }
-        objectsToRelock = null;
-
         /* Caller stack pointer after the compiled source frame has been removed from the stack. */
         Pointer revertSp = originalStackPointer.add(WordFactory.unsigned(getSourceTotalFrameSize()));
         JavaFrameAnchors.verifyTopFrameAnchor(revertSp);
@@ -327,6 +332,7 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
                 setPendingReturnValue(topFrame.getCompiledReturnKind(), gpResult, fpResult, gpResultObject);
             }
         }
+        relockObjects();
         if (pin != null) {
             /*
              * The pin is only needed while the stub owns the frame purely through raw stack data.
@@ -338,6 +344,24 @@ public class RistrettoDeoptimizedInterpreterFrame extends DeoptimizedFrame {
         }
         InterpreterDeoptEntryPoints.jumpToInterpreterEntryPoint(this, revertSp, getInterpreterEntry(), returnAddressOfDeoptedMethod, basePointerOfDeoptedMethod);
         throw VMError.shouldNotReachHere("At this point, this frame should not be on the stack anymore");
+    }
+
+    @Uninterruptible(reason = "called during deoptimization")
+    private void relockObjects() {
+        if (relockedObjects == null) {
+            return;
+        }
+        for (int i = 0; i < relockedObjects.length; i++) {
+            MonitorSupport.singleton().doRelockObject(relockedObjects[i], relockData[i]);
+            relockedObjects[i] = null;
+            relockData[i] = null;
+        }
+    }
+
+    void registerHeldMonitors() {
+        for (RistrettoVirtualInterpreterFrame current = bottomFrame; current != null; current = current.getCallee()) {
+            current.registerHeldMonitors();
+        }
     }
 
     @Override

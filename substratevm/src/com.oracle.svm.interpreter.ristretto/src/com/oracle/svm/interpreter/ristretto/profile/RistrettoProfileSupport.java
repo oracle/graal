@@ -94,9 +94,11 @@ public class RistrettoProfileSupport {
      * {@link PriorityBlockingQueue} for thread-safe queuing and a fixed thread pool for concurrent
      * compilation processing.
      *
-     * @param iMethod the interpreter-resolved method being called, must be an instance of
-     *            {@link CremaResolvedJavaMethodImpl}
-     * @throws AssertionError if iMethod is not a InterpreterResolvedJavaMethod instance
+     * @param iMethod the interpreter-resolved method being called; only
+     *            {@link CremaResolvedJavaMethodImpl} methods participate in runtime compilation
+     *            profiling. Other interpreter methods, for example metadata-only AOT methods or
+     *            synthetic helpers that are not loaded through Crema, cannot own runtime profiling
+     *            state.
      */
     @AlwaysInline("Keep the compilation-disabled interpreter entry call-free")
     public static MethodProfile profileMethodEntry(InterpreterResolvedJavaMethod iMethod) {
@@ -114,7 +116,9 @@ public class RistrettoProfileSupport {
 
     @NeverInline("Keep the Ristretto profiling state machine out of the interpreter root")
     private static MethodProfile profileMethodEntryEnabled(InterpreterResolvedJavaMethod iMethod) {
-        assert iMethod instanceof CremaResolvedJavaMethodImpl;
+        if (!(iMethod instanceof CremaResolvedJavaMethodImpl)) {
+            return null;
+        }
         final RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMethod);
 
         int oldState = COMPILATION_STATE_UPDATER.get(rMethod);

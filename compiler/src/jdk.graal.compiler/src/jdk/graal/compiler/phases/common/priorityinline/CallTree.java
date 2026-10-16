@@ -62,7 +62,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
@@ -85,7 +84,6 @@ import jdk.graal.compiler.phases.common.priorityinline.nodes.SubgraphNode;
 import jdk.graal.compiler.phases.common.priorityinline.tuning.TuningPolicy;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
-import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.AbstractJavaProfile;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -678,15 +676,12 @@ public class CallTree extends Graph {
         PhaseSuite<HighTierContext> suite = context.getGraphBuilderSuiteForCallee(inOOMEProtectedInlineContext);
 
         if (constantSeen) {
-            Replacements replacements = context.getReplacements();
-            if (replacements instanceof ReplacementsImpl) {
-                PhaseSuite<HighTierContext> copied = suite.copy();
-                GraphBuilderPhase originalBuilder = (GraphBuilderPhase) (copied.findPhase(GraphBuilderPhase.class).previous());
-                GraphBuilderConfiguration newConfig = originalBuilder.getGraphBuilderConfig().copy();
-                newConfig.getPlugins().appendParameterPlugin(new ConstantBindingParameterPlugin(constants, context.getMetaAccess(), context.getSnippetReflection()));
-                copied.findPhase(GraphBuilderPhase.class).set(originalBuilder.copyWithConfig(newConfig));
-                return copied;
-            }
+            PhaseSuite<HighTierContext> copied = suite.copy();
+            GraphBuilderPhase originalBuilder = (GraphBuilderPhase) (copied.findPhase(GraphBuilderPhase.class).previous());
+            GraphBuilderConfiguration newConfig = originalBuilder.getGraphBuilderConfig().copy();
+            newConfig.getPlugins().appendParameterPlugin(new ConstantBindingParameterPlugin(constants, context.getMetaAccess(), context.getSnippetReflection()));
+            copied.findPhase(GraphBuilderPhase.class).set(originalBuilder.copyWithConfig(newConfig));
+            return copied;
         }
 
         return suite;

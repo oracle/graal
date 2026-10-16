@@ -1108,9 +1108,9 @@ public final class Deoptimizer {
              * contains an object.
              *
              * For this reason, classify the return value only for an AfterPop frame at an invoke
-             * in a Ristretto method. Determine its kind from existing interpreter linkage without
-             * linking during deoptimization. All other states use the primitive stub. The AOT path
-             * below continues to use the target deoptimization entry's CodeInfo bit.
+             * in runtime-installed code, using the immutable bytecode invoke layout of that frame.
+             * All other states use the primitive stub. The AOT path below continues to use the
+             * target deoptimization entry's CodeInfo bit.
              */
             boolean objectReturnValueIsObject = InterpreterSupport.singleton().isInterpreterDeoptReturnValueObject(sourceChunk.getFrameInfo());
             if (ImageSingletons.contains(LazyDeoptStubSelectionRecorder.class)) {
@@ -1168,7 +1168,7 @@ public final class Deoptimizer {
 
         final EagerDeoptSourceFrameOperation operation = new EagerDeoptSourceFrameOperation(this, pc, ignoreNonDeoptimizable);
         operation.enqueue();
-        return operation.getResult();
+        return operation.takeResult();
     }
 
     public DeoptimizedFrame deoptimizeEagerly() {
@@ -1223,7 +1223,7 @@ public final class Deoptimizer {
      */
     private static final class EagerDeoptSourceFrameOperation extends JavaVMOperation {
 
-        private final Deoptimizer receiver;
+        private Deoptimizer receiver;
         private final CodePointer pc;
         private final boolean ignoreNonDeoptimizable;
         private DeoptimizedFrame result;
@@ -1244,8 +1244,12 @@ public final class Deoptimizer {
             result = receiver.doDeoptSourceFrame(pc, ignoreNonDeoptimizable, true);
         }
 
-        public DeoptimizedFrame getResult() {
-            return result;
+        public DeoptimizedFrame takeResult() {
+            // The empty VM-operation queue can still retain its last node. Drop consumed payloads.
+            DeoptimizedFrame resultFrame = result;
+            result = null;
+            receiver = null;
+            return resultFrame;
         }
     }
 

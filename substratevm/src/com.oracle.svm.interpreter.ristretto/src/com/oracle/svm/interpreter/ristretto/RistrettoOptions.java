@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.ristretto;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NON_NEGATIVE;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -38,6 +39,25 @@ import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class RistrettoOptions {
+
+    @Option(help = "Preserve AOT bytecodes for inlining and deoptimization in Ristretto runtime compilations. " +
+                    "Example: com.foo.Bar.baz registers baz as an analysis root, while com.foo.Bar.* and negative patterns only match methods that " +
+                    "analysis already reaches. Class initializers and bodies loading unresolved runtime-deferred constant dynamics, including through " +
+                    "invokedynamic bootstrap arguments, cannot be preserved. Unsupported exact selections fail; wildcard selections are normally skipped, " +
+                    "but unsupported field, invocation, or constant semantics newly discovered for a retained body at final analysis are fatal for all selections.")//
+    public static final HostedOptionKey<String> JITPreserveBytecodesForRuntime = new HostedOptionKey<>(null, RistrettoOptions::validatePreservedBytecodes);
+
+    @Option(help = "Fail when preserving AOT bytecodes requires additional method, type, field or image-heap reachability. " +
+                    "By default, retain these dependencies and log them only when -H:Log=PreserveBytecodes is enabled. " +
+                    "Reachability is checked before each selected method is registered during analysis.")//
+    public static final HostedOptionKey<Boolean> JITPreserveBytecodesFailOnAdditionalReachability = new HostedOptionKey<>(false);
+
+    @Option(help = "Fail if a wildcard-selected AOT method loses its preserved bytecodes after analysis retained them. " +
+                    "By default, skip the body and log the rejection only when -H:Log=PreserveBytecodes is enabled. " +
+                    "Dependencies registered during preservation analysis may remain in the image. " +
+                    "Early wildcard exclusions are unaffected; exact preservation requests still fail if their bodies cannot be kept. This option does not " +
+                    "control final-analysis safety rejection of newly resolved unsupported field, invocation, or constant semantics, which always fails.")//
+    public static final HostedOptionKey<Boolean> JITPreserveBytecodesFailOnLateRejection = new HostedOptionKey<>(false);
 
     @Option(help = "Use the Graal JIT compiler at runtime to compile bytecodes. Can only be configured during startup.")//
     public static final RuntimeOptionKey<Boolean> JITEnableCompilation = new RuntimeOptionKey<>(true, Immutable);
@@ -100,6 +120,13 @@ public class RistrettoOptions {
     private static void positive(RuntimeOptionKey<Integer> option, int value) {
         if (value <= 0) {
             throw RuntimeOptionValidation.invalidOptionValue(option, value, "The value must be greater than 0");
+        }
+    }
+
+    private static void validatePreservedBytecodes(HostedOptionKey<String> option) {
+        String value = option.getValue();
+        if (value != null && !value.isBlank() && !SubstrateOptions.useRistretto()) {
+            throw UserError.invalidOptionValue(option, value, "Preserving bytecodes requires Ristretto.");
         }
     }
 

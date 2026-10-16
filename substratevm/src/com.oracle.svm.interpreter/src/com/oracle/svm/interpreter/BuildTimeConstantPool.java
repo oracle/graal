@@ -50,9 +50,12 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.interpreter.classfile.ConstantPoolBuilder;
@@ -75,6 +78,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
@@ -86,10 +90,34 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * Once the constant pool is finished e.g. all methods in the class are processed for the
  * interpreter, it must be transformed (via {@link #snapshot()}) into a runtime-ready
  * {@link InterpreterConstantPool}.
+ * <p>
+ * The translation of retained bytecodes and their constant-pool references is described in
+ * {@link #hydrate(InterpreterResolvedObjectType)}.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 final class BuildTimeConstantPool {
     private final ConstantPoolBuilder poolBuilder;
+
+    /**
+     * Returns whether the base interpreter can execute a preserved call through a guaranteed
+     * runtime-parser fallback. This is build-time reachability policy, so it stays with its sole
+     * hosted caller instead of widening the runtime {@link RistrettoInterpreterSupport} contract.
+     */
+    private static boolean hasRuntimeCompilationCalleeFallback(InterpreterResolvedJavaMethod method, int bci, InterpreterResolvedJavaMethod calleeInterpreterMethod,
+                    HostedMethod calleeHostedMethod) {
+        if (!method.hasRuntimeCompilationBytecodesPreserved() || InterpreterOptions.DebuggerWithInterpreter.getValue()) {
+            return false;
+        }
+        String target = calleeHostedMethod.getWrapped().format("%H.%n(%p)");
+        boolean supported = target.equals("com.oracle.svm.interpreter.ristretto.RistrettoDirectives.inRuntimeCompiledCode()") ||
+                        target.equals("jdk.graal.compiler.api.directives.GraalDirectives.preciseDeoptimize()") ||
+                        target.equals("jdk.graal.compiler.api.directives.GraalDirectives.deoptimizeAndInvalidate()");
+        if (supported) {
+            InterpreterUtil.log("[interpreter reachability] Call from %s @ bci=%s (runtime compile) to %s handled by a guaranteed runtime parser fallback", method, bci,
+                            calleeInterpreterMethod);
+        }
+        return supported;
+    }
 
     /**
      * Creates runtime-ready constant pool for the interpreter.
@@ -145,11 +173,49 @@ final class BuildTimeConstantPool {
         return poolBuilder.appendCachedMethod(false, method);
     }
 
+    /**
+     * Adds a method reference to this interpreter constant pool and returns its index for the
+     * rewritten bytecode. The reference keeps the original instruction's symbolic holder and signature.
+     *
+     * <p>
+     * The resolved {@code method} can have a different declaring type after JVM resolution. The
+     * symbolic values retain the original constant-pool reference so runtime linking observes the
+     * same dispatch and access-check context as the source bytecode.
+     */
+    private int method(JavaMethod method, JavaType symbolicHolder, boolean interfaceMethod, JavaMethod symbolicMethod) {
+        if (!(method instanceof InterpreterResolvedJavaMethod || method instanceof UnresolvedJavaMethod)) {
+            throw new IllegalArgumentException("Type must be either InterpreterResolvedJavaMethod or UnresolvedJavaMethod");
+        }
+        if (!(symbolicHolder instanceof InterpreterResolvedJavaType || symbolicHolder instanceof UnresolvedJavaType)) {
+            throw new IllegalArgumentException("Symbolic holder must be either InterpreterResolvedJavaType or UnresolvedJavaType");
+        }
+        return poolBuilder.appendCachedMethod(interfaceMethod, method, symbolicHolder, symbolicMethod.getName(), symbolicMethod.getSignature().toMethodDescriptor());
+    }
+
     public int field(JavaField field) {
         if (!(field instanceof InterpreterResolvedJavaField || field instanceof UnresolvedJavaField)) {
             throw new IllegalArgumentException("Type must be either InterpreterResolvedJavaField or UnresolvedJavaField");
         }
         return poolBuilder.appendCachedField(field);
+    }
+
+    /**
+     * Adds a field reference to this interpreter constant pool and returns its index, retaining the
+     * symbolic holder from the original field bytecode.
+     *
+     * <p>
+     * Field resolution can select a member inherited from another declaring type. Keeping the
+     * symbolic holder lets the interpreter reproduce the source instruction's access and linking
+     * semantics instead of serializing only the resolved field owner.
+     */
+    private int field(JavaField field, JavaType symbolicHolder) {
+        if (!(field instanceof InterpreterResolvedJavaField || field instanceof UnresolvedJavaField)) {
+            throw new IllegalArgumentException("Type must be either InterpreterResolvedJavaField or UnresolvedJavaField");
+        }
+        if (!(symbolicHolder instanceof InterpreterResolvedJavaType || symbolicHolder instanceof UnresolvedJavaType)) {
+            throw new IllegalArgumentException("Symbolic holder must be either InterpreterResolvedJavaType or UnresolvedJavaType");
+        }
+        return poolBuilder.appendCachedField(field, symbolicHolder);
     }
 
     private int appendixConstant(JavaConstant appendix) {
@@ -175,6 +241,9 @@ final class BuildTimeConstantPool {
                 case Double:
                     return doubleConstant(javaConstant.asDouble());
                 case Object:
+                    if (javaConstant.isNull()) {
+                        return appendixConstant(JavaConstant.NULL_POINTER);
+                    }
                     if (javaConstant instanceof ImageHeapConstant imageHeapConstant) {
                         return weakObjectConstant(imageHeapConstant);
                     }
@@ -215,7 +284,17 @@ final class BuildTimeConstantPool {
         return handlers;
     }
 
-    public static boolean weedOut(InterpreterResolvedObjectType type, HostedUniverse hUniverse) {
+    /**
+     * Prunes method bodies that cannot execute in the interpreter and reports whether pruning
+     * exposed another reachability iteration.
+     *
+     * <p>
+     * Runtime-preserved bytecodes use the same executable-callee checks. They may retain a call to a
+     * signature-polymorphic intrinsic or a small explicit directive allowlist handled by the runtime
+     * parser, but an arbitrary hosted-only plugin is not proof that the call will disappear during
+     * runtime parsing or interpreter continuation.
+     */
+    public static boolean pruneNonExecutableMethodBodies(InterpreterResolvedObjectType type, HostedUniverse hUniverse) {
         boolean chasingFixpoint = false;
 
         methodsLoop: for (InterpreterResolvedJavaMethod method : BuildTimeInterpreterUniverse.singleton().allDeclaredMethods(type)) {
@@ -229,6 +308,12 @@ final class BuildTimeConstantPool {
             }
 
             ResolvedJavaMethod originalMethod = method.getOriginalMethod();
+            if (RestrictHeapAccessCalleesImpl.heapAccessRestriction(method.getOriginalMethod()) != RestrictHeapAccess.Access.UNRESTRICTED) {
+                // A later ordinary or recursive retention request may have restored this body.
+                method.setCode(null);
+                chasingFixpoint = true;
+                continue;
+            }
             ConstantPool originalConstantPool = originalMethod.getConstantPool();
             for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
                 int bytecode = BytecodeStream.currentBC(code, bci);
@@ -251,19 +336,24 @@ final class BuildTimeConstantPool {
                             if (calleeInterpreterMethod instanceof InterpreterResolvedJavaMethod calleeInterpreterResolvedJavaMethod) {
                                 if (!calleeInterpreterResolvedJavaMethod.isInterpreterExecutable()) {
                                     HostedMethod calleeHostedMethod = hUniverse.optionalLookup(calleeOriginalJavaMethod);
+                                    if (SubstrateOptions.useRistretto() &&
+                                                    hasRuntimeCompilationCalleeFallback(method, bci, calleeInterpreterResolvedJavaMethod, calleeHostedMethod)) {
+                                        continue;
+                                    }
                                     if (calleeHostedMethod.isCompiled()) {
-                                        InterpreterUtil.log("[weedout] good. Call from %s @ bci=%s (interp) to %s (compiled) possible", method, bci, calleeInterpreterResolvedJavaMethod);
+                                        InterpreterUtil.log("[interpreter reachability] Call from %s @ bci=%s (interp) to %s (compiled) possible", method, bci, calleeInterpreterResolvedJavaMethod);
                                     } else if (calleeHostedMethod.hasVTableIndex()) {
-                                        InterpreterUtil.log("[weedout] good. Virtual call from %s @ bci=%s (interp) to %s (compiled) possible", method, bci, calleeInterpreterResolvedJavaMethod);
+                                        InterpreterUtil.log("[interpreter reachability] Virtual call from %s @ bci=%s (interp) to %s (compiled) possible", method, bci,
+                                                        calleeInterpreterResolvedJavaMethod);
                                     } else if (calleeHostedMethod.getImplementations().length == 1) {
                                         HostedMethod impl = calleeHostedMethod.getImplementations()[0];
                                         if (!(impl.isCompiled() || isInterpreterExecutable(impl))) {
-                                            weedOut(method, BuildTimeInterpreterUniverse.singleton().methodOrUnresolved(impl), impl, true);
+                                            markMethodBodyNonExecutable(method, BuildTimeInterpreterUniverse.singleton().methodOrUnresolved(impl), impl, true);
                                             chasingFixpoint = true;
                                             continue methodsLoop;
                                         }
                                         assert impl.isCompiled() || isInterpreterExecutable(impl) : calleeHostedMethod + ", implementation: " + impl + ", ";
-                                        InterpreterUtil.log("[weedout] good. Virtual call from %s @ bci=%s (interp) has exactly one implementation available %s", method, bci,
+                                        InterpreterUtil.log("[interpreter reachability] Virtual call from %s @ bci=%s (interp) has exactly one implementation available %s", method, bci,
                                                         calleeHostedMethod.getImplementations()[0]);
                                     } else if (!DebuggerFeature.isReachable(calleeHostedMethod.getWrapped())) {
                                         /*
@@ -271,7 +361,7 @@ final class BuildTimeConstantPool {
                                          * if this call-site is reached
                                          */
                                     } else {
-                                        weedOut(method, calleeInterpreterResolvedJavaMethod, calleeHostedMethod, false);
+                                        markMethodBodyNonExecutable(method, calleeInterpreterResolvedJavaMethod, calleeHostedMethod, false);
                                         chasingFixpoint = true;
                                         continue methodsLoop;
                                     }
@@ -285,7 +375,7 @@ final class BuildTimeConstantPool {
                                  */
                             }
                         } else {
-                            InterpreterUtil.log("[weedout] ??? call from %s at bci=%s does not go anywhere", method, bci);
+                            InterpreterUtil.log("[interpreter reachability] call from %s at bci=%s does not go anywhere", method, bci);
                         }
                     }
                 }
@@ -302,8 +392,13 @@ final class BuildTimeConstantPool {
         return false;
     }
 
-    private static void weedOut(InterpreterResolvedJavaMethod method, JavaMethod calleeInterpreterResolvedJavaMethod, HostedMethod calleeHostedMethod, boolean singleCalleeImpl) {
-        InterpreterUtil.log("[weedout] bad. %s downgraded to non-interpreter-executable.", method);
+    /**
+     * Removes {@code method}'s interpreter body after reachability proves that a required callee
+     * has neither a compilable implementation nor an interpreter-executable implementation.
+     */
+    private static void markMethodBodyNonExecutable(InterpreterResolvedJavaMethod method, JavaMethod calleeInterpreterResolvedJavaMethod, HostedMethod calleeHostedMethod,
+                    boolean singleCalleeImpl) {
+        InterpreterUtil.log("[interpreter reachability] %s downgraded to non-interpreter-executable.", method);
         if (singleCalleeImpl) {
             InterpreterUtil.log("          there is no way to call the single callee implementation %s, but it is considered reachable",
                             calleeInterpreterResolvedJavaMethod);
@@ -315,6 +410,27 @@ final class BuildTimeConstantPool {
         method.setCode(null);
     }
 
+    /**
+     * Populates the interpreter constant pool for the retained method bodies of {@code type}.
+     * This image-build step is called <em>hydration</em>: it translates entries referenced by
+     * retained bytecodes from the original JVM constant pool into the representation used by
+     * {@link InterpreterConstantPool}.
+     *
+     * <p>
+     * For example, an {@code invokevirtual} operand initially indexes a method reference in the
+     * original pool. Hydration adds the corresponding interpreter method reference to this pool
+     * and patches the operand to its new index. It also translates type, field and constant
+     * references, retains symbolic holders and call-site signatures where resolution needs them,
+     * and fills exception-handler and local-variable metadata.
+     *
+     * <p>
+     * The debugger and Ristretto invoke this step after AOT compilation, once executable callees
+     * are known and unusable method bodies have been pruned. {@link #snapshot()} produces the pool
+     * installed on the interpreter type. The interpreter reads it when executing retained
+     * bytecodes, and Ristretto reads it when parsing those bytecodes for runtime compilation.
+     * Reachability dependencies must already have been registered during analysis; hydration does
+     * not make otherwise unreachable program elements available.
+     */
     public void hydrate(InterpreterResolvedObjectType type) {
 
         List<InterpreterResolvedJavaMethod> allDeclaredMethods = BuildTimeInterpreterUniverse.singleton().allDeclaredMethods(type);
@@ -324,19 +440,20 @@ final class BuildTimeConstantPool {
 
         for (InterpreterResolvedJavaMethod method : allDeclaredMethods) {
             AnalysisMethod originalMethod = method.getOriginalMethod();
-            method.setExceptionHandlers(processExceptionHandlers(originalMethod.getExceptionHandlers()));
-
-            LocalVariableTable hostLocalVariableTable = originalMethod.getLocalVariableTable();
-            if (hostLocalVariableTable != null) {
-                method.setLocalVariableTable(BuildTimeInterpreterUniverse.processLocalVariableTable(hostLocalVariableTable));
-            }
-            boolean needsMethodBody = method.needsMethodBody();
-            method.setLineNumberTable(needsMethodBody ? originalMethod.getLineNumberTable() : null);
-            if (!needsMethodBody) {
-                VMError.guarantee(method.getInterpretedCode() == null);
-            }
-
             byte[] code = method.getInterpretedCode();
+
+            method.setLineNumberTable(method.needsMethodBody() ? originalMethod.getLineNumberTable() : null);
+
+            if (InterpreterOptions.DebuggerWithInterpreter.getValue() || method.needsMethodBody() || method.hasRuntimeCompilationBytecodesPreserved()) {
+                LocalVariableTable hostLocalVariableTable = originalMethod.getLocalVariableTable();
+                if (hostLocalVariableTable != null) {
+                    method.setLocalVariableTable(BuildTimeInterpreterUniverse.processLocalVariableTable(hostLocalVariableTable));
+                }
+                method.setExceptionHandlers(processExceptionHandlers(originalMethod.getExceptionHandlers()));
+            } else {
+                VMError.guarantee(code == null);
+            }
+
             if (code == null || code.length == 0) {
                 continue;
             }
@@ -370,16 +487,29 @@ final class BuildTimeConstantPool {
                         int originalCPI = BytecodeStream.readCPI(code, bci);
                         int newCPI = 0;
                         JavaField originalJavaField = null;
+                        JavaType originalReferencedType = null;
                         try {
                             originalJavaField = originalConstantPool.lookupField(originalCPI, originalMethod, bytecode);
                         } catch (UnsupportedFeatureException e) {
+                            // ignore
+                        }
+                        try {
+                            // The symbolic field holder can differ from the resolved field owner.
+                            // Retain it so runtime field linking follows the original bytecode.
+                            originalReferencedType = originalConstantPool.lookupReferencedType(originalCPI, bytecode);
+                        } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError e) {
                             // ignore
                         }
                         // GR-44571: Somehow obtain an unresolved field to print useful error
                         // at runtime.
                         if (originalJavaField != null) {
                             JavaField interpreterField = BuildTimeInterpreterUniverse.singleton().fieldOrUnresolved(originalJavaField);
-                            newCPI = field(interpreterField);
+                            if (originalReferencedType != null) {
+                                JavaType interpreterReferencedType = BuildTimeInterpreterUniverse.singleton().typeOrUnresolved(originalReferencedType);
+                                newCPI = field(interpreterField, interpreterReferencedType);
+                            } else {
+                                newCPI = field(interpreterField);
+                            }
                         }
                         BytecodeStream.patchCPI(code, bci, newCPI);
                         break;
@@ -420,23 +550,7 @@ final class BuildTimeConstantPool {
                         } else {
                             originalCPI = BytecodeStream.readCPI(code, bci);
                         }
-                        JavaMethod originalJavaMethod = null;
-                        int newCPI = 0;
-                        try {
-                            originalJavaMethod = originalConstantPool.lookupMethod(originalCPI, bytecode);
-                        } catch (UnsupportedFeatureException | UserError.UserException e) {
-                            // ignore
-                        }
-                        // GR-44571: Somehow obtain an unresolved method to print useful
-                        // error at runtime.
-                        if (originalJavaMethod != null) {
-                            JavaMethod interpreterMethod = BuildTimeInterpreterUniverse.singleton().methodOrUnresolved(originalJavaMethod);
-                            if (interpreterMethod instanceof InterpreterResolvedJavaMethod iMethod) {
-                                iMethod.setNativeEntryPoint(InterpreterResolvedJavaMethod.createMethodRef((ResolvedJavaMethod) originalJavaMethod));
-                                InterpreterUtil.log("[hydrate] setting method ref for %s", interpreterMethod);
-                            }
-                            newCPI = method(interpreterMethod);
-                        }
+                        int newCPI = hydrateInvoke(method, bytecode, originalCPI);
 
                         if (bytecode == INVOKEDYNAMIC) {
                             int newAppendixCPI = 0;
@@ -479,4 +593,66 @@ final class BuildTimeConstantPool {
             }
         }
     }
+
+    /**
+     * Creates the interpreter-pool reference for one original invoke and returns its new index.
+     * Resolved targets supply native entries; symbolic references retain the bytecode's dispatch
+     * context and signature. An unavailable target keeps index zero for the existing lazy failure.
+     */
+    private int hydrateInvoke(InterpreterResolvedJavaMethod method, int bytecode, int originalCPI) {
+        AnalysisMethod originalMethod = method.getOriginalMethod();
+        ConstantPool originalConstantPool = originalMethod.getConstantPool();
+        JavaMethod originalJavaMethod = null;
+        JavaType originalReferencedType = null;
+        int newCPI = 0;
+        try {
+            originalJavaMethod = originalConstantPool.lookupMethod(originalCPI, bytecode);
+        } catch (UnsupportedFeatureException | UserError.UserException e) {
+            // ignore
+        }
+        if (bytecode != INVOKEDYNAMIC) {
+            try {
+                originalReferencedType = originalConstantPool.lookupReferencedType(originalCPI, bytecode);
+            } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError e) {
+                // ignore
+            }
+        }
+        // GR-44571: Somehow obtain an unresolved method to print useful
+        // error at runtime.
+        if (originalJavaMethod != null) {
+            JavaMethod interpreterMethod;
+            if (SubstrateOptions.useRistretto() && method.hasRuntimeCompilationBytecodesPreserved() &&
+                            originalJavaMethod instanceof AnalysisMethod intrinsicTarget && InterpreterFeature.isInterpreterMethodHandleIntrinsic(intrinsicTarget)) {
+                /*
+                 * Hosted signature-polymorphic wrappers can lack interpreter metadata even when
+                 * analysis has resolved them. Create their concrete-signature intrinsic directly;
+                 * the interpreter and runtime compiler implement it without an AOT wrapper entry.
+                 */
+                InterpreterResolvedJavaMethod intrinsicSeed = BuildTimeInterpreterUniverse.singleton().getOrCreateMethod(intrinsicTarget, false);
+                interpreterMethod = intrinsicSeed.createSignaturePolymorphicIntrinsic(intrinsicSeed.getSymbolicSignature());
+            } else {
+                interpreterMethod = BuildTimeInterpreterUniverse.singleton().methodOrUnresolved(originalJavaMethod);
+            }
+            if (interpreterMethod instanceof InterpreterResolvedJavaMethod iMethod && !iMethod.isSignaturePolymorphicIntrinsic()) {
+                /*
+                 * The method can already have an authoritative native entry point from
+                 * interpreter-method creation. In particular, distinct aliased constant
+                 * pool targets can resolve to the same interpreter method.
+                 */
+                if (iMethod.getNativeEntryPointHolderConstant() == null) {
+                    iMethod.setNativeEntryPoint(InterpreterResolvedJavaMethod.createMethodRef(iMethod.getOriginalMethod()));
+                }
+                InterpreterUtil.log("[hydrate] setting method ref for %s", interpreterMethod);
+            }
+            if (originalReferencedType != null) {
+                JavaType interpreterReferencedType = BuildTimeInterpreterUniverse.singleton().typeOrUnresolved(originalReferencedType);
+                boolean interfaceMethod = originalReferencedType instanceof ResolvedJavaType resolvedType ? resolvedType.isInterface() : bytecode == INVOKEINTERFACE;
+                newCPI = method(interpreterMethod, interpreterReferencedType, interfaceMethod, originalJavaMethod);
+            } else {
+                newCPI = method(interpreterMethod);
+            }
+        }
+        return newCPI;
+    }
+
 }

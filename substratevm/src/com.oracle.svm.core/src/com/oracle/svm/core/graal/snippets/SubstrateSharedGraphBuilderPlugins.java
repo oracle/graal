@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 
@@ -43,7 +44,11 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceNode;
+import jdk.graal.compiler.nodes.java.DynamicNewInstanceWithExceptionNode;
+import jdk.graal.compiler.nodes.java.ValidateNewInstanceClassNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -54,6 +59,32 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * so both paths use the same plugin implementations.
  */
 public final class SubstrateSharedGraphBuilderPlugins {
+
+    /** Registers Unsafe allocation with class initialization and the original exception states. */
+    public static void registerUnsafeAllocateInstancePlugin(Registration r) {
+        r.register(new RequiredInvocationPlugin("allocateInstance", Receiver.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
+                /* Emits a null-check for the otherwise unused receiver. */
+                unsafe.get(true);
+                /*
+                 * The allocated class must be null-checked already before the class initialization
+                 * check.
+                 */
+                ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
+                EnsureClassInitializedNode ensureInitialized = b.append(new EnsureClassInitializedNode(clazzNonNull));
+                ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
+
+                ValidateNewInstanceClassNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazzNonNull));
+                if (b.currentBlockCatchesOOME()) {
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true, true));
+                } else {
+                    b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true, true));
+                }
+                return true;
+            }
+        });
+    }
 
     public static void registerSystemPlugins(InvocationPlugins plugins) {
         registerSecurityManagerPlugin(plugins);

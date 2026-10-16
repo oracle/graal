@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.interpreter.metadata.Bytecodes.GETFIELD;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.GETSTATIC;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEINTERFACE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEVIRTUAL;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTFIELD;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.PUTSTATIC;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -51,6 +55,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -59,6 +64,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.pltgot.GOTEntryAllocator;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.interpreter.classfile.ClassFile;
@@ -130,6 +136,9 @@ public final class BuildTimeInterpreterUniverse {
     private final Map<ImageHeapConstant, ReferenceConstant<?>> objectConstants;
 
     private final Map<ExceptionHandler, ExceptionHandler> exceptionHandlers;
+
+    private static final String INTERPRETER_METHOD_BODY_FIELD_ACCESS_REASON = "field referenced from interpreter method body";
+    private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
 
     private SnippetReflectionProvider snippetReflectionProvider;
 
@@ -288,12 +297,19 @@ public final class BuildTimeInterpreterUniverse {
     /* Not thread-safe, only call in single thread context */
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void setNeedMethodBody(InterpreterResolvedJavaMethod thiz, boolean needMethodBody, MetaAccessProvider metaAccessProvider) {
-        if (thiz.needMethodBody && needMethodBody) {
-            // skip, already scanned
+        setNeedMethodBody(thiz, needMethodBody, metaAccessProvider, true);
+    }
+
+    /* Not thread-safe, only call in single thread context */
+    private static void setNeedMethodBody(InterpreterResolvedJavaMethod thiz, boolean needMethodBody, MetaAccessProvider metaAccessProvider, boolean retainInvokedMethodBodies) {
+        if (thiz.needMethodBody && needMethodBody && retainInvokedMethodBodies && thiz.hasMethodBodyClosureRetained()) {
+            // A completed recursive scan already covered this request. Preservation-only scans still
+            // run to completion because an earlier recursive scan may have stopped at a bad callee.
             return;
         } else if (!needMethodBody) {
             // nothing to do
             thiz.needMethodBody = needMethodBody;
+            thiz.setMethodBodyClosureRetained(false);
             return;
         }
 
@@ -304,6 +320,9 @@ public final class BuildTimeInterpreterUniverse {
         }
 
         thiz.needMethodBody = true;
+        if (retainInvokedMethodBodies) {
+            thiz.setMethodBodyClosureRetained(true);
+        }
 
         for (int bci = 0; bci < BytecodeStream.endBCI(code); bci = BytecodeStream.nextBCI(code, bci)) {
             int opcode = BytecodeStream.opcode(code, bci);
@@ -317,17 +336,107 @@ public final class BuildTimeInterpreterUniverse {
                             continue;
                         }
                         if (!InterpreterFeature.callableByInterpreter(resolvedJavaMethod, metaAccessProvider)) {
-                            return;
+                            if (retainInvokedMethodBodies) {
+                                thiz.setMethodBodyClosureRetained(false);
+                                return;
+                            }
+                            continue;
                         }
-                        BuildTimeInterpreterUniverse.singleton().getOrCreateMethodWithMethodBody(resolvedJavaMethod, metaAccessProvider);
+                        if (retainInvokedMethodBodies) {
+                            BuildTimeInterpreterUniverse.singleton().getOrCreateMethodWithMethodBody(resolvedJavaMethod, metaAccessProvider);
+                        }
                     } catch (UnsupportedFeatureException | UserError.UserException e) {
                         InterpreterUtil.log("[process invokes] lookup in method %s failed due to:", thiz.getOriginalMethod());
                         InterpreterUtil.log(e);
                         // ignore, call will fail at run-time if reached
                     }
                 }
+                /*
+                 * Runtime-preserved bytecodes may execute field bytecodes from AOT methods whose
+                 * full interpreter callee closure is not retained. The interpreter constant pool can
+                 * therefore contain field references that normal analysis did not observe through a
+                 * parsed method body, so record the field access explicitly while retaining the
+                 * method-scoped pool.
+                 */
+                case GETFIELD, GETSTATIC, PUTFIELD, PUTSTATIC -> {
+                    if (retainInvokedMethodBodies) {
+                        continue;
+                    }
+                    retainMethodBodyFieldAccess(thiz, opcode, BytecodeStream.readCPI(code, bci));
+                }
             }
         }
+    }
+
+    /**
+     * Registers one direct field bytecode from a preservation-only method body.
+     *
+     * <p>
+     * Normal interpreter analysis discovers field accesses while following an executable method
+     * body. A preservation-only AOT body is retained for runtime parsing and deoptimization without
+     * that normal interpreter closure, so this method records the same read/write reachability
+     * explicitly. It keeps the assertion-field special case and unresolved-entry behavior together
+     * while the enclosing scan handles only bytecode traversal.
+     */
+    private static void retainMethodBodyFieldAccess(InterpreterResolvedJavaMethod method, int opcode, int originalCPI) {
+        try {
+            JavaField field = method.getOriginalMethod().getConstantPool().lookupField(originalCPI, method.getOriginalMethod(), opcode);
+            if (field instanceof AnalysisField analysisField) {
+                if (isUnwrittenSyntheticAssertionStatusField(analysisField)) {
+                    retainSyntheticAssertionStatusField(analysisField);
+                } else {
+                    /*
+                     * TODO - GR-80612: Retain interpreter/JIT field metadata without expanding
+                     * analysis reachability.
+                     */
+                    Object reason = INTERPRETER_METHOD_BODY_FIELD_ACCESS_REASON + " " + method.getOriginalMethod();
+                    if (opcode == GETFIELD || opcode == GETSTATIC) {
+                        analysisField.registerAsRead(reason);
+                        if (analysisField.isStatic() && !analysisField.isWritten()) {
+                            MaterializedConstantFields.singleton().register(analysisField);
+                        }
+                    } else {
+                        // Runtime-loaded code can observe a retained store even when AOT sees no reader.
+                        analysisField.registerAsWritten(reason);
+                        if (!analysisField.isStatic() && !analysisField.isAccessed()) {
+                            // Primitive writes alone do not retain storage, but the interpreter needs an offset.
+                            analysisField.registerAsRead(reason);
+                        }
+                    }
+                }
+            }
+        } catch (UnsupportedFeatureException | UserError.UserException e) {
+            InterpreterUtil.log("[process fields] lookup in method %s failed due to:", method.getOriginalMethod());
+            InterpreterUtil.log(e);
+            /*
+             * Match BuildTimeConstantPool: unresolved field entries remain unresolved in the
+             * method-scoped constant pool and fail only if execution reaches them.
+             */
+        }
+    }
+
+    private static boolean isUnwrittenSyntheticAssertionStatusField(AnalysisField field) {
+        /*
+         * An unmapped optional alias field belongs physically to the substitution class, while
+         * analysis maps its declaring type to the original class. Real fields with the same name
+         * must retain their declared values instead of using this interpreter-only representation.
+         */
+        return field.isStatic() && field.isFinal() && field.isSynthetic() && field.getJavaKind() == JavaKind.Boolean &&
+                        field.getName().equals(SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME) && !field.isWritten() &&
+                        !OriginalClassProvider.getOriginalType(field.getWrapped().getDeclaringClass()).equals(OriginalClassProvider.getOriginalType(field.getDeclaringClass()));
+    }
+
+    /**
+     * Alias targets can have a compiler-generated assertion field that is not present in the
+     * original type's analysis field table. Preserve it with the established interpreter-only
+     * representation instead of registering it with points-to analysis and image-heap storage.
+     */
+    private static void retainSyntheticAssertionStatusField(AnalysisField analysisField) {
+        BuildTimeInterpreterUniverse universe = singleton();
+        InterpreterResolvedJavaField field = universe.getOrCreateField(analysisField);
+        boolean value = !AssertionsSupport.singleton().desiredAssertionStatus(OriginalClassProvider.getJavaClass(analysisField.getDeclaringClass()));
+        setUnmaterializedConstantValue(field, universe.constant(JavaConstant.forBoolean(value)));
+        field.markAsArtificiallyReachable();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -580,6 +689,19 @@ public final class BuildTimeInterpreterUniverse {
         return result;
     }
 
+    /**
+     * Retains one AOT method body without recursively retaining its bytecode callees. Runtime
+     * parsing and interpretation resolve callees through the method-scoped constant pool. Later
+     * hydration must publish that pool and the exception handlers for this image-built metadata.
+     */
+    public InterpreterResolvedJavaMethod getOrCreateMethodWithMethodBodyOnly(ResolvedJavaMethod resolvedJavaMethod, MetaAccessProvider metaAccessProvider) {
+        InterpreterResolvedJavaMethod result = getOrCreateMethod(resolvedJavaMethod, true);
+
+        setNeedMethodBody(result, true, metaAccessProvider, false);
+
+        return result;
+    }
+
     private static void ensureMethodCodeRetained(InterpreterResolvedJavaMethod method, ResolvedJavaMethod resolvedJavaMethod, boolean retainMethodCode) {
         if (!retainMethodCode || method.getInterpretedCode() != null || resolvedJavaMethod.getCode() == null) {
             return;
@@ -706,6 +828,19 @@ public final class BuildTimeInterpreterUniverse {
      * This classes cause problems when resolving constant pool entries.
      */
     public void createConstantPools(HostedUniverse hUniverse) {
+        createConstantPools(hUniverse, false);
+    }
+
+    /**
+     * Creates method-scoped constant pools only for types that contain retained bytecodes.
+     * Preserved-bytecode callers use this after analysis; unmarked AOT methods are intentionally
+     * left without runtime bytecodes and without these method-body constant pools.
+     */
+    public void createConstantPoolsForMethodBodies(HostedUniverse hUniverse) {
+        createConstantPools(hUniverse, true);
+    }
+
+    private void createConstantPools(HostedUniverse hUniverse, boolean onlyTypesWithRetainedMethodBodies) {
         setSnippetReflectionProvider(hUniverse.getSnippetReflection());
 
         this.classToMethods = methods.values().stream().collect(Collectors.groupingBy(InterpreterResolvedJavaMethod::getDeclaringClass));
@@ -716,21 +851,31 @@ public final class BuildTimeInterpreterUniverse {
         while (needsAnotherRound) {
             needsAnotherRound = false;
             iterations++;
-            InterpreterUtil.log("[weedout] iteration %s", iterations);
+            InterpreterUtil.log("[interpreter reachability] method-body pruning iteration %s", iterations);
             for (InterpreterResolvedJavaType type : types.values()) {
-                if (type instanceof InterpreterResolvedObjectType referenceType) {
-                    needsAnotherRound |= BuildTimeConstantPool.weedOut(referenceType, hUniverse);
+                if (type instanceof InterpreterResolvedObjectType referenceType && (!onlyTypesWithRetainedMethodBodies || hasRetainedMethodBody(referenceType))) {
+                    needsAnotherRound |= BuildTimeConstantPool.pruneNonExecutableMethodBodies(referenceType, hUniverse);
                 }
             }
         }
 
         for (InterpreterResolvedJavaType type : types.values()) {
-            if (type instanceof InterpreterResolvedObjectType referenceType) {
+            if (type instanceof InterpreterResolvedObjectType referenceType && (!onlyTypesWithRetainedMethodBodies || hasRetainedMethodBody(referenceType))) {
                 // TODO(peterssen): GR-68564 Obtain proper major/minor version for this type.
                 BuildTimeConstantPool buildTimeConstantPool = BuildTimeConstantPool.create(referenceType, ClassFile.MAJOR_VERSION, ClassFile.MINOR_VERSION);
                 referenceType.setConstantPool(buildTimeConstantPool.snapshot());
             }
         }
+    }
+
+    /** Returns whether {@code type} declares a body retained for interpretation or runtime compilation. */
+    private boolean hasRetainedMethodBody(InterpreterResolvedObjectType type) {
+        for (InterpreterResolvedJavaMethod method : allDeclaredMethods(type)) {
+            if ((method.needsMethodBody() || method.hasRuntimeCompilationBytecodesPreserved()) && method.getInterpretedCode() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public List<InterpreterResolvedJavaMethod> allDeclaredMethods(InterpreterResolvedObjectType type) {

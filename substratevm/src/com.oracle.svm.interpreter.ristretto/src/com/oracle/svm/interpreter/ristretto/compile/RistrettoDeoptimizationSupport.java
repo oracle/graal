@@ -47,6 +47,7 @@ import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptState;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.deopt.DeoptimizedFrame.RelockObjectData;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
@@ -242,7 +243,7 @@ public class RistrettoDeoptimizationSupport {
         FrameInfoQueryResult compiledFrame = virtualFrameInfo;
         // Most recently rebuilt interpreter frame; becomes the caller of the next frame created.
         RistrettoVirtualInterpreterFrame frameBefore = null;
-        ArrayList<DeoptimizedFrame.RelockObjectData> objectsToRelock = new ArrayList<>();
+        ArrayList<RelockObjectData> relockedObjects = new ArrayList<>();
 
         BytecodePosition associatedCompiledCodePosition = compilerInfoPoint.debugInfo.getBytecodePosition();
 
@@ -259,8 +260,8 @@ public class RistrettoDeoptimizationSupport {
                 logger().string("[buf/deopt] create interp frame for method=").string(interpreterMethod.toString()).newline();
             }
             InterpreterFrame reconstructedFrame = createInterpreterFrameFromCompiledFrame(interpreterMethod, compiledFrame, deoptimizer);
-            RistrettoVirtualInterpreterFrame currentFrame = createVirtualInterpreterFrame(compiledFrame, rMethod, reconstructedFrame, frameBefore);
-            restoreHeldMonitors(currentFrame, deoptimizer.getDeoptState(), objectsToRelock);
+            Object[] heldMonitorObjects = collectHeldMonitorObjects(compiledFrame, deoptimizer.getDeoptState(), relockedObjects);
+            RistrettoVirtualInterpreterFrame currentFrame = createVirtualInterpreterFrame(compiledFrame, rMethod, reconstructedFrame, heldMonitorObjects, frameBefore);
             frameBefore = currentFrame;
 
             // iterate inlining (caller) chain in deoptimized physical frame and associated compiler
@@ -275,8 +276,8 @@ public class RistrettoDeoptimizationSupport {
         InterpreterResolvedJavaMethod bottomMethod = frameBefore.getMethod();
         JavaKind bottomReturnKind = bottomMethod.getSignature().getReturnKind();
         installStackTraceCallerInfo(frameBefore);
-        DeoptimizedFrame.RelockObjectData[] objectsToRelockArray = objectsToRelock.toArray(new DeoptimizedFrame.RelockObjectData[objectsToRelock.size()]);
-        RistrettoDeoptimizedInterpreterFrame deoptimizedInterpreterFrame = new RistrettoDeoptimizedInterpreterFrame(frameSize, frameBefore, rCode, pc, pin, objectsToRelockArray);
+        RelockObjectData[] relockData = relockedObjects.isEmpty() ? null : relockedObjects.toArray(new RelockObjectData[0]);
+        RistrettoDeoptimizedInterpreterFrame deoptimizedInterpreterFrame = new RistrettoDeoptimizedInterpreterFrame(frameSize, frameBefore, rCode, relockData, pc, pin);
 
         deoptimizedInterpreterFrame.setInterpreterEntry(getInterpreterEntry(bottomReturnKind));
         if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
@@ -291,13 +292,13 @@ public class RistrettoDeoptimizationSupport {
      * still own unread GP/FP return registers when deoptimization starts.
      */
     private static RistrettoVirtualInterpreterFrame createVirtualInterpreterFrame(FrameInfoQueryResult compiledFrame, RistrettoMethod rMethod,
-                    InterpreterFrame reconstructedFrame, RistrettoVirtualInterpreterFrame calleeFrame) {
+                    InterpreterFrame reconstructedFrame, Object[] heldMonitorObjects, RistrettoVirtualInterpreterFrame calleeFrame) {
         InterpreterResolvedJavaMethod interpreterMethod = rMethod.getInterpreterMethod();
         int currentBci = compiledFrame.getBci();
         int targetBci = computeDeoptTargetBci(interpreterMethod, compiledFrame);
-        JavaKind compiledReturnKind = calleeFrame == null ? resolvePendingTopFrameReturnKind(rMethod, compiledFrame) : JavaKind.Illegal;
+        JavaKind compiledReturnKind = calleeFrame == null ? pendingSourceCallReturnKind(compiledFrame) : JavaKind.Illegal;
 
-        RistrettoVirtualInterpreterFrame currentFrame = new RistrettoVirtualInterpreterFrame(compiledFrame, reconstructedFrame, rMethod, currentBci,
+        RistrettoVirtualInterpreterFrame currentFrame = new RistrettoVirtualInterpreterFrame(compiledFrame, reconstructedFrame, rMethod, heldMonitorObjects, currentBci,
                         targetBci, compiledFrame.getStackState(), compiledFrame.getNumStack(), compiledReturnKind, calleeFrame);
         if (calleeFrame != null) {
             calleeFrame.setCaller(currentFrame);
@@ -360,8 +361,8 @@ public class RistrettoDeoptimizationSupport {
     }
 
     /**
-     * Determines whether the physical top compiled frame has a completed invoke result that has not
-     * yet been copied into the reconstructed interpreter operand stack.
+     * Returns the physical kind of a completed invoke result that has not yet been copied into the
+     * reconstructed interpreter operand stack.
      *
      * <p>
      * Example shape:
@@ -384,32 +385,25 @@ public class RistrettoDeoptimizationSupport {
      * the deopt stub while the compiled frame still owns those physical return registers, because
      * the Java-side resume path runs only after the stub has restored caller state and no longer
      * has safe access to the machine return-value registers.
-     */
-    private static JavaKind resolvePendingTopFrameReturnKind(RistrettoMethod topFrameMethod, FrameInfoQueryResult topCompiledFrame) {
-        if (topCompiledFrame.getStackState() != StackState.AfterPop) {
-            return JavaKind.Illegal;
-        }
-        return computeDeoptInvokeSiteLayout(topFrameMethod, topCompiledFrame.getBci()).getReturnKind();
-    }
-
-    /**
-     * Returns the symbolic return kind of the invoke at {@code callsiteBci}. This is the pending
-     * machine result's kind, independent of whether the compiler linked, intrinsified, or replaced
-     * the invoke.
      *
-     * <p>
-     * Lazy deoptimization calls this before frame construction to choose whether the GP return
-     * register must become a managed GC root. At this point an object result still exists only as a
-     * raw machine word, so any allocation or safepoint could move the object without updating that
-     * word. The method therefore performs only an uninterruptible lookup in metadata constructed
-     * with the {@link RistrettoMethod}; initiating linkage or parsing a descriptor here would be a
-     * correctness bug, not merely a performance issue.
+     * Lazy deoptimization also uses this kind to choose whether the GP return register must become
+     * a managed GC root. The result is still a raw machine word: allocation or a safepoint could move
+     * an object without updating it. Read only the immutable bytecode invoke layout here; do not
+     * initiate linkage or parse descriptors before the return register has become a GC root.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static JavaKind computeDeoptInvokeReturnKind(RistrettoMethod method, int callsiteBci) {
-        InvokeLayout invokeLayout = method.lookupDeoptInvokeLayout(callsiteBci);
-        VMError.guarantee(invokeLayout != null, "Deopt resume expects structural invoke metadata");
-        return invokeLayout.getReturnKind();
+    public static JavaKind pendingSourceCallReturnKind(FrameInfoQueryResult frameInfo) {
+        VMError.guarantee(frameInfo != null, "Interpreter deoptimization requires decoded frame metadata");
+        if (!frameInfo.isAfterPop()) {
+            return JavaKind.Illegal;
+        }
+        VMError.guarantee(frameInfo.getDeoptMethod() instanceof RistrettoMethod, "Interpreter AfterPop frame requires a Ristretto method");
+        RistrettoMethod method = (RistrettoMethod) frameInfo.getDeoptMethod();
+        InvokeLayout layout = method.lookupDeoptInvokeLayout(frameInfo.getBci());
+        VMError.guarantee(layout != null, "Interpreter AfterPop frame requires an invoke layout");
+        // JavaKind.getStackKind() is not uninterruptible; normalize narrow results without a call.
+        JavaKind kind = layout.getReturnKind();
+        return kind == JavaKind.Boolean || kind == JavaKind.Byte || kind == JavaKind.Short || kind == JavaKind.Char ? JavaKind.Int : kind;
     }
 
     /**
@@ -517,7 +511,36 @@ public class RistrettoDeoptimizationSupport {
                 default -> VMError.shouldNotReachHere("createInterpreterFrameFromCompiledFrame: kind not implemented yet: " + value.getJavaKind());
             }
         }
+
         return interpreterFrame;
+    }
+
+    static void registerDeoptimizedHeldMonitors(InterpreterResolvedJavaMethod interpreterMethod, FrameInfoQueryResult compiledFrame, int targetBci, Object[] heldMonitorObjects,
+                    InterpreterFrame interpreterFrame) {
+        validateSynchronizedMethodLock(interpreterMethod, compiledFrame, targetBci, heldMonitorObjects);
+        if (heldMonitorObjects == null) {
+            return;
+        }
+        int numLocals = compiledFrame.getNumLocals();
+        int numStack = compiledFrame.getNumStack();
+        int lockCount = 0;
+        for (int lockIdx = 0; lockIdx < heldMonitorObjects.length; lockIdx++) {
+            Object lockObject = heldMonitorObjects[lockIdx];
+            if (lockObject == null) {
+                if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
+                    int lockSlotIndex = numLocals + numStack + lockIdx;
+                    logger().string("[buf/deopt] slot=").signed(lockSlotIndex).string(" is illegal").newline();
+                }
+                continue;
+            }
+            assert Thread.holdsLock(lockObject);
+            heldMonitorObjects[lockCount++] = lockObject;
+        }
+        for (int i = lockCount; i < heldMonitorObjects.length; i++) {
+            heldMonitorObjects[i] = null;
+        }
+        /* Transfer ownership without allocating after the compiled frame has been removed. */
+        interpreterFrame.setLocks(heldMonitorObjects, lockCount);
     }
 
     /**
@@ -537,7 +560,7 @@ public class RistrettoDeoptimizationSupport {
      * normal optimization can also make local 0 dead at the resume BCI. For instance methods, lock slot
      * 0 is therefore the deoptimization ABI for the method monitor.
      */
-    private static void validateSynchronizedMethodLock(InterpreterResolvedJavaMethod interpreterMethod, FrameInfoQueryResult compiledFrame, int targetBci, Object firstLockObject) {
+    private static void validateSynchronizedMethodLock(InterpreterResolvedJavaMethod interpreterMethod, FrameInfoQueryResult compiledFrame, int targetBci, Object[] heldMonitorObjects) {
         if (!interpreterMethod.isSynchronized()) {
             return;
         }
@@ -547,7 +570,7 @@ public class RistrettoDeoptimizationSupport {
                             interpreterMethod, targetBci, compiledFrame.getNumLocks());
             return;
         }
-        InterpreterUtil.guarantee(firstLockObject != null,
+        InterpreterUtil.guarantee(heldMonitorObjects != null && heldMonitorObjects.length > 0 && heldMonitorObjects[0] != null,
                         "Missing synchronized method monitor in deoptimized frame-state locks for method %s at target BCI %s with lock count %s.",
                         interpreterMethod, targetBci, compiledFrame.getNumLocks());
         int methodMonitorSlot = compiledFrame.getNumLocals() + compiledFrame.getNumStack();
@@ -556,49 +579,49 @@ public class RistrettoDeoptimizationSupport {
                         interpreterMethod, targetBci, compiledFrame.getNumLocks());
         if (interpreterMethod.isStatic()) {
             Object staticMethodLock = interpreterMethod.getDeclaringClass().getJavaClass();
-            VMError.guarantee(firstLockObject == staticMethodLock,
+            VMError.guarantee(heldMonitorObjects[0] == staticMethodLock,
                             "Unexpected static synchronized method monitor in deoptimized frame-state locks.");
-        }
-    }
-
-    /**
-     * Stores the frame-state monitors in acquisition order without gaps in the interpreter frame.
-     * Validation uses the original first lock slot even when other slots are omitted. During
-     * optimization, objects may be virtualized and later materialized again, and monitor state may
-     * also be elided for objects that were never virtualized. Frame reconstruction may run on the
-     * VM operation thread, so only prepare eliminated monitors here. The deopt stub relocks them on the
-     * deoptimized thread before execution resumes. Live monitors remain owned by that thread.
-     */
-    private static void restoreHeldMonitors(RistrettoVirtualInterpreterFrame virtualFrame, DeoptState deoptState, ArrayList<DeoptimizedFrame.RelockObjectData> objectsToRelock) {
-        FrameInfoQueryResult sourceFrame = virtualFrame.getFrameInfo();
-        int numLocks = sourceFrame.getNumLocks();
-        if (numLocks == 0) {
-            validateSynchronizedMethodLock(virtualFrame.getMethod(), sourceFrame, virtualFrame.getTargetBci(), null);
+            VMError.guarantee(Thread.holdsLock(heldMonitorObjects[0]),
+                            "Static synchronized method monitor is not owned by the current thread during deoptimization.");
             return;
         }
 
+        VMError.guarantee(Thread.holdsLock(heldMonitorObjects[0]),
+                        "Instance synchronized method monitor is not owned by the current thread during deoptimization.");
+    }
+
+    /**
+     * Collects the frame-state monitors that are held at the deopt point. During optimization,
+     * objects may be virtualized and later materialized again, and monitor state may also be elided
+     * for objects that were never virtualized. Only eliminated monitors need an explicit relock;
+     * live monitors are still owned. Relocking and interpreter registration run on the resuming
+     * thread, since eager frame reconstruction can run on another thread.
+     */
+    private static Object[] collectHeldMonitorObjects(FrameInfoQueryResult sourceFrame, DeoptState deoptState, ArrayList<RelockObjectData> relockedObjects) {
+        int numLocks = sourceFrame.getNumLocks();
+        if (numLocks == 0) {
+            return null;
+        }
+
         int slotIdx = sourceFrame.getNumLocals() + sourceFrame.getNumStack();
-        Object[] heldMonitorObjects = new Object[numLocks];
-        Object firstLockObject = null;
-        int lockCount = 0;
+        Object[] heldMonitorObjects = null;
         for (int lockIdx = 0; lockIdx < numLocks; lockIdx++) {
             int lockSlotIdx = slotIdx + lockIdx;
             JavaConstant value = deoptState.readValue(lockSlotIdx, sourceFrame);
-            if (value.getJavaKind() == JavaKind.Illegal) {
+            if (value.getJavaKind().equals(JavaKind.Illegal)) {
                 continue;
             }
 
             Object lockObject = SubstrateObjectConstant.asObject(value);
-            assert lockObject != null : "Held monitor must not be null";
-            if (lockIdx == 0) {
-                firstLockObject = lockObject;
-            }
             if (sourceFrame.getValueInfos()[lockSlotIdx].isEliminatedMonitor()) {
-                objectsToRelock.add(createRelockObjectData(value, sourceFrame));
+                // Eager frame reconstruction can run on another thread.
+                relockedObjects.add(createRelockObjectData(value, sourceFrame));
             }
-            heldMonitorObjects[lockCount++] = lockObject;
+            if (heldMonitorObjects == null) {
+                heldMonitorObjects = new Object[numLocks];
+            }
+            heldMonitorObjects[lockIdx] = lockObject;
         }
-        validateSynchronizedMethodLock(virtualFrame.getMethod(), sourceFrame, virtualFrame.getTargetBci(), firstLockObject);
-        virtualFrame.getFrame().setLocks(heldMonitorObjects, lockCount);
+        return heldMonitorObjects;
     }
 }

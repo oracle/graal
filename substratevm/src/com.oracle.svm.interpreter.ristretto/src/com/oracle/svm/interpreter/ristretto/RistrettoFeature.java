@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,8 +44,10 @@ import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.interpreter.BuildTimeInterpreterUniverse;
 import com.oracle.svm.interpreter.CremaFeature;
 import com.oracle.svm.interpreter.InterpreterFeature;
+import com.oracle.svm.interpreter.InterpreterOptions;
 import com.oracle.svm.interpreter.RistrettoInterpreterSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
@@ -105,6 +107,8 @@ public final class RistrettoFeature implements InternalFeature {
     private static final Method interpEntryShort = ReflectionUtil.lookupMethod(InterpreterDeoptEntryPoints.class, "entryShort", RistrettoDeoptimizedInterpreterFrame.class);
     private static final Method interpEntryChar = ReflectionUtil.lookupMethod(InterpreterDeoptEntryPoints.class, "entryChar", RistrettoDeoptimizedInterpreterFrame.class);
 
+    private final RistrettoPreserveBytecodeSupport preserveBytecodeSupport = new RistrettoPreserveBytecodeSupport();
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.useRistretto();
@@ -137,6 +141,7 @@ public final class RistrettoFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        preserveBytecodeSupport.beforeAnalysis(access);
         RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoDirectives.class);
         RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoOSRSupport.class);
         /*
@@ -169,6 +174,30 @@ public final class RistrettoFeature implements InternalFeature {
         }
     }
 
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        preserveBytecodeSupport.duringAnalysis(a);
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        preserveBytecodeSupport.afterAnalysis((FeatureImpl.AfterAnalysisAccessImpl) access);
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        var accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
+        if (!InterpreterOptions.DebuggerWithInterpreter.getValue()) {
+            /*
+             * Crema has initialized generic field metadata before this callback. The debugger owns
+             * complete pools when enabled; otherwise hydrate only types with retained method bodies
+             * before checking which Ristretto selections survived final executable-callee pruning.
+             */
+            BuildTimeInterpreterUniverse.singleton().createConstantPoolsForMethodBodies(accessImpl.getUniverse());
+        }
+        preserveBytecodeSupport.afterCompilation(accessImpl);
+    }
+
     private static void registerFastPathField(FeatureImpl.BeforeAnalysisAccessImpl access, AnalysisType declaringType, String fieldName) {
         access.registerAsAccessed((AnalysisField) JVMCIReflectionUtil.getUniqueDeclaredField(declaringType, fieldName),
                         "Read by the Ristretto fast path via hosted field offsets.");
@@ -177,6 +206,7 @@ public final class RistrettoFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
         FeatureImpl.BeforeCompilationAccessImpl config = (FeatureImpl.BeforeCompilationAccessImpl) a;
+        preserveBytecodeSupport.beforeCompilation(config);
         initializeExecutionOffsets(config);
         if (RistrettoOptions.useDeoptimization()) {
             config.registerAsImmutable(ImageSingletons.lookup(RistrettoDeoptimizationSupport.class));

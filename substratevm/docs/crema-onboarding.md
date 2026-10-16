@@ -19,6 +19,9 @@ with `-H:+RuntimeClassLoading`, and that option also configures the main prerequ
 
 In addition to the above, `CremaFeature.java` builds on the existing Native Image bytecode interpreter and its metadata universe (`BuildTimeInterpreterUniverse.java`).
 
+For selected AOT bodies used by the runtime compiler, see
+[Preserving AOT bytecodes for Ristretto](ristretto-bytecode-preservation.md).
+
 ## Build-time setup
 
 The build-time side is split across hosted features. `RuntimeClassLoadingFeature` turns on runtime
