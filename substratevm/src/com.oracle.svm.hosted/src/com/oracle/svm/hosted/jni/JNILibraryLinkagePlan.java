@@ -92,7 +92,7 @@ public final class JNILibraryLinkagePlan {
             String value = entry.value();
             String[] parts = value.split(":", -1);
             if (parts.length != 2 || parts[0].isEmpty()) {
-                throw UserError.abort("Invalid option %s provided by %s. Expected `<library>:{static|dynamic}`.",
+                throw UserError.abort("Invalid option %s provided by %s. Expected `<library>:{static|dynamic}[?]`.",
                                 SubstrateOptionsParser.commandArgument(JNIRegistrationSupport.Options.JNILibraryLinkage, value), entry.origin());
             }
             finalEntries.put(parts[0], entry);
@@ -123,7 +123,7 @@ public final class JNILibraryLinkagePlan {
             }
 
             result.put(library, linkage);
-            if (reachabilityRequired) {
+            if (reachabilityRequired || RuntimeClassLoading.isSupported()) {
                 librariesRequiringReachability.add(library);
             }
         });

@@ -117,7 +117,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
         @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
         @Option(help = "Configure JNI library linkage as a comma-separated list of `<library>:{static|dynamic}[?]` entries. " +
-                        "Append `?` to apply the linkage only if the library is reachable." +
+                        "When runtime class loading is disabled, the build fails if a configured library is not reachable unless its linkage has a trailing `?`. " +
+                        "When runtime class loading is enabled, configured libraries are made reachable and `?` has no effect. " +
                         "Some JDK JNI libraries use static linkage by default when reachable, while other JNI libraries use dynamic linkage by default. " +
                         "Later entries override earlier entries.")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> JNILibraryLinkage = new HostedOptionKey<>(
