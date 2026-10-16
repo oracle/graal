@@ -291,10 +291,21 @@ public final class GuestTypes {
         return !builderTypes.contains(type);
     }
 
+    /**
+     * Finds application methods annotated with {@code annotationClass}.
+     */
     public List<ResolvedJavaMethod> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
+        return findAnnotatedMethods(guestAccess.lookupType(annotationClass));
+    }
+
+    /**
+     * Finds application methods annotated with {@code annotationType} without requiring a builder
+     * {@link Class} mirror for the annotation.
+     */
+    public List<ResolvedJavaMethod> findAnnotatedMethods(ResolvedJavaType annotationType) {
         ArrayList<ResolvedJavaMethod> result = new ArrayList<>();
         for (ResolvedJavaMethod method : applicationMethods) {
-            if (GuestAnnotationAccess.getAnnotationValue(method, annotationClass) != null) {
+            if (GuestAnnotationAccess.getAnnotationValue(method, annotationType, false) != null) {
                 result.add(method);
             }
         }

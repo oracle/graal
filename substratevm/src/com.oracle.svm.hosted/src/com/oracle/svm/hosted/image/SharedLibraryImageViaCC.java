@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted.image;
 
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -48,7 +47,7 @@ public class SharedLibraryImageViaCC extends NativeImageViaCC {
     }
 
     @Override
-    public String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, Method method) {
+    public String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath) {
         throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 

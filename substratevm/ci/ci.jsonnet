@@ -62,8 +62,9 @@
   }),
 
   local terminus = task_spec({
-    mxgate_dy+: ["/espresso-compiler-stub"],
-    mxgate_extra_args+: ["-B=--targets=GRAALVM"],
+    environment+: {
+      MX_ENV_PATH: "terminus",
+    },
   }),
 
   local standalone_pointsto_deps = task_spec({

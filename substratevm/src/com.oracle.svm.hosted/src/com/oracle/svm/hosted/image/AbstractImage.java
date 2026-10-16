@@ -159,7 +159,7 @@ public abstract class AbstractImage {
         };
     }
 
-    public abstract String[] makeLaunchCommand(AbstractImage.NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
+    public abstract String[] makeLaunchCommand(AbstractImage.NativeImageKind k, String imageName, Path binPath, Path workPath);
 
     public NativeImageCodeCache getCodeCache() {
         return codeCache;

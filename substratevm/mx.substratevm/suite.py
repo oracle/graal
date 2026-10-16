@@ -1326,19 +1326,6 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.test.terminus": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "sdk:NATIVEIMAGE",
-            ],
-            "checkstyle": "com.oracle.svm.test",
-            "javaCompliance": "24+",
-            "workingSets": "SVM",
-            "testProject": True,
-            "jacoco": "exclude",
-        },
-
         "com.oracle.svm.test.debug": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -2935,7 +2922,8 @@ suite = {
                            org.graalvm.extraimage.librarysupport,
                            org.graalvm.nativeimage.foreign,
                            org.graalvm.truffle.runtime.svm,
-                           com.oracle.truffle.enterprise.svm""",
+                           com.oracle.truffle.enterprise.svm,
+                           org.graalvm.nativeimage.enterprise.testrunner""",
                     """com.oracle.svm.common.meta to org.graalvm.nativeimage.pointsto,
                            org.graalvm.nativeimage.builder,
                            org.graalvm.nativeimage.llvm,
@@ -3124,17 +3112,6 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
-        },
-
-        "SVM_TEST_TERMINUS": {
-          "subDir": "src",
-          "dependencies": [
-            "com.oracle.svm.test.terminus",
-          ],
-          "distDependencies": [
-            "sdk:NATIVEIMAGE",
-          ],
-          "testDistribution": True,
         },
 
         # Special test distribution used for testing inclusion of resources from jar files with a space in their name.

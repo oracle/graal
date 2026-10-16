@@ -29,7 +29,6 @@ import static com.oracle.svm.hosted.webimage.codegen.WebImageCodeGen.CODE_GEN_SC
 import static com.oracle.svm.hosted.webimage.codegen.WebImageJSCodeGen.WriteTimer;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
@@ -123,7 +122,7 @@ public class WebImage extends AbstractImage {
     }
 
     @Override
-    public String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, Method method) {
+    public String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath) {
         return new String[0];
     }
 

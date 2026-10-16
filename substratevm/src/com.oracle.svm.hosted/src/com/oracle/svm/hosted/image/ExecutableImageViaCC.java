@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted.image;
 
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +43,7 @@ public class ExecutableImageViaCC extends NativeImageViaCC {
     }
 
     @Override
-    public String[] makeLaunchCommand(AbstractImage.NativeImageKind k, String imageName, Path binPath, Path workPath, Method method) {
+    public String[] makeLaunchCommand(AbstractImage.NativeImageKind k, String imageName, Path binPath, Path workPath) {
         ArrayList<String> cmd = new ArrayList<>();
         cmd.add(workPath.relativize(binPath.resolve("./" + imageName)).normalize().toString());
 
