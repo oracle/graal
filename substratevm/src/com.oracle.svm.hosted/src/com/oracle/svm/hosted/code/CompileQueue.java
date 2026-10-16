@@ -70,6 +70,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -1734,7 +1735,7 @@ public class CompileQueue {
                     ref = offsetConstant.offset();
                 }
                 if (ref != null) {
-                    HostedMethod referencedMethod = (HostedMethod) ref.getMethod();
+                    HostedMethod referencedMethod = (HostedMethod) MethodRefSupport.getMethod(ref);
                     ensureCompiled(referencedMethod, new MethodRefConstantReason(method, referencedMethod, reason));
                 }
             }

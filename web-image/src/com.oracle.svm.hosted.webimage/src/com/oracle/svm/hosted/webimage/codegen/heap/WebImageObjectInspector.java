@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -219,7 +220,7 @@ public class WebImageObjectInspector extends ObjectInspector {
             } else if (f.getType().isPrimitive() || (f.getJavaKind().isObject() && f.getType().getStorageKind().isPrimitive())) {
                 JavaConstant fieldValue = constantReflection.readFieldValue(f, c);
                 if (fieldValue instanceof PatchedWordConstant pwc && pwc.getWord() instanceof MethodPointer pointer) {
-                    AnalysisMethod method = (AnalysisMethod) pointer.getMethod();
+                    AnalysisMethod method = (AnalysisMethod) MethodRefSupport.getMethod(pointer);
                     ResolvedJavaMethod hostedMethod = hUniverse.lookup(method);
 
                     // The target class is reached via reflection, thus needs to registered

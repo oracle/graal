@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
@@ -106,7 +107,7 @@ public final class SubstrateBytecodeHandlerStubHelper {
             AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
             GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
             for (Integer opcode : annotation.getList("value", Integer.class)) {
-                GraalError.guarantee(handlerTable[opcode].getMethod().equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
+                GraalError.guarantee(MethodRefSupport.getMethod(handlerTable[opcode]).equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
                 handlerTable[opcode] = new MethodPointer(stubWrapper);
             }
         }

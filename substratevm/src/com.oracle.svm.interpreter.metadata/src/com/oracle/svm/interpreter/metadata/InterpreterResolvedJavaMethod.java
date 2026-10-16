@@ -71,6 +71,7 @@ import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.JavaVersion;
@@ -920,7 +921,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         if (this.nativeEntryPoint != null && nativeEntryPoint != null) {
             /* already set, verify if it's the same */
             ResolvedJavaMethod setMethod = this.nativeEntryPoint.getReferent().getMethod();
-            VMError.guarantee(setMethod.equals(nativeEntryPoint.getMethod()));
+            VMError.guarantee(setMethod.equals(MethodRefSupport.getMethod(nativeEntryPoint)));
             return;
         }
 

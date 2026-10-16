@@ -62,7 +62,7 @@ public final class SubstrateMethodPointerConstant implements VMConstant {
 
     @Override
     public String toString() {
-        return "method: " + pointer.getMethod().format("%H.%n");
+        return "method: " + MethodRefSupport.getMethod(pointer).format("%H.%n");
     }
 
     @Override
@@ -71,12 +71,12 @@ public final class SubstrateMethodPointerConstant implements VMConstant {
             return true;
         }
         return obj instanceof SubstrateMethodPointerConstant other &&
-                        pointer.getMethod().equals(other.pointer.getMethod()) &&
+                        MethodRefSupport.getMethod(pointer).equals(MethodRefSupport.getMethod(other.pointer)) &&
                         pointer.permitsRewriteToPLT() == other.pointer.permitsRewriteToPLT();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(pointer.getMethod());
+        return Objects.hashCode(MethodRefSupport.getMethod(pointer));
     }
 }

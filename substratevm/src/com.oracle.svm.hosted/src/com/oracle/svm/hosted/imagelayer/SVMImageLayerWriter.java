@@ -66,6 +66,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.SVMHost;
@@ -303,7 +304,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             if (classInitializer != null) {
                 MethodPointer methodPointer = (MethodPointer) classInitializer.functionPointer;
                 VMError.guarantee(methodPointer.permitsRewriteToPLT() == MethodPointer.DEFAULT_PERMIT_REWRITE_TO_PLT, "Non-default value currently not supported, add in schema if needed");
-                AnalysisMethod classInitializerMethod = (AnalysisMethod) methodPointer.getMethod();
+                AnalysisMethod classInitializerMethod = (AnalysisMethod) MethodRefSupport.getMethod(methodPointer);
                 b.setInitializerMethodId(classInitializerMethod.getId());
             }
         }

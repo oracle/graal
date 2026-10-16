@@ -99,6 +99,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.sboutlining.OutlinedSBMethodHolder;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -230,7 +231,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
 
         MethodPointer downcallStubPointer = accessSupport.ensureDowncallStubCreated(resolve);
         assert downcallStubPointer != null;
-        return downcallStubPointer.getMethod();
+        return MethodRefSupport.getMethod(downcallStubPointer);
     }
 
     private static JavaConstant toHostedConstant(JavaConstant c) {

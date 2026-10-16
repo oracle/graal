@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 
@@ -83,7 +84,7 @@ public final class MethodOffsetToPointerNode extends UnaryNode implements Conver
     public Constant convert(Constant c, ConstantReflectionProvider constantReflection) {
         if (SubstrateUtil.HOSTED && c instanceof SubstrateMethodOffsetConstant offsetConstant) {
             MethodOffset offset = offsetConstant.offset();
-            return new SubstrateMethodPointerConstant(new MethodPointer(offset.getMethod(), offset.permitsRewriteToPLT()));
+            return new SubstrateMethodPointerConstant(new MethodPointer(MethodRefSupport.getMethod(offset), offset.permitsRewriteToPLT()));
         }
         return null;
     }
@@ -92,7 +93,7 @@ public final class MethodOffsetToPointerNode extends UnaryNode implements Conver
     public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
         if (SubstrateUtil.HOSTED && c instanceof SubstrateMethodPointerConstant pointerConstant) {
             MethodPointer pointer = pointerConstant.pointer();
-            return new SubstrateMethodOffsetConstant(new MethodOffset(pointer.getMethod(), pointer.permitsRewriteToPLT()));
+            return new SubstrateMethodOffsetConstant(new MethodOffset(MethodRefSupport.getMethod(pointer), pointer.permitsRewriteToPLT()));
         }
         return null;
     }

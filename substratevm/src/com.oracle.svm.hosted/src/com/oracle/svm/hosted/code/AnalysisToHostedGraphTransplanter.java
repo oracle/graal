@@ -42,6 +42,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -337,7 +338,7 @@ public class AnalysisToHostedGraphTransplanter {
             SubstrateMethodPointerConstant methodPointerConstant = (SubstrateMethodPointerConstant) obj;
 
             MethodPointer methodPointer = methodPointerConstant.pointer();
-            ResolvedJavaMethod method = methodPointer.getMethod();
+            ResolvedJavaMethod method = MethodRefSupport.getMethod(methodPointer);
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
             newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod, methodPointer.permitsRewriteToPLT()));
 
@@ -345,7 +346,7 @@ public class AnalysisToHostedGraphTransplanter {
             SubstrateMethodOffsetConstant methodOffsetConstant = (SubstrateMethodOffsetConstant) obj;
 
             MethodOffset methodOffset = methodOffsetConstant.offset();
-            ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(methodOffset.getMethod(), node, replacements, hUniverse);
+            ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(MethodRefSupport.getMethod(methodOffset), node, replacements, hUniverse);
             newReplacement = new SubstrateMethodOffsetConstant(new MethodOffset(replacedMethod, methodOffset.permitsRewriteToPLT()));
 
         } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoad.class) {
