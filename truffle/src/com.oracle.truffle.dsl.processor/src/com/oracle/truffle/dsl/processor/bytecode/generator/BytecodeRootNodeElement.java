@@ -1532,13 +1532,20 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.end().end(); // call, call
         b.end(); // statement
 
-        b.startIf().string("bytecodes_ != null").end().startBlock();
-        b.lineComment("Ensure old bytecodes are published before the new bytecode node.");
-        b.statement("oldBytecode.publishOldBytecodes()");
-        b.end().startElseBlock();
-        b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
-        b.statement("newBytecode.adoptNodesAfterUpdate()");
-        b.end();
+        if (model.isBytecodeUpdatable()) {
+            b.startIf().string("bytecodes_ != null").end().startBlock();
+            b.lineComment("Ensure old bytecodes are published before the new bytecode node.");
+            b.statement("oldBytecode.publishOldBytecodes()");
+            b.end().startElseBlock();
+            b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
+            b.statement("newBytecode.adoptNodesAfterUpdate()");
+            b.end();
+        } else {
+            b.startIf().string("bytecodes_ == null").end().startBlock();
+            b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
+            b.statement("newBytecode.adoptNodesAfterUpdate()");
+            b.end();
+        }
         emitFence(b);
         b.end().startDoWhile().startCall("!BYTECODE_UPDATER", "compareAndSet").string("this").string("oldBytecode").string("newBytecode").end().end();
         b.newLine();
