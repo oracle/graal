@@ -1063,16 +1063,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
-    @TruffleBoundary
-    private void copyFromGeneric(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
-        validateLength(node, length);
-        validateAddress(node, destinationOffset, length);
-        final int copyLength = Math.toIntExact(length);
-        final byte[] tmp = new byte[copyLength];
-        WasmMemoryLibrary.getUncached().copyToBuffer(source, node, tmp, sourceOffset, 0, copyLength);
-        System.arraycopy(tmp, 0, buffer(), (int) destinationOffset, copyLength);
-    }
-
     @ExportMessage
     public WasmMemory duplicate() {
         final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, indexType64);

@@ -41,11 +41,13 @@
 package org.graalvm.wasm.test.suites.memory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.ByteArrayWasmMemory;
 import org.graalvm.wasm.memory.NativeWasmMemory;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
@@ -117,11 +119,47 @@ public class MemoryCopyFromMixedSuite {
     }
 
     @Test
+    public void testCopyFromNonSharedToShared() {
+        WasmMemory destination = createMemory(true, true, false);
+        WasmMemory source = createMemory(false, false, false);
+        Assert.assertSame(UnsafeWasmMemory.class, destination.getClass());
+        Assert.assertSame(ByteArrayWasmMemory.class, source.getClass());
+        copyAndCheck(destination, source);
+    }
+
+    @Test
     public void testCopyFromNonSharedToNative() {
         WasmMemory destination = createMemory(false, true, true);
         WasmMemory source = createMemory(false, false, false);
         Assert.assertSame(NativeWasmMemory.class, destination.getClass());
         Assert.assertSame(ByteArrayWasmMemory.class, source.getClass());
         copyAndCheck(destination, source);
+    }
+
+    @Test
+    public void testMixedCopyOutOfBoundsTraps() {
+        WasmMemory destination = createMemory(true, true, false);
+        WasmMemory source = createMemory(false, false, false);
+        Assert.assertSame(UnsafeWasmMemory.class, destination.getClass());
+        Assert.assertSame(ByteArrayWasmMemory.class, source.getClass());
+
+        byte[] expectedDest = new byte[Math.toIntExact(MEMORY.byteSize(destination))];
+        Arrays.fill(expectedDest, (byte) 0xa5);
+        MEMORY.initialize(destination, null, expectedDest, 0, 0, expectedDest.length);
+        writePayload(source, 0);
+
+        assertCopyTraps(destination, source, 0, MEMORY.byteSize(destination) - 2, PAYLOAD.length, expectedDest);
+        assertCopyTraps(destination, source, MEMORY.byteSize(source) - 2, 0, PAYLOAD.length, expectedDest);
+    }
+
+    private static void assertCopyTraps(WasmMemory destination, WasmMemory source, long sourceOffset, long destinationOffset, long length, byte[] expectedDest) {
+        try {
+            MEMORY.copyFrom(destination, null, source, sourceOffset, destinationOffset, length);
+            Assert.fail("Expected a trap for sourceOffset=" + sourceOffset + ", destinationOffset=" + destinationOffset + ", length=" + length);
+        } catch (WasmException e) {
+            byte[] actual = new byte[expectedDest.length];
+            MEMORY.copyToBuffer(destination, null, actual, 0, 0, actual.length);
+            Assert.assertArrayEquals(expectedDest, actual);
+        }
     }
 }

@@ -1016,16 +1016,6 @@ public final class NativeWasmMemory extends WasmMemory {
         }
     }
 
-    @TruffleBoundary
-    private void copyFromGeneric(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
-        validateLength(node, length);
-        validateAddress(node, destinationOffset, length);
-        final int copyLength = Math.toIntExact(length);
-        final byte[] tmp = new byte[copyLength];
-        WasmMemoryLibrary.getUncached().copyToBuffer(source, node, tmp, sourceOffset, 0, copyLength);
-        initialize(node, tmp, 0, destinationOffset, copyLength);
-    }
-
     @ExportMessage
     public boolean freed() {
         return startAddress == 0 || deallocator.getAddress() == 0;
