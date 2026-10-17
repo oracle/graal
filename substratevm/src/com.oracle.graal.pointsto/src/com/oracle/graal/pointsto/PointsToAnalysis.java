@@ -90,6 +90,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /** The type of {@link Object}. */
     private final AnalysisType objectType;
+    private final ExtensionPolicy extensionPolicy;
     /**
      * Enables propagating primitive values interproceduraly using the typeflow graph. Only simple
      * constants are propagated. Arithmetic operations and merges of different constants result in a
@@ -125,6 +126,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
                     ClassInclusionPolicy classInclusionPolicy) {
         super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection, classInclusionPolicy);
+        this.extensionPolicy = createExtensionPolicy(hostVM);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
@@ -156,52 +158,17 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         executor.init(timing);
     }
 
-    /**
-     * Returns true if the type's hierarchy is complete in the observable universe.
-     * <ul>
-     * <li>In <b>open type world</b> this means that all the subtypes of this type are known and
-     * this type cannot be extended outside the observable universe.</li>
-     * <li>In <b>closed type world</b> all types are considered closed.</li>
-     * </ul>
-     *
-     * This method is conservative, it returns false in cases where we are not sure, and further
-     * refining when a type is closed will improve analysis. For example GR-59311 will also define
-     * when a sealed type can be treated as a closed type.
-     */
-    public boolean isClosed(AnalysisType type) {
-        if (hostVM.isClosedTypeWorld()) {
-            /* In a closed type world all subtypes known. */
-            return true;
-        }
-        /*
-         * Array and leaf types are by definition closed. Core types are considered as closed to
-         * allow optimizations to be applied on them.
-         */
-        return type.isArray() || type.isLeaf() || hostVM.isCoreType(type);
+    private static ExtensionPolicy createExtensionPolicy(HostVM hostVM) {
+        return hostVM.isClosedTypeWorld() ? new ClosedWorldExtensionPolicy() : new PartiallyOpenWorldExtensionPolicy(hostVM);
     }
 
     /**
-     * Determine if the field is by default closed in an open-world analysis. A field is considered
-     * closed if it cannot be written *directly* from the open world. This applies for example to
-     * core VM fields whose writes should only come from code included in the base image.
-     * <p>
-     * Note that flows of closed fields can still contain values coming from the open world. For
-     * example the field could be the target of a field-store that is reached directly from a
-     * parameter of an entry point method. Similarly, the field could be unsafe accessed.
+     * Returns the extension policy selected at construction from {@link HostVM#isClosedTypeWorld()}.
+     * The policy remains fixed for this analysis. Its queries supply extension assumptions to flow
+     * construction, propagation, and graph strengthening.
      */
-    public boolean isClosed(ResolvedJavaField field) {
-        if (hostVM.isClosedTypeWorld()) {
-            /* In a closed type world all fields are closed. */
-            return true;
-        }
-        if (hostVM.isAlwaysClosedField(field)) {
-            return true;
-        }
-        if (hostVM.isCoreType(field.getDeclaringClass())) {
-            /* All the other svm.core fields are by default closed. */
-            return true;
-        }
-        return false;
+    public ExtensionPolicy getExtensionPolicy() {
+        return extensionPolicy;
     }
 
     @Override

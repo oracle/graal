@@ -114,7 +114,7 @@ final class ExtensionLayerImageFeature implements InternalFeature {
             }
             /*
              * These checks allow to ensure that core types can be treated as closed (see
-             * PointsToAnalysis.isClosed(AnalysisType)).
+             * ExtensionPolicy.isTypeClosed(AnalysisType)).
              */
             boolean coreType = hostVM.isCoreType(type);
             if (coreType) {

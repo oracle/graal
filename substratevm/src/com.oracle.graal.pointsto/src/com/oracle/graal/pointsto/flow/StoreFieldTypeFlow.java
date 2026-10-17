@@ -177,7 +177,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert bb.isClosed(field);
+            assert bb.getExtensionPolicy().isFieldClosed(field);
             /*
              * When receiver flow saturates swap in the saturated store type flow. When the store
              * itself saturates it propagates the saturation state to the uses/observers and unlinks
