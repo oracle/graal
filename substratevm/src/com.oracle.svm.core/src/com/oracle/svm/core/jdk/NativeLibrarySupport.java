@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,18 +77,45 @@ public final class NativeLibrarySupport extends NativeLibraries {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void preregisterUninitializedBuiltinLibrary(String name) {
+    public void registerUninitializedBuiltinLibrary(String name) {
         knownLibraries.add(PlatformNativeLibrarySupport.singleton().createLibrary(name, true));
-    }
-
-    @Platforms(HOSTED_ONLY.class)
-    public boolean isPreregisteredBuiltinLibrary(String name) {
-        return knownLibraries.stream().anyMatch(l -> l.isBuiltin() && l.getCanonicalIdentifier().equals(name));
     }
 
     @Override
     protected boolean addLibrary(String canonical, boolean builtin) {
         return addLibrary(builtin, canonical, true);
+    }
+
+    @Override
+    protected boolean addLibrary(String canonical, boolean builtin, boolean initialize) {
+        return addLibrary(builtin, canonical, initialize);
+    }
+
+    /**
+     * Loads the Java library before Java filesystem classes are initialized. Unlike
+     * {@link #loadLibraryRelative(String)}, this method must not use {@link java.io.File},
+     * {@link java.nio.file.Path}, or filesystem canonicalization.
+     */
+    NativeLibrary loadDynamicLibjava() {
+        String libName = System.mapLibraryName("java");
+        String runtimeLibraryPath = SystemPropertiesSupport.singleton().getBootLibraryPath();
+        if (runtimeLibraryPath != null) {
+            String canonical = SystemPropertiesSupport.joinPath(runtimeLibraryPath, libName);
+            if (addLibrary(canonical, false)) {
+                NativeLibrary lib = findLoadedLibrary(canonical);
+                if (lib != null) {
+                    VMError.guarantee(!lib.isBuiltin());
+                    return lib;
+                }
+            }
+        }
+        throw new UnsatisfiedLinkError("Can't load dynamically linked 'java' library, using runtime library path: " + runtimeLibraryPath);
+    }
+
+    void loadBuiltinLibjava() {
+        if (!addLibrary("java", true)) {
+            throw new UnsatisfiedLinkError("Can't load statically linked 'java' library.");
+        }
     }
 
     /**
@@ -159,6 +186,29 @@ public final class NativeLibrarySupport extends NativeLibraries {
         }
     }
 
+    /**
+     * Returns the loaded library, or {@code null} if it is unknown, failed to load,
+     * or has not yet completed its load and initialization sequence.
+     */
+    private NativeLibrary findLoadedLibrary(String canonical) {
+        lock.lock();
+        try {
+            for (NativeLibrary loading : currentLoadContext) {
+                if (canonical.equals(loading.getCanonicalIdentifier())) {
+                    return null;
+                }
+            }
+            for (NativeLibrary known : knownLibraries) {
+                if (canonical.equals(known.getCanonicalIdentifier()) && known.isLoaded()) {
+                    return known;
+                }
+            }
+            return null;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     @Override
     public PointerBase findSymbol(String name) {
         lock.lock();
@@ -169,8 +219,11 @@ public final class NativeLibrarySupport extends NativeLibraries {
         }
     }
 
-    public void registerInitializedBuiltinLibrary(String name) {
-        boolean success = addLibrary(true, name, false);
-        assert success;
+    /**
+     * Records a process-wide initialized library in this isolate without invoking its initialization
+     * function again. The library may have been built into the image or dynamically linked.
+     */
+    public void registerInitializedLibrary(String name) {
+        loadLibraryRelative(name, false);
     }
 }

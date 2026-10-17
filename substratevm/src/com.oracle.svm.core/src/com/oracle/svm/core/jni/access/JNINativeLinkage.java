@@ -41,13 +41,14 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.MetaUtil;
@@ -70,6 +71,9 @@ public final class JNINativeLinkage {
     private final CharSequence descriptor;
 
     private CGlobalDataInfo builtInAddress = null;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private String builtInSymbol;
 
     /**
      * Creates an object for linking the address of a native method.
@@ -115,14 +119,32 @@ public final class JNINativeLinkage {
         return (String) descriptor;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public boolean isBuiltInFunction() {
-        return PlatformNativeLibrarySupport.singleton().isBuiltinNative(getShortSymbol());
+        return getBuiltInSymbol() != null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private String getBuiltInSymbol() {
+        if (builtInSymbol == null) {
+            String shortSymbol = getShortSymbol();
+            if (JNIPlatformNativeLibrarySupport.singleton().isBuiltinNative(shortSymbol)) {
+                builtInSymbol = shortSymbol;
+            } else {
+                String longSymbol = getLongSymbol();
+                if (JNIPlatformNativeLibrarySupport.singleton().isBuiltinNative(longSymbol)) {
+                    builtInSymbol = longSymbol;
+                }
+            }
+        }
+        return builtInSymbol;
     }
 
     public CGlobalDataInfo getOrCreateBuiltInAddress(Function<String, CGlobalDataInfo> createSymbol) {
-        assert isBuiltInFunction();
+        String symbol = getBuiltInSymbol();
+        assert symbol != null;
         if (builtInAddress == null) {
-            builtInAddress = createSymbol.apply(getShortSymbol());
+            builtInAddress = createSymbol.apply(symbol);
         }
         return builtInAddress;
     }
@@ -196,29 +218,37 @@ public final class JNINativeLinkage {
                 classObject = DynamicHub.toClass(declaringClass);
                 classLoader = declaringClass.getClassLoader();
             }
-            String shortSymbol = getShortSymbol();
-
-            // If the loader is null, this is a lookup for a system class, so look
-            // for an internally implemented method.
-            if (classLoader == null) {
-                CEntryPointLiteral<?> val = VM_IMPLEMENTED_NATIVE_METHODS.get(shortSymbol);
-                if (val != null) {
-                    entryPoint = val.getFunctionPointer();
-                }
-            }
-
+            entryPoint = lookup(classObject, classLoader, getShortSymbol(), getMethodName());
             if (entryPoint.isNull()) {
-                entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, shortSymbol, getMethodName()));
+                entryPoint = lookup(classObject, classLoader, getLongSymbol(), getMethodName());
                 if (entryPoint.isNull()) {
-                    String longSymbol = getLongSymbol();
-                    entryPoint = Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, longSymbol, getMethodName()));
-                    if (entryPoint.isNull()) {
-                        throw new UnsatisfiedLinkError(toString());
-                    }
+                    throw new UnsatisfiedLinkError(toString());
                 }
             }
         }
         return entryPoint;
+    }
+
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.4-b23/src/hotspot/share/prims/nativeLookup.cpp#L252-L306")
+    private static PointerBase lookup(Class<?> classObject, ClassLoader classLoader, String symbolName, String methodName) {
+        if (classLoader == null) {
+            CEntryPointLiteral<?> vmEntryPoint = VM_IMPLEMENTED_NATIVE_METHODS.get(symbolName);
+            if (vmEntryPoint != null) {
+                return vmEntryPoint.getFunctionPointer();
+            }
+
+            /*
+             * Like HotSpot, resolve bootstrap-class methods against the Java library built-in JNI symbols
+             * before consulting the libraries registered with the bootloader.
+             * Note: It is critical for bootstrapping that Java_java_lang_ClassLoader_findNative
+             * gets found the first time around - otherwise an infinite loop can occur.
+             */
+            PointerBase javaLibrarySymbol = JNIPlatformNativeLibrarySupport.singleton().findJavaLibrarySymbol(symbolName);
+            if (javaLibrarySymbol.isNonNull()) {
+                return javaLibrarySymbol;
+            }
+        }
+        return Word.pointer(Target_java_lang_ClassLoader.findNative(classLoader, classObject, symbolName, methodName));
     }
 
     /// Gets the native method's JNI-mangled qualified name without a signature suffix.

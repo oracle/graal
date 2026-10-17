@@ -404,11 +404,20 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         return javaHome;
     }
 
-    @NeverInline("Reads the return address.")
     private String sunBootLibraryPathValue() {
         if (!ClassRegistries.respectClassLoader()) {
             return null;
         }
+        return getBootLibraryPath();
+    }
+
+    /**
+     * Returns the directory containing the current image's run-time libraries. This is independent
+     * of whether the image respects class-loader hierarchy because it is also needed to load a
+     * dynamically linked {@code libjava} during isolate startup.
+     */
+    @NeverInline("Reads the return address.")
+    String getBootLibraryPath() {
         /*
          * Avoid java.io.File / java.nio.file.Path here. Initializing those classes needs system
          * properties that can recursively query java.home. The path comes from the loaded libjvm
@@ -454,6 +463,13 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         }
         boolean isRoot = separatorIndex == 0 || (separator == '\\' && separatorIndex == 2 && path.charAt(1) == ':');
         return path.substring(0, separatorIndex + (isRoot ? 1 : 0));
+    }
+
+    static String joinPath(String directory, String file) {
+        if (directory.endsWith(String.valueOf(pathSeparator()))) {
+            return directory + file;
+        }
+        return directory + pathSeparator() + file;
     }
 
     private static char pathSeparator() {

@@ -27,8 +27,6 @@ package com.oracle.svm.webimage.fs;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.io.File;
-
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -50,11 +48,6 @@ public class WebImageRawFileOperationSupport implements RawFileOperationSupport 
     }
 
     @Override
-    public RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode) {
-        throw UNSUPPORTED_OPERATION;
-    }
-
-    @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public RawFileDescriptor create(RawFilePath path, FileCreationMode creationMode, FileAccessMode accessMode) {
         throw UNSUPPORTED_OPERATION;
@@ -67,11 +60,6 @@ public class WebImageRawFileOperationSupport implements RawFileOperationSupport 
 
     @Override
     public RawFileDescriptor open(String filename, FileAccessMode accessMode) {
-        throw UNSUPPORTED_OPERATION;
-    }
-
-    @Override
-    public RawFileDescriptor open(File file, FileAccessMode accessMode) {
         throw UNSUPPORTED_OPERATION;
     }
 
