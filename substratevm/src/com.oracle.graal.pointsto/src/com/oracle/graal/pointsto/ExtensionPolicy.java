@@ -73,8 +73,8 @@ public interface ExtensionPolicy {
      * kind. This handling covers possible returned values and predicates indicating that the call
      * may return normally, including void calls.
      * <p>
-     * The caller controls where this query is applied. Delayed callees require additional handling
-     * when they are linked.
+     * This decision applies independently of the containing method's entry classification. Delayed
+     * callees require additional handling when they are linked.
      */
     boolean requiresOpenInvokeResult(AnalysisType receiverType, boolean directInvoke);
 }

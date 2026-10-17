@@ -468,25 +468,25 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     /**
-     * For open world analysis saturate all the formal parameters and the returns from virtual
-     * invokes for all methods that can be directly accessible from the open world. This doesn't
-     * include methods in core VM classes.
+     * Seed external method entries and results of calls that may target extension code. A method
+     * whose entry is covered by analyzed callers can still invoke an extension callback.
      */
     void saturateForOpenTypeWorld(PointsToAnalysis bb) {
-        /* The method-entry decision currently guards both parameter and invoke-result seeding. */
         ExtensionPolicy extensionPolicy = bb.getExtensionPolicy();
-        if (extensionPolicy.isMethodEntryClosed(method)) {
-            return;
-        }
-
-        for (TypeFlow<?> parameter : getParameters()) {
-            if (parameter != null && parameter.canSaturate(bb)) {
-                parameter.enableFlow(bb);
-                parameter.onSaturated(bb);
+        if (!extensionPolicy.isMethodEntryClosed(method)) {
+            for (TypeFlow<?> parameter : getParameters()) {
+                if (parameter != null && parameter.canSaturate(bb)) {
+                    parameter.enableFlow(bb);
+                    parameter.onSaturated(bb);
+                }
             }
         }
 
-        /* Apply the invoke-result policy within the existing method-entry guard. */
+        /*
+         * An analyzed caller can pass an extension callback into a method with a closed entry.
+         * Account for the callback's results and normal continuation independently of entry seeding,
+         * even when no callback implementation is analyzed. This includes void-call return predicates.
+         */
         for (InvokeTypeFlow invokeTypeFlow : getInvokes()) {
             if (extensionPolicy.requiresOpenInvokeResult(invokeTypeFlow.getReceiverType(), invokeTypeFlow.isDirectInvoke())) {
                 invokeTypeFlow.saturateForOpenTypeWorld(bb);
