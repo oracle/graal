@@ -1033,4 +1033,18 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
             Assert.assertEquals("Unexpected result value", 1, f.execute().asInt());
         });
     }
+
+    /** Regression test for #14600: br_on_cast must preserve values below its reference operand. */
+    @Test
+    public void testBrOnCastPreservesValuesBelowReference() throws IOException {
+        final int i31ref = WasmType.withNullable(false, WasmType.I31_HEAPTYPE);
+        final byte[] binary = newBuilder()
+                        .addType(EMPTY_INTS, new int[]{WasmType.I32_TYPE})
+                        .addType(EMPTY_INTS, new int[]{WasmType.I32_TYPE, i31ref})
+                        .addFunction(0, new int[]{WasmType.ANYREF_TYPE},
+                                        "41 07 20 00 FB 18 01 00 6E 6C 1A 0C 01 0B 1A 0B")
+                        .addFunctionExport(0, "run")
+                        .build();
+        runRuntimeTest(binary, instance -> Assert.assertEquals("Unexpected result", 7, instance.getMember("run").execute().asInt()));
+    }
 }
