@@ -1532,7 +1532,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.end().end(); // call, call
         b.end(); // statement
 
-        if (model.enableInstructionTracing) {
+        if (model.isBytecodeUpdatable()) {
             b.startIf().string("bytecodes_ != null").end().startBlock();
             b.lineComment("Ensure old bytecodes are published before the new bytecode node.");
             b.statement("oldBytecode.publishOldBytecodes()");

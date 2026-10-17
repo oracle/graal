@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,13 +58,15 @@ import org.junit.Test;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.test.InstructionTracingTest.InstructionTracingDisabledRootNode;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * Regression test for generated code with {@code enableInstructionTracing = false} and no
- * instrumentations: {@code updateBytecode} must not call {@code publishOldBytecodes()}, which is
- * only generated when instruction tracing (or other bytecode-updatable features) is enabled.
+ * Regression test for generated code with {@code enableInstructionTracing = false}:
+ * {@code updateBytecode} must call {@code publishOldBytecodes()} only when bytecode is updatable
+ * (instrumentations or tags). A tracing-disabled root with no instrumentations must not emit the
+ * call, because the method is not generated.
  *
  * @see <a href="https://github.com/oracle/graal/issues/14682">oracle/graal#14682</a>
  */
@@ -84,10 +87,42 @@ public class InstructionTracingDisabledGenerationTest {
 
         List<Class<?>> generatedClasses = new ArrayList<>();
         collectClasses(TracingDisabledRootNodeGen.class, generatedClasses);
-        assertFalse("publishOldBytecodes must not be generated when instruction tracing is disabled",
+        assertFalse("publishOldBytecodes must not be generated when bytecode is not updatable",
                         declaresPublishOldBytecodes(generatedClasses));
-        assertFalse("generated class files must not mention publishOldBytecodes when instruction tracing is disabled",
+        assertFalse("generated class files must not mention publishOldBytecodes when bytecode is not updatable",
                         classFilesContain(generatedClasses, "publishOldBytecodes"));
+    }
+
+    /**
+     * {@link InstructionTracingTest.InstructionTracingDisabledRootNode} disables tracing but
+     * declares {@code @Instrumentation}, so bytecode remains updatable and
+     * {@code updateBytecode} must still invoke {@code publishOldBytecodes()}.
+     */
+    @Test
+    public void testInstrumentedTracingOffRootStillPublishesOldBytecodes() {
+        InstructionTracingDisabledRootNode node = InstructionTracingDisabledRootNodeGen.create(null, BytecodeConfig.DEFAULT, (b) -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginOtherInstrument();
+            b.emitLoadArgument(0);
+            b.endOtherInstrument();
+            b.endReturn();
+            b.endRoot();
+        }).getNode(0);
+
+        assertEquals(42, node.getCallTarget().call(42));
+        node.getRootNodes().update(InstructionTracingDisabledRootNodeGen.newConfigBuilder().addInstrumentation(
+                        InstructionTracingDisabledRootNode.OtherInstrument.class).build());
+        assertEquals(43, node.getCallTarget().call(42));
+
+        List<Class<?>> generatedClasses = new ArrayList<>();
+        collectClasses(InstructionTracingDisabledRootNodeGen.class, generatedClasses);
+        assertTrue("publishOldBytecodes must be generated when an @Instrumentation makes bytecode updatable",
+                        declaresPublishOldBytecodes(generatedClasses));
+        // updateBytecode lives on the outer generated class; its constant pool mentions the callee
+        // only if the call is emitted.
+        assertTrue("updateBytecode must call publishOldBytecodes when bytecode is updatable",
+                        classFilesContain(List.of(InstructionTracingDisabledRootNodeGen.class), "publishOldBytecodes"));
     }
 
     private static boolean declaresPublishOldBytecodes(List<Class<?>> generatedClasses) {
