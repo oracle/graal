@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,12 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
         this(field, type, null);
     }
 
+    /**
+     * Stores the effective value bound after dropping unchecked interface constraints. The field's
+     * original declaration remains available through {@link AnalysisField#getType()}.
+     */
     public FieldTypeFlow(AnalysisField field, AnalysisType type, AnalysisObject object) {
-        super(field, filterUncheckedInterface(type), TypeState.forEmpty());
+        super(field, dropUncheckedInterfaceBound(type), TypeState.forEmpty());
         this.object = object;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -179,7 +179,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
     public static class UnsafeStoreTypeFlow extends OffsetStoreTypeFlow {
 
         public UnsafeStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(storeLocation, objectType, filterUncheckedInterface(componentType), objectFlow, valueFlow);
+            super(storeLocation, objectType, dropUncheckedInterfaceBound(componentType), objectFlow, valueFlow);
         }
 
         public UnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
