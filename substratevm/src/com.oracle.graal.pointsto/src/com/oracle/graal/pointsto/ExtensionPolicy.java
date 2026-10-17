@@ -44,7 +44,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public interface ExtensionPolicy {
 
     /**
-     * Returns whether analysis treats the type's hierarchy as closed at this build boundary.
+     * Returns whether analysis treats the type's assignable-type hierarchy as closed at this build
+     * boundary. For an array bound, this includes covariant array types introduced by component subtypes.
      * This does not establish external allocation coverage, field closure, or method entry closure.
      * <p>
      * Consumers recovering a finite type approximation (an explicit set of known runtime types)

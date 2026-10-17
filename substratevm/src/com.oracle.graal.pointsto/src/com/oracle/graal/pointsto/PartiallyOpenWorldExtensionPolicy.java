@@ -52,12 +52,16 @@ final class PartiallyOpenWorldExtensionPolicy implements ExtensionPolicy {
     /**
      * {@inheritDoc}
      * <p>
-     * Classifies array, leaf, and core types as closed. Recursive sealed-hierarchy closure is not
-     * included (GR-59311).
+     * Classifies leaf and core types as closed. An array has a complete assignable-type hierarchy
+     * only when its elemental type does: extensions can introduce covariant array types through
+     * new component subtypes. Recursive sealed-hierarchy closure is not included (GR-59311).
      */
     @Override
     public boolean isTypeClosed(AnalysisType type) {
-        return type.isArray() || type.isLeaf() || hostVM.isCoreType(type);
+        if (type.isArray()) {
+            return isTypeClosed(type.getElementalType());
+        }
+        return type.isLeaf() || hostVM.isCoreType(type);
     }
 
     /**
@@ -89,9 +93,14 @@ final class PartiallyOpenWorldExtensionPolicy implements ExtensionPolicy {
      * <p>
      * Requires open-world handling for non-direct calls with open receiver types and direct calls
      * on open abstract receiver types whose implementations may only exist in the open world.
+     * Arrays have no extension-defined method implementations, independently of whether extensions
+     * can introduce new assignable array types. Clone result types are modeled by the clone flow.
      */
     @Override
     public boolean requiresOpenInvokeResult(AnalysisType receiverType, boolean directInvoke) {
+        if (receiverType != null && receiverType.isArray()) {
+            return false;
+        }
         if (directInvoke) {
             return receiverType != null && receiverType.isAbstract() && !isTypeClosed(receiverType);
         }
