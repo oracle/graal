@@ -1052,12 +1052,25 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @ExportMessage
     public void copyFrom(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
-        assert source instanceof ByteArrayWasmMemory;
-        ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
+        if (source instanceof ByteArrayWasmMemory) {
+            ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
+            validateLength(node, length);
+            s.validateAddress(node, sourceOffset, length);
+            validateAddress(node, destinationOffset, length);
+            System.arraycopy(s.buffer(), (int) sourceOffset, buffer(), (int) destinationOffset, (int) length);
+        } else {
+            copyFromGeneric(node, source, sourceOffset, destinationOffset, length);
+        }
+    }
+
+    @TruffleBoundary
+    private void copyFromGeneric(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
         validateLength(node, length);
-        s.validateAddress(node, sourceOffset, length);
         validateAddress(node, destinationOffset, length);
-        System.arraycopy(s.buffer(), (int) sourceOffset, buffer(), (int) destinationOffset, (int) length);
+        final int copyLength = Math.toIntExact(length);
+        final byte[] tmp = new byte[copyLength];
+        WasmMemoryLibrary.getUncached().copyToBuffer(source, node, tmp, sourceOffset, 0, copyLength);
+        System.arraycopy(tmp, 0, buffer(), (int) destinationOffset, copyLength);
     }
 
     @ExportMessage
