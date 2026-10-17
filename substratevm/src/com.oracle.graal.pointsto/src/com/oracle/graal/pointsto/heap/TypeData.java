@@ -48,8 +48,8 @@ public final class TypeData {
      * {@link JavaConstant}.
      * <p>
      * Evaluating the {@link AnalysisFuture} runs
-     * {@link ImageHeapScanner#createFieldValue(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)}
-     * which adds the result to the image heap.
+     * {@link ImageHeapScanner#createFieldValue(AnalysisField, ValueSupplier, ObjectScanner.ScanReason)},
+     * which creates a structural snapshot without marking an object result reachable.
      */
     private final Object[] values;
 
@@ -59,7 +59,7 @@ public final class TypeData {
 
     /**
      * Record the task computing the field value. It will be retrieved and executed when the field
-     * is marked as read.
+     * is marked as read or another consumer, such as constant reflection, requests the value.
      */
     public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
         arrayHandle.setVolatile(this.values, field.getPosition(), task);

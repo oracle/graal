@@ -159,6 +159,7 @@ public class MethodHandleFeature implements InternalFeature {
         eagerlyInitializeInvokersFunctions();
         eagerlyInitializeValueConversionsCaches();
         eagerlyInitializeCallSite();
+        eagerlyInitializeLazyInitializingVarHandle();
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection, VarHandle.class);
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, ReflectionUtil.lookupClass("java.lang.invoke.BoundMethodHandle"));
@@ -412,6 +413,17 @@ public class MethodHandleFeature implements InternalFeature {
     private static void eagerlyInitializeCallSite() {
         ReflectionUtil.invokeMethod(ReflectionUtil.lookupMethod(CallSite.class, "getTargetHandle"), null);
         ReflectionUtil.invokeMethod(ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSiteHandle"), null);
+    }
+
+    /**
+     * Eagerly initializes a JDK method-handle cache that would otherwise trigger reflection
+     * registration after analysis.
+     */
+    private static void eagerlyInitializeLazyInitializingVarHandle() {
+        Class<?> lazyInitializingVarHandleClass = ReflectionUtil.lookupClass(true, "java.lang.invoke.LazyInitializingVarHandle");
+        if (lazyInitializingVarHandleClass != null) {
+            ReflectionUtil.invokeMethod(ReflectionUtil.lookupMethod(lazyInitializingVarHandleClass, "ensureInitializedMh"), null);
+        }
     }
 
     private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {

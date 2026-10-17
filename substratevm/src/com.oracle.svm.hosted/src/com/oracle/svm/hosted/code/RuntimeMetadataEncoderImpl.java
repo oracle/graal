@@ -75,6 +75,9 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -163,6 +166,8 @@ import jdk.vm.ci.meta.annotation.Annotated;
  */
 public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
+    private static final ScanReason RUNTIME_METADATA_CONSTANT = new OtherReason("Object referenced from runtime metadata");
+
     @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
     @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
@@ -175,6 +180,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private final SnippetReflectionProvider snippetReflection;
     private final CodeInfoEncoder.Encoders encoders;
     private final HostedMetaAccess metaAccess;
+    private final ImageHeapScanner heapScanner;
     private final ReflectionDataAccessors accessors;
     private ReflectionDataBuilder dataBuilder;
     private final SymbolEncoder symbolEncoder = SymbolEncoder.singleton();
@@ -197,6 +203,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         this.snippetReflection = snippetReflection;
         this.encoders = encoders;
         this.metaAccess = metaAccess;
+        this.heapScanner = ((AnalysisMetaAccess) metaAccess.getWrapped()).getUniverse().getHeapScanner();
         this.accessors = new ReflectionDataAccessors();
         this.dataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
 
@@ -338,7 +345,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void addConstantObject(JavaConstant constant) {
-        encoders.objectConstants.addObject(constant);
+        /* Adding an object to runtime metadata commits it to the final image heap. */
+        encoders.objectConstants.addObject(heapScanner.markReachable(constant, RUNTIME_METADATA_CONSTANT));
     }
 
     private void registerError(Throwable error) {

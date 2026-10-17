@@ -46,11 +46,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * through {@link FieldValueInterceptionSupport} ({@code readFieldValue}) rather than a replacement
  * computation.
  * <p>
- * Making the value available does not automatically rescan the field. Late heap verification by
- * {@link HeapSnapshotVerifier} can materialize, structurally scan, and include an object value
- * without guaranteeing that its reachability callbacks are executed. Internal users that require
- * these callbacks must arrange an explicit {@link ImageHeapScanner#rescanField} at a supported phase
- * after the value becomes available.
+ * Availability is polled rather than notified. Becoming available does not enqueue field
+ * processing; a later scan, explicit {@link ImageHeapScanner#rescanRoot static-root rescan},
+ * {@link ImageHeapScanner#rescanField instance-field rescan}, or {@link HeapSnapshotVerifier heap
+ * verification} must revisit the field. Object values then follow normal reachability processing,
+ * even if an equal speculative snapshot exists. Clients that require earlier processing must
+ * request an explicit rescan.
  * <p>
  * Unlike a {@link FieldValueTransformer}, this class does not compute a replacement value and does
  * not introduce a transformed-value cache. The ordinary {@link ImageHeapConstant image-heap

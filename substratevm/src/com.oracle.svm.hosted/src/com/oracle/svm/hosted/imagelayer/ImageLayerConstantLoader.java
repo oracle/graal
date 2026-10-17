@@ -625,7 +625,11 @@ final class ImageLayerConstantLoader {
         } else if (relinking.isFieldConstant()) {
             var fieldConstant = relinking.getFieldConstant();
             AnalysisField analysisField = loader.getAnalysisFieldForBaseLayerId(fieldConstant.getOriginFieldId());
-            if (shouldRelinkField(analysisField)) {
+            /*
+             * GR-79994: Notify the layer loader when a late field value becomes available so that
+             * relinking skipped here can be retried.
+             */
+            if (shouldRelinkField(analysisField) && loader.universe.getHeapScanner().isValueAvailable(analysisField, null)) {
                 VMError.guarantee(!baseLayerConstant.getIsSimulated(), "Cannot relink simulated constants.");
                 /*
                  * The declaring type of relinked fields was already initialized in the previous
