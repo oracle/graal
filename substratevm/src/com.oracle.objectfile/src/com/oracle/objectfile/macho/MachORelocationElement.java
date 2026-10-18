@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 import com.oracle.objectfile.BuildDependency;
+import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
@@ -112,10 +113,10 @@ class MachORelocationElement extends MachOObjectFile.LinkEditElement {
          * 2. For DWARF sections, SIZE calls getOrDecideContent(), but we want the dependency
          *    to be explicit on CONTENT to ensure proper ordering
          */
-        com.oracle.objectfile.LayoutDecision ourSize = decisions.get(this).getDecision(com.oracle.objectfile.LayoutDecision.Kind.SIZE);
+        LayoutDecision ourSize = decisions.get(this).getDecision(LayoutDecision.Kind.SIZE);
         for (Element e : getOwner().getElements()) {
             if (e instanceof MachOSection && decisions.get(e) != null) {
-                com.oracle.objectfile.LayoutDecision sectionContent = decisions.get(e).getDecision(com.oracle.objectfile.LayoutDecision.Kind.CONTENT);
+                LayoutDecision sectionContent = decisions.get(e).getDecision(LayoutDecision.Kind.CONTENT);
                 if (sectionContent != null) {
                     deps.add(BuildDependency.createOrGet(ourSize, sectionContent));
                 }

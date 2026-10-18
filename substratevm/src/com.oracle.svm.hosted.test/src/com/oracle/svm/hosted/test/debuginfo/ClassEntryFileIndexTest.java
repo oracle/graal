@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.debuginfo;
+package com.oracle.svm.hosted.test.debuginfo;
 
-import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,32 +34,39 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.LoaderEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
 
 public class ClassEntryFileIndexTest {
-    @Test
-    public void testClassFileIsIndexZero() throws Exception {
-        DirEntry dir = new DirEntry(Path.of("/tmp"));
-        FileEntry classFile = new FileEntry("Hello.java", dir);
-        FileEntry otherFile = new FileEntry("Other.java", dir);
+    private static final DirEntry DIR = new DirEntry(Path.of("/tmp"));
 
-        ClassEntry classEntry = new ClassEntry(
-                        "hello.Hello",
-                        0,
-                        0L,
-                        1L,
-                        2L,
-                        3L,
-                        null,
-                        classFile,
-                        new LoaderEntry("test"));
-
-        Method addFile = ClassEntry.class.getDeclaredMethod("addFile", FileEntry.class);
-        addFile.setAccessible(true);
-        addFile.invoke(classEntry, otherFile);
-
+    private static ClassEntry newClassEntry(FileEntry classFile, FileEntry... methodFiles) {
+        ClassEntry classEntry = new ClassEntry("hello.Hello", 0, 0L, 1L, 2L, 3L, null, classFile, new LoaderEntry("test"));
+        for (FileEntry methodFile : methodFiles) {
+            classEntry.addMethod(new MethodEntry(methodFile, 1, "m", classEntry, null, 0, List.of(), "m", false, false, false, false, -1, 0));
+        }
         classEntry.seal();
+        return classEntry;
+    }
 
+    @Test
+    public void testClassFileIsIndexZero() {
+        FileEntry classFile = new FileEntry("Hello.java", DIR);
+        FileEntry otherFile = new FileEntry("Other.java", DIR);
+        ClassEntry classEntry = newClassEntry(classFile, otherFile, new FileEntry("Hello.java", DIR));
+
+        Assert.assertTrue(classEntry.isClassFile(new FileEntry("Hello.java", DIR)));
         Assert.assertEquals("Primary class file should be at index 0.", 0, classEntry.getFileIdx(classFile));
-        Assert.assertEquals("Non-primary file should be shifted to index 1.", 1, classEntry.getFileIdx(otherFile));
+        Assert.assertEquals("Non-primary file should be at index 1.", 1, classEntry.getFileIdx(otherFile));
+    }
+
+    @Test
+    public void testFilesStartAtIndexOneWithoutClassFile() {
+        FileEntry otherFile = new FileEntry("Other.java", DIR);
+        FileEntry anotherFile = new FileEntry("Another.java", DIR);
+        ClassEntry classEntry = newClassEntry(null, otherFile, anotherFile);
+
+        Assert.assertFalse(classEntry.isClassFile(otherFile));
+        Assert.assertEquals("Without a class file, index 0 stays reserved.", 1, classEntry.getFileIdx(otherFile));
+        Assert.assertEquals(2, classEntry.getFileIdx(anotherFile));
     }
 }

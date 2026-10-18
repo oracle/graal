@@ -77,8 +77,8 @@ public final class MachOObjectFile extends ObjectFile {
      * Mach-O header representation. Note that this header only exists to participate in the
      * Element-based build process. File-level state belongs in the MachOObjectFile class.
      */
-    private static final int MAGIC = 0xfeedfacf;
-    private static final int CIGAM = 0xcffaedfe;
+    static final int MAGIC = 0xfeedfacf;
+    static final int CIGAM = 0xcffaedfe;
 
     private static final ByteOrder nativeOrder = ByteOrder.nativeOrder();
     private static final ByteOrder oppositeOrder = (nativeOrder == ByteOrder.BIG_ENDIAN) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
@@ -2412,9 +2412,10 @@ public final class MachOObjectFile extends ObjectFile {
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
         // Map Mach-O CPU type to ELF machine for DWARF register constants
         ELFMachine machine = cpuType == MachOCpuType.ARM64
-                        ? ELFMachine.AArch64 : ELFMachine.X86_64;
+                        ? ELFMachine.AArch64
+                        : ELFMachine.X86_64;
 
-        DwarfDebugInfo dwarfSections = new DwarfDebugInfo(machine, getByteOrder());
+        DwarfDebugInfo dwarfSections = new DwarfDebugInfo(machine, getByteOrder(), getFormat());
 
         // Get all section implementations
         DwarfStrSectionImpl strSection = dwarfSections.getStrSectionImpl();
@@ -2429,25 +2430,24 @@ public final class MachOObjectFile extends ObjectFile {
 
         // Create section elements using Mach-O style names (e.g., "__debug_str" instead of ".debug_str")
         // The section names go to the __DWARF segment
-        ObjectFile.Format format = getFormat();
-        newDebugSection(strSection.getSectionName(format), strSection);
-        newDebugSection(lineStrSection.getSectionName(format), lineStrSection);
-        newDebugSection(abbrevSection.getSectionName(format), abbrevSection);
-        newDebugSection(frameSection.getSectionName(format), frameSection);
-        newDebugSection(locSection.getSectionName(format), locSection);
-        newDebugSection(infoSection.getSectionName(format), infoSection);
-        newDebugSection(arangesSection.getSectionName(format), arangesSection);
-        newDebugSection(rangesSection.getSectionName(format), rangesSection);
-        newDebugSection(lineSection.getSectionName(format), lineSection);
+        newDebugSection(strSection.getSectionName(), strSection);
+        newDebugSection(lineStrSection.getSectionName(), lineStrSection);
+        newDebugSection(abbrevSection.getSectionName(), abbrevSection);
+        newDebugSection(frameSection.getSectionName(), frameSection);
+        newDebugSection(locSection.getSectionName(), locSection);
+        newDebugSection(infoSection.getSectionName(), infoSection);
+        newDebugSection(arangesSection.getSectionName(), arangesSection);
+        newDebugSection(rangesSection.getSectionName(), rangesSection);
+        newDebugSection(lineSection.getSectionName(), lineSection);
 
         // Create symbols for DWARF sections (for base-relative relocations)
-        createDefinedSymbol(abbrevSection.getSectionName(), abbrevSection.getElement(), 0, 0, false, false);
-        createDefinedSymbol(strSection.getSectionName(), strSection.getElement(), 0, 0, false, false);
-        createDefinedSymbol(lineStrSection.getSectionName(), lineStrSection.getElement(), 0, 0, false, false);
-        createDefinedSymbol(infoSection.getSectionName(), infoSection.getElement(), 0, 0, false, false);
-        createDefinedSymbol(locSection.getSectionName(), locSection.getElement(), 0, 0, false, false);
-        createDefinedSymbol(rangesSection.getSectionName(), rangesSection.getElement(), 0, 0, false, false);
-        createDefinedSymbol(lineSection.getSectionName(), lineSection.getElement(), 0, 0, false, false);
+        createDefinedSymbol(abbrevSection.getSectionName(), abbrevSection.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(strSection.getSectionName(), strSection.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(lineStrSection.getSectionName(), lineStrSection.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(infoSection.getSectionName(), infoSection.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(locSection.getSectionName(), locSection.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(rangesSection.getSectionName(), rangesSection.getElement(), 0, 0, false, false, false);
+        createDefinedSymbol(lineSection.getSectionName(), lineSection.getElement(), 0, 0, false, false, false);
 
         // Pre-create relocation elements to avoid NPE during content write
         strSection.getOrCreateRelocationElement(0);

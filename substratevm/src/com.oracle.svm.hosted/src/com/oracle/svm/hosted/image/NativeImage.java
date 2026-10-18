@@ -213,7 +213,8 @@ public abstract class NativeImage extends AbstractImage {
         debugInfoSize = 0;
         for (Element e : objectFile.getElements()) {
             String name = e.getName();
-            if (name.contains(".debug") && !name.startsWith(".rela")) {
+            /* ELF debug sections are named .debug_*, Mach-O ones __debug_*. */
+            if ((name.contains(".debug") && !name.startsWith(".rela")) || name.startsWith("__debug")) {
                 debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
             }
         }

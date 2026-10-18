@@ -50,7 +50,6 @@ import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.ELFMachine;
-import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
@@ -60,6 +59,7 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfUnitHeader;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
+import com.oracle.objectfile.macho.MachODsymWriter;
 
 import jdk.graal.compiler.debug.DebugContext;
 import org.graalvm.collections.EconomicSet;
@@ -143,16 +143,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     public boolean isLoadable() {
         /*
          * Even though we're a progbits section impl we're not actually loadable.
-         */
-        return false;
-    }
-
-    @Override
-    public boolean isReferenceable() {
-        /*
-         * Debug sections are not referenceable - they don't need virtual addresses.
-         * For Mach-O relocatable files with vmaddr=0, having debug sections at vaddr=0 is correct
-         * since they're all at or after the segment start.
          */
         return false;
     }
@@ -273,16 +263,11 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
              * - __TEXT segment: starts at 0x100000000
              * - __text section: at 0x100004000 (0x4000 offset for Mach-O headers/load commands)
              *
-             * This address is consistent for both arm64 and x86_64 macOS executables produced
-             * by native-image. We use this fixed address rather than trying to read the actual
-             * address from the executable because the object file is generated before linking.
-             *
-             * TODO: Consider reading the actual text address from the linked executable in
-             * NativeImageDebugInfoStripFeature when creating the dSYM bundle, to handle cases
-             * where the linker might use a different address.
+             * The object file is generated before linking, so the address cannot be read from
+             * the executable. MachODsymWriter verifies it against the linked image and refuses
+             * to create a dSYM bundle if it does not match.
              */
-            long execTextVaddr = 0x100004000L;
-            pos = writeLong(l + execTextVaddr, buffer, pos);
+            pos = writeLong(l + MachODsymWriter.EXPECTED_TEXT_SECTION_VADDR, buffer, pos);
         } else {
             /*
              * Mark address so it is relocated relative to the start of the text segment.
@@ -313,7 +298,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         int pos = p;
         if (dwarfSections.isRuntimeCompilation()) {
             pos = writeInt(offset, buffer, pos);
-        } else if (getElement().getOwner().getFormat() == ObjectFile.Format.MACH_O) {
+        } else if (dwarfSections.getFormat() == ObjectFile.Format.MACH_O) {
             /*
              * For Mach-O, write the offset directly without relocation.
              * On macOS, the linker strips DWARF sections from the executable, so relocations
@@ -607,7 +592,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         // the linker uses this to update the offset when info sections are merged
         if (buffer != null) {
             // Use format-dependent section name for relocations
-            String sectionName = referencedSectionName.getFormatDependentName(getElement().getOwner().getFormat());
+            String sectionName = referencedSectionName.getFormatDependentName(dwarfSections.getFormat());
             return putDwarfSectionOffset(offset, buffer, sectionName, pos);
         } else {
             return pos + 4;
@@ -671,20 +656,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     /**
      * Identify the section after which this debug section needs to be ordered when sizing and
-     * creating content.
-     * 
+     * creating content. The name is format-dependent, e.g. {@code .debug_info} for ELF and
+     * {@code __debug_info} for Mach-O.
+     *
      * @return the name of the preceding section.
      */
-    /**
-     * Returns the format-dependent name of the target section.
-     * For ELF: ".debug_info"
-     * For Mach-O: "__debug_info"
-     */
     public final String targetName() {
-        if (getElement() != null && getElement().getOwner() != null) {
-            return targetSectionName.getFormatDependentName(getElement().getOwner().getFormat());
-        }
-        return targetSectionName.value();
+        return targetSectionName.getFormatDependentName(dwarfSections.getFormat());
     }
 
     /**
@@ -695,29 +673,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * Identify this debug section by name.
-     * Returns format-dependent name if the element is associated with an object file.
-     * For ELF: ".debug_info"
-     * For Mach-O: "__debug_info"
+     * Identify this debug section by name. The name is format-dependent, e.g. {@code .debug_info}
+     * for ELF and {@code __debug_info} for Mach-O.
      *
      * @return the name of the debug section.
      */
     public final String getSectionName() {
-        if (getElement() != null && getElement().getOwner() != null) {
-            return sectionName.getFormatDependentName(getElement().getOwner().getFormat());
-        }
-        return sectionName.value();
-    }
-
-    /**
-     * Get the format-dependent section name for the specified format.
-     * Use this when the element is not yet set up.
-     *
-     * @param format the object file format
-     * @return the format-dependent section name
-     */
-    public final String getSectionName(ObjectFile.Format format) {
-        return sectionName.getFormatDependentName(format);
+        return sectionName.getFormatDependentName(dwarfSections.getFormat());
     }
 
     @Override

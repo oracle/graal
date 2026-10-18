@@ -87,7 +87,6 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -1226,7 +1225,7 @@ public class SubstrateOptions {
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @APIOption(name = ENABLE_DEBUGINFO_OPTION, fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             if (OS.WINDOWS.isCurrent()) {
@@ -1235,11 +1234,6 @@ public class SubstrateOptions {
             }
         }
     };
-
-    @SuppressWarnings("unused")
-    private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
-        // macOS debug info generation is now supported
-    }
 
     public static boolean useDebugInfoGeneration() {
         return useLIRBackend() && GenerateDebugInfo.getValue() > 0;

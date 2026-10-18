@@ -22,12 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.debuginfo;
+package com.oracle.svm.hosted.test.debuginfo;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
@@ -38,30 +34,21 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.objectfile.macho.MachODsymWriter;
+import com.oracle.objectfile.macho.MachODsymWriter.DwarfSection;
+import com.oracle.objectfile.macho.MachODsymWriter.ExecutableInfo;
+
 public class DsymMachOLayoutTest {
     private static final int MH_MAGIC_64 = 0xfeedfacf;
     private static final int LC_SEGMENT_64 = 0x19;
 
     @Test
-    public void testDsymSectionOffsetsRespectAlignment() throws Exception {
-        Class<?> featureClass = Class.forName("com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature");
-        Class<?> execInfoClass = Class.forName("com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature$MachOExecutableInfo");
-        Class<?> sectionClass = Class.forName("com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature$DwarfSectionData");
-
-        Object execInfo = execInfoClass.getDeclaredConstructor().newInstance();
-        setField(execInfoClass, execInfo, "uuid", new byte[16]);
-        setField(execInfoClass, execInfo, "cpuType", 7);
-        setField(execInfoClass, execInfo, "cpuSubType", 3);
-
-        Constructor<?> sectionCtor = sectionClass.getDeclaredConstructor(String.class, byte[].class, int.class);
-        sectionCtor.setAccessible(true);
-        List<Object> dwarfSections = new ArrayList<>();
-        dwarfSections.add(sectionCtor.newInstance("__debug_info", new byte[3], 4));
-        dwarfSections.add(sectionCtor.newInstance("__debug_abbrev", new byte[5], 2));
-
-        Method buildDsymFile = featureClass.getDeclaredMethod("buildDsymFile", execInfoClass, List.class);
-        buildDsymFile.setAccessible(true);
-        byte[] dsymBytes = (byte[]) buildDsymFile.invoke(null, execInfo, dwarfSections);
+    public void testDsymSectionOffsetsRespectAlignment() {
+        ExecutableInfo execInfo = new ExecutableInfo(new byte[16], 7, 3, List.of());
+        List<DwarfSection> dwarfSections = List.of(
+                        new DwarfSection("__debug_info", new byte[3], 4),
+                        new DwarfSection("__debug_abbrev", new byte[5], 2));
+        byte[] dsymBytes = MachODsymWriter.buildDsymFile(execInfo, dwarfSections);
 
         List<SectionInfo> sections = parseDwarfSections(dsymBytes);
         Assert.assertEquals("Expected two DWARF sections in __DWARF segment.", 2, sections.size());
@@ -76,23 +63,10 @@ public class DsymMachOLayoutTest {
 
     @Test
     public void testReadDwarfSectionsIgnoresTruncatedLoadCommands() throws Exception {
-        Class<?> featureClass = Class.forName("com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature");
-        Method readDwarfSections = featureClass.getDeclaredMethod("readDwarfSections", Path.class);
-        readDwarfSections.setAccessible(true);
-
-        byte[] malformedMachO = createTruncatedSegmentCommand();
         Path tempFile = Files.createTempFile("malformed-dsym", ".o");
         try {
-            Files.write(tempFile, malformedMachO);
-            try {
-                Object result = readDwarfSections.invoke(null, tempFile);
-                @SuppressWarnings("unchecked")
-                List<Object> sections = (List<Object>) result;
-                Assert.assertTrue("Expected truncated file to yield no DWARF sections.", sections.isEmpty());
-            } catch (InvocationTargetException e) {
-                Throwable cause = e.getCause();
-                Assert.fail("readDwarfSections should tolerate truncated load commands: " + cause);
-            }
+            Files.write(tempFile, createTruncatedSegmentCommand());
+            Assert.assertTrue("Expected truncated file to yield no DWARF sections.", MachODsymWriter.readDwarfSections(tempFile).isEmpty());
         } finally {
             Files.deleteIfExists(tempFile);
         }
@@ -111,12 +85,6 @@ public class DsymMachOLayoutTest {
         buffer.putInt(LC_SEGMENT_64);
         buffer.putInt(8);
         return buffer.array();
-    }
-
-    private static void setField(Class<?> targetClass, Object target, String fieldName, Object value) throws Exception {
-        Field field = targetClass.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
     }
 
     private static List<SectionInfo> parseDwarfSections(byte[] dsymBytes) {

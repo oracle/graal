@@ -44,7 +44,6 @@ import com.oracle.objectfile.debugentry.RegisterValueEntry;
 import com.oracle.objectfile.debugentry.StackValueEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.ELFMachine;
-import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfLocationListEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
