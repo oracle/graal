@@ -126,7 +126,7 @@ public class PointsToAnalysisField extends AnalysisField {
             return;
         }
         if (getStorageKind().isObject()) {
-            bb.injectFieldTypes(this, List.of(this.getType()), true);
+            bb.injectFieldTypes(this, List.of(initialFlow.getDeclaredType()), true);
         } else {
             this.saturatePrimitiveField();
         }
