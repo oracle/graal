@@ -93,6 +93,11 @@ public class BytecodeSuite {
     }
 
     @Test
+    public void testLabelU8ResultNone() {
+        testAssertion(b -> b.addLabel(1, 0, WasmType.NONE_COMMON_TYPE), "Single result value must either have number or reference type.");
+    }
+
+    @Test
     public void testLabelU16ResultNum() {
         test(b -> b.addLabel(2, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, 0x42, 0x00});
     }

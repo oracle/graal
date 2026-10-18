@@ -48,6 +48,7 @@ public class BytecodeBitEncoding {
     // Labels
 
     public static final int LABEL_U8_RESULT_MASK = 0b1100_0000;
+    public static final int LABEL_U8_RESULT_NONE = 0b0000_0000;
     public static final int LABEL_U8_RESULT_NUM = 0b1000_0000;
     public static final int LABEL_U8_RESULT_OBJ = 0b1100_0000;
     public static final int LABEL_U8_STACK_VALUE = 0b0011_1111;

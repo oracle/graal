@@ -356,21 +356,22 @@ public class RuntimeBytecodeGen extends BytecodeGen {
                         commonResultType == WasmType.MIX_COMMON_TYPE : "invalid result type";
         final boolean hasLegacyCatchUnwind = legacyCatchDepth != 0;
         final int location;
-        if (resultCount == 0 && stackSize <= 63) {
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
-            location = location();
-            add1(Bytecode.LABEL_U8);
-            add1(stackSize);
-        } else if (resultCount == 1 && stackSize <= 63) {
-            assert commonResultType != BytecodeBitEncoding.LABEL_RESULT_TYPE_MIX : "Single result value must either have number or reference type.";
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
-            location = location();
-            add1(Bytecode.LABEL_U8);
-            if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_NUM) {
-                add1(BytecodeBitEncoding.LABEL_U8_RESULT_NUM | stackSize);
-            } else if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_OBJ) {
-                add1(BytecodeBitEncoding.LABEL_U8_RESULT_OBJ | stackSize);
+        if (resultCount <= 1 && stackSize <= 63) {
+            if (resultCount == 0) {
+                assert commonResultType == WasmType.NONE_COMMON_TYPE : "Empty result value must have no type.";
+            } else {
+                assert commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.OBJ_COMMON_TYPE : "Single result value must either have number or reference type.";
             }
+            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
+            location = location();
+            add1(Bytecode.LABEL_U8);
+            final int encodedResultType = switch (commonResultType) {
+                case WasmType.NONE_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_RESULT_NONE;
+                case WasmType.NUM_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_RESULT_NUM;
+                case WasmType.OBJ_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_RESULT_OBJ;
+                default -> throw new IllegalArgumentException("Invalid common result type: " + commonResultType);
+            };
+            add1(encodedResultType | stackSize);
         } else if (resultCount <= 63 && fitsIntoUnsignedByte(stackSize)) {
             addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U16, Bytecode.LEGACY_SKIP_LABEL_U16);
             location = location();

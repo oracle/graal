@@ -314,7 +314,7 @@ public class ParserState {
      */
     public void enterLoop(int[] paramTypes, int[] resultTypes) {
         final ControlFrame parentFrame = controlStack.peek();
-        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(resultTypes), parentFrame.legacyCatchDepth());
+        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes), parentFrame.legacyCatchDepth());
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), parentFrame, label);
         controlStack.push(frame);
         pushAll(paramTypes);

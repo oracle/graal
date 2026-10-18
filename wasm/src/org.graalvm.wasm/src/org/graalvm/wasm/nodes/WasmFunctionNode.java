@@ -1968,10 +1968,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 dropStack(frame, virtualState.stackPointer, targetStackPointer + 1);
                 virtualState.stackPointer = targetStackPointer + 1;
                 break;
-            default:
+            case BytecodeBitEncoding.LABEL_U8_RESULT_NONE:
                 dropStack(frame, virtualState.stackPointer, targetStackPointer);
                 virtualState.stackPointer = targetStackPointer;
                 break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere("Invalid LABEL_U8 result encoding");
         }
         return offset + 2;
     }
