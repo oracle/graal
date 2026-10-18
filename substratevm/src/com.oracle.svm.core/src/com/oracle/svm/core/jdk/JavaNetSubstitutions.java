@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 import static com.oracle.svm.core.SubstrateOptions.ResourceProtocol;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -376,6 +377,16 @@ public final class JavaNetSubstitutions {
             @Override
             protected URLConnection openConnection(URL url) {
                 return new ResourceURLConnection(url);
+            }
+
+            /*
+             * The authority of a resource URL names a loader or module, not a network host. The
+             * default implementation resolves it through DNS from hashCode, equals and sameFile, so
+             * putting a resource URL in a hash set would block on name resolution.
+             */
+            @Override
+            protected InetAddress getHostAddress(URL url) {
+                return null;
             }
 
             @Override

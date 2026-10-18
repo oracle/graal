@@ -128,6 +128,21 @@ public class NativeImageResourceTest {
         Assert.assertNull("Resource " + resourceNameWTrailingSlash + " is found!", url);
     }
 
+    /**
+     * Resource URL identity must not depend on name resolution: the authority names a loader, so two
+     * authorities that would resolve to the same address are still different URLs.
+     */
+    @Test
+    @SuppressWarnings("deprecation")
+    public void resourceURLIdentityDoesNotResolveAuthority() throws MalformedURLException {
+        URL base = resourceNameToURL(RESOURCE_FILE_1, true);
+        URL byName = new URL(base, "//localhost/1!/x");
+        URL byAddress = new URL(base, "//127.0.0.1/1!/x");
+        Assert.assertNotEquals("resource URL authorities were resolved as hosts", byName, byAddress);
+        Assert.assertFalse("resource URL authorities were resolved as hosts", byName.sameFile(byAddress));
+        Assert.assertEquals(byName, new URL(base, "//LOCALHOST/1!/x"));
+    }
+
     @Test
     @SuppressWarnings("deprecation")
     public void classGetResourceBypassesUserURLHandlers() throws IOException {
