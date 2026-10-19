@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.meta;
 
+import java.lang.reflect.Constructor;
 import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
@@ -32,10 +33,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -45,25 +50,30 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class MethodRefSupport {
 
+    private static final Constructor<MethodPointer> METHOD_POINTER_DEFAULT_CONSTRUCTOR = ReflectionUtil.lookupConstructor(MethodPointer.class);
+    private static final Constructor<MethodPointer> METHOD_POINTER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(MethodPointer.class, boolean.class);
+    private static final Constructor<MethodOffset> METHOD_OFFSET_DEFAULT_CONSTRUCTOR = ReflectionUtil.lookupConstructor(MethodOffset.class);
+    private static final Constructor<MethodOffset> METHOD_OFFSET_CONSTRUCTOR = ReflectionUtil.lookupConstructor(MethodOffset.class, boolean.class);
+
     private final EconomicMap<MethodRef, ResolvedJavaMethod> methods = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
     MethodRefSupport() {
     }
 
     public static MethodPointer createMethodPointer(ResolvedJavaMethod method) {
-        return singleton().register(new MethodPointer(), method);
+        return singleton().register(ReflectionUtil.newInstance(METHOD_POINTER_DEFAULT_CONSTRUCTOR), method);
     }
 
     public static MethodPointer createMethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
-        return singleton().register(new MethodPointer(permitsRewriteToPLT), method);
+        return singleton().register(ReflectionUtil.newInstance(METHOD_POINTER_CONSTRUCTOR, permitsRewriteToPLT), method);
     }
 
     public static MethodOffset createMethodOffset(ResolvedJavaMethod method) {
-        return singleton().register(new MethodOffset(), method);
+        return singleton().register(ReflectionUtil.newInstance(METHOD_OFFSET_DEFAULT_CONSTRUCTOR), method);
     }
 
     public static MethodOffset createMethodOffset(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
-        return singleton().register(new MethodOffset(permitsRewriteToPLT), method);
+        return singleton().register(ReflectionUtil.newInstance(METHOD_OFFSET_CONSTRUCTOR, permitsRewriteToPLT), method);
     }
 
     public static ResolvedJavaMethod getMethod(MethodRef methodRef) {

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.meta;
+package com.oracle.svm.guest.staging.meta;
 
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
@@ -43,13 +43,13 @@ public final class MethodPointer implements CFunctionPointer, MethodRef {
     private final boolean permitsRewriteToPLT;
 
     @Platforms(HOSTED_ONLY.class)
-    MethodPointer(boolean permitsRewriteToPLT) {
-        this.permitsRewriteToPLT = permitsRewriteToPLT;
+    private MethodPointer() {
+        this(DEFAULT_PERMIT_REWRITE_TO_PLT);
     }
 
     @Platforms(HOSTED_ONLY.class)
-    MethodPointer() {
-        this(DEFAULT_PERMIT_REWRITE_TO_PLT);
+    private MethodPointer(boolean permitsRewriteToPLT) {
+        this.permitsRewriteToPLT = permitsRewriteToPLT;
     }
 
     @Platforms(HOSTED_ONLY.class)

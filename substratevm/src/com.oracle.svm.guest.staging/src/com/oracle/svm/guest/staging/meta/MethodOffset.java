@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.meta;
+package com.oracle.svm.guest.staging.meta;
 
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
@@ -42,13 +42,13 @@ public final class MethodOffset implements MethodRef {
     public static final boolean DEFAULT_PERMIT_REWRITE_TO_PLT = true;
 
     @Platforms(HOSTED_ONLY.class)
-    MethodOffset() {
+    private MethodOffset() {
         this(DEFAULT_PERMIT_REWRITE_TO_PLT);
     }
 
-    /** @see MethodPointer#MethodPointer(boolean) */
+    /** @see MethodPointer#permitsRewriteToPLT() */
     @Platforms(HOSTED_ONLY.class)
-    MethodOffset(boolean permitsRewriteToPLT) {
+    private MethodOffset(boolean permitsRewriteToPLT) {
         VMError.guarantee(permitsRewriteToPLT == DEFAULT_PERMIT_REWRITE_TO_PLT, "Not implemented: all calls to methods in PLT/GOT are currently redirected");
     }
 
