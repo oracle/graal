@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,9 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.api.object.test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
@@ -262,6 +265,24 @@ public class RemoveKeyTest extends ParametrizedDynamicObjectTest {
                         "7", "NaN",
                         "8", "-1",
                         "9", true));
+    }
+
+    @Test
+    public void testRemoveAfterImplicitIntToDoubleCast() {
+        // Array-backed primitive locations can overlap even when their ordinals decrease.
+        Shape arrayShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).layout(TestDynamicObjectMinimal.class, MethodHandles.lookup()).build();
+        DynamicObject widened = new TestDynamicObjectMinimal(arrayShape);
+        var widenedLib = createLibrary(widened);
+        widenedLib.put(widened, "15", 1);
+        widenedLib.put(widened, "15", 1.5);
+
+        DynamicObject object = new TestDynamicObjectMinimal(arrayShape);
+        var lib = createLibrary(object);
+        lib.put(object, "7", 0);
+        lib.put(object, "15", 128);
+
+        assertTrue(lib.removeKey(object, "7"));
+        assertEquals(128.0, ((Number) lib.getOrDefault(object, "15", null)).doubleValue(), 0.0);
     }
 
     /**
