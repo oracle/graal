@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+
 import org.graalvm.home.Version;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -48,8 +51,11 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.test.parser.backend.TestClosure;
 import com.oracle.truffle.nfi.test.parser.backend.TestSignature.TestFunction;
@@ -232,6 +238,25 @@ public class ExceptionNFITest extends NFITest {
         });
         Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, observe));
         Assert.assertEquals(42, observed[0]);
+    }
+
+    @Test
+    public void testPanamaOuterExceptionBarrier() throws Throwable {
+        Assume.assumeTrue("Requires the Panama backend", "panama".equals(TEST_BACKEND));
+        Class<?> languageClass = Class.forName("com.oracle.truffle.nfi.backend.panama.PanamaNFILanguage");
+        Object language = ReflectionUtils.invokeStatic(languageClass, "get", new Class<?>[]{Node.class}, new Object[]{null});
+        NFIState state = (NFIState) ReflectionUtils.invoke(language, "getNFIState");
+        Class<?> closureClass = Class.forName("com.oracle.truffle.nfi.backend.panama.PanamaClosure");
+        RuntimeException failure = new SuccessException();
+        MethodHandle failing = MethodHandles.throwException(int.class, RuntimeException.class).bindTo(failure);
+        MethodHandle protectedCall = (MethodHandle) ReflectionUtils.invokeStatic(closureClass, "protectUpcall",
+                        new Class<?>[]{MethodHandle.class, languageClass}, failing, language);
+        try {
+            Assert.assertEquals(0, (int) protectedCall.invokeExact());
+            Assert.assertSame(failure, state.getPendingException());
+        } finally {
+            state.clearPendingException();
+        }
     }
 
     /**
