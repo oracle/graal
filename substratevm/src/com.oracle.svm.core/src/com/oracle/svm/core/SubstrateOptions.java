@@ -130,6 +130,8 @@ public class SubstrateOptions {
     static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
+    public static final String OPTIMIZE_DEFAULT_VALUE = "2";
+
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
@@ -309,7 +311,7 @@ public class SubstrateOptions {
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
     @Option(help = "Control code optimizations: b - optimize for fastest build time, s - optimize for size, " +
                     "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance.", type = OptionType.User)//
-    public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
+    public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>(OPTIMIZE_DEFAULT_VALUE) {
 
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
