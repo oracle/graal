@@ -307,16 +307,15 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     // Internal info
     private final int[] bciStates;
-    /**
-     * The bci of the instruction after each unconditional stop (goto, return, athrow, ...), which
-     * must have a stack map frame. Recorded while {@link #initVerifier} walks the code, so that
-     * {@link #validateUnconditionalJumps} does not have to walk it a second time.
-     */
-    private int[] stopSuccessors = new int[16];
-    private int stopSuccessorCount;
     private final StackFrame<R, C, M, F>[] stackFrames;
     private final byte[] handlerStatus;
     private boolean stackMapInitialized = false;
+
+    // Mappings from BCI to the opcode index.
+    /** Entry at index {@code i} is the BCI for the {@code i}-th valid opcode in the bytecodes. */
+    private int[] opcodeIndexesToBCI;
+    /** For any valid BCI {@code bci}, the entry at index {@code bci} is such that {@code opcodeIndexesToBCI[bciToOpcodeIndex[bci]] == bci}. */
+    private int[] bciToOpcodeIndex;
 
     // Instruction stack to visit
     private final WorkingQueue<R, C, M, F> queue = new WorkingQueue<>();
@@ -514,6 +513,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         setHandlerStatus(handler, constructorStatus);
     }
 
+    private int nextBCI(int curBci) {
+        return opcodeIndexesToBCI[bciToOpcodeIndex[curBci] + 1];
+    }
+
     /**
      * Construct the data structure to perform verification.
      *
@@ -709,29 +712,46 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return false;
     }
 
+    private void initOpcodeIndexes() {
+        int count = 0;
+        int[] indexes = new int[code.endBCI()];
+        int[] bciToIndex = new int[code.endBCI()];
+
+        int bci = 0;
+        while (bci < code.endBCI()) {
+            indexes[count] = bci;
+            bciToIndex[bci] = count;
+            count++;
+            bci = code.nextBCI(bci);
+        }
+        bciToOpcodeIndex = bciToIndex;
+        // Truncate as needed
+        opcodeIndexesToBCI = Arrays.copyOf(indexes, count);
+    }
+
     private void initVerifier() {
         Arrays.fill(bciStates, BCIState.DEFAULT_STATE);
+        // Record all BCIs that correspond to an actual opcode.
+        initOpcodeIndexes();
         // Mark all reachable code
-        int bci = 0;
         int opcode;
-        while (bci < code.endBCI()) {
+        for (int bci : opcodeIndexesToBCI) {
             opcode = code.currentBC(bci);
             verifyGuarantee(opcode < QUICK, "invalid bytecode: %s", opcode);
             verifyEnoughBytecodes(opcode, bci);
             setBciStatus(bci, BCIState.TO_VERIFY);
-            bci = code.nextBCI(bci);
-            // Check instruction has enough bytes after it
-            verifyGuarantee(bci <= code.endBCI(), "Incomplete bytecode");
-            if (useStackMaps && Bytecodes.isStop(opcode) && bci < code.endBCI()) {
-                recordStopSuccessor(bci);
-            }
         }
-        bci = 0;
+
+        // Check last instruction has enough bytes after it
+        int lastBCI = opcodeIndexesToBCI[opcodeIndexesToBCI.length - 1];
+        verifyGuarantee(code.nextBCI(lastBCI) <= code.endBCI(), "Incomplete bytecode");
+
         if (!useStackMaps) {
             // Mark all jump targets. We do not need to if method has stack frames, since all jump
             // targets have one stack frame declared in the attribute, and if it doesn't, we will
             // see it later.
-            while (bci < code.endBCI()) {
+            for (int opcodeIdx = 0; opcodeIdx < opcodeIndexesToBCI.length; opcodeIdx++) {
+                int bci = opcodeIndexesToBCI[opcodeIdx];
                 opcode = code.currentBC(bci);
                 if (Bytecodes.isBranch(opcode)) {
                     int target = code.readBranchDest(bci);
@@ -741,9 +761,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
                     initSwitch(bci, opcode);
                 }
-                bci = code.nextBCI(bci);
                 if (opcode == JSR || opcode == JSR_W) {
-                    setBciStatus(bci, BCIState.MERGE_TARGET);
+                    verifyGuarantee(opcodeIdx + 1 < opcodeIndexesToBCI.length, "No instruction after JSR: %s", bci);
+                    setBciStatus(opcodeIndexesToBCI[opcodeIdx + 1], BCIState.MERGE_TARGET);
                 }
             }
         }
@@ -1030,19 +1050,20 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Force verification of unreachable stack maps.
         verifyUnreachableStackMaps();
-
-    }
-
-    private void recordStopSuccessor(int nextBCI) {
-        if (stopSuccessorCount == stopSuccessors.length) {
-            stopSuccessors = Arrays.copyOf(stopSuccessors, stopSuccessorCount * 2);
-        }
-        stopSuccessors[stopSuccessorCount++] = nextBCI;
     }
 
     private void validateUnconditionalJumps() {
-        for (int i = 0; i < stopSuccessorCount; i++) {
-            verifyGuarantee(stackFrames[stopSuccessors[i]] != null, "Control flow stop does not have a stack map at next instruction!");
+        if (!useStackMaps) {
+            return;
+        }
+        for (int idx = 0; idx < opcodeIndexesToBCI.length; idx++) {
+            int bci = opcodeIndexesToBCI[idx];
+            if (Bytecodes.isStop(code.opcode(bci))) {
+                if (idx + 1 < opcodeIndexesToBCI.length) {
+                    int nextBCI = opcodeIndexesToBCI[idx + 1];
+                    verifyGuarantee(stackFrames[nextBCI] != null, "Control flow stop does not have a stack map at next instruction!");
+                }
+            }
         }
     }
 
@@ -1192,7 +1213,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     /**
-     * Performs the verification loop, starting from bci.
+     * Performs the verification loop for a single control flow block, starting from bci.
      * <p>
      * for each verified bytecode, three verifications are performed:
      * <p>
@@ -1212,6 +1233,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Locals<R, C, M, F> locals = seedLocals;
         int nextBCI = bci;
         int previousBCI;
+
+        int opcodeIndex = bciToOpcodeIndex[bci];
 
         // Initialize iteration status
         modCount = MOD_COUNT_RESET;
@@ -1241,7 +1264,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     return;
                 }
                 checkExceptionHandlers(nextBCI, locals);
-                nextBCI = verifySafe(nextBCI, stack, locals);
+                nextBCI = verifySafe(nextBCI, opcodeIndex, stack, locals);
+                assert nextBCI == previousBCI || nextBCI == nextBCI(previousBCI);
+                opcodeIndex++;
                 validateBCI(nextBCI);
             } while (previousBCI != nextBCI);
         } finally {
@@ -1312,9 +1337,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
-    private int verifySafe(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+    private int verifySafe(int bci, int opcodeIndex, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         try {
-            return verify(bci, stack, locals);
+            return verify(bci, opcodeIndex, stack, locals);
         } catch (IndexOutOfBoundsException e) {
             // At this point, the only appearance of an IndexOutOfBounds should be from stack and
             // locals access (bci bound checks are done beforehand).
@@ -1358,7 +1383,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      * @return The index of the next opcode to verify, or bci if there is no next opcode to verify
      *         (in case of a return bytecode, for example).
      */
-    private int verify(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+    private int verify(int bci, int opcodeIndex, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         verifyGuarantee(isValid(bci), "Jump to the middle of an instruction: %s", bci);
         setBciStatus(bci, BCIState.VERIFIED);
         int curOpcode;
@@ -1695,7 +1720,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case SLIM_QUICK: break;
                 default:
             }
-            return code.nextBCI(bci);
+            return opcodeIndexesToBCI[opcodeIndex + 1];
         }
         // Checkstyle: resume
         // @formatter:on
@@ -1957,7 +1982,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             int target = ra.targetBCIs.get(pos++);
             checkAndSetRetTarget(target, bci);
             Locals<R, C, M, F> toMerge = getSubroutineReturnLocals(target, locals);
-            branch(code.nextBCI(target), stack, toMerge);
+            branch(nextBCI(target), stack, toMerge);
             // Sanity check: branching did not overwrite the return address being
             // verified
             ra = locals.loadReturnAddress(code.readLocalIndex(bci));
