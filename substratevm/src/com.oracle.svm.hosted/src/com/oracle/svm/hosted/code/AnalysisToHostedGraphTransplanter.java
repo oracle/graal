@@ -338,7 +338,7 @@ public class AnalysisToHostedGraphTransplanter {
             SubstrateMethodPointerConstant methodPointerConstant = (SubstrateMethodPointerConstant) obj;
 
             MethodPointer methodPointer = methodPointerConstant.pointer();
-            ResolvedJavaMethod method = MethodRefSupport.getMethod(methodPointer);
+            ResolvedJavaMethod method = methodPointerConstant.getMethod();
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
             newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod, methodPointer.permitsRewriteToPLT()));
 

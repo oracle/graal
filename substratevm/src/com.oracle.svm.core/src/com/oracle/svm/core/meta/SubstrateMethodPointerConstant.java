@@ -29,6 +29,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
 public final class SubstrateMethodPointerConstant implements VMConstant {
@@ -50,6 +51,10 @@ public final class SubstrateMethodPointerConstant implements VMConstant {
         return pointer;
     }
 
+    public ResolvedJavaMethod getMethod() {
+        return MethodRefSupport.getMethod(pointer);
+    }
+
     @Override
     public boolean isDefaultForKind() {
         return false;
@@ -62,7 +67,7 @@ public final class SubstrateMethodPointerConstant implements VMConstant {
 
     @Override
     public String toString() {
-        return "method: " + MethodRefSupport.getMethod(pointer).format("%H.%n");
+        return "method: " + getMethod().format("%H.%n");
     }
 
     @Override
@@ -71,12 +76,12 @@ public final class SubstrateMethodPointerConstant implements VMConstant {
             return true;
         }
         return obj instanceof SubstrateMethodPointerConstant other &&
-                        MethodRefSupport.getMethod(pointer).equals(MethodRefSupport.getMethod(other.pointer)) &&
+                        getMethod().equals(other.getMethod()) &&
                         pointer.permitsRewriteToPLT() == other.pointer.permitsRewriteToPLT();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(MethodRefSupport.getMethod(pointer));
+        return Objects.hashCode(getMethod());
     }
 }

@@ -93,7 +93,7 @@ public final class MethodOffsetToPointerNode extends UnaryNode implements Conver
     public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
         if (SubstrateUtil.HOSTED && c instanceof SubstrateMethodPointerConstant pointerConstant) {
             MethodPointer pointer = pointerConstant.pointer();
-            return new SubstrateMethodOffsetConstant(new MethodOffset(MethodRefSupport.getMethod(pointer), pointer.permitsRewriteToPLT()));
+            return new SubstrateMethodOffsetConstant(new MethodOffset(pointerConstant.getMethod(), pointer.permitsRewriteToPLT()));
         }
         return null;
     }
