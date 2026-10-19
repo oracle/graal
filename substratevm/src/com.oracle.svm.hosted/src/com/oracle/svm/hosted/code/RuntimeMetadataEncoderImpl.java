@@ -243,8 +243,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return sortElements(jdkFields, fieldMetadata).toArray(new FieldMetadata[0]);
     }
 
-    private void registerMethod(HostedType declaringType, Object method, MethodMetadata metadata) {
-        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(method, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
+    /* Reflection keys preserve declaration order, while analysis methods identify substituted executables across layers. */
+    private void registerMethod(HostedType declaringType, Object method, AnalysisMethod analysisMethod, MethodMetadata metadata) {
+        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(analysisMethod, metadata)) {
             return;
         }
         addType(declaringType);
@@ -258,8 +259,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return sortElements(jdkMethods, methodMetadata).toArray(new MethodMetadata[0]);
     }
 
-    private void registerConstructor(HostedType declaringType, Object constructor, ConstructorMetadata metadata) {
-        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(constructor, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
+    private void registerConstructor(HostedType declaringType, Object constructor, AnalysisMethod analysisMethod, ConstructorMetadata metadata) {
+        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(analysisMethod, metadata)) {
             return;
         }
         addType(declaringType);
@@ -507,11 +508,11 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
 
         if (isMethod) {
-            registerMethod(declaringType, reflectMethod,
+            registerMethod(declaringType, reflectMethod, analysisMethod,
                             new MethodMetadata(dynamicAccessMetadata, declaringType, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations,
                                             annotationDefault, typeAnnotations, reflectParameters, accessorConstant));
         } else {
-            registerConstructor(declaringType, reflectMethod,
+            registerConstructor(declaringType, reflectMethod, analysisMethod,
                             new ConstructorMetadata(dynamicAccessMetadata, declaringType, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations,
                                             typeAnnotations, reflectParameters, accessorConstant));
         }
@@ -548,10 +549,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         RuntimeDynamicAccessMetadata alwaysSatisfied = RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
         if (isMethod) {
             metadata = new MethodMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, parameterAnnotations, annotationDefault, typeAnnotations, reflectParameters);
-            registerMethod(metaAccess.lookupJavaType(((Method) object).getDeclaringClass()), holder, (MethodMetadata) metadata);
+            registerMethod(metaAccess.lookupJavaType(((Method) object).getDeclaringClass()), holder, (AnalysisMethod) analysisObject, (MethodMetadata) metadata);
         } else if (isExecutable) {
             metadata = new ConstructorMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, parameterAnnotations, typeAnnotations, reflectParameters);
-            registerConstructor(metaAccess.lookupJavaType(((Constructor<?>) object).getDeclaringClass()), holder, (ConstructorMetadata) metadata);
+            registerConstructor(metaAccess.lookupJavaType(((Constructor<?>) object).getDeclaringClass()), holder, (AnalysisMethod) analysisObject, (ConstructorMetadata) metadata);
         } else {
             metadata = new FieldMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, typeAnnotations);
             registerField(metaAccess.lookupJavaType(((Field) object).getDeclaringClass()), holder, (FieldMetadata) metadata);
@@ -645,7 +646,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.classes.addObject(returnType.getJavaClass());
 
         addType(declaringType);
-        registerMethod(declaringType, analysisMethod, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypes, modifiers, returnType));
+        registerMethod(declaringType, analysisMethod, analysisMethod, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypes, modifiers,
+                        returnType));
     }
 
     @Override
@@ -675,9 +677,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
 
         if (isMethod) {
-            registerMethod(declaringType, executable, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypeNames));
+            registerMethod(declaringType, executable, executable.getWrapped(), new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypeNames));
         } else {
-            registerConstructor(declaringType, executable, new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, parameterTypeNames));
+            registerConstructor(declaringType, executable, executable.getWrapped(), new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, parameterTypeNames));
         }
     }
 
@@ -693,7 +695,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, methodName, parameterTypes));
+        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), null, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, methodName,
+                        parameterTypes));
     }
 
     @Override
@@ -701,7 +704,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, parameterTypes));
+        registerConstructor(declaringClass, parameterTypes, null, new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, parameterTypes));
     }
 
     @Override
@@ -1390,18 +1393,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return ImageSingletons.lookup(LayeredRuntimeMetadataSingleton.class);
         }
 
-        public boolean shouldRegisterMethod(Object method, AnalysisMetaAccess metaAccess, ExecutableMetadata metadata) {
-            int methodId = switch (method) {
-                case AnalysisMethod analysisMethod -> analysisMethod.getId();
-                case HostedMethod hostedMethod -> hostedMethod.getWrapped().getId();
-                case Method m -> metaAccess.lookupJavaMethod(m).getId();
-                case Constructor<?> c -> metaAccess.lookupJavaMethod(c).getId();
-                case null, default -> -1;
-            };
-            if (methodId == -1) {
+        public boolean shouldRegisterMethod(AnalysisMethod method, ExecutableMetadata metadata) {
+            if (method == null) {
                 return true;
             }
 
+            int methodId = method.getId();
             Boolean methodData = previousLayerRegisteredMethods.get(methodId);
             boolean isComplete = metadata.complete && metadata.accessor != null;
             if (methodData == null || (!methodData && isComplete)) {
