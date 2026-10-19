@@ -242,7 +242,6 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.TABLESWIT
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -317,31 +316,21 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private int stopSuccessorCount;
     private final StackFrame<R, C, M, F>[] stackFrames;
     private final byte[] handlerStatus;
-    /**
-     * What the last check of each exception handler was made against, or null if it has not been
-     * checked yet. See {@link #checkExceptionHandlers}.
-     */
-    private final List<HandlerCheck<R, C, M, F>> exceptionHandlerChecks;
-
-    /**
-     * The state a check of an exception handler was made against: the locals, how often they had
-     * been modified, the constructor status, and the handler's frame afterwards.
-     */
-    private record HandlerCheck<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>(Locals<R, C, M, F> locals,
-                    int modCount, boolean calledConstructor, StackFrame<R, C, M, F> frame) {
-        /** Whether a check of the same handler now would be made against the same state. */
-        boolean isSameAs(Locals<R, C, M, F> currentLocals, boolean currentCalledConstructor, StackFrame<R, C, M, F> currentFrame) {
-            return locals == currentLocals && modCount == currentLocals.modCount && calledConstructor == currentCalledConstructor && frame == currentFrame;
-        }
-    }
-
     private boolean stackMapInitialized = false;
-
-    // <init> method validation
-    private boolean calledConstructor = false;
 
     // Instruction stack to visit
     private final WorkingQueue<R, C, M, F> queue = new WorkingQueue<>();
+
+    // Current verification iteration state
+
+    private static final int MOD_COUNT_RESET = 1;
+
+    // <init> method validation
+    private boolean calledConstructor = false;
+    // The number of times locals were modified
+    private int modCount;
+    // For each exception handler, remember the last modcount a merge into was successful.
+    private int[] handlerMergeModCount = null;
 
     Symbol<Type>[] getSig() {
         return sig;
@@ -513,10 +502,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         if (checkBciStatus(targetBCI, BCIState.IS_RET_TARGET)) {
             verifyGuarantee(getRetBCI(targetBCI) == retBCI, "Multiple returns to single jsr ");
         }
-        bciStates[targetBCI] = StateConstants.cat(retBCI, BCIState.IS_RET_TARGET.set(bciStates[targetBCI]));
+        bciStates[targetBCI] = StateConstants.cat(retBCI, BCIState.IS_RET_TARGET.set(bciStates[targetBCI]) & StateConstants.LO_MASK);
     }
 
-    private void setConstructorStatus(int handler, HandlerState constructorStatus) {
+    private void updateConstructorStatus(int handler, HandlerState constructorStatus) {
         // If there is a path to the handler that has not called a constructor, consider the handler
         // to have an uninitialized this.
         if (checkHandlerStatus(handler, HandlerState.NO_CONSTRUCTOR_CALLED)) {
@@ -562,7 +551,6 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         this.handlerStatus = new byte[exceptionHandlers.length];
         Arrays.fill(handlerStatus, HandlerState.DEFAULT_STATE);
-        this.exceptionHandlerChecks = Arrays.asList(new HandlerCheck[exceptionHandlers.length]);
 
         booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
 
@@ -866,6 +854,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     /**
      * Registers a stack frame from the stack map frame parser to the given BCI.
      */
+    @Override
     public void registerStackMapFrame(int bci, StackFrame<R, C, M, F> frame) {
         validateFrameBCI(bci);
         setBciStatus(bci, BCIState.MERGE_TARGET);
@@ -896,6 +885,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             }
         }
         return new StackMapFrameParser.FrameAndLocalEffect<>(new StackFrame<>(this, fullStack, newLocals), pos - lastLocal);
+    }
+
+    void incLocalModcount() {
+        modCount++;
     }
 
     void setLocal(Operand<R, C, M, F>[] locals, Operand<R, C, M, F> op, int pos, String message) {
@@ -1220,36 +1213,45 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         int nextBCI = bci;
         int previousBCI;
 
+        // Initialize iteration status
+        modCount = MOD_COUNT_RESET;
+        handlerMergeModCount = null;
+
         // Check if constructor was called prior to this branch.
         boolean constructorCalledStatus = calledConstructor;
-        do {
-            previousBCI = nextBCI;
-            if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET)) {
-                // Try merge
-                StackFrame<R, C, M, F> frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
-                if (!(frame == stackFrames[nextBCI])) {
-                    // merge failed, mark the bci as not yet verified as state changed
-                    setBciStatus(nextBCI, BCIState.TO_VERIFY);
-                    stackFrames[nextBCI] = frame;
+        try {
+            do {
+                previousBCI = nextBCI;
+                if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET)) {
+                    // Try merge
+                    StackFrame<R, C, M, F> frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
+                    if (!(frame == stackFrames[nextBCI])) {
+                        // merge failed, mark the bci as not yet verified as state changed
+                        setBciStatus(nextBCI, BCIState.TO_VERIFY);
+                        stackFrames[nextBCI] = frame;
+                    }
+                    // Always use the stack frame state
+                    stack = frame.extractStack(maxStack);
+                    locals = frame.extractLocals();
+                    // Propagate subroutine modifications (here, arrays are shared).
+                    locals.subRoutineModifications = seedLocals.subRoutineModifications;
                 }
-                // Always use the stack frame state
-                stack = frame.extractStack(maxStack);
-                locals = frame.extractLocals();
-                // Propagate subroutine modifications (here, arrays are shared).
-                locals.subRoutineModifications = seedLocals.subRoutineModifications;
-            }
-            // Return condition: a successful merge into an already verified branch target.
-            if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET) && checkBciStatus(nextBCI, BCIState.VERIFIED)) {
-                // Reset constructor status.
-                calledConstructor = constructorCalledStatus;
-                return;
-            }
-            checkExceptionHandlers(nextBCI, locals);
-            nextBCI = verifySafe(nextBCI, stack, locals);
-            validateBCI(nextBCI);
-        } while (previousBCI != nextBCI);
-        // Reset constructor status.
-        calledConstructor = constructorCalledStatus;
+                // Return condition: a successful merge into an already verified branch target.
+                if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET) && checkBciStatus(nextBCI, BCIState.VERIFIED)) {
+                    return;
+                }
+                checkExceptionHandlers(nextBCI, locals);
+                nextBCI = verifySafe(nextBCI, stack, locals);
+                validateBCI(nextBCI);
+            } while (previousBCI != nextBCI);
+        } finally {
+            // Restore constructor status.
+            calledConstructor = constructorCalledStatus;
+            // Clear current local modCount
+            modCount = MOD_COUNT_RESET;
+            // Clear current exception handler merge helper
+            handlerMergeModCount = null;
+        }
     }
 
     static void validateOrFailVerification(int cpi, ConstantPool pool) {
@@ -1258,6 +1260,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         } catch (ValidationException e) {
             throw failVerify(e.getMessage());
         }
+    }
+
+    boolean canSkipHandlerMerge(int handler) {
+        if (handlerMergeModCount == null) {
+            handlerMergeModCount = new int[exceptionHandlers.length];
+            return false;
+        }
+        return handlerMergeModCount[handler] == modCount;
     }
 
     /**
@@ -1271,34 +1281,33 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      * checked.
      */
     private void checkExceptionHandlers(int nextBCI, Locals<R, C, M, F> locals) {
-        for (int i = 0; i < exceptionHandlers.length; i++) {
-            ExceptionHandler handler = exceptionHandlers[i];
+        for (int handlerID = 0; handlerID < exceptionHandlers.length; handlerID++) {
+            ExceptionHandler handler = exceptionHandlers[handlerID];
             if (handler.covers(nextBCI)) {
-                HandlerCheck<R, C, M, F> lastCheck = exceptionHandlerChecks.get(i);
-                if (lastCheck != null && locals.subRoutineModifications == null) {
-                    boolean isSame = lastCheck.isSameAs(
-                                    locals,
-                                    calledConstructor,
-                                    stackFrames[handler.getHandlerBCI()]);
-                    if (isSame) {
-                        continue;
-                    }
+
+                // Note: this next check initializes the 'handlerMergeModCount' array
+                if (canSkipHandlerMerge(handlerID)) {
+                    // A previous merge operation for this handler was successful in the current
+                    // verification iteration, and the locals are unchanged since.
+                    continue;
                 }
                 OperandStack<R, C, M, F> stack = new OperandStack<>(this, 1);
                 Symbol<Type> catchType = handler.getCatchType();
                 stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType, handler.catchTypeCPI()));
                 StackFrame<R, C, M, F> oldFrame = stackFrames[handler.getHandlerBCI()];
                 StackFrame<R, C, M, F> newFrame = mergeFrames(stack, locals, oldFrame);
-                if (checkHandlerStatus(i, HandlerState.UNPROCESSED) || oldFrame != newFrame) {
-                    setHandlerStatus(i, HandlerState.TO_VERIFY);
+                if (checkHandlerStatus(handlerID, HandlerState.UNPROCESSED) || oldFrame != newFrame) {
+                    setHandlerStatus(handlerID, HandlerState.TO_VERIFY);
                 }
                 if (calledConstructor) {
-                    setConstructorStatus(i, HandlerState.CONSTRUCTOR_CALLED);
+                    updateConstructorStatus(handlerID, HandlerState.CONSTRUCTOR_CALLED);
                 } else {
-                    setConstructorStatus(i, HandlerState.NO_CONSTRUCTOR_CALLED);
+                    updateConstructorStatus(handlerID, HandlerState.NO_CONSTRUCTOR_CALLED);
                 }
                 stackFrames[handler.getHandlerBCI()] = newFrame;
-                exceptionHandlerChecks.set(i, new HandlerCheck<>(locals, locals.modCount, calledConstructor, newFrame));
+
+                assert handlerMergeModCount != null;
+                handlerMergeModCount[handlerID] = modCount;
             }
         }
     }
@@ -2643,7 +2652,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         private static final int MERGE_TARGET = 0b0000_0100;
 
-        private static final byte IS_RET_TARGET_BIT = 0b0000_1000;
+        private static final int IS_RET_TARGET_BIT = 0b0000_1000;
 
         // Exception handler target states
         private static final byte HANDLER_STATUS_MASK = 0b0000_0111;
@@ -2654,6 +2663,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         private static final byte HANDLER_CONSTRUCTOR_STATUS_MASK = 0b0011_0000;
         private static final byte HANDLER_CONSTRUCTOR_CALLED_BIT = 0b0001_0000;
         private static final byte HANDLER_NO_CONSTRUCTOR_CALLED_BIT = 0b0010_0000;
+
+        private static final int LO_MASK = 0x0000_FFFF;
 
         static int cat(int hi, int lo) {
             assert hi == (char) hi;
