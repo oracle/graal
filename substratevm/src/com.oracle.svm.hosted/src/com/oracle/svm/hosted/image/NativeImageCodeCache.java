@@ -88,8 +88,8 @@ import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.Counter;
@@ -402,7 +402,7 @@ public abstract class NativeImageCodeCache {
     }
 
     public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
-        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), false), Word.signed(getCodeAreaSize()));
+        buildRuntimeMetadata(debug, snippetReflectionProvider, MethodRefSupport.createMethodPointer(getFirstCompilation().getLeft(), false), Word.signed(getCodeAreaSize()));
     }
 
     static class HostedConstantAccess extends ConstantAccess {

@@ -35,6 +35,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.amd64.SubstrateAMD64Backend;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
@@ -157,7 +158,7 @@ public class AMD64PLTStubGenerator implements PLTStubGenerator {
         RelocatableBuffer buffer = new RelocatableBuffer(code.length, SubstrateTarget.getArchitecture().getByteOrder());
         buffer.getByteBuffer().put(code);
 
-        MethodPointer resolver = new MethodPointer(configuration.getArchSpecificResolverAsHostedMethod(), false);
+        MethodPointer resolver = MethodRefSupport.createMethodPointer(configuration.getArchSpecificResolverAsHostedMethod(), false);
         for (int resolverPatchOffset : patchState.offsets) {
             buffer.addRelocationWithAddend(resolverPatchOffset, patchState.relocationKind, patchState.relocationAddend, resolver);
         }

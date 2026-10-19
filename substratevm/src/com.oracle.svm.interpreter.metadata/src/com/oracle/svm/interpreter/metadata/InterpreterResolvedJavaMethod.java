@@ -68,8 +68,6 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -427,7 +425,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static MethodRef createMethodRef(ResolvedJavaMethod method) {
-        return SubstrateOptions.useRelativeCodePointers() ? new MethodOffset(method) : new MethodPointer(method);
+        return SubstrateOptions.useRelativeCodePointers() ? MethodRefSupport.createMethodOffset(method) : MethodRefSupport.createMethodPointer(method);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

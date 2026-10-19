@@ -35,6 +35,22 @@ public final class MethodRefSupport {
     private MethodRefSupport() {
     }
 
+    public static MethodPointer createMethodPointer(ResolvedJavaMethod method) {
+        return new MethodPointer(method);
+    }
+
+    public static MethodPointer createMethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
+        return new MethodPointer(method, permitsRewriteToPLT);
+    }
+
+    public static MethodOffset createMethodOffset(ResolvedJavaMethod method) {
+        return new MethodOffset(method);
+    }
+
+    public static MethodOffset createMethodOffset(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
+        return new MethodOffset(method, permitsRewriteToPLT);
+    }
+
     public static ResolvedJavaMethod getMethod(MethodRef methodRef) {
         return methodRef.getMethod();
     }

@@ -101,7 +101,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
@@ -2550,7 +2549,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             // Negative method IDs encode CremaResolvedJavaMethod instances.
             asm.testq(methodIdArg.getRegister(), methodIdArg.getRegister());
             asm.jccb(AMD64Assembler.ConditionFlag.GreaterEqual, nonCremaMethodId);
-            result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(new MethodPointer(cremaData.wrapperMethod()))));
+            result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(cremaData.wrapperMethod()))));
             asm.leaq(jumpTargetRegister, asm.getPlaceholder(asm.position()));
             asm.jmp(jumpTargetRegister);
             asm.bind(nonCremaMethodId);

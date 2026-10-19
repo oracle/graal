@@ -51,7 +51,7 @@ import com.oracle.svm.core.encoder.IdentitySymbolEncoder;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
@@ -301,7 +301,7 @@ public class DynamicHubInitializer {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             bb.addRootMethod(throwVerifyError, true, "Class initialization error, registered in " + DynamicHubInitializer.class);
-            return ClassInitializationInfo.forRuntimeTimeInitializedClass(new MethodPointer(throwVerifyError), typeReachedTracked);
+            return ClassInitializationInfo.forRuntimeTimeInitializedClass(MethodRefSupport.createMethodPointer(throwVerifyError), typeReachedTracked);
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
@@ -320,7 +320,7 @@ public class DynamicHubInitializer {
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
             bb.addRootMethod(classInitializer, true, "Class initialization, registered in " + DynamicHubInitializer.class);
-            classInitializerFunction = new MethodPointer(classInitializer);
+            classInitializerFunction = MethodRefSupport.createMethodPointer(classInitializer);
         }
         return ClassInitializationInfo.forRuntimeTimeInitializedClass(classInitializerFunction, typeReachedTracked);
     }

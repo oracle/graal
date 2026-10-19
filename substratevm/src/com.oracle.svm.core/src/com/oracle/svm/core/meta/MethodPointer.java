@@ -50,13 +50,13 @@ public final class MethodPointer implements CFunctionPointer, MethodRef {
     private final boolean permitsRewriteToPLT;
 
     @Platforms(HOSTED_ONLY.class)
-    public MethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
+    MethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
         this.method = Objects.requireNonNull(method);
         this.permitsRewriteToPLT = permitsRewriteToPLT;
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public MethodPointer(ResolvedJavaMethod method) {
+    MethodPointer(ResolvedJavaMethod method) {
         this(method, DEFAULT_PERMIT_REWRITE_TO_PLT);
     }
 

@@ -340,14 +340,14 @@ public class AnalysisToHostedGraphTransplanter {
             MethodPointer methodPointer = methodPointerConstant.pointer();
             ResolvedJavaMethod method = methodPointerConstant.getMethod();
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
-            newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod, methodPointer.permitsRewriteToPLT()));
+            newReplacement = new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(replacedMethod, methodPointer.permitsRewriteToPLT()));
 
         } else if (obj.getClass() == SubstrateMethodOffsetConstant.class) {
             SubstrateMethodOffsetConstant methodOffsetConstant = (SubstrateMethodOffsetConstant) obj;
 
             MethodOffset methodOffset = methodOffsetConstant.offset();
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(MethodRefSupport.getMethod(methodOffset), node, replacements, hUniverse);
-            newReplacement = new SubstrateMethodOffsetConstant(new MethodOffset(replacedMethod, methodOffset.permitsRewriteToPLT()));
+            newReplacement = new SubstrateMethodOffsetConstant(MethodRefSupport.createMethodOffset(replacedMethod, methodOffset.permitsRewriteToPLT()));
 
         } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoad.class) {
             ComputedIndirectCallTargetNode.FieldLoad fieldLoad = (ComputedIndirectCallTargetNode.FieldLoad) obj;

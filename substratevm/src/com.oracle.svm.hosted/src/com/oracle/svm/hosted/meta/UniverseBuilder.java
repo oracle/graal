@@ -87,8 +87,7 @@ import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -1038,13 +1037,13 @@ public class UniverseBuilder {
         for (int i = 0; i < methods.length; i++) {
             HostedMethod method = methods[i];
             if (useOffsets) {
-                vtable[i] = new MethodOffset(method);
+                vtable[i] = MethodRefSupport.createMethodOffset(method);
             } else {
                 /*
                  * We install a CodePointer in the vtable; when generating relocation info, we will
                  * know these point into .text
                  */
-                vtable[i] = new MethodPointer(method);
+                vtable[i] = MethodRefSupport.createMethodPointer(method);
             }
         }
         return vtable;

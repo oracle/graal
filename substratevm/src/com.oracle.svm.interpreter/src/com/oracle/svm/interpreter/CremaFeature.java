@@ -52,7 +52,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
 import com.oracle.svm.core.jni.CallVariant;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classloading.RuntimeClassLoadingFeature;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
@@ -210,14 +210,14 @@ public class CremaFeature implements InternalFeature {
 
         accessImpl.registerAsImmutable(CremaSupport.singleton());
         accessImpl.registerAsImmutable(InterpreterForeignFunctionsSupport.singleton());
-        CremaSupport.singleton().setEnterDirectInterpreterStubEntryPoint(new MethodPointer(hUniverse.lookup(enterDirectInterpreterStub)));
-        InterpreterForeignFunctionsSupport.singleton().setUpcallStubPointer(new MethodPointer(hUniverse.lookup(enterInterpreterForFFMUpcall)));
-        CremaSupport.singleton().setCremaJNIUpcallWrapperEntryPoints(new MethodPointer(hUniverse.lookup(enterCremaJNIUpcallVarargsVirtualWrapper)),
-                        new MethodPointer(hUniverse.lookup(enterCremaJNIUpcallArrayVirtualWrapper)),
-                        new MethodPointer(hUniverse.lookup(enterCremaJNIUpcallVaListVirtualWrapper)),
-                        new MethodPointer(hUniverse.lookup(enterCremaJNIUpcallVarargsNonVirtualWrapper)),
-                        new MethodPointer(hUniverse.lookup(enterCremaJNIUpcallArrayNonVirtualWrapper)),
-                        new MethodPointer(hUniverse.lookup(enterCremaJNIUpcallVaListNonVirtualWrapper)));
+        CremaSupport.singleton().setEnterDirectInterpreterStubEntryPoint(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterDirectInterpreterStub)));
+        InterpreterForeignFunctionsSupport.singleton().setUpcallStubPointer(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterForFFMUpcall)));
+        CremaSupport.singleton().setCremaJNIUpcallWrapperEntryPoints(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVarargsVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallArrayVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVaListVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVarargsNonVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallArrayNonVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVaListNonVirtualWrapper)));
     }
 
     @Override

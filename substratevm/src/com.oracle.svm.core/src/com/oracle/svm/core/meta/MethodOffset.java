@@ -49,13 +49,13 @@ public final class MethodOffset implements MethodRef {
     private final ResolvedJavaMethod method;
 
     @Platforms(HOSTED_ONLY.class)
-    public MethodOffset(ResolvedJavaMethod method) {
+    MethodOffset(ResolvedJavaMethod method) {
         this(method, true);
     }
 
     /** @see MethodPointer#MethodPointer(ResolvedJavaMethod, boolean) */
     @Platforms(HOSTED_ONLY.class)
-    public MethodOffset(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
+    MethodOffset(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
         VMError.guarantee(permitsRewriteToPLT == DEFAULT_PERMIT_REWRITE_TO_PLT, "Not implemented: all calls to methods in PLT/GOT are currently redirected");
         this.method = Objects.requireNonNull(method);
     }

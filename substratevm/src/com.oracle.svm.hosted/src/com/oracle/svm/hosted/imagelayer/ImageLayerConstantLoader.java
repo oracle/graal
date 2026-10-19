@@ -60,7 +60,7 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRef;
 import com.oracle.svm.hosted.SVMHost;
@@ -518,10 +518,10 @@ final class ImageLayerConstantLoader {
                 if (constantRef.isMethodPointer()) {
                     ConstantReferenceData.MethodPointer.Loader r = constantRef.getMethodPointer();
                     AnalysisMethod method = loader.getAnalysisMethodForBaseLayerId(r.getMethodId());
-                    ref = new MethodPointer(method, r.getPermitsRewriteToPLT());
+                    ref = MethodRefSupport.createMethodPointer(method, r.getPermitsRewriteToPLT());
                 } else {
                     int mid = constantRef.getMethodOffset().getMethodId();
-                    ref = new MethodOffset(loader.getAnalysisMethodForBaseLayerId(mid));
+                    ref = MethodRefSupport.createMethodOffset(loader.getAnalysisMethodForBaseLayerId(mid));
                 }
                 AnalysisType refType = loader.metaAccess.lookupJavaType(ref.getClass());
                 PatchedWordConstant constant = new PatchedWordConstant(ref, refType);

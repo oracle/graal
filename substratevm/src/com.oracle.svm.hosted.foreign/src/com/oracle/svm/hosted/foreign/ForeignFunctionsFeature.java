@@ -419,7 +419,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
              * If the return value is 'false', the stub was not consumed since a concurrent method
              * execution created an equal stub and this execution lost the race.
              */
-            if (factory.registerStub(foreignFunctionsRuntime, key, new MethodPointer(analysisStub))) {
+            if (factory.registerStub(foreignFunctionsRuntime, key, MethodRefSupport.createMethodPointer(analysisStub))) {
                 universe.getBigbang().addRootMethod(analysisStub, false, "Foreign stub, registered in " + ForeignFunctionsFeature.class);
                 if (factory.registerAsEntryPoint()) {
                     analysisStub.registerAsNativeEntryPoint(CEntryPointData.createCustomUnpublished());

@@ -39,7 +39,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -213,16 +213,16 @@ public final class RistrettoFeature implements InternalFeature {
             HostedMetaAccess metaAccess = config.getMetaAccess();
 
             RistrettoDeoptimizationSupport.initialize(
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryVoid)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryInt)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryLong)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryFloat)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryDouble)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryObject)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryBoolean)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryByte)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryShort)),
-                            new MethodPointer(metaAccess.lookupJavaMethod(interpEntryChar)));
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryVoid)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryInt)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryLong)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryFloat)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryDouble)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryObject)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryBoolean)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryByte)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryShort)),
+                            MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(interpEntryChar)));
         }
     }
 

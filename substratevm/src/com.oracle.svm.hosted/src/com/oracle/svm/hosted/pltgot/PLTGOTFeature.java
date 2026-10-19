@@ -43,7 +43,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
@@ -231,7 +231,7 @@ public class PLTGOTFeature implements InternalFeature {
             var method = got[gotEntryNo];
             int methodGOTEntryOffsetInSection = gotEndOffset + GOTAccess.getGOTEntryOffsetFromHeapRegister(gotEntryNo);
             if (methodsForDirectGOTRelocation.contains(method)) {
-                gotBuffer.addRelocationWithoutAddend(methodGOTEntryOffsetInSection, relocationKind, new MethodPointer(method, false));
+                gotBuffer.addRelocationWithoutAddend(methodGOTEntryOffsetInSection, relocationKind, MethodRefSupport.createMethodPointer(method, false));
             } else {
                 pltSupport.addMethodPLTStubResolverRelocation(gotBuffer, methodGOTEntryOffsetInSection, relocationKind, method);
             }
