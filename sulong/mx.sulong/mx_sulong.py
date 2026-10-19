@@ -249,7 +249,10 @@ def llvm_extra_tool(args=None, out=None, **kwargs):
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
-    args = mx.get_runtime_jvm_args(['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
+    dists = ['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI']
+    if mx.suite('compiler', fatalIfMissing=False) is not None:
+        dists.append('truffle:TRUFFLE_RUNTIME')
+    args = mx.get_runtime_jvm_args(dists + (extra_dists or []))
     args += ["--add-modules", "org.graalvm.llvm.launcher"]
     return args
 
