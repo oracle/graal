@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,9 +39,9 @@ import java.util.Map;
 
 @TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})
-final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
+public final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
 
-    @Alias private volatile Map<String, Object> lookup;
+    @Alias public volatile Map<String, Object> lookup;
 
     @Alias
     @KeepOriginal
@@ -62,6 +62,10 @@ final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
             loadLookupOriginal();
             return;
         }
+        /*
+         * Prepared bundles share extracted contents without locking. Unprepared bundles initialize
+         * under the original JDK lock, once per runtime instance, using a method resolved at build time.
+         */
         lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentOf(this);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.ListResourceBundle;
 import java.util.Locale;
@@ -35,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,12 +44,17 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
+import com.oracle.svm.core.jdk.localization.substitutions.Target_java_util_ListResourceBundle_SubstituteLoadLookup;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
+import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -79,6 +86,10 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
+    private final EconomicMap<Class<?>, Method> unpreparedBundleGetters = ImageHeapMap.createNonLayeredMap();
+
+    @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> preparedBundleClasses = ConcurrentHashMap.newKeySet();
+
     private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
 
     public BundleContentSubstitutedLocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset, ForkJoinPool pool) {
@@ -95,6 +106,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void onBundlePrepared(ResourceBundle bundle) {
         if (isBundleSupported(bundle)) {
+            preparedBundleClasses.add(bundle.getClass());
             if (pool != null) {
                 pool.execute(() -> storeBundleContentOf(bundle));
             } else {
@@ -128,7 +140,24 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         if (storedBundle != null) {
             return storedBundle.getContent(bundle);
         }
-        return super.getBundleContentOf(bundle);
+        return getUnpreparedBundleContentOf(bundle);
+    }
+
+    @NeverInline("Keep lazy initialization out of the prepared-bundle fast path")
+    private Map<String, Object> getUnpreparedBundleContentOf(Object bundle) {
+        Method getContents = unpreparedBundleGetters.get(bundle.getClass());
+        if (getContents == null) {
+            return super.getBundleContentOf(bundle);
+        }
+        synchronized (bundle) {
+            var target = SubstrateUtil.cast(bundle, Target_java_util_ListResourceBundle_SubstituteLoadLookup.class);
+            if (target.lookup == null) {
+                Object[][] content = ReflectionUtil.invokeMethod(getContents, bundle);
+                // Keep the lookup map type shared with prepared bundles for compiled lookup performance.
+                target.lookup = new ExtractedBundle(content);
+            }
+            return target.lookup;
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -144,6 +173,14 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Override
     public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         storedBundles.put(clazz, new DelayedBundle(clazz));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareUnpreparedBundle(Class<?> clazz) throws ReflectiveOperationException {
+        /* Extraction may still be running in the pool; do not make prepared getters reachable. */
+        if (!preparedBundleClasses.contains(clazz) && !storedBundles.containsKey(clazz)) {
+            unpreparedBundleGetters.putIfAbsent(clazz, DelayedBundle.findGetContentsMethod(clazz));
+        }
     }
 
     @Override

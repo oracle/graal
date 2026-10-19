@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jdk.localization;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +33,7 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
@@ -326,6 +328,18 @@ public class LocalizationFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         addResourceBundles();
+        if (substituteLoadLookup) {
+            /* Directly constructed bundles need no explicit resource bundle registration. */
+            a.registerSubtypeReachabilityHandler((_, bundleClass) -> {
+                if (!Modifier.isAbstract(bundleClass.getModifiers())) {
+                    try {
+                        ((BundleContentSubstitutedLocalizationSupport) support).prepareUnpreparedBundle(bundleClass);
+                    } catch (ReflectiveOperationException e) {
+                        throw VMError.shouldNotReachHere(e);
+                    }
+                }
+            }, ListResourceBundle.class);
+        }
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
         /*
          * Static @Stable fields initialized in static initializers of build-time initialized
