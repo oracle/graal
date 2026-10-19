@@ -44,6 +44,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.LogicCompareAndSwapNode;
@@ -51,6 +52,7 @@ import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.vm.ci.meta.JavaKind;
 
 public class WasmGCSingleThreadedAtomicsPhase extends SingleThreadedAtomicsPhase {
     /**
@@ -95,7 +97,14 @@ public class WasmGCSingleThreadedAtomicsPhase extends SingleThreadedAtomicsPhase
         EndNode failEnd = graph.add(new EndNode());
         AbstractBeginNode failBegin = BeginNode.begin(failEnd);
 
-        LogicNode condition = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, oldValue, cas.getExpectedValue(), providers.getConstantReflection(), NodeView.DEFAULT);
+        ValueNode oldValueForComparison = oldValue;
+        ValueNode expectedValueForComparison = cas.getExpectedValue();
+        if (expectedValueForComparison.getStackKind().isNumericFloat()) {
+            JavaKind integerKind = expectedValueForComparison.getStackKind() == JavaKind.Double ? JavaKind.Long : JavaKind.Int;
+            oldValueForComparison = ReinterpretNode.create(integerKind, oldValue, NodeView.DEFAULT);
+            expectedValueForComparison = ReinterpretNode.create(integerKind, expectedValueForComparison, NodeView.DEFAULT);
+        }
+        LogicNode condition = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, oldValueForComparison, expectedValueForComparison, providers.getConstantReflection(), NodeView.DEFAULT);
 
         IfNode ifNode = graph.add(new IfNode(condition, successBegin, failBegin, ProfileData.BranchProbabilityData.injected(BranchProbabilityNode.FREQUENT_PROBABILITY)));
 
