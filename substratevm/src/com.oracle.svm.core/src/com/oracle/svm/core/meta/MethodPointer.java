@@ -26,14 +26,10 @@ package com.oracle.svm.core.meta;
 
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
-import java.util.Objects;
-
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.ComparableWord;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * The absolute address of the compiled code of a method.
@@ -44,26 +40,16 @@ public final class MethodPointer implements CFunctionPointer, MethodRef {
     public static final boolean DEFAULT_PERMIT_REWRITE_TO_PLT = true;
 
     @Platforms(HOSTED_ONLY.class) //
-    private final ResolvedJavaMethod method;
-
-    @Platforms(HOSTED_ONLY.class) //
     private final boolean permitsRewriteToPLT;
 
     @Platforms(HOSTED_ONLY.class)
-    MethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
-        this.method = Objects.requireNonNull(method);
+    MethodPointer(boolean permitsRewriteToPLT) {
         this.permitsRewriteToPLT = permitsRewriteToPLT;
     }
 
     @Platforms(HOSTED_ONLY.class)
-    MethodPointer(ResolvedJavaMethod method) {
-        this(method, DEFAULT_PERMIT_REWRITE_TO_PLT);
-    }
-
-    @Override
-    @Platforms(HOSTED_ONLY.class)
-    public ResolvedJavaMethod getMethod() {
-        return method;
+    MethodPointer() {
+        this(DEFAULT_PERMIT_REWRITE_TO_PLT);
     }
 
     @Platforms(HOSTED_ONLY.class)

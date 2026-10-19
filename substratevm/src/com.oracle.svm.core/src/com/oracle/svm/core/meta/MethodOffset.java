@@ -26,15 +26,11 @@ package com.oracle.svm.core.meta;
 
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
-import java.util.Objects;
-
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.util.VMError;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * The offset of the compiled code of a method from the {@linkplain KnownIntrinsics#codeBase() code
@@ -45,25 +41,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class MethodOffset implements MethodRef {
     public static final boolean DEFAULT_PERMIT_REWRITE_TO_PLT = true;
 
-    @Platforms(HOSTED_ONLY.class) //
-    private final ResolvedJavaMethod method;
-
     @Platforms(HOSTED_ONLY.class)
-    MethodOffset(ResolvedJavaMethod method) {
-        this(method, true);
+    MethodOffset() {
+        this(DEFAULT_PERMIT_REWRITE_TO_PLT);
     }
 
-    /** @see MethodPointer#MethodPointer(ResolvedJavaMethod, boolean) */
+    /** @see MethodPointer#MethodPointer(boolean) */
     @Platforms(HOSTED_ONLY.class)
-    MethodOffset(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
+    MethodOffset(boolean permitsRewriteToPLT) {
         VMError.guarantee(permitsRewriteToPLT == DEFAULT_PERMIT_REWRITE_TO_PLT, "Not implemented: all calls to methods in PLT/GOT are currently redirected");
-        this.method = Objects.requireNonNull(method);
-    }
-
-    @Override
-    @Platforms(HOSTED_ONLY.class)
-    public ResolvedJavaMethod getMethod() {
-        return method;
     }
 
     @Platforms(HOSTED_ONLY.class)

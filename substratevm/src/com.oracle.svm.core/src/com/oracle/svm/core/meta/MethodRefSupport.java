@@ -24,34 +24,65 @@
  */
 package com.oracle.svm.core.meta;
 
+import java.util.Objects;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@AutomaticallyRegisteredImageSingleton
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class MethodRefSupport {
 
-    private MethodRefSupport() {
+    private final EconomicMap<MethodRef, ResolvedJavaMethod> methods = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+
+    MethodRefSupport() {
     }
 
     public static MethodPointer createMethodPointer(ResolvedJavaMethod method) {
-        return new MethodPointer(method);
+        return singleton().register(new MethodPointer(), method);
     }
 
     public static MethodPointer createMethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
-        return new MethodPointer(method, permitsRewriteToPLT);
+        return singleton().register(new MethodPointer(permitsRewriteToPLT), method);
     }
 
     public static MethodOffset createMethodOffset(ResolvedJavaMethod method) {
-        return new MethodOffset(method);
+        return singleton().register(new MethodOffset(), method);
     }
 
     public static MethodOffset createMethodOffset(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
-        return new MethodOffset(method, permitsRewriteToPLT);
+        return singleton().register(new MethodOffset(permitsRewriteToPLT), method);
     }
 
     public static ResolvedJavaMethod getMethod(MethodRef methodRef) {
-        return methodRef.getMethod();
+        return singleton().resolve(methodRef);
+    }
+
+    private static MethodRefSupport singleton() {
+        return ImageSingletons.lookup(MethodRefSupport.class);
+    }
+
+    private synchronized <T extends MethodRef> T register(T methodRef, ResolvedJavaMethod method) {
+        methods.put(Objects.requireNonNull(methodRef), Objects.requireNonNull(method));
+        return methodRef;
+    }
+
+    private synchronized ResolvedJavaMethod resolve(MethodRef methodRef) {
+        Objects.requireNonNull(methodRef);
+        ResolvedJavaMethod method = methods.get(methodRef);
+        VMError.guarantee(method != null, "No resolved method registered for method reference type %s", methodRef.getClass().getName());
+        return method;
     }
 }
