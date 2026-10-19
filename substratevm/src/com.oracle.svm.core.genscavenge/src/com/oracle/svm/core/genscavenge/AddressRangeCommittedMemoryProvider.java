@@ -83,7 +83,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 /**
  * Reserves a fixed-size address range and provides memory from it by committing and uncommitting
  * virtual memory within that range. The address space is shared by the null regions, the
- * {@link Metaspace}, the image heap, and the collected Java heap.
+ * {@link Metaspace}, optional pre-heap data, the image heap, and the collected Java heap.
  * <p>
  * The main objective of this code is to keep external fragmentation low so that an
  * {@linkplain Isolate} is unlikely to run out of memory because its address space is exhausted. To
@@ -138,6 +138,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
      */
     private final VMMutex lock = new VMMutex("freeList");
 
+    protected Pointer reservedAddressSpaceBegin;
     protected UnsignedWord reservedAddressSpaceSize;
     private Pointer metaspaceBegin;
     private Pointer metaspaceTop;
@@ -234,6 +235,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SuppressWarnings("hiding")
     protected int initializeFields(Pointer reservedBegin, UnsignedWord reservedSize, Pointer collectedHeapBegin) {
+        this.reservedAddressSpaceBegin = reservedBegin;
         this.reservedAddressSpaceSize = reservedSize;
 
         initializeMetaspaceFields();
@@ -369,14 +371,14 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
             freeNode(node);
             node = next;
         }
-        // ImageHeapProvider.freeImageHeap must not be called because the ImageHeapProvider did not
-        // allocate any memory for the image heap.
-        return unmapAddressSpace(KnownIntrinsics.heapBase());
+        // This provider owns the complete address-space reservation, including the image heap. Release the
+        // reservation here instead of calling ImageHeapProvider.freeImageHeap.
+        return unmapAddressSpace();
     }
 
     @Uninterruptible(reason = "Tear-down in progress.")
-    protected int unmapAddressSpace(PointerBase heapBase) {
-        if (VirtualMemoryProvider.get().free(heapBase, reservedAddressSpaceSize) != 0) {
+    protected int unmapAddressSpace() {
+        if (VirtualMemoryProvider.get().free(reservedAddressSpaceBegin, reservedAddressSpaceSize) != 0) {
             return CEntryPointErrors.FREE_ADDRESS_SPACE_FAILED;
         }
         return CEntryPointErrors.NO_ERROR;
