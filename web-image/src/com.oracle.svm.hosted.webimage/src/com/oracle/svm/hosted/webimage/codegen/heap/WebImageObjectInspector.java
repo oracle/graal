@@ -30,7 +30,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.meta.HostedField;

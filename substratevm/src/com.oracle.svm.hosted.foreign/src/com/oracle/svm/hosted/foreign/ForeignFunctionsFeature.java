@@ -98,7 +98,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.sboutlining.OutlinedSBMethodHolder;

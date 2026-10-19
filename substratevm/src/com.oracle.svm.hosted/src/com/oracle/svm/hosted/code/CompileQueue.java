@@ -69,7 +69,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;

@@ -29,7 +29,7 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;

@@ -35,7 +35,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.graal.code.CGlobalDataIndirectReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;

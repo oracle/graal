@@ -62,7 +62,7 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodRefSupport;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.ReflectionIntrospectorImpl;
 import com.oracle.svm.core.reflect.SubstrateAccessor;

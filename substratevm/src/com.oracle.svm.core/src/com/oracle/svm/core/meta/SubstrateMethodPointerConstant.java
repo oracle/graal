@@ -29,6 +29,8 @@ import java.util.Objects;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 

@@ -28,8 +28,8 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;

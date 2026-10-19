@@ -68,7 +68,7 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.Constants;

@@ -75,7 +75,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
 import com.oracle.svm.core.meta.MethodRefSupport;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.FeatureImpl;

@@ -79,7 +79,7 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.strings.StringInternSupport;
-import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;

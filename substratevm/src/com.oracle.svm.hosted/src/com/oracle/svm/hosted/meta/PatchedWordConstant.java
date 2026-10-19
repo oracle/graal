@@ -29,8 +29,8 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRefSupport;
 
 import jdk.vm.ci.meta.JavaConstant;

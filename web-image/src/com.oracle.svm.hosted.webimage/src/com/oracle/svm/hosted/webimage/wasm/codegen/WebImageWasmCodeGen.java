@@ -43,7 +43,7 @@ import java.util.TreeMap;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.NativeImageGenerator;

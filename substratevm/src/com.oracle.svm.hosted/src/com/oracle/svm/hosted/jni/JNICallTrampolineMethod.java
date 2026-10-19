@@ -46,7 +46,7 @@ import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;

@@ -33,7 +33,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
