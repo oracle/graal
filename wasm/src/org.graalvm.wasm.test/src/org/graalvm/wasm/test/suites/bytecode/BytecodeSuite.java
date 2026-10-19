@@ -78,47 +78,52 @@ public class BytecodeSuite {
 
     // Test common result type encoding
     @Test
-    public void testLabelU8ResultNum() {
+    public void testLabelU8ValueTypeNum() {
         test(b -> b.addLabel(1, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x80});
     }
 
     @Test
-    public void testLabelU8ResultRef() {
+    public void testLabelU8ValueTypeObj() {
         test(b -> b.addLabel(1, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0xC0});
     }
 
     @Test
-    public void testLabelU8ResultMix() {
-        testAssertion(b -> b.addLabel(1, 0, WasmType.MIX_COMMON_TYPE), "Single result value must either have number or reference type.");
+    public void testLabelU8ValueTypeMix() {
+        testAssertion(b -> b.addLabel(1, 0, WasmType.MIX_COMMON_TYPE), "Single label value must either have number or reference type.");
     }
 
     @Test
-    public void testLabelU16ResultNum() {
+    public void testLabelU8ValueTypeNone() {
+        testAssertion(b -> b.addLabel(1, 0, WasmType.NONE_COMMON_TYPE), "Single label value must either have number or reference type.");
+    }
+
+    @Test
+    public void testLabelU16ValueTypeNum() {
         test(b -> b.addLabel(2, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, 0x42, 0x00});
     }
 
     @Test
-    public void testLabelU16ResultRef() {
+    public void testLabelU16ValueTypeObj() {
         test(b -> b.addLabel(2, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, (byte) 0x82, 0x00});
     }
 
     @Test
-    public void testLabelU16ResultMix() {
+    public void testLabelU16ValueTypeMix() {
         test(b -> b.addLabel(2, 0, WasmType.MIX_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, (byte) 0xC2, 0x00});
     }
 
     @Test
-    public void testLabelI32ResultNum() {
+    public void testLabelI32ValueTypeNum() {
         test(b -> b.addLabel(64, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_I32, Bytecode.LABEL_I32, 0x01, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
-    public void testLabelI32ResultRef() {
+    public void testLabelI32ValueTypeObj() {
         test(b -> b.addLabel(64, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_I32, Bytecode.LABEL_I32, 0x02, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
-    public void testLabelI32ResultMix() {
+    public void testLabelI32ValueTypeMix() {
         test(b -> b.addLabel(64, 0, WasmType.MIX_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_I32, Bytecode.LABEL_I32, 0x03, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
@@ -157,7 +162,7 @@ public class BytecodeSuite {
     }
 
     @Test
-    public void testLabelU16MaxResults() {
+    public void testLabelU16MaxArity() {
         test(b -> b.addLabel(63, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, 0x7F, 0x00});
     }
 
@@ -177,8 +182,8 @@ public class BytecodeSuite {
     }
 
     @Test
-    public void testInvalidResultType() {
-        testAssertion(b -> b.addLabel(1, 1, 5), "invalid result type");
+    public void testInvalidLabelValueType() {
+        testAssertion(b -> b.addLabel(1, 1, 5), "invalid label value type");
     }
 
     @Test

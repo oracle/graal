@@ -314,7 +314,7 @@ public class ParserState {
      */
     public void enterLoop(int[] paramTypes, int[] resultTypes) {
         final ControlFrame parentFrame = controlStack.peek();
-        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(resultTypes), parentFrame.legacyCatchDepth());
+        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes), parentFrame.legacyCatchDepth());
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), parentFrame, label);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -591,23 +591,23 @@ public class ParserState {
         int branchLabel = branchLabels[branchLabels.length - 1];
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
-        int[] branchLabelReturnTypes = frame.labelTypes();
-        int arity = branchLabelReturnTypes.length;
+        int[] labelTypes = frame.labelTypes();
+        int arity = labelTypes.length;
         for (int otherBranchLabel : branchLabels) {
             checkLabelExists(otherBranchLabel);
             frame = getFrame(otherBranchLabel);
-            int[] otherBranchLabelReturnTypes = frame.labelTypes();
-            if (otherBranchLabelReturnTypes.length != arity) {
-                throw ValidationErrors.createLabelTypesMismatch(branchLabelReturnTypes, otherBranchLabelReturnTypes);
+            int[] otherLabelTypes = frame.labelTypes();
+            if (otherLabelTypes.length != arity) {
+                throw ValidationErrors.createLabelTypesMismatch(labelTypes, otherLabelTypes);
             }
             try {
-                pushAll(popAll(otherBranchLabelReturnTypes));
+                pushAll(popAll(otherLabelTypes));
             } catch (WasmException e) {
-                throw ValidationErrors.createLabelTypesMismatch(branchLabelReturnTypes, otherBranchLabelReturnTypes);
+                throw ValidationErrors.createLabelTypesMismatch(labelTypes, otherLabelTypes);
             }
             frame.addLabelFixup(createBranchTableItemFixup());
         }
-        popAll(branchLabelReturnTypes);
+        popAll(labelTypes);
     }
 
     public BytecodeFixup createBranchFixup(BranchOp branchOp) {
