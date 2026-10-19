@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter.metadata;
 
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 import static jdk.graal.compiler.api.directives.GraalDirectives.FASTPATH_PROBABILITY;
+import static jdk.graal.compiler.api.directives.GraalDirectives.SLOWPATH_PROBABILITY;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -471,6 +472,10 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     /** Returns opcode-specific linkage from an entry already loaded by the interpreter frame. */
     public static LinkedInvoke peekLinkedInvoke(Object entry, int opcode) {
         assert isInvokeOpcode(opcode) : Bytecodes.nameOf(opcode);
+        // Keep the null probability explicit when the instanceof is lowered to a hub check.
+        if (GraalDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, entry == null)) {
+            return null;
+        }
         if (GraalDirectives.injectBranchProbability(FASTPATH_PROBABILITY, entry instanceof LinkedInvokeCacheEntry)) {
             return ((LinkedInvokeCacheEntry) entry).get(opcode);
         }

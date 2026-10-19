@@ -55,6 +55,20 @@ public class StandardOp {
     public interface BlockEndOp {
     }
 
+    /** Marks the end of a block after an instruction that cannot return. */
+    @Opcode("DEAD_END")
+    public static final class DeadEndOp extends LIRInstruction implements BlockEndOp {
+        public static final LIRInstructionClass<DeadEndOp> TYPE = LIRInstructionClass.create(DeadEndOp.class);
+
+        public DeadEndOp() {
+            super(TYPE);
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb) {
+        }
+    }
+
     public interface NullCheck {
         Value getCheckedValue();
 

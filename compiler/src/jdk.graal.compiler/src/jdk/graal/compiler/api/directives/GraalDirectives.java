@@ -254,6 +254,39 @@ public final class GraalDirectives {
     }
 
     /**
+     * Declares an impossible execution path. The compiler may propagate this marker backward and
+     * discard preceding operations, including operations that could throw or deoptimize. Exceptions
+     * and side effects from discarded operations are not guaranteed to occur. Unlike deoptimization,
+     * this directive does not resume Java execution or reconstruct execution state.
+     * For example:
+     *
+     * <pre>{@code
+     * possiblyThrowingCall();
+     * GraalDirectives.unreachable();
+     * }</pre>
+     *
+     * The compiler may eliminate {@code possiblyThrowingCall()}, including any exception it would
+     * have thrown and any side effects it would have performed.
+     * <p>
+     * This is not a runtime error check. It must not be used to express a normal continuation that
+     * is unreachable only because a preceding operation always throws. When executed without
+     * intrinsification, this method throws an {@link AssertionError} to diagnose the unreachable
+     * path. An intrinsified invocation emits a hardware halt if it survives compilation.
+     */
+    public static void unreachable() {
+        throw new AssertionError("Unreachable execution path");
+    }
+
+    /**
+     * Returns a {@code long} whose value must not be observed. When used as an additional return
+     * value, the compiler may leave the corresponding fixed return register unchanged. The
+     * result has no input dependency. In interpreted execution this method returns zero.
+     */
+    public static long unconstrainedValue() {
+        return 0;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
