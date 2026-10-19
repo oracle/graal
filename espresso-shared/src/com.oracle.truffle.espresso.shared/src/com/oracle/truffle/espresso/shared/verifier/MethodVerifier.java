@@ -577,21 +577,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return majorVersion >= ClassfileParser.JAVA_6_VERSION;
     }
 
+    // Guarantees and failures
+
     static void formatGuarantee(boolean guarantee, String s) {
         if (!guarantee) {
             throw failFormat(s);
-        }
-    }
-
-    /**
-     * Like {@link #formatGuarantee(boolean, String)}, for a message that is computed from the
-     * checked values. The message is only built, with {@link String#format}, when the check fails:
-     * building it at the call site would format (and call {@code toString()} on) the operands every
-     * time a check <em>passes</em>, which is on the path of nearly every verified bytecode.
-     */
-    static void formatGuarantee(boolean guarantee, String format, Object arg1) {
-        if (!guarantee) {
-            throw failFormat(String.format(format, arg1));
         }
     }
 
@@ -601,64 +591,63 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
-    static void verifyGuarantee(boolean guarantee, String format, Object arg1) {
-        verifyGuarantee(guarantee, format, arg1, null);
-    }
-
-    static void verifyGuarantee(boolean guarantee, String format, Object arg1, Object arg2) {
-        verifyGuarantee(guarantee, format, arg1, arg2, null);
-    }
-
-    /**
-     * Like {@link #verifyGuarantee(boolean, String)}, for a message that is computed from the checked
-     * values. See {@link #formatGuarantee(boolean, String, Object...)}.
-     */
-    static void verifyGuarantee(boolean guarantee, String format, Object arg1, Object arg2, Object arg3) {
-        if (!guarantee) {
-            throw failVerify(String.format(format, arg1, arg2));
-        }
-    }
-
+    // Performance overloads
     /*
-     * Overloads for the arities the hot checks use. A call with an int or an object argument binds
-     * to one of these and not to the varargs form, so it allocates no Object[] and boxes nothing
-     * when the check passes; the message is formatted only on failure.
+     * Note: These overloads bring two distinct optimization:
+     *
+     * - Defers concatenation of the error message until after the guarantee is checked,
+     * removing the computation of the message from the hot path.
+     *
+     * - Defers implicit primitive boxing of the arguments until after the guarantee is checked,
+     * removing the boxing from the hot path.
      */
 
-    static void verifyGuarantee(boolean guarantee, String format, int arg) {
+    static void formatGuarantee(boolean guarantee, String formatString, Object arg1) {
         if (!guarantee) {
-            throw failVerify(String.format(format, arg));
+            throw failFormat(String.format(formatString, arg1));
         }
     }
 
-    static void verifyGuarantee(boolean guarantee, String format, int arg1, int arg2) {
+    static void formatGuarantee(boolean guarantee, String formatString, int arg1) {
         if (!guarantee) {
-            throw failVerify(String.format(format, arg1, arg2));
+            throw failFormat(String.format(formatString, arg1));
         }
     }
 
-    static void verifyGuarantee(boolean guarantee, String format, Object arg) {
+    static void verifyGuarantee(boolean guarantee, String formatString, Object arg1) {
         if (!guarantee) {
-            throw failVerify(String.format(format, arg));
+            throw failVerify(String.format(formatString, arg1));
         }
     }
 
-    static void verifyGuarantee(boolean guarantee, String format, Object arg1, Object arg2) {
+    static void verifyGuarantee(boolean guarantee, String formatString, Object arg1, Object arg2) {
         if (!guarantee) {
-            throw failVerify(String.format(format, arg1, arg2));
+            throw failVerify(String.format(formatString, arg1, arg2));
         }
     }
 
-    static RuntimeException failFormat(String s) {
-        throw sneakyThrow(new VerificationException(s, VerificationException.Kind.ClassFormat));
+    static void verifyGuarantee(boolean guarantee, String formatString, int arg1) {
+        if (!guarantee) {
+            throw failVerify(String.format(formatString, arg1));
+        }
     }
 
-    static RuntimeException failFormatNoFallback(String s) {
-        throw sneakyThrow(new VerificationException(s, VerificationException.Kind.ClassFormat, false));
+    static void verifyGuarantee(boolean guarantee, String formatString, int arg1, int arg2) {
+        if (!guarantee) {
+            throw failVerify(String.format(formatString, arg1, arg2));
+        }
     }
 
-    static RuntimeException failVerify(String s) {
-        throw sneakyThrow(new VerificationException(s, VerificationException.Kind.Verify));
+    static RuntimeException failFormat(String message) {
+        throw sneakyThrow(new VerificationException(message, VerificationException.Kind.ClassFormat));
+    }
+
+    static RuntimeException failFormatNoFallback(String message) {
+        throw sneakyThrow(new VerificationException(message, VerificationException.Kind.ClassFormat, false));
+    }
+
+    static RuntimeException failVerify(String message) {
+        throw sneakyThrow(new VerificationException(message, VerificationException.Kind.Verify));
     }
 
     @SuppressWarnings("unchecked")
@@ -1388,9 +1377,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         setBciStatus(bci, BCIState.VERIFIED);
         int curOpcode;
         curOpcode = code.opcode(bci);
-        if (curOpcode >= SLIM_QUICK) {
-            throw failVerify(String.format("invalid bytecode: %s", code.readUByte(bci)));
-        }
+        verifyGuarantee(curOpcode <= BREAKPOINT, "invalid opcode: %s", code.readUByte(bci));
         // @formatter:off
         // Checkstyle: stop
 
@@ -2491,7 +2478,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void xaload(OperandStack<R, C, M, F> stack, PrimitiveOperand<R, C, M, F> kind) {
         stack.popInt();
         Operand<R, C, M, F> op = stack.popArray();
-        verifyGuarantee(op == nullOp || kind.compliesWith(op.getComponent(), this), "Loading %s from %s array.", kind, op);
+        verifyGuarantee(op == nullOp || kind.compliesWith(op.getComponent(), this), "Trying to load %s from %s array.", kind, op);
         stack.push(kind.toStack());
     }
 

@@ -437,7 +437,8 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
                 return index;
             }
             if (op1.isType2() && op2.isTopOperand()) {
-                verifyGuarantee(stackFrame.stack[secondIndex++].isTopOperand(), "Inconsistent stack Map: %s vs. %s and %s", op1, op2, stackFrame.stack[secondIndex - 1]);
+                Operand<R, C, M, F> savedNextOp = stackFrame.stack[secondIndex++];
+                verifyGuarantee(savedNextOp.isTopOperand(), "Inconsistent stack Map: (%s, illegal) vs. (illegal, %s)", op1, savedNextOp);
             }
 
         }
@@ -509,7 +510,7 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
 
     Operand<R, C, M, F> load(int index, Operand<R, C, M, F> expected) {
         Operand<R, C, M, F> op = registers[index];
-        verifyGuarantee(op.compliesWith(expected, mv), "Incompatible register type. Expected: %s, found: %s", expected, op);
+        verifyGuarantee(op.compliesWith(expected, mv), "Incompatible register type. Expected: %s, Found: %s ", expected, op);
         if (expected.isType2()) {
             verifyGuarantee(registers[index + 1].isTopOperand(), "Loading corrupted long primitive from locals!");
         }
