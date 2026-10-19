@@ -63,6 +63,10 @@ import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
@@ -390,6 +394,7 @@ public class SVMImageLayerSnapshotUtil {
             addBuiltin(new ImageHeapConstantBuiltIn(HostedImageLayerBuildingSupport.singleton().getWriter(), null));
             addBuiltin(new AnalysisTypeBuiltIn(null));
             addBuiltin(new AnalysisMethodBuiltIn(null, null));
+            addBuiltin(new MethodRefBuiltIn(null, null, false));
             addBuiltin(new AnalysisFieldBuiltIn(null));
             addBuiltin(new FieldLocationIdentityBuiltIn(null));
             addBuiltin(new HostedTypeBuiltIn(null));
@@ -451,6 +456,7 @@ public class SVMImageLayerSnapshotUtil {
             SVMImageLayerLoader imageLayerLoader = imageLayerBuildingSupport.getLoader();
             addBuiltin(new HostedToAnalysisTypeDecoderBuiltIn(imageLayerLoader));
             addBuiltin(new HostedToAnalysisMethodDecoderBuiltIn(imageLayerLoader));
+            addBuiltin(new MethodRefBuiltIn(imageLayerLoader, analysisMethod, true));
         }
     }
 
@@ -461,6 +467,7 @@ public class SVMImageLayerSnapshotUtil {
             SVMImageLayerLoader imageLayerLoader = imageLayerBuildingSupport.getLoader();
             addBuiltin(new HostedTypeBuiltIn(imageLayerLoader));
             addBuiltin(new HostedMethodBuiltIn(imageLayerLoader));
+            addBuiltin(new MethodRefBuiltIn(imageLayerLoader, analysisMethod, false));
         }
     }
 
@@ -671,6 +678,9 @@ public class SVMImageLayerSnapshotUtil {
         protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             stream.writePackedUnsignedInt(((HostedMethod) obj).getWrapped().getId());
         }
+
+        @Override
+        protected abstract Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException;
     }
 
     public static class HostedToAnalysisMethodDecoderBuiltIn extends AbstractHostedMethodBuiltIn {
@@ -699,6 +709,61 @@ public class SVMImageLayerSnapshotUtil {
     private static AnalysisMethod getAnalysisMethod(SVMImageLayerLoader imageLayerLoader, ObjectCopierInputStream stream) throws IOException {
         int id = stream.readPackedUnsignedInt();
         return imageLayerLoader.getAnalysisMethodForBaseLayerId(id);
+    }
+
+    private static final class MethodRefBuiltIn extends ObjectCopier.Builtin {
+        private static final byte ANALYSIS_METHOD = 0;
+        private static final byte HOSTED_METHOD = 1;
+
+        private final AnalysisMethodBuiltIn analysisMethodBuiltin;
+        private final AbstractHostedMethodBuiltIn hostedMethodBuiltin;
+
+        MethodRefBuiltIn(SVMImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, boolean hostedToAnalysis) {
+            super(MethodRef.class, MethodPointer.class, MethodOffset.class);
+            this.analysisMethodBuiltin = new AnalysisMethodBuiltIn(imageLayerLoader, analysisMethod);
+            this.hostedMethodBuiltin = hostedToAnalysis ? new HostedToAnalysisMethodDecoderBuiltIn(imageLayerLoader) : new HostedMethodBuiltIn(imageLayerLoader);
+        }
+
+        @Override
+        protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
+            MethodRef methodRef = (MethodRef) obj;
+            ResolvedJavaMethod method = MethodRefSupport.getMethod(methodRef);
+            if (method instanceof HostedMethod) {
+                stream.writeByteValue(HOSTED_METHOD);
+                hostedMethodBuiltin.encode(encoder, stream, method);
+            } else if (method instanceof AnalysisMethod) {
+                stream.writeByteValue(ANALYSIS_METHOD);
+                analysisMethodBuiltin.encode(encoder, stream, method);
+            } else {
+                throw VMError.shouldNotReachHere("Unsupported method reference target: " + method.getClass().getName());
+            }
+            boolean permitsRewriteToPLT;
+            if (methodRef instanceof MethodPointer pointer) {
+                permitsRewriteToPLT = pointer.permitsRewriteToPLT();
+            } else if (methodRef instanceof MethodOffset offset) {
+                permitsRewriteToPLT = offset.permitsRewriteToPLT();
+            } else {
+                throw VMError.shouldNotReachHere("Unsupported method reference type: " + methodRef.getClass().getName());
+            }
+            stream.writeByteValue((byte) (permitsRewriteToPLT ? 1 : 0));
+        }
+
+        @Override
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            ResolvedJavaMethod method = switch (stream.readByteValue()) {
+                case ANALYSIS_METHOD -> (ResolvedJavaMethod) analysisMethodBuiltin.decode(decoder, AnalysisMethod.class, stream);
+                case HOSTED_METHOD -> (ResolvedJavaMethod) hostedMethodBuiltin.decode(decoder, HostedMethod.class, stream);
+                default -> throw VMError.shouldNotReachHere("Unknown method reference target kind");
+            };
+            byte permitsRewriteToPLT = stream.readByteValue();
+            VMError.guarantee(permitsRewriteToPLT == 0 || permitsRewriteToPLT == 1, "Invalid permitsRewriteToPLT value: %d", permitsRewriteToPLT);
+            if (concreteType == MethodPointer.class) {
+                return MethodRefSupport.createMethodPointer(method, permitsRewriteToPLT == 1);
+            } else if (concreteType == MethodOffset.class) {
+                return MethodRefSupport.createMethodOffset(method, permitsRewriteToPLT == 1);
+            }
+            throw VMError.shouldNotReachHere("Unsupported method reference type: " + concreteType.getName());
+        }
     }
 
     public static class HostedOptionValuesBuiltIn extends ObjectCopier.Builtin {
