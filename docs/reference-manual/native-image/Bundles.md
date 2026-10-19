@@ -446,7 +446,7 @@ The following table lists format changes and the GraalVM versions that introduce
 
 | Bundle Format | Introduced In | Changes |
 | --- | --- | --- |
-| 3.0 | Not yet released | Added numbered directories for captured inputs and Windows filename materialization. Output destinations are allocated independently of input substitutions. |
+| 3.0 | GraalVM 25.6 (internal version 25.6.5) | Added numbered directories for captured inputs and Windows filename materialization. Output destinations are allocated independently of input substitutions. |
 | 2.0 | GraalVM 25.5 (internal version 25.5.5) | Added explicit path root kinds, source-platform groups for build arguments, and unavailable-input markers. |
 | 1.0 | [GraalVM 25.1.3](https://www.graalvm.org/release-notes/25.1/); also backported to [Oracle GraalVM 25.0.4](https://docs.oracle.com/en/graalvm/jdk/25/docs/release-notes/) | Added portable path maps with path style information for replay across platforms. |
 | 0.9 | [GraalVM for JDK 17](https://www.graalvm.org/release-notes/JDK_17/) and [GraalVM for JDK 20](https://www.graalvm.org/release-notes/JDK_20/), internal version 23.0.0 | Initial bundle format. |
