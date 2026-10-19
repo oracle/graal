@@ -1905,23 +1905,23 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     @SuppressWarnings("unused")
     @BytecodeInterpreterHandler(value = {Bytecode.LABEL_I32}, safepoint = false)
     private static int labelI32Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
-        final int resultType = rawPeekU8(state.bytecode, offset + 1);
-        final int resultCount = rawPeekI32(state.bytecode, offset + 2);
+        final int labelValueType = rawPeekU8(state.bytecode, offset + 1);
+        final int labelArity = rawPeekI32(state.bytecode, offset + 2);
         final int stackSize = rawPeekI32(state.bytecode, offset + 6);
         final int targetStackPointer = stackSize + state.stackBase;
-        switch (resultType) {
-            case BytecodeBitEncoding.LABEL_RESULT_TYPE_NUM:
-                unwindPrimitiveStack(frame, virtualState.stackPointer, targetStackPointer, resultCount);
+        switch (labelValueType) {
+            case BytecodeBitEncoding.LABEL_VALUE_TYPE_NUM:
+                unwindPrimitiveStack(frame, virtualState.stackPointer, targetStackPointer, labelArity);
                 break;
-            case BytecodeBitEncoding.LABEL_RESULT_TYPE_OBJ:
-                unwindObjectStack(frame, virtualState.stackPointer, targetStackPointer, resultCount);
+            case BytecodeBitEncoding.LABEL_VALUE_TYPE_OBJ:
+                unwindObjectStack(frame, virtualState.stackPointer, targetStackPointer, labelArity);
                 break;
-            case BytecodeBitEncoding.LABEL_RESULT_TYPE_MIX:
-                unwindStack(frame, virtualState.stackPointer, targetStackPointer, resultCount);
+            case BytecodeBitEncoding.LABEL_VALUE_TYPE_MIX:
+                unwindStack(frame, virtualState.stackPointer, targetStackPointer, labelArity);
                 break;
         }
-        dropStack(frame, virtualState.stackPointer, targetStackPointer + resultCount);
-        virtualState.stackPointer = targetStackPointer + resultCount;
+        dropStack(frame, virtualState.stackPointer, targetStackPointer + labelArity);
+        virtualState.stackPointer = targetStackPointer + labelArity;
         return offset + 10;
     }
 
@@ -1931,22 +1931,22 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     private static int labelU16Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
         final int value = rawPeekU8(state.bytecode, offset + 1);
         final int stackSize = rawPeekU8(state.bytecode, offset + 2);
-        final int resultCount = (value & BytecodeBitEncoding.LABEL_U16_RESULT_VALUE);
-        final int resultType = (value & BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_MASK);
+        final int labelArity = (value & BytecodeBitEncoding.LABEL_U16_ARITY);
+        final int labelValueType = (value & BytecodeBitEncoding.LABEL_U16_VALUE_TYPE_MASK);
         final int targetStackPointer = stackSize + state.stackBase;
-        switch (resultType) {
-            case BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_NUM:
-                unwindPrimitiveStack(frame, virtualState.stackPointer, targetStackPointer, resultCount);
+        switch (labelValueType) {
+            case BytecodeBitEncoding.LABEL_U16_VALUE_TYPE_NUM:
+                unwindPrimitiveStack(frame, virtualState.stackPointer, targetStackPointer, labelArity);
                 break;
-            case BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_OBJ:
-                unwindObjectStack(frame, virtualState.stackPointer, targetStackPointer, resultCount);
+            case BytecodeBitEncoding.LABEL_U16_VALUE_TYPE_OBJ:
+                unwindObjectStack(frame, virtualState.stackPointer, targetStackPointer, labelArity);
                 break;
-            case BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_MIX:
-                unwindStack(frame, virtualState.stackPointer, targetStackPointer, resultCount);
+            case BytecodeBitEncoding.LABEL_U16_VALUE_TYPE_MIX:
+                unwindStack(frame, virtualState.stackPointer, targetStackPointer, labelArity);
                 break;
         }
-        dropStack(frame, virtualState.stackPointer, targetStackPointer + resultCount);
-        virtualState.stackPointer = targetStackPointer + resultCount;
+        dropStack(frame, virtualState.stackPointer, targetStackPointer + labelArity);
+        virtualState.stackPointer = targetStackPointer + labelArity;
         return offset + 3;
     }
 
@@ -1955,25 +1955,26 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     @BytecodeInterpreterHandler(value = {Bytecode.LABEL_U8}, safepoint = false)
     private static int labelU8Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
         final int value = rawPeekU8(state.bytecode, offset + 1);
-        final int stackSize = (value & BytecodeBitEncoding.LABEL_U8_STACK_VALUE);
+        final int stackSize = (value & BytecodeBitEncoding.LABEL_U8_STACK_SIZE);
+        final int labelValueType = value & BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_MASK;
         final int targetStackPointer = stackSize + state.stackBase;
-        switch ((value & BytecodeBitEncoding.LABEL_U8_RESULT_MASK)) {
-            case BytecodeBitEncoding.LABEL_U8_RESULT_NUM:
+        switch (labelValueType) {
+            case BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NUM:
                 WasmFrame.copyPrimitive(frame, virtualState.stackPointer - 1, targetStackPointer);
                 dropStack(frame, virtualState.stackPointer, targetStackPointer + 1);
                 virtualState.stackPointer = targetStackPointer + 1;
                 break;
-            case BytecodeBitEncoding.LABEL_U8_RESULT_OBJ:
+            case BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_OBJ:
                 WasmFrame.copyObject(frame, virtualState.stackPointer - 1, targetStackPointer);
                 dropStack(frame, virtualState.stackPointer, targetStackPointer + 1);
                 virtualState.stackPointer = targetStackPointer + 1;
                 break;
-            case BytecodeBitEncoding.LABEL_U8_RESULT_NONE:
+            case BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NONE:
                 dropStack(frame, virtualState.stackPointer, targetStackPointer);
                 virtualState.stackPointer = targetStackPointer;
                 break;
             default:
-                throw CompilerDirectives.shouldNotReachHere("Invalid LABEL_U8 result encoding");
+                throw CompilerDirectives.shouldNotReachHere("Invalid LABEL_U8 value type encoding");
         }
         return offset + 2;
     }
@@ -8430,38 +8431,38 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     /**
-     * Populates the stack with the result values of the current block (the one we are escaping
-     * from). Reset the stack pointer to the target block stack pointer.
+     * Moves the values carried to the target label to the target stack position and resets the stack
+     * pointer.
      *
      * @param frame The current frame.
      * @param stackPointer The current stack pointer.
-     * @param targetStackPointer The stack pointer of the target block.
-     * @param targetResultCount The result value count of the target block.
+     * @param targetStackPointer The stack pointer of the target label.
+     * @param labelArity The number of values carried to the target label.
      */
     @ExplodeLoop
-    private static void unwindPrimitiveStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+    private static void unwindPrimitiveStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int labelArity) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
-        CompilerAsserts.partialEvaluationConstant(targetResultCount);
-        for (int i = 0; i < targetResultCount; ++i) {
-            WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        CompilerAsserts.partialEvaluationConstant(labelArity);
+        for (int i = 0; i < labelArity; ++i) {
+            WasmFrame.copyPrimitive(frame, stackPointer + i - labelArity, targetStackPointer + i);
         }
     }
 
     @ExplodeLoop
-    private static void unwindObjectStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+    private static void unwindObjectStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int labelArity) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
-        CompilerAsserts.partialEvaluationConstant(targetResultCount);
-        for (int i = 0; i < targetResultCount; ++i) {
-            WasmFrame.copyObject(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        CompilerAsserts.partialEvaluationConstant(labelArity);
+        for (int i = 0; i < labelArity; ++i) {
+            WasmFrame.copyObject(frame, stackPointer + i - labelArity, targetStackPointer + i);
         }
     }
 
     @ExplodeLoop
-    private static void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+    private static void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int labelArity) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
-        CompilerAsserts.partialEvaluationConstant(targetResultCount);
-        for (int i = 0; i < targetResultCount; ++i) {
-            WasmFrame.copy(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        CompilerAsserts.partialEvaluationConstant(labelArity);
+        for (int i = 0; i < labelArity; ++i) {
+            WasmFrame.copy(frame, stackPointer + i - labelArity, targetStackPointer + i);
         }
     }
 

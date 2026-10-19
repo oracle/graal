@@ -341,49 +341,49 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds a branch label to the bytecode.
      *
-     * @param resultCount The number of results of the block.
+     * @param labelArity The number of values carried when branching to the label.
      * @param stackSize The stack size at the start of the block.
-     * @param commonResultType The most common result type of the result types of the block. See
-     *            {@link WasmType#getCommonValueType(int[])}.
+     * @param commonLabelValueType The common value type of the values carried when branching to the
+     *            label. See {@link WasmType#getCommonValueType(int[])}.
      * @param legacyCatchDepth The number of active legacy catches that must remain active when
      *            control transfers to this label. If non-zero, the label is immediately followed by
      *            a {@code LEGACY_CATCH_UNWIND} helper bytecode. Non-legacy labels keep their
      *            previous encoding unchanged.
      * @return The location of the label in the bytecode.
      */
-    public int addLabel(int resultCount, int stackSize, int commonResultType, int legacyCatchDepth) {
-        assert commonResultType == WasmType.NONE_COMMON_TYPE || commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.OBJ_COMMON_TYPE ||
-                        commonResultType == WasmType.MIX_COMMON_TYPE : "invalid result type";
+    public int addLabel(int labelArity, int stackSize, int commonLabelValueType, int legacyCatchDepth) {
+        assert commonLabelValueType == WasmType.NONE_COMMON_TYPE || commonLabelValueType == WasmType.NUM_COMMON_TYPE || commonLabelValueType == WasmType.OBJ_COMMON_TYPE ||
+                        commonLabelValueType == WasmType.MIX_COMMON_TYPE : "invalid label value type";
         final boolean hasLegacyCatchUnwind = legacyCatchDepth != 0;
         final int location;
-        if (resultCount <= 1 && stackSize <= 63) {
-            if (resultCount == 0) {
-                assert commonResultType == WasmType.NONE_COMMON_TYPE : "Empty result value must have no type.";
+        if (labelArity <= 1 && stackSize <= 63) {
+            if (labelArity == 0) {
+                assert commonLabelValueType == WasmType.NONE_COMMON_TYPE : "Empty label values must have no type.";
             } else {
-                assert commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.OBJ_COMMON_TYPE : "Single result value must either have number or reference type.";
+                assert commonLabelValueType == WasmType.NUM_COMMON_TYPE || commonLabelValueType == WasmType.OBJ_COMMON_TYPE : "Single label value must either have number or reference type.";
             }
             addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
             location = location();
             add1(Bytecode.LABEL_U8);
-            final int encodedResultType = switch (commonResultType) {
-                case WasmType.NONE_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_RESULT_NONE;
-                case WasmType.NUM_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_RESULT_NUM;
-                case WasmType.OBJ_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_RESULT_OBJ;
-                default -> throw new IllegalArgumentException("Invalid common result type: " + commonResultType);
+            final int encodedLabelValueType = switch (commonLabelValueType) {
+                case WasmType.NONE_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NONE;
+                case WasmType.NUM_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NUM;
+                case WasmType.OBJ_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_OBJ;
+                default -> throw new IllegalArgumentException("Invalid common label value type: " + commonLabelValueType);
             };
-            add1(encodedResultType | stackSize);
-        } else if (resultCount <= 63 && fitsIntoUnsignedByte(stackSize)) {
+            add1(encodedLabelValueType | stackSize);
+        } else if (labelArity <= 63 && fitsIntoUnsignedByte(stackSize)) {
             addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U16, Bytecode.LEGACY_SKIP_LABEL_U16);
             location = location();
             add1(Bytecode.LABEL_U16);
-            add1(commonResultType << BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_SHIFT | resultCount);
+            add1(commonLabelValueType << BytecodeBitEncoding.LABEL_U16_VALUE_TYPE_SHIFT | labelArity);
             add1(stackSize);
         } else {
             addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_I32, Bytecode.LEGACY_SKIP_LABEL_I32);
             location = location();
             add1(Bytecode.LABEL_I32);
-            add1(commonResultType);
-            add4(resultCount);
+            add1(commonLabelValueType);
+            add4(labelArity);
             add4(stackSize);
         }
         if (hasLegacyCatchUnwind) {
@@ -403,29 +403,29 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         }
     }
 
-    public int addLabel(int resultCount, int stackSize, int commonResultType) {
-        return addLabel(resultCount, stackSize, commonResultType, 0);
+    public int addLabel(int labelArity, int stackSize, int commonLabelValueType) {
+        return addLabel(labelArity, stackSize, commonLabelValueType, 0);
     }
 
     /**
      * Adds a loop label to the bytecode.
      *
-     * @param resultCount The number of results of the loop.
+     * @param paramCount The number of parameters of the loop.
      * @param stackSize The stack size at the start of the loop.
-     * @param commonResultType The most common result type of the result types of the loop. See
+     * @param commonParamType The common value type of the parameter types of the loop. See
      *            {@link WasmType#getCommonValueType(int[])}.
      * @param legacyCatchDepth The number of active legacy catches that must remain active when
      *            control transfers to this loop label.
      * @return The location of the loop label in the bytecode.
      */
-    public int addLoopLabel(int resultCount, int stackSize, int commonResultType, int legacyCatchDepth) {
-        int loopLabel = addLabel(resultCount, stackSize, commonResultType, legacyCatchDepth);
+    public int addLoopLabel(int paramCount, int stackSize, int commonParamType, int legacyCatchDepth) {
+        int loopLabel = addLabel(paramCount, stackSize, commonParamType, legacyCatchDepth);
         addOp(Bytecode.LOOP);
         return loopLabel;
     }
 
-    public int addLoopLabel(int resultCount, int stackSize, int commonResultType) {
-        return addLoopLabel(resultCount, stackSize, commonResultType, 0);
+    public int addLoopLabel(int paramCount, int stackSize, int commonParamType) {
+        return addLoopLabel(paramCount, stackSize, commonParamType, 0);
     }
 
     /**
