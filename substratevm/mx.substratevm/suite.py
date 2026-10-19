@@ -2671,7 +2671,6 @@ suite = {
           "description" : "Truffle support distribution for SVM",
           "layout" : {
             "native-image.properties" : "file:mx.substratevm/macro-truffle.properties",
-            "truffle-initialization.args" : "file:mx.substratevm/truffle-initialization.args",
           },
           "maven" : False,
         },
