@@ -844,7 +844,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             }
             AnalysisMethod analysisMethod = universe.lookup(member);
             if (wm.isReflectionExpandSignature()) {
-                ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(analysisMethod.getJavaMethod());
+                ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(analysisMethod);
             } else if (wm.isJavaCallVariantWrapper()) {
                 JNIAccessFeature.singleton().addMethod(analysisMethod.getJavaMethod(), false, (FeatureImpl.DuringAnalysisAccessImpl) universe.getConcurrentAnalysisAccess());
             }

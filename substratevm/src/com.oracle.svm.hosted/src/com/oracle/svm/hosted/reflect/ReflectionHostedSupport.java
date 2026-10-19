@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface ReflectionHostedSupport {
@@ -57,7 +58,8 @@ public interface ReflectionHostedSupport {
 
     Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables();
 
-    Object getAccessor(AnalysisMethod method);
+    /** Returns the original guest accessor constant, or {@link JavaConstant#NULL_POINTER} if absent. */
+    JavaConstant getAccessor(AnalysisMethod method);
 
     /**
      * Returns the fields that shadow a superclass element registered for reflection, to be excluded
@@ -83,9 +85,11 @@ public interface ReflectionHostedSupport {
 
     Set<?> getHeapDynamicHubs();
 
-    void registerHeapReflectionField(Field field, ScanReason reason);
+    /** Registers the original guest reflection field object stored in the image heap. */
+    void registerHeapReflectionField(JavaConstant field, ScanReason reason);
 
-    void registerHeapReflectionExecutable(Executable executable, ScanReason reason);
+    /** Registers the original guest reflection executable object stored in the image heap. */
+    void registerHeapReflectionExecutable(JavaConstant executable, ScanReason reason);
 
     Map<AnalysisField, Field> getHeapReflectionFields();
 

@@ -24,43 +24,42 @@
  */
 package com.oracle.svm.core.reflect.target;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.reflect.SubstrateAccessor;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-/**
- * Should be migrated to JVMCI (GR-71897).
- */
 public interface ReflectionSubstitutionSupport {
 
     static ReflectionSubstitutionSupport singleton() {
         return ImageSingletons.lookup(ReflectionSubstitutionSupport.class);
     }
 
-    SubstrateAccessor getOrCreateAccessor(Executable member);
+    /** Returns the original guest constant for the accessor created for {@code member}. */
+    JavaConstant getOrCreateAccessor(ResolvedJavaMethod member);
 
-    SubstrateAccessor getOrCreateAccessor(Class<?> targetClass, Executable member);
-
-    /** Offset of the field or -1 if the field was not registered for unsafe access. */
-    int getFieldOffset(Field field, boolean checkUnsafeAccessed);
+    /** Returns the original guest constant for the accessor created for {@code member}. */
+    JavaConstant getOrCreateAccessor(ResolvedJavaType targetClass, ResolvedJavaMethod member);
 
     /** Offset of the field or -1 if the field was not registered for unsafe access. */
     int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed);
 
-    int getInstalledLayerNumber(Field field);
+    int getInstalledLayerNumber(ResolvedJavaField field);
 
     /**
      * Returns the {@link Delete#value reason} why a field was deleted, or null if the field is not
      * deleted.
      */
-    String getDeletionReason(Field field);
+    String getDeletionReason(ResolvedJavaField field);
 
-    boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor);
+    /**
+     * Returns whether the supplied constructor object uses a custom serialization accessor. The
+     * object must be preserved because constructors with different accessors can resolve to the
+     * same Java method.
+     */
+    boolean isCustomSerializationConstructor(JavaConstant reflectConstructor);
 }

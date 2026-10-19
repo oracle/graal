@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.reflect;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -101,7 +100,8 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.OriginalFieldProvider;
+import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.OriginalMethodProvider;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.options.Option;
@@ -110,6 +110,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.util.Digest;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -140,10 +141,10 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private UniverseMetaAccess metaAccess;
     private Boolean relativeCodePointers;
 
-    private record AccessorKey(Executable member, Class<?> targetClass) {
+    private record AccessorKey(ResolvedJavaMethod member, ResolvedJavaType targetClass) {
     }
 
-    final Map<AccessorKey, SubstrateAccessor> accessors = new ConcurrentHashMap<>();
+    final Map<AccessorKey, JavaConstant> accessors = new ConcurrentHashMap<>();
     private final Map<SignatureKey, MethodRef> expandSignatureMethods = new ConcurrentHashMap<>();
 
     private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype",
@@ -163,20 +164,23 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public SubstrateAccessor getOrCreateAccessor(Executable member) {
-        return getOrCreateAccessor(member.getDeclaringClass(), member);
+    public JavaConstant getOrCreateAccessor(ResolvedJavaMethod member) {
+        ResolvedJavaMethod originalMember = Objects.requireNonNull(OriginalMethodProvider.getOriginalMethod(member));
+        return getOrCreateAccessor(originalMember.getDeclaringClass(), originalMember);
     }
 
     @Override
-    public SubstrateAccessor getOrCreateAccessor(Class<?> targetClass, Executable member) {
-        AccessorKey key = new AccessorKey(member, targetClass);
-        SubstrateAccessor existing = accessors.get(key);
+    public JavaConstant getOrCreateAccessor(ResolvedJavaType targetClass, ResolvedJavaMethod member) {
+        ResolvedJavaMethod originalMember = Objects.requireNonNull(OriginalMethodProvider.getOriginalMethod(member));
+        ResolvedJavaType originalTargetClass = OriginalClassProvider.getOriginalType(targetClass);
+        AccessorKey key = new AccessorKey(originalMember, originalTargetClass);
+        JavaConstant existing = accessors.get(key);
         if (existing != null) {
             return existing;
         }
 
         if (analysisAccess == null) {
-            throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
+            throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + originalMember);
         }
         return accessors.computeIfAbsent(key, this::createAccessor);
     }
@@ -206,9 +210,14 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
      * {@link ConcurrentHashMap#computeIfAbsent} guarantees that this method is called only once per
      * member, so no further synchronization is necessary.
      */
-    private SubstrateAccessor createAccessor(AccessorKey key) {
-        Executable member = key.member;
-        Class<?> targetClass = key.targetClass;
+    private JavaConstant createAccessor(AccessorKey key) {
+        // GR-71897: replace this reflection-based factory adapter with guest accessor construction.
+        Executable member = Objects.requireNonNull(OriginalMethodProvider.getJavaMethod(key.member), "No original Java method for " + key.member);
+        Class<?> targetClass = OriginalClassProvider.getJavaClass(key.targetClass);
+        return GuestAccess.get().getSnippetReflection().forObject(createAccessor(member, targetClass));
+    }
+
+    private SubstrateAccessor createAccessor(Executable member, Class<?> targetClass) {
         MethodRef expandSignature;
         MethodRef directTarget = null;
         AnalysisMethod targetMethod = null;
@@ -306,10 +315,13 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public boolean isCustomSerializationConstructor(Constructor<?> reflectConstructor) {
-        if (ReflectionUtil.readField(Constructor.class, "constructorAccessor", reflectConstructor) instanceof SubstrateConstructorAccessor accessor) {
+    public boolean isCustomSerializationConstructor(JavaConstant reflectConstructor) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant accessorConstant = JVMCIReflectionUtil.readInstanceField(reflectConstructor, access.lookupType(Constructor.class), "constructorAccessor");
+        // GR-71897: read factory metadata without materializing the accessor in the builder.
+        if (access.asHostObject(Object.class, accessorConstant) instanceof SubstrateConstructorAccessor accessor) {
             AnalysisMetaAccess analysisMetaAccess = analysisAccess.getMetaAccess();
-            AnalysisMethod analysisConstructor = analysisMetaAccess.lookupJavaMethod(reflectConstructor);
+            AnalysisMethod analysisConstructor = analysisAccess.getUniverse().lookup(access.asResolvedJavaMethod(reflectConstructor));
             return !accessor.getFactoryMethod().equals(FactoryMethodSupport.singleton().lookup(analysisMetaAccess, analysisConstructor, analysisConstructor.getDeclaringClass(), false));
         }
         return false;
@@ -440,14 +452,14 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public int getFieldOffset(Field field, boolean checkUnsafeAccessed) {
+    public int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed) {
         VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
 
         /*
-         * We have to use `optionalLookupJavaField` as fields are omitted when there is no
+         * We have to use `optionalLookup` as fields are omitted when there is no
          * reflective access in an image.
          */
-        HostedField hostedField = hostedMetaAccess().optionalLookupJavaField(field);
+        HostedField hostedField = hostedMetaAccess().getUniverse().optionalLookup(aUniverse.lookup(field));
         if (hostedField == null || (checkUnsafeAccessed && !hostedField.wrapped.isUnsafeAccessed())) {
             return -1;
         }
@@ -455,13 +467,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public int getFieldOffset(ResolvedJavaField field, boolean checkUnsafeAccessed) {
-        // GR-71897: convert to JVMCI
-        return getFieldOffset(OriginalFieldProvider.getJavaField(field), checkUnsafeAccessed);
-    }
-
-    @Override
-    public int getInstalledLayerNumber(Field field) {
+    public int getInstalledLayerNumber(ResolvedJavaField field) {
         VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
 
         /*
@@ -469,17 +475,16 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * their declaring type or a full substitution. Their accesses fail at runtime using the
          * deletion reason, so they do not need an installed storage layer.
          */
-        if (annotationSubstitutions.isDeleted(GuestAccess.get().lookupField(field))) {
+        if (annotationSubstitutions.isDeleted(field)) {
             return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
-        HostedField hostedField = hostedMetaAccess().lookupJavaField(field);
+        HostedField hostedField = hostedMetaAccess().getUniverse().lookup(aUniverse.lookup(field));
         return hostedField.getInstalledLayerNum();
     }
 
     @Override
-    public String getDeletionReason(Field reflectionField) {
-        ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
-        DeleteGuestValue annotation = DeleteGuestValue.get(field);
+    public String getDeletionReason(ResolvedJavaField field) {
+        DeleteGuestValue annotation = DeleteGuestValue.get(aUniverse.lookup(field));
         return annotation != null ? annotation.value() : null;
     }
 
