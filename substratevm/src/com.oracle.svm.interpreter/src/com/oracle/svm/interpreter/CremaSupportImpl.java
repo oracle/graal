@@ -53,7 +53,6 @@ import static com.oracle.svm.interpreter.Interpreter.unbasic;
 import static com.oracle.svm.interpreter.InterpreterStubSection.getCremaStubForVTableIndex;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.ITBL_SELECTION_FAILURE;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_UNINITIALIZED;
-import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodType;
@@ -96,18 +95,14 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeDynamicHubMetadata;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
-import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.hub.registry.TypeIDs;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jni.CallVariant;
-import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -131,7 +126,6 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.shared.constraints.LoadingConstraintViolationException;
-import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.svm.espresso.shared.meta.ErrorType;
 import com.oracle.svm.espresso.shared.meta.MethodHandleIntrinsics;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
@@ -164,7 +158,6 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.interpreter.metadata.RuntimeLoadedClassHierarchy;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -1570,89 +1563,6 @@ public class CremaSupportImpl implements CremaSupport {
     public Object getStaticStorage(ResolvedJavaField resolved) {
         InterpreterResolvedJavaField interpreterField = (InterpreterResolvedJavaField) resolved;
         return interpreterField.getDeclaringClass().getStaticStorage(resolved.getType().getJavaKind().isPrimitive(), interpreterField.getInstalledLayerNum());
-    }
-
-    @Override
-    public ResolvedJavaField lookupFieldForRuntimeClass(Class<?> clazz, String name, String signature, boolean isStatic) {
-        assert DynamicHub.fromClass(clazz).isRuntimeLoaded();
-        assert !clazz.isPrimitive();
-
-        if (clazz.isArray()) {
-            return null;
-        }
-        CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
-        Symbol<Name> fieldName = SymbolsSupport.getNames().lookup(ByteSequence.create(name));
-        Symbol<Type> fieldType = SymbolsSupport.getTypes().lookupValidType(ByteSequence.create(signature));
-        if (fieldName == null || fieldType == null) {
-            return null;
-        }
-        return lookupInterpreterField(type, fieldName, fieldType, isStatic);
-    }
-
-    private static InterpreterResolvedJavaField lookupInterpreterField(InterpreterResolvedObjectType holder, Symbol<Name> name, Symbol<Type> type, boolean isStatic) {
-        for (InterpreterResolvedJavaField field : holder.getDeclaredFields()) {
-            if (name.equals(field.getSymbolicName()) && type.equals(field.getSymbolicType()) && field.isStatic() == isStatic) {
-                return field;
-            }
-        }
-        if (isStatic) {
-            for (InterpreterResolvedObjectType superInterface : holder.getInterfaces()) {
-                InterpreterResolvedJavaField field = lookupInterpreterField(superInterface, name, type, true);
-                if (field != null) {
-                    return field;
-                }
-            }
-        }
-        InterpreterResolvedObjectType superclass = holder.getSuperclass();
-        return superclass == null ? null : lookupInterpreterField(superclass, name, type, isStatic);
-    }
-
-    @Override
-    public CremaResolvedJavaField getCremaField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic) {
-        if (clazz.isPrimitive() || !CremaJNIFieldIds.isCremaFieldId(fieldId)) {
-            return null;
-        }
-
-        ResolvedJavaField resolvedField = null;
-        if (isStatic) {
-            CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHubUtils.getInterpreterType(CremaJNIFieldIds.getStaticFieldHolder(fieldId));
-            resolvedField = type.findStaticFieldWithOffset(CremaJNIFieldIds.getStaticFieldOffset(fieldId), null);
-        } else {
-            Object interpreterType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
-            if (interpreterType instanceof CremaResolvedObjectType type) {
-                resolvedField = type.findInstanceFieldWithOffset(CremaJNIFieldIds.getInstanceFieldOffset(fieldId), null);
-            }
-        }
-        if (resolvedField instanceof CremaResolvedJavaField cremaField) {
-            return cremaField;
-        }
-        return null;
-    }
-
-    @Override
-    public ResolvedJavaMethod lookupMethodForRuntimeClass(Class<?> clazz, String name, String signature) {
-        assert DynamicHub.fromClass(clazz).isRuntimeLoaded();
-
-        Symbol<Name> symbolicName = SymbolsSupport.getNames().lookup(name);
-        if (symbolicName == null) {
-            return null;
-        }
-        Symbol<Signature> symbolicDescriptor = SymbolsSupport.getSignatures().lookupValidSignature(signature);
-        if (symbolicDescriptor == null) {
-            return null;
-        }
-        try {
-            return ((InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz))).lookupMethod(symbolicName, symbolicDescriptor);
-        } catch (LookupSuccessInvocationFailure e) {
-            return e.getResult();
-        }
-    }
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
-        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(CremaJNIFieldIds.getStaticFieldHolder(fieldId));
-        return type.getStaticStorage(primitive, DynamicImageLayerInfo.CREMA_LAYER_ID);
     }
 
     @Override

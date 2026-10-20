@@ -26,6 +26,8 @@ package com.oracle.svm.core.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.lang.reflect.Executable;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,6 +45,8 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -54,6 +58,7 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterHandler;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -492,6 +497,34 @@ public abstract class InterpreterSupport {
     }
 
     public abstract Class<?> toClass(ResolvedJavaType resolvedJavaType);
+
+    /** Gets the executable encoded by an interpreter JNI method ID. */
+    public abstract Executable getJNIMethodExecutable(JNIMethodId methodId);
+
+    /**
+     * Gets or creates a JNI method ID for an interpreter-backed {@code method}. Returns the null
+     * pointer if the method cannot be accessed through the interpreter.
+     */
+    public abstract JNIMethodId getOrCreateJNIMethodId(ResolvedJavaMethod method);
+
+    /** Gets an interpreter method in {@code clazz} with {@code name} and {@code signature}. */
+    public abstract ResolvedJavaMethod lookupMethodForJNI(Class<?> clazz, String name, String signature);
+
+    /**
+     * Gets or creates a JNI field ID for an interpreter-backed {@code field}. Returns the null
+     * pointer if the field cannot be accessed through the interpreter.
+     */
+    public abstract JNIFieldId getOrCreateJNIFieldId(ResolvedJavaField field);
+
+    /** Gets an interpreter field in {@code clazz} with {@code name}, {@code signature}, and {@code isStatic}. */
+    public abstract ResolvedJavaField lookupFieldForJNI(Class<?> clazz, String name, String signature, boolean isStatic);
+
+    /** Gets the interpreter field metadata encoded by {@code fieldId} in the context of {@code clazz}. */
+    public abstract ResolvedJavaField getJNIField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic);
+
+    /** Gets the static storage base encoded by an interpreter JNI field ID. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public abstract Object getJNIStaticFieldBase(JNIFieldId fieldId, boolean primitive);
 
     public abstract PreparedSignature prepareSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
 

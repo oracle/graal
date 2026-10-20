@@ -40,7 +40,6 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jni.CallVariant;
-import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -145,19 +144,6 @@ public interface CremaSupport {
     Class<?> findLoadedClass(Symbol<Type> type, ClassLoader loader);
 
     Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
-
-    /** Gets a field declared by a runtime-loaded {@code clazz} with {@code name}, {@code signature}, and {@code isStatic}. */
-    ResolvedJavaField lookupFieldForRuntimeClass(Class<?> clazz, String name, String signature, boolean isStatic);
-
-    /** Gets the field metadata encoded by {@code fieldId} in the context of a runtime-loaded {@code clazz}. */
-    CremaResolvedJavaField getCremaField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic);
-
-    /** Gets the static storage base encoded by a runtime-loaded static JNI field id. */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive);
-
-    /** Gets a method declared by runtime-loaded {@code clazz} with {@code name}, {@code signature}. */
-    ResolvedJavaMethod lookupMethodForRuntimeClass(Class<?> clazz, String name, String signature);
 
     ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
