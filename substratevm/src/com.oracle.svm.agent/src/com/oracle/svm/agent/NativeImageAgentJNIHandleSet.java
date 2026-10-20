@@ -77,6 +77,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIFieldId javaIOObjectStreamClassClassDataSlotHasData;
 
     private JNIMethodId javaUtilZipZipFileGetName;
+    private JNIMethodId sunMiscUnsafeObjectFieldOffset;
     private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
     private JNIObjectHandle javaLangReflectProxy = WordFactory.nullPointer();
@@ -324,6 +325,14 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaUtilZipZipFileGetName = getMethodId(env, javaUtilZipZipFile, "getName", "()Ljava/lang/String;", false);
         }
         return javaUtilZipZipFileGetName;
+    }
+
+    JNIMethodId getSunMiscUnsafeObjectFieldOffset(JNIEnvironment env) {
+        if (sunMiscUnsafeObjectFieldOffset.equal(nullHandle())) {
+            JNIObjectHandle sunMiscUnsafe = findClass(env, "sun/misc/Unsafe");
+            sunMiscUnsafeObjectFieldOffset = getMethodId(env, sunMiscUnsafe, "objectFieldOffset", "(Ljava/lang/reflect/Field;)J", false);
+        }
+        return sunMiscUnsafeObjectFieldOffset;
     }
 
     JNIMethodId getJavaLangReflectConstructorDeclaringClassName(JNIEnvironment env, JNIObjectHandle customSerializationConstructorClass) {
