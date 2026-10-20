@@ -27,11 +27,13 @@ package com.oracle.svm.core.windows.headers;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
@@ -44,6 +46,14 @@ import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
  */
 @CContext(WindowsDirectives.class)
 public class SysinfoAPI {
+
+    /// Gets the maximum Windows computer name length, excluding its terminator.
+    @CConstant("MAX_COMPUTERNAME_LENGTH")
+    public static native int maxComputernameLength();
+
+    /// Writes the computer name and its length, returning nonzero on success.
+    @CFunction(value = "GetComputerNameW", transition = NO_TRANSITION)
+    public static native int getComputerName(WCharPointer buffer, CIntPointer length);
 
     /** Retrieves the path of the system directory. */
     @CFunction(transition = NO_TRANSITION)

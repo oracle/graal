@@ -36,6 +36,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibCSupport;
+import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.shared.Uninterruptible;
@@ -50,18 +51,26 @@ class WindowsLibCSupport implements LibCSupport {
     /// Gets the Windows host name directly so early startup does not depend on Java networking.
     @Override
     public String hostname() {
-        int capacity = WindowsLibC.maxComputernameLength() + 1;
-        WCharPointer buffer = StackValue.get(capacity, WCharPointer.class);
+        char[] chars = new char[SysinfoAPI.maxComputernameLength() + 1];
+        int length = readHostname(chars);
+        return length < 0 ? "localhost" : new String(chars, 0, length);
+    }
+
+    /// Copies the native result before interruptible string construction can unmount the thread.
+    @Uninterruptible(reason = "The stack buffers must remain on the current carrier thread.")
+    private static int readHostname(char[] chars) {
+        int capacity = SysinfoAPI.maxComputernameLength() + 1;
+        WCharPointer buffer = StackValue.get(capacity * Character.BYTES);
         CIntPointer length = StackValue.get(CIntPointer.class);
         length.write(capacity);
-        if (WindowsLibC.getComputerName(buffer, length) == 0) {
-            return "localhost";
+        if (SysinfoAPI.getComputerName(buffer, length) == 0) {
+            return -1;
         }
-        StringBuilder result = new StringBuilder(length.read());
-        for (int index = 0; index < length.read(); index++) {
-            result.append(buffer.read(index));
+        int count = length.read();
+        for (int index = 0; index < count; index++) {
+            chars[index] = buffer.read(index);
         }
-        return result.toString();
+        return count;
     }
 
     @Override

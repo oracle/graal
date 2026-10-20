@@ -29,11 +29,13 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 // Checkstyle: stop
 
-/**
- * Definitions manually translated from the C header file linux/limits.h.
- */
+/// Constants declared by `limits.h`.
 @CContext(PosixDirectives.class)
 public class Limits {
+
+    /// Gets the portable host name limit available on both Linux and macOS.
+    @CConstant("_POSIX_HOST_NAME_MAX")
+    public static native int hostNameMax();
 
     @CConstant
     public static native int NAME_MAX();

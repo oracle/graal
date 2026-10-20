@@ -53,10 +53,10 @@ public final class WindowsPlatformTimeUtils extends PlatformTimeUtils {
         return OFFSET;
     }
 
-    /* Returns time ticks in (10th of micro seconds) */
+    /// Converts FILETIME to 100-nanosecond ticks since the Unix epoch.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1158-L1161")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static long windowsToTimeTicks(FILETIME wt) {
+    public static long windowsToTimeTicks(FILETIME wt) {
         long a = Word.unsigned(wt.dwHighDateTime()).shiftLeft(32).or(Word.unsigned(wt.dwLowDateTime())).rawValue();
         return (a - offset());
     }

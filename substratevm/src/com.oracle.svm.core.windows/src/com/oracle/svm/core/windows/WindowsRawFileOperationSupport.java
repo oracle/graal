@@ -33,9 +33,6 @@ import java.nio.ByteOrder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform.WINDOWS_BASE;
@@ -52,12 +49,10 @@ import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.windows.headers.FileAPI.WIN32_FILE_ATTRIBUTE_DATA;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
-import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
-import com.oracle.svm.core.windows.headers.FileAPI.WIN32_FIND_DATAW;
-import com.oracle.svm.core.windows.headers.WindowsDirectives;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -72,12 +67,6 @@ import com.oracle.svm.shared.util.VMError;
 public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupport {
     /// Number of FILETIME ticks in a millisecond; each tick represents 100 nanoseconds.
     private static final long FILETIME_TICKS_PER_MILLISECOND = 10_000;
-
-    /// Milliseconds between the FILETIME epoch in 1601 and the Unix epoch in 1970.
-    private static final long FILETIME_UNIX_EPOCH_OFFSET_MILLIS = 11_644_473_600_000L;
-
-    /// Mask for treating the low FILETIME DWORD as an unsigned value.
-    private static final long UNSIGNED_DWORD_MASK = 0xffff_ffffL;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public WindowsRawFileOperationSupport(boolean useNativeByteOrder) {
@@ -115,49 +104,42 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long lastModifiedTime(RawFilePath path) {
-        WIN32_FIND_DATAW data = UnsafeStackValue.get(WIN32_FIND_DATAW.class);
-        HANDLE handle = FileAPI.FindFirstFileW((WCharPointer) path, data);
-        if (handle.equal(WinBase.INVALID_HANDLE_VALUE())) {
+        WIN32_FILE_ATTRIBUTE_DATA data = UnsafeStackValue.get(WIN32_FILE_ATTRIBUTE_DATA.class);
+        if (FileAPI.getFileAttributesEx((WCharPointer) path, FileAPI.getFileExInfoStandard(), data) == 0) {
             return -1;
         }
-        /* FILETIME counts 100-nanosecond intervals since 1601; convert to the Unix epoch. */
-        FILETIME time = data.getLastWriteTime();
-        long ticks = ((long) time.dwHighDateTime() << Integer.SIZE) | (time.dwLowDateTime() & UNSIGNED_DWORD_MASK);
-        FileAPI.FindClose(handle);
-        return ticks / FILETIME_TICKS_PER_MILLISECOND - FILETIME_UNIX_EPOCH_OFFSET_MILLIS;
+        long ticks = WindowsPlatformTimeUtils.windowsToTimeTicks(data.getLastWriteTime());
+        long millis = ticks / FILETIME_TICKS_PER_MILLISECOND;
+        // Preserve millisecond flooring for timestamps before the Unix epoch.
+        if (ticks < 0 && ticks % FILETIME_TICKS_PER_MILLISECOND != 0) {
+            millis--;
+        }
+        return millis;
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean delete(RawFilePath path) {
-        return FileNames.delete((WCharPointer) path) != 0;
+        return FileAPI.delete((WCharPointer) path) != 0;
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int rename(RawFilePath source, RawFilePath target) {
-        int result = FileNames.move((WCharPointer) source, (WCharPointer) target, FileNames.movefileReplaceExisting());
+        int result = FileAPI.move((WCharPointer) source, (WCharPointer) target, FileAPI.movefileReplaceExisting());
         return result != 0 ? 0 : WinBase.GetLastError();
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length) {
-        RawFileDescriptor descriptor = (RawFileDescriptor) FileAPI.NoTransition.GetStdHandle(stderr ? FileAPI.STD_ERROR_HANDLE() : FileAPI.STD_OUTPUT_HANDLE());
-        return write(descriptor, (Pointer) bytes, length);
+    public RawFileDescriptor getStdout() {
+        return (RawFileDescriptor) FileAPI.NoTransition.GetStdHandle(FileAPI.STD_OUTPUT_HANDLE());
     }
 
-    /// Declares file operations that do not depend on the Java I/O native library.
-    @CContext(WindowsDirectives.class)
-    private static final class FileNames {
-        @CConstant("MOVEFILE_REPLACE_EXISTING")
-        public static native int movefileReplaceExisting();
-
-        @CFunction(value = "DeleteFileW", transition = CFunction.Transition.NO_TRANSITION)
-        static native int delete(WCharPointer path);
-
-        @CFunction(value = "MoveFileExW", transition = CFunction.Transition.NO_TRANSITION)
-        static native int move(WCharPointer source, WCharPointer target, int flags);
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public RawFileDescriptor getStderr() {
+        return (RawFileDescriptor) FileAPI.NoTransition.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
     }
 
     @Override

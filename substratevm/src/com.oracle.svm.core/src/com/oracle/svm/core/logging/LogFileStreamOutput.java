@@ -28,6 +28,7 @@ import java.util.Locale;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.locks.VMMutex;
@@ -82,7 +83,8 @@ final class LogFileStreamOutput extends LogOutput {
         mutex.lockNoTransition();
         try {
             /* Synchronous logging intentionally uses a no-transition write, as HotSpot does. */
-            return RawFileOperationSupport.nativeByteOrder().write(target == Target.STDERR, bytes, length) ? 0 : WRITE_FAILED;
+            RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
+            return files.write(target == Target.STDERR ? files.getStderr() : files.getStdout(), (Pointer) bytes, length) ? 0 : WRITE_FAILED;
         } finally {
             mutex.unlock();
         }

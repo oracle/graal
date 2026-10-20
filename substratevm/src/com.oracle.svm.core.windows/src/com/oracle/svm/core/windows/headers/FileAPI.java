@@ -49,6 +49,28 @@ import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 @CContext(WindowsDirectives.class)
 public class FileAPI {
 
+    @CConstant("MOVEFILE_REPLACE_EXISTING")
+    public static native int movefileReplaceExisting();
+
+    @CFunction(value = "DeleteFileW", transition = NO_TRANSITION)
+    public static native int delete(WCharPointer path);
+
+    @CFunction(value = "MoveFileExW", transition = NO_TRANSITION)
+    public static native int move(WCharPointer source, WCharPointer target, int flags);
+
+    @CConstant("GetFileExInfoStandard")
+    public static native int getFileExInfoStandard();
+
+    /// Reads attributes without allocating a search handle.
+    @CFunction(value = "GetFileAttributesExW", transition = NO_TRANSITION)
+    public static native int getFileAttributesEx(WCharPointer path, int level, WIN32_FILE_ATTRIBUTE_DATA data);
+
+    @CStruct("WIN32_FILE_ATTRIBUTE_DATA")
+    public interface WIN32_FILE_ATTRIBUTE_DATA extends PointerBase {
+        @CFieldAddress("ftLastWriteTime")
+        FILETIME getLastWriteTime();
+    }
+
     /** Generic Access Rights */
     @CConstant
     public static native int GENERIC_READ();
@@ -162,10 +184,6 @@ public class FileAPI {
 
         @CFieldAddress("cFileName")
         WCharPointer getFileName();
-
-        /// Gets the modification timestamp without opening the file.
-        @CFieldAddress("ftLastWriteTime")
-        FILETIME getLastWriteTime();
     }
 
     public static class NoTransition {

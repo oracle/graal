@@ -32,8 +32,6 @@ import java.nio.ByteOrder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -51,7 +49,7 @@ import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.posix.headers.Stdio;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.PosixStat.stat;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
@@ -59,12 +57,6 @@ import com.oracle.svm.shared.util.VMError;
 import org.graalvm.word.impl.Word;
 
 public class PosixRawFileOperationSupport extends AbstractRawFileOperationSupport {
-    /// Standard output descriptor, usable before Java I/O initialization.
-    private static final int STDOUT_FILENO = 1;
-
-    /// Standard error descriptor, usable before Java I/O initialization.
-    private static final int STDERR_FILENO = 2;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public PosixRawFileOperationSupport(boolean useNativeByteOrder) {
         super(useNativeByteOrder);
@@ -72,8 +64,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
 
     @Override
     public RawFileOperationSupport.RawFilePath allocatePath(String path) {
-        // Use the image's default charset to match other Java-to-C path conversions. This charset
-        // is fixed at image build time and does not read startup system properties.
+        // Use the image's default charset to match other Java-to-C path conversions.
         byte[] data = path.getBytes();
         CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
@@ -117,22 +108,21 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int rename(RawFilePath source, RawFilePath target) {
-        int result = FileNames.rename((CCharPointer) source, (CCharPointer) target);
+        int result = Stdio.rename((CCharPointer) source, (CCharPointer) target);
         /* Capture errno immediately before another native call can overwrite it. */
         return result == 0 ? 0 : LibC.errno();
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length) {
-        return write(Word.signed(stderr ? STDERR_FILENO : STDOUT_FILENO), (Pointer) bytes, length);
+    public RawFileDescriptor getStdout() {
+        return Word.signed(Unistd.STDOUT_FILENO());
     }
 
-    /// Declares the no-transition rename used before Java I/O initialization and during rotation.
-    @CContext(PosixDirectives.class)
-    private static final class FileNames {
-        @CFunction(value = "rename", transition = CFunction.Transition.NO_TRANSITION)
-        static native int rename(CCharPointer source, CCharPointer target);
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public RawFileDescriptor getStderr() {
+        return Word.signed(Unistd.STDERR_FILENO());
     }
 
     @Override

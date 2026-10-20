@@ -25,7 +25,6 @@
 package com.oracle.svm.core.windows.headers;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -74,14 +73,6 @@ public class WindowsLibC {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native void abort();
-
-    /// Gets the maximum Windows computer name length, excluding its terminator.
-    @CConstant("MAX_COMPUTERNAME_LENGTH")
-    public static native int maxComputernameLength();
-
-    /// Writes the computer name and its length, returning nonzero on success.
-    @CFunction(value = "GetComputerNameW", transition = CFunction.Transition.NO_TRANSITION)
-    public static native int getComputerName(WCharPointer buffer, CIntPointer length);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native UnsignedWord strlen(CCharPointer str);

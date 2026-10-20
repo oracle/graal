@@ -28,7 +28,6 @@ package com.oracle.svm.webimage.fs;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.File;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -77,7 +76,13 @@ public class WebImageRawFileOperationSupport implements RawFileOperationSupport 
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length) {
+    public RawFileDescriptor getStdout() {
+        throw UNSUPPORTED_OPERATION;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public RawFileDescriptor getStderr() {
         throw UNSUPPORTED_OPERATION;
     }
 

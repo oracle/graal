@@ -29,7 +29,6 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import java.io.File;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -103,12 +102,13 @@ public interface RawFileOperationSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     int rename(RawFilePath source, RawFilePath target);
 
-    /// Writes a native byte range to standard output or standard error without a thread status
-    /// transition. A blocked synchronous write can therefore delay safepoint progress.
-    ///
-    /// @return true on success
-    @Uninterruptible(reason = "Synchronous logging uses a no-transition platform write.")
-    boolean write(boolean stderr, CCharPointer bytes, UnsignedWord length);
+    /// Gets the process standard output descriptor without initializing Java I/O.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    RawFileDescriptor getStdout();
+
+    /// Gets the process standard error descriptor without initializing Java I/O.
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    RawFileDescriptor getStderr();
 
     /**
      * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
@@ -216,11 +216,11 @@ public interface RawFileOperationSupport {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     boolean seek(RawFileDescriptor fd, long position);
 
-    /**
-     * Writes data to the current file position and advances the file position.
-     *
-     * @return true if the data was written, false otherwise.
-     */
+    /// Writes data to the current file position and advances the file position.
+    /// The native write does not transition the thread out of Java state, so a blocking write
+    /// can delay safepoints until it completes.
+    ///
+    /// @return true if the data was written, false otherwise.
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     boolean write(RawFileDescriptor fd, Pointer data, UnsignedWord size);
 

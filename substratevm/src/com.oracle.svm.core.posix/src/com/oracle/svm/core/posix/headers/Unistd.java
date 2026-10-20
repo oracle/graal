@@ -45,6 +45,16 @@ import org.graalvm.word.UnsignedWord;
 public class Unistd {
 
     @CConstant
+    public static native int STDOUT_FILENO();
+
+    @CConstant
+    public static native int STDERR_FILENO();
+
+    /// Writes the host name into `buffer`, returning zero on success.
+    @CFunction(value = "gethostname", transition = Transition.NO_TRANSITION)
+    public static native int getHostname(CCharPointer buffer, UnsignedWord length);
+
+    @CConstant
     public static native short SEEK_SET();
 
     @CConstant

@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.StackValue;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -37,18 +36,32 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.headers.LibCSupport;
+import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.PosixLibC;
+import com.oracle.svm.core.posix.headers.Unistd;
 
 public abstract class PosixLibCSupport implements LibCSupport {
     /// Gets the POSIX host name directly so early startup does not depend on Java networking.
     @Override
     public String hostname() {
-        int capacity = PosixLibC.hostNameMax() + 1;
-        CCharPointer buffer = StackValue.get(capacity);
-        if (PosixLibC.gethostname(buffer, Word.unsigned(capacity)) == 0) {
-            return CTypeConversion.toJavaString(buffer);
+        byte[] bytes = new byte[Limits.hostNameMax() + 1];
+        int length = readHostname(bytes);
+        return length < 0 ? "localhost" : new String(bytes, 0, length);
+    }
+
+    /// Copies the native result before interruptible string construction can unmount the thread.
+    @Uninterruptible(reason = "The stack buffer must remain on the current carrier thread.")
+    private static int readHostname(byte[] bytes) {
+        CCharPointer buffer = StackValue.get(Limits.hostNameMax() + 1);
+        if (Unistd.getHostname(buffer, Word.unsigned(bytes.length)) != 0) {
+            return -1;
         }
-        return "localhost";
+        int length = 0;
+        while (length < bytes.length && buffer.read(length) != 0) {
+            bytes[length] = buffer.read(length);
+            length++;
+        }
+        return length == bytes.length ? -1 : length;
     }
 
     @Override
