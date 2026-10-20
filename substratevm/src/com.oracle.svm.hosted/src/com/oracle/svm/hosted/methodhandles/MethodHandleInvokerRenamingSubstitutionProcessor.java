@@ -533,9 +533,15 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         return new String(result);
     }
 
+    /**
+     * Names derived from a structural key that only one hidden class has are stable. Hidden classes
+     * that share a structural key receive their suffixes in discovery order (see
+     * {@link #findStableName}), so their names can be swapped between image builds.
+     */
     public boolean isNameAlwaysStable(String methodHandleName) {
-        VMError.guarantee(methodHandleName != null, "Method handle name must not be null.");
-        return true;
+        String structuralKey = stableNameStructuralKeys.get(methodHandleName);
+        VMError.guarantee(structuralKey != null, "Method handle name %s was not assigned by this processor.", methodHandleName);
+        return structuralKeyDuplicateCounts.get(structuralKey).get() == 1;
     }
 
     boolean checkAllTypeNames() {

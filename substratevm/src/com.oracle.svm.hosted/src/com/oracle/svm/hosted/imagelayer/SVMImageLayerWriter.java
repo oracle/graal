@@ -402,7 +402,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             }
         }
         /*
-         * Method handle with the same inner method handles will return the same hash. They will
+         * Method handle invokers with the same structure will produce the same digest. They will
          * still have a different name, but in a multi threading context, the names can be switched.
          */
         if (type.getWrapped() instanceof MethodHandleInvokerSubstitutionType methodHandleSubstitutionType) {
